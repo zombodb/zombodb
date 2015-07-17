@@ -1,0 +1,657 @@
+options {
+    MULTI=true;
+    STATIC = false;
+    USER_CHAR_STREAM = false;
+    UNICODE_INPUT = true;
+    IGNORE_CASE = true;
+    CACHE_TOKENS = true;
+    VISITOR=true;
+    NODE_DEFAULT_VOID=true;
+    NODE_CLASS="com.tcdi.zombodb.query_parser.QueryParserNode";
+}
+
+PARSER_BEGIN(QueryParser)
+
+package com.tcdi.zombodb.query_parser;
+import java.io.*;
+import java.util.*;
+
+public class QueryParser {
+
+    public static class FieldnameAndOperator {
+        String fieldname;
+        QueryParserNode.Operator operator;
+
+        public FieldnameAndOperator(String fieldname, String operator) {
+            this.fieldname = fieldname.trim();
+
+            switch(operator) {
+                case ":":
+                    this.operator = QueryParserNode.Operator.CONTAINS;
+                    break;
+                case ":@":
+                    this.operator = QueryParserNode.Operator.CONCEPT;
+                    break;
+                case ":@~":
+                    this.operator = QueryParserNode.Operator.FUZZY_CONCEPT;
+                    break;
+                case "=":
+                    this.operator = QueryParserNode.Operator.EQ;
+                    break;
+                case "<":
+                    this.operator = QueryParserNode.Operator.LT;
+                    break;
+                case ">":
+                    this.operator = QueryParserNode.Operator.GT;
+                    break;
+                case "<=":
+                    this.operator = QueryParserNode.Operator.LTE;
+                    break;
+                case ">=":
+                    this.operator = QueryParserNode.Operator.GTE;
+                    break;
+                case "!=":
+                case "<>":
+                    this.operator = QueryParserNode.Operator.NE;
+                    break;
+                case ":~":
+                    this.operator = QueryParserNode.Operator.REGEX;
+                    break;
+                default:
+                    throw new RuntimeException ("Unrecognized operator: " + operator);
+            }
+        }
+    }
+
+    private java.util.Set<String> usedFieldnames = new java.util.TreeSet(); // to keep fields sorted so that _all comes first
+    private java.util.Stack<FieldnameAndOperator> fieldnameStack = new Stack();
+
+    public ASTQueryTree parse(boolean optimize) throws ParseException {
+        ASTQueryTree tree = parse0();
+
+        if (optimize)
+            new QueryTreeOptimizer(tree).optimize();
+        return tree;
+    }
+
+    public java.util.Set<String> getUsedFieldnames() {
+        return usedFieldnames;
+    }
+
+}
+PARSER_END(QueryParser)
+
+<DEFAULT> SKIP :
+{
+    " "
+  | "\r"
+  | "\n"
+  | "\t"
+  | "\f"
+}
+
+<ARRAY_CLOB> MORE :
+{
+      <ARRAY_DATA: (~["]"])+ >
+}
+
+<ARRAY_CLOB> TOKEN:
+{
+    <ARRAY_CLOB_END: "]]"> : DEFAULT
+}
+
+<DEFAULT> MORE :
+{
+  "[[": ARRAY_CLOB
+}
+
+<DEFAULT> TOKEN :
+{
+    <NOT: "not" | ("and" ([" ", "\t", "\n", "\f"])+ "not") >
+  | <AND: "and" >
+  | <OR: "or" >
+  | <NULL: "null" >
+  | <BOOLEAN: "true" | "false" >
+
+  | <TO: "/to/" >
+  | <CHILD: "#child" >
+  | <PARENT: "#parent" >
+  | <NEST: "#nest" >
+  | <TALLY: "#tally" >
+  | <SIGNIFICANT_TERMS: "#significant_terms" >
+  | <EXTENDED_STATS: "#extended_stats" >
+  | <SUGGEST: "#suggest" >
+  | <OPTIONS: "#options" >
+  | <EXPAND: "#expand" >
+
+  | <PROX: "w/"(<DIGIT>)+ >
+  | <ORDERED_PROX: "wo/"(<DIGIT>)+ >
+
+  | <IDENTIFIER: <LETTER> (<LETTER> | <DIGIT>)* >
+  | <DOTTED_IDENTIFIER: <IDENTIFIER> ("." <IDENTIFIER>)+ >
+  | <TYPENAME: "<" (<LETTER> (<LETTER> | <DIGIT>)*)+ ">" >
+
+  | <NUMBER: (("-")? (["1"-"9"]) (<DIGIT>)* ("." (<DIGIT>)+)?) | (("0")+ ("." (<DIGIT>)+)) | ("0") >
+  | <WORD: ( ("\"" (~["\"", " ", "*", "?", "~"])* "\"") | ("'" (~["'", " ", "*", "?", "~"])* "'") ) | ((~[" ", "\t", "\n", "\r", "\f", "$", "*", "?", "~", "^", "/", ":", "=", "<", ">", "!", "#", "@", "(", ")", "'", "\"", ".", ",", "&", "[", "]", "\\"]) | ("\\" ~[]))+ >
+  | <PREFIX: <WORD> ("*")+ >
+  | <WILDCARD:   ("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")* >
+  | <NOT_NULL: ("*") | ("?") | ("\"*\"") | ("\"?\"") >
+  | <FUZZY: <WORD> "~" (<DIGIT>)*>
+  | <PHRASE: ( ("\"" (~["\""] | "\\\"")* "\"") | ("'" (~["'"] | "\\'")* "'") ) ("~" ("!")? (<DIGIT>)+)? >
+  | <SCRIPT: "$$" (~[])* "$$" >
+
+  | <#LETTER: ["a"-"z", "_"] >
+  | <#DIGIT: ["0"-"9"] >
+  | <L_ANGLE: "<" >
+  | <R_ANGLE: ">" >
+  | <EQ: "=" >
+  | <OPERATOR: ":" | <EQ> | <L_ANGLE> | <R_ANGLE> | "<=" | ">=" | "<>" | "!=" | ":@" | ":@~" | ":~" >
+}
+
+private ASTQueryTree parse0() #QueryTree :
+{
+}
+{
+    ( Aggregations() | Options() )* [ Expression() ] <EOF>
+    {
+        return jjtThis;
+    }
+}
+
+void Aggregations() : {}
+{
+    ( Tally() | SignificantTerms() | ExtendedStats() | Suggest() )
+}
+
+void Tally() #Tally :
+{
+    Token t;
+}
+{
+    ( <TALLY> "(" (t = Fieldname()) "," (Word()|Phrase()) "," Number() "," Word() [ "," Aggregations() ] ")" )
+    { jjtThis.fieldname = t.image; }
+}
+
+void SignificantTerms() #SignificantTerms :
+{
+    Token t;
+}
+{
+    ( <SIGNIFICANT_TERMS> "(" (t = Fieldname()) "," (Word()|Phrase()) "," Number() [ "," Aggregations() ] ")" )
+    { jjtThis.fieldname = t.image; }
+}
+
+void ExtendedStats() #ExtendedStats :
+{
+    Token t;
+}
+{
+    ( <EXTENDED_STATS> "(" (t = Fieldname()) ")" )
+    { jjtThis.fieldname = t.image; }
+}
+
+void Suggest() #Suggest :
+{
+    Token t;
+}
+{
+    ( <SUGGEST> "(" (t = Fieldname()) "," (Word()|Phrase()) "," Number() ")" )
+    { jjtThis.fieldname = t.image; }
+}
+
+void Options() : {}
+{
+    (
+        <OPTIONS>
+            "("
+            [
+              ( IndexLink() ("," IndexLink())* )
+            ]
+            ")"
+    ) #Options
+}
+
+void IndexLink() #IndexLink :
+{
+    Token t;
+}
+{
+      LOOKAHEAD(2) ( LeftField() <EQ> <L_ANGLE> IndexName() <R_ANGLE> RightField() ) { jjtThis.fieldname = null; }
+    | ( t = <IDENTIFIER> { jjtThis.fieldname = t.image; } <OPERATOR> "(" LeftField() <EQ> <L_ANGLE> IndexName() <R_ANGLE> RightField() ")" )
+}
+
+void LeftField() #LeftField :
+{
+    Token t;
+}
+{
+    t = <IDENTIFIER>
+    { jjtThis.value = t.image; }
+}
+
+void IndexName() #IndexName :
+{
+    Token t;
+}
+{
+    ( t = <DOTTED_IDENTIFIER> )
+    {
+        jjtThis.value = t.image;
+    }
+}
+
+
+void RightField() #RightField :
+{
+    Token t;
+}
+{
+    t = <IDENTIFIER>
+    { jjtThis.value = t.image; }
+}
+
+
+
+void Expression() : {}
+{
+    /* consume leading ANDs/ORs                    consuming trailing ANDs/ORs/NOTs */
+    (<AND> | <OR> | "," | "&")*                    OrExpression() (<AND> | <OR> | "," | "&" | <NOT> | "!")*
+}
+
+void OrExpression(): {}
+{
+    (
+        AndExpression()  (LOOKAHEAD(2)  (<OR>|",") AndExpression() )*
+    ) #Or(>1)
+}
+
+void AndExpression() : {}
+{
+    (
+        /* optional <AND> makes it the default operator between words */
+        ProximityExpression() (LOOKAHEAD(2)  [<AND>|"&"] ProximityExpression() )*
+    ) #And(>1)
+}
+
+void ProximityExpression() : {}
+{
+    (
+        UnaryExpression() (LOOKAHEAD(2) ProximityOperator(jjtThis) ProximityExpression() )*
+    ) #Proximity(>1)
+}
+
+void ProximityOperator(QueryParserNode node) :
+{
+    Token prox;
+    boolean ordered = false;
+    int distance = 0;
+}
+{
+    ( prox=<PROX> | ( prox=<ORDERED_PROX> { ordered = true; } ) )
+    {
+        node.distance = Integer.valueOf(prox.image.substring(prox.image.indexOf('/')+1));
+        node.fieldname = fieldnameStack.isEmpty() ? "_all" : fieldnameStack.peek() == null ? "_all" : fieldnameStack.peek().fieldname;
+        node.operator = fieldnameStack.isEmpty() ? QueryParserNode.Operator.CONTAINS : fieldnameStack.peek() == null ? QueryParserNode.Operator.CONTAINS : fieldnameStack.peek().operator;
+        node.ordered = ordered;
+    }
+}
+
+void UnaryExpression() :
+{
+    QueryParserNode n = null;
+    FieldnameAndOperator fieldname = null;
+}
+{
+    (
+      n = Not()
+    | n = Script()
+    |
+      (
+        fieldname = OptionalFieldname()
+        (
+            LOOKAHEAD(2) "(" { fieldnameStack.push(fieldname); } Expression() { fieldnameStack.pop(); } ")"
+            | ("(" ")") // just ignore empty parens, ie:  ()
+            | ( { if (fieldname == null || "_all".equals(fieldname.fieldname)) usedFieldnames.add("_all"); }
+                (
+                      LOOKAHEAD(2) n = Range()
+                    | n = Child()
+                    | n = Parent()
+                    | n = Expansion()
+                    | n = Nested()
+                    | n = Array()
+                    | n = ArrayData()
+                    | n = Literal()
+                ) OptionalBoost(n)
+              )
+         )
+      )
+    )
+     {
+        if (n != null && fieldname != null) {
+            if (!(n instanceof ASTChild) && !(n instanceof ASTParent) && !(n instanceof ASTNested) && !(n instanceof ASTExpansion)) {
+                n.fieldname = fieldname.fieldname;
+                n.operator = fieldname.operator;
+            }
+
+            if (n instanceof ASTArray) {
+                n.forceFieldname(fieldname.fieldname);
+            }
+        }
+    }
+}
+
+QueryParserNode Literal() :
+{
+    QueryParserNode n = null;
+}
+{
+    (
+          n = Fuzzy()
+        | n = Prefix()
+        | n = Wildcard()
+        | n = NotNull()
+        | n = Word()
+        | n = Phrase()
+        | n = Boolean()
+        | n = Null()
+        | n = Number()
+    )
+    { return n; }
+}
+
+QueryParserNode Not() #Not : {}
+{
+    (
+        (LOOKAHEAD(2) (<NOT>|"!") UnaryExpression() )+
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Child() #Child :
+{
+    Token t;
+}
+{
+    ( <CHILD>  t=<TYPENAME> "(" Expression() ")" )
+    {
+        jjtThis.typename = t.image.substring(1, t.image.length()-1);
+        return jjtThis;
+    }
+}
+
+QueryParserNode Parent() #Parent :
+{
+    Token t;
+}
+{
+    ( <PARENT> t=<TYPENAME> "(" Expression() ")" )
+    {
+        jjtThis.typename = t.image.substring(1, t.image.length()-1);
+        return jjtThis;
+    }
+}
+
+QueryParserNode Expansion() #Expansion : { }
+{
+    ( <EXPAND> "<" IndexLink() ">" "(" Expression() ")" )
+    {
+        jjtThis.setGenerated(true);
+        return jjtThis;
+    }
+}
+
+QueryParserNode Nested() #Nested :
+{
+    Token t;
+}
+{
+    ( <NEST> t=<TYPENAME> "(" Expression() ")" )
+    {
+        jjtThis.typename = t.image.substring(1, t.image.length()-1);
+        return jjtThis;
+    }
+}
+
+void OptionalBoost(QueryParserNode n) :
+{
+    Token t;
+}
+{
+    { if (n == null) return; }
+    [ LOOKAHEAD(2) "^" t = <NUMBER> { n.boost = Double.valueOf(t.image); } ]
+}
+
+FieldnameAndOperator OptionalFieldname() :
+{
+    Token t = null, t2 = null;
+    Token op = null;
+}
+{
+    (
+        [
+            LOOKAHEAD(2) t = Fieldname() (t2 = <OPERATOR> | t2 = <EQ> | t2 = <L_ANGLE> | t2 = <R_ANGLE>)
+        ]
+    )
+    {
+        if (t != null) {
+            return new FieldnameAndOperator(t.image, t2.image);
+        } else {
+            return fieldnameStack.isEmpty() ? new FieldnameAndOperator("_all", ":") : fieldnameStack.peek();
+        }
+    }
+}
+
+Token Fieldname() :
+{
+    Token t;
+}
+{
+    (
+        LOOKAHEAD(2) t = <IDENTIFIER>
+      | LOOKAHEAD(2) t = <DOTTED_IDENTIFIER>  #NestedGroup(>20000)  /* will never create the #NestedGroup node, just exists to have the class auto-generated */
+    )
+    {
+        usedFieldnames.add(t.image);
+        return t;
+    }
+}
+
+
+QueryParserNode Range() #Range(2) : {}
+{
+    (
+        (Word() | Number() | Phrase()) <TO> (Word() | Number() | Phrase())
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Word() #Word :
+{
+    Token t;
+}
+{
+    (
+        ( (t = <WORD>) | (t = <IDENTIFIER>) | (t = <DOTTED_IDENTIFIER>) ) {
+            String word = t.image;
+            if (word.startsWith("'") || word.startsWith("\""))
+                word = word.substring(1, word.length()-1);
+            jjtThis.value = word;
+        }
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Prefix() #Prefix :
+{
+    Token t;
+}
+{
+    (
+        t = <PREFIX> { jjtThis.value = t.image.substring(0, t.image.indexOf('*')); }
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Wildcard() #Wildcard :
+{
+    Token t;
+}
+{
+    (
+        t = <WILDCARD> { jjtThis.value = t.image; }
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode NotNull() #NotNull :
+{
+    Token t;
+}
+{
+    (
+        t = <NOT_NULL>
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Fuzzy() #Fuzzy :
+{
+    Token t;
+}
+{
+    (
+        t = <FUZZY>
+        {
+            int idx = t.image.indexOf('~');
+
+            jjtThis.value = t.image.substring(0, idx);
+
+            try {
+                jjtThis.fuzzyness = Integer.valueOf(t.image.substring(idx+1));
+            } catch (NumberFormatException nfe) {
+                // ignore it
+            }
+        }
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Phrase() #Phrase :
+{
+    Token t;
+}
+{
+    (
+        t = <PHRASE>
+        {
+            String value = t.image;
+            int slop = 0;
+            boolean inOrder = true;
+            if (value.charAt(value.length()-1) != '"' && value.charAt(value.length()-1) != '\'') {
+                // has a slop value
+                try {
+                    slop = Integer.parseInt(value.substring(value.lastIndexOf('~')+1));
+                } catch (NumberFormatException nfe) {
+                    // probably because user specified ! in order
+                    slop = Integer.parseInt(value.substring(value.lastIndexOf('~')+2));
+                    inOrder = false;
+                }
+                value = value.substring(1, value.lastIndexOf('~')-1);
+            } else {
+                value = value.substring(1, t.image.length()-1).trim();
+            }
+
+            jjtThis.value = value;
+            jjtThis.distance = slop;
+            jjtThis.ordered = inOrder;
+        }
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Array() #Array(>0) :
+{
+}
+{
+    (
+        "[" Literal() ( "," Literal() )* "]"
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode ArrayData() #ArrayData :
+{
+    Token t;
+}
+{
+    ( t = <ARRAY_CLOB_END>)
+    {
+        jjtThis.value = t.image.substring(2, t.image.length()-2);
+        return jjtThis;
+    }
+}
+
+QueryParserNode Boolean() #Boolean :
+{
+    Token t;
+}
+{
+    (
+        t = <BOOLEAN> { jjtThis.value = Boolean.valueOf(t.image); }
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Null() #Null :
+{
+    Token t;
+}
+{
+    (
+        t = <NULL>
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Number() #Number :
+{
+    Token t;
+}
+{
+    (
+        t = <NUMBER> {
+            try {
+                jjtThis.value = Integer.valueOf(t.image);
+            } catch (Exception e) {
+                try {
+                    jjtThis.value = Long.valueOf(t.image);
+                } catch (Exception e2) {
+                    try {
+                        jjtThis.value = Float.valueOf(t.image);
+                    } catch (Exception e3) {
+                        try {
+                            jjtThis.value = Double.valueOf(t.image);
+                        } catch (Exception e4) {
+                            throw new RuntimeException("Not a number: " + t.image, e);
+                        }
+                    }
+                }
+            }
+        }
+    )
+    { return jjtThis; }
+}
+
+QueryParserNode Script() #Script :
+{
+    Token t;
+}
+{
+    (
+        t = <SCRIPT>
+    )
+    {
+        jjtThis.value = t.image.substring(2, t.image.length()-2);
+        return jjtThis;
+    }
+}
