@@ -38,7 +38,7 @@ ZomboDB development began in 2013 by [Technology Concepts & Design, Inc](http://
 to provide transaction safe full-text searching on top of Postgres tables.  While Postgres' "tsearch" feature are useful, 
 they're not necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
 
-The name is a homage to [zombo.com](http://zombo.com/) and its continual self-affirmation. 
+The name is an homage to [zombo.com](http://zombo.com/) and its continual self-affirmation. 
 
 Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type (Access Method) 
 so that queries are MVCC-safe, standard SQL can be used to query and manage indexes, and to provide fantastic 
