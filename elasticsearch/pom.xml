@@ -62,13 +62,7 @@
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch</artifactId>
-            <version>1.4.4</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.tcdi</groupId>
-            <artifactId>entity-extractor</artifactId>
-            <version>1.0.0</version>
+            <version>1.5.2</version>
         </dependency>
 
         <dependency>
@@ -77,6 +71,17 @@
             <version>6.1.2</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.6.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.6.0-rc4</version>
+        </dependency>
 
     </dependencies>
     

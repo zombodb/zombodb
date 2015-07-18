@@ -15,16 +15,11 @@
  */
 package com.tcdi.zombodb;
 
-import com.tcdi.zombodb.entity.EntityExtractorAction;
 import com.tcdi.zombodb.postgres.*;
-import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.inject.Module;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugins.AbstractPlugin;
 import org.elasticsearch.rest.RestModule;
-
-import java.util.Collection;
 
 /**
  * @author e_ridge
@@ -41,7 +36,6 @@ public class ZombodbPlugin extends AbstractPlugin {
         module.addRestAction(PostgresAggregationAction.class);
         module.addRestAction(PostgresCountAction.class);
         module.addRestAction(PostgresMappingAction.class);
-        module.addRestAction(EntityExtractorAction.class);
         module.addRestAction(ZombodbQueryAction.class);
         module.addRestAction(ZombodbDocumentHighlighterAction.class);
     }
