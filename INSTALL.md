@@ -68,7 +68,24 @@ $ cd $ES_HOME
 $ bin/plugin -i zombodb -u file:///path/to/zombodb-plugin-X.X.X.zip
 ```
 
-Then restart the node.  Repeat for every "client" node in your cluster.
+There's a few configuration settings to set in ```elasticsearch.yml```:
+
+```
+script.disable_dynamic: false
+
+threadpool.bulk.queue_size: 1024
+threadpool.bulk.size: 12
+
+http.max_content_length: 1024mb
+index.query.bool.max_clause_count: 1000000
+```
+
+Dynamic scripting *must* be enabled, and the bulk threadpool increased because ZomboDB multiplexes against the ```_bulk```
+endpoint.
+
+The last two settings can be turned up or down (```http.max_content_length``` must be at least 8192kB), but are good defaults.
+
+Finally, restart the node.  Repeat for every "client" node in your cluster.
 
 # Upgrading
 
