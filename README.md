@@ -7,6 +7,7 @@ backed by Elasticsearch.
 
 ## Quick Links
    - [Installation instructions](INSTALL.md)  
+   - [Latest Release](https://github.com/zombodb/zombodb/releases/latest)  
    - [Simple tutorial and walk-through](TUTORIAL.md)  
    - [Query Syntax](SYNTAX.md)  
    - [SQL-level API](SQL-API.md)  

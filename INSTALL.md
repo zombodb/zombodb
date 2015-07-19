@@ -2,7 +2,7 @@
 
 ZomboDB consists of two pieces.  One is a Postgres Extension (written in C and SQL/PLPGSQL), and the other is an Elasticsearch plugin (written in Java).
 
-Currently ZomboDB only supports Postgres v9.3 and Elasticsearch v1.5+
+Currently ZomboDB only supports Postgres **v9.3** and Elasticsearch **v1.5+**
 
 As a first step, clone the ZomboDB repository:
 
@@ -52,23 +52,14 @@ ZomboDB's Elasticsearch plugin only needs to be installed on nodes that operate 
 
 A large cluster configuration is likely to have a number of dedicated "data", "master", and "client" nodes.  Again, it is only the latter that require the plugin.
 
-First off, compile the plugin:
-
-```
-$ cd elasticsearch
-$ mvn clean install
-```
-
-If you compile the plugin on a system other than your Elasticsearch nodes, copy the plugin artifact (```target/zombodb-plugin-X.X.X.zip```) to each of your "client" nodes.
-
-Use Elasticsearch's plugin utility to install ZomboDB:
+Simply download the latest release .zip file from [the releases page](https://github.com/zombodb/zombodb/releases/latest), and then use Elasticsearch's plugin utility to install ZomboDB:
 
 ```
 $ cd $ES_HOME
 $ bin/plugin -i zombodb -u file:///path/to/zombodb-plugin-X.X.X.zip
 ```
 
-There's a few configuration settings to set in ```elasticsearch.yml```:
+There's a few configuration settings that need to be set in ```elasticsearch.yml```:
 
 ```
 script.disable_dynamic: false
