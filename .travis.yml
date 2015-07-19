@@ -1,9 +1,9 @@
 language: java
 sudo: required
-before_script:
+before_install:
+  - sudo /etc/init.d/postgresql stop
+  - sudo apt-get remove postgresql-9.4
   - sudo apt-get install postgresql-9.3
   - sudo apt-get install postgresql-client-9.3
   - sudo apt-get install postgresql-server-dev-9.3
-before_install:
-  - sudo /etc/init.d/postgresql stop
   - sudo /etc/init.d/postgresql start 9.3
