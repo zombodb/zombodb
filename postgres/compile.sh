@@ -13,7 +13,7 @@ WHOAMI=$(id -u)
 if [ `uname` = "Darwin" ] ; then
 	PG_OWNER=$(stat -f %u `pg_config --libdir`)
 else
-	PG_OWNER=$(start --format %u `pg_config --libdir`)
+	PG_OWNER=$(stat --format %u `pg_config --libdir`)
 fi
 
 if [ "$WHOAMI" = "$PG_OWNER" ] ; then
