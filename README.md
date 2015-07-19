@@ -3,6 +3,8 @@
 ZomboDB is a Postgres extension that enables efficient full-text searching via the creation of indexes (CREATE INDEX) 
 backed by Elasticsearch.
 
+![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)
+
 ## Quick Links
    - [Installation instructions](INSTALL.md)  
    - [Simple tutorial and walk-through](TUTORIAL.md)  
