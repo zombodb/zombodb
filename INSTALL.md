@@ -71,7 +71,7 @@ http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 ```
 
-Dynamic scripting *must* be enabled, and the bulk threadpool increased because ZomboDB multiplexes against the ```_bulk``` endpoint.
+Dynamic scripting must **not** be disabled, and the bulk threadpool increased because ZomboDB multiplexes against the ```_bulk``` endpoint.
 
 The last two settings can be turned up or down (```http.max_content_length``` must be at least 8192kB), but are good defaults.
 
