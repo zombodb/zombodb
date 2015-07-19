@@ -12,6 +12,6 @@ PG_OWNER=$(stat -f %u `pg_config --libdir`)
 if [ $WHOAMI = $PG_OWNER ] ; then
 	make install
 else
-	sudo make insall
+	sudo make install
 fi
 
