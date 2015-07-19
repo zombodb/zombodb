@@ -8,7 +8,7 @@ make clean
 make
 
 WHOAMI=$(id -u)
-if [ `uname` == "Darwin" ] ; then
+if [ `uname` = "Darwin" ] ; then
 	PG_OWNER=$(stat -f %u `pg_config --libdir`)
 else
 	PG_OWNER=$(start --format %u `pg_config --libdir`)
