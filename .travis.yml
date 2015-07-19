@@ -2,3 +2,6 @@ language: java
 sudo: required
 addons:
   postgresql: "9.3"
+before_script:
+  - sudo apt-get install postgresql-server-dev-all
+  - sudo apt-get install postgresql-common
