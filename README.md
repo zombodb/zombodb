@@ -48,7 +48,6 @@ Not to suggest that these things are impossible, but there's a small set of non-
 - Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
 - only supports Postgres query plans that choose IndexScans or BitmapIndexScans (the latter is also dependent on sufficient work_mem to avoid Recheck conditions)
 
-
 ## History
 
 The name is an homage to [zombo.com](http://zombo.com/) and its long history of continuous self-affirmation. 
@@ -121,6 +120,14 @@ NOTE:  ZomboDB has only been tested on Linux and OS X.  Windows support is unkno
 ## Credit and Thanks
 
 Credit goes to Technology Concepts & Design, Inc, its management, and its development and quality assurance teams not only for their work during the early development days but also for their on-going support now that ZomboDB is open-source.
+
+
+## Contact Information
+
+- Eric Ridge
+- Email:  eebbrr@gmail.com
+- Twitter:  @zombodb or @eeeebbbbrrrr
+- via github Issues and Pull Requests ;)
 
 
 ## License
