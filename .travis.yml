@@ -3,6 +3,5 @@ sudo: required
 before_install:
   - sudo /etc/init.d/postgresql stop
   - sudo apt-get remove postgresql-9.4
-  - sudo apt-get install postgresql-9.3
   - sudo apt-get install postgresql-server-dev-9.3
   - sudo /etc/init.d/postgresql start 9.3
