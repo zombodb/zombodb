@@ -223,6 +223,18 @@ tutorial=#
 
 From here, it's just a matter of coming up with a full-text query to answer your question.  See the [SYNTAX](SYNTAX.md) document for details on what the full-text query syntax can do.
 
+## Summary
+
+In summary, the process of getting up and running is simply:
+
+```
+CREATE EXTENSION zombodb;
+CREATE TABLE foo ...;
+<load data>
+CREATE INDEX ON foo USING zombodb ...;
+SELECT FROM foo WHERE zdb(foo) ==> ...;
+```
+
 
 
 
