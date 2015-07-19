@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -x
+
 # show the environment that we're compiling against
 pg_config
 
@@ -14,7 +16,7 @@ else
 	PG_OWNER=$(start --format %u `pg_config --libdir`)
 fi
 
-if [ $WHOAMI = $PG_OWNER ] ; then
+if [ "$WHOAMI" = "$PG_OWNER" ] ; then
 	make install
 else
 	sudo make install
