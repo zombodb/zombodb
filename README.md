@@ -3,56 +3,63 @@
 ZomboDB is a Postgres extension that enables efficient full-text searching via the creation of indexes (CREATE INDEX) 
 backed by Elasticsearch.
 
+## Quick Links
+   - [Installation instructions](INSTALL.md)  
+   - [Simple tutorial and walk-through](TUTORIAL.md)  
+   - [Query Syntax](SYNTAX.md)  
+   - [SQL-level API](SQL-API.md)  
 
 ## Features
 
 - transaction-safe full-text queries
-- managed with standard Postgres SQL
+- managed & used via standard Postgres SQL
 - works with tables of any structure 
-- automatically handles most datatypes (inc. arrays)
-- custom full-text query language supporting nearly all of Elasticsearch's search features (inc. spans and "more like this")
-- extremely fast searching and indexing
+- automatically handles most datatypes, including arrays
+- custom full-text query language supporting nearly all of Elasticsearch's search features, including
+  - boolean operations
+  - proximity (in and out of order)
+  - phrases
+  - wildcards
+  - fuzzy terms
+  - "more like this"
+  - range queries
+  - regular expressions
 - query results expansion and index linking
-- unstructured nested objects
-- use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
+- nested objects for flexible schemaless sub-documents
+- extremely fast indexing
+- record count estimation
 - high-performance hit highlighting
 - access to Elasticsearch's full set of aggregations
-- record count estimation
+- use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
 - fairly extensive test suite (NB: in progress of being converted from closed-source version)
 
 Because ZomboDB is a Postgres index type, it "just works" with SELECT, COPY, INSERT, UPDATE, DELETE, and VACUUM statements.
 
-Not to suggest that these things couldn't be supported in the future, but there's a small set of non-features too:
+Not to suggest that these things are impossible, but there's a small set of non-features too:
 
 - no scoring
 - indexes are not crash-safe/recoverable
 - interoperability with various Postgres replication schemes is unknown
-- Postgres HOT updates not supported
-- only supports Postgres query plans that choose IndexScans or BitmapIndexScans (the latter is also dependent on 
-sufficient work_mem to avoid Recheck conditions)
+- Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
+- only supports Postgres query plans that choose IndexScans or BitmapIndexScans (the latter is also dependent on sufficient work_mem to avoid Recheck conditions)
 
 
-## Why and History
+## History
 
-ZomboDB development began in 2013 by [Technology Concepts & Design, Inc](http://www.tcdi.com) as a closed-source effort 
-to provide transaction safe full-text searching on top of Postgres tables.  While Postgres' "tsearch" feature are useful, 
-they're not necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
+The name is an homage to [zombo.com](http://zombo.com/) and its long history of continuous self-affirmation. 
 
-The name is an homage to [zombo.com](http://zombo.com/) and its continual self-affirmation. 
+Development began in 2013 by [Technology Concepts & Design, Inc](http://www.tcdi.com) as a closed-source effort to provide transaction safe full-text searching on top of Postgres tables.  While Postgres' "tsearch" features are useful, they're not necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
 
-Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type (Access Method) 
-so that queries are MVCC-safe, standard SQL can be used to query and manage indexes, and to provide fantastic 
-INSERT/UPDATE/DELETE performance.
+Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type (Access Method) so that queries are MVCC-safe and standard SQL can be used to query and manage indexes.
 
-Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and 
-general ease of use.
+Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and general ease of use.
 
 Two years later, it's been used in production systems for quite some time and is now open-source.
 
 
 ## How to Use It
 
-Usage is really quite simple.  
+Usage is really quite simple.  Note that this is just a brief overview.  See the various documentation files for more detailed information.
 
 Install the extension:
 
@@ -77,19 +84,22 @@ CREATE TABLE books (
 Index it:
 
 ```
-CREATE INDEX idxbooks ON books USING zombodb (zdb(books)) WITH (url='http://localhost:9200);
+CREATE INDEX idxbooks ON books 
+                   USING zombodb (zdb(books)) 
+                   WITH (url='http://localhost:9200', shards=5, replicas=1);
 ```
 
 Query it:
 
 ```
-SELECT * FROM books WHERE zdb(books) ==> 'title:(catcher w/3 rye) and content:"Ossenburger Memorial Wing" or author:Salinger*';
+SELECT * FROM books WHERE zdb(books) ==> 'title:(catcher w/3 rye) 
+                                            and content:"Ossenburger Memorial Wing" 
+                                             or author:Salinger*';
 ```
 
 
 ## What you need
 
-### General software
 Product       | Version 
 ---           | ---      
 Postgres      | 9.3
@@ -98,28 +108,15 @@ Java JDK      | 1.7.0_51+
 libCurl       | 7.37.1+ 
 Apache Maven  | 3.0.5 
 
-You'll also need a Postgres compatible build environment to build ZomboDB as a Postgres extension.
+You'll also need a Postgres compatible build environment to build ZomboDB's Postgres extension along with a Java 7 compatible build environment to build the Elasticsearch plugin
 
-NOTE:  ZomboDB has only been tested on OS X and Linux.  Windows support is unknown (but likely easy to whip into shape if necessary).
+NOTE:  ZomboDB has only been tested on Linux and OS X.  Windows support is unknown (but likely easy to whip into shape if necessary).
 
-### Specific Postgres Configuration
-```
-local_preload_libraries = 'zombodb.so'
-```
-
-### Specific Elasticsearch Configuration
-```
-cluster.name: <your unique clustername>
-http.max_content_length: 1024mb
-threadpool.bulk.queue_size: 1024
-threadpool.bulk.size: 12
-script.disable_dynamic: false
-index.query.bool.max_clause_count: 1000000
-```
 
 ## Credit and Thanks
 
-Credit goes to Technology Concepts & Design, Inc, its management, and its development and Quality Assurance teams not only for their work during the early development days but also for their on-going support now that ZomboDB is open-source.
+Credit goes to Technology Concepts & Design, Inc, its management, and its development and quality assurance teams not only for their work during the early development days but also for their on-going support now that ZomboDB is open-source.
+
 
 ## License
 

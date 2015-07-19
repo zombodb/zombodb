@@ -80,8 +80,7 @@ http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 ```
 
-Dynamic scripting *must* be enabled, and the bulk threadpool increased because ZomboDB multiplexes against the ```_bulk```
-endpoint.
+Dynamic scripting *must* be enabled, and the bulk threadpool increased because ZomboDB multiplexes against the ```_bulk``` endpoint.
 
 The last two settings can be turned up or down (```http.max_content_length``` must be at least 8192kB), but are good defaults.
 
@@ -94,10 +93,10 @@ Upgrading to a new version of ZomboDB basically involves repeating the installat
 When upgrading the Postgres extension (```zombodb.so```) it's a good idea to make sure the database has no active connections and that you immediately run:
 
 ```
-$ psql example -c "ALTER EXTENSION zombodb UPDATE;"
+ALTER EXTENSION zombodb UPDATE;
 ```
 
 in every database that contains the extension.
 
-The exisitng Elasticsearch plugin will need to be removed (```bin/plugin -r zombodb```) before an updated version can be installed.
+The existing Elasticsearch plugin will need to be removed (```bin/plugin -r zombodb```) before an updated version can be installed.
 
