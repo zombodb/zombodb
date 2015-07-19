@@ -4,7 +4,14 @@
 pg_config
 
 # compile the extension
-make clean install
+make clean
+make
 
-# always exit cleanly
-exit 0;
+WHOAMI=$(id -u)
+PG_OWNER=$(stat -f %u `pg_config --libdir`)
+if [ $WHOAMI = $PG_OWNER ] ; then
+	make install
+else
+	sudo make insall
+fi
+
