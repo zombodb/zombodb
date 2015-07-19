@@ -6,9 +6,9 @@ backed by Elasticsearch.
 ![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)
 
 ## Quick Links
-   - [Installation instructions](INSTALL.md)  
    - [Latest Release](https://github.com/zombodb/zombodb/releases/latest)  
-   - [Simple tutorial and walk-through](TUTORIAL.md)  
+   - [Installation instructions](INSTALL.md)  
+   - [Getting Started Tutorial](TUTORIAL.md)  
    - [Query Syntax](SYNTAX.md)  
    - [SQL-level API](SQL-API.md)  
 
@@ -17,18 +17,19 @@ backed by Elasticsearch.
 - transaction-safe full-text queries
 - managed & used via standard Postgres SQL
 - works with tables of any structure 
-- automatically handles most datatypes, including arrays
+- automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
+- nested objects for flexible schemaless sub-documents
 - custom full-text query language supporting nearly all of Elasticsearch's search features, including
   - boolean operations
   - proximity (in and out of order)
   - phrases
   - wildcards
-  - fuzzy terms
+  - fuzzy terms/phrases
   - "more like this"
-  - range queries
   - regular expressions
+  - inline scripts
+  - range queries
 - query results expansion and index linking
-- nested objects for flexible schemaless sub-documents
 - extremely fast indexing
 - record count estimation
 - high-performance hit highlighting
@@ -43,6 +44,7 @@ Not to suggest that these things are impossible, but there's a small set of non-
 - no scoring
 - indexes are not crash-safe/recoverable
 - interoperability with various Postgres replication schemes is unknown
+- ```pg_get_indexdef()``` doesn't correctly quote index options making backup restoration annoying (would require patch to Postgres)
 - Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
 - only supports Postgres query plans that choose IndexScans or BitmapIndexScans (the latter is also dependent on sufficient work_mem to avoid Recheck conditions)
 
