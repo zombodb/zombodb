@@ -15,6 +15,6 @@ target/
 #postgres/regression.*
 *.xcodeproj/
 .DS_store
-postgres/sql/zombodb--2.1.35.sql
+postgres/sql/zombodb--2.1.36.sql
 results/
 regression.*
