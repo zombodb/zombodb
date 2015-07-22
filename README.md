@@ -1,9 +1,16 @@
-# ZomboDB
+# ZomboDB ![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)
 
-ZomboDB is a Postgres extension that enables efficient full-text searching via the creation of indexes (CREATE INDEX) 
-backed by Elasticsearch.
+ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
+backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.3/static/indexam.html).
 
-![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)
+In practical terms, a ZomboDB index doesn't appear to Postgres any different than a standard btree index might.  As such, standard SQL commands for mutating are data fully supported: ```INSERT```, ```UPDATE```, ```DELETE```, ```COPY```, and ```VACUUM```.
+
+Behind the scenes, ZomboDB indexes communicate with Elasticsearch via HTTP and are automatically synchronized in an MVCC-safe manner as data in the underlying Postgres table changes.
+
+Following Postgres' MVCC rules means that transactions see, at all times, a view of the backing Elasticsearch index that is consistent with their view of Postgres tables.
+
+Index management happens using standard Postgres SQL commands such as ```CREATE INDEX```, ```REINDEX```, and ```ALTER INDEX```.  Searching uses standard SQL ```SELECT``` statements with a custom operator that exposes a [full-text query language](SYNTAX.md) supporting most of Elasticsearch's query constructs.
+
 
 ## Quick Links
    - [Latest Release](https://github.com/zombodb/zombodb/releases/latest)  
@@ -18,7 +25,7 @@ backed by Elasticsearch.
 - managed & used via standard Postgres SQL
 - works with tables of any structure 
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
-- nested objects for flexible schemaless sub-documents
+- json columns as nested objects for flexible schemaless sub-documents
 - custom full-text query language supporting nearly all of Elasticsearch's search features, including
   - boolean operations
   - proximity (in and out of order)
@@ -37,12 +44,10 @@ backed by Elasticsearch.
 - use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
 - fairly extensive test suite (NB: in progress of being converted from closed-source version)
 
-Because ZomboDB is a Postgres index type, it "just works" with SELECT, COPY, INSERT, UPDATE, DELETE, and VACUUM statements.
-
 Not to suggest that these things are impossible, but there's a small set of non-features too:
 
 - no scoring
-- indexes are not crash-safe/recoverable
+- indexes are not WAL-logged by Postgres so are not recoverable in the event of a Postgres server crash
 - interoperability with various Postgres replication schemes is unknown
 - ```pg_get_indexdef()``` doesn't correctly quote index options making backup restoration annoying (would require patch to Postgres)
 - Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
