@@ -68,8 +68,8 @@ CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/p
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
 CREATE OR REPLACE FUNCTION rest_get(url text) RETURNS json AS '$libdir/plugins/zombodb' language c;
-CREATE OR REPLACE FUNCTION zdb_get_index_name(table_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
-CREATE OR REPLACE FUNCTION zdb_get_url(table_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
+CREATE OR REPLACE FUNCTION zdb_get_index_name(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
+CREATE OR REPLACE FUNCTION zdb_get_url(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_num_hits() RETURNS int8 AS '$libdir/plugins/zombodb' language c;
 
 CREATE OR REPLACE FUNCTION count_of_table(table_name REGCLASS) RETURNS INT8 LANGUAGE plpgsql AS $$
@@ -342,16 +342,16 @@ $$;
 
 
 CREATE TYPE zdb_suggest_terms_response AS (term text, count int8);
-CREATE OR REPLACE FUNCTION zdb_internal_suggest_terms(typeoid oid, fieldname text, stem text, query text, max_terms int8) RETURNS json LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdb_suggest_terms(table_name regclass, fieldname text, stem text, query text, max_terms int8) RETURNS SETOF zdb_suggest_terms_response LANGUAGE plpgsql IMMUTABLE STRICT AS $$
+CREATE OR REPLACE FUNCTION zdb_internal_suggest_terms(typeoid oid, fieldname text, base text, query text, max_terms int8) RETURNS json LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_suggest_terms(table_name regclass, fieldname text, base text, query text, max_terms int8) RETURNS SETOF zdb_suggest_terms_response LANGUAGE plpgsql IMMUTABLE STRICT AS $$
 DECLARE
   type_oid oid;
   data json;
 BEGIN
   type_oid := zdb_determine_index(table_name);
-  data := zdb_internal_suggest_terms(type_oid, fieldname, stem, query, max_terms);
+  data := zdb_internal_suggest_terms(type_oid, fieldname, base, query, max_terms);
 
-  RETURN QUERY SELECT upper(stem), zdb_estimate_count(table_name, fieldname || ':("' || coalesce(case when trim(stem) = '' then null else trim(stem) end, 'null') || '") AND (' || coalesce(query, '') || ')')
+  RETURN QUERY SELECT upper(base), zdb_estimate_count(table_name, fieldname || ':("' || coalesce(case when trim(base) = '' then null else trim(base) end, 'null') || '") AND (' || coalesce(query, '') || ')')
                UNION ALL
                SELECT upper((x->>'text')::text),
                  (x->>'freq')::int8
