@@ -59,8 +59,8 @@ These custom domains are to be used in user tables as data types when you requir
 
 #### ```FUNCTION zdb_arbitrary_aggregate(table_name regclass, aggregate_query json, query text) RETURNS json```
 
-> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
-> ```aggregate_query```: an Elasticsearch-compatible aggregate query, in JSON form
+> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
+> ```aggregate_query```: an Elasticsearch-compatible aggregate query, in JSON form  
 > ```query```: a full text query
 > 
 > returns the Elasticsearch-created JSON results.  The data returned is MVCC-safe.
@@ -81,7 +81,7 @@ These custom domains are to be used in user tables as data types when you requir
 
 #### ```FUNCTION zdb_describe_nested_object(table_name regclass, fieldname text) RETURNS json```
 
-> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
+> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```fieldname```: a field in table_name that is of type json
 > 
 >returns the dynamically-created Elasticsearch mapping for the field, which is stored as a "nested object".  Can be useful for understanding how Elasticsearch is managing what might be opaque-to-you nested objects.
@@ -110,7 +110,7 @@ These custom domains are to be used in user tables as data types when you requir
 
 #### ```FUNCTION zdb_estimate_count(table_name regclass, query text) RETURNS bigint```
 
-> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
+> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```query```: a full text query
 > 
 >returns an MVCC-safe count of records that match a full text query.  This is a great alternative to slow-running "SELECT COUNT(*)" queries.
@@ -123,8 +123,8 @@ These custom domains are to be used in user tables as data types when you requir
 
 #### ```FUNCTION zdb_extended_stats(table_name regclass, fieldname text, query text) RETURNS SET OF zdb_extended_stats_response```
 
-> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
-> ```fieldname```: A numeric field in the specified table
+> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
+> ```fieldname```: A numeric field in the specified table  
 > ```query```: A full text query
 > 
 > returns the set of Elasticsearch ["extended statistics"](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-extendedstats-aggregation.html) aggregate.
@@ -194,7 +194,7 @@ These custom domains are to be used in user tables as data types when you requir
 
 ### ```FUNCTION zdb_highlight(table_name regclass, es_query text, where_clause text) RETURNS SET OF zdb_highlight_response```
 
-> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
+> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```es_query```: a full text query to use for highlighting (not searching)  
 > ```where_clause```: a Postgres-compatible where clause to find the documents to highlight
 > 
