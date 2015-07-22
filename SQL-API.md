@@ -48,7 +48,7 @@ These custom domains are to be used in user tables as data types when you requir
 
 #### ```FUNCTION zdb_actual_index_record_count(table_name regclass, type text) RETURNS bigint```
 
-> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
+> ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```type```: the Elasticsearch type to inspect, one of 'xact' or 'data'
 > 
 > returns the actual number of documents contained in Elasticsearch for the index on the specified table name.
