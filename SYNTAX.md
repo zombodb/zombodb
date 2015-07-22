@@ -194,7 +194,7 @@ Proximity operators take the highest precedence, so when combined with other boo
 
 ```quick and "brown fox" w/3 "lazy dog's" and back``` is evaluated as if it were written as: ```quick and ("brown fox" w/3 "lazy dog's") and back```
 
-Proximity clauses can be limited to specific fields as well:  ``title:catcher w/2 title:rye``.  Note that mixeding fieldnames in a proximity chain is non-sensical and will produce a parse error.
+Proximity clauses can be limited to specific fields as well:  ``title:catcher w/2 title:rye``.  Note that mixed fieldnames in a proximity chain is non-sensical and will produce a parse error.
 
 
  
