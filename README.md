@@ -3,7 +3,7 @@
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
 backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.3/static/indexam.html).
 
-In practical terms, a ZomboDB index doesn't appear to Postgres any different than a standard btree index might.  As such, standard SQL commands for mutating data fully supported: ```INSERT```, ```UPDATE```, ```DELETE```, ```COPY```, and ```VACUUM```.
+In practical terms, a ZomboDB index doesn't appear to Postgres any different than a standard btree index might.  As such, standard SQL commands for mutating are data fully supported: ```INSERT```, ```UPDATE```, ```DELETE```, ```COPY```, and ```VACUUM```.
 
 Behind the scenes, ZomboDB indexes communicate with Elasticsearch via HTTP and are automatically synchronized in an MVCC-safe manner as data in the underlying Postgres table changes.
 
