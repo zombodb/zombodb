@@ -18,8 +18,8 @@ BEGIN
     END IF;
 
     index_oid := (json_array_element(exp, 0)->'Plan'->>'Index Name')::regclass::oid;
-    IF index_oid IS NULL
-      RAISE ERROR 'Unable to determine the index to use for %', table_name;
+    IF index_oid IS NULL THEN
+      RAISE EXCEPTION 'Unable to determine the index to use for %', table_name;
     END IF;
     RETURN index_oid;
 END;
