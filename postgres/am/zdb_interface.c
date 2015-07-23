@@ -106,6 +106,9 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	Relation           heapRel;
 	ZDBIndexDescriptor *desc;
 
+	if (indexRel->rd_index == NULL)
+		elog(ERROR, "%s is not an index", RelationGetRelationName(indexRel));
+
 	heapRel = relation_open(indexRel->rd_index->indrelid, AccessShareLock);
 
 	desc = palloc0(sizeof(ZDBIndexDescriptor));
