@@ -122,22 +122,89 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
 }
 
 bool rest_multi_is_available(MultiRestState *state) {
-    CURLM *multi_handle = state->multi_handle;
-    int still_running, numfds = 0;
+	struct timeval timeout;
+	CURLMcode      mc;
+	CURLM          *multi_handle = state->multi_handle;
+	int            still_running, rc;
+	fd_set         fdread, fdwrite, fdexcep;
+	int            maxfd         = -1;
+	long           curl_timeo    = -1;
 
-    /* Has something finished? */
-    curl_multi_perform(multi_handle, &still_running);
-    if (still_running < MAX_CURL_HANDLES)
-        return true;
+	FD_ZERO(&fdread);
+	FD_ZERO(&fdwrite);
+	FD_ZERO(&fdexcep);
 
-    /* Not yet, so wait for some action to be performed by curl */
-    curl_multi_wait(multi_handle, NULL, 0, 1000, &numfds);
-    if (numfds == 0)    /* no action, so get out now */
-        return false;
+	/* set a suitable timeout to play around with */
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
 
-    /* see if something has finished */
-    curl_multi_perform(multi_handle, &still_running);
-    return still_running < MAX_CURL_HANDLES;
+	curl_multi_timeout(multi_handle, &curl_timeo);
+	if(curl_timeo >= 0)
+	{
+		timeout.tv_sec = curl_timeo / 1000;
+		if(timeout.tv_sec > 1)
+			timeout.tv_sec = 1;
+		else
+			timeout.tv_usec = (curl_timeo % 1000) * 1000;
+	}
+
+	/* get file descriptors from the transfers */
+	mc = curl_multi_fdset(multi_handle, &fdread, &fdwrite, &fdexcep, &maxfd);
+
+	if(mc != CURLM_OK)
+	{
+		elog(ERROR, "curl_multi_fdset() failed, code %d.", mc);
+	}
+
+	/*
+	 * On success the value of maxfd is guaranteed to be >= -1. We call
+	 * select(maxfd + 1, ...); specially in case of (maxfd == -1) there are
+	 * no fds ready yet so we call select(0, ...), or Sleep() on Windows,
+	 * to sleep 100ms, which is the minimum suggested value in the
+	 * curl_multi_fdset() doc.
+	 */
+
+	if(maxfd == -1)
+	{
+#ifdef _WIN32
+      Sleep(100);
+      rc = 0;
+#else
+		/* Portable sleep for platforms other than Windows. */
+		struct timeval wait = { 0, 100 * 1000 }; /* 100ms */
+		rc = select(0, NULL, NULL, NULL, &wait);
+#endif
+	}
+	else
+	{
+		/*
+		 * Note that on some platforms 'timeout' may be modified by select().
+		 * If you need access to the original value save a copy beforehand.
+		 */
+		rc = select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout);
+	}
+
+	switch(rc)
+	{
+		/* select error */
+		case -1:
+			/*
+			 * first see if Postgres has pending interrupts, if so, just
+			 * let nature take its course
+			 */
+			CHECK_FOR_INTERRUPTS();
+
+			/* guess not, so just report the error returned from select() */
+			elog(ERROR, "error select-ing libcurl status.  rc=%d, msg=%s", rc, strerror(errno));
+			return false;
+
+		/* action or timeout (rc==0) */
+		default:
+			curl_multi_perform(multi_handle, &still_running);
+			return still_running < MAX_CURL_HANDLES;
+	}
+
+	return false;
 }
 
 bool rest_multi_all_done(MultiRestState *state) {
