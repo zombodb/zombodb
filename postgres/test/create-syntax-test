@@ -17,7 +17,7 @@ echo "SELECT assert(count(*), ${EXPECTED_COUNT}, '${TESTNAME}') FROM so_posts WH
 
 if [ ! -f "expected/${TESTNAME}.out" ] ; then
     cd ../
-    rm results/${TESTNAME}.out
+    rm -f results/${TESTNAME}.out
     TEST="${TESTNAME}" make installcheck &> /tmp/create-test.log
 
     # copy the expected output file
