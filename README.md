@@ -129,8 +129,8 @@ Credit goes to Technology Concepts & Design, Inc, its management, and its develo
 
 ## Contact Information
 
-- [Eric Ridge](eebbrr@gmail.com)
-- Google Group: [zombodb@googlegroups.com](zombodb@googlegroups.com)
+- [Eric Ridge](mailto:eebbrr@gmail.com)
+- Google Group: [zombodb@googlegroups.com](mailto:zombodb@googlegroups.com)
 - Twitter:  @zombodb or @eeeebbbbrrrr
 - via github Issues and Pull Requests ;)
 
