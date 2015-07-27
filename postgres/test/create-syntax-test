@@ -1,0 +1,45 @@
+#! /bin/bash
+
+TESTNAME=$1
+QUERY=$2
+EXPECTED_COUNT=$3
+
+[ -z "${TESTNAME}" ] && echo "No test name specified" && exit 1
+[ -z "${QUERY}" ] && echo "No query specified" && exit 1
+[ -z "${EXPECTED_COUNT}" ] && echo "No expected record count specified" && exit 1
+
+
+echo "SELECT assert(count(*), ${EXPECTED_COUNT}, '${TESTNAME}') FROM so_posts WHERE zdb(so_posts) ==> '${QUERY}';" > sql/${TESTNAME}.sql
+exit
+
+if [ ! -f "expected/${TESTNAME}.out" ] ; then
+    cd ../
+    rm results/${TESTNAME}.out
+    TEST="${TESTNAME}" make installcheck &> /tmp/create-test.log
+
+    # copy the expected output file
+    cp results/${TESTNAME}.out test/expected/
+    grep "^ERROR:" test/expected/${TESTNAME}.out > /dev/null
+    if [ "$?" == "0" ] ; then
+        # the test contained an error
+        cat test/expected/${TESTNAME}.out
+        rm test/expected/${TESTNAME}.out test/sql/${TESTNAME}.sql
+        exit 1;
+    fi
+
+    # run the test again
+    TEST="${TESTNAME}" make installcheck
+
+    if [ "$?" != "0" ] ; then
+        echo ERROR CREATING NEW TEST
+        exit 1
+    fi
+
+    # ad the test to the list of tests to run
+    echo "${TESTNAME}" >> test/tests.list
+
+    git add test/sql/${TESTNAME}.sql test/expected/${TESTNAME}.out test/tests.list
+else
+    echo "expected/${TESTNAME}.out already exists!"
+    exit 1
+fi
