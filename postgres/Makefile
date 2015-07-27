@@ -15,13 +15,18 @@ OBJS = \
     am/zdb_interface.o            \
     am/elasticsearch.o
 
-TESTS        = $(wildcard test/sql/*.sql)
+TESTS	     = $(shell cat test/tests.list)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test
 
 FLEXFLAGS    = -8 -Pfti
 SHLIB_LINK  += -L/usr/local/opt/curl/lib -lcurl
 PG_CONFIG    = pg_config
+
+test/sql/setup.sql:
+	gunzip -c test/sql/setup.sql.gz > test/sql/setup.sql
+
+installcheck: test/sql/setup.sql
 
 # add the SQL build target to the ALL build target
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
