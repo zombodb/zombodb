@@ -4,7 +4,7 @@ SELECT count(*) FROM words;
  310546
 (1 row)
 
-SELECT count(*) FROM (SELECT words.word, assert(words.word, 1, count(*)::int) FROM words INNER JOIN (SELECT word FROM words ORDER BY random() limit 2500) list ON words.word = list.word WHERE zdb(words) ==> ('word:"' || list.word || '"')::text GROUP BY words.word) x;
+SELECT count(*) FROM (SELECT words.word, assert(count(*), 1, words.word) FROM words INNER JOIN (SELECT word FROM words ORDER BY random() limit 2500) list ON words.word = list.word WHERE zdb(words) ==> ('word:"' || list.word || '"')::text GROUP BY words.word) x;
  count 
 -------
   2500

@@ -15,8 +15,7 @@ OBJS = \
     am/zdb_interface.o            \
     am/elasticsearch.o
 
-TESTS	     = $(shell cat test/tests.list)
-REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
+REGRESS = $(shell if [ "x${TEST}" != "x" ] ; then echo --use-existing ${TEST} ; else cat test/tests.list ; fi)
 REGRESS_OPTS = --inputdir=test
 
 FLEXFLAGS    = -8 -Pfti
