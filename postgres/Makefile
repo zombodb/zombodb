@@ -41,7 +41,7 @@ DATA = $(wildcard sql/$(EXTENSION)--*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sq
 ES_HOST ?= localhost
 
 # add the SQL for this version to clean target
-EXTRA_CLEAN += sql/$(EXTENSION)--$(EXTVERSION).sql
+EXTRA_CLEAN += sql/$(EXTENSION)--$(EXTVERSION).sql test/sql/setup.sql
 
 CFLAGS := -I/usr/local/include $(CFLAGS)
 
