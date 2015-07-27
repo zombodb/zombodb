@@ -11,11 +11,9 @@
 *.ipr
 *.iws
 target/
-#postgres/results
-#postgres/regression.*
 *.xcodeproj/
 .DS_store
 postgres/sql/zombodb--2.1.36.sql
-test/sql/setup.sql
-results/
-regression.*
+postgres/test/sql/setup.sql
+postgres/results
+postgres/regression.*
