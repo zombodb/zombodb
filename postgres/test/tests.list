@@ -4,3 +4,4 @@ create-indexes
 words
 updates
 deletes
+syntax-term_not_term
