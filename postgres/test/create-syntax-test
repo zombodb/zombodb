@@ -10,7 +10,6 @@ EXPECTED_COUNT=$3
 
 
 echo "SELECT assert(count(*), ${EXPECTED_COUNT}, '${TESTNAME}') FROM so_posts WHERE zdb(so_posts) ==> '${QUERY}';" > sql/${TESTNAME}.sql
-exit
 
 if [ ! -f "expected/${TESTNAME}.out" ] ; then
     cd ../
