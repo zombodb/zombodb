@@ -188,15 +188,30 @@ bool rest_multi_is_available(MultiRestState *state) {
 	{
 		/* select error */
 		case -1:
+		{
 			/*
 			 * first see if Postgres has pending interrupts, if so, just
 			 * let nature take its course
 			 */
 			CHECK_FOR_INTERRUPTS();
 
-			/* guess not, so just report the error returned from select() */
-			elog(ERROR, "error select-ing libcurl status.  rc=%d, msg=%s", rc, strerror(errno));
-			return false;
+			/*
+			 * otherwise, make a decision based on errno
+			 */
+			switch (errno)
+			{
+				case EINTR:
+					/*
+					 * the select() was interrupted, so fallthrough to the outer
+					 * switch and let curl_multi_perform() make a decision
+					 */
+					break;
+
+				default:
+					elog(ERROR, "error select-ing libcurl status.  rc=%d, errno=%d, msg=%s", rc, errno, strerror(errno));
+					return false;
+			}
+		} /* follow through */
 
 		/* action or timeout (rc==0) */
 		default:
