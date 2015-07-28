@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,9 +51,21 @@ static void *my_calloc(size_t count, size_t size) {
     return palloc0(count*size);
 }
 
+/*
+ * libcurl sometimes calls free(NULL) but Postgres' pfree() will Assert
+ * in that condition, so guard against it
+ */
+static void my_pfree(void *pointer) {
+	if (pointer) pfree(pointer);
+}
+
 void _PG_init(void) {
-    /* make sure that if libcurl gets used, it's using Postgres' allocator */
-    curl_global_init_mem(CURL_GLOBAL_NOTHING, palloc, pfree, repalloc, pstrdup, my_calloc);
+    int rc;
+
+	/* make sure that if libcurl gets used, it's using Postgres' allocator */
+	rc = curl_global_init_mem(CURL_GLOBAL_NOTHING, palloc, my_pfree, repalloc, pstrdup, my_calloc);
+	if (rc != 0)
+		elog(ERROR, "Problem initializing libcurl:  rc=%d", rc);
 
     zdbam_init();
 }
