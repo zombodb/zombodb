@@ -1,6 +1,8 @@
 setup
 configure
 create-indexes
+mappings
+counts
 words
 updates
 deletes

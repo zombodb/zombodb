@@ -27,6 +27,9 @@ test/sql/setup.sql:
 
 installcheck: test/sql/setup.sql
 
+installcheck-random: REGRESS = $(shell echo --use-existing && (cat test/tests.list | grep -v ^setup | grep -v ^configure | grep -v ^create-indexes) | test/mysort)
+installcheck-random: installcheck
+
 # add the SQL build target to the ALL build target
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
@@ -46,7 +49,8 @@ CFLAGS := -I/usr/local/include $(CFLAGS)
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
-LDFLAGS := $(addprefix -L/usr/local/lib/ , $(LDFLAGS))
+LDFLAGS := $(addprefix -L/usr/local/lib/ -L/usr/local/opt/curl/lib, $(LDFLAGS))
+
 
 override CFLAGS += -I/usr/local/include
 
