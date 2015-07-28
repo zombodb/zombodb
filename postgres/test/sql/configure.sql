@@ -7,3 +7,6 @@ BEGIN
   RETURN true;
 END;
 $$;
+ALTER TABLE so_posts SET (autovacuum_enabled = false);
+ALTER TABLE so_users SET (autovacuum_enabled = false);
+ALTER TABLE words SET (autovacuum_enabled = false);
