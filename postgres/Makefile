@@ -49,7 +49,7 @@ CFLAGS := -I/usr/local/include $(CFLAGS)
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
-LDFLAGS := $(addprefix -L/usr/local/lib/ -L/usr/local/opt/curl/lib, $(LDFLAGS))
+LDFLAGS := $(addprefix -L/usr/local/lib/ -L/usr/local/opt/curl/lib , $(LDFLAGS))
 
 
 override CFLAGS += -I/usr/local/include
