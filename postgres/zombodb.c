@@ -31,6 +31,8 @@
 #include "rest/rest.h"
 #include "utils/array.h"
 #include "am/zdbam.h"
+
+#include "util/curl_support.h"
 #include "util/zdbutils.h"
 
 #ifdef PG_MODULE_MAGIC
@@ -47,23 +49,11 @@ Datum rest_get(PG_FUNCTION_ARGS);
 void _PG_init(void);
 void _PG_fini(void);
 
-static void *my_calloc(size_t count, size_t size) {
-    return palloc0(count*size);
-}
-
-/*
- * libcurl sometimes calls free(NULL) but Postgres' pfree() will Assert
- * in that condition, so guard against it
- */
-static void my_pfree(void *pointer) {
-	if (pointer) pfree(pointer);
-}
-
 void _PG_init(void) {
     int rc;
 
 	/* make sure that if libcurl gets used, it's using Postgres' allocator */
-	rc = curl_global_init_mem(CURL_GLOBAL_NOTHING, palloc, my_pfree, repalloc, pstrdup, my_calloc);
+	rc = curl_global_init_mem(CURL_GLOBAL_NOTHING, zdb_curl_palloc_wrapper, zdb_curl_pfree_wrapper, zdb_curl_repalloc_wrapper, zdb_curl_pstrdup_wrapper, zdb_curl_calloc_wrapper);
 	if (rc != 0)
 		elog(ERROR, "Problem initializing libcurl:  rc=%d", rc);
 

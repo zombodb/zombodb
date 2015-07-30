@@ -9,6 +9,7 @@ OBJS = \
     zombodb.o                     \
     rest/rest.o                   \
     util/zdbutils.o               \
+    util/curl_support.o           \
     am/zdbam.o                    \
     am/zdbops.o                   \
     am/zdbagg.o                   \
@@ -19,7 +20,7 @@ REGRESS = $(shell if [ "x${TEST}" != "x" ] ; then echo --use-existing ${TEST} ; 
 REGRESS_OPTS = --inputdir=test
 
 FLEXFLAGS    = -8 -Pfti
-SHLIB_LINK  += -L/usr/local/opt/curl/lib -lcurl
+SHLIB_LINK  += -lcurl
 PG_CONFIG    = pg_config
 
 test/sql/setup.sql:
@@ -45,14 +46,8 @@ ES_HOST ?= localhost
 # add the SQL for this version to clean target
 EXTRA_CLEAN += sql/$(EXTENSION)--$(EXTVERSION).sql test/sql/setup.sql
 
-CFLAGS := -I/usr/local/include $(CFLAGS)
-
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
-LDFLAGS := $(addprefix -L/usr/local/lib/ -L/usr/local/opt/curl/lib , $(LDFLAGS))
-
-
-override CFLAGS += -I/usr/local/include
 
 # distribution target
 dist:
