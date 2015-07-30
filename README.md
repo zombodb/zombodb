@@ -113,9 +113,9 @@ Product       | Version
 ---           | ---      
 Postgres      | 9.3
 Elasticsearch | 1.5.2+ (not 2.0)
-Java JDK      | 1.7.0_51+ 
-libCurl       | 7.19.7-35 (which is what, at least, CentOS 6.6 ships with)
-Apache Maven  | 3.0.5 
+Java JDK      | 1.7.0_51+
+libcurl       | 7.19+
+Apache Maven  | 3.0.5
 
 You'll also need a Postgres compatible build environment to build ZomboDB's Postgres extension along with a Java 7 compatible build environment to build the Elasticsearch plugin
 

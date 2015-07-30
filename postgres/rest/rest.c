@@ -13,6 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#ifndef WIN32
+#  include <unistd.h>
+#endif
 #include <curl/curl.h>
 #include "postgres.h"
 #include "fmgr.h"
@@ -125,98 +131,52 @@ bool rest_multi_is_available(MultiRestState *state) {
 	struct timeval timeout;
 	CURLMcode      mc;
 	CURLM          *multi_handle = state->multi_handle;
-	int            still_running, rc;
+	int            still_running;
 	fd_set         fdread, fdwrite, fdexcep;
 	int            maxfd         = -1;
 	long           curl_timeo    = -1;
+
+	curl_multi_perform(multi_handle, &still_running);
+	if (still_running < MAX_CURL_HANDLES)
+		return true;	/* we have space for more */
+
+	/*
+	 * all the slots are full, so determine an amount of time to sleep to
+	 * while we wait for one or more requests to finish
+	 */
 
 	FD_ZERO(&fdread);
 	FD_ZERO(&fdwrite);
 	FD_ZERO(&fdexcep);
 
-	/* set a suitable timeout to play around with */
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 0;
-
-	curl_multi_timeout(multi_handle, &curl_timeo);
-	if(curl_timeo >= 0)
-	{
-		timeout.tv_sec = curl_timeo / 1000;
-		if(timeout.tv_sec > 1)
-			timeout.tv_sec = 1;
-		else
-			timeout.tv_usec = (curl_timeo % 1000) * 1000;
-	}
-
-	/* get file descriptors from the transfers */
 	mc = curl_multi_fdset(multi_handle, &fdread, &fdwrite, &fdexcep, &maxfd);
-
 	if(mc != CURLM_OK)
-	{
-		elog(ERROR, "curl_multi_fdset() failed, code %d.", mc);
-	}
+		elog(ERROR, "curl_multi_fdset() failed, code %d", mc);
 
-	/*
-	 * On success the value of maxfd is guaranteed to be >= -1. We call
-	 * select(maxfd + 1, ...); specially in case of (maxfd == -1) there are
-	 * no fds ready yet so we call select(0, ...), or Sleep() on Windows,
-	 * to sleep 100ms, which is the minimum suggested value in the
-	 * curl_multi_fdset() doc.
-	 */
+	mc = curl_multi_timeout(multi_handle, &curl_timeo);
+	if (mc != CURLM_OK)
+		elog(ERROR, "curl_multi_timeout() failed, code %d", mc);
 
-	if(maxfd == -1)
+	if (curl_timeo == -1)
+		curl_timeo = 100;
+
+	if (maxfd == -1)
 	{
 #ifdef _WIN32
-      Sleep(100);
-      rc = 0;
+		Sleep(100);
 #else
-		/* Portable sleep for platforms other than Windows. */
-		struct timeval wait = { 0, 100 * 1000 }; /* 100ms */
-		rc = select(0, NULL, NULL, NULL, &wait);
+		sleep((unsigned int) (curl_timeo / 1000));
 #endif
 	}
 	else
 	{
-		/*
-		 * Note that on some platforms 'timeout' may be modified by select().
-		 * If you need access to the original value save a copy beforehand.
-		 */
-		rc = select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout);
-	}
+		int rc;
+		timeout.tv_sec  = curl_timeo / 1000;
+		timeout.tv_usec = (curl_timeo % 1000) * 1000;
 
-	switch(rc)
-	{
-		/* select error */
-		case -1:
-		{
-			/*
-			 * first see if Postgres has pending interrupts, if so, just
-			 * let nature take its course
-			 */
-			CHECK_FOR_INTERRUPTS();
-
-			/*
-			 * otherwise, make a decision based on errno
-			 */
-			switch (errno)
-			{
-				case EINTR:
-					/*
-					 * the select() was interrupted, so fallthrough to the outer
-					 * switch and let curl_multi_perform() make a decision
-					 */
-					break;
-
-				default:
-					elog(ERROR, "error select-ing libcurl status.  rc=%d, errno=%d, msg=%s", rc, errno, strerror(errno));
-					return false;
-			}
-		} /* follow through */
-
-		/* action or timeout (rc==0) */
-		default:
-			curl_multi_perform(multi_handle, &still_running);
-			return still_running < MAX_CURL_HANDLES;
+		rc = select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &timeout);
+		if (rc < 0 && errno == EINTR)
+			elog(ERROR, "rest_multi_is_available():  select(%i,,,,%li): %i: %s", maxfd + 1, curl_timeo, errno, strerror(errno));
 	}
 
 	return false;
