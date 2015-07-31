@@ -13,7 +13,7 @@
 target/
 *.xcodeproj/
 .DS_store
-postgres/sql/zombodb--2.1.36.sql
-postgres/test/sql/setup.sql
+postgres/src/main/sql/zombodb--2.1.36.sql
+postgres/src/test/sql/setup.sql
 postgres/results
 postgres/regression.*

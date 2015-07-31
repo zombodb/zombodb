@@ -5,52 +5,46 @@ EXTENSION    = zombodb
 EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
 
 MODULE_big   = $(EXTENSION)
-OBJS = \
-    zombodb.o                     \
-    rest/rest.o                   \
-    util/zdbutils.o               \
-    util/curl_support.o           \
-    am/zdbam.o                    \
-    am/zdbops.o                   \
-    am/zdbagg.o                   \
-    am/zdb_interface.o            \
-    am/elasticsearch.o
+OBJS = $(shell find src/main/c -type f -name "*.c" | sed s/\\.c/.o/g)
 
-REGRESS = $(shell if [ "x${TEST}" != "x" ] ; then echo --use-existing ${TEST} ; else cat test/tests.list ; fi)
-REGRESS_OPTS = --inputdir=test
+REGRESS = $(shell if [ "x${TEST}" != "x" ] ; then echo --use-existing ${TEST} ; else cat src/test/tests.list ; fi)
+REGRESS_OPTS = --inputdir=src/test
 
-FLEXFLAGS    = -8 -Pfti
-SHLIB_LINK  += -lcurl
+PG_CPPFLAGS += -Isrc/main/c
+UNAME=$(shell uname -s)
+ifeq ($(UNAME),Darwin)
+	# OS X doesn't statically link to libcurl, so make sure you've installed a version that
+	# was configured with --disable-threaded-resolver
+	SHLIB_LINK += -lcurl
+else
+	SHLIB_LINK  += -Wl,-Bstatic -lcurl -Wl,-Bdynamic
+endif
 PG_CONFIG    = pg_config
 
-test/sql/setup.sql:
-	gunzip -c test/sql/setup.sql.gz > test/sql/setup.sql
+# default target
+all:
 
-installcheck: test/sql/setup.sql
+src/test/sql/setup.sql:
+	gunzip -c src/test/sql/setup.sql.gz > src/test/sql/setup.sql
+installcheck: src/test/sql/setup.sql
 
-installcheck-random: REGRESS = $(shell echo --use-existing && (cat test/tests.list | grep -v ^setup | grep -v ^configure | grep -v ^create-indexes) | test/mysort)
+installcheck-random: REGRESS = $(shell echo --use-existing && (cat src/test/tests.list | grep -v ^setup | grep -v ^configure | grep -v ^create-indexes) | src/main/shell/mysort)
 installcheck-random: installcheck
 
 # add the SQL build target to the ALL build target
-all: sql/$(EXTENSION)--$(EXTVERSION).sql
+all: src/main/sql/$(EXTENSION)--$(EXTVERSION).sql
 
 # target for building the SQL file
-sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
+src/main/sql/$(EXTENSION)--$(EXTVERSION).sql: src/main/sql/$(EXTENSION).sql
 	cp $< $@
 
 # updated DATA with the SQL file for this version
-DATA = $(wildcard sql/$(EXTENSION)--*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
+DATA = $(wildcard src/main/sql/$(EXTENSION)--*--*.sql) src/main/sql/$(EXTENSION)--$(EXTVERSION).sql
 
 ES_HOST ?= localhost
 
 # add the SQL for this version to clean target
-EXTRA_CLEAN += sql/$(EXTENSION)--$(EXTVERSION).sql test/sql/setup.sql
+EXTRA_CLEAN += src/main/sql/$(EXTENSION)--$(EXTVERSION).sql src/test/sql/setup.sql
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
-
-# distribution target
-dist:
-	git archive --format zip --prefix=$(EXTENSION)-$(EXTVERSION)/ -o $(EXTENSION)-$(EXTVERSION).zip HEAD
-# add distribution file to the clean target
-EXTRA_CLEAN += $(EXTENSION)-$(EXTVERSION).zip

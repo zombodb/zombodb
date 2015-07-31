@@ -1,8 +1,22 @@
-language: java
+language: bash
+
 sudo: required
+
+env:
+  - BUILD_SYSTEM=travis
+
 before_install:
+  - sudo apt-get update -y -qq
+  - sudo apt-get install -y wget
+  - sudo apt-get install rpm
   - sudo /etc/init.d/postgresql stop
-  - sudo apt-get remove postgresql-9.4
-  - sudo apt-get update -qq
+  - sudo apt-get remove -y postgresql-9.4
   - sudo apt-get install -y postgresql-server-dev-9.3
   - sudo /etc/init.d/postgresql start 9.3
+
+install:
+# from: https://github.com/moul/travis-docker
+  - curl -sLo - https://raw.githubusercontent.com/moul/travis-docker/master/install.sh | sh -xe
+
+script:
+  - ./run mvn clean install

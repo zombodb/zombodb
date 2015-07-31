@@ -1,0 +1,1 @@
+SELECT assert(count(*), 38645, 'syntax-complex_query') FROM so_posts WHERE zdb(so_posts) ==> 'id:1 /to/ 100 or beer or java and not (one w/3 two) or foop~ and "you have a class" or #expand<parent_id=<this.index>parent_id>(java)';
