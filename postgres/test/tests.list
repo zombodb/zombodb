@@ -27,3 +27,4 @@ syntax-numeric_field_not_null-3
 syntax-expansion_by_parent_id
 syntax-numeric_field_range
 syntax-complex_query
+issue-7
