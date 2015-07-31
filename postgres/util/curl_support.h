@@ -1,7 +1,41 @@
-#include "postgres.h"
+/*
+ * Copyright 2015 ZomboDB, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#ifndef CURL_SUPPORT_H
+#define CURL_SUPPORT_H
 
-void *zdb_curl_calloc_wrapper(size_t count, size_t size);
-void *zdb_curl_palloc_wrapper(Size size);
-void *zdb_curl_repalloc_wrapper(void *pointer, Size size);
-char *zdb_curl_pstrdup_wrapper(char const *str);
-void zdb_curl_pfree_wrapper(void *pointer);
+#include "postgres.h"
+#include "lib/stringinfo.h"
+
+#include <curl/curl.h>
+
+#define MAX_CURL_HANDLES 12
+typedef struct MultiRestState {
+	CURL *handles[MAX_CURL_HANDLES];
+	char *errorbuffs[MAX_CURL_HANDLES];
+	StringInfo postDatas[MAX_CURL_HANDLES];
+	StringInfo responses[MAX_CURL_HANDLES];
+
+	CURLM *multi_handle;
+	int available;
+} MultiRestState;
+
+extern CURLSH *GLOBAL_CURL_SHARED_STATE;
+extern CURL *GLOBAL_CURL_INSTANCE;
+extern List *MULTI_REST_STATES;
+
+void curl_support_init(void);
+
+#endif
