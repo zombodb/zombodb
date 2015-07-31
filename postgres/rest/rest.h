@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +18,13 @@
 #define __REST_H__
 
 #include <curl/curl.h>
+
 #include "postgres.h"
 #include "lib/stringinfo.h"
 
-#define MAX_CURL_HANDLES 12
-typedef struct MultiRestState {
-    CURL *handles[MAX_CURL_HANDLES];
-    char *errorbuffs[MAX_CURL_HANDLES];
-    StringInfo postDatas[MAX_CURL_HANDLES];
-    StringInfo responses[MAX_CURL_HANDLES];
+#include "util/curl_support.h"
 
-    CURLM *multi_handle;
-    int available;
-} MultiRestState;
-
-extern StringInfo rest_call(char *method, char *url, char *params, StringInfo postData);
-extern StringInfo rest_call_with_lock(char *method, char *url, char *params, StringInfo postData, int64 mutex, bool shared, bool allowCancel);
+extern StringInfo rest_call(char *method, char *url, StringInfo postData);
 
 extern void rest_multi_init(MultiRestState *state);
 extern int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo postData, bool process);
