@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <curl/curl.h>
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #ifndef WIN32
 #  include <unistd.h>
 #endif
-#include <curl/curl.h>
+
 #include "postgres.h"
 #include "fmgr.h"
 #include "miscadmin.h"
@@ -28,6 +31,7 @@
 #include "utils/json.h"
 
 #include "rest.h"
+#include "util/curl_support.h"
 
 static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userdata);
 static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
@@ -58,7 +62,6 @@ static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlno
     return 0;
 }
 
-
 void rest_multi_init(MultiRestState *state) {
     int i;
 
@@ -70,6 +73,8 @@ void rest_multi_init(MultiRestState *state) {
         state->postDatas[i] = NULL;
         state->responses[i] = NULL;
     }
+
+	MULTI_REST_STATES = lappend(MULTI_REST_STATES, state);
 }
 
 
@@ -208,11 +213,8 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
                     curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code);
                     if (msg->data.result != 0 || response_code != 200 || strstr(state->responses[i]->data, "\"errors\":true")) {
                         /* REST endpoint messed up */
-                        elog(IsTransactionState() ? ERROR : WARNING, "%s: %s", state->errorbuffs[i], state->responses[i]->data);
+                        elog(ERROR, "%s: %s", state->errorbuffs[i], state->responses[i]->data);
                     }
-
-                    state->handles[i] = NULL;
-                    state->available++;
 
                     if (state->errorbuffs[i] != NULL) {
                         pfree(state->errorbuffs[i]);
@@ -229,7 +231,9 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
                         state->responses[i] = NULL;
                     }
 
-                    curl_easy_cleanup(handle);
+					curl_easy_cleanup(handle);
+					state->handles[i] = NULL;
+					state->available++;
 
                     if (fast)
                         return;
@@ -247,92 +251,65 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
 
     if (finalize) {
         curl_multi_cleanup(state->multi_handle);
-
-        state->available = MAX_CURL_HANDLES;
         state->multi_handle = NULL;
+		state->available = MAX_CURL_HANDLES;
     }
 }
 
-StringInfo rest_call(char *method, char *url, char *params, StringInfo postData) {
-	return rest_call_with_lock(method, url, params, postData, 0, false, true);
-}
-
-StringInfo rest_call_with_lock(char *method, char *url, char *params, StringInfo postData, int64 mutex, bool shared, bool allowCancel) {
-    CURL *curl;
-    struct curl_slist *headers = NULL;
-    char *errorbuff;
+StringInfo rest_call(char *method, char *url, StringInfo postData)
+{
+    char *errorbuff = (char *) palloc0(CURL_ERROR_SIZE);
 
     StringInfo response = makeStringInfo();
     CURLcode ret;
     int64 response_code;
 
-    errorbuff = (char *) palloc0(CURL_ERROR_SIZE);
-    curl = curl_easy_init();
+    GLOBAL_CURL_INSTANCE = curl_easy_init();
 
-    if (curl) {
-    	headers = curl_slist_append(headers, "Transfer-Encoding:");
-	    headers = curl_slist_append(headers, "Expect:");
+    if (GLOBAL_CURL_INSTANCE) {
+		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_SHARE, GLOBAL_CURL_SHARED_STATE);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_FORBID_REUSE, 0L);   /* allow connections to be reused */
+		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
+		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PROGRESSFUNCTION, curl_progress_func);   /* to go here so we can detect a ^C within postgres */
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_MAXREDIRS, 0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEFUNCTION, curl_write_func);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_FAILONERROR, 0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_ERRORBUFFER, errorbuff);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOSIGNAL, 1);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
 
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 0L);   /* allow connections to be reused */
-		if (allowCancel)
-		{
-			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
-			curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);   /* to go here so we can detect a ^C within postgres */
-		}
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
-        curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorbuff);
-        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
-
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
-        curl_easy_setopt(curl, CURLOPT_POST, (strcmp(method, "POST") == 0) || (strcmp(method, "GET") != 0 && postData && postData->data) ? 1 : 0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_URL, url);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_CUSTOMREQUEST, method);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEDATA, response);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (strcmp(method, "GET") != 0 && postData && postData->data) ? 1 : 0);
     } else {
-        elog(IsTransactionState() ? ERROR : WARNING, "Unable to initialize libcurl");
+        elog(ERROR, "Unable to initialize libcurl");
     }
 
-//	if (mutex != 0)
-//	{
-//		if (shared) DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(mutex));
-//		else DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(mutex));
-//	}
+    ret = curl_easy_perform(GLOBAL_CURL_INSTANCE);
 
-    ret = curl_easy_perform(curl);
-
-//	if (mutex != 0)
-//	{
-//		if (shared) DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(mutex));
-//		else DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(mutex));
-//	}
-
-    if (allowCancel && IsTransactionState() && InterruptPending) {
-        /* we might have detected one in the progress function, so check for sure */
-        CHECK_FOR_INTERRUPTS();
-    }
+	/* we might have detected an interrupt in the progress function, so check for sure */
+	CHECK_FOR_INTERRUPTS();
 
     if (ret != 0) {
         /* curl messed up */
-        elog(IsTransactionState() ? ERROR : WARNING, "libcurl error-code: %s(%d); message: %s; req=-X%s %s ", curl_easy_strerror(ret), ret, errorbuff, method, url);
+        elog(ERROR, "libcurl error-code: %s(%d); message: %s; req=-X%s %s ", curl_easy_strerror(ret), ret, errorbuff, method, url);
     }
 
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    curl_easy_getinfo(GLOBAL_CURL_INSTANCE, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code < 200 || (response_code >=300 && response_code != 404)) {
         text *errorText = DatumGetTextP(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("error")));
 
-        elog(IsTransactionState() ? ERROR : WARNING, "rc=%ld; %s", response_code, errorText != NULL ? TextDatumGetCString(errorText) : response->data);
+        elog(ERROR, "rc=%ld; %s", response_code, errorText != NULL ? TextDatumGetCString(errorText) : response->data);
     }
 
-    if (headers)
-    	curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
     pfree(errorbuff);
+
+	curl_easy_cleanup(GLOBAL_CURL_INSTANCE);
+	GLOBAL_CURL_INSTANCE = NULL;
 
     return response;
 }

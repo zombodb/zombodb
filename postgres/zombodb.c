@@ -20,18 +20,12 @@
 
 #include "postgres.h"
 #include "fmgr.h"
-#include "funcapi.h"
-#include "miscadmin.h"
-
 #include "access/xact.h"
 #include "catalog/pg_type.h"
-#include "executor/spi.h"
 #include "utils/builtins.h"
 
-#include "rest/rest.h"
-#include "utils/array.h"
 #include "am/zdbam.h"
-
+#include "rest/rest.h"
 #include "util/curl_support.h"
 #include "util/zdbutils.h"
 
@@ -50,12 +44,7 @@ void _PG_init(void);
 void _PG_fini(void);
 
 void _PG_init(void) {
-    int rc;
-
-	/* make sure that if libcurl gets used, it's using Postgres' allocator */
-	rc = curl_global_init_mem(CURL_GLOBAL_NOTHING, zdb_curl_palloc_wrapper, zdb_curl_pfree_wrapper, zdb_curl_repalloc_wrapper, zdb_curl_pstrdup_wrapper, zdb_curl_calloc_wrapper);
-	if (rc != 0)
-		elog(ERROR, "Problem initializing libcurl:  rc=%d", rc);
+	curl_support_init();
 
     zdbam_init();
 }
@@ -71,5 +60,5 @@ Datum rest_get(PG_FUNCTION_ARGS)
 	if (url == NULL)
 		PG_RETURN_NULL();
 
-	PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL, NULL)->data));
+	PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL)->data));
 }
