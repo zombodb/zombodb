@@ -617,8 +617,6 @@ ZDBSearchResponse *elasticsearch_getAllItems(ZDBIndexDescriptor *indexDescriptor
 	StringInfo        response;
 	ZDBSearchResponse *items;
 
-	appendStringInfo(request, "");
-
 	appendStringInfo(endpoint, "%s/%s/xact/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
