@@ -1,4 +1,4 @@
-# ZomboDB ![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)
+# ZomboDB [![[Build Status](https://travis-ci.org/zombodb/zombodb/branches)](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
 
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
 backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.3/static/indexam.html).
