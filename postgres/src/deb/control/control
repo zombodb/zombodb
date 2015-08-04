@@ -1,0 +1,8 @@
+Package: [[name]]
+Version: [[version]]
+Section: misc
+Priority: optional
+Architecture: amd64
+Depends:
+Maintainer: Eric B. Ridge (zombodb@gmail.com)
+Description: ZomboDB Postgres Extension
