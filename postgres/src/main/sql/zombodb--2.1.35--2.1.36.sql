@@ -24,3 +24,13 @@ BEGIN
     RETURN index_oid;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION count_of_table(table_name REGCLASS) RETURNS INT8 LANGUAGE plpgsql AS $$
+DECLARE
+  cnt INT8;
+BEGIN
+  EXECUTE format('SELECT count(*) FROM %s', table_name)
+  INTO cnt;
+  RETURN cnt;
+END;
+$$;
