@@ -1,4 +1,5 @@
 setup
+so_comments
 configure
 create-indexes
 mappings
