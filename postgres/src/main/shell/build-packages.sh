@@ -2,7 +2,7 @@
 
 VERSION=$1
 BASE=`pwd`
-DISTROS="centos6 centos7 ubuntu"
+DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise"
 POSTGRES_VERSION="9.3"
 
 ##
@@ -28,14 +28,14 @@ done
 
 
 ##
-# also build a tarball from the Ubuntu-compiled version
+# also build a tarball from the Ubuntu_precise version
 ##
 
 cd $BASE
 cd target
 rm -rf tarball
 mkdir -p tarball/lib tarball/share
-cp -Rp ubuntu/usr/lib/postgresql/${POSTGRES_VERSION}/lib/* tarball/lib
-cp -Rp ubuntu/usr/share/postgresql/${POSTGRES_VERSION}/* tarball/share
+cp -Rp ubuntu_precise/usr/lib/postgresql/${POSTGRES_VERSION}/lib/* tarball/lib
+cp -Rp ubuntu_precise/usr/share/postgresql/${POSTGRES_VERSION}/* tarball/share
 cd tarball/
 tar czf ../zombodb-$VERSION.tgz .

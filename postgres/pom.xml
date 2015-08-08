@@ -105,16 +105,38 @@
                         <version>1.4</version>
                         <executions>
                             <execution>
+                                <id>precise</id>
                                 <phase>package</phase>
                                 <goals>
                                     <goal>jdeb</goal>
                                 </goals>
                                 <configuration>
-                                    <deb>${project.build.directory}/${project.artifactId}-${project.version}_amd64.deb
+                                    <deb>${project.build.directory}/${project.artifactId}_precise-${project.version}_amd64.deb
                                     </deb>
                                     <dataSet>
                                         <data>
-                                            <src>${project.build.directory}/ubuntu/</src>
+                                            <src>${project.build.directory}/ubuntu_trusty/</src>
+                                            <type>directory</type>
+                                            <mapper>
+                                                <type>perm</type>
+                                                <prefix>/</prefix>
+                                            </mapper>
+                                        </data>
+                                    </dataSet>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>trusty</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jdeb</goal>
+                                </goals>
+                                <configuration>
+                                    <deb>${project.build.directory}/${project.artifactId}_trusty-${project.version}_amd64.deb
+                                    </deb>
+                                    <dataSet>
+                                        <data>
+                                            <src>${project.build.directory}/ubuntu_precise/</src>
                                             <type>directory</type>
                                             <mapper>
                                                 <type>perm</type>
@@ -126,6 +148,7 @@
                             </execution>
                         </executions>
                     </plugin>
+
                 </plugins>
             </build>
         </profile>
