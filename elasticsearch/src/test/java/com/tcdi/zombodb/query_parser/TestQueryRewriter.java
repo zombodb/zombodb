@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -3598,4 +3599,44 @@ public class TestQueryRewriter {
         assertEquals(Arrays.asList("a", "b", "c*", "d"), Utils.simpleTokenize("a-b-c* d"));
         assertEquals(Arrays.asList("V", "A", "C", "A", "T", "I", "O", "*", "N"), Utils.simpleTokenize("V - A - C - A - T - I - O * N"));
     }
+
+    @Test
+    public void testIssue_13() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
+        String tree;
+
+        qr = new QueryRewriter(mock.client, mock.request, "#options(user_data:(owner_user_id=<so_users.idxso_users>id), comment_data:(id=<so_comments.idxso_comments>post_id)) " +
+                "(user_data.display_name:j* and comment_data.user_display_name:j*)", false, true);
+
+        tree = qr.dumpAsString();
+
+        assertEquals("testIssue_13",
+                "QueryTree\n" +
+                        "   Options\n" +
+                        "      user_data:(owner_user_id=<schema.so_users.idxso_users>id)\n" +
+                        "         LeftField (value=owner_user_id)\n" +
+                        "         IndexName (value=schema.so_users.idxso_users)\n" +
+                        "         RightField (value=id)\n" +
+                        "      comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
+                        "         LeftField (value=id)\n" +
+                        "         IndexName (value=schema.so_comments.idxso_comments)\n" +
+                        "         RightField (value=post_id)\n" +
+                        "   And\n" +
+                        "      Expansion\n" +
+                        "         comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
+                        "            LeftField (value=id)\n" +
+                        "            IndexName (value=schema.so_comments.idxso_comments)\n" +
+                        "            RightField (value=post_id)\n" +
+                        "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=schema.so_comments.idxso_comments)\n" +
+                        "      Expansion\n" +
+                        "         user_data:(owner_user_id=<schema.so_users.idxso_users>id)\n" +
+                        "            LeftField (value=owner_user_id)\n" +
+                        "            IndexName (value=schema.so_users.idxso_users)\n" +
+                        "            RightField (value=id)\n" +
+                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=schema.so_users.idxso_users)\n",
+                tree);
+    }
+
+
 }
