@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -232,6 +233,13 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
                 return many;
             }
         };
+    }
+
+    public Collection<QueryParserNode> getChildren() {
+        List<QueryParserNode> children = new ArrayList<>();
+        for (QueryParserNode node : this)
+            children.add(node);
+        return children;
     }
 
     @Override

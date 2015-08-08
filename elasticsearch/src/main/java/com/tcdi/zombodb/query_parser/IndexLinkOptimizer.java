@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,6 +123,8 @@ public class IndexLinkOptimizer {
     }
 
     private void fixNestedGroups(QueryParserNode root) {
+        Collection<QueryParserNode> children = root.getChildren();
+
         if (root instanceof ASTNestedGroup) {
             if (root.getFieldname() != null) {
                 for (IndexMetadataManager.IndexLinkAndMapping ilam : metadataManager.getAllMappings()) {
@@ -137,7 +140,7 @@ public class IndexLinkOptimizer {
             }
         }
 
-        for (QueryParserNode child : root)
+        for (QueryParserNode child : children)
             fixNestedGroups(child);
     }
 
