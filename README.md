@@ -16,6 +16,7 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
    - [Latest Release](https://github.com/zombodb/zombodb/releases/latest)  
    - [Installation instructions](INSTALL.md)  
    - [Getting Started Tutorial](TUTORIAL.md)  
+   - [Index Management](INDEX-MANAGEMENT.md), [Index Options](INDEX-OPTIONS.md), and [Type Mapping](TYPE-MAPPING.md)
    - [Query Syntax](SYNTAX.md)  
    - [SQL-level API](SQL-API.md)  
 
@@ -114,13 +115,8 @@ Product       | Version
 Postgres      | 9.3
 Elasticsearch | 1.5.2+ (not 2.0)
 Java JDK      | 1.7.0_51+
-libcurl       | 7.19+
-Apache Maven  | 3.0.5
 
-You'll also need a Postgres compatible build environment to build ZomboDB's Postgres extension along with a Java 7 compatible build environment to build the Elasticsearch plugin
-
-NOTE:  ZomboDB has only been tested on Linux and OS X.  Windows support is unknown (but likely easy to whip into shape if necessary).
-
+For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
 
 ## Credit and Thanks
 

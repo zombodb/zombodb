@@ -269,7 +269,7 @@ These custom domains are to be used in user tables as data types when you requir
 #### ```FUNCTION zdb_suggest_terms(table_name regclass, fieldname text, base text, query text, max_terms bigint) RETURNS SET OF zdb_suggest_terms_response```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
-> ```fieldname```: The name of a field from which to derive significant terms  
+> ```fieldname```: The name of a field from which to derive term suggestions  
 > ```base```:  a word from which suggestions will be created   
 > ```query```: a full text query  
 > ```max_terms```: maximum number of terms to return
@@ -294,7 +294,7 @@ These custom domains are to be used in user tables as data types when you requir
 #### ```FUNCTION zdb_tally(table_name regclass, fieldname text, stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SET OF zdb_tally_response```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
-> ```fieldname```: The name of a field from which to derive significant terms  
+> ```fieldname```: The name of a field from which to derive terms  
 > ```stem```:  a Regular expression by which to filter returned terms   
 > ```query```: a full text query  
 > ```max_terms```: maximum number of terms to return
