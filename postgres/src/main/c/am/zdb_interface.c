@@ -42,7 +42,7 @@ static void wrapper_refreshIndex(ZDBIndexDescriptor *indexDescriptor);
 static uint64 			  wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 static uint64             wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
 static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits);
-static ZDBSearchResponse *wrapper_getAllItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
+static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
 static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
 static char *wrapper_significant_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
@@ -57,7 +57,7 @@ static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query,
 
 static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointerData *items, int nitems);
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
 
 static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
@@ -163,7 +163,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->implementation->actualIndexRecordCount = wrapper_actualIndexRecordCount;
 	desc->implementation->estimateCount        = wrapper_estimateCount;
 	desc->implementation->searchIndex          = wrapper_searchIndex;
-	desc->implementation->getAllItems          = wrapper_getAllItems;
+	desc->implementation->getPossiblyExpiredItems = wrapper_getPossiblyExpiredItems;
 	desc->implementation->tally                = wrapper_tally;
 	desc->implementation->significant_terms    = wrapper_significant_terms;
 	desc->implementation->extended_stats       = wrapper_extended_stats;
@@ -362,14 +362,14 @@ static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescripto
 	return results;
 }
 
-static ZDBSearchResponse *wrapper_getAllItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems)
+static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems)
 {
 	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	ZDBSearchResponse *results;
 
 	Assert(!indexDescriptor->isShadow);
 
-	results = elasticsearch_getAllItems(indexDescriptor, nitems);
+	results = elasticsearch_getPossiblyExpiredItems(indexDescriptor, nitems);
 
 	MemoryContextSwitchTo(oldContext);
 	return results;
@@ -473,14 +473,14 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse)
 	MemoryContextSwitchTo(oldContext);
 }
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointerData *items, int nitems)
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems)
 {
 	MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_bulkDelete", 512, 64, 64);
 	MemoryContext oldContext = MemoryContextSwitchTo(me);
 
 	Assert(!indexDescriptor->isShadow);
 
-	elasticsearch_bulkDelete(indexDescriptor, items, nitems);
+	elasticsearch_bulkDelete(indexDescriptor, itemPointers, nitems);
 
 	MemoryContextSwitchTo(oldContext);
 	MemoryContextDelete(me);

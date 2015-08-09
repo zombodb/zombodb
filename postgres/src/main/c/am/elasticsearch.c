@@ -610,17 +610,18 @@ void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse)
 	pfree(searchResponse);
 }
 
-ZDBSearchResponse *elasticsearch_getAllItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems)
+ZDBSearchResponse *elasticsearch_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems)
 {
 	StringInfo        endpoint     = makeStringInfo();
 	StringInfo        request      = makeStringInfo();
 	StringInfo        response;
 	ZDBSearchResponse *items;
 
-	appendStringInfo(endpoint, "%s/%s/xact/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/data/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
-	
+
+	appendStringInfo(request, "#parent<xact>(_xmax_is_committed = true OR _xmin_is_committed = false)");
 	response = rest_call("POST", endpoint->data, request);
 	if (response->data[0] != '\0')
 		elog(ERROR, "%s", response->data);
@@ -638,17 +639,19 @@ ZDBSearchResponse *elasticsearch_getAllItems(ZDBIndexDescriptor *indexDescriptor
 }
 
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointerData *items, int nitems)
+void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems)
 {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
-	int        i        = 0;
+	ListCell *lc;
 
-	for (i = 0; i < nitems; i++)
+	foreach(lc, itemPointers)
 	{
-		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"xact\"}}\n", ItemPointerGetBlockNumber(&items[i]), ItemPointerGetOffsetNumber(&items[i]));
-		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"data\"}}\n", ItemPointerGetBlockNumber(&items[i]), ItemPointerGetOffsetNumber(&items[i]));
+		ItemPointerData *item = lfirst(lc);
+
+		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"xact\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"data\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 	}
 
 	appendStringInfo(endpoint, "%s/%s/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
