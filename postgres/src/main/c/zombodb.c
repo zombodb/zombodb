@@ -16,8 +16,6 @@
  */
 #include <sys/time.h>
 
-#include <curl/curl.h>
-
 #include "postgres.h"
 #include "fmgr.h"
 #include "access/xact.h"
