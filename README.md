@@ -148,4 +148,3 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-[![Analytics](https://ga-beacon.appspot.com/UA-66124799-1/zombodb/zombodb)](https://github.com/igrigorik/ga-beacon)
