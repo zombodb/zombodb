@@ -151,7 +151,7 @@ typedef void (*ZDBRefreshIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef uint64 (*ZDBActualIndexRecordCount_function)(ZDBIndexDescriptor *indexDescriptor, char *table_name);
 typedef uint64 (*ZDBEstimateCount_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
 typedef ZDBSearchResponse *(*ZDBSearchIndex_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits);
-typedef ZDBSearchResponse *(*ZDBGetAllItems_function)(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
+typedef ZDBSearchResponse *(*ZDBGetPossiblyExpiredItems)(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
 typedef char *(*ZDBTally_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
 typedef char *(*ZDBSignificantTerms_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
@@ -166,7 +166,7 @@ typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char
 
 typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse);
 
-typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointerData *items, int nitems);
+typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
 
 typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
@@ -186,7 +186,7 @@ struct ZDBIndexImplementation
 	ZDBActualIndexRecordCount_function actualIndexRecordCount;
 	ZDBEstimateCount_function estimateCount;
 	ZDBSearchIndex_function   searchIndex;
-	ZDBGetAllItems_function   getAllItems;
+	ZDBGetPossiblyExpiredItems getPossiblyExpiredItems;
 
 	ZDBTally_function              tally;
 	ZDBSignificantTerms_function   significant_terms;

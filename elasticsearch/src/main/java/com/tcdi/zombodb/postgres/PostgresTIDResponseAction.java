@@ -80,7 +80,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             // and then change what our request looks like so it'll appear
             // as if the json version is the actual content
             long parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, false, false);
+            query = buildJsonQueryFromRequestContent(client, request, false, "data".equals(request.param("type")));
             long parseEnd = System.nanoTime();
 
             request = new OverloadedContentRestRequest(request, new BytesArray(query.getQuery()));

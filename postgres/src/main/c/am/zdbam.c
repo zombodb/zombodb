@@ -832,7 +832,7 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 	Relation                indexRel        = info->index;
 	ZDBIndexDescriptor      *desc;
 	ZDBSearchResponse       *items;
-	ItemPointerData         *to_delete      = NULL;
+	List                    *to_delete      = NULL;
 	int                     many            = 0;
 	uint64                  nitems;
 	int                     i;
@@ -845,32 +845,21 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 	if (desc->isShadow)
 		PG_RETURN_POINTER(stats);
 
-	/* get all items */ // TODO:  memory considerations on large tables?
-	items = desc->implementation->getAllItems(desc, &nitems);
+	items = desc->implementation->getPossiblyExpiredItems(desc, &nitems);
 
 	for (i = 0; i < nitems; i++)
 	{
-		ItemPointerData ctid;
+		ItemPointerData *ctid = palloc(sizeof(ItemPointerData));
 
 		CHECK_FOR_INTERRUPTS();
 
-		set_item_pointer(items, i, &ctid);
-		if (!ItemPointerIsValid(&ctid))
+		set_item_pointer(items, i, ctid);
+		if (!ItemPointerIsValid(ctid))
 			continue;
 
-		if (callback(&ctid, callback_state))
+		if (callback(ctid, callback_state))
 		{
-			ItemPointerData *tmp = to_delete;
-
-			to_delete = palloc((many + 1) * SizeOfIptrData); /* grow by 1 */
-			if (tmp)
-			{
-				memcpy(to_delete, tmp, many * SizeOfIptrData);
-				pfree(tmp);
-			}
-
-			memcpy(to_delete + (many), &ctid, SizeOfIptrData);
-
+			to_delete = lappend(to_delete, ctid);
 			many++;
 		}
 	}
