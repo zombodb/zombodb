@@ -38,3 +38,4 @@ script:
   - make installcheck
   - if [ -f regression.diffs ] ; then cat regression.diffs ;sudo cat /var/log/postgresql/*.log /var/log/elasticsearch/*.log ;  fi
   - df -h
+  - sudo dmesg
