@@ -13,8 +13,10 @@ before_install:
   - sudo /etc/init.d/postgresql stop
   - sudo apt-get remove -y postgresql-9.4
   - sudo apt-get remove -y curl
-  - sudo apt-get install -y postgresql-server-dev-9.3
-  - echo "for i in /proc/*/oom_adj; do echo -17 > $i; done" >> /etc/rc.local
+  - sudo dd if=/dev/zero of=/swapfile1 bs=1024 count=5242880
+  - sudo chown rootLroot /swapfile1 && sudho chmod 0600 /swapfile1
+  - sudo mkswap /swapfile1
+  - sudo swapon /swapfile
 
 script:
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
