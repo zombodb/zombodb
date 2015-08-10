@@ -14,7 +14,7 @@ before_install:
   - sudo apt-get remove -y postgresql-9.4
   - sudo apt-get remove -y curl
   - sudo apt-get install -y postgresql-server-dev-9.3
-  - echo "for i in /proc/*/oom_adj; do echo -17 > $i; done" >> /etc/rc.local
+  - sudo sh -c ' echo "for i in /proc/*/oom_adj; do echo -17 > $i; done" >> /etc/rc.local '
 
 script:
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
