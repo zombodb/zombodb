@@ -1,0 +1,4735 @@
+select * from zdb_tally('so_posts', 'owner_display_name', '^.*', '(  #expand<parent_id=<this.index>id> (title:java) ) ', 1000, 'term');
+          term          | count 
+------------------------+-------
+                        |  3100
+ ABAFEI                 |     1
+ ADEEL ANSARI           |     1
+ ADIPA GUNASEKARA       |     1
+ ANDREY CHASCHEV        |     1
+ ANDRZEJ DOYLE          |     2
+ ANDY THOMAS-CRAMER     |     1
+ ANON                   |     1
+ ANSGRI                 |     1
+ BENDIN                 |     1
+ BESTSSS                |     1
+ BILL THE LIZARD        |     1
+ BILLY ONEAL            |     2
+ BLAUOHR                |     1
+ BOHEMIAN               |     2
+ BORIS PAVLOVIĆ         |     1
+ CHANDRA                |     1
+ CHRIS ALDRICH          |     1
+ CHRIS JESTER-YOUNG     |     1
+ CHRIS THOMPSON         |     1
+ CLOUDANGER             |     1
+ CLOUDYSTER             |     1
+ CLYFE                  |     1
+ DANIEL C. SOBRAL       |     1
+ DANIEL R HICKS         |     1
+ DARTHVADER             |     1
+ DAVID HARKNESS         |     1
+ DAVIDGR                |     1
+ DCN                    |     1
+ DEAN J                 |     1
+ DIMONIY                |     1
+ DINESH                 |     1
+ DMITRI                 |     1
+ DSIMCHA                |     1
+ DUFFYMO                |     2
+ EEK                    |     1
+ ELLERY NEWCOMER        |     1
+ ERIC GALLUZZO          |     1
+ ERICSCHAEFER           |     1
+ ERNEST FRIEDMAN-HILL   |     1
+ FBONNET                |     1
+ FEDERICO FISSORE       |     1
+ FERGIE                 |     1
+ FERNANDOGARCEZ         |     1
+ FIELDING               |     1
+ FOLONE                 |     2
+ FRANK PAPE             |     1
+ GARETH DAVIS           |     1
+ GARGC                  |     1
+ GRAYGER                |     1
+ HAKRE                  |     1
+ HARPER89               |     2
+ HIGHLAND MARK          |     1
+ HILBRAND               |     1
+ HUNTLYC                |     1
+ HVGOTCODES             |     1
+ IIK                    |     1
+ JACK                   |     1
+ JAMES                  |     1
+ JAREDPAR               |     1
+ JARROD ROBERSON        |     1
+ JASON S                |     2
+ JBERG                  |     1
+ JEAN-PHILIPPE PELLET   |     1
+ JESPER                 |     1
+ JESSE GOOD             |     1
+ JMORT253               |     1
+ JODONNELL              |     1
+ JOE PHILLLIPS          |     1
+ JON SKEET              |     1
+ JOSEPH OTTINGER        |     1
+ JSMYTH                 |     1
+ JUSTIN THOMAS          |     1
+ KAL                    |     1
+ KAMIKAZE MERCENARY     |     1
+ KARES                  |     1
+ KARSTENF               |     1
+ KESHAV.VEERAPANENI     |     1
+ KEVIN                  |     1
+ KIM BURGAARD           |     1
+ KOCKO                  |     1
+ KROCK                  |     1
+ LASERALLAN             |     1
+ LOUIS RHYS             |     1
+ LUCHIAN GRIGORE        |     1
+ M. DEINUM              |     1
+ MARCANDRESON           |     1
+ MARIUSZS               |     1
+ MARKO TOPOLNIK         |     1
+ MARKR                  |     1
+ MATT BRIGGS            |     1
+ MAX                    |     1
+ MAXYM                  |     1
+ MIKE STROBEL           |     1
+ MIKERA                 |     1
+ MORT                   |     1
+ MORTEN HOLDFLOD MØLLER |     1
+ NAVEEN                 |     1
+ NEMANJA TRIFUNOVIC     |     1
+ NIKHIL KASHYAP         |     1
+ NISHANT                |     1
+ NSFYN55                |     1
+ OSCARRYZ               |     1
+ OXBOW_LAKES            |     1
+ PATRICK                |     1
+ PAULMURRAY             |     1
+ PETER WONE             |     1
+ POLYGENELUBRICANTS     |     1
+ PUBBY8                 |     1
+ QUANT_DEV              |     1
+ REGULUS                |     1
+ REX KERR               |     1
+ RIK                    |     1
+ ROB WARTHEN            |     1
+ ROBERT FISCHER         |     1
+ ROBIN GREEN            |     1
+ ROGCG                  |     1
+ ROLAND SCHNEIDER       |     1
+ SALIL                  |     1
+ SAMIT G.               |     1
+ SBRIDGES               |     1
+ SCIENCE_FICTION        |     1
+ SEGY                   |     1
+ SENTHIL                |     1
+ SERGIO                 |     2
+ SERIK                  |     1
+ SHADOWFOXMI            |     1
+ SK-LOGIC               |     1
+ SPYROSP                |     1
+ SSCHAEF                |     1
+ STEFAN D.              |     1
+ STEPANCHEG             |     1
+ STEPHEN C              |     2
+ STEVEN                 |     1
+ SUROOT                 |     1
+ THOMAS                 |     1
+ THSOFT                 |     1
+ TIMO GEUSCH            |     1
+ TKEE2036               |     1
+ TOLUJU                 |     1
+ TOM                    |     1
+ TOM HAWTIN - TACKLINE  |     1
+ TOMASZ NURKIEWICZ      |     1
+ TURING COMPLETE        |     1
+ UBERSOLDAT             |     1
+ URI                    |     1
+ USER1249               |    46
+ USER1449               |     2
+ USER14719              |     1
+ USER16482              |     1
+ USER18046              |     1
+ USER19067              |     1
+ USER19382              |     1
+ USER19437              |     1
+ USER2567               |     1
+ USER2860598            |     2
+ USER29079              |     1
+ USER39331              |     1
+ USER39685              |     4
+ USER40362              |     1
+ USER4051               |     4
+ USER42242              |     1
+ USER50689              |     1
+ USER57697              |     1
+ USER7071               |     1
+ USER7197               |     2
+ USER80699              |     1
+ USER92106              |     1
+ VEN CODER              |     1
+ WESLEY                 |     1
+ WOLFMANDRAGON          |     1
+ WOOT4MOO               |     1
+ YABA                   |     1
+ ZASKE                  |     1
+(174 rows)
+
+select * from zdb_tally('so_posts', 'owner_display_name', '^.*', '(  #expand<parent_id=<this.index>id> (title:java) ) ', 1000, 'term');
+          term          | count 
+------------------------+-------
+                        |  3100
+ ABAFEI                 |     1
+ ADEEL ANSARI           |     1
+ ADIPA GUNASEKARA       |     1
+ ANDREY CHASCHEV        |     1
+ ANDRZEJ DOYLE          |     2
+ ANDY THOMAS-CRAMER     |     1
+ ANON                   |     1
+ ANSGRI                 |     1
+ BENDIN                 |     1
+ BESTSSS                |     1
+ BILL THE LIZARD        |     1
+ BILLY ONEAL            |     2
+ BLAUOHR                |     1
+ BOHEMIAN               |     2
+ BORIS PAVLOVIĆ         |     1
+ CHANDRA                |     1
+ CHRIS ALDRICH          |     1
+ CHRIS JESTER-YOUNG     |     1
+ CHRIS THOMPSON         |     1
+ CLOUDANGER             |     1
+ CLOUDYSTER             |     1
+ CLYFE                  |     1
+ DANIEL C. SOBRAL       |     1
+ DANIEL R HICKS         |     1
+ DARTHVADER             |     1
+ DAVID HARKNESS         |     1
+ DAVIDGR                |     1
+ DCN                    |     1
+ DEAN J                 |     1
+ DIMONIY                |     1
+ DINESH                 |     1
+ DMITRI                 |     1
+ DSIMCHA                |     1
+ DUFFYMO                |     2
+ EEK                    |     1
+ ELLERY NEWCOMER        |     1
+ ERIC GALLUZZO          |     1
+ ERICSCHAEFER           |     1
+ ERNEST FRIEDMAN-HILL   |     1
+ FBONNET                |     1
+ FEDERICO FISSORE       |     1
+ FERGIE                 |     1
+ FERNANDOGARCEZ         |     1
+ FIELDING               |     1
+ FOLONE                 |     2
+ FRANK PAPE             |     1
+ GARETH DAVIS           |     1
+ GARGC                  |     1
+ GRAYGER                |     1
+ HAKRE                  |     1
+ HARPER89               |     2
+ HIGHLAND MARK          |     1
+ HILBRAND               |     1
+ HUNTLYC                |     1
+ HVGOTCODES             |     1
+ IIK                    |     1
+ JACK                   |     1
+ JAMES                  |     1
+ JAREDPAR               |     1
+ JARROD ROBERSON        |     1
+ JASON S                |     2
+ JBERG                  |     1
+ JEAN-PHILIPPE PELLET   |     1
+ JESPER                 |     1
+ JESSE GOOD             |     1
+ JMORT253               |     1
+ JODONNELL              |     1
+ JOE PHILLLIPS          |     1
+ JON SKEET              |     1
+ JOSEPH OTTINGER        |     1
+ JSMYTH                 |     1
+ JUSTIN THOMAS          |     1
+ KAL                    |     1
+ KAMIKAZE MERCENARY     |     1
+ KARES                  |     1
+ KARSTENF               |     1
+ KESHAV.VEERAPANENI     |     1
+ KEVIN                  |     1
+ KIM BURGAARD           |     1
+ KOCKO                  |     1
+ KROCK                  |     1
+ LASERALLAN             |     1
+ LOUIS RHYS             |     1
+ LUCHIAN GRIGORE        |     1
+ M. DEINUM              |     1
+ MARCANDRESON           |     1
+ MARIUSZS               |     1
+ MARKO TOPOLNIK         |     1
+ MARKR                  |     1
+ MATT BRIGGS            |     1
+ MAX                    |     1
+ MAXYM                  |     1
+ MIKE STROBEL           |     1
+ MIKERA                 |     1
+ MORT                   |     1
+ MORTEN HOLDFLOD MØLLER |     1
+ NAVEEN                 |     1
+ NEMANJA TRIFUNOVIC     |     1
+ NIKHIL KASHYAP         |     1
+ NISHANT                |     1
+ NSFYN55                |     1
+ OSCARRYZ               |     1
+ OXBOW_LAKES            |     1
+ PATRICK                |     1
+ PAULMURRAY             |     1
+ PETER WONE             |     1
+ POLYGENELUBRICANTS     |     1
+ PUBBY8                 |     1
+ QUANT_DEV              |     1
+ REGULUS                |     1
+ REX KERR               |     1
+ RIK                    |     1
+ ROB WARTHEN            |     1
+ ROBERT FISCHER         |     1
+ ROBIN GREEN            |     1
+ ROGCG                  |     1
+ ROLAND SCHNEIDER       |     1
+ SALIL                  |     1
+ SAMIT G.               |     1
+ SBRIDGES               |     1
+ SCIENCE_FICTION        |     1
+ SEGY                   |     1
+ SENTHIL                |     1
+ SERGIO                 |     2
+ SERIK                  |     1
+ SHADOWFOXMI            |     1
+ SK-LOGIC               |     1
+ SPYROSP                |     1
+ SSCHAEF                |     1
+ STEFAN D.              |     1
+ STEPANCHEG             |     1
+ STEPHEN C              |     2
+ STEVEN                 |     1
+ SUROOT                 |     1
+ THOMAS                 |     1
+ THSOFT                 |     1
+ TIMO GEUSCH            |     1
+ TKEE2036               |     1
+ TOLUJU                 |     1
+ TOM                    |     1
+ TOM HAWTIN - TACKLINE  |     1
+ TOMASZ NURKIEWICZ      |     1
+ TURING COMPLETE        |     1
+ UBERSOLDAT             |     1
+ URI                    |     1
+ USER1249               |    46
+ USER1449               |     2
+ USER14719              |     1
+ USER16482              |     1
+ USER18046              |     1
+ USER19067              |     1
+ USER19382              |     1
+ USER19437              |     1
+ USER2567               |     1
+ USER2860598            |     2
+ USER29079              |     1
+ USER39331              |     1
+ USER39685              |     4
+ USER40362              |     1
+ USER4051               |     4
+ USER42242              |     1
+ USER50689              |     1
+ USER57697              |     1
+ USER7071               |     1
+ USER7197               |     2
+ USER80699              |     1
+ USER92106              |     1
+ VEN CODER              |     1
+ WESLEY                 |     1
+ WOLFMANDRAGON          |     1
+ WOOT4MOO               |     1
+ YABA                   |     1
+ ZASKE                  |     1
+(174 rows)
+
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<owner_display_name=<this.index>owner_display_name>(id:39338)' order by 1;
+  id   | owner_display_name 
+-------+--------------------
+ 39338 | AMissico
+ 90183 | AMissico
+(2 rows)
+
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer)' order by 1;
+   id   | owner_display_name 
+--------+--------------------
+  39183 | oxbow_lakes
+  41528 | Russ
+  41530 | BenAlabaster
+  41603 | BenAlabaster
+  43578 | Russ
+  44384 | WACM161
+  44434 | Choy
+  44451 | Karthik Hariharan
+  61392 | Dr Beco
+  73125 | Zan Lynx
+  78292 | yas4891
+  82656 | Zan Lynx
+  91599 | SomeMiscGuy
+ 100289 | ire_and_curses
+ 100706 | ire_and_curses
+ 106989 | Peter Hilton
+ 107034 | Zan Lynx
+ 107036 | Ty
+ 107055 | WACM161
+ 107057 | SomeMiscGuy
+ 107103 | BenAlabaster
+ 116201 | SpliFF
+ 120593 | oxbow_lakes
+ 130340 | oxbow_lakes
+ 131841 | okeen
+ 258315 | gurun
+ 269590 | flyingmig
+(27 rows)
+
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer or owner_display_name:s*)' order by 1;
+   id   |     owner_display_name     
+--------+----------------------------
+    356 | Sergio
+   1751 | StarLite
+   4050 | sambeau
+   4674 | shegy
+   5441 | Silent112
+   5541 | Sergio
+   5748 | siljoy
+   7834 | Sergio
+  10385 | Siamac Nikoo
+  10397 | Siamac Nikoo
+  10401 | Siamac Nikoo
+  10403 | Siamac Nikoo
+  10404 | Siamac Nikoo
+  11050 | Shannon
+  14401 | samiii
+  16975 | Sam
+  17366 | Skudd
+  18719 | slystar3
+  19400 | SiliconChaos
+  19527 | Samuel
+  20538 | Sean
+  24555 | starting
+  25219 | Sanket Raut
+  25529 | Steve Vaughn
+  25779 | Sanket Raut
+  29083 | Shashank
+  29309 | Steve Jessop
+  29359 | Shnitzel
+  29902 | Steven
+  30155 | Simo TAQI
+  30175 | Shimmy
+  30326 | Stefan D.
+  30362 | slashnick
+  30368 | slashmais
+  30369 | S.Lott
+  30393 | Sapphire
+  30394 | Shin
+  30426 | SFEley
+  30434 | steamer25
+  30479 | Spanky
+  30965 | sokzzuka
+  31097 | Saurabh
+  32394 | Stephen C
+  32434 | S.Lott
+  33028 | Sean
+  33349 | Sebastian Dietz
+  33534 | Snips
+  33822 | Silvercode
+  33830 | Svante
+  34379 | Sam Gabriel
+  34539 | semyon
+  34970 | SODA
+  34985 | Scott Stamp
+  35053 | shaunhusain
+  35054 | Starx
+  35163 | sebarmeli
+  35365 | Saif al Harthi
+  35371 | Sanjit
+  35683 | scrappedcola
+  36214 | Shanimal
+  36439 | SharePoint Newbie
+  36665 | Sam 
+  36683 | Steven A. Lowe
+  36695 | Sarah Mei
+  36706 | Spedge
+  36720 | Samuel Neff
+  36722 | Sri Kumar
+  37002 | Sebastian P.R. Gingter
+  37218 | Sergio
+  37243 | sinelaw
+  37261 | SLaks
+  37500 | Sergio
+  37553 | sbi
+  37923 | sudonim
+  38037 | sjmulder
+  38127 | sailtheworld
+  38165 | SharePoint Newbie
+  39183 | oxbow_lakes
+  39244 | stefan
+  39307 | Steve B.
+  39311 | S.Lott
+  39335 | ssg
+  39372 | SK-logic
+  39422 | Simon Forrest
+  39431 | schonarth
+  39435 | Steven A. Lowe
+  39451 | Shoban
+  39454 | S.Lott
+  39479 | Scott
+  39650 | Slateboard
+  39652 | SLaks
+  40394 | Sergio
+  40831 | Shekhar_Pro
+  41344 | S.Lott
+  41354 | slim
+  41489 | Slartibartfast
+  41520 | shahkalpesh
+  41527 | skiphoppy
+  41528 | Russ
+  41530 | BenAlabaster
+  41569 | Spedge
+  41583 | Steven smethurst
+  41589 | S.Lott
+  41596 | Steven A. Lowe
+  41603 | BenAlabaster
+  41741 | Srinivas Reddy Thatiparthy
+  41997 | Sergio
+  42094 | Sam
+  42208 | sasfrog
+  42212 | Stompp
+  42349 | Suresh S
+  42629 | Spudley
+  43174 | Sergio
+  43207 | Sergio
+  43532 | Smandoli
+  43546 | Seth
+  43554 | Sean Buttinger
+  43568 | Saurabh
+  43578 | Russ
+  43596 | Scott Lance
+  43603 | Stuart
+  43614 | soneangel
+  43675 | Subodh
+  43681 | SC Ghost
+  43683 | Sayed
+  43686 | Span
+  43690 | Stephen Kellett
+  43704 | StevenE
+  43706 | Shawn
+  43707 | Suresh S
+  43713 | Stefanos Kargas
+  44008 | Shane
+  44191 | stephbu
+  44192 | Swati
+  44211 | Sparr
+  44214 | someone
+  44219 | SarekOfVulcan
+  44225 | sal
+  44238 | softpro_sea
+  44250 | snogfish
+  44271 | shoosh
+  44273 | Sean
+  44283 | Steven A. Lowe
+  44285 | Shelley
+  44289 | setatakahashi
+  44290 | SammyO
+  44316 | Stuart Helwig
+  44319 | Serafeim
+  44320 | simoncpu
+  44328 | Symbioxys
+  44337 | Scott and the Dev Team
+  44374 | S.Kumar
+  44384 | WACM161
+  44385 | steffenj
+  44410 | Steven A. Lowe
+  44411 | Samat Jain
+  44420 | Sean Gough
+  44424 | stephenbayer
+  44434 | Choy
+  44451 | Karthik Hariharan
+  44478 | Samus_
+  44506 | smok1
+  44508 | Steve
+  44517 | Steve Wortham
+  44556 | steven spielberg
+  44557 | stormianrootsolver
+  44572 | Saladin Akara
+  44581 | Skatterbrainz
+  44600 | St3fan
+  45576 | S.Lott
+  45611 | Sergej Andrejev
+  45656 | scott_karana
+  45671 | Sisiutl
+  45899 | Sriram
+  45901 | Soner Gönül
+  46253 | satuon
+  46932 | sal
+  46943 | ssha
+  47007 | Seth P.
+  47198 | Sean Bright
+  47208 | Steve Rowe
+  47246 | sneg
+  47276 | Steve Wortham
+  47289 | Scott
+  47297 | Sriram Krishnan
+  47554 | Shewbox
+  48571 | stephen
+  48710 | Stu Mackellar
+  48711 | Stephan Eggermont
+  48716 | Slapout
+  48722 | Steven A. Lowe
+  49132 | sstn
+  49386 | sinec
+  49395 | Spudley
+  49714 | Sajith S Narayanan
+  49741 | sfrj
+  49795 | Stephan Eggermont
+  49938 | Stilgar
+  50170 | sjt
+  50387 | Shamal Karunarathne
+  50390 | Suraj Chandran
+  50391 | Siva
+  50764 | Spartan-117A
+  50919 | Sergio
+  50931 | Sergio
+  51120 | Sergio
+  51358 | Shiraz Bhaiji
+  51367 | Sergio
+  51375 | Sergio
+  51505 | Sorin Sbarnea
+  51893 | Sergio
+  51898 | Simon Mourier
+  51937 | shambleh
+  52384 | Sergio
+  52466 | Sergio
+  52490 | symcbean
+  52534 | Shisoft
+  52631 | Sergio
+  52697 | Sdaz MacSkibbons
+  52702 | Sergio
+  52776 | Sergio
+  52833 | Srini Kandula
+  52975 | sipefree
+  52991 | Sergio
+  53000 | Sergio
+  53023 | SpyrosP
+  53034 | Sergio
+  53074 | Sergio
+  53076 | Sergio
+  53088 | Sergio
+  53224 | SK-logic
+  53295 | Sergio
+  53296 | Sergio
+  53300 | Sergio
+  53307 | Sergio
+  53309 | Sergio
+  53358 | Sergio
+  53469 | Spooks
+  53632 | Sumit
+  53656 | Sergio
+  53728 | Sergio
+  53789 | Sameer Patil
+  53790 | Scott
+  53957 | Sergio
+  53973 | Sergio
+  54040 | stuck
+  54072 | Sergio
+  54103 | Sergio
+  54141 | Sergio
+  54147 | Sergio
+  54163 | stick
+  54290 | Sergio
+  54294 | Sergio
+  54338 | Sergio
+  54379 | Sergio
+  54537 | sandeepsinghal
+  54538 | S.Lott
+  54964 | Sergio
+  55231 | skiik
+  55241 | sarnold
+  55414 | symcbean
+  55536 | Shehi
+  55624 | Slace
+  55627 | Simucal
+  55631 | Steven A. Lowe
+  55635 | slim
+  55885 | sajoshi
+  55967 | sajoshi
+  55977 | SaphuA
+  56472 | stormbreaker
+  56827 | Stephenmjm
+  56900 | sadadasd
+  57177 | Serghei
+  57536 | Steve Jessop
+  57577 | SLaks
+  57815 | Steve Claridge
+  58090 | Steven Jeuris
+  58219 | shan23
+  58303 | Smith James
+  58305 | Sami Lehtinen
+  58630 | System.ArgumentException
+  58632 | Steven Jeuris
+  58661 | Simon
+  58694 | Steven Jeuris
+  58903 | Sophie
+  58950 | sergionni
+  59309 | samwize
+  59741 | ShreevatsaR
+  59749 | seanyboy
+  59752 | Steven A. Lowe
+  59761 | Steven A. Lowe
+  59772 | skiphoppy
+  59805 | Scott Wisniewski
+  59806 | shlumph
+  59807 | Scott
+  59814 | samoz
+  59897 | Steve Rowe
+  59975 | StudioWorks
+  60091 | swisscheese
+  60127 | Simon
+  60324 | Spacemoses
+  60376 | Sjoerd C. de Vries
+  60959 | Spacemoses
+  61145 | Sergi Papaseit
+  61392 | Dr Beco
+  61469 | sajoshi
+  61558 | seansilver
+  61642 | SeanA
+  61656 | Stefan Ernst
+  61658 | stu
+  62197 | Stephen J.
+  62535 | Sandro Munda
+  62712 | sergdev
+  62724 | Stephen Cox
+  62730 | Simon
+  62731 | Sebastian Dietz
+  62734 | Simucal
+  62740 | Syntax
+  63175 | SLaks
+  63497 | Stephen Darlington
+  63956 | Sergey
+  64433 | S.Lott
+  64737 | Spanky
+  64806 | serengeti12
+  64983 | Shark
+  65293 | Skeith
+  65707 | Sophia
+  65820 | skaz
+  65829 | Salvador
+  66186 | Shyju
+  66189 | Spence
+  66192 | stesch
+  66193 | Sam
+  66657 | sea6ear
+  66764 | Skystar3
+  66858 | Sriram Subramanian
+  67056 | Senthil
+  68762 | Shannon Davis
+  68932 | stighy
+  69015 | Serghei
+  69194 | Space
+  69256 | SpyrosP
+  69865 | Shekhar_Pro
+  69866 | Steve
+  70201 | Skeith
+  70459 | Sandeep
+  70650 | StriplingWarrior
+  70686 | Steve Jorgensen
+  70734 | silverappy
+  71024 | Senthil
+  71126 | Sara
+  71561 | Sergey
+  71586 | slugster
+  71588 | sims
+  72447 | shadowfoxmi
+  72645 | Steve Townsend
+  72762 | seand
+  72763 | Steve Wellens
+  72833 | Sean
+  72847 | SLaks
+  72862 | shababhsiddique
+  73125 | Zan Lynx
+  73765 | s0mmer
+  74044 | Simon Dugré
+  74045 | Scott Wilson
+  74158 | stivlo
+  74167 | Sam Holder
+  74169 | shaahin
+  74504 | sleske
+  74895 | Spelljack
+  75076 | shuttle87
+  75147 | Steve B
+  75396 | Sergio
+  75398 | Steve Wellens
+  75440 | sleske
+  75808 | snitko
+  75813 | sarnold
+  75827 | Shane Powell
+  75866 | splatto
+  76081 | Skeith
+  76571 | Santosh S
+  76627 | Saurabh
+  76801 | Sudantha
+  76832 | Stephen C
+  77184 | Shannon
+  77185 | szabgab
+  77447 | Syed Absar
+  77455 | sebarmeli
+  77466 | sydneyos
+  77467 | Scott
+  78104 | Sam Hoice
+  78105 | S.Lott
+  78220 | Sebastian Zaklada
+  78292 | yas4891
+  78356 | superjoe30
+  78372 | some
+  78779 | Stas Kurilin
+  78780 | StaxMan
+  78846 | Sonosar
+  79189 | sergzach
+  79251 | sym3tri
+  79938 | Simon
+  79943 | Stefano Borini
+  80090 | Shane MacLaughlin
+  80092 | Scott Dorman
+  80137 | SimpleCoder
+  80143 | Stephan Eggermont
+  80145 | Shameer
+  80169 | sehe
+  80403 | Seth Robertson
+  80977 | SaravananArumugam
+  81075 | SK-logic
+  81080 | Shiraz Bhaiji
+  81154 | SinistraD
+  81155 | sparkie
+  81269 | sclv
+  81892 | sarnold
+  81895 | sanityinc
+  81932 | Sheldon
+  82175 | Scott Roberts
+  82314 | Sébastien
+  82656 | Zan Lynx
+  83029 | Srivastava
+  83150 | Scott
+  83376 | Sonia 
+  84347 | simon
+  84920 | Samaursa
+  85289 | Sander
+  85438 | Space_C0wb0y
+  85440 | Skizz
+  85657 | Stargazer712
+  85711 | Stephen
+  85766 | Sergio
+  86043 | Suroot
+  86444 | sneilan
+  86637 | S.Lott
+  86997 | Sup
+  87084 | Scott
+  87294 | Skeith
+  87396 | strauberry
+  88174 | SLaks
+  88572 | Skywalker5446
+  88574 | Szocske
+  89066 | SurvivalMachine
+  89128 | stapo
+  89130 | Schultz9999
+  89132 | slebetman
+  89148 | Serge
+  89175 | Scott Wisniewski
+  89180 | Scott Evernden
+  89181 | small_duck
+  89188 | Someone
+  89190 | S.Lott
+  89283 | soc
+  89655 | Sayem Ahmed
+  89817 | Salim Fadhley
+  89819 | SDET
+  90178 | slugster
+  90457 | Stefano Borini
+  90461 | Steve Weet
+  90887 | SAFAD
+  91109 | StriplingWarrior
+  91158 | S S 
+  91161 | Stephen
+  91165 | Steve Townsend
+  91178 | Suroot
+  91367 | Slace
+  91382 | Sandman
+  91389 | Sam West
+  91395 | Silvercode
+  91399 | stephbu
+  91418 | Simon West
+  91432 | surajs
+  91439 | SeasonedCoder
+  91452 | Sean Sexton
+  91463 | SchizoDuckie
+  91464 | stephanea
+  91468 | sammyo
+  91480 | Scott Vercuski
+  91491 | Shyam
+  91505 | Sean McMillan
+  91511 | SHiNKiROU
+  91549 | S.Lott
+  91550 | sharvell
+  91585 | seanb
+  91599 | SomeMiscGuy
+  91619 | SP
+  91645 | Serik
+  91649 | stepancheg
+  91665 | Samit G.
+  91752 | Stefano Verna
+  91753 | Scott
+  91821 | Sören
+  91841 | Supermighty
+  92059 | Sebastian
+  92088 | Scott Townsend
+  92089 | stukselbax
+  92127 | sharptooth
+  92141 | Sam
+  92146 | smok1
+  92208 | sunglim
+  92314 | Sandeep
+  92742 | Shivan Raptor
+  93141 | Shinmaru
+  93389 | SDX2000
+  93395 | S.Lott
+  93424 | Starx
+  93632 | soru
+  93643 | Scott Anderson
+  93656 | skiphoppy
+  93662 | Salvin Francis
+  93901 | ssapkota
+  93997 | Suraj Chandran
+  94033 | Sean
+  95468 | SSpoke
+  95840 | SaravananArumugam
+  96385 | Sean U
+  96422 | Spooks
+  96423 | Sean Vieira
+  96876 | Simon
+  98358 | smartcaveman
+  98362 | Simon Mourier
+  98365 | Stephen Chung
+  98369 | Slavo
+  98931 | Sujoy
+  98935 | Sam DeHaan
+  99026 | Syed
+  99730 | Steve Wellens
+ 100289 | ire_and_curses
+ 100535 | Stefan Steinegger
+ 100536 | Sly
+ 100689 | slim
+ 100698 | sleske
+ 100706 | ire_and_curses
+ 100845 | sbidwai
+ 100846 | SPWorley
+ 100857 | Serapth
+ 101639 | S.Lott
+ 102518 | soc
+ 102552 | Simon Pantzare
+ 102682 | s1n
+ 103363 | samridhi
+ 103923 | SwissChocolate
+ 104069 | svick
+ 104238 | sunglim
+ 104594 | Scott Radcliff
+ 104792 | Shane C. Mason
+ 104804 | Stefan Papp
+ 104985 | Sarel Botha
+ 105140 | Snog Fermenti
+ 105266 | sirlancelot
+ 105303 | Steven
+ 105391 | S.Lott
+ 105772 | SpyrosP
+ 105773 | shiroin
+ 106108 | Swagatika
+ 106417 | samarudge
+ 106816 | shortstick
+ 106982 | schwerwolf
+ 106989 | Peter Hilton
+ 106992 | shadit
+ 107006 | skiphoppy
+ 107029 | setatakahashi
+ 107030 | Scott S.
+ 107034 | Zan Lynx
+ 107036 | Ty
+ 107055 | WACM161
+ 107057 | SomeMiscGuy
+ 107066 | Sarat
+ 107097 | Srikanth131
+ 107100 | slim
+ 107101 | Steve
+ 107102 | Stefan Thyberg
+ 107103 | BenAlabaster
+ 107113 | sixtyfootersdude
+ 107118 | Shota Bakuradze
+ 107510 | Seth Carnegie
+ 107572 | SixfootJames
+ 107582 | sugar - Sagar Kothari
+ 107601 | Shahbaz
+ 107715 | Suraj Chandran
+ 107874 | sander
+ 108452 | SLaks
+ 108578 | sam
+ 108699 | sanity
+ 108738 | Steve Jessop
+ 108904 | Sergey
+ 108909 | simon
+ 109107 | Suan
+ 109381 | S.Lott
+ 109478 | SteveB
+ 109725 | Sean Owen
+ 109733 | Scottie T
+ 109736 | Sammy Larbi
+ 109737 | Steven A. Lowe
+ 109743 | Stephen Pace
+ 110242 | SIJAR
+ 110647 | Shailesh
+ 110817 | sgm
+ 110838 | Sylvain
+ 110839 | Strilanc
+ 111084 | Steven
+ 111210 | ScottBai
+ 111457 | Sebastian
+ 112077 | Simeon
+ 112459 | Spencer Ruport
+ 112725 | stebbo
+ 113420 | SantoshG
+ 114820 | Sebastian Oberste-Vorth
+ 115426 | sanosdole
+ 115648 | superxor
+ 116191 | Steerpike
+ 116192 | Seun Osewa
+ 116201 | SpliFF
+ 116249 | sra
+ 116346 | Sachin Shanbhag
+ 116642 | Simon B
+ 116735 | sirrocco
+ 116760 | StuffMaster
+ 117507 | Sohnee
+ 117759 | shani
+ 118539 | SBerg413
+ 118900 | Saintedlama
+ 119163 | sverrisson
+ 119310 | S.N
+ 119365 | spooky
+ 119508 | Siddharta
+ 119602 | Shahzeb
+ 119610 | SigTerm
+ 119864 | Sam Lee
+ 119996 | splattne
+ 120065 | StriplingWarrior
+ 120216 | Shaun F
+ 120296 | Siddharta
+ 120593 | oxbow_lakes
+ 120595 | segy
+ 120736 | Stack Stock
+ 121368 | ssg
+ 121526 | smokris
+ 121533 | Shameer
+ 121557 | Salil
+ 121658 | SLaks
+ 121664 | SpecialEd
+ 121704 | Sacha Oltmans
+ 121939 | Suhail Gupta
+ 121940 | saeedn
+ 122286 | System.Data
+ 122574 | Steven A. Lowe
+ 122577 | Schwern
+ 122728 | Stephen C
+ 122912 | Spikolynn
+ 122914 | Sam
+ 122965 | Shadow_x99
+ 123844 | Saurabh Saxena
+ 124020 | Seeker
+ 124441 | Shane Adrian Muaz
+ 125262 | syneptody
+ 125276 | solendil
+ 125791 | SLaks
+ 126083 | SK-logic
+ 126225 | Slade
+ 127810 | sarnold
+ 128150 | Silver89
+ 128240 | Sergio Tulentsev
+ 128456 | Stephen C
+ 128459 | Samus_
+ 128897 | Sophie Sperner
+ 128919 | SpecialEd
+ 129658 | sblom
+ 129850 | StriplingWarrior
+ 129874 | sytycs
+ 129875 | Sushil Dhaundiyal
+ 130340 | oxbow_lakes
+ 130384 | Sixto Saez
+ 130809 | synthesizerpatel
+ 131829 | sbi
+ 131841 | okeen
+ 132045 | sergio
+ 132415 | Su'
+ 132870 | skcin7
+ 134486 | sturdytree
+ 135025 | Steve Jackson
+ 135766 | S4M
+ 136950 | scheibk
+ 137057 | sanity
+ 137333 | StackTrace
+ 138123 | Stefan Papp
+ 138127 | ShellShock
+ 139112 | sethcall
+ 139344 | sbridges
+ 140004 | SkonJeet
+ 140006 | sparks
+ 142112 | Swippen
+ 143038 | Sebastian Siek
+ 144691 | Skilldrick
+ 145373 | SonOfPirate
+ 145585 | siegi
+ 146555 | Stephen
+ 146717 | sarikan
+ 148330 | Skydreamer
+ 150315 | Stas
+ 150788 | simon
+ 150789 | silijon
+ 151074 | SaxonMatt
+ 151571 | showerhead
+ 153758 | Seralize
+ 159583 | SPI
+ 159594 | Secure
+ 159855 | Shamik
+ 159953 | Science_Fiction
+ 160087 | svnpenn
+ 160268 | szahn
+ 160660 | Shrulik
+ 160674 | Steven
+ 161613 | slugster
+ 162826 | singleton
+ 163817 | shamis
+ 164000 | Sam
+ 165596 | Saeed
+ 166363 | sftrabbit
+ 168384 | Seacat
+ 173208 | Siddharth
+ 175562 | Skylar Saveland
+ 175848 | Sofus Albertsen
+ 175849 | shamis
+ 175952 | sp00m
+ 180219 | sftrabbit
+ 180221 | Steve Jessop
+ 180232 | SimonSez
+ 180233 | scherlock
+ 180344 | Smig
+ 180851 | StringBuilder
+ 180852 | Splendor
+ 180853 | Shyju
+ 181692 | SJuan76
+ 181945 | steveha
+ 182040 | Sergiu Dumitriu
+ 185072 | streetlight
+ 185774 | Sp.
+ 186706 | Sotirios Delimanolis
+ 188611 | Srikanth Venugopalan
+ 189474 | Steven Doggart
+ 189980 | Slater Tyranus
+ 190706 | Stephen C
+ 190834 | Space Rocker
+ 192057 | Seva Alekseyev
+ 193328 | Subhra
+ 194109 | Sudhanshu
+ 195605 | Stedwell
+ 198228 | Stefaan
+ 198549 | snappymcsnap
+ 200482 | SH-
+ 201222 | Shiplu
+ 202571 | S-Unit
+ 203269 | stackuser
+ 203465 | sschaef
+ 204343 | Sebastian
+ 204651 | Simon Sarris
+ 205033 | Sergey Lega
+ 206295 | supercat
+ 206297 | Sheldon
+ 206659 | Steve Green
+ 209797 | shankbond
+ 210532 | sandeep.gosavi
+ 211648 | Sheridan
+ 211922 | shr
+ 215288 | SuffixTreeMonkey
+ 215938 | Sushma R
+ 215943 | SlickTheNick
+ 215944 | Sam King
+ 216425 | Sam Bryant
+ 218644 | sunny2016
+ 218940 | Simon André Forsberg
+ 218952 | Steven Hernandez
+ 219118 | Simon André Forsberg
+ 223354 | Steinar Lima
+ 223815 | Steve Ontologic
+ 223833 | Samsdram
+ 225942 | Simeon
+ 226129 | Siraj Mansour
+ 226629 | Servy
+ 229972 | Sintrastes
+ 230365 | Sklivvz
+ 230458 | sean
+ 232033 | stormlifter
+ 233706 | Spook
+ 233707 | Stuart Thompson
+ 242673 | Schemer
+ 243221 | stephen
+ 246332 | SaschaM78
+ 249572 | sveri
+ 250795 | simoneL
+ 253128 | sdream
+ 254177 | sesteel
+ 255230 | Swaroop C H
+ 257125 | shakurov
+ 258196 | Steve Chambers
+ 258314 | sigo
+ 258315 | gurun
+ 261490 | Steven Broshar
+ 262725 | Sunil D S
+ 269590 | flyingmig
+ 271296 | sareed
+(803 rows)
+
+select id, owner_display_name from so_posts where zdb(so_posts) ==> 'body:(beer w/500 a)' order by 1;
+   id   | owner_display_name 
+--------+--------------------
+   2932 | 
+   5776 | 
+   8888 | 
+  10716 | 
+  11819 | 
+  11946 | 
+  12097 | 
+  12353 | 
+  14726 | 
+  15799 | 
+  20663 | 
+  21907 | 
+  23528 | 
+  24233 | 
+  24363 | 
+  26416 | 
+  26803 | 
+  27114 | 
+  28059 | 
+  29345 | 
+  34733 | 
+  36441 | 
+  36443 | 
+  40670 | 
+  41528 | Russ
+  41530 | BenAlabaster
+  43362 | 
+  44434 | Choy
+  44451 | Karthik Hariharan
+  44687 | 
+  44991 | 
+  46093 | 
+  49035 | 
+  50328 | 
+  52622 | 
+  52819 | 
+  53238 | 
+  53772 | 
+  53801 | 
+  54279 | 
+  56682 | 
+  58124 | 
+  58790 | 
+  58795 | 
+  61392 | Dr Beco
+  61566 | 
+  61668 | 
+  61769 | 
+  62501 | 
+  67437 | 
+  69216 | 
+  70490 | 
+  71500 | 
+  71936 | 
+  72941 | 
+  73887 | 
+  74392 | 
+  76418 | 
+  77681 | 
+  78292 | yas4891
+  78487 | 
+  79165 | 
+  81756 | 
+  81803 | 
+  82664 | 
+  82984 | 
+  85867 | 
+  86290 | 
+  87570 | 
+  87813 | 
+  88452 | 
+  91723 | 
+  93719 | 
+  96580 | 
+  98384 | 
+  98965 | 
+ 100706 | ire_and_curses
+ 101209 | 
+ 102033 | 
+ 102886 | 
+ 102895 | 
+ 103203 | 
+ 103986 | 
+ 104349 | 
+ 105324 | 
+ 105990 | 
+ 106989 | Peter Hilton
+ 107034 | Zan Lynx
+ 107055 | WACM161
+ 107057 | SomeMiscGuy
+ 107123 | 
+ 107170 | 
+ 108758 | 
+ 108787 | 
+ 112944 | 
+ 116201 | SpliFF
+ 117796 | 
+ 118694 | 
+ 119064 | 
+ 120011 | 
+ 121632 | 
+ 121798 | 
+ 128446 | 
+ 131659 | 
+ 131841 | okeen
+ 132827 | 
+ 133772 | 
+ 134692 | 
+ 135509 | 
+ 135956 | 
+ 136208 | 
+ 139375 | 
+ 140057 | 
+ 140892 | 
+ 141345 | 
+ 142037 | 
+ 144658 | 
+ 145849 | 
+ 147185 | 
+ 148805 | 
+ 151242 | 
+ 152511 | 
+ 152822 | 
+ 153618 | 
+ 155755 | 
+ 156343 | 
+ 159774 | 
+ 164573 | 
+ 167186 | 
+ 171605 | 
+ 177863 | 
+ 181140 | 
+ 186140 | 
+ 187269 | 
+ 189148 | 
+ 197135 | 
+ 197164 | 
+ 198153 | 
+ 200226 | 
+ 203270 | 
+ 204293 | 
+ 211469 | 
+ 211655 | 
+ 211765 | 
+ 213942 | 
+ 215682 | 
+ 216210 | 
+ 219124 | 
+ 219808 | 
+ 220677 | 
+ 230284 | 
+ 231927 | 
+ 234252 | 
+ 237358 | 
+ 245578 | 
+ 250835 | 
+ 256876 | 
+ 258315 | gurun
+ 263392 | 
+ 268009 | 
+ 269590 | flyingmig
+ 270921 | 
+ 272560 | 
+(163 rows)
+
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<parent_id=<this.index>parent_id>((beer w/500 a))' order by 1;
+   id   |    owner_display_name     
+--------+---------------------------
+   3091 | 
+   3092 | 
+   3093 | 
+   3099 | 
+   3101 | 
+   3102 | 
+   3103 | 
+   3104 | 
+   3108 | 
+   3111 | 
+   3117 | 
+   3142 | 
+   3150 | 
+   3190 | 
+   3206 | 
+   3215 | 
+   3231 | 
+   3235 | 
+   3236 | 
+   3237 | 
+   3238 | 
+   3239 | 
+   3240 | 
+   3243 | 
+   3245 | 
+   3248 | 
+   3262 | 
+   3267 | 
+   3293 | 
+   3301 | 
+   3311 | 
+   3315 | 
+   3322 | 
+   3328 | 
+   3330 | 
+   3336 | 
+   3337 | 
+   3345 | 
+   3359 | 
+   3444 | 
+   3454 | 
+   3463 | rain
+   3480 | 
+   3503 | 
+   3517 | 
+   3545 | 
+   3706 | 
+   3762 | pakhtana
+   5388 | 
+   5392 | 
+   5393 | 
+   5396 | 
+   5397 | 
+   5403 | 
+   5407 | 
+   5409 | 
+   5412 | 
+   5413 | 
+   5416 | 
+   5421 | 
+   5440 | 
+   5442 | 
+   5446 | 
+   5453 | 
+   5461 | 
+   5462 | 
+   5493 | 
+   5499 | 
+   5505 | 
+   5529 | 
+   5530 | Gepsens
+   5549 | 
+   5574 | vborja
+   5581 | teratios
+   5582 | nick
+   5589 | Matt Michielsen
+   5602 | 
+   5611 | 
+   5621 | 
+   5634 | 
+   5636 | Torvaun
+   5638 | Justin
+   5643 | 
+   5660 | 
+   5662 | 
+   5683 | 
+   5765 | 
+   5766 | 
+   5774 | 
+   5776 | 
+   5855 | 
+   5982 | 
+   5989 | 
+   6023 | jwgrantism
+   6047 | 
+   6061 | 
+   6606 | 
+   7132 | 
+   7137 | 
+   7144 | 
+   7152 | 
+   7154 | 
+   7195 | 
+   7351 | 
+   7518 | 
+   7757 | 
+   8305 | 
+   8306 | 
+   8326 | 
+   8327 | 
+   8329 | 
+   8363 | 
+   8399 | 
+   8404 | 
+   8452 | 
+   8457 | 
+   8471 | 
+   8602 | 
+   8888 | 
+   8938 | 
+   8959 | 
+  10575 | 
+  10577 | 
+  10579 | 
+  10585 | 
+  10607 | 
+  10619 | 
+  10716 | 
+  11017 | 
+  11029 | 
+  11482 | 
+  11572 | 
+  11574 | 
+  11580 | 
+  11601 | 
+  11606 | 
+  11611 | 
+  11614 | 
+  11665 | 
+  11666 | 
+  11672 | 
+  11685 | 
+  11686 | 
+  11708 | 
+  11717 | 
+  11815 | 
+  11816 | 
+  11818 | 
+  11819 | 
+  11828 | 
+  11884 | 
+  11945 | 
+  11946 | 
+  11958 | 
+  12077 | 
+  12079 | 
+  12084 | 
+  12093 | 
+  12097 | 
+  12100 | 
+  12102 | 
+  12113 | 
+  12153 | 
+  12156 | 
+  12158 | avocade
+  12344 | 
+  12351 | 
+  12353 | 
+  14143 | user2567
+  14404 | 
+  14406 | 
+  14723 | 
+  14726 | 
+  14735 | malach
+  14738 | 
+  14743 | 
+  14756 | 
+  14757 | 
+  14761 | 
+  14807 | 
+  14809 | user1249
+  14813 | 
+  14826 | 
+  14877 | 
+  14883 | 
+  14908 | 
+  15760 | 
+  15763 | 
+  15766 | 
+  15767 | 
+  15772 | 
+  15789 | 
+  15792 | 
+  15799 | 
+  15806 | 
+  15815 | 
+  15823 | 
+  16146 | 
+  16303 | 
+  16304 | user2567
+  16305 | 
+  16312 | 
+  16315 | 
+  16317 | 
+  16339 | 
+  16376 | 
+  16377 | 
+  16385 | 
+  16410 | 
+  16413 | 
+  16417 | 
+  16419 | 
+  16421 | 
+  16423 | 
+  16587 | 
+  16663 | 
+  16718 | 
+  16730 | 
+  17399 | 
+  18405 | 
+  18526 | 
+  18557 | 
+  18558 | 
+  19069 | Hans-Eric
+  19331 | 
+  20787 | 
+  20789 | 
+  21580 | 
+  21581 | 
+  21582 | 
+  21583 | 
+  21590 | 
+  21592 | 
+  21643 | 
+  21658 | 
+  21660 | 
+  21673 | 
+  21865 | 
+  23504 | 
+  23516 | 
+  23524 | 
+  23528 | 
+  23531 | 
+  23602 | 
+  23633 | 
+  24165 | 
+  24167 | 
+  24173 | 
+  24200 | 
+  24208 | 
+  24211 | 
+  24233 | 
+  24255 | 
+  24363 | 
+  24364 | 
+  24368 | 
+  24376 | 
+  25400 | 
+  26357 | 
+  26381 | 
+  26406 | 
+  26416 | 
+  26613 | 
+  26614 | 
+  26772 | 
+  26774 | 
+  26800 | 
+  26802 | 
+  26803 | 
+  26817 | 
+  26841 | 
+  26867 | 
+  26876 | 
+  26878 | 
+  26888 | 
+  26900 | 
+  26920 | 
+  26923 | user7714
+  26924 | 
+  27105 | 
+  27110 | 
+  27114 | 
+  27115 | user8685
+  27117 | 
+  27221 | 
+  27958 | 
+  27961 | 
+  27967 | 
+  28004 | Phillip
+  28041 | 
+  28043 | 
+  28059 | 
+  29345 | 
+  29853 | 
+  29854 | 
+  29855 | 
+  29857 | 
+  29859 | 
+  29863 | 
+  29869 | 
+  29876 | 
+  29881 | user1249
+  29978 | 
+  34165 | 
+  34169 | 
+  34225 | 
+  34585 | zourtney
+  34586 | k rey
+  34588 | Moo-Juice
+  34603 | 
+  34640 | 
+  34733 | 
+  36583 | 
+  39149 | 
+  39157 | 
+  40604 | 
+  40646 | user1249
+  40670 | 
+  40678 | 
+  41515 | Paul
+  41516 | David
+  41517 | Elie
+  41518 | Paul Tomblin
+  41519 | Jim C
+  41520 | shahkalpesh
+  41521 | JeeBee
+  41522 | krosenvold
+  41523 | Gamecat
+  41524 | annakata
+  41525 | LJ
+  41526 | Guge
+  41527 | skiphoppy
+  41528 | Russ
+  41529 | Jonathan Schuster
+  41530 | BenAlabaster
+  41531 | Michael Neale
+  41532 | hafizan
+  41533 | Jonik
+  41534 | David Thornley
+  42668 | 
+  42736 | 
+  42862 | 
+  43362 | 
+  43363 | 
+  43365 | 
+  43366 | 
+  44178 | Oded
+  44179 | user13276
+  44180 | Heath Borders
+  44181 | Grant Johnson
+  44182 | Andrew Jahn
+  44183 | pmlarocque
+  44184 | docgnome
+  44185 | Magsol
+  44186 | Paul Reiners
+  44187 | mbishop
+  44188 | Christopher Cashell
+  44189 | kitsune
+  44190 | metadave
+  44191 | stephbu
+  44192 | Swati
+  44193 | Alexandre Victoor
+  44194 | cranley
+  44195 | Joe Corkery
+  44196 | JMack
+  44197 | Jason Etheridge
+  44198 | benefactual
+  44199 | jfm3
+  44200 | Bill the Lizard
+  44201 | user13643
+  44202 | JosephStyons
+  44203 | Lost in Alabama
+  44204 | Aston
+  44205 | ima
+  44206 | Pascal
+  44207 | hellweaver666
+  44208 | Chris Ballance
+  44209 | Marc Gear
+  44210 | Bill K
+  44211 | Sparr
+  44212 | Loren Segal
+  44213 | Daniel
+  44214 | someone
+  44215 | kristof
+  44216 | Brad8118
+  44217 | Darko Veberic
+  44218 | John Kellar
+  44219 | SarekOfVulcan
+  44220 | Levi
+  44221 | callingshotgun
+  44222 | flxkid
+  44223 | gbjbaanb
+  44224 | ElectricDialect
+  44225 | sal
+  44226 | Craig Trader
+  44227 | Martin A
+  44228 | Ross A
+  44229 | eriklane
+  44230 | Lincoln Johnson
+  44231 | Bob Moore
+  44232 | Geekoid
+  44233 | Marijn
+  44234 | Eyesno
+  44235 | RobT
+  44236 | marc
+  44237 | Rob
+  44238 | softpro_sea
+  44239 | terminus
+  44240 | typicalrunt
+  44241 | Joe Skora
+  44242 | Adam
+  44243 | aramiswyler
+  44244 | epatel
+  44245 | Vin
+  44246 | japollock
+  44247 | phreakre
+  44248 | EvilEddie
+  44249 | cmreigrut
+  44250 | snogfish
+  44251 | thismat
+  44252 | Peter GA.
+  44253 | CodeRot
+  44254 | user14128
+  44255 | clavijo
+  44256 | Mogura
+  44257 | Lahur
+  44258 | Harold Bamford
+  44259 | Aethylred
+  44260 | Jesper Hertel
+  44261 | A Non
+  44262 | A Non
+  44263 | noah
+  44264 | knight0323
+  44265 | deworde
+  44266 | Mike
+  44267 | Jeremy
+  44268 | dclaysmith
+  44269 | afgallo
+  44270 | akauppi
+  44271 | shoosh
+  44272 | Josh Segall
+  44273 | Sean
+  44274 | mislav
+  44275 | griefer123
+  44276 | David L Morris
+  44277 | Mitchel Sellers
+  44278 | Babak Ghahremanpour
+  44279 | user14636
+  44280 | Craig
+  44281 | Alex Gartrell
+  44282 | mike511
+  44283 | Steven A. Lowe
+  44284 | cole
+  44285 | Shelley
+  44286 | OldGreyTroll
+  44287 | D Gove
+  44288 | user14563
+  44289 | setatakahashi
+  44290 | SammyO
+  44291 | hoyhoy
+  44292 | Mattew
+  44293 | Coda
+  44294 | Legend
+  44295 | William
+  44296 | jim.grinsfelder
+  44297 | mattlant
+  44298 | Matthew Cole
+  44299 | McBit
+  44300 | Matt
+  44301 | Kevin
+  44302 | Adisak
+  44303 | Jeff Thompson
+  44304 | amadamala
+  44305 | Michael J. Hardy
+  44306 | unwieldy
+  44307 | da5id
+  44308 | azeemarif
+  44309 | unknown (yahoo)
+  44310 | Paul
+  44311 | fnCzar
+  44312 | Friedrich
+  44313 | Kent Beck
+  44314 | Jason Morrison
+  44315 | Robert Gould
+  44316 | Stuart Helwig
+  44317 | kosoant
+  44318 | Anton Orlov
+  44319 | Serafeim
+  44320 | simoncpu
+  44321 | Nithin
+  44322 | kiritsinh parmar
+  44323 | Mario Ortegón
+  44324 | benPearce
+  44325 | Apocalisp
+  44326 | FrankS
+  44327 | Henrik Warne
+  44328 | Symbioxys
+  44329 | petr k.
+  44330 | Ville Laurikari
+  44331 | MBoy
+  44332 | Techboy
+  44333 | jnimo
+  44334 | zgoda
+  44335 | reuven
+  44336 | Neil Burroughs
+  44337 | Scott and the Dev Team
+  44338 | Jason
+  44339 | RWendi
+  44340 | equanimous
+  44341 | Lewis Baumstark
+  44342 | leppie
+  44343 | RotHorseKid
+  44344 | Dirigible
+  44349 | lamcro
+  44351 | darron
+  44352 | workmad3
+  44355 | codebunny
+  44356 | RBS
+  44357 | Primetime
+  44358 | Rob Booth
+  44359 | Gordon Bell
+  44361 | Andr&#233;
+  44363 | Brian
+  44364 | Juan Manuel
+  44366 | nsr81
+  44369 | Nic Wise
+  44370 | Josh
+  44371 | bineteri
+  44373 | Felipe
+  44374 | S.Kumar
+  44375 | Gilles
+  44377 | Vhaerun
+  44378 | David Plumpton
+  44379 | Daniel W
+  44381 | marijne
+  44382 | MADMap
+  44383 | user17613
+  44384 | WACM161
+  44385 | steffenj
+  44387 | JK
+  44391 | chadwick
+  44392 | David
+  44393 | Lark
+  44395 | Brad Osterloo
+  44400 | 
+  44402 | Milan Babuškov
+  44403 | interstar
+  44404 | origin
+  44405 | dwelch
+  44406 | Glenn Block
+  44408 | mbac32768
+  44410 | Steven A. Lowe
+  44411 | Samat Jain
+  44413 | unforgiven3
+  44414 | ferventcoder
+  44415 | ragu.pattabi
+  44416 | DanielHonig
+  44420 | Sean Gough
+  44423 | Michiel
+  44424 | stephenbayer
+  44426 | lajos
+  44427 | mwilkes
+  44429 | ljubomir
+  44434 | Choy
+  44435 | tardate
+  44437 | John Fiala
+  44448 | Optimal Solutions
+  44451 | Karthik Hariharan
+  44458 | John Channing
+  44459 | Russell Bryant
+  44460 | James Strachan
+  44463 | Mamut
+  44465 | GameFreak
+  44466 | VoidPointer
+  44469 | JtR
+  44470 | Bertrand Gorge
+  44472 | Benoît
+  44478 | Samus_
+  44479 | xxxxxxx
+  44480 | Himanshu
+  44483 | mepcotterell
+  44484 | rIPPER
+  44486 | PythonPower
+  44487 | Don Edwards
+  44489 | The Alpha Nerd
+  44490 | Gerardo Contijoch
+  44492 | Oded
+  44493 | Mikey
+  44494 | CodeMonkey
+  44496 | Aikislave
+  44498 | qwerty
+  44499 | TURBOxSPOOL
+  44500 | Ken
+  44501 | fivetwentysix
+  44502 | Evan Moran
+  44505 | Bogdan Gusiev
+  44506 | smok1
+  44507 | Paul Chernoch
+  44508 | Steve
+  44511 | JB King
+  44514 | Pete
+  44515 | OezcanAcar
+  44517 | Steve Wortham
+  44518 | Martin Spamer
+  44520 | TomA
+  44523 | Kiffin
+  44524 | Jonathan
+  44525 | Alex
+  44526 | Binoj Antony
+  44527 | chuckyro
+  44528 | Guy Starbuck
+  44529 | Longpoke
+  44531 | OverClocked
+  44532 | Ed Y.
+  44534 | portoalet
+  44536 | AareP
+  44538 | Marcel
+  44539 | Kimvais
+  44541 | badcat
+  44543 | WishCow
+  44544 | Jamie Keeling
+  44545 | Kevin McKelvin
+  44546 | ATOzTOA
+  44547 | Marc
+  44548 | dfens
+  44549 | wsanville
+  44550 | Molex
+  44551 | nCdy
+  44552 | William Jockusch
+  44553 | mcaaltuntas
+  44554 | Jimmy Lyke
+  44555 | kabado
+  44556 | steven spielberg
+  44557 | stormianrootsolver
+  44558 | Joel Hoff
+  44559 | Joe Zitzelberger
+  44560 | Ed B
+  44561 | Wayne Werner
+  44562 | joe snyder
+  44563 | Kirk Hammett
+  44564 | DeltaRogue
+  44565 | MrOhad
+  44566 | Michael Shopsin
+  44567 | Nils
+  44568 | Carnotaurus
+  44569 | user417069
+  44570 | WeNeedAnswers
+  44571 | Adrian Grigore
+  44572 | Saladin Akara
+  44573 | haylem
+  44574 | mihn
+  44575 | Chris Knight
+  44576 | LarsH
+  44577 | mossplix
+  44578 | Helper Method
+  44579 | Allbite
+  44580 | weymouth
+  44581 | Skatterbrainz
+  44582 | TheFallibleFiend
+  44583 | mazhar kaunain baig
+  44584 | denisk
+  44585 | Gunner
+  44586 | just_name
+  44587 | benhowdle89
+  44588 | James Wiseman
+  44590 | xiao
+  44591 | Yogendra
+  44592 | bestsss
+  44594 | Alan Whitelaw
+  44595 | automaticoo
+  44596 | ThinkCode
+  44597 | Cole Gleason
+  44599 | arcticfox
+  44600 | St3fan
+  44601 | Joep Greuter
+  44602 | antirez
+  44607 | yasith
+  44613 | user15882
+  44641 | user15926
+  44643 | user15929
+  44646 | 
+  44653 | user15962
+  44661 | 
+  44665 | 
+  44684 | 
+  44685 | user15991
+  44687 | 
+  44691 | 
+  44697 | 
+  44699 | user16005
+  44702 | 
+  44703 | user16011
+  44709 | 
+  44714 | user16031
+  44716 | user16034
+  44717 | user16038
+  44719 | 
+  44736 | user16066
+  44739 | 
+  44753 | 
+  44757 | user16108
+  44767 | 
+  44808 | 
+  44811 | 
+  44829 | 
+  44852 | 
+  44858 | 
+  44904 | 
+  44917 | 
+  44937 | 
+  44940 | 
+  44942 | 
+  44945 | 
+  44950 | 
+  44972 | 
+  44991 | 
+  46082 | 
+  46085 | 
+  46087 | 
+  46088 | 
+  46089 | 
+  46090 | 
+  46092 | 
+  46093 | 
+  46095 | 
+  46101 | 
+  46102 | 
+  46106 | 
+  46118 | 
+  46163 | 
+  46170 | 
+  46217 | 
+  46325 | 
+  46329 | 
+  49027 | 
+  49035 | 
+  49046 | 
+  49056 | 
+  49073 | 
+  49719 | 
+  50300 | 
+  50304 | 
+  50305 | 
+  50309 | 
+  50310 | 
+  50321 | 
+  50325 | 
+  50328 | 
+  50331 | 
+  50345 | 
+  50401 | 
+  50412 | 
+  50435 | 
+  51622 | 
+  51660 | 
+  51766 | 
+  51914 | 
+  51915 | 
+  51916 | 
+  51918 | 
+  51921 | 
+  51923 | 
+  51928 | 
+  51929 | 
+  51930 | 
+  51944 | 
+  51948 | 
+  52002 | 
+  52535 | Abafei
+  52536 | Chris Jester-Young
+  52538 | 
+  52539 | 
+  52622 | 
+  52819 | 
+  52824 | 
+  52831 | 
+  52851 | 
+  52868 | 
+  52919 | 
+  52998 | 
+  53000 | Sergio
+  53001 | 
+  53054 | user18768
+  53065 | 
+  53202 | 
+  53234 | 
+  53238 | 
+  53239 | 
+  53241 | 
+  53280 | 
+  53640 | 
+  53660 | 
+  53670 | 
+  53687 | 
+  53717 | 
+  53772 | 
+  53789 | Sameer Patil
+  53790 | Scott
+  53793 | 
+  53801 | 
+  53806 | 
+  53810 | user2567
+  53825 | 
+  53897 | 
+  53908 | 
+  54274 | 
+  54279 | 
+  55096 | 
+  55102 | user1249
+  55924 | 
+  56679 | 
+  56682 | 
+  58087 | Jamie Keeling
+  58088 | JeffE
+  58089 | Unmesh Kondolikar
+  58090 | Steven Jeuris
+  58091 | Robert Levy
+  58092 | user652678
+  58124 | 
+  58771 | 
+  58772 | 
+  58773 | 
+  58780 | 
+  58787 | 
+  58788 | 
+  58790 | 
+  58795 | 
+  58796 | 
+  58801 | 
+  59076 | 
+  59080 | 
+  60977 | 
+  61393 | 
+  61437 | 
+  61454 | 
+  61460 | 
+  61566 | 
+  61668 | 
+  61760 | 
+  61766 | 
+  61767 | 
+  61768 | 
+  61769 | 
+  61777 | 
+  61787 | 
+  61794 | 
+  61800 | 
+  62454 | 
+  62478 | 
+  62482 | 
+  62501 | 
+  62517 | 
+  66710 | 
+  66761 | 
+  67397 | 
+  67412 | 
+  67416 | user22736
+  67421 | 
+  67426 | 
+  67428 | 
+  67437 | 
+  67463 | 
+  67464 | 
+  67665 | user22821
+  68742 | 
+  68745 | 
+  68746 | 
+  68750 | 
+  68751 | 
+  68754 | 
+  68755 | user1249
+  68756 | 
+  68757 | 
+  68767 | 
+  68771 | 
+  68779 | 
+  68786 | 
+  68788 | 
+  68792 | 
+  68802 | 
+  68816 | 
+  68955 | 
+  68987 | 
+  69042 | 
+  69103 | 
+  69116 | 
+  69117 | 
+  69167 | 
+  69189 | 
+  69192 | 
+  69213 | 
+  69216 | 
+  69594 | 
+  70446 | 
+  70450 | 
+  70455 | 
+  70462 | 
+  70490 | 
+  71493 | 
+  71497 | 
+  71500 | 
+  71511 | 
+  71930 | 
+  71936 | 
+  72938 | 
+  72939 | 
+  72940 | 
+  72941 | 
+  72959 | 
+  73113 | 
+  73868 | user8685
+  73875 | 
+  73881 | 
+  73887 | 
+  73890 | 
+  73921 | 
+  73936 | 
+  73957 | 
+  74025 | 
+  74034 | 
+  74058 | 
+  74070 | 
+  74237 | 
+  74242 | 
+  74243 | 
+  74248 | 
+  74392 | 
+  76416 | 
+  76418 | 
+  76427 | 
+  76470 | 
+  76554 | 
+  76680 | 
+  76718 | 
+  76766 | 
+  76803 | 
+  77673 | 
+  77675 | 
+  77681 | 
+  77683 | 
+  78292 | yas4891
+  78293 | gnanz
+  78297 | 
+  78481 | 
+  78483 | user8685
+  78487 | 
+  78489 | 
+  78491 | 
+  78494 | 
+  78497 | 
+  78501 | 
+  78521 | 
+  78533 | 
+  78808 | 
+  79136 | 
+  79139 | 
+  79149 | 
+  79151 | 
+  79160 | user2567
+  79165 | 
+  79192 | 
+  79235 | 
+  80993 | 
+  81032 | 
+  81052 | 
+  81734 | 
+  81745 | 
+  81746 | 
+  81747 | 
+  81749 | user8685
+  81750 | 
+  81752 | 
+  81756 | 
+  81763 | 
+  81778 | 
+  81779 | 
+  81802 | 
+  81803 | 
+  81804 | 
+  81823 | 
+  81841 | 
+  81970 | 
+  81972 | 
+  81973 | 
+  81986 | 
+  82633 | 
+  82641 | 
+  82664 | 
+  82696 | 
+  82697 | 
+  82704 | user1249
+  82733 | 
+  82778 | 
+  82857 | 
+  82984 | 
+  85867 | 
+  85872 | 
+  85874 | 
+  85877 | 
+  85884 | 
+  85895 | 
+  86290 | 
+  86295 | 
+  86299 | 
+  86326 | 
+  86346 | 
+  87559 | 
+  87570 | 
+  87793 | George Cummins
+  87794 | tylermwashburn
+  87796 | 
+  87813 | 
+  88442 | 
+  88445 | 
+  88452 | 
+  90382 | 
+  90537 | 
+  91685 | user2567
+  91686 | 
+  91688 | 
+  91689 | 
+  91693 | 
+  91694 | user29981
+  91697 | 
+  91699 | 
+  91708 | 
+  91709 | 
+  91711 | 
+  91712 | 
+  91717 | 
+  91721 | 
+  91723 | 
+  91724 | 
+  91726 | 
+  92468 | 
+  92492 | 
+  93712 | 
+  93713 | 
+  93714 | 
+  93715 | 
+  93718 | 
+  93719 | 
+  98348 | 
+  98354 | 
+  98372 | 
+  98384 | 
+  98837 | 
+  98838 | 
+  98852 | 
+  98897 | 
+  98965 | 
+  99006 | 
+ 100686 | friol
+ 100687 | Dimitry
+ 100688 | Nemanja Trifunovic
+ 100689 | slim
+ 100690 | Jon Skeet
+ 100691 | Javier
+ 100692 | Jason Baker
+ 100693 | Gerald
+ 100694 | Draemon
+ 100695 | Davide
+ 100697 | Mark Embling
+ 100698 | sleske
+ 100699 | neuro
+ 100700 | Chathuranga Chandrasekara
+ 100701 | olle
+ 100702 | rh0dium
+ 100703 | krishna
+ 100704 | Norman Ramsey
+ 100705 | KevinDeus
+ 100706 | ire_and_curses
+ 100883 | 
+ 100906 | 
+ 100911 | 
+ 100912 | 
+ 100920 | 
+ 100932 | 
+ 100933 | 
+ 100941 | 
+ 101013 | 
+ 101192 | 
+ 101195 | 
+ 101207 | 
+ 101209 | 
+ 101213 | 
+ 101867 | 
+ 101989 | 
+ 101990 | 
+ 101996 | 
+ 102005 | 
+ 102006 | 
+ 102021 | 
+ 102030 | 
+ 102033 | 
+ 102035 | 
+ 102037 | 
+ 102052 | 
+ 102060 | 
+ 102072 | 
+ 102098 | 
+ 102126 | 
+ 102138 | 
+ 102139 | 
+ 102284 | 
+ 102690 | 
+ 102691 | 
+ 102692 | 
+ 102694 | 
+ 102696 | 
+ 102700 | 
+ 102717 | 
+ 102718 | 
+ 102720 | 
+ 102732 | 
+ 102742 | 
+ 102824 | 
+ 102885 | 
+ 102886 | 
+ 102892 | 
+ 102895 | 
+ 102896 | 
+ 102903 | 
+ 102918 | 
+ 102922 | 
+ 102974 | 
+ 103582 | 
+ 103637 | 
+ 103641 | 
+ 103642 | 
+ 103645 | 
+ 103864 | 
+ 103866 | 
+ 103986 | 
+ 104214 | 
+ 104215 | 
+ 104217 | 
+ 104349 | 
+ 104354 | 
+ 104356 | 
+ 104358 | 
+ 104362 | 
+ 104363 | 
+ 104369 | 
+ 104370 | 
+ 104787 | 
+ 105090 | 
+ 105092 | 
+ 105093 | 
+ 105098 | 
+ 105106 | 
+ 105110 | 
+ 105124 | 
+ 105136 | 
+ 105184 | 
+ 105324 | 
+ 105333 | 
+ 105857 | 
+ 105884 | 
+ 105955 | 
+ 105956 | user2567
+ 105978 | 
+ 105990 | 
+ 106002 | 
+ 106936 | 
+ 106942 | 
+ 106943 | 
+ 106947 | 
+ 106948 | 
+ 106981 | nsanders
+ 106982 | schwerwolf
+ 106983 | MagicKat
+ 106984 | Ryan Farley
+ 106985 | Aaron
+ 106986 | moffdub
+ 106987 | theo
+ 106988 | Lucas S.
+ 106989 | Peter Hilton
+ 106990 | BCS
+ 106991 | Charles Graham
+ 106992 | shadit
+ 106993 | brian
+ 106994 | Danimal
+ 106995 | ugasoft
+ 106996 | MarlonRibunal
+ 106997 | BCS
+ 106998 | mmyers
+ 106999 | Nazadus
+ 107000 | Mitchel Sellers
+ 107001 | Max Cantor
+ 107002 | pdavis
+ 107003 | pdavis
+ 107004 | pdavis
+ 107005 | pdavis
+ 107006 | skiphoppy
+ 107007 | CrashCodes
+ 107008 | Jeff Miller
+ 107009 | Brian MacKay
+ 107010 | benPearce
+ 107011 | John Rudy
+ 107012 | Cade Roux
+ 107013 | Gilles
+ 107014 | AlanR
+ 107015 | Asmor
+ 107016 | Brian Kim
+ 107017 | JB King
+ 107018 | origin
+ 107019 | alvin
+ 107020 | Dipak Patel
+ 107021 | Yaba
+ 107022 | bob
+ 107023 | Gastoni
+ 107024 | Ben Collins
+ 107025 | Adam Lerman
+ 107026 | Telos
+ 107027 | Prache
+ 107028 | Marcel Tjandraatmadja
+ 107029 | setatakahashi
+ 107030 | Scott S.
+ 107031 | lewis
+ 107032 | Evgeny
+ 107033 | BrewinBombers
+ 107034 | Zan Lynx
+ 107035 | Kevin Conner
+ 107036 | Ty
+ 107037 | djwisdom
+ 107038 | j.davies
+ 107039 | Bart 
+ 107040 | Bart 
+ 107041 | Aaron Arbery
+ 107042 | minty
+ 107043 | Jerry
+ 107044 | Devin Jeanpierre
+ 107045 | Matt J
+ 107046 | cdv
+ 107047 | Ingrid
+ 107048 | 
+ 107049 | user17224
+ 107050 | Pace
+ 107051 | Bill
+ 107052 | Neverrav
+ 107053 | Dana
+ 107054 | px
+ 107055 | WACM161
+ 107056 | appsbyaaron
+ 107057 | SomeMiscGuy
+ 107058 | unforgiven3
+ 107059 | DennisLaumen
+ 107060 | Dynite
+ 107061 | Dana
+ 107062 | Frank V
+ 107063 | xsaero00
+ 107064 | tidge
+ 107065 | Joshua Carmody
+ 107066 | Sarat
+ 107067 | DanWoolston
+ 107068 | JohnMcG
+ 107069 | ragu.pattabi
+ 107070 | izokurew
+ 107071 | Nathan Koop
+ 107073 | MikeJ
+ 107074 | Chris
+ 107075 | DV
+ 107076 | Kevin Goldsmith
+ 107077 | Jeremy Cantrell
+ 107078 | Kevin Conner
+ 107079 | Jim In Texas
+ 107080 | Alexander
+ 107081 | Zee JollyRoger
+ 107082 | jantox
+ 107083 | daniel
+ 107084 | blackthorn
+ 107085 | Paul Allaire
+ 107086 | Bob Minteer
+ 107087 | Niklas Winde
+ 107088 | Umer Azaz
+ 107089 | MusiGenesis
+ 107090 | prasanna
+ 107091 | 
+ 107092 | pookleblinky
+ 107093 | Jasper Bekkers
+ 107094 | kajaco
+ 107095 | egapotz
+ 107096 | Dylan White
+ 107097 | Srikanth131
+ 107098 | mc6688
+ 107099 | WOPR
+ 107100 | slim
+ 107101 | Steve
+ 107102 | Stefan Thyberg
+ 107103 | BenAlabaster
+ 107104 | user3287
+ 107105 | JonnyBoats
+ 107106 | Robert Sweeney
+ 107107 | Jim Ferrans
+ 107108 | hasalottajava
+ 107109 | Chris S
+ 107110 | Eugene
+ 107111 | niko
+ 107112 | KJP
+ 107113 | sixtyfootersdude
+ 107114 | Lachlan Scott
+ 107115 | Kai Wang
+ 107116 | Ramy
+ 107117 | odez909
+ 107118 | Shota Bakuradze
+ 107123 | 
+ 107125 | 
+ 107129 | 
+ 107132 | 
+ 107185 | 
+ 107215 | 
+ 107229 | 
+ 107517 | 
+ 108554 | 
+ 108563 | 
+ 108568 | 
+ 108716 | 
+ 108758 | 
+ 108780 | 
+ 108786 | 
+ 108787 | 
+ 108788 | 
+ 108836 | 
+ 108947 | 
+ 112944 | 
+ 112957 | 
+ 113755 | 
+ 113798 | 
+ 114479 | 
+ 115289 | 
+ 116186 | TheTXI
+ 116187 | Curt Sampson
+ 116188 | tvanfosson
+ 116189 | JonnyBoats
+ 116190 | John Christensen
+ 116191 | Steerpike
+ 116192 | Seun Osewa
+ 116193 | Igor Oks
+ 116194 | George Jempty
+ 116195 | User
+ 116196 | Nicolas Dorier
+ 116197 | Petros
+ 116198 | JMarsch
+ 116199 | DaveE
+ 116200 | doomspork
+ 116201 | SpliFF
+ 116202 | Mr. Will
+ 117639 | 
+ 117640 | 
+ 117641 | 
+ 117642 | 
+ 117649 | 
+ 117654 | 
+ 117691 | 
+ 117753 | 
+ 117761 | 
+ 117764 | 
+ 117796 | 
+ 118215 | 
+ 118219 | 
+ 118692 | 
+ 118694 | 
+ 119062 | 
+ 119064 | 
+ 119067 | 
+ 119069 | 
+ 120011 | 
+ 120406 | 
+ 121530 | 
+ 121531 | 
+ 121547 | 
+ 121551 | 
+ 121580 | 
+ 121632 | 
+ 121746 | 
+ 122138 | 
+ 122149 | 
+ 127814 | 
+ 128432 | 
+ 128441 | 
+ 128446 | 
+ 128453 | 
+ 128457 | 
+ 128528 | 
+ 130272 | 
+ 130822 | 
+ 130829 | 
+ 130830 | 
+ 130834 | 
+ 130868 | 
+ 130877 | 
+ 131659 | 
+ 131664 | 
+ 132243 | 
+ 132827 | 
+ 133770 | 
+ 133771 | 
+ 133772 | 
+ 133775 | 
+ 133776 | 
+ 133777 | 
+ 133779 | 
+ 133788 | 
+ 133798 | 
+ 133808 | 
+ 133822 | 
+ 133831 | 
+ 133907 | 
+ 133923 | 
+ 133974 | 
+ 134347 | 
+ 134688 | 
+ 134689 | 
+ 134692 | 
+ 135509 | 
+ 135513 | 
+ 135956 | 
+ 139112 | sethcall
+ 139113 | Mark Seemann
+ 139375 | 
+ 140055 | 
+ 140057 | 
+ 140077 | 
+ 140079 | 
+ 140081 | 
+ 140877 | 
+ 140883 | 
+ 140884 | 
+ 140892 | 
+ 140903 | 
+ 140932 | 
+ 141334 | 
+ 141340 | 
+ 141345 | 
+ 141357 | 
+ 141370 | 
+ 141372 | 
+ 141373 | 
+ 141374 | 
+ 141375 | 
+ 141379 | 
+ 141381 | 
+ 142030 | 
+ 142037 | 
+ 142040 | 
+ 142142 | 
+ 142162 | 
+ 144657 | 
+ 144658 | 
+ 144669 | 
+ 144671 | 
+ 145789 | 
+ 145790 | 
+ 145797 | 
+ 145799 | 
+ 145801 | 
+ 145814 | 
+ 145842 | 
+ 145849 | 
+ 145921 | 
+ 145930 | 
+ 148626 | 
+ 148763 | 
+ 148805 | 
+ 151230 | 
+ 151236 | 
+ 151239 | user7071
+ 151240 | 
+ 151241 | 
+ 151242 | 
+ 151250 | 
+ 152511 | 
+ 152734 | 
+ 152736 | 
+ 152738 | 
+ 152801 | 
+ 152822 | 
+ 152845 | 
+ 153061 | 
+ 153076 | 
+ 153615 | 
+ 153616 | 
+ 153617 | 
+ 153618 | 
+ 153667 | 
+ 154240 | 
+ 155490 | 
+ 155492 | 
+ 155497 | 
+ 155500 | 
+ 155503 | 
+ 155505 | 
+ 155519 | 
+ 155533 | 
+ 155538 | 
+ 155579 | 
+ 155581 | 
+ 155593 | 
+ 155755 | 
+ 155779 | 
+ 155780 | 
+ 155787 | 
+ 155810 | 
+ 155840 | 
+ 155996 | 
+ 156291 | 
+ 156292 | 
+ 156293 | 
+ 156294 | 
+ 156343 | 
+ 156360 | 
+ 156365 | 
+ 159587 | 
+ 159755 | 
+ 159756 | 
+ 159758 | 
+ 159759 | 
+ 159760 | 
+ 159766 | 
+ 159768 | 
+ 159774 | 
+ 159782 | 
+ 162610 | 
+ 164430 | 
+ 164432 | 
+ 164437 | 
+ 164439 | 
+ 164460 | 
+ 164526 | 
+ 164573 | 
+ 166342 | 
+ 166962 | 
+ 167186 | 
+ 170648 | 
+ 173612 | 
+ 177860 | 
+ 177863 | 
+ 177864 | 
+ 177865 | 
+ 177871 | 
+ 180820 | 
+ 181495 | 
+ 186140 | 
+ 189148 | 
+ 190043 | 
+ 195979 | 
+ 197135 | 
+ 197137 | 
+ 197164 | 
+ 197169 | 
+ 197183 | 
+ 197199 | 
+ 198147 | 
+ 198151 | 
+ 198153 | 
+ 198155 | 
+ 198156 | 
+ 198227 | 
+ 198823 | 
+ 198828 | 
+ 200226 | 
+ 200241 | 
+ 203270 | 
+ 204291 | 
+ 204293 | 
+ 206682 | 
+ 206723 | 
+ 206801 | 
+ 206811 | 
+ 211216 | 
+ 211453 | 
+ 211454 | 
+ 211469 | 
+ 211612 | 
+ 211624 | 
+ 211629 | 
+ 211652 | 
+ 211654 | 
+ 211655 | 
+ 211660 | 
+ 211672 | 
+ 211684 | 
+ 211695 | 
+ 211697 | 
+ 211702 | 
+ 211707 | 
+ 211709 | 
+ 211714 | 
+ 211720 | 
+ 211722 | 
+ 211725 | 
+ 211743 | 
+ 211765 | 
+ 211782 | 
+ 216210 | 
+ 216930 | 
+ 218731 | 
+ 219102 | 
+ 219108 | 
+ 219113 | 
+ 219124 | 
+ 219808 | 
+ 220677 | 
+ 230284 | 
+ 230597 | user51532
+ 231927 | 
+ 231929 | 
+ 234252 | 
+ 234254 | 
+ 234257 | 
+ 234272 | 
+ 234317 | 
+ 234348 | 
+ 236567 | 
+ 237248 | 
+ 237249 | 
+ 237250 | 
+ 237283 | 
+ 237305 | 
+ 237308 | 
+ 237325 | 
+ 237327 | 
+ 237335 | 
+ 237358 | 
+ 237423 | 
+ 237903 | 
+ 238218 | 
+ 244752 | 
+ 244757 | 
+ 244781 | 
+ 244794 | 
+ 244798 | 
+ 244856 | 
+ 244864 | 
+ 244894 | 
+ 244928 | 
+ 245578 | 
+ 245860 | 
+ 250834 | 
+ 250835 | 
+ 250841 | 
+ 250843 | 
+ 250845 | 
+ 250850 | 
+ 250853 | 
+ 250859 | 
+ 250872 | 
+ 250873 | 
+ 256834 | 
+ 256835 | 
+ 256837 | 
+ 256840 | 
+ 256846 | 
+ 256854 | 
+ 256871 | 
+ 256876 | 
+ 258312 | user2174484
+ 258313 | Bryan Oakley
+ 258314 | sigo
+ 258315 | gurun
+ 258316 | Lunivore
+ 260858 | 
+ 263392 | 
+ 263787 | 
+ 267984 | 
+ 267986 | 
+ 267992 | 
+ 267995 | 
+ 267998 | 
+ 268009 | 
+ 268017 | 
+ 268040 | 
+ 269401 | 
+ 270846 | 
+ 270921 | 
+(1676 rows)
+
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<parent_id=<this.index>parent_id>((beer w/500 a))' order by 1;
+   id   |    owner_display_name     
+--------+---------------------------
+   3091 | 
+   3092 | 
+   3093 | 
+   3099 | 
+   3101 | 
+   3102 | 
+   3103 | 
+   3104 | 
+   3108 | 
+   3111 | 
+   3117 | 
+   3142 | 
+   3150 | 
+   3190 | 
+   3206 | 
+   3215 | 
+   3231 | 
+   3235 | 
+   3236 | 
+   3237 | 
+   3238 | 
+   3239 | 
+   3240 | 
+   3243 | 
+   3245 | 
+   3248 | 
+   3262 | 
+   3267 | 
+   3293 | 
+   3301 | 
+   3311 | 
+   3315 | 
+   3322 | 
+   3328 | 
+   3330 | 
+   3336 | 
+   3337 | 
+   3345 | 
+   3359 | 
+   3444 | 
+   3454 | 
+   3463 | rain
+   3480 | 
+   3503 | 
+   3517 | 
+   3545 | 
+   3706 | 
+   3762 | pakhtana
+   5388 | 
+   5392 | 
+   5393 | 
+   5396 | 
+   5397 | 
+   5403 | 
+   5407 | 
+   5409 | 
+   5412 | 
+   5413 | 
+   5416 | 
+   5421 | 
+   5440 | 
+   5442 | 
+   5446 | 
+   5453 | 
+   5461 | 
+   5462 | 
+   5493 | 
+   5499 | 
+   5505 | 
+   5529 | 
+   5530 | Gepsens
+   5549 | 
+   5574 | vborja
+   5581 | teratios
+   5582 | nick
+   5589 | Matt Michielsen
+   5602 | 
+   5611 | 
+   5621 | 
+   5634 | 
+   5636 | Torvaun
+   5638 | Justin
+   5643 | 
+   5660 | 
+   5662 | 
+   5683 | 
+   5765 | 
+   5766 | 
+   5774 | 
+   5776 | 
+   5855 | 
+   5982 | 
+   5989 | 
+   6023 | jwgrantism
+   6047 | 
+   6061 | 
+   6606 | 
+   7132 | 
+   7137 | 
+   7144 | 
+   7152 | 
+   7154 | 
+   7195 | 
+   7351 | 
+   7518 | 
+   7757 | 
+   8305 | 
+   8306 | 
+   8326 | 
+   8327 | 
+   8329 | 
+   8363 | 
+   8399 | 
+   8404 | 
+   8452 | 
+   8457 | 
+   8471 | 
+   8602 | 
+   8888 | 
+   8938 | 
+   8959 | 
+  10575 | 
+  10577 | 
+  10579 | 
+  10585 | 
+  10607 | 
+  10619 | 
+  10716 | 
+  11017 | 
+  11029 | 
+  11482 | 
+  11572 | 
+  11574 | 
+  11580 | 
+  11601 | 
+  11606 | 
+  11611 | 
+  11614 | 
+  11665 | 
+  11666 | 
+  11672 | 
+  11685 | 
+  11686 | 
+  11708 | 
+  11717 | 
+  11815 | 
+  11816 | 
+  11818 | 
+  11819 | 
+  11828 | 
+  11884 | 
+  11945 | 
+  11946 | 
+  11958 | 
+  12077 | 
+  12079 | 
+  12084 | 
+  12093 | 
+  12097 | 
+  12100 | 
+  12102 | 
+  12113 | 
+  12153 | 
+  12156 | 
+  12158 | avocade
+  12344 | 
+  12351 | 
+  12353 | 
+  14143 | user2567
+  14404 | 
+  14406 | 
+  14723 | 
+  14726 | 
+  14735 | malach
+  14738 | 
+  14743 | 
+  14756 | 
+  14757 | 
+  14761 | 
+  14807 | 
+  14809 | user1249
+  14813 | 
+  14826 | 
+  14877 | 
+  14883 | 
+  14908 | 
+  15760 | 
+  15763 | 
+  15766 | 
+  15767 | 
+  15772 | 
+  15789 | 
+  15792 | 
+  15799 | 
+  15806 | 
+  15815 | 
+  15823 | 
+  16146 | 
+  16303 | 
+  16304 | user2567
+  16305 | 
+  16312 | 
+  16315 | 
+  16317 | 
+  16339 | 
+  16376 | 
+  16377 | 
+  16385 | 
+  16410 | 
+  16413 | 
+  16417 | 
+  16419 | 
+  16421 | 
+  16423 | 
+  16587 | 
+  16663 | 
+  16718 | 
+  16730 | 
+  17399 | 
+  18405 | 
+  18526 | 
+  18557 | 
+  18558 | 
+  19069 | Hans-Eric
+  19331 | 
+  20787 | 
+  20789 | 
+  21580 | 
+  21581 | 
+  21582 | 
+  21583 | 
+  21590 | 
+  21592 | 
+  21643 | 
+  21658 | 
+  21660 | 
+  21673 | 
+  21865 | 
+  23504 | 
+  23516 | 
+  23524 | 
+  23528 | 
+  23531 | 
+  23602 | 
+  23633 | 
+  24165 | 
+  24167 | 
+  24173 | 
+  24200 | 
+  24208 | 
+  24211 | 
+  24233 | 
+  24255 | 
+  24363 | 
+  24364 | 
+  24368 | 
+  24376 | 
+  25400 | 
+  26357 | 
+  26381 | 
+  26406 | 
+  26416 | 
+  26613 | 
+  26614 | 
+  26772 | 
+  26774 | 
+  26800 | 
+  26802 | 
+  26803 | 
+  26817 | 
+  26841 | 
+  26867 | 
+  26876 | 
+  26878 | 
+  26888 | 
+  26900 | 
+  26920 | 
+  26923 | user7714
+  26924 | 
+  27105 | 
+  27110 | 
+  27114 | 
+  27115 | user8685
+  27117 | 
+  27221 | 
+  27958 | 
+  27961 | 
+  27967 | 
+  28004 | Phillip
+  28041 | 
+  28043 | 
+  28059 | 
+  29345 | 
+  29853 | 
+  29854 | 
+  29855 | 
+  29857 | 
+  29859 | 
+  29863 | 
+  29869 | 
+  29876 | 
+  29881 | user1249
+  29978 | 
+  34165 | 
+  34169 | 
+  34225 | 
+  34585 | zourtney
+  34586 | k rey
+  34588 | Moo-Juice
+  34603 | 
+  34640 | 
+  34733 | 
+  36583 | 
+  39149 | 
+  39157 | 
+  40604 | 
+  40646 | user1249
+  40670 | 
+  40678 | 
+  41515 | Paul
+  41516 | David
+  41517 | Elie
+  41518 | Paul Tomblin
+  41519 | Jim C
+  41520 | shahkalpesh
+  41521 | JeeBee
+  41522 | krosenvold
+  41523 | Gamecat
+  41524 | annakata
+  41525 | LJ
+  41526 | Guge
+  41527 | skiphoppy
+  41528 | Russ
+  41529 | Jonathan Schuster
+  41530 | BenAlabaster
+  41531 | Michael Neale
+  41532 | hafizan
+  41533 | Jonik
+  41534 | David Thornley
+  42668 | 
+  42736 | 
+  42862 | 
+  43362 | 
+  43363 | 
+  43365 | 
+  43366 | 
+  44178 | Oded
+  44179 | user13276
+  44180 | Heath Borders
+  44181 | Grant Johnson
+  44182 | Andrew Jahn
+  44183 | pmlarocque
+  44184 | docgnome
+  44185 | Magsol
+  44186 | Paul Reiners
+  44187 | mbishop
+  44188 | Christopher Cashell
+  44189 | kitsune
+  44190 | metadave
+  44191 | stephbu
+  44192 | Swati
+  44193 | Alexandre Victoor
+  44194 | cranley
+  44195 | Joe Corkery
+  44196 | JMack
+  44197 | Jason Etheridge
+  44198 | benefactual
+  44199 | jfm3
+  44200 | Bill the Lizard
+  44201 | user13643
+  44202 | JosephStyons
+  44203 | Lost in Alabama
+  44204 | Aston
+  44205 | ima
+  44206 | Pascal
+  44207 | hellweaver666
+  44208 | Chris Ballance
+  44209 | Marc Gear
+  44210 | Bill K
+  44211 | Sparr
+  44212 | Loren Segal
+  44213 | Daniel
+  44214 | someone
+  44215 | kristof
+  44216 | Brad8118
+  44217 | Darko Veberic
+  44218 | John Kellar
+  44219 | SarekOfVulcan
+  44220 | Levi
+  44221 | callingshotgun
+  44222 | flxkid
+  44223 | gbjbaanb
+  44224 | ElectricDialect
+  44225 | sal
+  44226 | Craig Trader
+  44227 | Martin A
+  44228 | Ross A
+  44229 | eriklane
+  44230 | Lincoln Johnson
+  44231 | Bob Moore
+  44232 | Geekoid
+  44233 | Marijn
+  44234 | Eyesno
+  44235 | RobT
+  44236 | marc
+  44237 | Rob
+  44238 | softpro_sea
+  44239 | terminus
+  44240 | typicalrunt
+  44241 | Joe Skora
+  44242 | Adam
+  44243 | aramiswyler
+  44244 | epatel
+  44245 | Vin
+  44246 | japollock
+  44247 | phreakre
+  44248 | EvilEddie
+  44249 | cmreigrut
+  44250 | snogfish
+  44251 | thismat
+  44252 | Peter GA.
+  44253 | CodeRot
+  44254 | user14128
+  44255 | clavijo
+  44256 | Mogura
+  44257 | Lahur
+  44258 | Harold Bamford
+  44259 | Aethylred
+  44260 | Jesper Hertel
+  44261 | A Non
+  44262 | A Non
+  44263 | noah
+  44264 | knight0323
+  44265 | deworde
+  44266 | Mike
+  44267 | Jeremy
+  44268 | dclaysmith
+  44269 | afgallo
+  44270 | akauppi
+  44271 | shoosh
+  44272 | Josh Segall
+  44273 | Sean
+  44274 | mislav
+  44275 | griefer123
+  44276 | David L Morris
+  44277 | Mitchel Sellers
+  44278 | Babak Ghahremanpour
+  44279 | user14636
+  44280 | Craig
+  44281 | Alex Gartrell
+  44282 | mike511
+  44283 | Steven A. Lowe
+  44284 | cole
+  44285 | Shelley
+  44286 | OldGreyTroll
+  44287 | D Gove
+  44288 | user14563
+  44289 | setatakahashi
+  44290 | SammyO
+  44291 | hoyhoy
+  44292 | Mattew
+  44293 | Coda
+  44294 | Legend
+  44295 | William
+  44296 | jim.grinsfelder
+  44297 | mattlant
+  44298 | Matthew Cole
+  44299 | McBit
+  44300 | Matt
+  44301 | Kevin
+  44302 | Adisak
+  44303 | Jeff Thompson
+  44304 | amadamala
+  44305 | Michael J. Hardy
+  44306 | unwieldy
+  44307 | da5id
+  44308 | azeemarif
+  44309 | unknown (yahoo)
+  44310 | Paul
+  44311 | fnCzar
+  44312 | Friedrich
+  44313 | Kent Beck
+  44314 | Jason Morrison
+  44315 | Robert Gould
+  44316 | Stuart Helwig
+  44317 | kosoant
+  44318 | Anton Orlov
+  44319 | Serafeim
+  44320 | simoncpu
+  44321 | Nithin
+  44322 | kiritsinh parmar
+  44323 | Mario Ortegón
+  44324 | benPearce
+  44325 | Apocalisp
+  44326 | FrankS
+  44327 | Henrik Warne
+  44328 | Symbioxys
+  44329 | petr k.
+  44330 | Ville Laurikari
+  44331 | MBoy
+  44332 | Techboy
+  44333 | jnimo
+  44334 | zgoda
+  44335 | reuven
+  44336 | Neil Burroughs
+  44337 | Scott and the Dev Team
+  44338 | Jason
+  44339 | RWendi
+  44340 | equanimous
+  44341 | Lewis Baumstark
+  44342 | leppie
+  44343 | RotHorseKid
+  44344 | Dirigible
+  44349 | lamcro
+  44351 | darron
+  44352 | workmad3
+  44355 | codebunny
+  44356 | RBS
+  44357 | Primetime
+  44358 | Rob Booth
+  44359 | Gordon Bell
+  44361 | Andr&#233;
+  44363 | Brian
+  44364 | Juan Manuel
+  44366 | nsr81
+  44369 | Nic Wise
+  44370 | Josh
+  44371 | bineteri
+  44373 | Felipe
+  44374 | S.Kumar
+  44375 | Gilles
+  44377 | Vhaerun
+  44378 | David Plumpton
+  44379 | Daniel W
+  44381 | marijne
+  44382 | MADMap
+  44383 | user17613
+  44384 | WACM161
+  44385 | steffenj
+  44387 | JK
+  44391 | chadwick
+  44392 | David
+  44393 | Lark
+  44395 | Brad Osterloo
+  44400 | 
+  44402 | Milan Babuškov
+  44403 | interstar
+  44404 | origin
+  44405 | dwelch
+  44406 | Glenn Block
+  44408 | mbac32768
+  44410 | Steven A. Lowe
+  44411 | Samat Jain
+  44413 | unforgiven3
+  44414 | ferventcoder
+  44415 | ragu.pattabi
+  44416 | DanielHonig
+  44420 | Sean Gough
+  44423 | Michiel
+  44424 | stephenbayer
+  44426 | lajos
+  44427 | mwilkes
+  44429 | ljubomir
+  44434 | Choy
+  44435 | tardate
+  44437 | John Fiala
+  44448 | Optimal Solutions
+  44451 | Karthik Hariharan
+  44458 | John Channing
+  44459 | Russell Bryant
+  44460 | James Strachan
+  44463 | Mamut
+  44465 | GameFreak
+  44466 | VoidPointer
+  44469 | JtR
+  44470 | Bertrand Gorge
+  44472 | Benoît
+  44478 | Samus_
+  44479 | xxxxxxx
+  44480 | Himanshu
+  44483 | mepcotterell
+  44484 | rIPPER
+  44486 | PythonPower
+  44487 | Don Edwards
+  44489 | The Alpha Nerd
+  44490 | Gerardo Contijoch
+  44492 | Oded
+  44493 | Mikey
+  44494 | CodeMonkey
+  44496 | Aikislave
+  44498 | qwerty
+  44499 | TURBOxSPOOL
+  44500 | Ken
+  44501 | fivetwentysix
+  44502 | Evan Moran
+  44505 | Bogdan Gusiev
+  44506 | smok1
+  44507 | Paul Chernoch
+  44508 | Steve
+  44511 | JB King
+  44514 | Pete
+  44515 | OezcanAcar
+  44517 | Steve Wortham
+  44518 | Martin Spamer
+  44520 | TomA
+  44523 | Kiffin
+  44524 | Jonathan
+  44525 | Alex
+  44526 | Binoj Antony
+  44527 | chuckyro
+  44528 | Guy Starbuck
+  44529 | Longpoke
+  44531 | OverClocked
+  44532 | Ed Y.
+  44534 | portoalet
+  44536 | AareP
+  44538 | Marcel
+  44539 | Kimvais
+  44541 | badcat
+  44543 | WishCow
+  44544 | Jamie Keeling
+  44545 | Kevin McKelvin
+  44546 | ATOzTOA
+  44547 | Marc
+  44548 | dfens
+  44549 | wsanville
+  44550 | Molex
+  44551 | nCdy
+  44552 | William Jockusch
+  44553 | mcaaltuntas
+  44554 | Jimmy Lyke
+  44555 | kabado
+  44556 | steven spielberg
+  44557 | stormianrootsolver
+  44558 | Joel Hoff
+  44559 | Joe Zitzelberger
+  44560 | Ed B
+  44561 | Wayne Werner
+  44562 | joe snyder
+  44563 | Kirk Hammett
+  44564 | DeltaRogue
+  44565 | MrOhad
+  44566 | Michael Shopsin
+  44567 | Nils
+  44568 | Carnotaurus
+  44569 | user417069
+  44570 | WeNeedAnswers
+  44571 | Adrian Grigore
+  44572 | Saladin Akara
+  44573 | haylem
+  44574 | mihn
+  44575 | Chris Knight
+  44576 | LarsH
+  44577 | mossplix
+  44578 | Helper Method
+  44579 | Allbite
+  44580 | weymouth
+  44581 | Skatterbrainz
+  44582 | TheFallibleFiend
+  44583 | mazhar kaunain baig
+  44584 | denisk
+  44585 | Gunner
+  44586 | just_name
+  44587 | benhowdle89
+  44588 | James Wiseman
+  44590 | xiao
+  44591 | Yogendra
+  44592 | bestsss
+  44594 | Alan Whitelaw
+  44595 | automaticoo
+  44596 | ThinkCode
+  44597 | Cole Gleason
+  44599 | arcticfox
+  44600 | St3fan
+  44601 | Joep Greuter
+  44602 | antirez
+  44607 | yasith
+  44613 | user15882
+  44641 | user15926
+  44643 | user15929
+  44646 | 
+  44653 | user15962
+  44661 | 
+  44665 | 
+  44684 | 
+  44685 | user15991
+  44687 | 
+  44691 | 
+  44697 | 
+  44699 | user16005
+  44702 | 
+  44703 | user16011
+  44709 | 
+  44714 | user16031
+  44716 | user16034
+  44717 | user16038
+  44719 | 
+  44736 | user16066
+  44739 | 
+  44753 | 
+  44757 | user16108
+  44767 | 
+  44808 | 
+  44811 | 
+  44829 | 
+  44852 | 
+  44858 | 
+  44904 | 
+  44917 | 
+  44937 | 
+  44940 | 
+  44942 | 
+  44945 | 
+  44950 | 
+  44972 | 
+  44991 | 
+  46082 | 
+  46085 | 
+  46087 | 
+  46088 | 
+  46089 | 
+  46090 | 
+  46092 | 
+  46093 | 
+  46095 | 
+  46101 | 
+  46102 | 
+  46106 | 
+  46118 | 
+  46163 | 
+  46170 | 
+  46217 | 
+  46325 | 
+  46329 | 
+  49027 | 
+  49035 | 
+  49046 | 
+  49056 | 
+  49073 | 
+  49719 | 
+  50300 | 
+  50304 | 
+  50305 | 
+  50309 | 
+  50310 | 
+  50321 | 
+  50325 | 
+  50328 | 
+  50331 | 
+  50345 | 
+  50401 | 
+  50412 | 
+  50435 | 
+  51622 | 
+  51660 | 
+  51766 | 
+  51914 | 
+  51915 | 
+  51916 | 
+  51918 | 
+  51921 | 
+  51923 | 
+  51928 | 
+  51929 | 
+  51930 | 
+  51944 | 
+  51948 | 
+  52002 | 
+  52535 | Abafei
+  52536 | Chris Jester-Young
+  52538 | 
+  52539 | 
+  52622 | 
+  52819 | 
+  52824 | 
+  52831 | 
+  52851 | 
+  52868 | 
+  52919 | 
+  52998 | 
+  53000 | Sergio
+  53001 | 
+  53054 | user18768
+  53065 | 
+  53202 | 
+  53234 | 
+  53238 | 
+  53239 | 
+  53241 | 
+  53280 | 
+  53640 | 
+  53660 | 
+  53670 | 
+  53687 | 
+  53717 | 
+  53772 | 
+  53789 | Sameer Patil
+  53790 | Scott
+  53793 | 
+  53801 | 
+  53806 | 
+  53810 | user2567
+  53825 | 
+  53897 | 
+  53908 | 
+  54274 | 
+  54279 | 
+  55096 | 
+  55102 | user1249
+  55924 | 
+  56679 | 
+  56682 | 
+  58087 | Jamie Keeling
+  58088 | JeffE
+  58089 | Unmesh Kondolikar
+  58090 | Steven Jeuris
+  58091 | Robert Levy
+  58092 | user652678
+  58124 | 
+  58771 | 
+  58772 | 
+  58773 | 
+  58780 | 
+  58787 | 
+  58788 | 
+  58790 | 
+  58795 | 
+  58796 | 
+  58801 | 
+  59076 | 
+  59080 | 
+  60977 | 
+  61393 | 
+  61437 | 
+  61454 | 
+  61460 | 
+  61566 | 
+  61668 | 
+  61760 | 
+  61766 | 
+  61767 | 
+  61768 | 
+  61769 | 
+  61777 | 
+  61787 | 
+  61794 | 
+  61800 | 
+  62454 | 
+  62478 | 
+  62482 | 
+  62501 | 
+  62517 | 
+  66710 | 
+  66761 | 
+  67397 | 
+  67412 | 
+  67416 | user22736
+  67421 | 
+  67426 | 
+  67428 | 
+  67437 | 
+  67463 | 
+  67464 | 
+  67665 | user22821
+  68742 | 
+  68745 | 
+  68746 | 
+  68750 | 
+  68751 | 
+  68754 | 
+  68755 | user1249
+  68756 | 
+  68757 | 
+  68767 | 
+  68771 | 
+  68779 | 
+  68786 | 
+  68788 | 
+  68792 | 
+  68802 | 
+  68816 | 
+  68955 | 
+  68987 | 
+  69042 | 
+  69103 | 
+  69116 | 
+  69117 | 
+  69167 | 
+  69189 | 
+  69192 | 
+  69213 | 
+  69216 | 
+  69594 | 
+  70446 | 
+  70450 | 
+  70455 | 
+  70462 | 
+  70490 | 
+  71493 | 
+  71497 | 
+  71500 | 
+  71511 | 
+  71930 | 
+  71936 | 
+  72938 | 
+  72939 | 
+  72940 | 
+  72941 | 
+  72959 | 
+  73113 | 
+  73868 | user8685
+  73875 | 
+  73881 | 
+  73887 | 
+  73890 | 
+  73921 | 
+  73936 | 
+  73957 | 
+  74025 | 
+  74034 | 
+  74058 | 
+  74070 | 
+  74237 | 
+  74242 | 
+  74243 | 
+  74248 | 
+  74392 | 
+  76416 | 
+  76418 | 
+  76427 | 
+  76470 | 
+  76554 | 
+  76680 | 
+  76718 | 
+  76766 | 
+  76803 | 
+  77673 | 
+  77675 | 
+  77681 | 
+  77683 | 
+  78292 | yas4891
+  78293 | gnanz
+  78297 | 
+  78481 | 
+  78483 | user8685
+  78487 | 
+  78489 | 
+  78491 | 
+  78494 | 
+  78497 | 
+  78501 | 
+  78521 | 
+  78533 | 
+  78808 | 
+  79136 | 
+  79139 | 
+  79149 | 
+  79151 | 
+  79160 | user2567
+  79165 | 
+  79192 | 
+  79235 | 
+  80993 | 
+  81032 | 
+  81052 | 
+  81734 | 
+  81745 | 
+  81746 | 
+  81747 | 
+  81749 | user8685
+  81750 | 
+  81752 | 
+  81756 | 
+  81763 | 
+  81778 | 
+  81779 | 
+  81802 | 
+  81803 | 
+  81804 | 
+  81823 | 
+  81841 | 
+  81970 | 
+  81972 | 
+  81973 | 
+  81986 | 
+  82633 | 
+  82641 | 
+  82664 | 
+  82696 | 
+  82697 | 
+  82704 | user1249
+  82733 | 
+  82778 | 
+  82857 | 
+  82984 | 
+  85867 | 
+  85872 | 
+  85874 | 
+  85877 | 
+  85884 | 
+  85895 | 
+  86290 | 
+  86295 | 
+  86299 | 
+  86326 | 
+  86346 | 
+  87559 | 
+  87570 | 
+  87793 | George Cummins
+  87794 | tylermwashburn
+  87796 | 
+  87813 | 
+  88442 | 
+  88445 | 
+  88452 | 
+  90382 | 
+  90537 | 
+  91685 | user2567
+  91686 | 
+  91688 | 
+  91689 | 
+  91693 | 
+  91694 | user29981
+  91697 | 
+  91699 | 
+  91708 | 
+  91709 | 
+  91711 | 
+  91712 | 
+  91717 | 
+  91721 | 
+  91723 | 
+  91724 | 
+  91726 | 
+  92468 | 
+  92492 | 
+  93712 | 
+  93713 | 
+  93714 | 
+  93715 | 
+  93718 | 
+  93719 | 
+  98348 | 
+  98354 | 
+  98372 | 
+  98384 | 
+  98837 | 
+  98838 | 
+  98852 | 
+  98897 | 
+  98965 | 
+  99006 | 
+ 100686 | friol
+ 100687 | Dimitry
+ 100688 | Nemanja Trifunovic
+ 100689 | slim
+ 100690 | Jon Skeet
+ 100691 | Javier
+ 100692 | Jason Baker
+ 100693 | Gerald
+ 100694 | Draemon
+ 100695 | Davide
+ 100697 | Mark Embling
+ 100698 | sleske
+ 100699 | neuro
+ 100700 | Chathuranga Chandrasekara
+ 100701 | olle
+ 100702 | rh0dium
+ 100703 | krishna
+ 100704 | Norman Ramsey
+ 100705 | KevinDeus
+ 100706 | ire_and_curses
+ 100883 | 
+ 100906 | 
+ 100911 | 
+ 100912 | 
+ 100920 | 
+ 100932 | 
+ 100933 | 
+ 100941 | 
+ 101013 | 
+ 101192 | 
+ 101195 | 
+ 101207 | 
+ 101209 | 
+ 101213 | 
+ 101867 | 
+ 101989 | 
+ 101990 | 
+ 101996 | 
+ 102005 | 
+ 102006 | 
+ 102021 | 
+ 102030 | 
+ 102033 | 
+ 102035 | 
+ 102037 | 
+ 102052 | 
+ 102060 | 
+ 102072 | 
+ 102098 | 
+ 102126 | 
+ 102138 | 
+ 102139 | 
+ 102284 | 
+ 102690 | 
+ 102691 | 
+ 102692 | 
+ 102694 | 
+ 102696 | 
+ 102700 | 
+ 102717 | 
+ 102718 | 
+ 102720 | 
+ 102732 | 
+ 102742 | 
+ 102824 | 
+ 102885 | 
+ 102886 | 
+ 102892 | 
+ 102895 | 
+ 102896 | 
+ 102903 | 
+ 102918 | 
+ 102922 | 
+ 102974 | 
+ 103582 | 
+ 103637 | 
+ 103641 | 
+ 103642 | 
+ 103645 | 
+ 103864 | 
+ 103866 | 
+ 103986 | 
+ 104214 | 
+ 104215 | 
+ 104217 | 
+ 104349 | 
+ 104354 | 
+ 104356 | 
+ 104358 | 
+ 104362 | 
+ 104363 | 
+ 104369 | 
+ 104370 | 
+ 104787 | 
+ 105090 | 
+ 105092 | 
+ 105093 | 
+ 105098 | 
+ 105106 | 
+ 105110 | 
+ 105124 | 
+ 105136 | 
+ 105184 | 
+ 105324 | 
+ 105333 | 
+ 105857 | 
+ 105884 | 
+ 105955 | 
+ 105956 | user2567
+ 105978 | 
+ 105990 | 
+ 106002 | 
+ 106936 | 
+ 106942 | 
+ 106943 | 
+ 106947 | 
+ 106948 | 
+ 106981 | nsanders
+ 106982 | schwerwolf
+ 106983 | MagicKat
+ 106984 | Ryan Farley
+ 106985 | Aaron
+ 106986 | moffdub
+ 106987 | theo
+ 106988 | Lucas S.
+ 106989 | Peter Hilton
+ 106990 | BCS
+ 106991 | Charles Graham
+ 106992 | shadit
+ 106993 | brian
+ 106994 | Danimal
+ 106995 | ugasoft
+ 106996 | MarlonRibunal
+ 106997 | BCS
+ 106998 | mmyers
+ 106999 | Nazadus
+ 107000 | Mitchel Sellers
+ 107001 | Max Cantor
+ 107002 | pdavis
+ 107003 | pdavis
+ 107004 | pdavis
+ 107005 | pdavis
+ 107006 | skiphoppy
+ 107007 | CrashCodes
+ 107008 | Jeff Miller
+ 107009 | Brian MacKay
+ 107010 | benPearce
+ 107011 | John Rudy
+ 107012 | Cade Roux
+ 107013 | Gilles
+ 107014 | AlanR
+ 107015 | Asmor
+ 107016 | Brian Kim
+ 107017 | JB King
+ 107018 | origin
+ 107019 | alvin
+ 107020 | Dipak Patel
+ 107021 | Yaba
+ 107022 | bob
+ 107023 | Gastoni
+ 107024 | Ben Collins
+ 107025 | Adam Lerman
+ 107026 | Telos
+ 107027 | Prache
+ 107028 | Marcel Tjandraatmadja
+ 107029 | setatakahashi
+ 107030 | Scott S.
+ 107031 | lewis
+ 107032 | Evgeny
+ 107033 | BrewinBombers
+ 107034 | Zan Lynx
+ 107035 | Kevin Conner
+ 107036 | Ty
+ 107037 | djwisdom
+ 107038 | j.davies
+ 107039 | Bart 
+ 107040 | Bart 
+ 107041 | Aaron Arbery
+ 107042 | minty
+ 107043 | Jerry
+ 107044 | Devin Jeanpierre
+ 107045 | Matt J
+ 107046 | cdv
+ 107047 | Ingrid
+ 107048 | 
+ 107049 | user17224
+ 107050 | Pace
+ 107051 | Bill
+ 107052 | Neverrav
+ 107053 | Dana
+ 107054 | px
+ 107055 | WACM161
+ 107056 | appsbyaaron
+ 107057 | SomeMiscGuy
+ 107058 | unforgiven3
+ 107059 | DennisLaumen
+ 107060 | Dynite
+ 107061 | Dana
+ 107062 | Frank V
+ 107063 | xsaero00
+ 107064 | tidge
+ 107065 | Joshua Carmody
+ 107066 | Sarat
+ 107067 | DanWoolston
+ 107068 | JohnMcG
+ 107069 | ragu.pattabi
+ 107070 | izokurew
+ 107071 | Nathan Koop
+ 107073 | MikeJ
+ 107074 | Chris
+ 107075 | DV
+ 107076 | Kevin Goldsmith
+ 107077 | Jeremy Cantrell
+ 107078 | Kevin Conner
+ 107079 | Jim In Texas
+ 107080 | Alexander
+ 107081 | Zee JollyRoger
+ 107082 | jantox
+ 107083 | daniel
+ 107084 | blackthorn
+ 107085 | Paul Allaire
+ 107086 | Bob Minteer
+ 107087 | Niklas Winde
+ 107088 | Umer Azaz
+ 107089 | MusiGenesis
+ 107090 | prasanna
+ 107091 | 
+ 107092 | pookleblinky
+ 107093 | Jasper Bekkers
+ 107094 | kajaco
+ 107095 | egapotz
+ 107096 | Dylan White
+ 107097 | Srikanth131
+ 107098 | mc6688
+ 107099 | WOPR
+ 107100 | slim
+ 107101 | Steve
+ 107102 | Stefan Thyberg
+ 107103 | BenAlabaster
+ 107104 | user3287
+ 107105 | JonnyBoats
+ 107106 | Robert Sweeney
+ 107107 | Jim Ferrans
+ 107108 | hasalottajava
+ 107109 | Chris S
+ 107110 | Eugene
+ 107111 | niko
+ 107112 | KJP
+ 107113 | sixtyfootersdude
+ 107114 | Lachlan Scott
+ 107115 | Kai Wang
+ 107116 | Ramy
+ 107117 | odez909
+ 107118 | Shota Bakuradze
+ 107123 | 
+ 107125 | 
+ 107129 | 
+ 107132 | 
+ 107185 | 
+ 107215 | 
+ 107229 | 
+ 107517 | 
+ 108554 | 
+ 108563 | 
+ 108568 | 
+ 108716 | 
+ 108758 | 
+ 108780 | 
+ 108786 | 
+ 108787 | 
+ 108788 | 
+ 108836 | 
+ 108947 | 
+ 112944 | 
+ 112957 | 
+ 113755 | 
+ 113798 | 
+ 114479 | 
+ 115289 | 
+ 116186 | TheTXI
+ 116187 | Curt Sampson
+ 116188 | tvanfosson
+ 116189 | JonnyBoats
+ 116190 | John Christensen
+ 116191 | Steerpike
+ 116192 | Seun Osewa
+ 116193 | Igor Oks
+ 116194 | George Jempty
+ 116195 | User
+ 116196 | Nicolas Dorier
+ 116197 | Petros
+ 116198 | JMarsch
+ 116199 | DaveE
+ 116200 | doomspork
+ 116201 | SpliFF
+ 116202 | Mr. Will
+ 117639 | 
+ 117640 | 
+ 117641 | 
+ 117642 | 
+ 117649 | 
+ 117654 | 
+ 117691 | 
+ 117753 | 
+ 117761 | 
+ 117764 | 
+ 117796 | 
+ 118215 | 
+ 118219 | 
+ 118692 | 
+ 118694 | 
+ 119062 | 
+ 119064 | 
+ 119067 | 
+ 119069 | 
+ 120011 | 
+ 120406 | 
+ 121530 | 
+ 121531 | 
+ 121547 | 
+ 121551 | 
+ 121580 | 
+ 121632 | 
+ 121746 | 
+ 122138 | 
+ 122149 | 
+ 127814 | 
+ 128432 | 
+ 128441 | 
+ 128446 | 
+ 128453 | 
+ 128457 | 
+ 128528 | 
+ 130272 | 
+ 130822 | 
+ 130829 | 
+ 130830 | 
+ 130834 | 
+ 130868 | 
+ 130877 | 
+ 131659 | 
+ 131664 | 
+ 132243 | 
+ 132827 | 
+ 133770 | 
+ 133771 | 
+ 133772 | 
+ 133775 | 
+ 133776 | 
+ 133777 | 
+ 133779 | 
+ 133788 | 
+ 133798 | 
+ 133808 | 
+ 133822 | 
+ 133831 | 
+ 133907 | 
+ 133923 | 
+ 133974 | 
+ 134347 | 
+ 134688 | 
+ 134689 | 
+ 134692 | 
+ 135509 | 
+ 135513 | 
+ 135956 | 
+ 139112 | sethcall
+ 139113 | Mark Seemann
+ 139375 | 
+ 140055 | 
+ 140057 | 
+ 140077 | 
+ 140079 | 
+ 140081 | 
+ 140877 | 
+ 140883 | 
+ 140884 | 
+ 140892 | 
+ 140903 | 
+ 140932 | 
+ 141334 | 
+ 141340 | 
+ 141345 | 
+ 141357 | 
+ 141370 | 
+ 141372 | 
+ 141373 | 
+ 141374 | 
+ 141375 | 
+ 141379 | 
+ 141381 | 
+ 142030 | 
+ 142037 | 
+ 142040 | 
+ 142142 | 
+ 142162 | 
+ 144657 | 
+ 144658 | 
+ 144669 | 
+ 144671 | 
+ 145789 | 
+ 145790 | 
+ 145797 | 
+ 145799 | 
+ 145801 | 
+ 145814 | 
+ 145842 | 
+ 145849 | 
+ 145921 | 
+ 145930 | 
+ 148626 | 
+ 148763 | 
+ 148805 | 
+ 151230 | 
+ 151236 | 
+ 151239 | user7071
+ 151240 | 
+ 151241 | 
+ 151242 | 
+ 151250 | 
+ 152511 | 
+ 152734 | 
+ 152736 | 
+ 152738 | 
+ 152801 | 
+ 152822 | 
+ 152845 | 
+ 153061 | 
+ 153076 | 
+ 153615 | 
+ 153616 | 
+ 153617 | 
+ 153618 | 
+ 153667 | 
+ 154240 | 
+ 155490 | 
+ 155492 | 
+ 155497 | 
+ 155500 | 
+ 155503 | 
+ 155505 | 
+ 155519 | 
+ 155533 | 
+ 155538 | 
+ 155579 | 
+ 155581 | 
+ 155593 | 
+ 155755 | 
+ 155779 | 
+ 155780 | 
+ 155787 | 
+ 155810 | 
+ 155840 | 
+ 155996 | 
+ 156291 | 
+ 156292 | 
+ 156293 | 
+ 156294 | 
+ 156343 | 
+ 156360 | 
+ 156365 | 
+ 159587 | 
+ 159755 | 
+ 159756 | 
+ 159758 | 
+ 159759 | 
+ 159760 | 
+ 159766 | 
+ 159768 | 
+ 159774 | 
+ 159782 | 
+ 162610 | 
+ 164430 | 
+ 164432 | 
+ 164437 | 
+ 164439 | 
+ 164460 | 
+ 164526 | 
+ 164573 | 
+ 166342 | 
+ 166962 | 
+ 167186 | 
+ 170648 | 
+ 173612 | 
+ 177860 | 
+ 177863 | 
+ 177864 | 
+ 177865 | 
+ 177871 | 
+ 180820 | 
+ 181495 | 
+ 186140 | 
+ 189148 | 
+ 190043 | 
+ 195979 | 
+ 197135 | 
+ 197137 | 
+ 197164 | 
+ 197169 | 
+ 197183 | 
+ 197199 | 
+ 198147 | 
+ 198151 | 
+ 198153 | 
+ 198155 | 
+ 198156 | 
+ 198227 | 
+ 198823 | 
+ 198828 | 
+ 200226 | 
+ 200241 | 
+ 203270 | 
+ 204291 | 
+ 204293 | 
+ 206682 | 
+ 206723 | 
+ 206801 | 
+ 206811 | 
+ 211216 | 
+ 211453 | 
+ 211454 | 
+ 211469 | 
+ 211612 | 
+ 211624 | 
+ 211629 | 
+ 211652 | 
+ 211654 | 
+ 211655 | 
+ 211660 | 
+ 211672 | 
+ 211684 | 
+ 211695 | 
+ 211697 | 
+ 211702 | 
+ 211707 | 
+ 211709 | 
+ 211714 | 
+ 211720 | 
+ 211722 | 
+ 211725 | 
+ 211743 | 
+ 211765 | 
+ 211782 | 
+ 216210 | 
+ 216930 | 
+ 218731 | 
+ 219102 | 
+ 219108 | 
+ 219113 | 
+ 219124 | 
+ 219808 | 
+ 220677 | 
+ 230284 | 
+ 230597 | user51532
+ 231927 | 
+ 231929 | 
+ 234252 | 
+ 234254 | 
+ 234257 | 
+ 234272 | 
+ 234317 | 
+ 234348 | 
+ 236567 | 
+ 237248 | 
+ 237249 | 
+ 237250 | 
+ 237283 | 
+ 237305 | 
+ 237308 | 
+ 237325 | 
+ 237327 | 
+ 237335 | 
+ 237358 | 
+ 237423 | 
+ 237903 | 
+ 238218 | 
+ 244752 | 
+ 244757 | 
+ 244781 | 
+ 244794 | 
+ 244798 | 
+ 244856 | 
+ 244864 | 
+ 244894 | 
+ 244928 | 
+ 245578 | 
+ 245860 | 
+ 250834 | 
+ 250835 | 
+ 250841 | 
+ 250843 | 
+ 250845 | 
+ 250850 | 
+ 250853 | 
+ 250859 | 
+ 250872 | 
+ 250873 | 
+ 256834 | 
+ 256835 | 
+ 256837 | 
+ 256840 | 
+ 256846 | 
+ 256854 | 
+ 256871 | 
+ 256876 | 
+ 258312 | user2174484
+ 258313 | Bryan Oakley
+ 258314 | sigo
+ 258315 | gurun
+ 258316 | Lunivore
+ 260858 | 
+ 263392 | 
+ 263787 | 
+ 267984 | 
+ 267986 | 
+ 267992 | 
+ 267995 | 
+ 267998 | 
+ 268009 | 
+ 268017 | 
+ 268040 | 
+ 269401 | 
+ 270846 | 
+ 270921 | 
+(1676 rows)
+
