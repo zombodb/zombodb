@@ -30,7 +30,7 @@
 #include "zdb_interface.h"
 
 
-#define MAX_BATCH_SIZE 1024 * 1024 * 8
+#define MAX_BATCH_SIZE 1024 * 1024 * 2
 
 typedef struct
 {
