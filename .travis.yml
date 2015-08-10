@@ -9,14 +9,32 @@ before_install:
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
   - sudo apt-get install rpm
+  - sudo apt-get install elasticsearch
   - sudo /etc/init.d/postgresql stop
   - sudo apt-get remove -y postgresql-9.4
+  - sudo apt-get remove -y curl
   - sudo apt-get install -y postgresql-server-dev-9.3
-  - sudo /etc/init.d/postgresql start 9.3
-
-install:
-# from: https://github.com/moul/travis-docker
-  - curl -sLo - https://raw.githubusercontent.com/moul/travis-docker/master/install.sh | sh -xe
 
 script:
-  - ./run mvn clean install
+  - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
+  - export WHERE=`pwd`
+  - mvn clean install
+  - tar xzf postgres/src/main/docker/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
+  - cd curl-7.43.0
+  - ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
+  - make && sudo make install
+  - sudo ldconfig && sudo ldconfig
+  - cd ..
+  - cd postgres
+  - make && sudo make install
+  - ldd zombodb.so
+  - sudo mkdir /usr/lib/postgresql/9.3/lib/plugins
+  - sudo ln -s /usr/lib/postgresql/9.3/lib/zombodb.so /usr/lib/postgresql/9.3/lib/plugins/zombodb.so
+  - sudo src/main/shell/hack-configs-for-travisci.sh
+  - sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-plugin-${VERSION}.zip
+  - sudo /etc/init.d/elasticsearch start
+  - sudo /etc/init.d/postgresql start 9.3
+  - sudo sleep 10
+  - make installcheck
+  - if [ -f regression.diffs ] ; then cat regression.diffs ;sudo cat /var/log/postgresql/*.log /var/log/elasticsearch/*.log ;  fi
+  - df -h
