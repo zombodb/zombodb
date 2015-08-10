@@ -6,6 +6,14 @@ env:
   - BUILD_SYSTEM=travis
 
 before_install:
+before_install:
+  - sudo service --status-all
+  - sudo free -m -t
+  - sudo /etc/init.d/mysql stop
+  - sudo /etc/init.d/postgresql stop
+  - sudo /etc/init.d/couchdb stop
+  - sudo /etc/init.d/redis-server stop
+
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
   - sudo apt-get install rpm
@@ -14,10 +22,6 @@ before_install:
   - sudo apt-get remove -y postgresql-9.4
   - sudo apt-get remove -y curl
   - sudo apt-get install -y postgresql-server-dev-9.3
-  - sudo dd if=/dev/zero of=/swapfile1 bs=1024 count=5242880
-  - sudo chown root:root /swapfile1 && sudho chmod 0600 /swapfile1
-  - sudo mkswap /swapfile1
-  - sudo swapon /swapfile1
 
 script:
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
