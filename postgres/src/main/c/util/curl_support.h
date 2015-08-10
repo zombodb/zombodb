@@ -23,6 +23,7 @@
 
 #define MAX_CURL_HANDLES 12
 typedef struct MultiRestState {
+	int nhandles;
 	CURL *handles[MAX_CURL_HANDLES];
 	char *errorbuffs[MAX_CURL_HANDLES];
 	StringInfo postDatas[MAX_CURL_HANDLES];

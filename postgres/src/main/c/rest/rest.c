@@ -62,12 +62,16 @@ static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlno
     return 0;
 }
 
-void rest_multi_init(MultiRestState *state) {
+void rest_multi_init(MultiRestState *state, int nhandles) {
     int i;
 
+	if (nhandles > MAX_CURL_HANDLES)
+		elog(ERROR, "Number of curl handles (%d) is larger than max (%d)", nhandles, MAX_CURL_HANDLES);
+
+	state->nhandles = nhandles;
     state->multi_handle = curl_multi_init();
-    state->available = MAX_CURL_HANDLES;
-    for (i=0; i<MAX_CURL_HANDLES; i++) {
+    state->available = nhandles;
+    for (i=0; i<nhandles; i++) {
         state->handles[i] = NULL;
         state->errorbuffs[i] = NULL;
         state->postDatas[i] = NULL;
@@ -85,7 +89,7 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
         rest_multi_partial_cleanup(state, false, false);
 
     if (state->available > 0) {
-        for (i = 0; i < MAX_CURL_HANDLES; i++) {
+        for (i = 0; i < state->nhandles; i++) {
             if (state->handles[i] == NULL) {
                 CURL *curl;
                 char *errorbuff;
@@ -138,7 +142,7 @@ bool rest_multi_is_available(MultiRestState *state) {
 
 	/* Has something finished? */
 	curl_multi_perform(multi_handle, &still_running);
-	if (still_running < MAX_CURL_HANDLES)
+	if (still_running < state->nhandles)
 		return true;
 
 	/* Not yet, so wait for some action to be performed by curl */
@@ -148,7 +152,7 @@ bool rest_multi_is_available(MultiRestState *state) {
 
 	/* see if something has finished */
 	curl_multi_perform(multi_handle, &still_running);
-	return still_running < MAX_CURL_HANDLES;
+	return still_running < state->nhandles;
 }
 
 bool rest_multi_all_done(MultiRestState *state) {
@@ -170,7 +174,7 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
 
             curl_multi_remove_handle(state->multi_handle, handle);
 
-            for (i=0; i<MAX_CURL_HANDLES; i++) {
+            for (i=0; i<state->nhandles; i++) {
                 if (state->handles[i] == handle) {
                     long response_code = 0;
 
@@ -216,7 +220,7 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
     if (finalize) {
         curl_multi_cleanup(state->multi_handle);
         state->multi_handle = NULL;
-		state->available = MAX_CURL_HANDLES;
+		state->available = state->nhandles;
     }
 }
 

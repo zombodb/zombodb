@@ -97,6 +97,7 @@ void zdb_index_init(void)
 	add_int_reloption(RELOPT_KIND_ZDB, "shards", "The number of shared for the index", 5, 1, 32768);
 	add_int_reloption(RELOPT_KIND_ZDB, "replicas", "The default number of replicas for the index", 1, 1, 32768);
 	add_bool_reloption(RELOPT_KIND_ZDB, "noxact", "Disable transaction tracking for this index", false);
+	add_int_reloption(RELOPT_KIND_ZDB, "bulk_concurrency", "The maximum number of concurrent _bulk API requests", 12, 1, 12);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
@@ -123,6 +124,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->options		 = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
 
 	desc->searchPreference = ZDBIndexOptionsGetSearchPreference(indexRel);
+	desc->bulk_concurrency = ZDBIndexOptionsGetBulkConcurrency(indexRel);
 
 	if (desc->isShadow)
 	{

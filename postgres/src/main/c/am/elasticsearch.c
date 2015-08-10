@@ -69,7 +69,7 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
 		data->nrequests		  = 0;
 		batchInsertDataList = lappend(batchInsertDataList, data);
 
-		rest_multi_init(data->rest);
+		rest_multi_init(data->rest, indexDescriptor->bulk_concurrency);
 	}
 
 	return data;
