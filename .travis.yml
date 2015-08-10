@@ -35,7 +35,6 @@ script:
   - sudo /etc/init.d/elasticsearch start
   - sudo /etc/init.d/postgresql start 9.3
   - sudo sleep 10
-  - psql template1 -c "SHOW ALL;"
   - make installcheck
   - if [ -f regression.diffs ] ; then cat regression.diffs ;sudo cat /var/log/postgresql/*.log /var/log/elasticsearch/*.log ;  fi
   - df -h
