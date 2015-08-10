@@ -30,8 +30,6 @@
 #include "zdb_interface.h"
 
 
-#define MAX_BATCH_SIZE 1024 * 1024 * 2
-
 typedef struct
 {
 	ZDBIndexDescriptor *indexDescriptor;
@@ -697,7 +695,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 	appendBatchInsertData(indexDescriptor, ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch->bulk);
 	batch->nprocessed++;
 
-	if (batch->bulk->len > MAX_BATCH_SIZE)
+	if (batch->bulk->len > indexDescriptor->batch_size)
 	{
 		StringInfo endpoint = makeStringInfo();
 		int idx;
@@ -836,7 +834,7 @@ void elasticsearch_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xac
 				break;
 		}
 
-		if (bulk->len > MAX_BATCH_SIZE)
+		if (bulk->len > indexDescriptor->batch_size)
 		{
 			elog(LOG, "POSTING %d bytes for xact data during COMMIT, batch #%d", bulk->len, batchno);
 			appendStringInfo(endpoint, "%s/%s/xact/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);

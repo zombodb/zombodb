@@ -34,6 +34,7 @@ typedef struct
 	int   replicas;
 	bool  noxact;
 	int   bulk_concurrency;
+	int   batch_size;
 } ZDBIndexOptions;
 
 
@@ -65,6 +66,9 @@ typedef struct
 #define ZDBIndexOptionsGetBulkConcurrency(relation) \
 	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->bulk_concurrency : 12
 
+#define ZDBIndexOptionsGetBatchSize(relation) \
+	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->batch_size : 12
+
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
@@ -87,6 +91,7 @@ typedef struct
 
 	char *searchPreference;
 	int bulk_concurrency;
+	int batch_size;
 
 	ZDBIndexImplementation *implementation;
 }                                     ZDBIndexDescriptor;
