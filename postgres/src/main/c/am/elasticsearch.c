@@ -653,7 +653,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"xact\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"data\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
-		if (request->len >= MAX_BATCH_SIZE)
+		if (request->len >= indexDescriptor->batch_size)
 		{
 			response = rest_call("POST", endpoint->data, request);
 			checkForBulkError(response, "delete");
