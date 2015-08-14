@@ -30,8 +30,6 @@
 #include "zdb_interface.h"
 
 
-#define MAX_BATCH_SIZE 1024 * 1024 * 8
-
 typedef struct
 {
 	ZDBIndexDescriptor *indexDescriptor;
@@ -69,7 +67,7 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
 		data->nrequests		  = 0;
 		batchInsertDataList = lappend(batchInsertDataList, data);
 
-		rest_multi_init(data->rest);
+		rest_multi_init(data->rest, indexDescriptor->bulk_concurrency);
 	}
 
 	return data;
@@ -646,20 +644,31 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	StringInfo response;
 	ListCell *lc;
 
+	appendStringInfo(endpoint, "%s/%s/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+
 	foreach(lc, itemPointers)
 	{
 		ItemPointerData *item = lfirst(lc);
 
 		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"xact\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"data\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+
+		if (request->len >= indexDescriptor->batch_size)
+		{
+			response = rest_call("POST", endpoint->data, request);
+			checkForBulkError(response, "delete");
+
+			resetStringInfo(request);
+			freeStringInfo(response);
+		}
 	}
 
-	appendStringInfo(endpoint, "%s/%s/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("POST", endpoint->data, request);
+	if (request->len > 0)
+	{
+		response = rest_call("POST", endpoint->data, request);
+		checkForBulkError(response, "delete");
+	}
 
-	checkForBulkError(response, "delete");
-
-	freeStringInfo(response);
 	freeStringInfo(endpoint);
 	freeStringInfo(request);
 }
@@ -697,7 +706,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 	appendBatchInsertData(indexDescriptor, ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch->bulk);
 	batch->nprocessed++;
 
-	if (batch->bulk->len > MAX_BATCH_SIZE)
+	if (batch->bulk->len > indexDescriptor->batch_size)
 	{
 		StringInfo endpoint = makeStringInfo();
 		int idx;
@@ -836,7 +845,7 @@ void elasticsearch_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xac
 				break;
 		}
 
-		if (bulk->len > MAX_BATCH_SIZE)
+		if (bulk->len > indexDescriptor->batch_size)
 		{
 			elog(LOG, "POSTING %d bytes for xact data during COMMIT, batch #%d", bulk->len, batchno);
 			appendStringInfo(endpoint, "%s/%s/xact/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);

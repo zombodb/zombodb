@@ -22,15 +22,18 @@ The `zdb(table)` construct is required and causes the index to be a _functional 
 The `WITH` settings are:
 
 ### Basic Settings
-- `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.
+- `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).
 - `shards` **optional**:  The number of Elasticsearch shards to use.  The default is `5`.  Changing this value requires a `REINDEX` before the new value becomes live.
 - `replicas` **optional**:  The number of Elasticsearch replicas to use.  The default is `1`.  Changing this value requires a `REINDEX` before the new value becomes live.  In the case of `replicas`, this is a limition of ZomboDB that may be lifted in the future.
-- `preference` **optional**:  The Elasticsearch [search preference](https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-preference.html) to use.  The default is `null`, meaning no search preference is used.
 
 ### Advanced Settings
 - `options` **optional**:  `options` is a ZomboDB-specific string that allows you to define how this index relates to other indexes.  This is an advanced-use feature and is documented [here](INDEX-OPTIONS.md).
 - `shadow` **optional** (mutually exclusive with `url`): The name of an existing ZomboDB index that this index should use, but likely with a different set of options.  This too is an [advanced-use](INDEX-OPTIONS.md) feature.
 
+### Operational Settings
+- `preference` **optional**:  The Elasticsearch [search preference](https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-preference.html) to use.  The default is `null`, meaning no search preference is used.
+- `batch_concurrency` **optional**:  Specifies the maximum number of concurrent HTTP requests, per Postgres backend, to use when making "batch" changes, which include CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE statements.  The default is `12` and allowed values are in the set `[1..12]`
+- `batch_size` **optional**:  Specifies the size, in bytes, for batch POST data.  Affects CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE, and VACUUM statements.  The default is `8388608` bytes (8MB) and allowed values are `[1k..64MB]`.
 
 ## DROP INDEX
 

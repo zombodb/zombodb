@@ -11,7 +11,7 @@ COPY curl-7.43.0.tar.gz /usr/local/src/
 WORKDIR /usr/local/src/
 RUN tar xzf curl-7.43.0.tar.gz
 WORKDIR /usr/local/src/curl-7.43.0/
-RUN ./configure --with-ssl \
+RUN ./configure --without-ssl \
    --disable-threaded-resolver \
    --disable-dict \
    --disable-file \
