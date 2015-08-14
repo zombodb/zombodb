@@ -100,7 +100,7 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
                 state->postDatas[i] = postData;
                 response = state->responses[i] = makeStringInfo();
 
-                curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* elasticsearch tends to hang after reusing a connection around 8190 times */
+                curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
                 curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
                 curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
                 curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
@@ -232,7 +232,7 @@ StringInfo rest_call(char *method, char *url, StringInfo postData)
 
     if (GLOBAL_CURL_INSTANCE) {
 		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_SHARE, GLOBAL_CURL_SHARED_STATE);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_FORBID_REUSE, 0L);   /* allow connections to be reused */
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
 		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
 		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PROGRESSFUNCTION, curl_progress_func);   /* to go here so we can detect a ^C within postgres */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
