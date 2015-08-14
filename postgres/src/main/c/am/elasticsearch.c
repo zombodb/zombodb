@@ -646,20 +646,31 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	StringInfo response;
 	ListCell *lc;
 
+	appendStringInfo(endpoint, "%s/%s/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+
 	foreach(lc, itemPointers)
 	{
 		ItemPointerData *item = lfirst(lc);
 
 		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"xact\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"data\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+
+		if (request->len >= MAX_BATCH_SIZE)
+		{
+			response = rest_call("POST", endpoint->data, request);
+			checkForBulkError(response, "delete");
+
+			resetStringInfo(request);
+			freeStringInfo(response);
+		}
 	}
 
-	appendStringInfo(endpoint, "%s/%s/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("POST", endpoint->data, request);
+	if (request->len > 0)
+	{
+		response = rest_call("POST", endpoint->data, request);
+		checkForBulkError(response, "delete");
+	}
 
-	checkForBulkError(response, "delete");
-
-	freeStringInfo(response);
 	freeStringInfo(endpoint);
 	freeStringInfo(request);
 }
