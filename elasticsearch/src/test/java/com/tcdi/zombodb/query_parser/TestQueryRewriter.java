@@ -558,9 +558,7 @@ public class TestQueryRewriter {
                 "            \"span_multi\" : {\n" +
                 "              \"match\" : {\n" +
                 "                \"prefix\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"prefix\" : \"this\"\n" +
-                "                  }\n" +
+                "                  \"_all\" : \"this\"\n" +
                 "                }\n" +
                 "              }\n" +
                 "            }\n" +
@@ -623,9 +621,7 @@ public class TestQueryRewriter {
                 "            \"span_multi\" : {\n" +
                 "              \"match\" : {\n" +
                 "                \"prefix\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"prefix\" : \"this\"\n" +
-                "                  }\n" +
+                "                  \"_all\" : \"this\"\n" +
                 "                }\n" +
                 "              }\n" +
                 "            }\n" +
@@ -750,9 +746,7 @@ public class TestQueryRewriter {
                 "            \"span_multi\" : {\n" +
                 "              \"match\" : {\n" +
                 "                \"wildcard\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"wildcard\" : \"wild*card\"\n" +
-                "                  }\n" +
+                "                  \"_all\" : \"wild*card\"\n" +
                 "                }\n" +
                 "              }\n" +
                 "            }\n" +
@@ -792,9 +786,7 @@ public class TestQueryRewriter {
                 "            \"span_multi\" : {\n" +
                 "              \"match\" : {\n" +
                 "                \"wildcard\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"wildcard\" : \"wild*card\"\n" +
-                "                  }\n" +
+                "                  \"_all\" : \"wild*card\"\n" +
                 "                }\n" +
                 "              }\n" +
                 "            }\n" +
@@ -808,9 +800,7 @@ public class TestQueryRewriter {
                 "            \"span_multi\" : {\n" +
                 "              \"match\" : {\n" +
                 "                \"wildcard\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"wildcard\" : \"w*ns\"\n" +
-                "                  }\n" +
+                "                  \"_all\" : \"w*ns\"\n" +
                 "                }\n" +
                 "              }\n" +
                 "            }\n" +
@@ -850,9 +840,7 @@ public class TestQueryRewriter {
                 "            \"span_multi\" : {\n" +
                 "              \"match\" : {\n" +
                 "                \"wildcard\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"wildcard\" : \"wild*card\"\n" +
-                "                  }\n" +
+                "                  \"_all\" : \"wild*card\"\n" +
                 "                }\n" +
                 "              }\n" +
                 "            }\n" +
@@ -866,9 +854,7 @@ public class TestQueryRewriter {
                 "            \"span_multi\" : {\n" +
                 "              \"match\" : {\n" +
                 "                \"wildcard\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"wildcard\" : \"w*ns\"\n" +
-                "                  }\n" +
+                "                  \"_all\" : \"w*ns\"\n" +
                 "                }\n" +
                 "              }\n" +
                 "            }\n" +
@@ -1066,9 +1052,7 @@ public class TestQueryRewriter {
                         "            \"span_multi\" : {\n" +
                         "              \"match\" : {\n" +
                         "                \"prefix\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"prefix\" : \"note\"\n" +
-                        "                  }\n" +
+                        "                  \"phrase_field\" : \"note\"\n" +
                         "                }\n" +
                         "              }\n" +
                         "            }\n" +
@@ -1112,9 +1096,7 @@ public class TestQueryRewriter {
                         "            \"span_multi\" : {\n" +
                         "              \"match\" : {\n" +
                         "                \"wildcard\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"wildcard\" : \"note*s\"\n" +
-                        "                  }\n" +
+                        "                  \"phrase_field\" : \"note*s\"\n" +
                         "                }\n" +
                         "              }\n" +
                         "            }\n" +
@@ -1464,9 +1446,7 @@ public class TestQueryRewriter {
                         "            \"span_multi\" : {\n" +
                         "              \"match\" : {\n" +
                         "                \"wildcard\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"wildcard\" : \"-?\"\n" +
-                        "                  }\n" +
+                        "                  \"phrase_field\" : \"-?\"\n" +
                         "                }\n" +
                         "              }\n" +
                         "            }\n" +
@@ -1540,9 +1520,7 @@ public class TestQueryRewriter {
                         "            \"span_multi\" : {\n" +
                         "              \"match\" : {\n" +
                         "                \"prefix\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"prefix\" : \"o\"\n" +
-                        "                  }\n" +
+                        "                  \"phrase_field\" : \"o\"\n" +
                         "                }\n" +
                         "              }\n" +
                         "            }\n" +
@@ -1616,9 +1594,7 @@ public class TestQueryRewriter {
                         "            \"span_multi\" : {\n" +
                         "              \"match\" : {\n" +
                         "                \"wildcard\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"wildcard\" : \"i?\"\n" +
-                        "                  }\n" +
+                        "                  \"phrase_field\" : \"i?\"\n" +
                         "                }\n" +
                         "              }\n" +
                         "            }\n" +
@@ -1723,9 +1699,7 @@ public class TestQueryRewriter {
                         "                \"span_multi\" : {\n" +
                         "                  \"match\" : {\n" +
                         "                    \"prefix\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"prefix\" : \"01\"\n" +
-                        "                      }\n" +
+                        "                      \"phrase_field\" : \"01\"\n" +
                         "                    }\n" +
                         "                  }\n" +
                         "                }\n" +
@@ -1833,9 +1807,7 @@ public class TestQueryRewriter {
                         "    \"filter\" : {\n" +
                         "      \"query\" : {\n" +
                         "        \"wildcard\" : {\n" +
-                        "          \"exact_field\" : {\n" +
-                        "            \"wildcard\" : \"bob* dol*\"\n" +
-                        "          }\n" +
+                        "          \"exact_field\" : \"bob* dol*\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    }\n" +
@@ -2028,9 +2000,7 @@ public class TestQueryRewriter {
                         "                    \"span_multi\" : {\n" +
                         "                      \"match\" : {\n" +
                         "                        \"prefix\" : {\n" +
-                        "                          \"phrase_field\" : {\n" +
-                        "                            \"prefix\" : \"01\"\n" +
-                        "                          }\n" +
+                        "                          \"phrase_field\" : \"01\"\n" +
                         "                        }\n" +
                         "                      }\n" +
                         "                    }\n" +
@@ -3624,17 +3594,17 @@ public class TestQueryRewriter {
                         "         RightField (value=post_id)\n" +
                         "   And\n" +
                         "      Expansion\n" +
-                        "         comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
-                        "            LeftField (value=id)\n" +
-                        "            IndexName (value=schema.so_comments.idxso_comments)\n" +
-                        "            RightField (value=post_id)\n" +
-                        "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=schema.so_comments.idxso_comments)\n" +
-                        "      Expansion\n" +
                         "         user_data:(owner_user_id=<schema.so_users.idxso_users>id)\n" +
                         "            LeftField (value=owner_user_id)\n" +
                         "            IndexName (value=schema.so_users.idxso_users)\n" +
                         "            RightField (value=id)\n" +
-                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=schema.so_users.idxso_users)\n",
+                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=schema.so_users.idxso_users)\n" +
+                        "      Expansion\n" +
+                        "         comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
+                        "            LeftField (value=id)\n" +
+                        "            IndexName (value=schema.so_comments.idxso_comments)\n" +
+                        "            RightField (value=post_id)\n" +
+                        "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=schema.so_comments.idxso_comments)\n",
                 tree);
     }
 

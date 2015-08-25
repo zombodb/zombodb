@@ -152,17 +152,13 @@
                         "should" : [ {
                           "query" : {
                             "wildcard" : {
-                              "fulltext_field" : {
-                                "wildcard" : "*wildcard"
-                              }
+                              "fulltext_field" : "*wildcard"
                             }
                           }
                         }, {
                           "query" : {
                             "wildcard" : {
-                              "_all" : {
-                                "wildcard" : "*wildcard"
-                              }
+                              "_all" : "*wildcard"
                             }
                           }
                         } ]
@@ -172,17 +168,13 @@
                         "should" : [ {
                           "query" : {
                             "wildcard" : {
-                              "fulltext_field" : {
-                                "wildcard" : "*wildcard2*"
-                              }
+                              "fulltext_field" : "*wildcard2*"
                             }
                           }
                         }, {
                           "query" : {
                             "wildcard" : {
-                              "_all" : {
-                                "wildcard" : "*wildcard2*"
-                              }
+                              "_all" : "*wildcard2*"
                             }
                           }
                         } ]
@@ -192,17 +184,13 @@
                         "should" : [ {
                           "query" : {
                             "wildcard" : {
-                              "fulltext_field" : {
-                                "wildcard" : "*wild*card3*"
-                              }
+                              "fulltext_field" : "*wild*card3*"
                             }
                           }
                         }, {
                           "query" : {
                             "wildcard" : {
-                              "_all" : {
-                                "wildcard" : "*wild*card3*"
-                              }
+                              "_all" : "*wild*card3*"
                             }
                           }
                         } ]
@@ -212,17 +200,13 @@
                         "should" : [ {
                           "query" : {
                             "wildcard" : {
-                              "fulltext_field" : {
-                                "wildcard" : "wild*card4"
-                              }
+                              "fulltext_field" : "wild*card4"
                             }
                           }
                         }, {
                           "query" : {
                             "wildcard" : {
-                              "_all" : {
-                                "wildcard" : "wild*card4"
-                              }
+                              "_all" : "wild*card4"
                             }
                           }
                         } ]
@@ -236,9 +220,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "prefix" : {
-                                      "fulltext_field" : {
-                                        "prefix" : "prefix"
-                                      }
+                                      "fulltext_field" : "prefix"
                                     }
                                   }
                                 }
@@ -246,9 +228,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "wildcard" : {
-                                      "fulltext_field" : {
-                                        "wildcard" : "*wildcard"
-                                      }
+                                      "fulltext_field" : "*wildcard"
                                     }
                                   }
                                 }
@@ -256,9 +236,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "wildcard" : {
-                                      "fulltext_field" : {
-                                        "wildcard" : "*wildcard2*"
-                                      }
+                                      "fulltext_field" : "*wildcard2*"
                                     }
                                   }
                                 }
@@ -266,9 +244,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "wildcard" : {
-                                      "fulltext_field" : {
-                                        "wildcard" : "*wild*card3*"
-                                      }
+                                      "fulltext_field" : "*wild*card3*"
                                     }
                                   }
                                 }
@@ -276,9 +252,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "wildcard" : {
-                                      "fulltext_field" : {
-                                        "wildcard" : "wild*card4"
-                                      }
+                                      "fulltext_field" : "wild*card4"
                                     }
                                   }
                                 }
@@ -294,9 +268,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "prefix" : {
-                                      "_all" : {
-                                        "prefix" : "prefix"
-                                      }
+                                      "_all" : "prefix"
                                     }
                                   }
                                 }
@@ -304,9 +276,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "wildcard" : {
-                                      "_all" : {
-                                        "wildcard" : "*wildcard"
-                                      }
+                                      "_all" : "*wildcard"
                                     }
                                   }
                                 }
@@ -314,9 +284,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "wildcard" : {
-                                      "_all" : {
-                                        "wildcard" : "*wildcard2*"
-                                      }
+                                      "_all" : "*wildcard2*"
                                     }
                                   }
                                 }
@@ -324,9 +292,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "wildcard" : {
-                                      "_all" : {
-                                        "wildcard" : "*wild*card3*"
-                                      }
+                                      "_all" : "*wild*card3*"
                                     }
                                   }
                                 }
@@ -334,9 +300,7 @@
                                 "span_multi" : {
                                   "match" : {
                                     "wildcard" : {
-                                      "_all" : {
-                                        "wildcard" : "wild*card4"
-                                      }
+                                      "_all" : "wild*card4"
                                     }
                                   }
                                 }
@@ -783,9 +747,7 @@
                         "filter" : {
                           "query" : {
                             "wildcard" : {
-                              "field" : {
-                                "wildcard" : "http*//www.*tcdi.com/"
-                              }
+                              "field" : "http*//www.*tcdi.com/"
                             }
                           }
                         }
@@ -930,9 +892,7 @@
                             }, {
                               "query" : {
                                 "wildcard" : {
-                                  "field1" : {
-                                    "wildcard" : "w*ld?card*"
-                                  }
+                                  "field1" : "w*ld?card*"
                                 }
                               }
                             }, {
@@ -1012,9 +972,7 @@
                                 "must_not" : {
                                   "query" : {
                                     "wildcard" : {
-                                      "field1" : {
-                                        "wildcard" : "*gr*avy*"
-                                      }
+                                      "field1" : "*gr*avy*"
                                     }
                                   }
                                 }
