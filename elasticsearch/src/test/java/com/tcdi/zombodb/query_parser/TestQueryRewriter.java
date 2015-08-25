@@ -3594,17 +3594,17 @@ public class TestQueryRewriter {
                         "         RightField (value=post_id)\n" +
                         "   And\n" +
                         "      Expansion\n" +
-                        "         user_data:(owner_user_id=<schema.so_users.idxso_users>id)\n" +
-                        "            LeftField (value=owner_user_id)\n" +
-                        "            IndexName (value=schema.so_users.idxso_users)\n" +
-                        "            RightField (value=id)\n" +
-                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=schema.so_users.idxso_users)\n" +
-                        "      Expansion\n" +
                         "         comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
                         "            LeftField (value=id)\n" +
                         "            IndexName (value=schema.so_comments.idxso_comments)\n" +
                         "            RightField (value=post_id)\n" +
                         "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=schema.so_comments.idxso_comments)\n",
+                        "      Expansion\n" +
+                        "         user_data:(owner_user_id=<schema.so_users.idxso_users>id)\n" +
+                        "            LeftField (value=owner_user_id)\n" +
+                        "            IndexName (value=schema.so_users.idxso_users)\n" +
+                        "            RightField (value=id)\n" +
+                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=schema.so_users.idxso_users)\n" +
                 tree);
     }
 
