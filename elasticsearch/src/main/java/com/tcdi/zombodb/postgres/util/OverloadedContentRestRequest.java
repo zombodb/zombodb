@@ -38,11 +38,6 @@ public class OverloadedContentRestRequest extends RestRequest {
     }
 
     @Override
-    public boolean contentUnsafe() {
-        return false;
-    }
-
-    @Override
     public BytesReference content() {
         return content;
     }
