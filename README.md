@@ -113,7 +113,7 @@ SELECT * FROM books WHERE zdb(books) ==> 'title:(catcher w/3 rye)
 Product       | Version 
 ---           | ---      
 Postgres      | 9.3
-Elasticsearch | 1.5.2+ (not 2.0)
+Elasticsearch | 1.7.1+ (not 2.0)
 Java JDK      | 1.7.0_51+
 
 For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).

@@ -47,7 +47,7 @@ public class PostgresMappingAction extends BaseRestHandler {
         rewriter.rewriteQuery();
         Map<String, ?> properties = rewriter.describedNestedObject(request.param("fieldname"));
 
-        response = new BytesRestResponse(RestStatus.OK, "application/json", JsonXContent.contentBuilder().map(properties).bytes(), true);
+        response = new BytesRestResponse(RestStatus.OK, "application/json", JsonXContent.contentBuilder().map(properties).bytes());
         channel.sendResponse(response);
     }
 }

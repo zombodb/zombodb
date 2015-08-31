@@ -94,7 +94,7 @@ public class PostgresCountAction extends BaseRestHandler {
         countRequest.indicesOptions(IndicesOptions.fromRequest(request, countRequest.indicesOptions()));
         countRequest.listenerThreaded(false);
         if (request.hasContent()) {
-            countRequest.source(request.content(), request.contentUnsafe());
+            countRequest.source(request.content());
         } else {
             String source = request.param("source");
             if (source != null) {
