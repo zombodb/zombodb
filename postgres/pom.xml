@@ -111,7 +111,7 @@
                                     <goal>jdeb</goal>
                                 </goals>
                                 <configuration>
-                                    <deb>${project.build.directory}/${project.artifactId}_precise-${project.version}_amd64.deb
+                                    <deb>${project.build.directory}/${project.artifactId}_precise_pg93-${project.version}_amd64.deb
                                     </deb>
                                     <dataSet>
                                         <data>
@@ -132,7 +132,7 @@
                                     <goal>jdeb</goal>
                                 </goals>
                                 <configuration>
-                                    <deb>${project.build.directory}/${project.artifactId}_trusty-${project.version}_amd64.deb
+                                    <deb>${project.build.directory}/${project.artifactId}_trusty_pg93-${project.version}_amd64.deb
                                     </deb>
                                     <dataSet>
                                         <data>

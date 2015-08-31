@@ -42,6 +42,7 @@
                 <configuration>
                     <appendAssemblyId>false</appendAssemblyId>
                     <outputDirectory>${project.build.directory}/</outputDirectory>
+                    <finalName>zombodb-es-plugin-${project.version}</finalName>
                     <descriptors>
                         <descriptor>${basedir}/src/main/assemblies/plugin.xml</descriptor>
                     </descriptors>
