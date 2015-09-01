@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +19,7 @@ package com.tcdi.zombodb.postgres;
 import com.tcdi.zombodb.query_parser.ASTAggregate;
 import com.tcdi.zombodb.query_parser.QueryParser;
 import com.tcdi.zombodb.query_parser.QueryRewriter;
+import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -55,10 +57,10 @@ public class PostgresAggregationAction extends BaseRestHandler {
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         try {
-            long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             String input = request.content().toUtf8();
-            QueryRewriter rewriter = new QueryRewriter(client, request, input, true, false, true, false);
+            final QueryRewriter rewriter = new QueryRewriter(client, request, input, true, false, true, false);
             QueryBuilder qb = rewriter.rewriteQuery();
             AbstractAggregationBuilder ab = rewriter.rewriteAggregations();
             SuggestBuilder.SuggestionBuilder tsb = rewriter.rewriteSuggestions();
@@ -82,11 +84,22 @@ public class PostgresAggregationAction extends BaseRestHandler {
             builder.setSearchType(SearchType.COUNT);
             builder.setPreference(request.param("preference"));
 
-            client.search(builder.request(), new RestStatusToXContentListener<SearchResponse>(channel));
-            long end = System.currentTimeMillis();
-            logger.info("Aggregated results for " + rewriter.getAggregateIndexName() + " in " + ((end-start)/1000D) + " seconds.");
+            final ActionListener<SearchResponse> delegate = new RestStatusToXContentListener<SearchResponse>(channel);
+            client.search(builder.request(), new ActionListener<SearchResponse>() {
+                @Override
+                public void onResponse(SearchResponse searchResponse) {
+                    delegate.onResponse(searchResponse);
+                    long end = System.currentTimeMillis();
+                    logger.info("Aggregated results for " + rewriter.getAggregateIndexName() + " in " + ((end - start) / 1000D) + " seconds.");
+                }
+
+                @Override
+                public void onFailure(Throwable throwable) {
+                    delegate.onFailure(throwable);
+                }
+            });
         } catch (Exception ee) {
-            ee.printStackTrace();
+            logger.error("Error performing aggregate", ee);
             throw ee;
         }
     }
