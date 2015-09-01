@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -362,7 +363,7 @@ public class QueryRewriter {
         } else {
             TermsBuilder tb = terms(agg.getFieldname())
                     .field(fieldname)
-                    .size(0) //agg.getMaxTerms())
+                    .size(agg.getMaxTerms())
                     .shardSize(0)
                     .order(stringToTermsOrder(agg.getSortOrder()));
 

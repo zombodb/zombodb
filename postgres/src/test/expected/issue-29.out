@@ -1,0 +1,16 @@
+SELECT * FROM zdb_tally('so_posts', 'owner_display_name', '^.*', '', 10, 'count');
+   term    | count  
+-----------+--------
+           | 154132
+ USER1249  |    598
+ USER2567  |    513
+ USER8685  |    254
+ USER4051  |    153
+ USER8     |     84
+ USER29981 |     79
+ USER39685 |     68
+ USER23157 |     50
+ SERGIO    |     48
+ USER29079 |     47
+(11 rows)
+

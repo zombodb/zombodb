@@ -278,7 +278,7 @@ These custom domains are to be used in user tables as data types when you requir
 > ```fieldname```: The name of a field from which to derive significant terms  
 > ```stem```:  a Regular expression by which to filter returned terms   
 > ```query```: a full text query  
-> ```max_terms```: maximum number of terms to return
+> ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
 > 
 > This function provides direct access to Elasticsearch's ["significant terms"](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-significantterms-aggregation.html) aggregation.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 > 
@@ -297,7 +297,7 @@ These custom domains are to be used in user tables as data types when you requir
 > ```fieldname```: The name of a field from which to derive term suggestions  
 > ```base```:  a word from which suggestions will be created   
 > ```query```: a full text query  
-> ```max_terms```: maximum number of terms to return
+> ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
 > 
 > This function provides direct access to Elasticsearch's [term suggester](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-suggesters-term.html) and unlike zdb_significant_terms and zdb_tally, **can** be used with fields of type ```phrase```, ```phrase_array```, and ```fulltext```.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 > 
@@ -322,7 +322,7 @@ These custom domains are to be used in user tables as data types when you requir
 > ```fieldname```: The name of a field from which to derive terms  
 > ```stem```:  a Regular expression by which to filter returned terms   
 > ```query```: a full text query  
-> ```max_terms```: maximum number of terms to return
+> ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
 > ```sort_order```: how to sort the terms.  one of ```'count'```, ```'term'```, ```'reverse_count'```, ```'reverse_term'```
 > 
 > This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot be used with fields of type ```phrase```, ```phrase_array```, and ```fulltext```.  The results are MVCC-safe.  Returned terms are forced to upper-case.

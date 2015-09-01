@@ -1,0 +1,1 @@
+SELECT * FROM zdb_tally('so_posts', 'owner_display_name', '^.*', '', 10, 'count');
