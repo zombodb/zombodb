@@ -1,0 +1,18 @@
+SELECT * FROM zdb_tally('so_posts', 'tags', '^.*', '', 12, 'count');
+    term     | count  
+-------------+--------
+             | 129680
+ DESIGN      |   4955
+ C           |   4283
+ PROGRAMMING |   2842
+ JAVA        |   2713
+ DEVELOPMENT |   2618
+ WEB         |   2207
+ PATTERNS    |   1873
+ OBJECT      |   1803
+ ORIENTED    |   1798
+ CODE        |   1416
+ TESTING     |   1393
+ PHP         |   1344
+(13 rows)
+

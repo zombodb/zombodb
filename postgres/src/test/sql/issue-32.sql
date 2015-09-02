@@ -1,0 +1,1 @@
+SELECT * FROM zdb_tally('so_posts', 'tags', '^.*', '', 12, 'count');
