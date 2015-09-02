@@ -60,24 +60,49 @@ These custom domains are to be used in user tables as data types when you requir
 #### ```FUNCTION zdb_arbitrary_aggregate(table_name regclass, aggregate_query json, query text) RETURNS json```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
-> ```aggregate_query```: an Elasticsearch-compatible aggregate query, in JSON form  
+> ```aggregate_query```: specialized ZomboDB-specific syntax to chain together one or more ZomboDB-supported aggregation types (terms, significant terms, suggestions, extended statistics)  
 > ```query```: a full text query
 > 
 > returns the Elasticsearch-created JSON results.  The data returned is MVCC-safe.
 > 
+> This function is primary used for building and returning nested aggregation queries.  Currently, only the three aggregation types ZomboDB supports can be used.
+> 
+> The syntax for the `aggregate_query` argument follows the form:
+> 
+> ```
+> #tally(fieldname, stem, max_terms, term_order [, another aggregate])
+> ```
+> 
+> or
+> 
+> ```
+> #significant_terms(fieldname, stem, max_terms [, another aggregate])
+> ```
+> 
+> or
+> 
+> ```
+> #extended_stats(fieldname)
+> ```
+> 
+> or
+> 
+> ```
+> #suggest(fieldname, base_term, max_terms)
+> ```
+> 
+> Then then they can be chained together to form complex, nested aggregations.  For example, using the `products` table from the [TUTORIAL](TUTORIAL.md), to break down the products by availability month and keyword:
+> 
 > Example:
 > 
 > ```
-> SELECT * FROM zdb_arbitrary_aggregate('table', '{
->  "aggregations": {
->    "my_agg": {
->      "terms": {
->        "field": "text"
->      }
->    }
->  }
->}', 'beer,wine,cheese');
+> tutorial=# SELECT * FROM zdb_arbitrary_aggregate('products', '#tally(availability_date, month, 5000, term, #tally(keywords, ''^.*'', 5000, term))', ''); 
+                                                                                                                                                                                                                                                                                                                                                                             zdb_arbitrary_aggregate                                                                                                                                                                                                                                                                                                                                                                             
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"missing":{"doc_count":0},"availability_date":{"buckets":[{"key_as_string":"2015-07","key":1435708800000,"doc_count":1,"keywords":{"doc_count_error_upper_bound":0,"sum_other_doc_count":0,"buckets":[{"key":"box","doc_count":1},{"key":"negative space","doc_count":1},{"key":"square","doc_count":1},{"key":"wooden","doc_count":1}]}},{"key_as_string":"2015-08","key":1438387200000,"doc_count":3,"keywords":{"doc_count_error_upper_bound":0,"sum_other_doc_count":0,"buckets":[{"key":"alexander graham bell","doc_count":1},{"key":"baseball","doc_count":1},{"key":"communication","doc_count":1},{"key":"magical","doc_count":1},{"key":"primitive","doc_count":1},{"key":"round","doc_count":2},{"key":"sports","doc_count":1},{"key":"widget","doc_count":1}]}}]}}
 >```
+>
+>The response is a JSON blob because it's quite difficult to project an arbitrary nested structure into a resultset with SQL.  The intent is that decoding of the response would be application-specific.
 
 #### ```FUNCTION zdb_describe_nested_object(table_name regclass, fieldname text) RETURNS json```
 
@@ -253,11 +278,11 @@ These custom domains are to be used in user tables as data types when you requir
 > ```fieldname```: The name of a field from which to derive significant terms  
 > ```stem```:  a Regular expression by which to filter returned terms   
 > ```query```: a full text query  
-> ```max_terms```: maximum number of terms to return
+> ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
 > 
 > This function provides direct access to Elasticsearch's ["significant terms"](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-significantterms-aggregation.html) aggregation.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 > 
-> Note, fields of type ```phrase```, ```phrase_array```, and ```fulltext``` are not supported.
+> Note:  Fields of type ```phrase```, ```phrase_array```, and ```fulltext``` are not supported.
 > 
 > Example:
 > 
@@ -272,7 +297,7 @@ These custom domains are to be used in user tables as data types when you requir
 > ```fieldname```: The name of a field from which to derive term suggestions  
 > ```base```:  a word from which suggestions will be created   
 > ```query```: a full text query  
-> ```max_terms```: maximum number of terms to return
+> ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
 > 
 > This function provides direct access to Elasticsearch's [term suggester](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-suggesters-term.html) and unlike zdb_significant_terms and zdb_tally, **can** be used with fields of type ```phrase```, ```phrase_array```, and ```fulltext```.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 > 
@@ -297,7 +322,7 @@ These custom domains are to be used in user tables as data types when you requir
 > ```fieldname```: The name of a field from which to derive terms  
 > ```stem```:  a Regular expression by which to filter returned terms   
 > ```query```: a full text query  
-> ```max_terms```: maximum number of terms to return
+> ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
 > ```sort_order```: how to sort the terms.  one of ```'count'```, ```'term'```, ```'reverse_count'```, ```'reverse_term'```
 > 
 > This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot be used with fields of type ```phrase```, ```phrase_array```, and ```fulltext```.  The results are MVCC-safe.  Returned terms are forced to upper-case.

@@ -156,7 +156,7 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"type\": \"string\",");
 			appendStringInfo(result, "\"index_options\": \"positions\",");
 			appendStringInfo(result, "\"analyzer\": \"phrase\",");
-			appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
+			appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
 			appendStringInfo(result, "\"norms\": {\"enabled\":false}");
 
 		}

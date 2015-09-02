@@ -59,8 +59,7 @@ Here you can see that ZomboDB v2.1.35 is really installed.
 Nothing too out of the ordinary here.  Lets create a simple table that might represent a product catalog.
 
 ```
-tutorial=# 
-CREATE TABLE products (
+tutorial=# CREATE TABLE products (
     id SERIAL8 NOT NULL PRIMARY KEY,
     name text NOT NULL,
     keywords varchar(64)[],
@@ -68,7 +67,8 @@ CREATE TABLE products (
     long_description fulltext, 
     price bigint,
     inventory_count integer,
-    discontinued boolean default false
+    discontinued boolean default false,
+    availability_date date
 );
 CREATE TABLE
 tutorial=#
@@ -89,16 +89,13 @@ tutorial=#
 Which should give you 4 rows that look a lot like:
 
 ```
-tutorial=# SELECT * FROM products;
- id |      name      |                     keywords                      |                  short_summary                  |                                              long_description                                              | price | inventory_count | discontinued 
-----+----------------+---------------------------------------------------+-------------------------------------------------+------------------------------------------------------------------------------------------------------------+-------+-----------------+--------------
-  1 | Magical Widget | {magical,widget}                                  | A widget that is quite magical                  | Magical Widgets come from the land of Magicville and are capable of things you can't imagine               |  9900 |              42 | f
-  2 | Baseball       | {baseball,sports}                                 | It's a baseball                                 | Throw it at a person with a big wooden stick and hope they don't hit it                                    |  1249 |               2 | f
-  3 | Telephone      | {communication,primitive,"alexander graham bell"} | A device to enable long-distance communications | Use this to call your friends and family and be annoyed by telemarketers.  Long-distance charges may apply |  1899 |             200 | f
-  4 | Box            | {wooden,box,"negative space"}                     | Just an empty box made of wood                  | A wooden container that will eventually rot away.  Put stuff it in (but not a cat).                        | 17000 |               0 | t
+ id |      name      |                     keywords                      |                  short_summary                  |                                              long_description                                              | price | inventory_count | discontinued | availability_date 
+----+----------------+---------------------------------------------------+-------------------------------------------------+------------------------------------------------------------------------------------------------------------+-------+-----------------+--------------+-------------------
+  1 | Magical Widget | {magical,widget,round}                            | A widget that is quite magical                  | Magical Widgets come from the land of Magicville and are capable of things you can't imagine               |  9900 |              42 | f            | 2015-08-31
+  2 | Baseball       | {baseball,sports,round}                           | It's a baseball                                 | Throw it at a person with a big wooden stick and hope they don't hit it                                    |  1249 |               2 | f            | 2015-08-21
+  3 | Telephone      | {communication,primitive,"alexander graham bell"} | A device to enable long-distance communications | Use this to call your friends and family and be annoyed by telemarketers.  Long-distance charges may apply |  1899 |             200 | f            | 2015-08-11
+  4 | Box            | {wooden,box,"negative space",square}              | Just an empty box made of wood                  | A wooden container that will eventually rot away.  Put stuff it in (but not a cat).                        | 17000 |               0 | t            | 2015-07-01
 (4 rows)
-
-tutorial=# 
 ```
 
 ## Creating an Index
@@ -138,11 +135,10 @@ ZomboDB internally uses JSON because JSON is the format Elasticsearch requires.
 Now that we know what ```zdb(record)``` does, lets use it to create an index:
 
 ```
-tutorial=# 
-CREATE INDEX idx_zdb_products 
-          ON products 
-       USING zombodb(zdb(products)) 
-        WITH (url='http://localhost:9200/');
+tutorial=# CREATE INDEX idx_zdb_products 
+                     ON products 
+                  USING zombodb(zdb(products)) 
+                   WITH (url='http://localhost:9200/');
 CREATE INDEX
 tutorial=# 
 ```
@@ -186,8 +182,7 @@ tutorial=# \do ==>
 Unlike other built-in Postgres operators (ie, ```=```, ```LIKE```, etc), ```==>``` is **not** capable of standing on its own.  This means that something like this...
 
 ```
-tutorial=# 
-SELECT '{"key": "value"}'::json ==> 'value';
+tutorial=# SELECT '{"key": "value"}'::json ==> 'value';
 ERROR:  zdb_query_func: not implemented
 ```
 
@@ -196,8 +191,7 @@ ERROR:  zdb_query_func: not implemented
 A typical query would be:
 
 ```
-tutorial=# 
-SELECT * FROM products WHERE zdb(products) ==> 'sports or box';
+tutorial=# SELECT * FROM products WHERE zdb(products) ==> 'sports or box';
  id |   name   |           keywords            |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued 
 ----+----------+-------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------
   4 | Box      | {wooden,box,"negative space"} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t
@@ -210,8 +204,7 @@ tutorial=#
 And its query plan is:
 
 ```
-tutorial=# 
-EXPLAIN SELECT * FROM products WHERE zdb(products) ==> 'sports or box';
+tutorial=# EXPLAIN SELECT * FROM products WHERE zdb(products) ==> 'sports or box';
                                     QUERY PLAN                                     
 -----------------------------------------------------------------------------------
  Index Scan using idx_zdb_products on products  (cost=0.00..1.01 rows=1 width=633)
@@ -222,6 +215,205 @@ tutorial=#
 ```
 
 From here, it's just a matter of coming up with a full-text query to answer your question.  See the [SYNTAX](SYNTAX.md) document for details on what the full-text query syntax can do.
+
+## Aggregations
+
+### Terms
+
+If, for example, you're interested in knowing the unique set of all product `keywords`, along with their occurrence count, use the `zdb_tally()` function.  
+
+NOTE:  `zdb_tally()` only works for fields that are ***not*** of type `phrase`, `phrase_array`, or `fulltext`.
+
+```
+tutorial=# SELECT * FROM zdb_tally('products', 'keywords', '^.*', '', 5000, 'term');
+         term          | count 
+-----------------------+-------
+ ALEXANDER GRAHAM BELL |     1
+ BASEBALL              |     1
+ BOX                   |     1
+ COMMUNICATION         |     1
+ MAGICAL               |     1
+ NEGATIVE SPACE        |     1
+ PRIMITIVE             |     1
+ ROUND                 |     2
+ SPORTS                |     1
+ SQUARE                |     1
+ WIDGET                |     1
+ WOODEN                |     1
+(12 rows)
+
+```
+
+The third arugument (called the term stem) is a regular expression by which the returned terms will be filtered.  The regex above matches all the returned terms.
+
+The fourth argument is a fulltext query by which the aggregate will be filtered.  The empty string means "no filter".  If you wanted to limit the keywords to products that are round:
+
+```
+tutorial=# SELECT * FROM zdb_tally('products', 'keywords', '^.*', 'keywords:round', 5000, 'term');
+   term   | count 
+----------+-------
+ BASEBALL |     1
+ MAGICAL  |     1
+ ROUND    |     2
+ SPORTS   |     1
+ WIDGET   |     1
+(5 rows)
+```
+
+### Dates/Timestamps
+
+Date/timestamp field aggregation also uses the `zdb_tally()` function, but the third argument (the term stem) can be one of `year`, `month`, `day`, `hour`, `minute`, second.  For example, to see the monthly breakdown of product availability:
+
+```
+tutorial=# SELECT * FROM zdb_tally('products', 'availability_date', 'month', '', 5000, 'term');
+  term   | count 
+---------+-------
+ 2015-07 |     1
+ 2015-08 |     3
+(2 rows)
+```
+
+### Statistics
+
+Use `zdb_extended_stats()` to produce statistics about a numeric field.  For example:
+
+```
+tutorial=# SELECT * FROM zdb_extended_stats('products', 'price', '');
+ count | total | min  |  max  | mean | sum_of_squares |  variance  |  std_deviation   
+-------+-------+------+-------+------+----------------+------------+------------------
+     4 | 30048 | 1249 | 17000 | 7512 |      392176202 | 41613906.5 | 6450.88416420571
+(1 row)
+
+```
+
+shows the overall numbers for the `price` field.  The last argument is a fulltext query that can be used to filter the set of records summarized by the aggregate:
+
+```
+tutorial=# SELECT * FROM zdb_extended_stats('products', 'price', 'round');
+ count | total | min  | max  |  mean  | sum_of_squares |  variance   | std_deviation 
+-------+-------+------+------+--------+----------------+-------------+---------------
+     2 | 11149 | 1249 | 9900 | 5574.5 |       99570001 | 18709950.25 |        4325.5
+(1 row)
+```
+
+### Term Suggestion 
+
+The `zdb_suggest_terms()` function is used to find terms "similar" (by edit distance) to a base term in `phrase`, `phrase_array`, and `fulltext` fields.  For example:
+
+```
+tutorial=# SELECT * FROM zdb_suggest_terms('products', 'long_description', 'land', '', 5000);
+ term | count 
+------+-------
+ LAND |     1
+ LONG |     1
+(2 rows)
+```
+
+The third argument (`land` in this example) is the base term.  This term will always be returned as the first value.  If the term doesn't exist in the index, its count will be zero.
+
+The fourth argument is a fulltext query that can be used to limit the set of records that are consulted for similar terms.
+
+The more data you have, and the more dense it is, the more effective `zdb_suggest_terms()` will be.
+
+
+### Nesting aggregations via `zdb_arbitrary_aggregate()`
+
+Aggregates can be nested following the description in [SQL-API](SQL-API.md).  An example to collect keywords by availability date is:
+
+```
+tutorial=# SELECT * 
+             FROM zdb_arbitrary_aggregate(
+                         'products', 
+                         $$ 
+                           #tally(availability_date, month, 5000, term, 
+                                           #tally(keywords, '^.*', 5000, term)
+                                  ) 
+                         $$, 
+                         ''); 
+ zdb_arbitrary_aggregate                                                                                                                                                                                                                                                                                                                                                                             
+-------------------------
+{
+  "missing": {
+    "doc_count": 0
+  },
+  "availability_date": {
+    "buckets": [
+      {
+        "key_as_string": "2015-07",
+        "key": 1435708800000,
+        "doc_count": 1,
+        "keywords": {
+          "doc_count_error_upper_bound": 0,
+          "sum_other_doc_count": 0,
+          "buckets": [
+            {
+              "key": "box",
+              "doc_count": 1
+            },
+            {
+              "key": "negative space",
+              "doc_count": 1
+            },
+            {
+              "key": "square",
+              "doc_count": 1
+            },
+            {
+              "key": "wooden",
+              "doc_count": 1
+            }
+          ]
+        }
+      },
+      {
+        "key_as_string": "2015-08",
+        "key": 1438387200000,
+        "doc_count": 3,
+        "keywords": {
+          "doc_count_error_upper_bound": 0,
+          "sum_other_doc_count": 0,
+          "buckets": [
+            {
+              "key": "alexander graham bell",
+              "doc_count": 1
+            },
+            {
+              "key": "baseball",
+              "doc_count": 1
+            },
+            {
+              "key": "communication",
+              "doc_count": 1
+            },
+            {
+              "key": "magical",
+              "doc_count": 1
+            },
+            {
+              "key": "primitive",
+              "doc_count": 1
+            },
+            {
+              "key": "round",
+              "doc_count": 2
+            },
+            {
+              "key": "sports",
+              "doc_count": 1
+            },
+            {
+              "key": "widget",
+              "doc_count": 1
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+The last argument is a fulltext query that can be used to filter the set of documents against which the aggregates are run.
 
 ## Summary
 

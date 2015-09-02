@@ -48,7 +48,7 @@ A large cluster configuration is likely to have a number of dedicated "data", "m
 # sudo bin/plugin -i zombodb -u file:///path/to/zombodb-plugin-X.X.X.zip
 ```
 
-There's a few configuration settings that **must** to be set in `elasticsearch.yml`:
+There are a few configuration settings that **must** be set in `elasticsearch.yml`:
 
 ```
 script.disable_dynamic: false

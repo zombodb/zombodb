@@ -41,9 +41,9 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
 - extremely fast indexing
 - record count estimation
 - high-performance hit highlighting
-- access to Elasticsearch's full set of aggregations
+- access to many of Elasticsearch's aggregations, including ability to nest aggregations
 - use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
-- fairly extensive test suite (NB: in progress of being converted from closed-source version)
+- fairly extensive test suite
 
 Not to suggest that these things are impossible, but there's a small set of non-features too:
 
@@ -80,31 +80,33 @@ CREATE EXTENSION zombodb;
 Create a table:
 
 ```
-CREATE TABLE books (
-	book_id serial8 NOT NULL PRIMARY KEY,
-	author varchar(128),
-	publication_date date,
-	title phrase,     -- 'phrase' is a DOMAIN provided by ZomboDB
-	content fulltext  -- 'fulltext' is a DOMAIN provided by ZomboDB
+CREATE TABLE products (
+    id SERIAL8 NOT NULL PRIMARY KEY,
+    name text NOT NULL,
+    keywords varchar(64)[],
+    short_summary phrase,
+    long_description fulltext, 
+    price bigint,
+    inventory_count integer,
+    discontinued boolean default false,
+    availability_date date
 );
-
 -- insert some data
 ```
 
 Index it:
 
 ```
-CREATE INDEX idxbooks ON books 
-                   USING zombodb (zdb(books)) 
-                   WITH (url='http://localhost:9200', shards=5, replicas=1);
+CREATE INDEX idx_zdb_products 
+                     ON products 
+                  USING zombodb(zdb(products)) 
+                   WITH (url='http://localhost:9200/', shards=5, replicas=1);
 ```
 
 Query it:
 
 ```
-SELECT * FROM books WHERE zdb(books) ==> 'title:(catcher w/3 rye) 
-                                            and content:"Ossenburger Memorial Wing" 
-                                             or author:Salinger*';
+SELECT * FROM products WHERE zdb(products) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
 ```
 
 
@@ -113,7 +115,7 @@ SELECT * FROM books WHERE zdb(books) ==> 'title:(catcher w/3 rye)
 Product       | Version 
 ---           | ---      
 Postgres      | 9.3
-Elasticsearch | 1.5.2+ (not 2.0)
+Elasticsearch | 1.7.1+ (not 2.0)
 Java JDK      | 1.7.0_51+
 
 For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).

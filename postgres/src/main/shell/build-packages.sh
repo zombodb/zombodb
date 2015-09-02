@@ -38,4 +38,4 @@ mkdir -p tarball/lib tarball/share
 cp -Rp ubuntu_precise/usr/lib/postgresql/${POSTGRES_VERSION}/lib/* tarball/lib
 cp -Rp ubuntu_precise/usr/share/postgresql/${POSTGRES_VERSION}/* tarball/share
 cd tarball/
-tar czf ../zombodb-$VERSION.tgz .
+tar czf ../zombodb-precise-pg93-$VERSION.tgz .

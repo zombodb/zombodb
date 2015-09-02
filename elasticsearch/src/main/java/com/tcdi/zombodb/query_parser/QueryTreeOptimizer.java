@@ -92,7 +92,7 @@ public class QueryTreeOptimizer {
             total += mergeAdjacentNestedGroups(child);
         }
 
-        Map<String, List<ASTNestedGroup>> sameGroups = new HashMap<>();
+        Map<String, List<ASTNestedGroup>> sameGroups = new TreeMap<>();
         int cnt = 0;
         for (QueryParserNode child : root) {
             if (child instanceof ASTNestedGroup) {
