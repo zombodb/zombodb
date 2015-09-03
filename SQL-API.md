@@ -282,7 +282,7 @@ These custom domains are to be used in user tables as data types when you requir
 > 
 > This function provides direct access to Elasticsearch's ["significant terms"](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-significantterms-aggregation.html) aggregation.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 > 
-> Note:  Fields of type ```phrase```, ```phrase_array```, and ```fulltext``` are not supported.
+> Note:  Fields of type ```fulltext``` are not supported.
 > 
 > Example:
 > 
@@ -325,7 +325,7 @@ These custom domains are to be used in user tables as data types when you requir
 > ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
 > ```sort_order```: how to sort the terms.  one of ```'count'```, ```'term'```, ```'reverse_count'```, ```'reverse_term'```
 > 
-> This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot be used with fields of type ```phrase```, ```phrase_array```, and ```fulltext```.  The results are MVCC-safe.  Returned terms are forced to upper-case.
+> This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot be used with fields of type `fulltext`.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 > 
 > If a stem is not specified, no results will be returned.  To match all terms: ```^.*```
 > 

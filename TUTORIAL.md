@@ -222,7 +222,7 @@ From here, it's just a matter of coming up with a full-text query to answer your
 
 If, for example, you're interested in knowing the unique set of all product `keywords`, along with their occurrence count, use the `zdb_tally()` function.  
 
-NOTE:  `zdb_tally()` only works for fields that are ***not*** of type `phrase`, `phrase_array`, or `fulltext`.
+NOTE:  `zdb_tally()` only works for fields that are ***not*** of type `fulltext`.
 
 ```
 tutorial=# SELECT * FROM zdb_tally('products', 'keywords', '^.*', '', 5000, 'term');
@@ -259,6 +259,20 @@ tutorial=# SELECT * FROM zdb_tally('products', 'keywords', '^.*', 'keywords:roun
  WIDGET   |     1
 (5 rows)
 ```
+
+### Significant Terms
+
+Similar to `zdb_tally()`, the `zdb_significant_terms()` function can be used to find what Elasticsearch considers [significant terms](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-significantterms-aggregation.html).
+
+It cannot be used with fields of type `fulltext`.
+
+Example:
+
+```
+tutorial=# SELECT * FROM zdb_significant_terms('products', 'keywords', '^.*', '', 5000);
+```
+
+The fourth argument is a fulltext query by which the aggregate will be filtered.  The empty string means "no filter".  If you wanted to limit the keywords to products that are round:
 
 ### Dates/Timestamps
 
