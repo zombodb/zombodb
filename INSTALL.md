@@ -37,7 +37,7 @@ $ psql example -c "CREATE EXTENSION zombodb;"
 
 ## Elasticsearch Plugin
 
-ZomboDB's Elasticsearch plugin only needs to be installed on nodes that operate as "client" nodes (ie, nodes that respond to HTTP requests).  
+ZomboDB's Elasticsearch plugin only needs to be installed on nodes that operate as "client" nodes (ie, nodes that respond to HTTP requests).
 
 A large cluster configuration is likely to have a number of dedicated "data", "master", and "client" nodes.  Again, it is only the latter that require the plugin.
 
@@ -65,6 +65,10 @@ Dynamic scripting must **not** be disabled.  The bulk threadpool must be increas
 The last two settings can be turned up or down (`http.max_content_length` must be be greater than 8192kB), but are good defaults.
 
 Finally, restart the node.  Repeat for every "client" node in your cluster.
+
+## OSX Installation
+
+Building and installing everything locally on OSX can be a bit tricky. [To make this a bit easier, the folks over at Simple have created a set of Dockerfiles to install and run both ElasticSearch and Postgres with Zombo.](https://github.com/SimpleFinance/docker_zombo)
 
 
 # Upgrading
