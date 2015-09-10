@@ -21,6 +21,7 @@
 
 extern Datum zdb_internal_actual_index_record_count(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_tally(PG_FUNCTION_ARGS);
+extern Datum zdb_internal_range_agg(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_estimate_count(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_significant_terms(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_extended_stats(PG_FUNCTION_ARGS);

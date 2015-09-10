@@ -118,6 +118,7 @@ PARSER_END(QueryParser)
   | <PARENT: "#parent" >
   | <NEST: "#nest" >
   | <TALLY: "#tally" >
+  | <RANGE: "#range" >
   | <SIGNIFICANT_TERMS: "#significant_terms" >
   | <EXTENDED_STATS: "#extended_stats" >
   | <SUGGEST: "#suggest" >
@@ -160,7 +161,7 @@ private ASTQueryTree parse0() #QueryTree :
 
 void Aggregations() : {}
 {
-    ( Tally() | SignificantTerms() | ExtendedStats() | Suggest() )
+    ( Tally() | RangeAggregate() | SignificantTerms() | ExtendedStats() | Suggest() )
 }
 
 void Tally() #Tally :
@@ -169,6 +170,15 @@ void Tally() #Tally :
 }
 {
     ( <TALLY> "(" (t = Fieldname()) "," (Word()|Phrase()) "," Number() "," Word() [ "," Aggregations() ] ")" )
+    { jjtThis.fieldname = t.image; }
+}
+
+void RangeAggregate() #RangeAggregate :
+{
+    Token t;
+}
+{
+    ( <RANGE> "(" (t = Fieldname()) "," Phrase() [ "," Aggregations() ] ")" )
     { jjtThis.fieldname = t.image; }
 }
 

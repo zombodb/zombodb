@@ -45,6 +45,7 @@ static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescripto
 static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
 static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
+static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *query);
 static char *wrapper_significant_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
 static char *wrapper_extended_stats(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query);
 static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query);
@@ -169,6 +170,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->implementation->searchIndex          = wrapper_searchIndex;
 	desc->implementation->getPossiblyExpiredItems = wrapper_getPossiblyExpiredItems;
 	desc->implementation->tally                = wrapper_tally;
+	desc->implementation->rangeAggregate       = wrapper_rangeAggregate;
 	desc->implementation->significant_terms    = wrapper_significant_terms;
 	desc->implementation->extended_stats       = wrapper_extended_stats;
 	desc->implementation->arbitrary_aggregate  = wrapper_arbitrary_aggregate;
@@ -385,6 +387,17 @@ static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xi
 	char *results;
 
 	results = elasticsearch_tally(indexDescriptor, xid, cid, fieldname, stem, query, max_terms, sort_order);
+
+	MemoryContextSwitchTo(oldContext);
+	return results;
+}
+
+static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *query)
+{
+	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
+	char *results;
+
+	results = elasticsearch_rangeAggregate(indexDescriptor, xid, cid, fieldname, range_spec, query);
 
 	MemoryContextSwitchTo(oldContext);
 	return results;

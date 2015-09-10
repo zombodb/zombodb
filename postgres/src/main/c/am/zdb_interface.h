@@ -165,6 +165,7 @@ typedef ZDBSearchResponse *(*ZDBSearchIndex_function)(ZDBIndexDescriptor *indexD
 typedef ZDBSearchResponse *(*ZDBGetPossiblyExpiredItems)(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
 typedef char *(*ZDBTally_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
+typedef char *(*ZDBRangeAggregate_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *query);
 typedef char *(*ZDBSignificantTerms_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
 typedef char *(*ZDBExtendedStats_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query);
 typedef char *(*ZDBArbitraryAggregate_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query);
@@ -200,6 +201,7 @@ struct ZDBIndexImplementation
 	ZDBGetPossiblyExpiredItems getPossiblyExpiredItems;
 
 	ZDBTally_function              tally;
+	ZDBRangeAggregate_function     rangeAggregate;
 	ZDBSignificantTerms_function   significant_terms;
 	ZDBExtendedStats_function      extended_stats;
 	ZDBArbitraryAggregate_function arbitrary_aggregate;
