@@ -454,6 +454,33 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid
 	return response->data;
 }
 
+char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *user_query)
+{
+	StringInfo request = makeStringInfo();
+	StringInfo endpoint = makeStringInfo();
+	StringInfo query;
+	StringInfo response;
+
+	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
+
+	appendStringInfo(request, "#range(%s, '%s') %s",
+			fieldname,
+			range_spec,
+			query->data);
+
+	appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	if (indexDescriptor->searchPreference != NULL)
+		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+
+	response = rest_call("POST", endpoint->data, request);
+
+	freeStringInfo(request);
+	freeStringInfo(endpoint);
+	freeStringInfo(query);
+
+	return response->data;
+}
+
 char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *user_query, int64 max_terms)
 {
 	StringInfo request = makeStringInfo();

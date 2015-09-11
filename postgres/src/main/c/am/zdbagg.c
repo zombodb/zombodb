@@ -25,6 +25,7 @@
 PG_FUNCTION_INFO_V1(zdb_internal_actual_index_record_count);
 PG_FUNCTION_INFO_V1(zdb_internal_estimate_count);
 PG_FUNCTION_INFO_V1(zdb_internal_tally);
+PG_FUNCTION_INFO_V1(zdb_internal_range_agg);
 PG_FUNCTION_INFO_V1(zdb_internal_significant_terms);
 PG_FUNCTION_INFO_V1(zdb_internal_extended_stats);
 PG_FUNCTION_INFO_V1(zdb_internal_arbitrary_aggregate);
@@ -68,6 +69,22 @@ Datum zdb_internal_tally(PG_FUNCTION_ARGS)
 
 	desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
 	json = desc->implementation->tally(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), fieldname, stem, query, max_terms, sort_order);
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(json));
+}
+
+Datum zdb_internal_range_agg(PG_FUNCTION_ARGS)
+{
+	Oid indexrelid = PG_GETARG_OID(0);
+	char *fieldname = GET_STR(PG_GETARG_TEXT_P(1));
+	char *range_spec = GET_STR(PG_GETARG_TEXT_P(2));
+	char *query = GET_STR(PG_GETARG_TEXT_P(3));
+
+	ZDBIndexDescriptor *desc;
+	char *json;
+
+	desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
+	json = desc->implementation->rangeAggregate(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), fieldname, range_spec, query);
 
 	PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }

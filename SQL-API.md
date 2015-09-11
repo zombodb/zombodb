@@ -76,6 +76,12 @@ These custom domains are to be used in user tables as data types when you requir
 > or
 > 
 > ```
+> #range(fieldname, '<ES "range" specification JSON>' [, another aggregate])
+> ```
+> 
+> or
+> 
+> ```
 > #significant_terms(fieldname, stem, max_terms [, another aggregate])
 > ```
 > 
@@ -315,6 +321,38 @@ These custom domains are to be used in user tables as data types when you requir
 > LAND |     1
 > LONG |     1
 > ```
+
+#### ```FUNCTION zdb_range_agg(table_name regclass, fieldname text, range_spec json, query text)```
+
+> `table_name`:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
+> `fieldname`:  The name of a field from which to derive range aggregate buckets  
+> `range_spec`:  JSON-formatted array that is compatible with Elasticsearch's [range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html) range definition  
+> `query`:  a full text query  
+> 
+> This function provides direct access to Elasticsearch's [range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html) and can only be used with "numeric"-type fields.
+> 
+> The `range_spec` argument must be a properly-formed JSON array structure, for example:
+> 
+> ```
+> [ 
+>     { "key":"first bucket", "from":0, "to":100 },
+>     { "from":100, "to":200 },
+>     { "from":200 }
+> ]
+> ```
+> 
+> Returns a set based on the type: `zdb_range_agg_response AS (key text, low double precision, high double precision, doc_count int8)`.  NOTE:  the `low` and `high` columns could be null, depending on if you defined open-ended "from" or "to" ranges.
+> 
+> Example:
+> 
+> ```
+> SELECT * FROM zdb_range_agg('products', 'price', '[ {"key":"cheap", "from":0, "to":100 }, { "from":100, "to":2000 }, {"key":"expensive", "from":1000 } ]', '');
+>     key      | low  | high | doc_count 
+>--------------+------+------+-----------
+> cheap        |    0 |  100 |         0
+> 100.0-2000.0 |  100 | 2000 |         2
+> expensive    | 1000 |      |         4
+```
 
 #### ```FUNCTION zdb_tally(table_name regclass, fieldname text, stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SET OF zdb_tally_response```
 

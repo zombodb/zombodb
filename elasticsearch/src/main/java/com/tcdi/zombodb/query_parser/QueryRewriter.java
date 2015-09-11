@@ -16,6 +16,7 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
@@ -29,12 +30,14 @@ import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramBuilder;
+import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.significant.SignificantTermsBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 
+import java.io.IOException;
 import java.io.StringReader;
 import java.util.*;
 
@@ -269,6 +272,8 @@ public class QueryRewriter {
 
         if (agg instanceof ASTTally)
             ab = build((ASTTally) agg);
+        else if (agg instanceof ASTRangeAggregate)
+            ab = build((ASTRangeAggregate) agg);
         else if (agg instanceof ASTSignificantTerms)
             ab = build((ASTSignificantTerms) agg);
         else if (agg instanceof ASTExtendedStats)
@@ -371,6 +376,38 @@ public class QueryRewriter {
                 tb.include(agg.getStem());
 
             return tb;
+        }
+    }
+
+    static class RangeSpecEntry {
+        public String key;
+        public Double from;
+        public Double to;
+    }
+
+    private AggregationBuilder build(ASTRangeAggregate agg) {
+        try {
+            ObjectMapper om = new ObjectMapper();
+
+            RangeSpecEntry[] rangeSpecEntries = om.readValue(agg.getRangeSpec(), RangeSpecEntry[].class);
+            RangeBuilder builder = new RangeBuilder(agg.getFieldname())
+                    .field(agg.getFieldname());
+
+            for (RangeSpecEntry e : rangeSpecEntries) {
+                if (e.to == null && e.from == null)
+                    throw new RuntimeException ("Invalid range spec entry:  one of 'to' or 'from' must be specified");
+
+                if (e.from == null)
+                    builder.addUnboundedTo(e.key, e.to);
+                else if (e.to == null)
+                    builder.addUnboundedFrom(e.key, e.from);
+                else
+                    builder.addRange(e.key, e.from, e.to);
+            }
+
+            return builder;
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
         }
     }
 

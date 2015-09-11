@@ -25,6 +25,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
@@ -3608,5 +3609,30 @@ public class TestQueryRewriter {
                 tree);
     }
 
+    @Test
+    public void testIssue_37_RangeAggregateParsing() throws Exception {
+        MockClientAndRequest mock = new MockClientAndRequest();
+        AbstractAggregationBuilder aggregationBuilder;
+        QueryRewriter qr;
 
+        qr = new QueryRewriter(mock.client, mock.request, "#range(page_count, '[{\"key\":\"first\", \"to\":100}, {\"from\":100, \"to\":150}, {\"from\":150}]')", false, true);
+        aggregationBuilder = qr.rewriteAggregations();
+
+        assertEquals("testIssue_37_RangeAggregateParsing",
+                        "\n\"page_count\"{\n" +
+                        "  \"range\" : {\n" +
+                        "    \"field\" : \"page_count\",\n" +
+                        "    \"ranges\" : [ {\n" +
+                        "      \"key\" : \"first\",\n" +
+                        "      \"to\" : 100.0\n" +
+                        "    }, {\n" +
+                        "      \"from\" : 100.0,\n" +
+                        "      \"to\" : 150.0\n" +
+                        "    }, {\n" +
+                        "      \"from\" : 150.0\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}",
+                aggregationBuilder.toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string());
+    }
 }
