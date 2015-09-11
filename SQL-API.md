@@ -346,7 +346,7 @@ These custom domains are to be used in user tables as data types when you requir
 > Example:
 > 
 > ```
-> SELECT * FROM zdb_range_agg('products', 'price', '[ {"key":"cheap", "from":0, "to":100 }, >{ "from":100, "to":2000 }, {"key":"expensive", "from":1000 } ]', '');
+> SELECT * FROM zdb_range_agg('products', 'price', '[ {"key":"cheap", "from":0, "to":100 }, { "from":100, "to":2000 }, {"key":"expensive", "from":1000 } ]', '');
 >     key      | low  | high | doc_count 
 >--------------+------+------+-----------
 > cheap        |    0 |  100 |         0
