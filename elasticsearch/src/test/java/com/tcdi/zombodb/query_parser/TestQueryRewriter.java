@@ -2090,7 +2090,7 @@ public class TestQueryRewriter {
                         "        \"filter\" : {\n" +
                         "          \"terms\" : {\n" +
                         "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "            \"execution\" : \"and\"\n" +
+                        "            \"execution\" : \"plain\"\n" +
                         "          }\n" +
                         "        }\n" +
                         "      }\n" +
@@ -2121,7 +2121,7 @@ public class TestQueryRewriter {
                         "        \"filter\" : {\n" +
                         "          \"terms\" : {\n" +
                         "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "            \"execution\" : \"plain\"\n" +
+                        "            \"execution\" : \"and\"\n" +
                         "          }\n" +
                         "        }\n" +
                         "      }\n" +

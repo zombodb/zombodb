@@ -935,9 +935,11 @@ public class QueryRewriter {
             @Override
             public FilterBuilder b(QueryParserNode n) {
                 boolean canUseFieldData = node.hasExternalValues() && node.getTotalExternalValues() >= 10000 && metadataManager.getMetadataForField(n.getFieldname()).canUseFieldData(n.getFieldname());
+                boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
 
                 // NB:  testing shows that "fielddata" is *significantly* faster for large number of terms, about 2x faster than "plain"
-                return termsFilter(n.getFieldname(), node.hasExternalValues() ? node.getExternalValues() : n.getChildValues()).execution(node.isAnd() ? "and" : canUseFieldData ? "fielddata" : "plain");
+                return termsFilter(n.getFieldname(), node.hasExternalValues() ? node.getExternalValues() : n.getChildValues())
+                        .execution( (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? "and" : canUseFieldData ? "fielddata" : "plain");
             }
         });
     }
