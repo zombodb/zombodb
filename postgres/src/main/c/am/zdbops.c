@@ -20,6 +20,8 @@
 #include "catalog/pg_type.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
+#include "utils/memutils.h"
+#include "utils/rel.h"
 
 #include "zdb_interface.h"
 #include "zdbops.h"
@@ -28,10 +30,14 @@
 PG_FUNCTION_INFO_V1(zdb_get_index_name);
 PG_FUNCTION_INFO_V1(zdb_get_url);
 PG_FUNCTION_INFO_V1(zdb_query_func);
+PG_FUNCTION_INFO_V1(zdb_tid_query_func);
+PG_FUNCTION_INFO_V1(zdb_table_ref_and_tid);
 PG_FUNCTION_INFO_V1(zdb_row_to_json);
 PG_FUNCTION_INFO_V1(zdb_internal_describe_nested_object);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
+
+static ZDBIndexDescriptor *extract_index_descriptor(FunctionCallInfo fcinfo);
 
 Datum zdb_get_index_name(PG_FUNCTION_ARGS)
 {
@@ -72,6 +78,95 @@ Datum zdb_query_func(PG_FUNCTION_ARGS)
 
 	elog(ERROR, "zdb_query_func: not implemented");
 	PG_RETURN_BOOL(false);
+}
+
+
+__inline static void set_item_pointer(ZDBSearchResponse *data, int index, ItemPointer target)
+{
+	BlockNumber  blkno;
+	OffsetNumber offno;
+
+	memcpy(&blkno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(BlockNumber));
+	memcpy(&offno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber)) + sizeof(BlockNumber)), sizeof(OffsetNumber));
+
+	ItemPointerSet(target, blkno, offno);
+}
+HTAB *scan = NULL;
+
+Datum zdb_tid_query_func(PG_FUNCTION_ARGS)
+{
+	ItemPointer tid = (ItemPointer) DatumGetPointer(PG_GETARG_POINTER(0));
+	char *query = GET_STR(PG_GETARG_TEXT_P(1));
+	bool found;
+
+	if (scan == NULL) {
+		ZDBIndexDescriptor *desc = extract_index_descriptor(fcinfo);
+		HASHCTL ctl;
+		uint64 nhits;
+		int i;
+		ZDBSearchResponse *response;
+
+		memset(&ctl, 0, sizeof(HASHCTL));
+		ctl.keysize = sizeof(ItemPointerData);
+		ctl.entrysize = ctl.keysize;
+		ctl.hash = tag_hash;
+		ctl.hcxt = TopTransactionContext;
+
+		response = desc->implementation->searchIndex(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), &query, 1, &nhits);
+		scan = hash_create("zdb seqscan", nhits, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
+		for (i=0; i<nhits; i++) {
+			ItemPointerData data;
+
+			set_item_pointer(response, i, &data);
+			hash_search(scan, &data, HASH_ENTER, &found);
+		}
+	}
+
+	hash_search(scan, tid, HASH_FIND, &found);
+	PG_RETURN_BOOL(found);
+}
+
+static ZDBIndexDescriptor *extract_index_descriptor(FunctionCallInfo fcinfo)
+{
+	OpExpr      *opexpr        = (OpExpr *) fcinfo->flinfo->fn_expr;
+	FuncExpr    *funcExpr      = (FuncExpr *) linitial(opexpr->args);
+	Const       *tableRegclass = (Const *) linitial(funcExpr->args);
+	Oid         heapRelOid     = (Oid) DatumGetObjectId(tableRegclass->constvalue);
+	Relation    heapRel;
+	List        *indexes;
+	ListCell	*lc;
+	ZDBIndexDescriptor *desc = NULL;
+
+	heapRel = RelationIdGetRelation(heapRelOid);
+	indexes = RelationGetIndexList(heapRel);
+	foreach(lc, indexes)
+	{
+		Oid indexRelOid = (Oid) lfirst(lc);
+		Relation indexRel;
+
+		indexRel = RelationIdGetRelation(indexRelOid);
+		if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0)
+		{
+			desc = zdb_alloc_index_descriptor(indexRel);
+			if (!desc->isShadow)
+			{
+				RelationClose(indexRel);
+				break;
+			}
+		}
+		RelationClose(indexRel);
+	}
+
+	RelationClose(heapRel);
+
+	return desc;
+}
+
+
+
+Datum zdb_table_ref_and_tid(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_POINTER(PG_GETARG_POINTER(1));
 }
 
 Datum zdb_row_to_json(PG_FUNCTION_ARGS)

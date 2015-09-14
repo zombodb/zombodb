@@ -99,6 +99,8 @@ static ExecutorEnd_hook_type   prev_ExecutorEndHook  = NULL;
 static int executorDepth = 0;
 static int64 numHitsFound = -1;
 
+extern HTAB *scan;
+
 static Oid *findZDBIndexes(Oid relid, int *many)
 {
 	Oid *indexes = NULL;
@@ -169,6 +171,7 @@ static void xact_complete_cleanup(XactEvent event) {
 	needBatchFinishOnCommit_set = false;
 	executorDepth = 0;
 	numHitsFound = -1;
+	scan = NULL;
 
 	zdb_transaction_finish();
 
@@ -503,7 +506,7 @@ zdbbuildCallback(Relation indexRel,
 {
 	ZDBBuildState      *buildstate = (ZDBBuildState *) state;
 	ZDBIndexDescriptor *desc       = buildstate->desc;
-	text               *value      = DatumGetTextP(values[0]);
+	text               *value      = DatumGetTextP(values[1]);
 
 	if (HeapTupleIsHeapOnly(htup))
 		elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
@@ -537,7 +540,7 @@ zdbinsert(PG_FUNCTION_ARGS)
 //    Relation	heapRel = (Relation) PG_GETARG_POINTER(4);
 //    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
 	ZDBIndexDescriptor *desc;
-	text               *value   = DatumGetTextP(values[0]);
+	text               *value   = DatumGetTextP(values[1]);
 
 	desc = alloc_index_descriptor(indexRel, true);
 	if (desc->isShadow)

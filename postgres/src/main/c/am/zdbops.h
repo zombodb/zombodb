@@ -22,6 +22,8 @@
 extern Datum zdb_get_index_name(PG_FUNCTION_ARGS);
 extern Datum zdb_get_url(PG_FUNCTION_ARGS);
 extern Datum zdb_query_func(PG_FUNCTION_ARGS);
+extern Datum zdb_tid_query_func(PG_FUNCTION_ARGS);
+extern Datum zdb_table_ref_and_tid(PG_FUNCTION_ARGS);
 extern Datum zdb_row_to_json(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_describe_nested_object(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_get_index_mapping(PG_FUNCTION_ARGS);
