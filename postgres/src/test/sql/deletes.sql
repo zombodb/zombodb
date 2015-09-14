@@ -14,7 +14,7 @@ ALTER TABLE deltmp ADD PRIMARY KEY (id);
 DELETE FROM so_posts WHERE id IN (SELECT id FROM deltmp);
 
 SELECT assert(count(*), 162240, 'deleted 3k records from so_posts') FROM so_posts;
-SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
+SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
 
 -- elasticsearch will think we still have access to 10k records because we don't
 -- push xact information until the transaction commits;
@@ -28,14 +28,14 @@ SELECT assert (zdb_actual_index_record_count('so_posts', 'data'), 165240, 'actua
 COMMIT;
 
 SELECT assert(count(*), 162240, 'actually deleted 3k records from so_posts') FROM so_posts;
-SELECT assert(count(*), 162240, 'actually deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
+SELECT assert(count(*), 162240, 'actually deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
 
 -- restore the 3k records we deleted
 INSERT INTO so_posts SELECT * FROM deltmp;
 DROP TABLE deltmp;
 
 SELECT assert(count(*), 165240, 'restored deleted 3k records to so_posts') FROM so_posts;
-SELECT assert(count(*), 165240, 'restored deleted 3k records to so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
+SELECT assert(count(*), 165240, 'restored deleted 3k records to so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
 
 -- now the *actual* number of records elasticsearch has in both the 'xact' and 'data' types
 -- should be 13k:  the initial 10k plus the 3k we just added
@@ -59,12 +59,12 @@ BEGIN;
 DELETE FROM so_posts WHERE id IN (SELECT id FROM so_posts ORDER BY random() LIMIT 3000);
 
 SELECT assert(count(*), 162240, 'deleted 3k records from so_posts') FROM so_posts;
-SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
+SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
 
 ABORT;
 
 SELECT assert(count(*), 165240, 'aborted deleted 3k records to so_posts') FROM so_posts;
-SELECT assert(count(*), 165240, 'aborted deleted 3k records to so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
+SELECT assert(count(*), 165240, 'aborted deleted 3k records to so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
 
 -- vacuum the so_posts table to remove dead rows (3k of them)
 VACUUM so_posts;

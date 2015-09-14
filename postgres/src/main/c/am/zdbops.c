@@ -157,8 +157,10 @@ static ZDBIndexDescriptor *extract_index_descriptor(FunctionCallInfo fcinfo)
 		RelationClose(indexRel);
 	}
 
-	RelationClose(heapRel);
+	if (desc == NULL)
+		elog(ERROR, "Unable to find ZomboDB index for '%s'", RelationGetRelationName(heapRel));
 
+	RelationClose(heapRel);
 	return desc;
 }
 

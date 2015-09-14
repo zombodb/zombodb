@@ -24,20 +24,3 @@ BEGIN
       FROM json_array_elements(buckets) e;
 END;
 $$;
-
-
-CREATE OR REPLACE FUNCTION zdb(table_name regclass, ctid tid) RETURNS tid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid';
-CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c STRICT AS '$libdir/plugins/zombodb' COST 0.000001;
-
-CREATE OPERATOR ==> (
-    PROCEDURE = zdb_tid_query_func,
-    RESTRICT = zdbsel,
-    LEFTARG = tid,
-    RIGHTARG = text,
-    HASHES, MERGES
-);
-
-CREATE OPERATOR CLASS zombodb_tid_ops DEFAULT FOR TYPE tid USING zombodb AS
-    OPERATOR 1 ==>(tid, text),
-    FUNCTION 1 zdb_tid_query_func(tid, text),
-    STORAGE json;

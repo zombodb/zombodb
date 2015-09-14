@@ -113,7 +113,7 @@ static Oid *findZDBIndexes(Oid relid, int *many)
 	appendStringInfo(sql, "select indexrelid "
 			"from pg_index "
 			"where indrelid = %d "
-			"  and indclass[0] = (select oid from pg_opclass where opcmethod = (select oid from pg_am where amname = 'zombodb'))", relid);
+			"  and indclass[0] = (select oid from pg_opclass where opcmethod = (select oid from pg_am where amname = 'zombodb') and opcname = 'zombodb_tid_ops')", relid);
 
 	SPI_execute(sql->data, true, 1);
 	*many = SPI_processed;
