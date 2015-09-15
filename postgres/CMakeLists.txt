@@ -14,6 +14,8 @@ set(SOURCE_FILES
     src/main/c/am/zdbam.h
     src/main/c/am/zdbops.c
     src/main/c/am/zdbops.h
+    src/main/c/am/zdbseqscan.c
+    src/main/c/am/zdbseqscan.h
     src/main/c/rest/rest.c
     src/main/c/rest/rest.h
     src/main/c/util/curl_support.c

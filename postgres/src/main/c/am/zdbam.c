@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +40,7 @@
 #include "zdb_interface.h"
 #include "zdbops.h"
 #include "zdbam.h"
+#include "zdbseqscan.h"
 
 
 PG_FUNCTION_INFO_V1(zdbbuild);
@@ -78,7 +80,7 @@ typedef struct
 {
 	ZDBIndexDescriptor *indexDescriptor;
 	uint64             nhits;
-	int                currhit;
+	uint64             currhit;
 	ZDBSearchResponse  *hits;
 	char               **queries;
 	int                nqueries;
@@ -98,8 +100,6 @@ static ExecutorStart_hook_type prev_ExecutorStartHook = NULL;
 static ExecutorEnd_hook_type   prev_ExecutorEndHook  = NULL;
 static int executorDepth = 0;
 static int64 numHitsFound = -1;
-
-extern HTAB *scan;
 
 static Oid *findZDBIndexes(Oid relid, int *many)
 {
@@ -171,8 +171,8 @@ static void xact_complete_cleanup(XactEvent event) {
 	needBatchFinishOnCommit_set = false;
 	executorDepth = 0;
 	numHitsFound = -1;
-	scan = NULL;
 
+	zdb_sequential_scan_support_cleanup();
 	zdb_transaction_finish();
 
     /*
@@ -300,6 +300,8 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc)
 
 	if (executorDepth == 0)
 	{
+		zdb_sequential_scan_support_cleanup();
+
 		if (!needBatchFinishOnCommit_set)
 		{
 			/*
@@ -610,17 +612,6 @@ static void setup_scan(IndexScanDesc scan)
 	scanstate->currhit         = 0;
 
 	numHitsFound = scanstate->hits->total_hits;
-}
-
-__inline static void set_item_pointer(ZDBSearchResponse *data, int index, ItemPointer target)
-{
-	BlockNumber  blkno;
-	OffsetNumber offno;
-
-	memcpy(&blkno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(BlockNumber));
-	memcpy(&offno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber)) + sizeof(BlockNumber)), sizeof(OffsetNumber));
-
-	ItemPointerSet(target, blkno, offno);
 }
 
 /*
