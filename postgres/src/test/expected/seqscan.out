@@ -1,0 +1,190 @@
+set enable_indexscan to off;
+set enable_bitmapscan to off;
+explain (costs off) select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by id;
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Sort
+   Sort Key: id
+   ->  Seq Scan on so_posts
+         Filter: (zdb('so_posts'::regclass, ctid) ==> 'beer'::text)
+(4 rows)
+
+select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by id;
+   id   |                                                                 title                                                                  
+--------+----------------------------------------------------------------------------------------------------------------------------------------
+   2932 | Why is free software good for programmers?
+   5776 | 
+   8888 | 
+  10716 | 
+  11819 | 
+  11946 | 
+  12097 | 
+  12353 | 
+  14726 | 
+  15799 | 
+  20663 | Are PGP keys as good for certificates as X.509 keys?
+  21907 | Open Source but not Free Software (or vice versa)
+  23528 | 
+  24233 | 
+  24363 | 
+  26416 | 
+  26636 | 
+  26803 | 
+  27114 | 
+  28059 | 
+  29345 | 
+  32956 | What are the common revenue models for free-software companies?
+  34733 | 
+  36441 | Hobbyist programmer releasing software with a donate button
+  36443 | How not to suffer from ideologists when you're a pragmatic person?
+  37000 | 
+  39758 | 
+  40670 | 
+  41528 | 
+  41530 | 
+  43362 | 
+  44434 | 
+  44451 | 
+  44687 | 
+  44991 | 
+  46093 | 
+  49035 | 
+  50328 | 
+  52622 | 
+  52819 | 
+  53238 | 
+  53772 | 
+  53801 | 
+  54279 | 
+  56682 | 
+  58124 | 
+  58790 | 
+  58795 | 
+  61392 | free as in free beer
+  61566 | 
+  61668 | 
+  61769 | 
+  62501 | 
+  67437 | 
+  69216 | 
+  70490 | 
+  71500 | 
+  71936 | 
+  72941 | 
+  73887 | 
+  74392 | 
+  76418 | 
+  77681 | 
+  78292 | 
+  78487 | 
+  79165 | 
+  81756 | 
+  81803 | 
+  82664 | 
+  82984 | 
+  85867 | 
+  86290 | 
+  87570 | 
+  87813 | 
+  88452 | 
+  91723 | 
+  93139 | 
+  93719 | 
+  96580 | Is experience in business analysis useful when moving into a programming career?
+  98384 | 
+  98965 | 
+ 100706 | 
+ 101209 | 
+ 102033 | 
+ 102886 | 
+ 102895 | 
+ 103203 | Rails data model - best practices question
+ 103571 | 
+ 103986 | 
+ 104349 | 
+ 105324 | 
+ 105990 | 
+ 106989 | 
+ 107034 | 
+ 107036 | 
+ 107055 | 
+ 107057 | 
+ 107123 | 
+ 107170 | Where to find resources to write a program like sandboxie?
+ 108758 | 
+ 108787 | 
+ 112944 | 
+ 116201 | 
+ 117796 | 
+ 118694 | 
+ 119064 | 
+ 120011 | 
+ 120593 | 
+ 121632 | 
+ 121798 | What is the economic rationale for focusing on free, open source projects?
+ 128446 | 
+ 131659 | 
+ 131841 | How can I defend Ruby on Rails against customers' not technical opinion?
+ 132827 | 
+ 133772 | 
+ 134692 | 
+ 135509 | 
+ 135956 | 
+ 136208 | Rails - to use STI or not...that is the question
+ 139375 | 
+ 140057 | 
+ 140892 | 
+ 141345 | 
+ 142037 | 
+ 144658 | 
+ 145849 | 
+ 147185 | How does a beginner programmer find a mentor for learning from doing?
+ 148805 | 
+ 151242 | 
+ 152511 | 
+ 152822 | 
+ 153618 | 
+ 155755 | 
+ 156343 | 
+ 159774 | 
+ 164573 | 
+ 165557 | 
+ 167186 | 
+ 171605 | Free cloud web service development
+ 177863 | 
+ 181140 | Am I allowed to create closed-source software with open-source code?
+ 186140 | 
+ 187269 | Can I use the patented Octree algorithm in a public programming challenge?
+ 189148 | 
+ 197135 | 
+ 197164 | 
+ 198153 | 
+ 200226 | 
+ 203270 | 
+ 204293 | 
+ 206813 | 
+ 210008 | 
+ 211469 | 
+ 211655 | 
+ 211765 | 
+ 213942 | If I try to monetize free software, what could possibly prevent someone from forking that software and creating a proprietary version?
+ 215682 | How to draw a class diagram where a class contains either 6 other classes or mupltie different
+ 216210 | 
+ 219124 | 
+ 219808 | 
+ 220677 | 
+ 230284 | 
+ 231927 | 
+ 234252 | 
+ 237358 | 
+ 245578 | 
+ 250835 | 
+ 256876 | 
+ 258315 | 
+ 263392 | 
+ 268009 | 
+ 269590 | How to efficiently store big time series data?
+ 270921 | 
+ 272560 | Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?
+(174 rows)
+
