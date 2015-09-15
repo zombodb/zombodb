@@ -148,6 +148,17 @@ public class TestQueryRewriter {
                             fieldProps.put("analyzer", "fulltext");
 
                             fieldProps = new HashMap();
+                            props.put("sent", fieldProps);
+                            fieldProps.put("analyzer", "date");
+
+                            fieldProps = new HashMap();
+                            props.put("sent", fieldProps);
+                            fieldProps.put("analyzer", "date");
+                            final Map fieldsMap = new HashMap();
+                            fieldsMap.put("date", "something about date");
+                            fieldProps.put("fields", fieldsMap);
+
+                            fieldProps = new HashMap();
                             props.put("_all", fieldProps);
                             fieldProps.put("analyzer", "phrase");
 
@@ -3630,6 +3641,33 @@ public class TestQueryRewriter {
                         "      \"to\" : 150.0\n" +
                         "    }, {\n" +
                         "      \"from\" : 150.0\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}",
+                aggregationBuilder.toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string());
+    }
+
+    @Test
+    public void testIssue_99_DateRangeAggregateParsing() throws Exception {
+        MockClientAndRequest mock = new MockClientAndRequest();
+        AbstractAggregationBuilder aggregationBuilder;
+        QueryRewriter qr;
+
+        qr = new QueryRewriter(mock.client, mock.request, "#range(sent, '[{\"key\": \"early\", \"to\":\"2009-01-01 00:00:00\"}, {\"from\":\"2009-01-01 00:00:00\", \"to\":\"2010-01-01 00:00:00\"}, {\"from\":\"2010-01-01 00:00:00\"}]')", false, true);
+        aggregationBuilder = qr.rewriteAggregations();
+
+        assertEquals("testIssue_99_DateRangeAggregateParsing",
+                        "\n\"sent\"{\n" +
+                        "  \"date_range\" : {\n" +
+                        "    \"field\" : \"sent.date\",\n" +
+                        "    \"ranges\" : [ {\n" +
+                        "      \"key\" : \"early\",\n" +
+                        "      \"to\" : \"2009-01-01 00:00:00\"\n" +
+                        "    }, {\n" +
+                        "      \"from\" : \"2009-01-01 00:00:00\",\n" +
+                        "      \"to\" : \"2010-01-01 00:00:00\"\n" +
+                        "    }, {\n" +
+                        "      \"from\" : \"2010-01-01 00:00:00\"\n" +
                         "    } ]\n" +
                         "  }\n" +
                         "}",
