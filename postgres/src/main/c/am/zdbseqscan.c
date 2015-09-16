@@ -17,6 +17,7 @@
 #include "postgres.h"
 #include "executor/spi.h"
 #include "access/xact.h"
+#include "nodes/relation.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
@@ -25,7 +26,6 @@
 #include "zdb_interface.h"
 #include "zdbseqscan.h"
 
-PG_FUNCTION_INFO_V1(zdbcostestimate);
 PG_FUNCTION_INFO_V1(zdbsel);
 
 static uint32 sequential_scan_key_hash(const void *key, Size keysize);
@@ -33,7 +33,7 @@ static int sequential_scan_key_match(const void *key1, const void *key2, Size ke
 static void *sequential_scan_key_copy(void *d, const void *s, Size keysize);
 
 static void initialize_sequential_scan_cache(void);
-static Oid determine_index_oid(FunctionCallInfo fcinfo);
+static Oid determine_index_oid(FuncExpr *funcExpr);
 
 typedef struct SequentialScanIndexRef {
     Oid funcOid;
@@ -97,10 +97,9 @@ static void initialize_sequential_scan_cache(void) {
     SEQUENTIAL_SCANS = hash_create("zdb global sequential scan cache", 32, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT | HASH_COMPARE | HASH_KEYCOPY);
 }
 
-static Oid determine_index_oid(FunctionCallInfo fcinfo)
+static Oid determine_index_oid(FuncExpr *funcExpr)
 {
-    OpExpr      *opexpr        = (OpExpr *) fcinfo->flinfo->fn_expr;
-    FuncExpr    *funcExpr      = (FuncExpr *) linitial(opexpr->args);
+    MemoryContext       oldContext = MemoryContextSwitchTo(TopTransactionContext);
     Const       *tableRegclass = (Const *) linitial(funcExpr->args);
     Oid         heapRelOid     = (Oid) DatumGetObjectId(tableRegclass->constvalue);
     Relation    heapRel;
@@ -120,18 +119,19 @@ static Oid determine_index_oid(FunctionCallInfo fcinfo)
     foreach(lc, indexes)
     {
         Relation indexRel;
-        Oid indexRelOid;
+        Oid      indexRelOid;
 
         indexRelOid = (Oid) lfirst(lc);
         indexRel = RelationIdGetRelation(indexRelOid);
         if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0)
         {
-            List *indexExpressions = RelationGetIndexExpressions(indexRel);
+            List     *indexExpressions = RelationGetIndexExpressions(indexRel);
             ListCell *lc2;
 
             foreach (lc2, indexExpressions)
             {
                 Node *n = (Node *) lfirst(lc2);
+
                 if (IsA(n, FuncExpr))
                 {
                     FuncExpr *indexFuncExpr = (FuncExpr *) n;
@@ -147,6 +147,7 @@ static Oid determine_index_oid(FunctionCallInfo fcinfo)
                         RelationClose(indexRel);
                         RelationClose(heapRel);
 
+                        MemoryContextSwitchTo(oldContext);
                         return indexRelOid;
                     }
                 }
@@ -156,35 +157,39 @@ static Oid determine_index_oid(FunctionCallInfo fcinfo)
     }
     RelationClose(heapRel);
 
+    MemoryContextSwitchTo(oldContext);
+
     elog(ERROR, "Unable to find ZomboDB index for '%s'", RelationGetRelationName(heapRel));
     return InvalidOid;
 }
 
 Datum zdb_seqscan(PG_FUNCTION_ARGS)
 {
-    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
-    ItemPointer tid = (ItemPointer) PG_GETARG_POINTER(0);
-    char *query = text_to_cstring(PG_GETARG_TEXT_P(1));
+    MemoryContext       oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    ItemPointer         tid        = (ItemPointer) PG_GETARG_POINTER(0);
+    char                *query     = TextDatumGetCString(PG_GETARG_TEXT_P(1));
+    OpExpr              *opexpr    = (OpExpr *) fcinfo->flinfo->fn_expr;
+    FuncExpr            *funcExpr  = (FuncExpr *) linitial(opexpr->args);
     SequentialScanEntry *entry;
-    SequentialScanKey key;
-    bool found;
+    SequentialScanKey   key;
+    bool                found;
 
     if (SEQUENTIAL_SCANS == NULL)
         initialize_sequential_scan_cache();
 
     /* search for an active sequential scan for this index and query */
-    key.indexRelOid = determine_index_oid(fcinfo);
-    key.query = query;
-    key.query_len = strlen(query);
+    key.indexRelOid = determine_index_oid(funcExpr);
+    key.query       = query;
+    key.query_len   = strlen(query);
 
     entry = hash_search(SEQUENTIAL_SCANS, &key, HASH_FIND, &found);
     if (!found)
     {
         /* no scan found for this index/query, so go query Elasticsearch */
-        ZDBSearchResponse *response;
+        ZDBSearchResponse  *response;
         ZDBIndexDescriptor *desc;
-        uint64 nhits, i;
-        SequentialScanKey *newKey;
+        uint64             nhits, i;
+        SequentialScanKey  *newKey;
 
         desc = zdb_alloc_index_descriptor_by_index_oid(key.indexRelOid);
         response = desc->implementation->searchIndex(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), &query, 1, &nhits);
@@ -193,8 +198,8 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS)
         memcpy(newKey, &key, sizeof(SequentialScanKey));
         entry = hash_search(SEQUENTIAL_SCANS, newKey, HASH_ENTER, &found);
         entry->one_hit = NULL;
-        entry->empty = false;
-        entry->scan = NULL;
+        entry->empty   = false;
+        entry->scan    = NULL;
 
         if (nhits == 0)
         {
@@ -212,10 +217,10 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS)
             HASHCTL ctl;
 
             memset(&ctl, 0, sizeof(HASHCTL));
-            ctl.keysize = sizeof(ItemPointerData);
+            ctl.keysize   = sizeof(ItemPointerData);
             ctl.entrysize = ctl.keysize;
-            ctl.hash = tag_hash;
-            ctl.hcxt = TopTransactionContext;
+            ctl.hash      = tag_hash;
+            ctl.hcxt      = TopTransactionContext;
 
             entry->scan = hash_create(query, nhits, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
 
@@ -248,47 +253,42 @@ void zdb_sequential_scan_support_cleanup(void)
     {
         hash_destroy(SEQUENTIAL_SCANS);
         SEQUENTIAL_SCANS = NULL;
+    }
 
+    if (SEQUENTIAL_SCAN_INDEXES != NULL)
+    {
         pfree(SEQUENTIAL_SCAN_INDEXES);
         SEQUENTIAL_SCAN_INDEXES = NULL;
     }
 }
 
 Datum
-zdbcostestimate(PG_FUNCTION_ARGS)
-{
-//    PlannerInfo *root = (PlannerInfo * )PG_GETARG_POINTER(0);
-//    IndexPath *path = (IndexPath * )PG_GETARG_POINTER(1);
-//    double loop_count = PG_GETARG_FLOAT8(2);
-    Cost        *indexStartupCost = (Cost *) PG_GETARG_POINTER(3);
-    Cost        *indexTotalCost   = (Cost *) PG_GETARG_POINTER(4);
-    Selectivity *indexSelectivity = (Selectivity *) PG_GETARG_POINTER(5);
-    double      *indexCorrelation = (double *) PG_GETARG_POINTER(6);
-//    IndexOptInfo *index = path->indexinfo;
-
-    *indexStartupCost = 0;
-    *indexTotalCost   = 0.0001;
-    *indexSelectivity = 0.0001;
-    *indexCorrelation = 0.0001;
-
-    PG_RETURN_VOID();
-}
-
-Datum
 zdbsel(PG_FUNCTION_ARGS)
 {
-    // TODO:  not sure exactly what we should do here
-    // TODO:  figure out which table (and then index)
-    // TODO:  and run the query or just continue to
-    // TODO:  return a really small number?
-//	PlannerInfo *root = (PlannerInfo *) PG_GETARG_POINTER(0);
-//	Oid			operator = PG_GETARG_OID(1);
-//	List	   *args = (List *) PG_GETARG_POINTER(2);
-//	int			varRelid = PG_GETARG_INT32(3);
-//	FuncExpr *left = (FuncExpr *) linitial(args);
-//
-//	Var *firstArg = (Var *) linitial(left->args);
-//
-//	elog(NOTICE, "zdbsel: valRelid=%d, tag=%d", varRelid, firstArg->vartype);
-    PG_RETURN_FLOAT8((float8) 0.0001);
+//    PlannerInfo        *root       = (PlannerInfo *) PG_GETARG_POINTER(0);
+//    Oid                operator    = PG_GETARG_OID(1);
+    List               *args       = (List *) PG_GETARG_POINTER(2);
+//    int                varRelid    = PG_GETARG_INT32(3);
+    FuncExpr           *funcExpr   = (FuncExpr *) linitial(args);
+    Node               *queryNode = (Node *) lsecond(args);
+    float8 selectivity = 0.0001f;
+
+    if (IsA(queryNode, Const)) {
+        Const              *queryConst    = (Const *) queryNode;
+        Const              *tableRegclass = (Const *) linitial(funcExpr->args);
+        Oid                heapRelOid     = (Oid) DatumGetObjectId(tableRegclass->constvalue);
+        Relation           heapRel        = RelationIdGetRelation(heapRelOid);
+        char               *query         = TextDatumGetCString(queryConst->constvalue);
+        ZDBIndexDescriptor *desc;
+        uint64             nhits;
+
+
+        desc        = zdb_alloc_index_descriptor_by_index_oid(determine_index_oid(funcExpr));
+        nhits       = desc->implementation->estimateSelectivity(desc, query);
+        selectivity = ((float8) nhits) / heapRel->rd_rel->reltuples;
+
+        RelationClose(heapRel);
+    }
+
+    PG_RETURN_FLOAT8(selectivity);
 }

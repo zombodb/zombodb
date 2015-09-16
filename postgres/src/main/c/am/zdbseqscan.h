@@ -35,7 +35,6 @@ extern HTAB *SEQUENTIAL_SCANS;
 
 extern Datum zdb_seqscan(PG_FUNCTION_ARGS);
 extern void zdb_sequential_scan_support_cleanup(void);
-extern Datum zdbcostestimate(PG_FUNCTION_ARGS);
 extern Datum zdbsel(PG_FUNCTION_ARGS);
 
 #endif

@@ -56,11 +56,12 @@ public class PostgresCountAction extends BaseRestHandler {
         long count = -1;
 
         try {
+            boolean isSelectivityQuery = request.paramAsBoolean("selectivity", false);
             BytesRestResponse response;
             SearchRequest searchRequest;
             QueryAndIndexPair query;
 
-            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, true);
+            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, !isSelectivityQuery);
             request = new OverloadedContentRestRequest(request, new BytesArray(query.getQuery()));
             request.params().put("index", query.getIndexName());
             request.params().put("type", "data");

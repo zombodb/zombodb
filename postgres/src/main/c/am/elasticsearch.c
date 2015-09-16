@@ -425,6 +425,34 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, Transact
 	return nhits;
 }
 
+uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *user_query)
+{
+	StringInfo query    = makeStringInfo();
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+	uint64     nhits;
+
+	if (indexDescriptor->options)
+		appendStringInfo(query, "#options(%s) ", indexDescriptor->options);
+	appendStringInfo(query, "#child<data>(%s)", user_query);
+
+	appendStringInfo(endpoint, "%s/%s/xact/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	if (indexDescriptor->searchPreference != NULL)
+		appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
+
+	response = rest_call("POST", endpoint->data, query);
+	if (response->data[0] == '{')
+		elog(ERROR, "%s", response->data);
+
+	nhits = (uint64) atol(response->data);
+
+	freeStringInfo(endpoint);
+	freeStringInfo(query);
+	freeStringInfo(response);
+
+	return nhits;
+}
+
 char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *user_query, int64 max_terms, char *sort_order)
 {
 	StringInfo request = makeStringInfo();

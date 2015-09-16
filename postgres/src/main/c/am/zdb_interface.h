@@ -161,6 +161,7 @@ typedef void (*ZDBRefreshIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 
 typedef uint64 (*ZDBActualIndexRecordCount_function)(ZDBIndexDescriptor *indexDescriptor, char *table_name);
 typedef uint64 (*ZDBEstimateCount_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
+typedef uint64 (*ZDBEstimateSelectivity_function)(ZDBIndexDescriptor *indexDescriptor, char *query);
 typedef ZDBSearchResponse *(*ZDBSearchIndex_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits);
 typedef ZDBSearchResponse *(*ZDBGetPossiblyExpiredItems)(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
@@ -197,6 +198,7 @@ struct ZDBIndexImplementation
 
 	ZDBActualIndexRecordCount_function actualIndexRecordCount;
 	ZDBEstimateCount_function estimateCount;
+	ZDBEstimateSelectivity_function estimateSelectivity;
 	ZDBSearchIndex_function   searchIndex;
 	ZDBGetPossiblyExpiredItems getPossiblyExpiredItems;
 

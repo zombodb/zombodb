@@ -30,6 +30,7 @@
 #include "commands/vacuum.h"
 #include "executor/executor.h"
 #include "executor/spi.h"
+#include "nodes/relation.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
 #include "utils/guc.h"
@@ -40,6 +41,7 @@
 #include "zdb_interface.h"
 #include "zdbops.h"
 #include "zdbam.h"
+#include "util/zdbutils.h"
 #include "zdbseqscan.h"
 
 
@@ -58,6 +60,7 @@ PG_FUNCTION_INFO_V1(zdbvacuumcleanup);
 PG_FUNCTION_INFO_V1(zdboptions);
 PG_FUNCTION_INFO_V1(zdbtupledeletedtrigger);
 PG_FUNCTION_INFO_V1(zdbeventtrigger);
+PG_FUNCTION_INFO_V1(zdbcostestimate);
 
 PG_FUNCTION_INFO_V1(zdb_num_hits);
 
@@ -1032,4 +1035,51 @@ zdbeventtrigger(PG_FUNCTION_ARGS)
 
 
 	PG_RETURN_NULL();
+}
+
+
+Datum
+zdbcostestimate(PG_FUNCTION_ARGS)
+{
+//	PlannerInfo  *root             = (PlannerInfo *) PG_GETARG_POINTER(0);
+	IndexPath    *path             = (IndexPath *) PG_GETARG_POINTER(1);
+//	double       loop_count        = PG_GETARG_FLOAT8(2);
+	Cost         *indexStartupCost = (Cost *) PG_GETARG_POINTER(3);
+	Cost         *indexTotalCost   = (Cost *) PG_GETARG_POINTER(4);
+	Selectivity  *indexSelectivity = (Selectivity *) PG_GETARG_POINTER(5);
+	double       *indexCorrelation = (double *) PG_GETARG_POINTER(6);
+	IndexOptInfo *index            = path->indexinfo;
+	ListCell     *lc;
+	StringInfo   query             = makeStringInfo();
+	int64        nhits             = 1;
+
+	foreach (lc, path->indexclauses)
+	{
+		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
+
+		if (IsA(ri->clause, OpExpr))
+		{
+			OpExpr *opExpr     = (OpExpr *) ri->clause;
+			Const  *queryConst = (Const *) lsecond(opExpr->args);
+
+			if (query->len > 0)
+				appendStringInfo(query, " AND ");
+			appendStringInfo(query, "(%s)", TextDatumGetCString(queryConst->constvalue));
+		}
+	}
+
+	if (query->len > 0)
+	{
+		ZDBIndexDescriptor *desc = zdb_alloc_index_descriptor_by_index_oid(index->indexoid);
+
+		nhits = desc->implementation->estimateSelectivity(desc, query->data);
+	}
+
+	*indexStartupCost = (Cost) 0;
+	*indexTotalCost   = (Cost) 0;
+	*indexSelectivity = (Selectivity) (nhits / index->tuples);
+	*indexCorrelation = 0.0;
+
+	freeStringInfo(query);
+	PG_RETURN_VOID();
 }
