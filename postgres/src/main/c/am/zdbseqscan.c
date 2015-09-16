@@ -290,5 +290,8 @@ zdbsel(PG_FUNCTION_ARGS)
         RelationClose(heapRel);
     }
 
+    selectivity = Min(selectivity, 1);
+    selectivity = Max(selectivity, 0);
+
     PG_RETURN_FLOAT8(selectivity);
 }

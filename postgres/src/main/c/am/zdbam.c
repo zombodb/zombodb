@@ -1080,6 +1080,9 @@ zdbcostestimate(PG_FUNCTION_ARGS)
 	*indexSelectivity = (Selectivity) (nhits / index->tuples);
 	*indexCorrelation = 0.0;
 
+	*indexSelectivity = Min(*indexSelectivity, 1);
+	*indexSelectivity = Max(*indexSelectivity, 0);
+
 	freeStringInfo(query);
 	PG_RETURN_VOID();
 }
