@@ -71,7 +71,7 @@ Datum zdb_get_url(PG_FUNCTION_ARGS)
 
 Datum zdb_query_func(PG_FUNCTION_ARGS)
 {
-	elog(ERROR, "zdb_query_func: not supported");
+	elog(ERROR, "operator '==>(json, text)' not supported");
 	PG_RETURN_BOOL(false);
 }
 
