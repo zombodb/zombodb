@@ -56,8 +56,6 @@ PG_FUNCTION_INFO_V1(zdbrestpos);
 PG_FUNCTION_INFO_V1(zdbbulkdelete);
 PG_FUNCTION_INFO_V1(zdbvacuumcleanup);
 PG_FUNCTION_INFO_V1(zdboptions);
-PG_FUNCTION_INFO_V1(zdbcostestimate);
-PG_FUNCTION_INFO_V1(zdbsel);
 PG_FUNCTION_INFO_V1(zdbtupledeletedtrigger);
 PG_FUNCTION_INFO_V1(zdbeventtrigger);
 
@@ -948,45 +946,6 @@ zdboptions(PG_FUNCTION_ARGS)
 	pfree(options);
 
 	PG_RETURN_BYTEA_P(rdopts);
-}
-
-Datum
-zdbcostestimate(PG_FUNCTION_ARGS)
-{
-//    PlannerInfo *root = (PlannerInfo * )PG_GETARG_POINTER(0);
-//    IndexPath *path = (IndexPath * )PG_GETARG_POINTER(1);
-//    double loop_count = PG_GETARG_FLOAT8(2);
-	Cost        *indexStartupCost = (Cost *) PG_GETARG_POINTER(3);
-	Cost        *indexTotalCost   = (Cost *) PG_GETARG_POINTER(4);
-	Selectivity *indexSelectivity = (Selectivity *) PG_GETARG_POINTER(5);
-	double      *indexCorrelation = (double *) PG_GETARG_POINTER(6);
-//    IndexOptInfo *index = path->indexinfo;
-
-	*indexStartupCost = 0;
-	*indexTotalCost   = 0.0001;
-	*indexSelectivity = 0.0001;
-	*indexCorrelation = 0.0001;
-
-	PG_RETURN_VOID();
-}
-
-Datum
-zdbsel(PG_FUNCTION_ARGS)
-{
-	// TODO:  not sure exactly what we should do here
-	// TODO:  figure out which table (and then index)
-	// TODO:  and run the query or just continue to
-	// TODO:  return a really small number?
-//	PlannerInfo *root = (PlannerInfo *) PG_GETARG_POINTER(0);
-//	Oid			operator = PG_GETARG_OID(1);
-//	List	   *args = (List *) PG_GETARG_POINTER(2);
-//	int			varRelid = PG_GETARG_INT32(3);
-//	FuncExpr *left = (FuncExpr *) linitial(args);
-//
-//	Var *firstArg = (Var *) linitial(left->args);
-//
-//	elog(NOTICE, "zdbsel: valRelid=%d, tag=%d", varRelid, firstArg->vartype);
-	PG_RETURN_FLOAT8((float8) 0.0001);
 }
 
 Datum
