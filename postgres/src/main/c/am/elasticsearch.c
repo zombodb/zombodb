@@ -434,7 +434,7 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
 
 	if (indexDescriptor->options)
 		appendStringInfo(query, "#options(%s) ", indexDescriptor->options);
-	appendStringInfo(query, "#child<data>(%s)", user_query);
+	appendStringInfo(query, "#child<data>((%s))", user_query);
 
 	appendStringInfo(endpoint, "%s/%s/xact/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
