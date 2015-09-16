@@ -20,13 +20,13 @@ CREATE TABLE book_content (
    content fulltext
 );
 
-CREATE INDEX idxbook ON book USING zombodb (zdb(book)) WITH (url='http://localhost:9200/');
-CREATE INDEX idxcontent ON book_content USING zombodb (zdb(book_content)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxbook ON book USING zombodb (zdb('book', book.ctid), zdb(book)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxcontent ON book_content USING zombodb (zdb('book_content', book_content.ctid), zdb(book_content)) WITH (url='http://localhost:9200/');
 
 CREATE VIEW books_with_content AS 
    SELECT book.*, 
           book_content.content,
-          zdb(book) AS zdb
+          zdb('book', book.ctid) AS zdb
      FROM book
 LEFT JOIN book_content ON book.id = book_content.book_id;
 

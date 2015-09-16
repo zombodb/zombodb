@@ -132,12 +132,14 @@ tutorial=#
 
 ZomboDB internally uses JSON because JSON is the format Elasticsearch requires.
 
-Now that we know what ```zdb(record)``` does, lets use it to create an index:
+ZomboDB also includes a function named `zdb(regclass, tid)` which is used to statically determine table/index references in the context of sequential scans.  Both are necessary when creating an index and only the latter is used when querying.
+
+Now that we know what `zdb(record)` and `zdb(regclass, tid)` do, lets use them to create an index:
 
 ```
 tutorial=# CREATE INDEX idx_zdb_products 
                      ON products 
-                  USING zombodb(zdb(products)) 
+                  USING zombodb(zdb('products', products.ctid), zdb(products))
                    WITH (url='http://localhost:9200/');
 CREATE INDEX
 tutorial=# 
@@ -163,10 +165,10 @@ Lets move on to querying...
 
 In order to ensure the ZomboDB index is used, we'll be making use of two things:
 
-  - the ```zdb(record)``` function mentioned above
+  - the ```zdb(regclass, tid)``` function mentioned above
   - a custom operator named ```==>```
 
-Again, the ```zdb(record)``` function simply transforms a record into json.  The ```==>``` operator is ZomboDB's "full-text query" operator.
+Again, the ```zdb(regclass, tid)``` function simply transforms a record into json.  The ```==>``` operator is ZomboDB's "full-text query" operator.
 
 ```==>``` is defined as taking "json" on the left and "text" on the right:
 
@@ -179,19 +181,10 @@ tutorial=# \do ==>
 (1 row)
 ```
 
-Unlike other built-in Postgres operators (ie, ```=```, ```LIKE```, etc), ```==>``` is **not** capable of standing on its own.  This means that something like this...
-
-```
-tutorial=# SELECT '{"key": "value"}'::json ==> 'value';
-ERROR:  zdb_query_func: not implemented
-```
-
-... doesn't actually work.  ```==>``` is only capable of evaluating a full-text query within the context of an "IndexScan" (or "BitmapIndexScan" with caveats).  Generally, however, this is not a problem.
-
 A typical query would be:
 
 ```
-tutorial=# SELECT * FROM products WHERE zdb(products) ==> 'sports or box';
+tutorial=# SELECT * FROM products WHERE zdb('products', products.ctid) ==> 'sports or box';
  id |   name   |           keywords            |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued 
 ----+----------+-------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------
   4 | Box      | {wooden,box,"negative space"} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t
@@ -204,11 +197,11 @@ tutorial=#
 And its query plan is:
 
 ```
-tutorial=# EXPLAIN SELECT * FROM products WHERE zdb(products) ==> 'sports or box';
+tutorial=# EXPLAIN SELECT * FROM products WHERE zdb('products', ctid) ==> 'sports or box';
                                     QUERY PLAN                                     
 -----------------------------------------------------------------------------------
- Index Scan using idx_zdb_products on products  (cost=0.00..1.01 rows=1 width=633)
-   Index Cond: (zdb(products.*) ==> 'sports or box'::text)
+ Index Scan using idx_zdb_products on products  (cost=0.00..4.01 rows=1 width=153)
+   Index Cond: (zdb('products'::regclass, ctid) ==> 'sports or box'::text)
 (2 rows)
 
 tutorial=# 
@@ -424,7 +417,7 @@ CREATE EXTENSION zombodb;
 CREATE TABLE foo ...;
 <load data>
 CREATE INDEX ON foo USING zombodb ...;
-SELECT FROM foo WHERE zdb(foo) ==> ...;
+SELECT FROM foo WHERE zdb('foo', foo.ctid) ==> ...;
 ```
 
 

@@ -52,7 +52,6 @@ Not to suggest that these things are impossible, but there's a small set of non-
 - interoperability with various Postgres replication schemes is unknown
 - ```pg_get_indexdef()``` doesn't correctly quote index options making backup restoration annoying (would require patch to Postgres)
 - Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
-- only supports Postgres query plans that choose IndexScans or BitmapIndexScans (the latter is also dependent on sufficient work_mem to avoid Recheck conditions)
 
 ## History
 
@@ -99,14 +98,14 @@ Index it:
 ```
 CREATE INDEX idx_zdb_products 
                      ON products 
-                  USING zombodb(zdb(products)) 
+                  USING zombodb(zdb('products', products.ctid), zdb(products))
                    WITH (url='http://localhost:9200/', shards=5, replicas=1);
 ```
 
 Query it:
 
 ```
-SELECT * FROM products WHERE zdb(products) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
+SELECT * FROM products WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
 ```
 
 
