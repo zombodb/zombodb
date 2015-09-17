@@ -15,6 +15,7 @@
  */
 
 #include "postgres.h"
+#include "miscadmin.h"
 #include "executor/spi.h"
 #include "access/xact.h"
 #include "nodes/relation.h"
@@ -219,6 +220,7 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
             for (i = 0; i < nhits; i++) {
                 ItemPointerData data;
 
+                CHECK_FOR_INTERRUPTS();
                 set_item_pointer(response, i, &data);
                 hash_search(entry->scan, &data, HASH_ENTER, &found);
             }
