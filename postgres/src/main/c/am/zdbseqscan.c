@@ -33,7 +33,7 @@ static int    sequential_scan_key_match(const void *key1, const void *key2, Size
 static void   *sequential_scan_key_copy(void *d, const void *s, Size keysize);
 
 static void initialize_sequential_scan_cache(void);
-static Oid  determine_index_oid(FuncExpr *funcExpr);
+static Oid  determine_index_oid(Node *funcExpr);
 
 typedef struct SequentialScanIndexRef {
     Oid funcOid;
@@ -95,13 +95,21 @@ static void initialize_sequential_scan_cache(void) {
                                    HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT | HASH_COMPARE | HASH_KEYCOPY);
 }
 
-static Oid determine_index_oid(FuncExpr *funcExpr) {
-    MemoryContext oldContext     = MemoryContextSwitchTo(TopTransactionContext);
-    Const         *tableRegclass = (Const *) linitial(funcExpr->args);
-    Oid           heapRelOid     = (Oid) DatumGetObjectId(tableRegclass->constvalue);
+static Oid determine_index_oid(Node *node) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    FuncExpr      *funcExpr;
+    Const         *tableRegclass;
+    Oid           heapRelOid;
     Relation      heapRel;
     List          *indexes;
     ListCell      *lc;
+
+    if (!IsA(node, FuncExpr))
+        elog(ERROR, "Cannot determine index. Left side of operator is not compatible with ZomboDB.");
+
+    funcExpr      = (FuncExpr *) node;
+    tableRegclass = (Const *) linitial(funcExpr->args);
+    heapRelOid    = (Oid) DatumGetObjectId(tableRegclass->constvalue);
 
     foreach(lc, SEQUENTIAL_SCAN_INDEXES) {
         SequentialScanIndexRef *indexRef = (SequentialScanIndexRef *) lfirst(lc);
@@ -159,7 +167,7 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
     ItemPointer         tid        = (ItemPointer) PG_GETARG_POINTER(0);
     char                *query     = TextDatumGetCString(PG_GETARG_TEXT_P(1));
     OpExpr              *opexpr    = (OpExpr *) fcinfo->flinfo->fn_expr;
-    FuncExpr            *funcExpr  = (FuncExpr *) linitial(opexpr->args);
+    Node                *funcExpr  = (Node *) linitial(opexpr->args);
     SequentialScanEntry *entry;
     SequentialScanKey   key;
     bool                found;
@@ -244,29 +252,31 @@ void zdb_sequential_scan_support_cleanup(void) {
 }
 
 Datum zdbsel(PG_FUNCTION_ARGS) {
-//    PlannerInfo        *root       = (PlannerInfo *) PG_GETARG_POINTER(0);
-//    Oid                operator    = PG_GETARG_OID(1);
-    List     *args       = (List *) PG_GETARG_POINTER(2);
-//    int                varRelid    = PG_GETARG_INT32(3);
-    FuncExpr *funcExpr   = (FuncExpr *) linitial(args);
-    Node     *queryNode  = (Node *) lsecond(args);
-    float8   selectivity = 0.0001f;
+    List   *args       = (List *) PG_GETARG_POINTER(2);
+    Node   *funcArg    = (Node *) linitial(args);
+    Node   *queryNode  = (Node *) lsecond(args);
+    float8 selectivity = 0.0001f;
 
-    if (IsA(queryNode, Const)) {
-        Const              *queryConst    = (Const *) queryNode;
-        Const              *tableRegclass = (Const *) linitial(funcExpr->args);
-        Oid                heapRelOid     = (Oid) DatumGetObjectId(tableRegclass->constvalue);
-        Relation           heapRel        = RelationIdGetRelation(heapRelOid);
-        char               *query         = TextDatumGetCString(queryConst->constvalue);
-        ZDBIndexDescriptor *desc;
-        uint64             nhits;
+    if (IsA(funcArg, FuncExpr) && IsA(queryNode, Const)) {
+        FuncExpr           *funcExpr     = (FuncExpr *) funcArg;
+        Const              *queryConst   = (Const *) queryNode;
+        Node               *regclassNode = (Node *) linitial(funcExpr->args);
 
+        if (IsA(regclassNode, Const)) {
+            Const              *tableRegclass = (Const *) regclassNode;
+            Oid                heapRelOid     = (Oid) DatumGetObjectId(tableRegclass->constvalue);
+            char               *query         = TextDatumGetCString(queryConst->constvalue);
+            Relation           heapRel;
+            ZDBIndexDescriptor *desc;
+            uint64             nhits;
 
-        desc        = zdb_alloc_index_descriptor_by_index_oid(determine_index_oid(funcExpr));
-        nhits       = desc->implementation->estimateSelectivity(desc, query);
-        selectivity = ((float8) nhits) / heapRel->rd_rel->reltuples;
+            heapRel     = RelationIdGetRelation(heapRelOid);
+            desc        = zdb_alloc_index_descriptor_by_index_oid(determine_index_oid((Node *) funcExpr));
+            nhits       = desc->implementation->estimateSelectivity(desc, query);
+            selectivity = ((float8) nhits) / heapRel->rd_rel->reltuples;
 
-        RelationClose(heapRel);
+            RelationClose(heapRel);
+        }
     }
 
     selectivity = Min(selectivity, 1);

@@ -507,13 +507,18 @@ zdbbuildCallback(Relation indexRel,
 		bool tupleIsAlive,
 		void *state)
 {
+	TupleDesc          tupdesc     = RelationGetDescr(indexRel);
 	ZDBBuildState      *buildstate = (ZDBBuildState *) state;
 	ZDBIndexDescriptor *desc       = buildstate->desc;
-	text               *value      = DatumGetTextP(values[1]);
+	text               *value;
 
 	if (HeapTupleIsHeapOnly(htup))
 		elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
 
+	if (tupdesc->natts != 2)
+		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+
+	value = DatumGetTextP(values[1]);
 	desc->implementation->batchInsertRow(
 			desc,
 			&htup->t_self,
@@ -542,15 +547,21 @@ zdbinsert(PG_FUNCTION_ARGS)
 	ItemPointer        ht_ctid  = (ItemPointer) PG_GETARG_POINTER(3);
 //    Relation	heapRel = (Relation) PG_GETARG_POINTER(4);
 //    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
+	TupleDesc          tupdesc  = RelationGetDescr(indexRel);
 	ZDBIndexDescriptor *desc;
-	text               *value   = DatumGetTextP(values[1]);
+	text               *value;
 
 	desc = alloc_index_descriptor(indexRel, true);
 	if (desc->isShadow)
 		PG_RETURN_BOOL(false);
 
-	oldContext = MemoryContextSwitchTo(TopTransactionContext);
+	if (tupdesc->natts != 2)
+		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+
+	value = DatumGetTextP(values[1]);
 	desc->implementation->batchInsertRow(desc, ht_ctid, GetCurrentTransactionId(), 0, GetCurrentCommandId(false), GetCurrentCommandId(false), false, false, value);
+
+	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	xactCommitDataList = lappend(xactCommitDataList, zdb_alloc_new_xact_record(desc, ht_ctid));
 	MemoryContextSwitchTo(oldContext);
 
