@@ -1,0 +1,11 @@
+zombo_postgres:
+  build: ./zomboPG
+  ports:
+   - "5432:5432"
+  links:
+   - zombo_elastic
+zombo_elastic:
+  build: ./zomboES
+  ports:
+   - "9200:9200"
+   - "9300:9300"
