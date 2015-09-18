@@ -9,7 +9,7 @@
 FROM java:7
 
 ENV ES_PKG_NAME elasticsearch-1.7.1
-ENV ZOMBO_VER 2.1.38
+ENV ZOMBODB_VER 2.1.39
 
 # Install Elasticsearch.
 RUN \
@@ -30,9 +30,9 @@ RUN \
   cd / && \
   mkdir zombodb && \
   cd zombodb && \
-  wget https://github.com/zombodb/zombodb/releases/download/v$ZOMBO_VER/zombodb-es-plugin-$ZOMBO_VER.zip
+  wget https://github.com/zombodb/zombodb/releases/download/v$ZOMBODB_VER/zombodb-es-plugin-$ZOMBODB_VER.zip
 
-RUN /elasticsearch/bin/plugin -i zombodb -u file:///zombodb/zombodb-es-plugin-$ZOMBO_VER.zip
+RUN /elasticsearch/bin/plugin -i zombodb -u file:///zombodb/zombodb-es-plugin-$ZOMBODB_VER.zip
 
 # Define working directory.
 WORKDIR /data
