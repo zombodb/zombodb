@@ -1104,7 +1104,7 @@ select id from so_posts where id in (select generate_series(1, 10000)) and zdb('
  9981
 (232 rows)
 
-explain (costs off) select count(*) from (with words as (select word from words order by ctid limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
+explain (costs off) select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Aggregate
@@ -1120,9 +1120,9 @@ explain (costs off) select count(*) from (with words as (select word from words 
                ->  Seq Scan on so_posts
 (11 rows)
 
-select count(*) from (with words as (select word from words order by ctid limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
- count  
---------
- 150173
+select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
+ count 
+-------
+   575
 (1 row)
 
