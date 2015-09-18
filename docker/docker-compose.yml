@@ -1,0 +1,11 @@
+zombodb_postgres:
+  build: ./postgres
+  ports:
+   - "5432:5432"
+  links:
+   - zombodb_elastic
+zombodb_elastic:
+  build: ./elasticsearch
+  ports:
+   - "9200:9200"
+   - "9300:9300"
