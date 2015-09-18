@@ -31,6 +31,7 @@ import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
+import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.significant.SignificantTermsBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
@@ -72,6 +73,8 @@ public class QueryRewriter {
             super(cause);
         }
     }
+
+    private static final String DateSuffix = ".date";
 
     private final Client client;
     private final RestRequest request;
@@ -318,10 +321,8 @@ public class QueryRewriter {
 
 //        fieldname = getAggregateFieldName();
 
-        boolean hasDate = md.hasField(fieldname + ".date");
         boolean useHistogram = false;
-
-        if (hasDate) {
+        if (hasDate(md, fieldname)) {
             try {
                 DateHistogramIntervals.valueOf(agg.getStem());
                 useHistogram = true;
@@ -332,7 +333,7 @@ public class QueryRewriter {
 
         if (useHistogram) {
             DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
-                    .field(agg.getFieldname() + ".date")
+                    .field(agg.getFieldname() + DateSuffix)
                     .order(stringToDateHistogramOrder(agg.getSortOrder()));
 
             switch (DateHistogramIntervals.valueOf(agg.getStem())) {
@@ -379,33 +380,76 @@ public class QueryRewriter {
         }
     }
 
+    /**
+     * Determine if a particular field name is present in the index
+     *
+     * @param md index metadata
+     * @param fieldname field name to check for
+     * @return true if this field exists, false otherwise
+     */
+    private boolean hasDate(final IndexMetadata md, final String fieldname) {
+        return md.hasField(fieldname + DateSuffix);
+    }
+
     static class RangeSpecEntry {
         public String key;
         public Double from;
         public Double to;
     }
 
+    /**
+     * Container for date range aggregation spec
+     */
+    static class DateRangeSpecEntry {
+        public String key;
+        public String from;
+        public String to;
+    }
+
     private AggregationBuilder build(ASTRangeAggregate agg) {
+        final String fieldname = agg.getFieldname();
+        final IndexMetadata md = metadataManager.getMetadataForField(fieldname);
+
         try {
             ObjectMapper om = new ObjectMapper();
 
-            RangeSpecEntry[] rangeSpecEntries = om.readValue(agg.getRangeSpec(), RangeSpecEntry[].class);
-            RangeBuilder builder = new RangeBuilder(agg.getFieldname())
-                    .field(agg.getFieldname());
+            // if this is a date field, execute a date range aggregation
+            if (hasDate(md, fieldname)) {
+                final DateRangeBuilder dateRangeBuilder = new DateRangeBuilder(fieldname)
+                        .field(fieldname + DateSuffix);
 
-            for (RangeSpecEntry e : rangeSpecEntries) {
-                if (e.to == null && e.from == null)
-                    throw new RuntimeException ("Invalid range spec entry:  one of 'to' or 'from' must be specified");
+                for (final DateRangeSpecEntry e : om.readValue(agg.getRangeSpec(), DateRangeSpecEntry[].class)) {
+                    if (e.to == null && e.from == null)
+                        throw new RuntimeException("Invalid range spec entry:  one of 'to' or 'from' must be specified");
 
-                if (e.from == null)
-                    builder.addUnboundedTo(e.key, e.to);
-                else if (e.to == null)
-                    builder.addUnboundedFrom(e.key, e.from);
-                else
-                    builder.addRange(e.key, e.from, e.to);
+                    if (e.from == null)
+                        dateRangeBuilder.addUnboundedTo(e.key, e.to);
+                    else if (e.to == null)
+                        dateRangeBuilder.addUnboundedFrom(e.key, e.from);
+                    else
+                        dateRangeBuilder.addRange(e.key, e.from, e.to);
+                }
+
+                return dateRangeBuilder;
             }
 
-            return builder;
+            // this is not a date field so execute a normal numeric range aggregation
+            final RangeBuilder rangeBuilder = new RangeBuilder(fieldname)
+                    .field(fieldname);
+
+            for (final RangeSpecEntry e : om.readValue(agg.getRangeSpec(), RangeSpecEntry[].class)) {
+                if (e.to == null && e.from == null)
+                    throw new RuntimeException("Invalid range spec entry:  one of 'to' or 'from' must be specified");
+
+                if (e.from == null)
+                    rangeBuilder.addUnboundedTo(e.key, e.to);
+                else if (e.to == null)
+                    rangeBuilder.addUnboundedFrom(e.key, e.from);
+                else
+                    rangeBuilder.addRange(e.key, e.from, e.to);
+            }
+
+            return rangeBuilder;
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
         }
