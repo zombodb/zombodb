@@ -8,12 +8,9 @@
 *.so
 *.a
 *.swp
-*.ipr
-*.iws
 target/
-*.xcodeproj/
 .DS_store
-postgres/src/main/sql/zombodb--2.1.39.sql
+postgres/src/main/sql/zombodb--2.1.40.sql
 postgres/src/test/sql/setup.sql
 postgres/src/test/sql/so_comments.sql
 postgres/results

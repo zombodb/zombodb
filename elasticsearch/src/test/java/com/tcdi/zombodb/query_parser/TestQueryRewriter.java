@@ -148,11 +148,11 @@ public class TestQueryRewriter {
                             fieldProps.put("analyzer", "fulltext");
 
                             fieldProps = new HashMap();
-                            props.put("sent", fieldProps);
+                            props.put("date_field", fieldProps);
                             fieldProps.put("analyzer", "date");
 
                             fieldProps = new HashMap();
-                            props.put("sent", fieldProps);
+                            props.put("date_field", fieldProps);
                             fieldProps.put("analyzer", "date");
                             final Map fieldsMap = new HashMap();
                             fieldsMap.put("date", "something about date");
@@ -3648,18 +3648,18 @@ public class TestQueryRewriter {
     }
 
     @Test
-    public void testIssue_99_DateRangeAggregateParsing() throws Exception {
+    public void testIssue_46_DateRangeAggregateParsing() throws Exception {
         MockClientAndRequest mock = new MockClientAndRequest();
         AbstractAggregationBuilder aggregationBuilder;
         QueryRewriter qr;
 
-        qr = new QueryRewriter(mock.client, mock.request, "#range(sent, '[{\"key\": \"early\", \"to\":\"2009-01-01 00:00:00\"}, {\"from\":\"2009-01-01 00:00:00\", \"to\":\"2010-01-01 00:00:00\"}, {\"from\":\"2010-01-01 00:00:00\"}]')", false, true);
+        qr = new QueryRewriter(mock.client, mock.request, "#range(date_field, '[{\"key\": \"early\", \"to\":\"2009-01-01 00:00:00\"}, {\"from\":\"2009-01-01 00:00:00\", \"to\":\"2010-01-01 00:00:00\"}, {\"from\":\"2010-01-01 00:00:00\"}]')", false, true);
         aggregationBuilder = qr.rewriteAggregations();
 
         assertEquals("testIssue_99_DateRangeAggregateParsing",
-                        "\n\"sent\"{\n" +
+                        "\n\"date_field\"{\n" +
                         "  \"date_range\" : {\n" +
-                        "    \"field\" : \"sent.date\",\n" +
+                        "    \"field\" : \"date_field.date\",\n" +
                         "    \"ranges\" : [ {\n" +
                         "      \"key\" : \"early\",\n" +
                         "      \"to\" : \"2009-01-01 00:00:00\"\n" +

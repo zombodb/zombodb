@@ -64,6 +64,24 @@ public class QueryRewriter {
         FilterBuilder b(QueryParserNode n);
     }
 
+    /**
+     * Container for range aggregation spec
+     */
+    static class RangeSpecEntry {
+        public String key;
+        public Double from;
+        public Double to;
+    }
+
+    /**
+     * Container for date range aggregation spec
+     */
+    static class DateRangeSpecEntry {
+        public String key;
+        public String from;
+        public String to;
+    }
+
     public static class QueryRewriteException extends RuntimeException {
         public QueryRewriteException(String message) {
             super(message);
@@ -391,53 +409,43 @@ public class QueryRewriter {
         return md.hasField(fieldname + DateSuffix);
     }
 
-    static class RangeSpecEntry {
-        public String key;
-        public Double from;
-        public Double to;
-    }
-
-    /**
-     * Container for date range aggregation spec
-     */
-    static class DateRangeSpecEntry {
-        public String key;
-        public String from;
-        public String to;
+    private static <T> T createRangeSpec(Class<T> type, String value) {
+        try {
+            ObjectMapper om = new ObjectMapper();
+            return om.readValue(value, type);
+        } catch (IOException ioe) {
+            throw new RuntimeException("Problem decoding range spec: " + value, ioe);
+        }
     }
 
     private AggregationBuilder build(ASTRangeAggregate agg) {
         final String fieldname = agg.getFieldname();
         final IndexMetadata md = metadataManager.getMetadataForField(fieldname);
 
-        try {
-            ObjectMapper om = new ObjectMapper();
+        // if this is a date field, execute a date range aggregation
+        if (hasDate(md, fieldname)) {
+            final DateRangeBuilder dateRangeBuilder = new DateRangeBuilder(fieldname)
+                    .field(fieldname + DateSuffix);
 
-            // if this is a date field, execute a date range aggregation
-            if (hasDate(md, fieldname)) {
-                final DateRangeBuilder dateRangeBuilder = new DateRangeBuilder(fieldname)
-                        .field(fieldname + DateSuffix);
+            for (final DateRangeSpecEntry e : createRangeSpec(DateRangeSpecEntry[].class, agg.getRangeSpec())) {
+                if (e.to == null && e.from == null)
+                    throw new RuntimeException("Invalid range spec entry:  one of 'to' or 'from' must be specified");
 
-                for (final DateRangeSpecEntry e : om.readValue(agg.getRangeSpec(), DateRangeSpecEntry[].class)) {
-                    if (e.to == null && e.from == null)
-                        throw new RuntimeException("Invalid range spec entry:  one of 'to' or 'from' must be specified");
-
-                    if (e.from == null)
-                        dateRangeBuilder.addUnboundedTo(e.key, e.to);
-                    else if (e.to == null)
-                        dateRangeBuilder.addUnboundedFrom(e.key, e.from);
-                    else
-                        dateRangeBuilder.addRange(e.key, e.from, e.to);
-                }
-
-                return dateRangeBuilder;
+                if (e.from == null)
+                    dateRangeBuilder.addUnboundedTo(e.key, e.to);
+                else if (e.to == null)
+                    dateRangeBuilder.addUnboundedFrom(e.key, e.from);
+                else
+                    dateRangeBuilder.addRange(e.key, e.from, e.to);
             }
 
+            return dateRangeBuilder;
+        } else {
             // this is not a date field so execute a normal numeric range aggregation
             final RangeBuilder rangeBuilder = new RangeBuilder(fieldname)
                     .field(fieldname);
 
-            for (final RangeSpecEntry e : om.readValue(agg.getRangeSpec(), RangeSpecEntry[].class)) {
+            for (final RangeSpecEntry e : createRangeSpec(RangeSpecEntry[].class, agg.getRangeSpec())) {
                 if (e.to == null && e.from == null)
                     throw new RuntimeException("Invalid range spec entry:  one of 'to' or 'from' must be specified");
 
@@ -450,8 +458,6 @@ public class QueryRewriter {
             }
 
             return rangeBuilder;
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
         }
     }
 
