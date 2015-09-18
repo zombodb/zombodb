@@ -1079,11 +1079,14 @@ zdbcostestimate(PG_FUNCTION_ARGS)
 		if (IsA(ri->clause, OpExpr))
 		{
 			OpExpr *opExpr     = (OpExpr *) ri->clause;
-			Const  *queryConst = (Const *) lsecond(opExpr->args);
+			Node  *queryNode = (Node *) lsecond(opExpr->args);
 
-			if (query->len > 0)
-				appendStringInfo(query, " AND ");
-			appendStringInfo(query, "(%s)", TextDatumGetCString(queryConst->constvalue));
+			if (IsA(queryNode, Const)) {
+				Const *queryConst = (Const *) queryNode;
+				if (query->len > 0)
+					appendStringInfo(query, " AND ");
+				appendStringInfo(query, "(%s)", TextDatumGetCString(queryConst->constvalue));
+			}
 		}
 	}
 

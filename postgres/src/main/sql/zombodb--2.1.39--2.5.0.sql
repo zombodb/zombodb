@@ -43,9 +43,7 @@ CREATE OPERATOR ==> (
     PROCEDURE = zdb_tid_query_func,
     RESTRICT = zdbsel,
     LEFTARG = tid,
-    RIGHTARG = text,
-    JOIN = eqjoinsel,
-    HASHES, MERGES
+    RIGHTARG = text
 );
 
 CREATE OPERATOR CLASS zombodb_tid_ops DEFAULT FOR TYPE tid USING zombodb AS
