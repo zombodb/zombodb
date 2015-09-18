@@ -363,8 +363,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 	hits = palloc(sizeof(ZDBSearchResponse));
 	hits->httpResponse = response;
 	hits->hits         = (response->data + 1 + sizeof(uint64));
-
-	memcpy(&hits->total_hits, response->data+1, sizeof(uint64));
+	hits->total_hits   = *nhits;
 
 	freeStringInfo(endpoint);
 	freeStringInfo(query);
