@@ -13,5 +13,5 @@ select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts'
 explain (costs off) select id from so_posts where id in (select generate_series(1, 10000)) and zdb('so_posts', ctid) ==> 'java' order by id;
 select id from so_posts where id in (select generate_series(1, 10000)) and zdb('so_posts', ctid) ==> 'java' order by id;
 
-explain (costs off) select count(*) from (with words as (select word from words order by word limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
-select count(*) from (with words as (select word from words order by word limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
+explain (costs off) select count(*) from (with words as (select word from words order by ctid limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
+select count(*) from (with words as (select word from words order by ctid limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
