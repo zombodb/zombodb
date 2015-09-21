@@ -1,0 +1,12 @@
+path:
+  data: /data/data
+  logs: /data/log
+  work: /data/work
+
+script.disable_dynamic: false
+
+threadpool.bulk.queue_size: 1024
+threadpool.bulk.size: 12
+
+http.max_content_length: 1024mb
+index.query.bool.max_clause_count: 1000000

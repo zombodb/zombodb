@@ -325,11 +325,11 @@ These custom domains are to be used in user tables as data types when you requir
 #### ```FUNCTION zdb_range_agg(table_name regclass, fieldname text, range_spec json, query text)```
 
 > `table_name`:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
-> `fieldname`:  The name of a field from which to derive range aggregate buckets  
-> `range_spec`:  JSON-formatted array that is compatible with Elasticsearch's [range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html) range definition  
+> `fieldname`:  The name of a field from which to derive range aggregate buckets. If this is a date field, a date range aggregate will be executed.  
+> `range_spec`:  JSON-formatted array that is compatible with Elasticsearch's [range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html) range definition if the field is not a date. If the field is a date, utilize Elasticsearch's [date range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-daterange-aggregation.html) syntax. 
 > `query`:  a full text query  
 > 
-> This function provides direct access to Elasticsearch's [range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html) and can only be used with "numeric"-type fields.
+> This function provides direct access to Elasticsearch's [range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html) for "numeric"-type fields.
 > 
 > The `range_spec` argument must be a properly-formed JSON array structure, for example:
 > 
@@ -353,6 +353,38 @@ These custom domains are to be used in user tables as data types when you requir
 > 100.0-2000.0 |  100 | 2000 |         2
 > expensive    | 1000 |      |         4
 ```
+>
+> This function also provides direct access to Elasticsearch's [date range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-daterange-aggregation.html) for date fields.
+
+> In this case, the `range_spec` argument must be a properly-formed JSON array structure for the type of date field being queried, for example for the product.availability_date field:
+> ```
+> [ 
+>     { "key": "early", "to": "2015-08-01"},
+>     { "from":"2015-08-01", "to":"2015-08-15" }, 
+>     { "from":"2015-08-15" } 
+> ]
+> ```
+>
+> Which could yield:
+>
+> ```
+> SELECT * FROM zdb_range_agg('products', 'availability_date', '[ { "key": "early", "to": "2015-08-01"},{"from":"2015-08-01", "to":"2015-08-15"}, {"from":"2015-08-15"} ]', '');
+>                        key                        |      low      |     high      | doc_count 
+>---------------------------------------------------+---------------+---------------+-----------
+> early                                             |               | 1438387200000 |         1
+> 2015-08-01T00:00:00.000Z-2015-08-15T00:00:00.000Z | 1438387200000 | 1439596800000 |         1
+> 2015-08-15T00:00:00.000Z-*                        | 1439596800000 |               |         2
+> ```
+>
+> If the field is of type `timestamp without time zone`, this structure would be appropriate:
+>
+> ```
+> [ 
+>     { "from":"2015-01-01 00:00:00", "to":"2015-01-01 15:30:00" }, 
+>     { "from":"2015-01-02 01:00:00" } 
+> ]
+>```
+
 
 #### ```FUNCTION zdb_tally(table_name regclass, fieldname text, stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SET OF zdb_tally_response```
 

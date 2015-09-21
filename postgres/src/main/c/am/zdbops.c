@@ -318,7 +318,8 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 
 		}
 		else if (strcmp("text", typename) == 0 || strcmp("varchar", typename) == 0 || strcmp("character", typename) == 0 || strcmp("character varying", typename) == 0 ||
-				strcmp("text[]", typename) == 0 || strcmp("varchar[]", typename) == 0 || strcmp("character[]", typename) == 0 || strcmp("character varying[]", typename) == 0)
+				strcmp("text[]", typename) == 0 || strcmp("varchar[]", typename) == 0 || strcmp("character[]", typename) == 0 || strcmp("character varying[]", typename) == 0 ||
+				strcmp("uuid", typename) == 0 || strcmp("uuid[]", typename) == 0)
 		{
 			/* string field */
 			appendStringInfo(result, "\"type\": \"string\",");
@@ -340,7 +341,14 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 		}
 		else
 		{
-			elog(ERROR, "Unsupported type: %s", typename);
+			/* unrecognized type, so just treat as an 'exact' field */
+			appendStringInfo(result, "\"type\": \"string\",");
+			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+			appendStringInfo(result, "\"index_options\": \"docs\",");
+			appendStringInfo(result, "\"analyzer\": \"exact\"");
+
+			/* but we do want to warn about it so users know what's happening */
+			elog(WARNING, "Unrecognized data type %s, pretending it's of type 'text'", typename);
 		}
 
 		appendStringInfoCharMacro(result, '}');
