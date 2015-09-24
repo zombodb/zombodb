@@ -38,20 +38,21 @@ static Oid  determine_index_oid(Node *funcExpr);
 
 typedef struct SequentialScanIndexRef {
     Oid funcOid;
+    Oid heapRelOid;
     Oid indexRelOid;
-}           SequentialScanIndexRef;
+} SequentialScanIndexRef;
 
 typedef struct SequentialScanKey {
     Oid    indexRelOid;
     char   *query;
     size_t query_len;
-}           SequentialScanKey;
+} SequentialScanKey;
 
 typedef struct SequentialScanEntry {
     HTAB        *scan;
     ItemPointer one_hit;
     bool        empty;
-}           SequentialScanEntry;
+} SequentialScanEntry;
 
 List *SEQUENTIAL_SCAN_INDEXES = NULL;
 HTAB *SEQUENTIAL_SCANS        = NULL;
@@ -115,8 +116,9 @@ static Oid determine_index_oid(Node *node) {
     foreach(lc, SEQUENTIAL_SCAN_INDEXES) {
         SequentialScanIndexRef *indexRef = (SequentialScanIndexRef *) lfirst(lc);
 
-        if (indexRef->funcOid == funcExpr->funcid)
+        if (indexRef->heapRelOid == heapRelOid && indexRef->funcOid == funcExpr->funcid) {
             return indexRef->indexRelOid;
+        }
     }
 
     heapRel = RelationIdGetRelation(heapRelOid);
@@ -141,6 +143,7 @@ static Oid determine_index_oid(Node *node) {
 
                         indexRef = palloc(sizeof(SequentialScanIndexRef));
                         indexRef->funcOid     = funcExpr->funcid;
+                        indexRef->heapRelOid  = heapRelOid;
                         indexRef->indexRelOid = indexRelOid;
                         SEQUENTIAL_SCAN_INDEXES = lappend(SEQUENTIAL_SCAN_INDEXES, indexRef);
 
