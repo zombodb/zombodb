@@ -49,33 +49,37 @@ typedef struct SequentialScanKey {
 } SequentialScanKey;
 
 typedef struct SequentialScanEntry {
-    HTAB        *scan;
-    ItemPointer one_hit;
-    bool        empty;
+    SequentialScanKey key;
+    HTAB              *scan;
+    ItemPointer       one_hit;
+    bool              empty;
 } SequentialScanEntry;
 
 List *SEQUENTIAL_SCAN_INDEXES = NULL;
 HTAB *SEQUENTIAL_SCANS        = NULL;
 
 static uint32 sequential_scan_key_hash(const void *key, Size keysize) {
-    SequentialScanKey *ssk = (SequentialScanKey *) key;
+    const SequentialScanKey *ssk = (const SequentialScanKey *) key;
 
-    return string_hash(ssk->query, strlen(ssk->query) + 1);
+    return string_hash(ssk->query, strlen(ssk->query) + 1) ^ ssk->indexRelOid;
 }
 
 static int sequential_scan_key_match(const void *key1, const void *key2, Size keysize) {
-    SequentialScanKey *a = (SequentialScanKey *) key1;
-    SequentialScanKey *b = (SequentialScanKey *) key2;
+    const SequentialScanKey *a = (const SequentialScanKey *) key1;
+    const SequentialScanKey *b = (const SequentialScanKey *) key2;
+    bool match;
 
-    return a->indexRelOid == b->indexRelOid && strcmp(a->query, b->query) == 0;
+    match = a->indexRelOid == b->indexRelOid && a->query_len == b->query_len && strcmp(a->query, b->query) == 0;
+    return match ? 0 : 1;
 }
 
 static void *sequential_scan_key_copy(void *d, const void *s, Size keysize) {
-    SequentialScanKey *src  = (SequentialScanKey *) s;
+    const SequentialScanKey *src  = (const SequentialScanKey *) s;
     SequentialScanKey *dest = (SequentialScanKey *) d;
 
     dest->indexRelOid = src->indexRelOid;
-    dest->query       = palloc(src->query_len + 1);
+    dest->query_len   = src->query_len;
+    dest->query       = MemoryContextAlloc(TopTransactionContext, src->query_len+1);
     memcpy(dest->query, src->query, src->query_len + 1);
 
     return dest;
@@ -85,20 +89,18 @@ static void initialize_sequential_scan_cache(void) {
     /* setup our query-wide cache of sequential scans */
     HASHCTL ctl;
 
-    memset(&ctl, 0, sizeof(HASHCTL));
+    memset(&ctl, 0, sizeof(ctl));
     ctl.keysize   = sizeof(SequentialScanKey);
     ctl.entrysize = sizeof(SequentialScanEntry);
     ctl.hash      = sequential_scan_key_hash;
     ctl.match     = sequential_scan_key_match;
     ctl.keycopy   = sequential_scan_key_copy;
-    ctl.hcxt      = TopTransactionContext;
 
     SEQUENTIAL_SCANS = hash_create("zdb global sequential scan cache", 32, &ctl,
                                    HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT | HASH_COMPARE | HASH_KEYCOPY);
 }
 
 static Oid determine_index_oid(Node *node) {
-    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
     FuncExpr      *funcExpr;
     Const         *tableRegclass;
     Oid           heapRelOid;
@@ -140,6 +142,7 @@ static Oid determine_index_oid(Node *node) {
                     FuncExpr *indexFuncExpr = (FuncExpr *) n;
                     if (indexFuncExpr->funcid == funcExpr->funcid) {
                         SequentialScanIndexRef *indexRef;
+                        MemoryContext          oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
                         indexRef = palloc(sizeof(SequentialScanIndexRef));
                         indexRef->funcOid     = funcExpr->funcid;
@@ -147,10 +150,11 @@ static Oid determine_index_oid(Node *node) {
                         indexRef->indexRelOid = indexRelOid;
                         SEQUENTIAL_SCAN_INDEXES = lappend(SEQUENTIAL_SCAN_INDEXES, indexRef);
 
+                        MemoryContextSwitchTo(oldContext);
+
                         RelationClose(indexRel);
                         RelationClose(heapRel);
 
-                        MemoryContextSwitchTo(oldContext);
                         return indexRelOid;
                     }
                 }
@@ -160,14 +164,11 @@ static Oid determine_index_oid(Node *node) {
     }
     RelationClose(heapRel);
 
-    MemoryContextSwitchTo(oldContext);
-
     elog(ERROR, "Unable to find ZomboDB index for '%s'", RelationGetRelationName(heapRel));
     return InvalidOid;
 }
 
 Datum zdb_seqscan(PG_FUNCTION_ARGS) {
-    MemoryContext       oldContext = MemoryContextSwitchTo(TopTransactionContext);
     ItemPointer         tid        = (ItemPointer) PG_GETARG_POINTER(0);
     char                *query     = TextDatumGetCString(PG_GETARG_TEXT_P(1));
     OpExpr              *opexpr    = (OpExpr *) fcinfo->flinfo->fn_expr;
@@ -190,14 +191,11 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
         ZDBSearchResponse  *response;
         ZDBIndexDescriptor *desc;
         uint64             nhits, i;
-        SequentialScanKey  *newKey;
 
         desc     = zdb_alloc_index_descriptor_by_index_oid(key.indexRelOid);
         response = desc->implementation->searchIndex(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), &query, 1, &nhits);
 
-        newKey = palloc(sizeof(SequentialScanKey));
-        memcpy(newKey, &key, sizeof(SequentialScanKey));
-        entry = hash_search(SEQUENTIAL_SCANS, newKey, HASH_ENTER, &found);
+        entry = hash_search(SEQUENTIAL_SCANS, &key, HASH_ENTER, &found);
         entry->one_hit = NULL;
         entry->empty   = false;
         entry->scan    = NULL;
@@ -206,13 +204,17 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
             entry->empty = true;
         } else if (nhits == 1) {
             /* optimization for a single hit -- avoids overhead of a 1-entry HTAB */
+            MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+
             entry->one_hit = palloc(sizeof(ItemPointerData));
             set_item_pointer(response, 0, entry->one_hit);
+
+            MemoryContextSwitchTo(oldContext);
         } else {
             /* turn the response data from ES into an HTAB for efficient lookup on the next scan */
             HASHCTL ctl;
 
-            memset(&ctl, 0, sizeof(HASHCTL));
+            memset(&ctl, 0, sizeof(ctl));
             ctl.keysize   = sizeof(ItemPointerData);
             ctl.entrysize = ctl.keysize;
             ctl.hash      = tag_hash;
@@ -223,9 +225,10 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
             for (i = 0; i < nhits; i++) {
                 ItemPointerData data;
 
-                CHECK_FOR_INTERRUPTS();
                 set_item_pointer(response, i, &data);
                 hash_search(entry->scan, &data, HASH_ENTER, &found);
+
+                CHECK_FOR_INTERRUPTS();
             }
         }
 
@@ -240,7 +243,6 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
     else
         hash_search(entry->scan, tid, HASH_FIND, &found);
 
-    MemoryContextSwitchTo(oldContext);
     PG_RETURN_BOOL(found);
 }
 

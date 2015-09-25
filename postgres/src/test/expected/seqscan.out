@@ -1126,3 +1126,41 @@ select count(*) from (with words as (select word from words order by ctid offset
    575
 (1 row)
 
+explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id;
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Sort
+   Sort Key: so_posts.id
+   ->  Hash Join
+         Hash Cond: (so_comments.post_id = so_posts.id)
+         ->  Seq Scan on so_comments
+               Filter: (zdb('so_comments'::regclass, ctid) ==> 'java'::text)
+         ->  Hash
+               ->  Seq Scan on so_posts
+                     Filter: (zdb('so_posts'::regclass, ctid) ==> 'java'::text)
+(9 rows)
+
+select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+ count 
+-------
+  5684
+(1 row)
+
+set enable_indexscan to on;  set enable_bitmapscan to off; set enable_seqscan to off; select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+ count 
+-------
+  5684
+(1 row)
+
+set enable_indexscan to off; set enable_bitmapscan to on;  set enable_seqscan to off; select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+ count 
+-------
+  5684
+(1 row)
+
+set enable_indexscan to off; set enable_bitmapscan to off; set enable_seqscan to on;  select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+ count 
+-------
+  5684
+(1 row)
+
