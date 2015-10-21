@@ -1,4 +1,13 @@
-CREATE TYPE zdb_range_agg_response AS (key TEXT, low DOUBLE PRECISION, high DOUBLE PRECISION, doc_count INT8);
+DO LANGUAGE plpgsql $$
+BEGIN
+    PERFORM * from pg_type where typname = 'zdb_range_agg_response';
+    IF NOT FOUND THEN
+        EXECUTE 'CREATE TYPE zdb_range_agg_response AS (key TEXT, low DOUBLE PRECISION, high DOUBLE PRECISION, doc_count INT8);';
+    END IF;
+    RETURN;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION zdb_internal_range_agg(type_oid oid, fieldname text, range_spec json, user_query text) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdb_range_agg(table_name regclass, fieldname text, range_spec json, user_query text) RETURNS SETOF zdb_range_agg_response LANGUAGE plpgsql STRICT IMMUTABLE AS $$
 DECLARE

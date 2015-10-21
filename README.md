@@ -13,6 +13,7 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
 
 
 ## Quick Links
+   - [Upgrading to v2.5](UPGRADING-TO-v2.5.md)
    - [Latest Release](https://github.com/zombodb/zombodb/releases/latest)  
    - [Installation instructions](INSTALL.md)  
    - [Getting Started Tutorial](TUTORIAL.md)  
@@ -24,7 +25,8 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
 
 - transaction-safe full-text queries
 - managed & used via standard Postgres SQL
-- works with tables of any structure 
+- works with tables of any structure
+- works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCANS.md) 
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
 - json columns as nested objects for flexible schemaless sub-documents
 - custom full-text query language supporting nearly all of Elasticsearch's search features, including
@@ -52,7 +54,6 @@ Not to suggest that these things are impossible, but there's a small set of non-
 - interoperability with various Postgres replication schemes is unknown
 - ```pg_get_indexdef()``` doesn't correctly quote index options making backup restoration annoying (would require patch to Postgres)
 - Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
-- only supports Postgres query plans that choose IndexScans or BitmapIndexScans (the latter is also dependent on sufficient work_mem to avoid Recheck conditions)
 
 ## History
 
@@ -99,14 +100,14 @@ Index it:
 ```
 CREATE INDEX idx_zdb_products 
                      ON products 
-                  USING zombodb(zdb(products)) 
+                  USING zombodb(zdb('products', products.ctid), zdb(products))
                    WITH (url='http://localhost:9200/', shards=5, replicas=1);
 ```
 
 Query it:
 
 ```
-SELECT * FROM products WHERE zdb(products) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
+SELECT * FROM products WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
 ```
 
 

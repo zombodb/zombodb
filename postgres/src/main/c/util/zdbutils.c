@@ -14,23 +14,29 @@
  * limitations under the License.
  */
 #include "postgres.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
 #include "lib/stringinfo.h"
+#include "utils/formatting.h"
 #include "utils/memutils.h"
 
 #include "zdbutils.h"
 
 void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen)
 {
+    char *lcase;
     int i;
     Assert(str != NULL);
 
     /* Make more room if needed */
     enlargeStringInfo(str, datalen);
 
-    /* OK, append the data */
-    memcpy(str->data + str->len, data, datalen);
+    /* slam data to lowercase and copy it into the StringInfo */
+    lcase = str_tolower(data, (size_t) datalen, DEFAULT_COLLATION_OID);
+    memcpy(str->data + str->len, lcase, datalen);
+    pfree(lcase);
+
     for (i=str->len; i<str->len+datalen; i++) {
         switch (str->data[i]) {
             case '\r':

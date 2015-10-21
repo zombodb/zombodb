@@ -59,14 +59,25 @@ CREATE OR REPLACE FUNCTION zdbcostestimate(internal, internal, internal, interna
 CREATE OR REPLACE FUNCTION zdbsel(internal, oid, internal, integer) RETURNS float8 LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdboptions(text[], boolean) RETURNS bytea LANGUAGE c STABLE STRICT AS '$libdir/plugins/zombodb';
 
-CREATE OR REPLACE FUNCTION zdb_query_func(json, text) RETURNS bool LANGUAGE c STRICT AS '$libdir/plugins/zombodb' COST 2147483647;
+--
+-- convenience methods for index creation and querying
+--
 CREATE OR REPLACE FUNCTION zdb(record) RETURNS json LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_row_to_json';
+CREATE OR REPLACE FUNCTION zdb(table_name regclass, ctid tid) RETURNS tid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid';
+CREATE OR REPLACE FUNCTION zdb_query_func(json, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 2147483647;
+CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 1;
 
+
+--
+-- trigger support
+--
 CREATE OR REPLACE FUNCTION zdbtupledeletedtrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
-
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
+--
+-- utility functions
+--
 CREATE OR REPLACE FUNCTION rest_get(url text) RETURNS json AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_get_index_name(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_get_url(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
@@ -141,7 +152,7 @@ BEGIN
     SELECT relkind INTO kind FROM pg_class WHERE oid = table_name::oid;
 
     IF kind = 'r' THEN
-      EXECUTE format('SET enable_seqscan TO OFF; EXPLAIN (FORMAT JSON) SELECT 1 FROM %s x WHERE zdb(x) ==> '''' ', table_name) INTO exp;
+      EXECUTE format('SET enable_seqscan TO OFF; EXPLAIN (FORMAT JSON) SELECT 1 FROM %s x WHERE zdb(''%s'', ctid) ==> '''' ', table_name, table_name) INTO exp;
     ELSE
       EXECUTE format('SET enable_seqscan TO OFF; EXPLAIN (FORMAT JSON) SELECT 1 FROM %s WHERE zdb ==> '''' ', table_name) INTO exp;
     END IF;
@@ -439,13 +450,20 @@ $$;
 
 CREATE OPERATOR ==> (
     PROCEDURE = zdb_query_func,
-    RESTRICT = zdbsel,
     LEFTARG = json,
-    RIGHTARG = text,
-    HASHES, MERGES
+    RIGHTARG = text
 );
 
-CREATE OPERATOR CLASS zombodb_ops DEFAULT FOR TYPE json USING zombodb AS
-    OPERATOR 1 ==>(json, text),
-    FUNCTION 1 zdb_query_func(json, text),
+CREATE OPERATOR CLASS zombodb_json_ops DEFAULT FOR TYPE json USING zombodb AS STORAGE json;
+
+CREATE OPERATOR ==> (
+    PROCEDURE = zdb_tid_query_func,
+    RESTRICT = zdbsel,
+    LEFTARG = tid,
+    RIGHTARG = text
+);
+
+CREATE OPERATOR CLASS zombodb_tid_ops DEFAULT FOR TYPE tid USING zombodb AS
+    OPERATOR 1 ==>(tid, text),
+    FUNCTION 1 zdb_tid_query_func(tid, text),
     STORAGE json;

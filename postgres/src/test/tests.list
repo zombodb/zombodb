@@ -8,6 +8,7 @@ words
 updates
 deletes
 expansions
+seqscan
 syntax-term_not_term
 syntax-term_and_term
 syntax-term_within_term

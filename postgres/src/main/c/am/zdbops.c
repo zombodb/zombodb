@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +16,22 @@
  */
 #include "postgres.h"
 #include "executor/spi.h"
-#include "access/htup_details.h"
 #include "access/xact.h"
 #include "catalog/pg_type.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
+#include "utils/rel.h"
 
 #include "zdb_interface.h"
 #include "zdbops.h"
+#include "zdbseqscan.h"
 #include "util/zdbutils.h"
 
 PG_FUNCTION_INFO_V1(zdb_get_index_name);
 PG_FUNCTION_INFO_V1(zdb_get_url);
 PG_FUNCTION_INFO_V1(zdb_query_func);
+PG_FUNCTION_INFO_V1(zdb_tid_query_func);
+PG_FUNCTION_INFO_V1(zdb_table_ref_and_tid);
 PG_FUNCTION_INFO_V1(zdb_row_to_json);
 PG_FUNCTION_INFO_V1(zdb_internal_describe_nested_object);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
@@ -67,11 +71,18 @@ Datum zdb_get_url(PG_FUNCTION_ARGS)
 
 Datum zdb_query_func(PG_FUNCTION_ARGS)
 {
-//	Datum left = PG_GETARG_DATUM(0);
-//	char *right = GET_STR(PG_GETARG_TEXT_P(1));
-
-	elog(ERROR, "zdb_query_func: not implemented");
+	elog(ERROR, "operator '==>(json, text)' not supported");
 	PG_RETURN_BOOL(false);
+}
+
+Datum zdb_tid_query_func(PG_FUNCTION_ARGS)
+{
+	return zdb_seqscan(fcinfo);
+}
+
+Datum zdb_table_ref_and_tid(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_POINTER(PG_GETARG_POINTER(1));
 }
 
 Datum zdb_row_to_json(PG_FUNCTION_ARGS)

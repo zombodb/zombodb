@@ -41,6 +41,7 @@ static void wrapper_refreshIndex(ZDBIndexDescriptor *indexDescriptor);
 
 static uint64 			  wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 static uint64             wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
+static uint64             wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
 static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits);
 static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
@@ -167,6 +168,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->implementation->refreshIndex         = wrapper_refreshIndex;
 	desc->implementation->actualIndexRecordCount = wrapper_actualIndexRecordCount;
 	desc->implementation->estimateCount        = wrapper_estimateCount;
+	desc->implementation->estimateSelectivity  = wrapper_estimateSelectivity;
 	desc->implementation->searchIndex          = wrapper_searchIndex;
 	desc->implementation->getPossiblyExpiredItems = wrapper_getPossiblyExpiredItems;
 	desc->implementation->tally                = wrapper_tally;
@@ -356,6 +358,18 @@ static uint64 wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, Transac
 	return cnt;
 }
 
+static uint64 wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query)
+{
+	MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_estimateSelectivity", 512, 64, 64);
+	MemoryContext oldContext = MemoryContextSwitchTo(me);
+	uint64        cnt;
+
+	cnt = elasticsearch_estimateSelectivity(indexDescriptor, query);
+
+	MemoryContextSwitchTo(oldContext);
+	MemoryContextDelete(me);
+	return cnt;
+}
 
 static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits)
 {

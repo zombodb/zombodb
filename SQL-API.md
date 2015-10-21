@@ -22,29 +22,41 @@ These custom domains are to be used in user tables as data types when you requir
 
 ## Custom Operators
 
-#### ```OPERATOR ==> (LEFTARG=json, RIGHTARG=text)```
+#### ```OPERATOR ==> (LEFTARG=tid, RIGHTARG=text)```
 
->This operator is ZomboDB's "full text query" operator.  It can only be used in the context of an IndexScan and is also used in combination with the ```zdb(record)``` function (see below).
->
+>This operator is ZomboDB's "full text query" operator.
 >Example:
 >
->```SELECT * FROM table WHERE zdb(table) ==> 'full text query';```
+>```SELECT * FROM table WHERE zdb('table', table.ctid) ==> 'full text query';```
 
 
 ## SQL Functions
+
+#### ```FUNCTION zdb(table_name regclass, ctid tid) RETURNS tid```
+
+> `table_name`: The name of a table with a ZomboDB index
+> `ctid`: A Postgres "tid" tuple pointer
+>
+>This function is required when creating "zombodb" indexes as the **first** column and when performing full text queries.
+>
+>returns the value of the second argument.
+>
+>Examples:
+>
+>`CREATE INDEX idxfoo ON table USING zombodb (zdb('table', table.ctid), zdb(table)) WITH (...);`
+>`SELECT * FROM table WHERE zdb('table', ctid) ==> '...';`
 
 #### ```FUNCTION zdb(r record) RETURNS json```
 
 > ```r```: a record reference
 > 
->This function is required when creating "zombodb" indexes and when performing full text queries.
+>This function is required when creating "zombodb" indexes as the **second** column.
 >
 >returns a JSON-ified version of input record.
 >
 >Examples:
 >
->```CREATE INDEX idxfoo ON table USING zombodb (zdb(table)) WITH (...);```  
->```SELECT * FROM table WHERE zdb(table) ==> '...';```
+>```CREATE INDEX idxfoo ON table USING zombodb (zdb('table', table.ctid), zdb(table)) WITH (...);```
 
 #### ```FUNCTION zdb_actual_index_record_count(table_name regclass, type text) RETURNS bigint```
 

@@ -203,19 +203,17 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 					"         \"analyzer\": {"
 					"            \"default\": {"
 					"               \"tokenizer\": \"keyword\","
-					"               \"filter\": [\"trim\", \"lowercase\", \"truncate_32000\"]"
+					"               \"filter\": [\"trim\", \"truncate_32000\"]"
 					"            },"
 					"            \"exact\": {"
 					"               \"tokenizer\": \"keyword\","
-					"               \"filter\": [\"trim\", \"lowercase\", \"truncate_32000\"]"
+					"               \"filter\": [\"trim\", \"truncate_32000\"]"
 					"            },"
 					"            \"phrase\": {"
-					"               \"tokenizer\": \"standard\","
-					"               \"filter\": [\"lowercase\"]"
+					"               \"tokenizer\": \"standard\""
 					"            },"
 					"            \"fulltext\": {"
-					"               \"tokenizer\": \"standard\","
-					"               \"filter\": [\"lowercase\"]"
+					"               \"tokenizer\": \"standard\""
 					"            }"
 					"         }"
 					"      }"
@@ -363,8 +361,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 	hits = palloc(sizeof(ZDBSearchResponse));
 	hits->httpResponse = response;
 	hits->hits         = (response->data + 1 + sizeof(uint64));
-
-	memcpy(&hits->total_hits, response->data+1, sizeof(uint64));
+	hits->total_hits   = *nhits;
 
 	freeStringInfo(endpoint);
 	freeStringInfo(query);
@@ -411,6 +408,34 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, Transact
 	appendStringInfo(endpoint, "%s/%s/xact/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+
+	response = rest_call("POST", endpoint->data, query);
+	if (response->data[0] == '{')
+		elog(ERROR, "%s", response->data);
+
+	nhits = (uint64) atol(response->data);
+
+	freeStringInfo(endpoint);
+	freeStringInfo(query);
+	freeStringInfo(response);
+
+	return nhits;
+}
+
+uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *user_query)
+{
+	StringInfo query    = makeStringInfo();
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+	uint64     nhits;
+
+	if (indexDescriptor->options)
+		appendStringInfo(query, "#options(%s) ", indexDescriptor->options);
+	appendStringInfo(query, "#child<data>((%s))", user_query);
+
+	appendStringInfo(endpoint, "%s/%s/xact/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	if (indexDescriptor->searchPreference != NULL)
+		appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
 	response = rest_call("POST", endpoint->data, query);
 	if (response->data[0] == '{')

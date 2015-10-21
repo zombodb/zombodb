@@ -9,7 +9,7 @@ To create a ZomboDB index, use the form:
 ```
 CREATE INDEX idxname 
           ON table
-       USING zombodb (zdb(table))
+       USING zombodb (zdb('table', table.ctid), zdb(table))
         WITH (url='...', 
               shards=N, 
               replicas=N,
@@ -17,7 +17,8 @@ CREATE INDEX idxname
               options='...');
 ```
 
-The `zdb(table)` construct is required and causes the index to be a _functional index_.  The output of the `zdb()` function is what is actually indexed -- which is a JSON-formatting version of each row.
+The `(zdb('table', ctid), zdb(table))` construct is required and causes the index to be a multi-"column" _functional index_.
+The output of the `zdb(table)` function is what is actually indexed -- which is a JSON-formatted version of each row.
 
 The `WITH` settings are:
 

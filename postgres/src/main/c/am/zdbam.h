@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,10 +36,9 @@ extern Datum zdbrestrpos(PG_FUNCTION_ARGS);
 extern Datum zdbbulkdelete(PG_FUNCTION_ARGS);
 extern Datum zdbvacuumcleanup(PG_FUNCTION_ARGS);
 extern Datum zdboptions(PG_FUNCTION_ARGS);
-extern Datum zdbcostestimate(PG_FUNCTION_ARGS);
-extern Datum zdbsel(PG_FUNCTION_ARGS);
 extern Datum zdbtupledeletedtrigger(PG_FUNCTION_ARGS);
 extern Datum zdbeventtrigger(PG_FUNCTION_ARGS);
+extern Datum zdbcostestimate(PG_FUNCTION_ARGS);
 
 extern Datum zdb_num_hits(PG_FUNCTION_ARGS);
 

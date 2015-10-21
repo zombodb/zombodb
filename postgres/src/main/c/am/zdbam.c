@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@
 #include "commands/vacuum.h"
 #include "executor/executor.h"
 #include "executor/spi.h"
+#include "nodes/relation.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
 #include "utils/guc.h"
@@ -39,6 +41,8 @@
 #include "zdb_interface.h"
 #include "zdbops.h"
 #include "zdbam.h"
+#include "util/zdbutils.h"
+#include "zdbseqscan.h"
 
 
 PG_FUNCTION_INFO_V1(zdbbuild);
@@ -54,10 +58,9 @@ PG_FUNCTION_INFO_V1(zdbrestpos);
 PG_FUNCTION_INFO_V1(zdbbulkdelete);
 PG_FUNCTION_INFO_V1(zdbvacuumcleanup);
 PG_FUNCTION_INFO_V1(zdboptions);
-PG_FUNCTION_INFO_V1(zdbcostestimate);
-PG_FUNCTION_INFO_V1(zdbsel);
 PG_FUNCTION_INFO_V1(zdbtupledeletedtrigger);
 PG_FUNCTION_INFO_V1(zdbeventtrigger);
+PG_FUNCTION_INFO_V1(zdbcostestimate);
 
 PG_FUNCTION_INFO_V1(zdb_num_hits);
 
@@ -78,7 +81,7 @@ typedef struct
 {
 	ZDBIndexDescriptor *indexDescriptor;
 	uint64             nhits;
-	int                currhit;
+	uint64             currhit;
 	ZDBSearchResponse  *hits;
 	char               **queries;
 	int                nqueries;
@@ -111,7 +114,7 @@ static Oid *findZDBIndexes(Oid relid, int *many)
 	appendStringInfo(sql, "select indexrelid "
 			"from pg_index "
 			"where indrelid = %d "
-			"  and indclass[0] = (select oid from pg_opclass where opcmethod = (select oid from pg_am where amname = 'zombodb'))", relid);
+			"  and indclass[0] = (select oid from pg_opclass where opcmethod = (select oid from pg_am where amname = 'zombodb') and opcname = 'zombodb_tid_ops')", relid);
 
 	SPI_execute(sql->data, true, 1);
 	*many = SPI_processed;
@@ -170,6 +173,7 @@ static void xact_complete_cleanup(XactEvent event) {
 	executorDepth = 0;
 	numHitsFound = -1;
 
+	zdb_sequential_scan_support_cleanup();
 	zdb_transaction_finish();
 
     /*
@@ -297,6 +301,8 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc)
 
 	if (executorDepth == 0)
 	{
+		zdb_sequential_scan_support_cleanup();
+
 		if (!needBatchFinishOnCommit_set)
 		{
 			/*
@@ -501,13 +507,18 @@ zdbbuildCallback(Relation indexRel,
 		bool tupleIsAlive,
 		void *state)
 {
+	TupleDesc          tupdesc     = RelationGetDescr(indexRel);
 	ZDBBuildState      *buildstate = (ZDBBuildState *) state;
 	ZDBIndexDescriptor *desc       = buildstate->desc;
-	text               *value      = DatumGetTextP(values[0]);
+	text               *value;
 
 	if (HeapTupleIsHeapOnly(htup))
 		elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
 
+	if (tupdesc->natts != 2)
+		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+
+	value = DatumGetTextP(values[1]);
 	desc->implementation->batchInsertRow(
 			desc,
 			&htup->t_self,
@@ -536,15 +547,21 @@ zdbinsert(PG_FUNCTION_ARGS)
 	ItemPointer        ht_ctid  = (ItemPointer) PG_GETARG_POINTER(3);
 //    Relation	heapRel = (Relation) PG_GETARG_POINTER(4);
 //    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
+	TupleDesc          tupdesc  = RelationGetDescr(indexRel);
 	ZDBIndexDescriptor *desc;
-	text               *value   = DatumGetTextP(values[0]);
+	text               *value;
 
 	desc = alloc_index_descriptor(indexRel, true);
 	if (desc->isShadow)
 		PG_RETURN_BOOL(false);
 
-	oldContext = MemoryContextSwitchTo(TopTransactionContext);
+	if (tupdesc->natts != 2)
+		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+
+	value = DatumGetTextP(values[1]);
 	desc->implementation->batchInsertRow(desc, ht_ctid, GetCurrentTransactionId(), 0, GetCurrentCommandId(false), GetCurrentCommandId(false), false, false, value);
+
+	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	xactCommitDataList = lappend(xactCommitDataList, zdb_alloc_new_xact_record(desc, ht_ctid));
 	MemoryContextSwitchTo(oldContext);
 
@@ -609,17 +626,6 @@ static void setup_scan(IndexScanDesc scan)
 	numHitsFound = scanstate->hits->total_hits;
 }
 
-__inline static void set_item_pointer(ZDBSearchResponse *data, int index, ItemPointer target)
-{
-	BlockNumber  blkno;
-	OffsetNumber offno;
-
-	memcpy(&blkno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(BlockNumber));
-	memcpy(&offno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber)) + sizeof(BlockNumber)), sizeof(OffsetNumber));
-
-	ItemPointerSet(target, blkno, offno);
-}
-
 /*
  *  zdbgettuple() -- Get the next tuple in the scan.
  */
@@ -644,6 +650,9 @@ zdbgettuple(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(haveMore);
 }
 
+/** our version of TIDBitmap so we can expose the "maxentries" */
+#include "tidbitmap_hack.h"
+
 /*
  *  zdbgetbitmap() -- gets all matching tuples, and adds them to a bitmap
  */
@@ -655,14 +664,19 @@ zdbgetbitmap(PG_FUNCTION_ARGS)
 	ZDBScanState  *scanstate = (ZDBScanState *) scan->opaque;
 	int           i;
 
+	/*
+	 * force the max entries to be as many as possible
+	 * so that Postgres will not need to evaluate individual
+	 * tuples if the TIDBitmap becomes lossy
+	 */
+	tbm->maxentries = INT_MAX-1;
+
 	for (i = 0; i < scanstate->nhits; i++)
 	{
 		ItemPointerData target;
 
 		CHECK_FOR_INTERRUPTS();
-
 		set_item_pointer(scanstate->hits, i, &target);
-
 		tbm_add_tuples(tbm, &target, 1, false);
 	}
 
@@ -957,45 +971,6 @@ zdboptions(PG_FUNCTION_ARGS)
 }
 
 Datum
-zdbcostestimate(PG_FUNCTION_ARGS)
-{
-//    PlannerInfo *root = (PlannerInfo * )PG_GETARG_POINTER(0);
-//    IndexPath *path = (IndexPath * )PG_GETARG_POINTER(1);
-//    double loop_count = PG_GETARG_FLOAT8(2);
-	Cost        *indexStartupCost = (Cost *) PG_GETARG_POINTER(3);
-	Cost        *indexTotalCost   = (Cost *) PG_GETARG_POINTER(4);
-	Selectivity *indexSelectivity = (Selectivity *) PG_GETARG_POINTER(5);
-	double      *indexCorrelation = (double *) PG_GETARG_POINTER(6);
-//    IndexOptInfo *index = path->indexinfo;
-
-	*indexStartupCost = 0;
-	*indexTotalCost   = 0.0001;
-	*indexSelectivity = 0.0001;
-	*indexCorrelation = 0.0001;
-
-	PG_RETURN_VOID();
-}
-
-Datum
-zdbsel(PG_FUNCTION_ARGS)
-{
-	// TODO:  not sure exactly what we should do here
-	// TODO:  figure out which table (and then index)
-	// TODO:  and run the query or just continue to
-	// TODO:  return a really small number?
-//	PlannerInfo *root = (PlannerInfo *) PG_GETARG_POINTER(0);
-//	Oid			operator = PG_GETARG_OID(1);
-//	List	   *args = (List *) PG_GETARG_POINTER(2);
-//	int			varRelid = PG_GETARG_INT32(3);
-//	FuncExpr *left = (FuncExpr *) linitial(args);
-//
-//	Var *firstArg = (Var *) linitial(left->args);
-//
-//	elog(NOTICE, "zdbsel: valRelid=%d, tag=%d", varRelid, firstArg->vartype);
-	PG_RETURN_FLOAT8((float8) 0.0001);
-}
-
-Datum
 zdbtupledeletedtrigger(PG_FUNCTION_ARGS)
 {
 	MemoryContext      oldContext;
@@ -1079,4 +1054,57 @@ zdbeventtrigger(PG_FUNCTION_ARGS)
 
 
 	PG_RETURN_NULL();
+}
+
+
+Datum
+zdbcostestimate(PG_FUNCTION_ARGS)
+{
+//	PlannerInfo  *root             = (PlannerInfo *) PG_GETARG_POINTER(0);
+	IndexPath    *path             = (IndexPath *) PG_GETARG_POINTER(1);
+//	double       loop_count        = PG_GETARG_FLOAT8(2);
+	Cost         *indexStartupCost = (Cost *) PG_GETARG_POINTER(3);
+	Cost         *indexTotalCost   = (Cost *) PG_GETARG_POINTER(4);
+	Selectivity  *indexSelectivity = (Selectivity *) PG_GETARG_POINTER(5);
+	double       *indexCorrelation = (double *) PG_GETARG_POINTER(6);
+	IndexOptInfo *index            = path->indexinfo;
+	ListCell     *lc;
+	StringInfo   query             = makeStringInfo();
+	int64        nhits             = 1;
+
+	foreach (lc, path->indexclauses)
+	{
+		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
+
+		if (IsA(ri->clause, OpExpr))
+		{
+			OpExpr *opExpr     = (OpExpr *) ri->clause;
+			Node  *queryNode = (Node *) lsecond(opExpr->args);
+
+			if (IsA(queryNode, Const)) {
+				Const *queryConst = (Const *) queryNode;
+				if (query->len > 0)
+					appendStringInfo(query, " AND ");
+				appendStringInfo(query, "(%s)", TextDatumGetCString(queryConst->constvalue));
+			}
+		}
+	}
+
+	if (query->len > 0)
+	{
+		ZDBIndexDescriptor *desc = zdb_alloc_index_descriptor_by_index_oid(index->indexoid);
+
+		nhits = desc->implementation->estimateSelectivity(desc, query->data);
+	}
+
+	*indexStartupCost = (Cost) 0;
+	*indexTotalCost   = (Cost) 0;
+	*indexSelectivity = (Selectivity) (nhits / index->tuples);
+	*indexCorrelation = 0.0;
+
+	*indexSelectivity = Min(*indexSelectivity, 1);
+	*indexSelectivity = Max(*indexSelectivity, 0);
+
+	freeStringInfo(query);
+	PG_RETURN_VOID();
 }

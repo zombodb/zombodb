@@ -1,0 +1,1166 @@
+set enable_indexscan to off;
+set enable_bitmapscan to off;
+explain (costs off) select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by id;
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Sort
+   Sort Key: id
+   ->  Seq Scan on so_posts
+         Filter: (zdb('so_posts'::regclass, ctid) ==> 'beer'::text)
+(4 rows)
+
+select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by id;
+   id   |                                                                 title                                                                  
+--------+----------------------------------------------------------------------------------------------------------------------------------------
+   2932 | Why is free software good for programmers?
+   5776 | 
+   8888 | 
+  10716 | 
+  11819 | 
+  11946 | 
+  12097 | 
+  12353 | 
+  14726 | 
+  15799 | 
+  20663 | Are PGP keys as good for certificates as X.509 keys?
+  21907 | Open Source but not Free Software (or vice versa)
+  23528 | 
+  24233 | 
+  24363 | 
+  26416 | 
+  26636 | 
+  26803 | 
+  27114 | 
+  28059 | 
+  29345 | 
+  32956 | What are the common revenue models for free-software companies?
+  34733 | 
+  36441 | Hobbyist programmer releasing software with a donate button
+  36443 | How not to suffer from ideologists when you're a pragmatic person?
+  37000 | 
+  39758 | 
+  40670 | 
+  41528 | 
+  41530 | 
+  43362 | 
+  44434 | 
+  44451 | 
+  44687 | 
+  44991 | 
+  46093 | 
+  49035 | 
+  50328 | 
+  52622 | 
+  52819 | 
+  53238 | 
+  53772 | 
+  53801 | 
+  54279 | 
+  56682 | 
+  58124 | 
+  58790 | 
+  58795 | 
+  61392 | free as in free beer
+  61566 | 
+  61668 | 
+  61769 | 
+  62501 | 
+  67437 | 
+  69216 | 
+  70490 | 
+  71500 | 
+  71936 | 
+  72941 | 
+  73887 | 
+  74392 | 
+  76418 | 
+  77681 | 
+  78292 | 
+  78487 | 
+  79165 | 
+  81756 | 
+  81803 | 
+  82664 | 
+  82984 | 
+  85867 | 
+  86290 | 
+  87570 | 
+  87813 | 
+  88452 | 
+  91723 | 
+  93139 | 
+  93719 | 
+  96580 | Is experience in business analysis useful when moving into a programming career?
+  98384 | 
+  98965 | 
+ 100706 | 
+ 101209 | 
+ 102033 | 
+ 102886 | 
+ 102895 | 
+ 103203 | Rails data model - best practices question
+ 103571 | 
+ 103986 | 
+ 104349 | 
+ 105324 | 
+ 105990 | 
+ 106989 | 
+ 107034 | 
+ 107036 | 
+ 107055 | 
+ 107057 | 
+ 107123 | 
+ 107170 | Where to find resources to write a program like sandboxie?
+ 108758 | 
+ 108787 | 
+ 112944 | 
+ 116201 | 
+ 117796 | 
+ 118694 | 
+ 119064 | 
+ 120011 | 
+ 120593 | 
+ 121632 | 
+ 121798 | What is the economic rationale for focusing on free, open source projects?
+ 128446 | 
+ 131659 | 
+ 131841 | How can I defend Ruby on Rails against customers' not technical opinion?
+ 132827 | 
+ 133772 | 
+ 134692 | 
+ 135509 | 
+ 135956 | 
+ 136208 | Rails - to use STI or not...that is the question
+ 139375 | 
+ 140057 | 
+ 140892 | 
+ 141345 | 
+ 142037 | 
+ 144658 | 
+ 145849 | 
+ 147185 | How does a beginner programmer find a mentor for learning from doing?
+ 148805 | 
+ 151242 | 
+ 152511 | 
+ 152822 | 
+ 153618 | 
+ 155755 | 
+ 156343 | 
+ 159774 | 
+ 164573 | 
+ 165557 | 
+ 167186 | 
+ 171605 | Free cloud web service development
+ 177863 | 
+ 181140 | Am I allowed to create closed-source software with open-source code?
+ 186140 | 
+ 187269 | Can I use the patented Octree algorithm in a public programming challenge?
+ 189148 | 
+ 197135 | 
+ 197164 | 
+ 198153 | 
+ 200226 | 
+ 203270 | 
+ 204293 | 
+ 206813 | 
+ 210008 | 
+ 211469 | 
+ 211655 | 
+ 211765 | 
+ 213942 | If I try to monetize free software, what could possibly prevent someone from forking that software and creating a proprietary version?
+ 215682 | How to draw a class diagram where a class contains either 6 other classes or mupltie different
+ 216210 | 
+ 219124 | 
+ 219808 | 
+ 220677 | 
+ 230284 | 
+ 231927 | 
+ 234252 | 
+ 237358 | 
+ 245578 | 
+ 250835 | 
+ 256876 | 
+ 258315 | 
+ 263392 | 
+ 268009 | 
+ 269590 | How to efficiently store big time series data?
+ 270921 | 
+ 272560 | Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?
+(174 rows)
+
+explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id;
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Sort
+   Sort Key: so_posts.id
+   ->  Hash Join
+         Hash Cond: (so_comments.post_id = so_posts.id)
+         ->  Seq Scan on so_comments
+         ->  Hash
+               ->  Seq Scan on so_posts
+                     Filter: (zdb('so_posts'::regclass, ctid) ==> 'beer'::text)
+(8 rows)
+
+select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id;
+                                                                 title                                                                  | user_display_name 
+----------------------------------------------------------------------------------------------------------------------------------------+-------------------
+ Why is free software good for programmers?                                                                                             | 
+ Why is free software good for programmers?                                                                                             | 
+ Why is free software good for programmers?                                                                                             | 
+ Why is free software good for programmers?                                                                                             | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ Open Source but not Free Software (or vice versa)                                                                                      | 
+ Open Source but not Free Software (or vice versa)                                                                                      | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ What are the common revenue models for free-software companies?                                                                        | 
+ What are the common revenue models for free-software companies?                                                                        | 
+ What are the common revenue models for free-software companies?                                                                        | 
+ What are the common revenue models for free-software companies?                                                                        | 
+ What are the common revenue models for free-software companies?                                                                        | 
+ What are the common revenue models for free-software companies?                                                                        | 
+ What are the common revenue models for free-software companies?                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ Hobbyist programmer releasing software with a donate button                                                                            | 
+ Hobbyist programmer releasing software with a donate button                                                                            | 
+ Hobbyist programmer releasing software with a donate button                                                                            | 
+ Hobbyist programmer releasing software with a donate button                                                                            | 
+ Hobbyist programmer releasing software with a donate button                                                                            | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | user8
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | user8
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+                                                                                                                                        | 
+                                                                                                                                        | user8685
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | user1249
+                                                                                                                                        | 
+                                                                                                                                        | user1249
+                                                                                                                                        | 
+                                                                                                                                        | John Dunagan
+                                                                                                                                        | 
+                                                                                                                                        | John Dunagan
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | user1249
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | user1249
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ Is experience in business analysis useful when moving into a programming career?                                                       | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | Peter Hilton
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | fatcat1111
+                                                                                                                                        | JeeBee
+                                                                                                                                        | Peter Hilton
+                                                                                                                                        | Matthew Lock
+                                                                                                                                        | 
+                                                                                                                                        | Optimal Solutions
+                                                                                                                                        | Kawu
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | JeeBee
+                                                                                                                                        | Esti
+                                                                                                                                        | 
+ Where to find resources to write a program like sandboxie?                                                                             | 
+ Where to find resources to write a program like sandboxie?                                                                             | 
+ Where to find resources to write a program like sandboxie?                                                                             | 
+ Where to find resources to write a program like sandboxie?                                                                             | 
+ Where to find resources to write a program like sandboxie?                                                                             | 
+ Where to find resources to write a program like sandboxie?                                                                             | 
+ Where to find resources to write a program like sandboxie?                                                                             | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | Peter Wone
+ What is the economic rationale for focusing on free, open source projects?                                                             | 
+ What is the economic rationale for focusing on free, open source projects?                                                             | user8
+ What is the economic rationale for focusing on free, open source projects?                                                             | user1249
+ What is the economic rationale for focusing on free, open source projects?                                                             | user1249
+                                                                                                                                        | 
+ How can I defend Ruby on Rails against customers' not technical opinion?                                                               | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ Rails - to use STI or not...that is the question                                                                                       | 
+ Rails - to use STI or not...that is the question                                                                                       | 
+ Rails - to use STI or not...that is the question                                                                                       | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | user1249
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ How does a beginner programmer find a mentor for learning from doing?                                                                  | 
+ How does a beginner programmer find a mentor for learning from doing?                                                                  | 
+ How does a beginner programmer find a mentor for learning from doing?                                                                  | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ Free cloud web service development                                                                                                     | 
+ Free cloud web service development                                                                                                     | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ Am I allowed to create closed-source software with open-source code?                                                                   | 
+ Am I allowed to create closed-source software with open-source code?                                                                   | 
+ Am I allowed to create closed-source software with open-source code?                                                                   | 
+ Am I allowed to create closed-source software with open-source code?                                                                   | 
+ Am I allowed to create closed-source software with open-source code?                                                                   | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ Can I use the patented Octree algorithm in a public programming challenge?                                                             | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ If I try to monetize free software, what could possibly prevent someone from forking that software and creating a proprietary version? | 
+ If I try to monetize free software, what could possibly prevent someone from forking that software and creating a proprietary version? | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+ How to efficiently store big time series data?                                                                                         | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+ Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
+(411 rows)
+
+explain (costs off) select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts', ctid) ==> 'wine';
+                                                      QUERY PLAN                                                      
+----------------------------------------------------------------------------------------------------------------------
+ Seq Scan on so_posts
+   Filter: ((zdb('so_posts'::regclass, ctid) ==> 'beer'::text) OR (zdb('so_posts'::regclass, ctid) ==> 'wine'::text))
+(2 rows)
+
+select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts', ctid) ==> 'wine' order by id;
+   id   
+--------
+   2932
+   3163
+   5776
+   8511
+   8888
+  10716
+  11819
+  11903
+  11946
+  12097
+  12353
+  14726
+  15799
+  18333
+  18526
+  20319
+  20663
+  21907
+  23528
+  24233
+  24363
+  24966
+  25545
+  26416
+  26636
+  26803
+  27114
+  28059
+  29345
+  30402
+  32956
+  34733
+  36441
+  36443
+  37000
+  39758
+  40670
+  40912
+  41528
+  41530
+  43362
+  44434
+  44451
+  44687
+  44991
+  46093
+  49035
+  50328
+  52622
+  52819
+  53238
+  53772
+  53801
+  54279
+  54306
+  56682
+  57792
+  58124
+  58790
+  58795
+  59617
+  59664
+  61190
+  61392
+  61566
+  61668
+  61769
+  62501
+  62835
+  67437
+  69216
+  70490
+  71500
+  71936
+  72486
+  72488
+  72738
+  72941
+  73887
+  74392
+  76418
+  76550
+  77140
+  77681
+  78292
+  78487
+  79165
+  80133
+  81756
+  81803
+  82664
+  82984
+  85848
+  85867
+  85870
+  86290
+  87570
+  87813
+  88256
+  88452
+  91723
+  93139
+  93719
+  96580
+  98384
+  98965
+ 100532
+ 100706
+ 101209
+ 102033
+ 102886
+ 102895
+ 103203
+ 103571
+ 103986
+ 104349
+ 105324
+ 105990
+ 106989
+ 107034
+ 107036
+ 107055
+ 107057
+ 107123
+ 107170
+ 108060
+ 108111
+ 108758
+ 108787
+ 112944
+ 115507
+ 116201
+ 117796
+ 118694
+ 119064
+ 120011
+ 120071
+ 120593
+ 121632
+ 121798
+ 128446
+ 131202
+ 131659
+ 131841
+ 132827
+ 133772
+ 134692
+ 135509
+ 135956
+ 136208
+ 139375
+ 140057
+ 140892
+ 140927
+ 141345
+ 142037
+ 144658
+ 145849
+ 147185
+ 147830
+ 148805
+ 151242
+ 152511
+ 152822
+ 153618
+ 155505
+ 155755
+ 156332
+ 156343
+ 159774
+ 164573
+ 164875
+ 165557
+ 167186
+ 170155
+ 170226
+ 171605
+ 175802
+ 177863
+ 181140
+ 186140
+ 187269
+ 189148
+ 196509
+ 197135
+ 197164
+ 198153
+ 198199
+ 199957
+ 200226
+ 203270
+ 204293
+ 206813
+ 210008
+ 211469
+ 211655
+ 211765
+ 213942
+ 215682
+ 216210
+ 219124
+ 219808
+ 220677
+ 230284
+ 231927
+ 232378
+ 234252
+ 237358
+ 245578
+ 247227
+ 247366
+ 250835
+ 251255
+ 256876
+ 257574
+ 258315
+ 262989
+ 263392
+ 267893
+ 268009
+ 269590
+ 270921
+ 272560
+ 273349
+(224 rows)
+
+explain (costs off) select id from so_posts where id in (select generate_series(1, 10000)) and zdb('so_posts', ctid) ==> 'java' order by id;
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
+ Sort
+   Sort Key: so_posts.id
+   ->  Hash Join
+         Hash Cond: (so_posts.id = (generate_series(1, 10000)))
+         ->  Seq Scan on so_posts
+               Filter: (zdb('so_posts'::regclass, ctid) ==> 'java'::text)
+         ->  Hash
+               ->  HashAggregate
+                     ->  Result
+(9 rows)
+
+select id from so_posts where id in (select generate_series(1, 10000)) and zdb('so_posts', ctid) ==> 'java' order by id;
+  id  
+------
+   16
+   98
+  111
+  262
+  332
+  356
+  368
+  370
+  407
+  409
+  499
+  504
+  518
+  536
+  564
+  590
+  606
+  663
+  667
+  673
+  764
+  812
+  864
+  910
+  946
+  984
+ 1104
+ 1161
+ 1181
+ 1182
+ 1185
+ 1188
+ 1189
+ 1196
+ 1198
+ 1257
+ 1270
+ 1297
+ 1336
+ 1446
+ 1477
+ 1532
+ 1577
+ 1674
+ 1719
+ 1750
+ 1765
+ 1771
+ 1788
+ 1842
+ 1847
+ 1950
+ 1981
+ 2237
+ 2277
+ 2311
+ 2332
+ 2340
+ 2346
+ 2437
+ 2450
+ 2585
+ 2607
+ 2656
+ 2686
+ 2703
+ 2781
+ 2807
+ 2818
+ 2828
+ 2848
+ 2901
+ 2978
+ 3017
+ 3076
+ 3131
+ 3151
+ 3163
+ 3178
+ 3191
+ 3232
+ 3283
+ 3286
+ 3290
+ 3296
+ 3299
+ 3316
+ 3409
+ 3430
+ 3443
+ 3519
+ 3522
+ 3645
+ 3675
+ 3763
+ 3966
+ 4084
+ 4227
+ 4276
+ 4296
+ 4312
+ 4531
+ 4546
+ 4550
+ 4645
+ 4662
+ 4670
+ 4686
+ 4714
+ 4764
+ 4883
+ 4905
+ 4929
+ 5064
+ 5259
+ 5280
+ 5303
+ 5356
+ 5428
+ 5458
+ 5500
+ 5700
+ 5771
+ 5843
+ 5972
+ 5976
+ 5979
+ 5993
+ 6000
+ 6005
+ 6018
+ 6049
+ 6052
+ 6130
+ 6141
+ 6177
+ 6179
+ 6255
+ 6268
+ 6352
+ 6357
+ 6384
+ 6401
+ 6414
+ 6560
+ 6576
+ 6581
+ 6583
+ 6615
+ 6650
+ 6904
+ 6905
+ 6919
+ 7017
+ 7031
+ 7049
+ 7058
+ 7244
+ 7264
+ 7313
+ 7327
+ 7354
+ 7383
+ 7387
+ 7392
+ 7408
+ 7417
+ 7423
+ 7505
+ 7539
+ 7558
+ 7581
+ 7585
+ 7588
+ 7590
+ 7631
+ 7651
+ 7675
+ 7700
+ 7732
+ 7880
+ 7931
+ 7986
+ 8060
+ 8130
+ 8153
+ 8157
+ 8200
+ 8268
+ 8340
+ 8385
+ 8416
+ 8467
+ 8510
+ 8551
+ 8633
+ 8637
+ 8703
+ 8721
+ 8749
+ 8752
+ 8771
+ 8789
+ 8886
+ 8996
+ 9020
+ 9026
+ 9043
+ 9095
+ 9098
+ 9122
+ 9227
+ 9283
+ 9285
+ 9312
+ 9315
+ 9320
+ 9335
+ 9344
+ 9431
+ 9535
+ 9538
+ 9675
+ 9722
+ 9747
+ 9770
+ 9791
+ 9811
+ 9849
+ 9884
+ 9889
+ 9981
+(232 rows)
+
+explain (costs off) select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Aggregate
+   ->  Nested Loop
+         Join Filter: (zdb('so_posts'::regclass, so_posts.ctid) ==> words.word)
+         CTE words
+           ->  Limit
+                 ->  Sort
+                       Sort Key: words_1.ctid
+                       ->  Seq Scan on words words_1
+         ->  CTE Scan on words
+         ->  Materialize
+               ->  Seq Scan on so_posts
+(11 rows)
+
+select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
+ count 
+-------
+   575
+(1 row)
+
+explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id;
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Sort
+   Sort Key: so_posts.id
+   ->  Hash Join
+         Hash Cond: (so_comments.post_id = so_posts.id)
+         ->  Seq Scan on so_comments
+               Filter: (zdb('so_comments'::regclass, ctid) ==> 'java'::text)
+         ->  Hash
+               ->  Seq Scan on so_posts
+                     Filter: (zdb('so_posts'::regclass, ctid) ==> 'java'::text)
+(9 rows)
+
+select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+ count 
+-------
+  5684
+(1 row)
+
+set enable_indexscan to on;  set enable_bitmapscan to off; set enable_seqscan to off; select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+ count 
+-------
+  5684
+(1 row)
+
+set enable_indexscan to off; set enable_bitmapscan to on;  set enable_seqscan to off; select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+ count 
+-------
+  5684
+(1 row)
+
+set enable_indexscan to off; set enable_bitmapscan to off; set enable_seqscan to on;  select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+ count 
+-------
+  5684
+(1 row)
+
