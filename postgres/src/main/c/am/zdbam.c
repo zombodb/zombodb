@@ -531,6 +531,19 @@ zdbbuildCallback(Relation indexRel,
 			value
 	);
 
+	/*
+	 * if the tuple's XMIN and XMIN are not committed, we're going to assume it'll eventually
+	 * be committed (likely this is from an ALTER TABLE ALTER COLUMN TYPE statement), so
+	 * we want to queue up the fact that these are "new" tuples
+	 */
+	if (((htup->t_data->t_infomask & HEAP_XMIN_COMMITTED) == 0) && ((htup->t_data->t_infomask & HEAP_XMAX_COMMITTED) == 0))
+	{
+		MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+
+		xactCommitDataList = lappend(xactCommitDataList, zdb_alloc_new_xact_record(desc, &htup->t_self));
+		MemoryContextSwitchTo(oldContext);
+	}
+
 	buildstate->indtuples += 1;
 }
 
