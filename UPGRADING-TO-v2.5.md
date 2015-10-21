@@ -38,4 +38,4 @@ SELECT * FROM table
         WHERE zdb('table', table.ctid) ==> 'fulltext query';
 ```
 
-It's slightly more verbose, but the added flexibility of being able to operator within sequential scans is worth it.
+It's slightly more verbose, but the added flexibility of being able to operate within sequential scans is worth it.
