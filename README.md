@@ -13,6 +13,7 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
 
 
 ## Quick Links
+   - [Upgrading to v2.5](UPGRADING-TO-v2.5.md)
    - [Latest Release](https://github.com/zombodb/zombodb/releases/latest)  
    - [Installation instructions](INSTALL.md)  
    - [Getting Started Tutorial](TUTORIAL.md)  
@@ -24,7 +25,8 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
 
 - transaction-safe full-text queries
 - managed & used via standard Postgres SQL
-- works with tables of any structure 
+- works with tables of any structure
+- works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCANS.md) 
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
 - json columns as nested objects for flexible schemaless sub-documents
 - custom full-text query language supporting nearly all of Elasticsearch's search features, including
