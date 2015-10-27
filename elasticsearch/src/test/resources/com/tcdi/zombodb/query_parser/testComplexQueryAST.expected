@@ -99,11 +99,22 @@ QueryTree
                      Word (fieldname=fileextension, operator=EQ, value=pdf, index=schema.table.idxname)
                   Phrase (fieldname=custodian, operator=EQ, value=querty, v, ordered=true, index=schema.table.idxname)
                   Phrase (fieldname=recordtype, operator=EQ, value=email attachment, ordered=true, index=schema.table.idxname)
-            Expansion
-               left_field=<index.name>right_field
-                  LeftField (value=left_field)
-                  IndexName (value=index.name)
-                  RightField (value=right_field)
+            Or
+               Expansion
+                  left_field=<index.name>right_field
+                     LeftField (value=left_field)
+                     IndexName (value=index.name)
+                     RightField (value=right_field)
+                  Expansion
+                     null=<schema.table.idxname>null
+                     And
+                        Or
+                           Array (fieldname=fulltext_field, operator=CONTAINS, index=schema.table.idxname) (AND)
+                              Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=schema.table.idxname)
+                              Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=schema.table.idxname)
+                           Array (fieldname=_all, operator=CONTAINS, index=schema.table.idxname) (AND)
+                              Word (fieldname=_all, operator=CONTAINS, value=the, index=schema.table.idxname)
+                              Word (fieldname=_all, operator=CONTAINS, value=subquery, index=schema.table.idxname)
                Expansion
                   null=<schema.table.idxname>null
                   And

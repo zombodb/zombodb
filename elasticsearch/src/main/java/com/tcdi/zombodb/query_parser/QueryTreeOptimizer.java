@@ -29,6 +29,7 @@ public class QueryTreeOptimizer {
 
     public void optimize() {
 
+        validateAndFixProximityChainFieldnames(tree);
         promoteNestedGroups(tree);
         int cnt;
         do {
@@ -40,6 +41,28 @@ public class QueryTreeOptimizer {
         } while (cnt > 0);
 
         reduce(tree);
+        convertGeneratedExpansionsToASTOr(tree);
+    }
+
+    static void validateAndFixProximityChainFieldnames(QueryParserNode root) {
+        if (root.children == null || root.children.size() == 0)
+            return;
+
+        for (QueryParserNode child : root) {
+            if (child instanceof ASTProximity) {
+                {
+                    Set<String> fieldnames = new HashSet<String>();
+                    for (QueryParserNode n : child) {
+                        fieldnames.add(n.getFieldname());
+                    }
+                    if (fieldnames.size() > 1)
+                        throw new RuntimeException("Cannot mix fieldnames in PROXIMITY expression");
+                    child.setFieldname(fieldnames.iterator().next());
+                }
+            } else {
+                validateAndFixProximityChainFieldnames(child);
+            }
+        }
     }
 
     static void rollupParentheticalGroups(QueryParserNode root) {
@@ -304,5 +327,24 @@ public class QueryTreeOptimizer {
         // recursively optimize children the same way
         for (QueryParserNode child : root)
             mergeArrays(child);
+    }
+
+    private void convertGeneratedExpansionsToASTOr(QueryParserNode root) {
+        if (root.children == null || root.children.size() == 0)
+            return;
+
+        for (QueryParserNode child : root) {
+            if (child instanceof ASTExpansion) {
+                if (((ASTExpansion) child).isGenerated()) {
+                    ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
+                    or.jjtAddChild(child, 0);
+                    QueryParserNode queryNode = ((ASTExpansion) child).getQuery().copy();
+                    or.jjtAddChild(queryNode, 1);
+                    root.replaceChild(child, or);
+                }
+            }
+
+            convertGeneratedExpansionsToASTOr(child);
+        }
     }
 }

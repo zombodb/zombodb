@@ -349,21 +349,43 @@
                   }
                 }, {
                   "bool" : {
-                    "must" : {
+                    "should" : [ {
                       "bool" : {
-                        "should" : [ {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "execution" : "and"
+                        "must" : {
+                          "bool" : {
+                            "should" : [ {
+                              "terms" : {
+                                "fulltext_field" : [ "the", "subquery" ],
+                                "execution" : "and"
+                              }
+                            }, {
+                              "terms" : {
+                                "_all" : [ "the", "subquery" ],
+                                "execution" : "and"
+                              }
+                            } ]
                           }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "execution" : "and"
-                          }
-                        } ]
+                        }
                       }
-                    }
+                    }, {
+                      "bool" : {
+                        "must" : {
+                          "bool" : {
+                            "should" : [ {
+                              "terms" : {
+                                "fulltext_field" : [ "the", "subquery" ],
+                                "execution" : "and"
+                              }
+                            }, {
+                              "terms" : {
+                                "_all" : [ "the", "subquery" ],
+                                "execution" : "and"
+                              }
+                            } ]
+                          }
+                        }
+                      }
+                    } ]
                   }
                 }, {
                   "has_child" : {

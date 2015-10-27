@@ -401,8 +401,27 @@ public class TestQueryRewriter {
                         "                  Number (fieldname=_xmax, operator=NE, value=6250507)\n" +
                         "                  Boolean (fieldname=_xmax_is_committed, operator=EQ, value=false)\n" +
                         "      Child (type=data)\n" +
-                        "         Expansion\n" +
-                        "            data_cv_group_id=<schema.table.idxname>data_cv_group_id\n" +
+                        "         Or\n" +
+                        "            Expansion\n" +
+                        "               data_cv_group_id=<schema.table.idxname>data_cv_group_id\n" +
+                        "               Expansion\n" +
+                        "                  null=<schema.table.idxname>null\n" +
+                        "                  And\n" +
+                        "                     Word (fieldname=data_client_name, operator=EQ, value=anthem, index=schema.table.idxname)\n" +
+                        "                     Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=schema.table.idxname)\n" +
+                        "                     Or\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=querty, amy, ordered=true, index=schema.table.idxname)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, colin, ordered=true, index=schema.table.idxname)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, keith, ordered=true, index=schema.table.idxname)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, perry, ordered=true, index=schema.table.idxname)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, norm, ordered=true, index=schema.table.idxname)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, mike, ordered=true, index=schema.table.idxname)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=schema.table.idxname)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, dan, ordered=true, index=schema.table.idxname)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=schema.table.idxname)\n" +
+                        "                     Phrase (fieldname=data_filter_06b, operator=EQ, value=qwerty*, ordered=true, index=schema.table.idxname)\n" +
+                        "                     Not\n" +
+                        "                        NotNull (fieldname=data_moved_to, operator=EQ, index=schema.table.idxname)\n" +
                         "            Expansion\n" +
                         "               null=<schema.table.idxname>null\n" +
                         "               And\n" +
@@ -3142,16 +3161,12 @@ public class TestQueryRewriter {
         QueryRewriter qr;
         MockClientAndRequest mock = new MockClientAndRequest();
 
-        qr = new QueryRewriter(mock.client, mock.request, "outside:(one w/4 (inside:two))", true, true);
-
-        assertEquals("testMixedFieldnamesWithProx",
-                "QueryTree\n" +
-                        "   Expansion\n" +
-                        "      null=<schema.table.idxname>null\n" +
-                        "      Proximity (fieldname=outside, operator=CONTAINS, distance=4, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=outside, operator=CONTAINS, value=one, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=inside, operator=CONTAINS, value=two, index=schema.table.idxname)\n",
-                qr.dumpAsString());
+        try {
+            qr = new QueryRewriter(mock.client, mock.request, "outside:(one w/4 (inside:two))", true, true);
+            fail("Should not be here");
+        } catch (RuntimeException re) {
+            assertEquals("Cannot mix fieldnames in PROXIMITY expression", re.getMessage());
+        }
     }
 
     @Test
@@ -3425,11 +3440,14 @@ public class TestQueryRewriter {
     public void testCVSIX_2874() throws Exception {
         assertEquals("ttestCVSIX_2874",
                 "QueryTree\n" +
-                        "   Expansion\n" +
-                        "      cvgroupid=<this.index>cvgroupid\n" +
-                        "         LeftField (value=cvgroupid)\n" +
-                        "         IndexName (value=this.index)\n" +
-                        "         RightField (value=cvgroupid)\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         cvgroupid=<this.index>cvgroupid\n" +
+                        "            LeftField (value=cvgroupid)\n" +
+                        "            IndexName (value=this.index)\n" +
+                        "            RightField (value=cvgroupid)\n" +
+                        "         NestedGroup (fieldname=review_data_ridge, operator=CONTAINS)\n" +
+                        "            Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*)\n" +
                         "      NestedGroup (fieldname=review_data_ridge, operator=CONTAINS)\n" +
                         "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*)\n",
                 QueryRewriter.dumpAsString("( #expand<cvgroupid=<this.index>cvgroupid> ( ( ( review_data_ridge.review_set_name:*beer* ) ) ) )"));
@@ -3673,4 +3691,50 @@ public class TestQueryRewriter {
                         "}",
                 aggregationBuilder.toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string());
     }
+
+    @Test
+    public void testIssue_56() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
+        String tree;
+
+        qr = new QueryRewriter(mock.client, mock.request, "#expand<parent_id=<this.index>parent_id>(phrase_field:beer)", false, true);
+
+        tree = qr.dumpAsString();
+
+        assertEquals("testIssue_56",
+                "QueryTree\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         parent_id=<schema.table.idxname>parent_id\n" +
+                        "         Expansion\n" +
+                        "            null=<schema.table.idxname>null\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=schema.table.idxname)\n" +
+                        "      Expansion\n" +
+                        "         null=<schema.table.idxname>null\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=schema.table.idxname)\n",
+                tree);
+    }
+
+    @Test
+    public void testFieldedProximity() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
+        String tree;
+
+        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:beer w/500 phrase_field:a", false, true);
+
+        tree = qr.dumpAsString();
+
+        assertEquals("testFieldedProximity",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      null=<schema.table.idxname>null\n" +
+                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, index=schema.table.idxname)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=schema.table.idxname)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n",
+                tree);
+    }
+
 }
+
