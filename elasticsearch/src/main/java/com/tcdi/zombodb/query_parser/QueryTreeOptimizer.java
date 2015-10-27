@@ -175,7 +175,7 @@ public class QueryTreeOptimizer {
         while (root instanceof ASTExpansion)
             root = ((ASTExpansion) root).getQuery();
 
-        if (root == null || root instanceof ASTAggregate || root instanceof ASTSuggest || root instanceof ASTOptions)
+        if (root == null || root instanceof ASTAggregate || root instanceof ASTSuggest || root instanceof ASTOptions || root instanceof ASTNotNested)
             return;
 
         Set<String> groupFields = new HashSet<>();
@@ -200,6 +200,9 @@ public class QueryTreeOptimizer {
     }
 
     private Set<String> collectNestedGroups(QueryParserNode root, Set<String> names) {
+        if (root instanceof ASTNotNested)
+            return Collections.EMPTY_SET;
+
         for (QueryParserNode child : root)
             collectNestedGroups(child, names);
 

@@ -117,6 +117,7 @@ PARSER_END(QueryParser)
   | <CHILD: "#child" >
   | <PARENT: "#parent" >
   | <NEST: "#nest" >
+  | <NONEST: "#nonest" >
   | <TALLY: "#tally" >
   | <RANGE: "#range" >
   | <SIGNIFICANT_TERMS: "#significant_terms" >
@@ -328,6 +329,7 @@ void UnaryExpression() :
                     | n = Parent()
                     | n = Expansion()
                     | n = Nested()
+                    | n = NotNested()
                     | n = Array()
                     | n = ArrayData()
                     | n = Literal()
@@ -420,6 +422,12 @@ QueryParserNode Nested() #Nested :
         jjtThis.typename = t.image.substring(1, t.image.length()-1);
         return jjtThis;
     }
+}
+
+QueryParserNode NotNested() #NotNested : {}
+{
+    ( <NONEST> "(" Expression() ")" )
+    { return jjtThis; }
 }
 
 void OptionalBoost(QueryParserNode n) :

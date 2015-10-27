@@ -345,8 +345,8 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"type\": \"nested\",");
 			appendStringInfo(result, "\"include_in_all\": \"false\",");
 			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-			appendStringInfo(result, "\"include_in_parent\":false,");
-			appendStringInfo(result, "\"include_in_root\":false,");
+			appendStringInfo(result, "\"include_in_parent\":true,");
+			appendStringInfo(result, "\"include_in_root\":true,");
 			appendStringInfo(result, "\"include_in_all\":true");
 
 		}

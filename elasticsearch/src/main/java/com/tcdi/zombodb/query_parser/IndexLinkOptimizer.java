@@ -88,7 +88,7 @@ public class IndexLinkOptimizer {
             if (child instanceof ASTIndexLink || child instanceof ASTParent || child instanceof ASTAggregate || child instanceof ASTSuggest)
                 continue;
 
-            if (fieldname != null && !(child instanceof ASTExpansion)) {
+            if (fieldname != null && !(child instanceof ASTExpansion) && !(child instanceof ASTNotNested)) {
                 if ("_all".equals(fieldname)) {
                     ASTOr group = new ASTOr(QueryParserTreeConstants.JJTOR);
                     for (FieldAndIndexPair pair : metadataManager.resolveAllField()) {

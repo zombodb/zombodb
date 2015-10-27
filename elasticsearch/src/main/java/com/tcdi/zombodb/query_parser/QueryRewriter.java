@@ -521,6 +521,8 @@ public class QueryRewriter {
             return build((ASTParent) node);
         else if (node instanceof ASTNested)
             return build((ASTNested) node);
+        else if (node instanceof ASTNotNested)
+            return build((ASTNotNested) node);
         else if (node instanceof ASTAnd)
             return build((ASTAnd) node);
         else if (node instanceof ASTNestedGroup)
@@ -687,6 +689,14 @@ public class QueryRewriter {
             }
         } else
             return matchAllFilter();
+    }
+
+    private FilterBuilder build(ASTNotNested node) {
+        if (node.hasChildren()) {
+            return build(node.getChild(0));
+        } else {
+            throw new RuntimeException("Empty #nonest() block");
+        }
     }
 
     private Stack<ASTExpansion> generatedExpansionsStack = new Stack<>();

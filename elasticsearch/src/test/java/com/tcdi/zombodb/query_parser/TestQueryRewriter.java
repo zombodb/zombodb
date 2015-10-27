@@ -201,7 +201,7 @@ public class TestQueryRewriter {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                if (sb.length()>0) sb.append("\n");
+                if (sb.length() > 0) sb.append("\n");
                 sb.append(line);
             }
             return sb.toString();
@@ -2401,7 +2401,7 @@ public class TestQueryRewriter {
                 json);
     }
 
-   @Test
+    @Test
     public void test_CVSIX_2941_NestedGroupRollupWithNonNestedFields_AND() throws Exception {
         QueryRewriter qr;
         MockClientAndRequest mock = new MockClientAndRequest();
@@ -2444,7 +2444,7 @@ public class TestQueryRewriter {
                 json);
     }
 
-   @Test
+    @Test
     public void test_CVSIX_2941_NestedGroupRollupWithNonNestedFields_OR() throws Exception {
         QueryRewriter qr;
         MockClientAndRequest mock = new MockClientAndRequest();
@@ -3648,7 +3648,7 @@ public class TestQueryRewriter {
         aggregationBuilder = qr.rewriteAggregations();
 
         assertEquals("testIssue_37_RangeAggregateParsing",
-                        "\n\"page_count\"{\n" +
+                "\n\"page_count\"{\n" +
                         "  \"range\" : {\n" +
                         "    \"field\" : \"page_count\",\n" +
                         "    \"ranges\" : [ {\n" +
@@ -3675,7 +3675,7 @@ public class TestQueryRewriter {
         aggregationBuilder = qr.rewriteAggregations();
 
         assertEquals("testIssue_99_DateRangeAggregateParsing",
-                        "\n\"date_field\"{\n" +
+                "\n\"date_field\"{\n" +
                         "  \"date_range\" : {\n" +
                         "    \"field\" : \"date_field.date\",\n" +
                         "    \"ranges\" : [ {\n" +
@@ -3736,5 +3736,72 @@ public class TestQueryRewriter {
                 tree);
     }
 
+    @Test
+    public void testIssue53_AST() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
+        String tree;
+
+        qr = new QueryRewriter(mock.client, mock.request, "#child<data>(#nonest((my_json.sub_state:\"SC\" AND my_json.sub_status:\"I\") AND (my_json.sub_state:\"NC\" AND my_json.sub_status:\"A\")))", false, true);
+
+        tree = qr.dumpAsString();
+
+        assertEquals("testIssue53_AST",
+                "QueryTree\n" +
+                        "   Child (type=data)\n" +
+                        "      Expansion\n" +
+                        "         null=<schema.table.idxname>null\n" +
+                        "         NotNested (fieldname=_all, operator=CONTAINS)\n" +
+                        "            And\n" +
+                        "               Word (fieldname=my_json.sub_state, operator=CONTAINS, value=sc, index=schema.table.idxname)\n" +
+                        "               Word (fieldname=my_json.sub_status, operator=CONTAINS, value=i, index=schema.table.idxname)\n" +
+                        "               Word (fieldname=my_json.sub_state, operator=CONTAINS, value=nc, index=schema.table.idxname)\n" +
+                        "               Word (fieldname=my_json.sub_status, operator=CONTAINS, value=a, index=schema.table.idxname)\n",
+                tree);
+    }
+
+    @Test
+    public void testIssue53_JSON() throws Exception {
+        MockClientAndRequest mock = new MockClientAndRequest();
+        QueryRewriter qr;
+
+        qr = new QueryRewriter(mock.client, mock.request, "#child<data>(#nonest((my_json.sub_state:\"SC\" AND my_json.sub_status:\"I\") AND (my_json.sub_state:\"NC\" AND my_json.sub_status:\"A\")))", false, true);
+
+        assertEquals("testIssue53_JSON",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"has_child\" : {\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"bool\" : {\n" +
+                        "            \"must\" : [ {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"my_json.sub_state\" : \"sc\"\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"my_json.sub_status\" : \"i\"\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"my_json.sub_state\" : \"nc\"\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"my_json.sub_status\" : \"a\"\n" +
+                        "              }\n" +
+                        "            } ]\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        \"child_type\" : \"data\"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
+                qr.rewriteQuery().toString());
+    }
 }
 
