@@ -158,7 +158,7 @@ BEGIN
     END IF;
 
     IF (json_array_element(exp, 0)->'Plan'->'Plans')::text IS NOT NULL THEN
-      RETURN oid FROM pg_class WHERE relname IN (SELECT json_array_elements(json_array_element(exp, 0)->'Plan'->'Plans')->>'Index Name' AS index_name)
+      RETURN oid FROM pg_class WHERE relname IN (SELECT unnest(regexp_matches(exp::text, '"Index Name":\s*"(.*)",*$', 'gn')))
                                  AND relam = (SELECT oid FROM pg_am WHERE amname = 'zombodb');
     END IF;
 
