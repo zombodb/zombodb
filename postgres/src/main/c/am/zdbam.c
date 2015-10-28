@@ -437,10 +437,12 @@ zdbbuild(PG_FUNCTION_ARGS)
 						"CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
 								"       BEFORE UPDATE OR DELETE ON \"%s\".\"%s\" "
 								"       FOR EACH ROW EXECUTE PROCEDURE zdbtupledeletedtrigger('%d');"
+								"UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d';"
 								"SELECT oid "
 								"       FROM pg_trigger "
 								"       WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'",
 						RelationGetRelid(heapRel), RelationGetRelid(indexRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid(indexRel),  /* CREATE TRIGGER args */
+						RelationGetRelid(heapRel), RelationGetRelid(indexRel), /* UPDATE pg_trigger args */
 						RelationGetRelid(heapRel), RelationGetRelid(indexRel) /* SELECT FROM pg_trigger args */
 				);
 
