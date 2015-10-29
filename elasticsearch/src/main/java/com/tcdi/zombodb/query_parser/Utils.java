@@ -39,7 +39,7 @@ public class Utils {
         private void forceOperator(QueryParserNode root, QueryParserNode.Operator operator) {
             root.setOperator(operator);
             for (QueryParserNode child : root)
-                forceOperator(root, operator);
+                forceOperator(child, operator);
         }
     }
 
