@@ -732,7 +732,7 @@ public class TestQueryRewriter {
                 "          }, {\n" +
                 "            \"span_term\" : {\n" +
                 "              \"_all\" : {\n" +
-                "                \"value\" : \"with\"\n" +
+                "                \"value\" : \"containing\"\n" +
                 "              }\n" +
                 "            }\n" +
                 "          }, {\n" +
@@ -748,7 +748,7 @@ public class TestQueryRewriter {
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
-                "}", QueryRewriter.toJson("'some phrase with slop'~2"));
+                "}", QueryRewriter.toJson("'some phrase containing slop'~2"));
     }
 
     @Test
@@ -770,7 +770,7 @@ public class TestQueryRewriter {
                 "          }, {\n" +
                 "            \"span_term\" : {\n" +
                 "              \"_all\" : {\n" +
-                "                \"value\" : \"with\"\n" +
+                "                \"value\" : \"containing\"\n" +
                 "              }\n" +
                 "            }\n" +
                 "          }, {\n" +
@@ -788,7 +788,7 @@ public class TestQueryRewriter {
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
-                "}", QueryRewriter.toJson("'phrase with wild*card'"));
+                "}", QueryRewriter.toJson("'phrase containing wild*card'"));
     }
 
     @Test
@@ -810,7 +810,7 @@ public class TestQueryRewriter {
                 "          }, {\n" +
                 "            \"span_term\" : {\n" +
                 "              \"_all\" : {\n" +
-                "                \"value\" : \"with\"\n" +
+                "                \"value\" : \"containing\"\n" +
                 "              }\n" +
                 "            }\n" +
                 "          }, {\n" +
@@ -842,7 +842,7 @@ public class TestQueryRewriter {
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
-                "}", QueryRewriter.toJson("'phrase with wild*card AND w*ns'"));
+                "}", QueryRewriter.toJson("'phrase containing wild*card AND w*ns'"));
     }
 
     @Test
@@ -864,7 +864,7 @@ public class TestQueryRewriter {
                 "          }, {\n" +
                 "            \"span_term\" : {\n" +
                 "              \"_all\" : {\n" +
-                "                \"value\" : \"with\"\n" +
+                "                \"value\" : \"containing\"\n" +
                 "              }\n" +
                 "            }\n" +
                 "          }, {\n" +
@@ -896,7 +896,7 @@ public class TestQueryRewriter {
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
-                "}", QueryRewriter.toJson("'phrase with wild*card OR w*ns'"));
+                "}", QueryRewriter.toJson("'phrase containing wild*card OR w*ns'"));
     }
 
     @Test
@@ -3803,5 +3803,29 @@ public class TestQueryRewriter {
                         "}",
                 qr.rewriteQuery().toString());
     }
+
+    @Test
+    public void testWithOperatorAST() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
+        String tree;
+
+        qr = new QueryRewriter(mock.client, mock.request, "exact_field:(a with b with c with d)", false, true);
+
+        tree = qr.dumpAsString();
+
+        assertEquals("testWithOperatorAST",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      null=<schema.table.idxname>null\n" +
+                        "      With\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=b, index=schema.table.idxname)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=c, index=schema.table.idxname)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=d, index=schema.table.idxname)\n",
+                tree);
+    }
+
+
 }
 

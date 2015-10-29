@@ -108,6 +108,7 @@ PARSER_END(QueryParser)
 <DEFAULT> TOKEN :
 {
     <NOT: "not" | ("and" ([" ", "\t", "\n", "\f"])+ "not") >
+  | <WITH: "with" >
   | <AND: "and" >
   | <OR: "or" >
   | <NULL: "null" >
@@ -134,7 +135,7 @@ PARSER_END(QueryParser)
   | <TYPENAME: "<" (<LETTER> (<LETTER> | <DIGIT>)*)+ ">" >
 
   | <NUMBER: (("-")? (["1"-"9"]) (<DIGIT>)* ("." (<DIGIT>)+)?) | (("0")+ ("." (<DIGIT>)+)) | ("0") >
-  | <WORD: ( ("\"" (~["\"", " ", "*", "?", "~"])* "\"") | ("'" (~["'", " ", "*", "?", "~"])* "'") ) | ((~[" ", "\t", "\n", "\r", "\f", "$", "*", "?", "~", "^", "/", ":", "=", "<", ">", "!", "#", "@", "(", ")", "'", "\"", ".", ",", "&", "[", "]", "\\"]) | ("\\" ~[]))+ >
+  | <WORD: ( ("\"" (~["\"", " ", "*", "?", "~"])* "\"") | ("'" (~["'", " ", "*", "?", "~"])* "'") ) | ((~[" ", "\t", "\n", "\r", "\f", "$", "*", "?", "~", "^", "/", ":", "=", "<", ">", "!", "#", "@", "(", ")", "'", "\"", ".", ",", "&", "%", "[", "]", "\\"]) | ("\\" ~[]))+ >
   | <PREFIX: <WORD> ("*")+ >
   | <WILDCARD:   ("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")* >
   | <NOT_NULL: ("*") | ("?") | ("\"*\"") | ("\"?\"") >
@@ -280,8 +281,16 @@ void AndExpression() : {}
 {
     (
         /* optional <AND> makes it the default operator between words */
-        ProximityExpression() (LOOKAHEAD(2)  [<AND>|"&"] ProximityExpression() )*
+        WithExpression() (LOOKAHEAD(2)  [<AND>|"&"] WithExpression() )*
     ) #And(>1)
+}
+
+void WithExpression() : {}
+{
+    (
+        /* optional <AND> makes it the default operator between words */
+        ProximityExpression() (LOOKAHEAD(2)  (<WITH>|"%") ProximityExpression() )*
+    ) #With(>1)
 }
 
 void ProximityExpression() : {}
