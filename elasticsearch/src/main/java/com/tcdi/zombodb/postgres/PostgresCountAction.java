@@ -17,24 +17,16 @@ package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.postgres.util.OverloadedContentRestRequest;
 import com.tcdi.zombodb.postgres.util.QueryAndIndexPair;
-import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.count.CountRequest;
-import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.action.support.IndicesOptions;
-import org.elasticsearch.action.support.QuerySourceBuilder;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.search.RestSearchAction;
-import org.elasticsearch.rest.action.support.RestActions;
 
-import static org.elasticsearch.action.count.CountRequest.DEFAULT_MIN_SCORE;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -84,38 +76,11 @@ public class PostgresCountAction extends BaseRestHandler {
             // and return that number as a string
             response = new BytesRestResponse(RestStatus.OK, String.valueOf(count));
             channel.sendResponse(response);
+        } catch (Exception e) {
+            logger.error("Error estimating records", e);
         } finally {
             long end = System.currentTimeMillis();
             logger.info("Estimated " + count + " records in " + ((end-start)/1000D) + " seconds.");
         }
     }
-
-    public static long countRecords(RestRequest request, Client client) throws InterruptedException, java.util.concurrent.ExecutionException {
-        CountRequest countRequest = new CountRequest(Strings.splitStringByCommaToArray(request.param("index")));
-        countRequest.indicesOptions(IndicesOptions.fromRequest(request, countRequest.indicesOptions()));
-        countRequest.listenerThreaded(false);
-        if (request.hasContent()) {
-            countRequest.source(request.content());
-        } else {
-            String source = request.param("source");
-            if (source != null) {
-                countRequest.source(source);
-            } else {
-                QuerySourceBuilder querySourceBuilder = RestActions.parseQuerySource(request);
-                if (querySourceBuilder != null) {
-                    countRequest.source(querySourceBuilder);
-                }
-            }
-        }
-        countRequest.routing(request.param("routing"));
-        countRequest.minScore(request.paramAsFloat("min_score", DEFAULT_MIN_SCORE));
-        countRequest.types(Strings.splitStringByCommaToArray(request.param("type")));
-        countRequest.preference(request.param("preference"));
-
-        ActionFuture<CountResponse> countResponse = client.count(countRequest);
-
-        return countResponse.get().getCount();
-    }
-
-
 }
