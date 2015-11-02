@@ -30,12 +30,6 @@ QueryTree
             Expansion
                null=<schema.table.idxname>null
                And
-                  Nested (type=review_data)
-                     And
-                        Number (fieldname=state_id, operator=EQ, value=2239, index=schema.table.idxname)
-                        Number (fieldname=set_tag_id, operator=EQ, value=82, index=schema.table.idxname)
-                        NestedGroup (fieldname=review_data, operator=CONTAINS, index=schema.table.idxname)
-                           Boolean (fieldname=review_data.foo, operator=CONTAINS, value=true, index=schema.table.idxname)
                   Array (fieldname=fulltext, operator=EQ, index=schema.table.idxname) (OR)
                      Word (fieldname=fulltext, operator=CONTAINS, value=beer, index=schema.table.idxname)
                   Or
@@ -61,8 +55,7 @@ QueryTree
                            Word (fieldname=_all, operator=CONTAINS, value=staff, index=schema.table.idxname)
                            Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=schema.table.idxname)
                            Word (fieldname=_all, operator=CONTAINS, value=risk, index=schema.table.idxname)
-                  NestedGroup (fieldname=long, operator=CONTAINS, index=schema.table.idxname)
-                     Word (fieldname=long.dotted.field, operator=CONTAINS, value=foo, index=schema.table.idxname)
+                  Word (fieldname=long.dotted.field, operator=CONTAINS, value=foo, index=schema.table.idxname)
                   Or
                      Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=schema.table.idxname)
                      Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=schema.table.idxname)
@@ -152,20 +145,18 @@ QueryTree
                   Or
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=so is this, distance=42, ordered=true, index=schema.table.idxname)
                      Phrase (fieldname=_all, operator=CONTAINS, value=so is this, distance=42, ordered=true, index=schema.table.idxname)
-                  NestedGroup (fieldname=review_data, operator=CONTAINS, index=schema.table.idxname)
-                     And (index=schema.table.idxname)
-                        Or (index=schema.table.idxname)
-                           And (index=schema.table.idxname)
-                              Word (fieldname=review_data.owner_username, operator=EQ, value=e_ridge, index=schema.table.idxname)
-                              Array (fieldname=review_data.status_name, operator=CONTAINS, index=schema.table.idxname) (OR)
-                                 Word (fieldname=review_data.status_name, operator=CONTAINS, value=review_updated, index=schema.table.idxname)
-                                 Word (fieldname=review_data.status_name, operator=CONTAINS, value=review_checked_out, index=schema.table.idxname)
-                           Word (fieldname=review_data.status_name, operator=CONTAINS, value=review_ready, index=schema.table.idxname)
-                        Number (fieldname=review_data.project_id, operator=EQ, value=1040, index=schema.table.idxname)
                   Or
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=this is an unordered sloppy phrase~, distance=11, index=schema.table.idxname)
                      Phrase (fieldname=_all, operator=CONTAINS, value=this is an unordered sloppy phrase~, distance=11, index=schema.table.idxname)
                   Null (fieldname=field, operator=CONTAINS, index=schema.table.idxname)
+                  Or
+                     And
+                        Word (fieldname=review_data.owner_username, operator=EQ, value=e_ridge, index=schema.table.idxname)
+                        Array (fieldname=review_data.status_name, operator=CONTAINS, index=schema.table.idxname) (OR)
+                           Word (fieldname=review_data.status_name, operator=CONTAINS, value=review_updated, index=schema.table.idxname)
+                           Word (fieldname=review_data.status_name, operator=CONTAINS, value=review_checked_out, index=schema.table.idxname)
+                     Word (fieldname=review_data.status_name, operator=CONTAINS, value=review_ready, index=schema.table.idxname)
+                  Number (fieldname=review_data.project_id, operator=EQ, value=1040, index=schema.table.idxname)
                And
                   Or
                      Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=schema.table.idxname)
@@ -194,8 +185,7 @@ QueryTree
                And
                   Wildcard (fieldname=field, operator=NE, value=http*\/\/www\.\*tcdi\.com\/, index=schema.table.idxname)
                   Fuzzy (fieldname=field, operator=CONTAINS, value=value, index=schema.table.idxname)
-                  NestedGroup (fieldname=review_data, operator=CONTAINS, index=schema.table.idxname)
-                     Word (fieldname=review_data.assigned_reviewers, operator=CONTAINS, value=e_ridge, index=schema.table.idxname)
+                  Word (fieldname=review_data.assigned_reviewers, operator=CONTAINS, value=e_ridge, index=schema.table.idxname)
                   Or
                      Range (fieldname=fulltext_field, operator=CONTAINS, index=schema.table.idxname)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=schema.table.idxname)
@@ -236,34 +226,31 @@ QueryTree
                         Prefix (fieldname=field2, operator=CONTAINS, value=wo, index=schema.table.idxname)
                         Word (fieldname=field1, operator=CONTAINS, value=rd3, index=schema.table.idxname)
                      And
+                        Array (fieldname=review_data.subject, operator=CONTAINS, index=schema.table.idxname) (OR)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=wine, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=last, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=first, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=wine, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=cheese, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=food, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=foo, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=bar, index=schema.table.idxname)
+                        Word (fieldname=review_data.review_set_name, operator=CONTAINS, value=zipper, index=schema.table.idxname)
                         Array (fieldname=field, operator=CONTAINS, index=schema.table.idxname) (AND)
                            Word (fieldname=field, operator=CONTAINS, value=drink, index=schema.table.idxname)
                            Word (fieldname=field, operator=CONTAINS, value=food, index=schema.table.idxname)
-                        NestedGroup (fieldname=review_data, operator=CONTAINS, index=schema.table.idxname)
-                           And (index=schema.table.idxname)
-                              Array (fieldname=review_data.subject, operator=CONTAINS, index=schema.table.idxname) (OR)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=wine, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=last, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=first, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=wine, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=cheese, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=food, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=foo, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=bar, index=schema.table.idxname)
-                              Word (fieldname=review_data.review_set_name, operator=CONTAINS, value=zipper, index=schema.table.idxname)
-                              Array (fieldname=review_data.subject, operator=CONTAINS, index=schema.table.idxname) (AND)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=wine, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=last, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=first, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=wine, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=cheese, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=food, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=foo, index=schema.table.idxname)
-                                 Word (fieldname=review_data.subject, operator=CONTAINS, value=bar, index=schema.table.idxname)
+                        Array (fieldname=review_data.subject, operator=CONTAINS, index=schema.table.idxname) (AND)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=wine, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=last, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=first, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=wine, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=cheese, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=food, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=foo, index=schema.table.idxname)
+                           Word (fieldname=review_data.subject, operator=CONTAINS, value=bar, index=schema.table.idxname)
                      And
                         Or
-                           NestedGroup (fieldname=review_data, operator=CONTAINS, index=schema.table.idxname)
-                              Word (fieldname=review_data.review_set_name, operator=CONTAINS, value=food, index=schema.table.idxname)
+                           Word (fieldname=review_data.review_set_name, operator=CONTAINS, value=food, index=schema.table.idxname)
                            Word (fieldname=field1, operator=CONTAINS, value=beer, index=schema.table.idxname)
                         Or
                            Array (fieldname=field1, operator=CONTAINS, index=schema.table.idxname) (OR)
@@ -282,6 +269,13 @@ QueryTree
                         Array (fieldname=field3, operator=CONTAINS, index=schema.table.idxname) (AND)
                            Word (fieldname=field3, operator=CONTAINS, value=beer, boost=2.0, index=schema.table.idxname)
                            Word (fieldname=field3, operator=CONTAINS, value=wine, index=schema.table.idxname)
+                  With
+                     Word (fieldname=nested_field.fielda, operator=CONTAINS, value=beer, index=schema.table.idxname)
+                     Word (fieldname=nested_field.fieldb, operator=CONTAINS, value=wine, index=schema.table.idxname)
+                     Or
+                        Array (fieldname=nested_field.fieldc, operator=CONTAINS, index=schema.table.idxname) (OR)
+                           Word (fieldname=nested_field.fieldc, operator=CONTAINS, value=food, index=schema.table.idxname)
+                           Word (fieldname=nested_field.fieldc, operator=CONTAINS, value=cheese, index=schema.table.idxname)
                   Or
                      And
                         Number (fieldname=_xmin, operator=EQ, value=42)

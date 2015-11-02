@@ -117,8 +117,6 @@ PARSER_END(QueryParser)
   | <TO: "/to/" >
   | <CHILD: "#child" >
   | <PARENT: "#parent" >
-  | <NEST: "#nest" >
-  | <NONEST: "#nonest" >
   | <TALLY: "#tally" >
   | <RANGE: "#range" >
   | <SIGNIFICANT_TERMS: "#significant_terms" >
@@ -337,8 +335,6 @@ void UnaryExpression() :
                     | n = Child()
                     | n = Parent()
                     | n = Expansion()
-                    | n = Nested()
-                    | n = NotNested()
                     | n = Array()
                     | n = ArrayData()
                     | n = Literal()
@@ -349,7 +345,7 @@ void UnaryExpression() :
     )
      {
         if (n != null && fieldname != null) {
-            if (!(n instanceof ASTChild) && !(n instanceof ASTParent) && !(n instanceof ASTNested) && !(n instanceof ASTExpansion)) {
+            if (!(n instanceof ASTChild) && !(n instanceof ASTParent) && !(n instanceof ASTExpansion)) {
                 n.fieldname = fieldname.fieldname;
                 n.operator = fieldname.operator;
             }
@@ -421,24 +417,6 @@ QueryParserNode Expansion() #Expansion : { }
     }
 }
 
-QueryParserNode Nested() #Nested :
-{
-    Token t;
-}
-{
-    ( <NEST> t=<TYPENAME> "(" Expression() ")" )
-    {
-        jjtThis.typename = t.image.substring(1, t.image.length()-1);
-        return jjtThis;
-    }
-}
-
-QueryParserNode NotNested() #NotNested : {}
-{
-    ( <NONEST> "(" Expression() ")" )
-    { return jjtThis; }
-}
-
 void OptionalBoost(QueryParserNode n) :
 {
     Token t;
@@ -475,7 +453,7 @@ Token Fieldname() :
 {
     (
         LOOKAHEAD(2) t = <IDENTIFIER>
-      | LOOKAHEAD(2) t = <DOTTED_IDENTIFIER>  #NestedGroup(>20000)  /* will never create the #NestedGroup node, just exists to have the class auto-generated */
+      | LOOKAHEAD(2) t = <DOTTED_IDENTIFIER>
     )
     {
         usedFieldnames.add(t.image);

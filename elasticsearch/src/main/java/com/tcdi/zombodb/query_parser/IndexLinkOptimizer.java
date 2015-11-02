@@ -34,8 +34,6 @@ public class IndexLinkOptimizer {
 
     public void optimize() {
         try {
-            fixNestedGroups(tree);
-
             expand_allFieldAndAssignIndexLinks(tree, metadataManager.getMyIndex());
 
             QueryTreeOptimizer.rollupParentheticalGroups(tree);
@@ -88,7 +86,7 @@ public class IndexLinkOptimizer {
             if (child instanceof ASTIndexLink || child instanceof ASTParent || child instanceof ASTAggregate || child instanceof ASTSuggest)
                 continue;
 
-            if (fieldname != null && !(child instanceof ASTExpansion) && !(child instanceof ASTNotNested)) {
+            if (fieldname != null && !(child instanceof ASTExpansion)) {
                 if ("_all".equals(fieldname)) {
                     ASTOr group = new ASTOr(QueryParserTreeConstants.JJTOR);
                     for (FieldAndIndexPair pair : metadataManager.resolveAllField()) {
@@ -120,28 +118,6 @@ public class IndexLinkOptimizer {
             if (!(child instanceof ASTArray))
                 expand_allFieldAndAssignIndexLinks(child, child instanceof ASTExpansion ? metadataManager.findField(child.getIndexLink().getLeftFieldname()) : currentIndex);
         }
-    }
-
-    private void fixNestedGroups(QueryParserNode root) {
-        Collection<QueryParserNode> children = root.getChildren();
-
-        if (root instanceof ASTNestedGroup) {
-            if (root.getFieldname() != null) {
-                for (IndexMetadataManager.IndexLinkAndMapping ilam : metadataManager.getAllMappings()) {
-                    if (root.getNestedPath().equalsIgnoreCase(ilam.link.getFieldname())) {
-                        // it's not actually a nested group
-                        // so move children up and drop this node entirely
-                        ((QueryParserNode) root.parent).removeNode(root);
-                        ((QueryParserNode) root.parent).renumber();
-                        ((QueryParserNode) root.parent).adoptChildren(root);
-//                        stripPath(root, root.getNestedPath());
-                    }
-                }
-            }
-        }
-
-        for (QueryParserNode child : children)
-            fixNestedGroups(child);
     }
 
     private void injectASTExpansionNodes(ASTQueryTree tree) {

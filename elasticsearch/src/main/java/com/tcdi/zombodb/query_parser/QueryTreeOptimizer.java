@@ -15,7 +15,10 @@
  */
 package com.tcdi.zombodb.query_parser;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Created by e_ridge on 12/23/14.
@@ -30,15 +33,9 @@ public class QueryTreeOptimizer {
     public void optimize() {
 
         validateAndFixProximityChainFieldnames(tree);
-        promoteNestedGroups(tree);
-        int cnt;
-        do {
-            cnt = mergeAdjacentNestedGroups(tree);
-
-            rollupParentheticalGroups(tree);
-            mergeLiterals(tree);
-            mergeArrays(tree);
-        } while (cnt > 0);
+        rollupParentheticalGroups(tree);
+        mergeLiterals(tree);
+        mergeArrays(tree);
 
         reduce(tree);
         convertGeneratedExpansionsToASTOr(tree);
@@ -108,121 +105,11 @@ public class QueryTreeOptimizer {
         }
     }
 
-    private int mergeAdjacentNestedGroups(QueryParserNode root) {
-        int total = 0;
-
-        for (QueryParserNode child : root) {
-            total += mergeAdjacentNestedGroups(child);
-        }
-
-        Map<String, List<ASTNestedGroup>> sameGroups = new TreeMap<>();
-        int cnt = 0;
-        for (QueryParserNode child : root) {
-            if (child instanceof ASTNestedGroup) {
-                String base = child.getFieldname();
-                List<ASTNestedGroup> groups = sameGroups.get(base);
-                if (groups == null)
-                    sameGroups.put(base, groups = new ArrayList<>());
-
-                groups.add((ASTNestedGroup) child);
-                cnt++;
-            }
-        }
-
-        if (cnt > 1) {
-
-            for (Map.Entry<String, List<ASTNestedGroup>> entry : sameGroups.entrySet()) {
-                QueryParserNode container;
-                if (root instanceof ASTAnd)
-                    container = new ASTAnd(QueryParserTreeConstants.JJTAND);
-                else if (root instanceof ASTOr)
-                    container = new ASTOr(QueryParserTreeConstants.JJTOR);
-                else if (root instanceof ASTNot)
-                    container = new ASTAnd(QueryParserTreeConstants.JJTAND);
-                else
-                    throw new RuntimeException("Don't know about parent container type: " + root.getClass());
-
-                ASTNestedGroup group = (ASTNestedGroup) entry.getValue().get(0).copy();
-                group.children = null;
-                group.jjtAddChild(container, 0);
-
-                for (ASTNestedGroup existingGroup : entry.getValue()) {
-                    container.adoptChildren(existingGroup);
-                    root.removeNode(existingGroup);
-                }
-
-                root.renumber();
-                root.jjtAddChild(group, root.jjtGetNumChildren());
-                if (entry.getValue().size() > 1)
-                    total++;
-            }
-        }
-
-        return total;
-    }
-
-    private void promoteNestedGroups(ASTQueryTree root) {
-        for (QueryParserNode child : root)
-            promoteNestedGroups(child);
-    }
-
-    private void promoteNestedGroups(QueryParserNode root) {
-
-        while (root instanceof ASTParent)
-            root = root.getChild(0);
-        while (root instanceof ASTChild)
-            root = root.getChild(0);
-        while (root instanceof ASTExpansion)
-            root = ((ASTExpansion) root).getQuery();
-
-        if (root == null || root instanceof ASTAggregate || root instanceof ASTSuggest || root instanceof ASTOptions || root instanceof ASTNotNested)
-            return;
-
-        Set<String> groupFields = new HashSet<>();
-        int count = collectNestedGroups(root, groupFields).size();
-        String base = count > 0 ? groupFields.iterator().next() : null;
-
-        if (count == 1 && base != null) {
-            ASTNestedGroup group = new ASTNestedGroup(QueryParserTreeConstants.JJTNESTEDGROUP);
-            group.setFieldname(base);
-
-            ((QueryParserNode)root.parent).replaceChild(root, group);
-            group.parent = root.parent;
-            group.jjtAddChild(root, 0);
-        } else {
-            for (QueryParserNode child : root) {
-                while (child instanceof ASTNot)
-                    child = child.getChild(0);
-
-                promoteNestedGroups(child);
-            }
-        }
-    }
-
-    private Set<String> collectNestedGroups(QueryParserNode root, Set<String> names) {
-        if (root instanceof ASTNotNested)
-            return Collections.EMPTY_SET;
-
-        for (QueryParserNode child : root)
-            collectNestedGroups(child, names);
-
-        if (root.getFieldname() != null) {
-            int idx = root.getFieldname().indexOf('.');
-
-            if (idx > -1)
-                names.add(root.getFieldname().substring(0, idx));
-            else
-                names.add(null);
-        }
-
-        return names;
-    }
-
     private void mergeLiterals(QueryParserNode root) {
         if (root.children == null || root.children.size() == 0)
             return;
 
-        final boolean isAnd = root instanceof ASTAnd || (root instanceof ASTNestedGroup && ((ASTNestedGroup) root).isAnd());
+        final boolean isAnd = root instanceof ASTAnd || root instanceof ASTWith;
         ASTArray array;
 
         Map<Integer, ASTArray> arraysByField = new TreeMap<>();
@@ -292,7 +179,7 @@ public class QueryTreeOptimizer {
 
         // recursively optimize children the same way
         for (QueryParserNode child : root)
-            if ((child instanceof ASTAnd) || (child instanceof ASTOr) || (child instanceof ASTNot) || (child instanceof ASTNestedGroup) || (child instanceof ASTParent) || (child instanceof ASTChild) || (child instanceof ASTExpansion))
+            if ((child instanceof ASTWith) || (child instanceof ASTAnd) || (child instanceof ASTOr) || (child instanceof ASTNot) || (child instanceof ASTParent) || (child instanceof ASTChild) || (child instanceof ASTExpansion))
                 mergeLiterals(child);
     }
 

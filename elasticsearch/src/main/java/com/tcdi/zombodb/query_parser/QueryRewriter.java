@@ -519,14 +519,10 @@ public class QueryRewriter {
             return build((ASTChild) node);
         else if (node instanceof ASTParent)
             return build((ASTParent) node);
-        else if (node instanceof ASTNested)
-            return build((ASTNested) node);
-        else if (node instanceof ASTNotNested)
-            return build((ASTNotNested) node);
         else if (node instanceof ASTAnd)
             return build((ASTAnd) node);
-        else if (node instanceof ASTNestedGroup)
-            return build((ASTNestedGroup) node);
+        else if (node instanceof ASTWith)
+            return build((ASTWith) node);
         else if (node instanceof ASTNot)
             return build((ASTNot) node);
         else if (node instanceof ASTOr)
@@ -591,6 +587,24 @@ public class QueryRewriter {
         return fb;
     }
 
+    private int withDepth = 0;
+    private FilterBuilder build(ASTWith node) {
+        if (withDepth == 0)
+            Utils.validateSameNestedPath(node);
+
+        BoolFilterBuilder fb = boolFilter();
+
+        withDepth++;
+        try {
+            for (QueryParserNode child : node) {
+                fb.must(build(child));
+            }
+        } finally {
+            withDepth--;
+        }
+
+        return withDepth == 0 ? nestedFilter(node.getChild(0).getNestedPath(), fb).join(true) : fb;
+    }
 
     private FilterBuilder build(ASTOr node) {
         BoolFilterBuilder fb = boolFilter();
@@ -611,41 +625,6 @@ public class QueryRewriter {
             qb.mustNot(build(child));
         }
         return qb;
-    }
-
-    private FilterBuilder build(ASTNestedGroup node) {
-
-        if (metadataManager.isNestedGroupExternal(node)) {
-            String base = node.getFieldname();
-            QueryParserNode finalNode = node.getChild(0);
-
-            if (node.jjtGetNumChildren() > 1) {
-                ASTAnd and = new ASTAnd(QueryParserTreeConstants.JJTAND);
-                and.adoptChildren(node);
-                finalNode = and;
-            }
-
-            ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
-            expansion.jjtAddChild(metadataManager.getExternalIndexLink(base), 0);
-            expansion.jjtAddChild(finalNode, 1);
-            rewriteFieldnames(expansion, base);
-
-            return expand(expansion, expansion.getIndexLink());
-        } else {
-
-            if (node.jjtGetNumChildren() == 1)
-                return nestedFilter(node.getNestedPath(), build(node.getChild(0))).join(!_isBuildingAggregate);
-            else {
-                BoolFilterBuilder fb = boolFilter();
-                for (QueryParserNode child : node) {
-                    if (node.isAnd())
-                        fb.must(build(child));
-                    else
-                        fb.should(build(child));
-                }
-                return nestedFilter(node.getNestedPath(), fb).join(!_isBuildingAggregate);
-            }
-        }
     }
 
     private void rewriteFieldnames(QueryParserNode node, String base) {
@@ -678,26 +657,6 @@ public class QueryRewriter {
     }
 
     private String nested = null;
-
-    private FilterBuilder build(ASTNested node) {
-        if (node.hasChildren()) {
-            try {
-                nested = node.getTypename();
-                return nestedFilter(node.getTypename(), build(node.getChild(0))).join(!_isBuildingAggregate);
-            } finally {
-                nested = null;
-            }
-        } else
-            return matchAllFilter();
-    }
-
-    private FilterBuilder build(ASTNotNested node) {
-        if (node.hasChildren()) {
-            return build(node.getChild(0));
-        } else {
-            throw new RuntimeException("Empty #nonest() block");
-        }
-    }
 
     private Stack<ASTExpansion> generatedExpansionsStack = new Stack<>();
 

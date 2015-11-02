@@ -108,7 +108,7 @@ public class DocumentHighlighter {
             highlightChildren(node);
         else if (node instanceof ASTParent)
             highlightChildren(node);
-        else if (node instanceof ASTNestedGroup)
+        else if (node instanceof ASTWith)
             highlightChildren(node);
         else if (node instanceof ASTAnd)
             highlightChildren(node);

@@ -51,7 +51,7 @@ import static org.mockito.Mockito.when;
 public class TestQueryRewriter {
     String query = "#options(id=<table.idx>id, id=<table.idx>id, id=<table.idx>id, other:(left=<table.idx>right)) #extended_stats(custodian) #tally(subject, '^.*', 1000, '_term', #significant_terms(author, '^.*', 1000))  " +
             "#child<data>(" +
-            "#nest<review_data>(state_id=2239 and set_tag_id=82 review_data.foo:true) fulltext=[beer] meeting not staff not cancelled not risk " +
+            "fulltext=[beer] meeting not staff not cancelled not risk " +
             "#expand<left_field = <index.name>right_field>(the subquery) " +
             "#child<data>(some query) #parent<xact>(other query) #child<data>(())" +
             "long.dotted.field:foo " +
@@ -81,6 +81,7 @@ public class TestQueryRewriter {
             "review_data.review_set_name:zipper or (review_data.review_set_name:food or beer) " +
             "(this or merges or arrays or [1,2,3] or [x,y,z, 'some phrase']) " +
             "field3:(beer^2 and wine) not *gr*avy*) " +
+            "nested_field.fielda:beer with nested_field.fieldb:wine with (nested_field.fieldc:(food or cheese)) " +
             "  ((_xmin = 42  AND                      " + //  inserted by the current transaction
             "     _cmin < 42  AND                     " + //  before this command, and
             "     (_xmax = 0 OR                       " + //  the row has not been deleted, or
@@ -941,22 +942,16 @@ public class TestQueryRewriter {
                         "      \"match_all\" : { }\n" +
                         "    },\n" +
                         "    \"filter\" : {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"nested_group.field_a\" : \"value\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"nested_group.field_b\" : \"value\"\n" +
-                        "              }\n" +
-                        "            } ]\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [ {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"nested_group.field_a\" : \"value\"\n" +
                         "          }\n" +
-                        "        },\n" +
-                        "        \"join\" : true,\n" +
-                        "        \"path\" : \"nested_group\"\n" +
+                        "        }, {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"nested_group.field_b\" : \"value\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -973,14 +968,8 @@ public class TestQueryRewriter {
                         "      \"match_all\" : { }\n" +
                         "    },\n" +
                         "    \"filter\" : {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"nested_group.field_a\" : \"value\"\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"join\" : true,\n" +
-                        "        \"path\" : \"nested_group\"\n" +
+                        "      \"term\" : {\n" +
+                        "        \"nested_group.field_a\" : \"value\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -2313,35 +2302,29 @@ public class TestQueryRewriter {
                         "      \"match_all\" : { }\n" +
                         "    },\n" +
                         "    \"filter\" : {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"filter\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [ {\n" +
                         "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"should\" : [ {\n" +
-                        "                  \"terms\" : {\n" +
-                        "                    \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ],\n" +
-                        "                    \"execution\" : \"plain\"\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
+                        "            \"should\" : [ {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ],\n" +
+                        "                \"execution\" : \"plain\"\n" +
                         "              }\n" +
                         "            }, {\n" +
                         "              \"term\" : {\n" +
-                        "                \"review_data_ben.review_data_id\" : 67115\n" +
+                        "                \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
-                        "        },\n" +
-                        "        \"join\" : true,\n" +
-                        "        \"path\" : \"review_data_ben\"\n" +
+                        "        }, {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"review_data_ben.review_data_id\" : 67115\n" +
+                        "          }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -2365,35 +2348,29 @@ public class TestQueryRewriter {
                         "      \"match_all\" : { }\n" +
                         "    },\n" +
                         "    \"filter\" : {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"filter\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [ {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"review_data_ben.review_data_id\" : 67115\n" +
+                        "          }\n" +
+                        "        }, {\n" +
                         "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.review_data_id\" : 67115\n" +
+                        "            \"should\" : [ {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ],\n" +
+                        "                \"execution\" : \"plain\"\n" +
                         "              }\n" +
                         "            }, {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"should\" : [ {\n" +
-                        "                  \"terms\" : {\n" +
-                        "                    \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ],\n" +
-                        "                    \"execution\" : \"plain\"\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
-                        "        },\n" +
-                        "        \"join\" : true,\n" +
-                        "        \"path\" : \"review_data_ben\"\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -2426,15 +2403,9 @@ public class TestQueryRewriter {
                         "            \"execution\" : \"and\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "                \"execution\" : \"and\"\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"join\" : true,\n" +
-                        "            \"path\" : \"review_data\"\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
+                        "            \"execution\" : \"and\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2474,27 +2445,15 @@ public class TestQueryRewriter {
                         "                \"field\" : \"food\"\n" +
                         "              }\n" +
                         "            }, {\n" +
-                        "              \"nested\" : {\n" +
-                        "                \"filter\" : {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data.subject\" : \"wine\"\n" +
-                        "                  }\n" +
-                        "                },\n" +
-                        "                \"join\" : true,\n" +
-                        "                \"path\" : \"review_data\"\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"wine\"\n" +
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data.subject\" : [ \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "                \"execution\" : \"plain\"\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"join\" : true,\n" +
-                        "            \"path\" : \"review_data\"\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"review_data.subject\" : [ \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
+                        "            \"execution\" : \"plain\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2524,28 +2483,18 @@ public class TestQueryRewriter {
                         "    \"filter\" : {\n" +
                         "      \"bool\" : {\n" +
                         "        \"must\" : [ {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"field\" : \"food\"\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
+                        "            \"execution\" : \"plain\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
-                        "                  \"terms\" : {\n" +
-                        "                    \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "                    \"execution\" : \"plain\"\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"terms\" : {\n" +
-                        "                    \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "                    \"execution\" : \"and\"\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"join\" : true,\n" +
-                        "            \"path\" : \"review_data\"\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
+                        "            \"execution\" : \"and\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"field\" : \"food\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2585,39 +2534,29 @@ public class TestQueryRewriter {
                         "            } ]\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"filter\" : {\n" +
+                        "          \"bool\" : {\n" +
+                        "            \"should\" : [ {\n" +
                         "              \"bool\" : {\n" +
                         "                \"must\" : [ {\n" +
-                        "                  \"bool\" : {\n" +
-                        "                    \"should\" : [ {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"review_data.owner_username\" : \"e_ridge\"\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"terms\" : {\n" +
-                        "                            \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
-                        "                            \"execution\" : \"plain\"\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"review_data.status_name\" : \"review_ready\"\n" +
-                        "                      }\n" +
-                        "                    } ]\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"review_data.owner_username\" : \"e_ridge\"\n" +
                         "                  }\n" +
                         "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data.project_id\" : 1040\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
+                        "                    \"execution\" : \"plain\"\n" +
                         "                  }\n" +
                         "                } ]\n" +
                         "              }\n" +
-                        "            },\n" +
-                        "            \"join\" : true,\n" +
-                        "            \"path\" : \"review_data\"\n" +
+                        "            }, {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.status_name\" : \"review_ready\"\n" +
+                        "              }\n" +
+                        "            } ]\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"review_data.project_id\" : 1040\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2645,39 +2584,33 @@ public class TestQueryRewriter {
                         "    \"filter\" : {\n" +
                         "      \"has_child\" : {\n" +
                         "        \"filter\" : {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"filter\" : {\n" +
+                        "          \"bool\" : {\n" +
+                        "            \"must\" : [ {\n" +
                         "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
+                        "                \"should\" : [ {\n" +
                         "                  \"bool\" : {\n" +
-                        "                    \"should\" : [ {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"review_data.owner_username\" : \"e_ridge\"\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"terms\" : {\n" +
-                        "                            \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
-                        "                            \"execution\" : \"plain\"\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
+                        "                    \"must\" : [ {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"review_data.owner_username\" : \"e_ridge\"\n" +
                         "                      }\n" +
                         "                    }, {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"review_data.status_name\" : \"review_ready\"\n" +
+                        "                      \"terms\" : {\n" +
+                        "                        \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
+                        "                        \"execution\" : \"plain\"\n" +
                         "                      }\n" +
                         "                    } ]\n" +
                         "                  }\n" +
                         "                }, {\n" +
                         "                  \"term\" : {\n" +
-                        "                    \"review_data.project_id\" : 1040\n" +
+                        "                    \"review_data.status_name\" : \"review_ready\"\n" +
                         "                  }\n" +
                         "                } ]\n" +
                         "              }\n" +
-                        "            },\n" +
-                        "            \"join\" : true,\n" +
-                        "            \"path\" : \"review_data\"\n" +
+                        "            }, {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.project_id\" : 1040\n" +
+                        "              }\n" +
+                        "            } ]\n" +
                         "          }\n" +
                         "        },\n" +
                         "        \"child_type\" : \"data\"\n" +
@@ -2806,14 +2739,8 @@ public class TestQueryRewriter {
                         "            \"parent_type\" : \"xact\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ridge.review_set_name\" : \"test\"\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"join\" : true,\n" +
-                        "            \"path\" : \"review_data_ridge\"\n" +
+                        "          \"term\" : {\n" +
+                        "            \"review_data_ridge.review_set_name\" : \"test\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -3446,10 +3373,8 @@ public class TestQueryRewriter {
                         "            LeftField (value=cvgroupid)\n" +
                         "            IndexName (value=this.index)\n" +
                         "            RightField (value=cvgroupid)\n" +
-                        "         NestedGroup (fieldname=review_data_ridge, operator=CONTAINS)\n" +
-                        "            Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*)\n" +
-                        "      NestedGroup (fieldname=review_data_ridge, operator=CONTAINS)\n" +
-                        "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*)\n",
+                        "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*)\n" +
+                        "      Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*)\n",
                 QueryRewriter.dumpAsString("( #expand<cvgroupid=<this.index>cvgroupid> ( ( ( review_data_ridge.review_set_name:*beer* ) ) ) )"));
     }
 
@@ -3458,21 +3383,18 @@ public class TestQueryRewriter {
         assertEquals("testCVSIX_2792",
                 "QueryTree\n" +
                         "   And\n" +
-                        "      NestedGroup (fieldname=cars, operator=CONTAINS)\n" +
-                        "         And\n" +
-                        "            Array (fieldname=cars.cid, operator=CONTAINS) (OR)\n" +
-                        "               Word (fieldname=cars.cid, operator=CONTAINS, value=2)\n" +
-                        "               Word (fieldname=cars.cid, operator=CONTAINS, value=3)\n" +
-                        "               Word (fieldname=cars.cid, operator=CONTAINS, value=1)\n" +
-                        "            Array (fieldname=cars.make, operator=CONTAINS) (OR)\n" +
-                        "               Word (fieldname=cars.make, operator=CONTAINS, value=BUICK)\n" +
-                        "               Word (fieldname=cars.make, operator=CONTAINS, value=CHEVY)\n" +
-                        "               Word (fieldname=cars.make, operator=CONTAINS, value=FORD)\n" +
-                        "               Word (fieldname=cars.make, operator=CONTAINS, value=VOLVO)\n" +
-                        "      NestedGroup (fieldname=cp_agg_wit, operator=CONTAINS)\n" +
-                        "         Array (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS) (OR)\n" +
-                        "            Word (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, value=ALIVE)\n" +
-                        "            Word (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, value=ICU)\n",
+                        "      Array (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS) (OR)\n" +
+                        "         Word (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, value=ALIVE)\n" +
+                        "         Word (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, value=ICU)\n" +
+                        "      Array (fieldname=cars.cid, operator=CONTAINS) (OR)\n" +
+                        "         Word (fieldname=cars.cid, operator=CONTAINS, value=2)\n" +
+                        "         Word (fieldname=cars.cid, operator=CONTAINS, value=3)\n" +
+                        "         Word (fieldname=cars.cid, operator=CONTAINS, value=1)\n" +
+                        "      Array (fieldname=cars.make, operator=CONTAINS) (OR)\n" +
+                        "         Word (fieldname=cars.make, operator=CONTAINS, value=BUICK)\n" +
+                        "         Word (fieldname=cars.make, operator=CONTAINS, value=CHEVY)\n" +
+                        "         Word (fieldname=cars.make, operator=CONTAINS, value=FORD)\n" +
+                        "         Word (fieldname=cars.make, operator=CONTAINS, value=VOLVO)\n",
                 QueryRewriter.dumpAsString("( ( (cp_agg_wit.cp_wit_link_witness_status:[\"ALIVE\",\"ICU\"]) AND ( (cars.cid:[\"2\",\"3\",\"1\"]) AND (cars.make:[\"BUICK\",\"CHEVY\",\"FORD\",\"VOLVO\"]) ) ) )"));
     }
 
@@ -3526,9 +3448,9 @@ public class TestQueryRewriter {
                         "      Phrase (fieldname=custodian, operator=EQ, value=QUERTY, SUSAN, ordered=true)\n" +
                         "      Not\n" +
                         "         Not\n" +
-                        "            NestedGroup (fieldname=review_data_cv623beta, operator=CONTAINS)\n" +
+                        "            Array (fieldname=review_data_cv623beta.state, operator=EQ) (OR)\n" +
                         "               Word (fieldname=review_data_cv623beta.state, operator=EQ, value=CAAT)\n" +
-                        "            Word (fieldname=review_data_cv623beta.state, operator=EQ, value=DOOG)\n",
+                        "               Word (fieldname=review_data_cv623beta.state, operator=EQ, value=DOOG)\n",
                 QueryRewriter.dumpAsString("( ( custodian = \"QUERTY, SUSAN\" AND NOT NOT review_data_cv623beta.state = CAAT NOT review_data_cv623beta.state = DOOG ) )"));
     }
 
@@ -3558,21 +3480,12 @@ public class TestQueryRewriter {
                         "          \"bool\" : {\n" +
                         "            \"must_not\" : {\n" +
                         "              \"bool\" : {\n" +
-                        "                \"must_not\" : [ {\n" +
-                        "                  \"nested\" : {\n" +
-                        "                    \"filter\" : {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"review_data_cv623beta.state\" : \"caat\"\n" +
-                        "                      }\n" +
-                        "                    },\n" +
-                        "                    \"join\" : true,\n" +
-                        "                    \"path\" : \"review_data_cv623beta\"\n" +
+                        "                \"must_not\" : {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"review_data_cv623beta.state\" : [ \"caat\", \"doog\" ],\n" +
+                        "                    \"execution\" : \"plain\"\n" +
                         "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data_cv623beta.state\" : \"doog\"\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
+                        "                }\n" +
                         "              }\n" +
                         "            }\n" +
                         "          }\n" +
@@ -3624,17 +3537,17 @@ public class TestQueryRewriter {
                         "         RightField (value=post_id)\n" +
                         "   And\n" +
                         "      Expansion\n" +
-                        "         comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
-                        "            LeftField (value=id)\n" +
-                        "            IndexName (value=schema.so_comments.idxso_comments)\n" +
-                        "            RightField (value=post_id)\n" +
-                        "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=schema.so_comments.idxso_comments)\n" +
-                        "      Expansion\n" +
                         "         user_data:(owner_user_id=<schema.so_users.idxso_users>id)\n" +
                         "            LeftField (value=owner_user_id)\n" +
                         "            IndexName (value=schema.so_users.idxso_users)\n" +
                         "            RightField (value=id)\n" +
-                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=schema.so_users.idxso_users)\n",
+                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=schema.so_users.idxso_users)\n" +
+                        "      Expansion\n" +
+                        "         comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
+                        "            LeftField (value=id)\n" +
+                        "            IndexName (value=schema.so_comments.idxso_comments)\n" +
+                        "            RightField (value=post_id)\n" +
+                        "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=schema.so_comments.idxso_comments)\n",
                 tree);
     }
 
@@ -3737,80 +3650,12 @@ public class TestQueryRewriter {
     }
 
     @Test
-    public void testIssue53_AST() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String tree;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#child<data>(#nonest((my_json.sub_state:\"SC\" AND my_json.sub_status:\"I\") AND (my_json.sub_state:\"NC\" AND my_json.sub_status:\"A\")))", false, true);
-
-        tree = qr.dumpAsString();
-
-        assertEquals("testIssue53_AST",
-                "QueryTree\n" +
-                        "   Child (type=data)\n" +
-                        "      Expansion\n" +
-                        "         null=<schema.table.idxname>null\n" +
-                        "         NotNested (fieldname=_all, operator=CONTAINS)\n" +
-                        "            And\n" +
-                        "               Word (fieldname=my_json.sub_state, operator=CONTAINS, value=sc, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=my_json.sub_status, operator=CONTAINS, value=i, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=my_json.sub_state, operator=CONTAINS, value=nc, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=my_json.sub_status, operator=CONTAINS, value=a, index=schema.table.idxname)\n",
-                tree);
-    }
-
-    @Test
-    public void testIssue53_JSON() throws Exception {
-        MockClientAndRequest mock = new MockClientAndRequest();
-        QueryRewriter qr;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#child<data>(#nonest((my_json.sub_state:\"SC\" AND my_json.sub_status:\"I\") AND (my_json.sub_state:\"NC\" AND my_json.sub_status:\"A\")))", false, true);
-
-        assertEquals("testIssue53_JSON",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"has_child\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"my_json.sub_state\" : \"sc\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"my_json.sub_status\" : \"i\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"my_json.sub_state\" : \"nc\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"my_json.sub_status\" : \"a\"\n" +
-                        "              }\n" +
-                        "            } ]\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"child_type\" : \"data\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                qr.rewriteQuery().toString());
-    }
-
-    @Test
     public void testWithOperatorAST() throws Exception {
         QueryRewriter qr;
         MockClientAndRequest mock = new MockClientAndRequest();
         String tree;
 
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:(a with b with c with d)", false, true);
+        qr = new QueryRewriter(mock.client, mock.request, "nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)", false, true);
 
         tree = qr.dumpAsString();
 
@@ -3818,12 +3663,134 @@ public class TestQueryRewriter {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      null=<schema.table.idxname>null\n" +
-                        "      With\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=b, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=c, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=d, index=schema.table.idxname)\n",
+                        "      And\n" +
+                        "         With\n" +
+                        "            Array (fieldname=nested.exact_field, operator=CONTAINS, index=schema.table.idxname) (AND)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=b, index=schema.table.idxname)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=c, index=schema.table.idxname)\n" +
+                        "               With\n" +
+                        "                  Array (fieldname=nested.exact_field, operator=CONTAINS, index=schema.table.idxname) (AND)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=d, index=schema.table.idxname)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=e, index=schema.table.idxname)\n" +
+                        "         With\n" +
+                        "            Array (fieldname=nested2.exact_field, operator=CONTAINS, index=schema.table.idxname) (AND)\n" +
+                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n" +
+                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=b, index=schema.table.idxname)\n",
                 tree);
+    }
+
+    @Test
+    public void testExternalWithOperatorAST() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
+        String tree;
+
+        qr = new QueryRewriter(mock.client, mock.request, "#options(nested:(id=<other.index>other_id)) nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)", false, true);
+
+        tree = qr.dumpAsString();
+
+        assertEquals("testWithOperatorAST",
+                "QueryTree\n" +
+                        "   Options\n" +
+                        "      nested:(id=<schema.other.index>other_id)\n" +
+                        "         LeftField (value=id)\n" +
+                        "         IndexName (value=schema.other.index)\n" +
+                        "         RightField (value=other_id)\n" +
+                        "   And\n" +
+                        "      Expansion\n" +
+                        "         nested:(id=<schema.other.index>other_id)\n" +
+                        "            LeftField (value=id)\n" +
+                        "            IndexName (value=schema.other.index)\n" +
+                        "            RightField (value=other_id)\n" +
+                        "         With\n" +
+                        "            Array (fieldname=nested.exact_field, operator=CONTAINS, index=schema.other.index) (AND)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=a, index=schema.other.index)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=b, index=schema.other.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=c, index=schema.other.index)\n" +
+                        "               With\n" +
+                        "                  Array (fieldname=nested.exact_field, operator=CONTAINS, index=schema.other.index) (AND)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=d, index=schema.other.index)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=e, index=schema.other.index)\n" +
+                        "      Expansion\n" +
+                        "         null=<schema.table.idxname>null\n" +
+                        "         With\n" +
+                        "            Array (fieldname=nested2.exact_field, operator=CONTAINS, index=schema.table.idxname) (AND)\n" +
+                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n" +
+                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=b, index=schema.table.idxname)\n",
+                tree);
+    }
+
+    @Test
+    public void testWithOperatorJSON() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
+
+        qr = new QueryRewriter(mock.client, mock.request, "nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)", false, true);
+
+        assertEquals("testWithOperatorJSON",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [ {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"must\" : [ {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"nested.exact_field\" : [ \"a\", \"b\" ],\n" +
+                        "                    \"execution\" : \"and\"\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"bool\" : {\n" +
+                        "                    \"should\" : [ {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"nested.exact_field\" : \"c\"\n" +
+                        "                      }\n" +
+                        "                    }, {\n" +
+                        "                      \"bool\" : {\n" +
+                        "                        \"must\" : {\n" +
+                        "                          \"terms\" : {\n" +
+                        "                            \"nested.exact_field\" : [ \"d\", \"e\" ],\n" +
+                        "                            \"execution\" : \"and\"\n" +
+                        "                          }\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    } ]\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"nested\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"must\" : {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"nested2.exact_field\" : [ \"a\", \"b\" ],\n" +
+                        "                    \"execution\" : \"and\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"nested2\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
+                qr.rewriteQuery().toString());
     }
 
 

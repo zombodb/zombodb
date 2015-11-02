@@ -12,34 +12,6 @@
                 "must" : [ {
                   "bool" : {
                     "must" : [ {
-                      "nested" : {
-                        "filter" : {
-                          "bool" : {
-                            "must" : [ {
-                              "term" : {
-                                "state_id" : 2239
-                              }
-                            }, {
-                              "term" : {
-                                "set_tag_id" : 82
-                              }
-                            }, {
-                              "nested" : {
-                                "filter" : {
-                                  "term" : {
-                                    "review_data.foo" : true
-                                  }
-                                },
-                                "join" : true,
-                                "path" : "review_data"
-                              }
-                            } ]
-                          }
-                        },
-                        "join" : true,
-                        "path" : "review_data"
-                      }
-                    }, {
                       "terms" : {
                         "fulltext" : [ "beer" ],
                         "execution" : "plain"
@@ -77,14 +49,8 @@
                         }
                       }
                     }, {
-                      "nested" : {
-                        "filter" : {
-                          "term" : {
-                            "long.dotted.field" : "foo"
-                          }
-                        },
-                        "join" : true,
-                        "path" : "long"
+                      "term" : {
+                        "long.dotted.field" : "foo"
                       }
                     }, {
                       "bool" : {
@@ -580,41 +546,6 @@
                         } ]
                       }
                     }, {
-                      "nested" : {
-                        "filter" : {
-                          "bool" : {
-                            "must" : [ {
-                              "bool" : {
-                                "should" : [ {
-                                  "bool" : {
-                                    "must" : [ {
-                                      "term" : {
-                                        "review_data.owner_username" : "e_ridge"
-                                      }
-                                    }, {
-                                      "terms" : {
-                                        "review_data.status_name" : [ "review_updated", "review_checked_out" ],
-                                        "execution" : "plain"
-                                      }
-                                    } ]
-                                  }
-                                }, {
-                                  "term" : {
-                                    "review_data.status_name" : "review_ready"
-                                  }
-                                } ]
-                              }
-                            }, {
-                              "term" : {
-                                "review_data.project_id" : 1040
-                              }
-                            } ]
-                          }
-                        },
-                        "join" : true,
-                        "path" : "review_data"
-                      }
-                    }, {
                       "bool" : {
                         "should" : [ {
                           "query" : {
@@ -720,6 +651,31 @@
                       "missing" : {
                         "field" : "field"
                       }
+                    }, {
+                      "bool" : {
+                        "should" : [ {
+                          "bool" : {
+                            "must" : [ {
+                              "term" : {
+                                "review_data.owner_username" : "e_ridge"
+                              }
+                            }, {
+                              "terms" : {
+                                "review_data.status_name" : [ "review_updated", "review_checked_out" ],
+                                "execution" : "plain"
+                              }
+                            } ]
+                          }
+                        }, {
+                          "term" : {
+                            "review_data.status_name" : "review_ready"
+                          }
+                        } ]
+                      }
+                    }, {
+                      "term" : {
+                        "review_data.project_id" : 1040
+                      }
                     } ]
                   }
                 }, {
@@ -784,14 +740,8 @@
                         }
                       }
                     }, {
-                      "nested" : {
-                        "filter" : {
-                          "term" : {
-                            "review_data.assigned_reviewers" : "e_ridge"
-                          }
-                        },
-                        "join" : true,
-                        "path" : "review_data"
+                      "term" : {
+                        "review_data.assigned_reviewers" : "e_ridge"
                       }
                     }, {
                       "bool" : {
@@ -931,32 +881,22 @@
                           "bool" : {
                             "must" : [ {
                               "terms" : {
+                                "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
+                                "execution" : "plain"
+                              }
+                            }, {
+                              "term" : {
+                                "review_data.review_set_name" : "zipper"
+                              }
+                            }, {
+                              "terms" : {
                                 "field" : [ "drink", "food" ],
                                 "execution" : "and"
                               }
                             }, {
-                              "nested" : {
-                                "filter" : {
-                                  "bool" : {
-                                    "must" : [ {
-                                      "terms" : {
-                                        "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
-                                        "execution" : "plain"
-                                      }
-                                    }, {
-                                      "term" : {
-                                        "review_data.review_set_name" : "zipper"
-                                      }
-                                    }, {
-                                      "terms" : {
-                                        "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
-                                        "execution" : "and"
-                                      }
-                                    } ]
-                                  }
-                                },
-                                "join" : true,
-                                "path" : "review_data"
+                              "terms" : {
+                                "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
+                                "execution" : "and"
                               }
                             } ]
                           }
@@ -965,14 +905,8 @@
                             "must" : [ {
                               "bool" : {
                                 "should" : [ {
-                                  "nested" : {
-                                    "filter" : {
-                                      "term" : {
-                                        "review_data.review_set_name" : "food"
-                                      }
-                                    },
-                                    "join" : true,
-                                    "path" : "review_data"
+                                  "term" : {
+                                    "review_data.review_set_name" : "food"
                                   }
                                 }, {
                                   "term" : {
@@ -1007,6 +941,33 @@
                             } ]
                           }
                         } ]
+                      }
+                    }, {
+                      "nested" : {
+                        "filter" : {
+                          "bool" : {
+                            "must" : [ {
+                              "term" : {
+                                "nested_field.fielda" : "beer"
+                              }
+                            }, {
+                              "term" : {
+                                "nested_field.fieldb" : "wine"
+                              }
+                            }, {
+                              "bool" : {
+                                "should" : {
+                                  "terms" : {
+                                    "nested_field.fieldc" : [ "food", "cheese" ],
+                                    "execution" : "plain"
+                                  }
+                                }
+                              }
+                            } ]
+                          }
+                        },
+                        "join" : true,
+                        "path" : "nested_field"
                       }
                     }, {
                       "bool" : {

@@ -91,10 +91,6 @@ public class IndexMetadataManager {
         return mappings;
     }
 
-    public boolean isNestedGroupExternal(ASTNestedGroup group) {
-        return isNestedObjectFieldExternal(group.getNestedPath());
-    }
-
     private boolean isNestedObjectFieldExternal(String fieldname) {
         for (IndexLinkAndMapping ilap : mappings) {
             if (fieldname.equals(ilap.link.getFieldname()))
