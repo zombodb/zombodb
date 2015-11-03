@@ -588,9 +588,10 @@ public class QueryRewriter {
     }
 
     private int withDepth = 0;
+    private String withNestedPath;
     private FilterBuilder build(ASTWith node) {
         if (withDepth == 0)
-            Utils.validateSameNestedPath(node);
+            withNestedPath = Utils.validateSameNestedPath(node);
 
         BoolFilterBuilder fb = boolFilter();
 
@@ -603,7 +604,7 @@ public class QueryRewriter {
             withDepth--;
         }
 
-        return withDepth == 0 ? nestedFilter(node.getChild(0).getNestedPath(), fb).join(true) : fb;
+        return withDepth == 0 ? nestedFilter(withNestedPath, fb).join(true) : fb;
     }
 
     private FilterBuilder build(ASTOr node) {
@@ -1239,24 +1240,10 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder maybeNest(QueryParserNode node, FilterBuilder qb) {
-        if (!node.isNested()) {
-            if (_isBuildingAggregate)
-                return matchAllFilter();
-            return qb;  // it's not nested, so just return
-        }
-
-
-        if (nested != null) {
-            // we are currently nesting, so make sure this node's path
-            // matches the one we're in
-            if (node.getNestedPath().equals(nested))
-                return qb;  // since we're already nesting, no need to do anything
-            else
-                throw new RuntimeException("Attempt to use nested path '" + node.getNestedPath() + "' inside '" + nested + "'");
-        }
-
-        return qb;
+    private FilterBuilder maybeNest(QueryParserNode node, FilterBuilder fb) {
+        if (withDepth == 0 && node.isNested())
+            return nestedFilter(node.getNestedPath(), fb).join(true);
+        return fb;
     }
 
     private FilterBuilder makeParentFilter(ASTExpansion node) {

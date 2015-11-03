@@ -302,8 +302,8 @@ public class Utils {
         return arrayData;
     }
 
-    public static void validateSameNestedPath(ASTWith node) {
-        validateSameNestedPath(node, null);
+    public static String validateSameNestedPath(ASTWith node) {
+        return validateSameNestedPath(node, null);
     }
     public static String validateSameNestedPath(QueryParserNode node, String nestedPath) {
         if (!node.hasChildren())
@@ -312,7 +312,8 @@ public class Utils {
         for (QueryParserNode child : node) {
             if (nestedPath == null)
                 nestedPath = child.getNestedPath();
-            else if (child.hasChildren())
+
+            if (child.hasChildren())
                 nestedPath = validateSameNestedPath(child, nestedPath);
             else if (!nestedPath.equals(child.getNestedPath()))
                 throw new RuntimeException ("WITH chain must all belong to the same nested object");

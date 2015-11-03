@@ -944,12 +944,24 @@ public class TestQueryRewriter {
                         "    \"filter\" : {\n" +
                         "      \"bool\" : {\n" +
                         "        \"must\" : [ {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"nested_group.field_a\" : \"value\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"nested_group.field_a\" : \"value\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"nested_group\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"nested_group.field_b\" : \"value\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"nested_group.field_b\" : \"value\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"nested_group\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -968,8 +980,14 @@ public class TestQueryRewriter {
                         "      \"match_all\" : { }\n" +
                         "    },\n" +
                         "    \"filter\" : {\n" +
-                        "      \"term\" : {\n" +
-                        "        \"nested_group.field_a\" : \"value\"\n" +
+                        "      \"nested\" : {\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"nested_group.field_a\" : \"value\"\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        \"join\" : true,\n" +
+                        "        \"path\" : \"nested_group\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -997,12 +1015,24 @@ public class TestQueryRewriter {
                         "    \"filter\" : {\n" +
                         "      \"bool\" : {\n" +
                         "        \"must\" : [ {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"witness_data.wit_first_name\" : \"mark\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"witness_data.wit_first_name\" : \"mark\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"witness_data\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"witness_data.wit_last_name\" : \"matte\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"witness_data.wit_last_name\" : \"matte\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"witness_data\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2306,23 +2336,47 @@ public class TestQueryRewriter {
                         "        \"must\" : [ {\n" +
                         "          \"bool\" : {\n" +
                         "            \"should\" : [ {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ],\n" +
-                        "                \"execution\" : \"plain\"\n" +
+                        "              \"nested\" : {\n" +
+                        "                \"filter\" : {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ],\n" +
+                        "                    \"execution\" : \"plain\"\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                \"join\" : true,\n" +
+                        "                \"path\" : \"review_data_ben\"\n" +
                         "              }\n" +
                         "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
+                        "              \"nested\" : {\n" +
+                        "                \"filter\" : {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                \"join\" : true,\n" +
+                        "                \"path\" : \"review_data_ben\"\n" +
                         "              }\n" +
                         "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
+                        "              \"nested\" : {\n" +
+                        "                \"filter\" : {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                \"join\" : true,\n" +
+                        "                \"path\" : \"review_data_ben\"\n" +
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"review_data_ben.review_data_id\" : 67115\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data_ben.review_data_id\" : 67115\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data_ben\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2338,7 +2392,7 @@ public class TestQueryRewriter {
         MockClientAndRequest mock = new MockClientAndRequest();
         String json;
 
-        qr = new QueryRewriter(mock.client, mock.request, "( (review_data_ben.review_data_id = 67115 AND ( review_data_ben.coding.responsiveness = Responsive OR review_data_ben.coding.responsiveness = \"Potentially Responsive\" OR review_data_ben.coding.responsiveness = \"Not Responsive\" OR review_data_ben.coding.responsiveness = Unreviewable  ) ) )", false, true);
+        qr = new QueryRewriter(mock.client, mock.request, "( (review_data_ben.review_data_id = 67115 WITH ( review_data_ben.coding.responsiveness = Responsive OR review_data_ben.coding.responsiveness = \"Potentially Responsive\" OR review_data_ben.coding.responsiveness = \"Not Responsive\" OR review_data_ben.coding.responsiveness = Unreviewable  ) ) )", false, true);
         json = qr.rewriteQuery().toString();
 
         assertEquals("test_CVSIX_2941_DoesWork",
@@ -2348,29 +2402,35 @@ public class TestQueryRewriter {
                         "      \"match_all\" : { }\n" +
                         "    },\n" +
                         "    \"filter\" : {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must\" : [ {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"review_data_ben.review_data_id\" : 67115\n" +
-                        "          }\n" +
-                        "        }, {\n" +
+                        "      \"nested\" : {\n" +
+                        "        \"filter\" : {\n" +
                         "          \"bool\" : {\n" +
-                        "            \"should\" : [ {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ],\n" +
-                        "                \"execution\" : \"plain\"\n" +
+                        "            \"must\" : [ {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data_ben.review_data_id\" : 67115\n" +
                         "              }\n" +
                         "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"should\" : [ {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ],\n" +
+                        "                    \"execution\" : \"plain\"\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
-                        "        } ]\n" +
+                        "        },\n" +
+                        "        \"join\" : true,\n" +
+                        "        \"path\" : \"review_data_ben\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -2403,9 +2463,15 @@ public class TestQueryRewriter {
                         "            \"execution\" : \"and\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "            \"execution\" : \"and\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
+                        "                \"execution\" : \"and\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2445,15 +2511,27 @@ public class TestQueryRewriter {
                         "                \"field\" : \"food\"\n" +
                         "              }\n" +
                         "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data.subject\" : \"wine\"\n" +
+                        "              \"nested\" : {\n" +
+                        "                \"filter\" : {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"review_data.subject\" : \"wine\"\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                \"join\" : true,\n" +
+                        "                \"path\" : \"review_data\"\n" +
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"review_data.subject\" : [ \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "            \"execution\" : \"plain\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"review_data.subject\" : [ \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
+                        "                \"execution\" : \"plain\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2483,14 +2561,26 @@ public class TestQueryRewriter {
                         "    \"filter\" : {\n" +
                         "      \"bool\" : {\n" +
                         "        \"must\" : [ {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "            \"execution\" : \"plain\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
+                        "                \"execution\" : \"plain\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "            \"execution\" : \"and\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
+                        "                \"execution\" : \"and\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
                         "          }\n" +
                         "        }, {\n" +
                         "          \"term\" : {\n" +
@@ -2538,25 +2628,49 @@ public class TestQueryRewriter {
                         "            \"should\" : [ {\n" +
                         "              \"bool\" : {\n" +
                         "                \"must\" : [ {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data.owner_username\" : \"e_ridge\"\n" +
+                        "                  \"nested\" : {\n" +
+                        "                    \"filter\" : {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"review_data.owner_username\" : \"e_ridge\"\n" +
+                        "                      }\n" +
+                        "                    },\n" +
+                        "                    \"join\" : true,\n" +
+                        "                    \"path\" : \"review_data\"\n" +
                         "                  }\n" +
                         "                }, {\n" +
-                        "                  \"terms\" : {\n" +
-                        "                    \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
-                        "                    \"execution\" : \"plain\"\n" +
+                        "                  \"nested\" : {\n" +
+                        "                    \"filter\" : {\n" +
+                        "                      \"terms\" : {\n" +
+                        "                        \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
+                        "                        \"execution\" : \"plain\"\n" +
+                        "                      }\n" +
+                        "                    },\n" +
+                        "                    \"join\" : true,\n" +
+                        "                    \"path\" : \"review_data\"\n" +
                         "                  }\n" +
                         "                } ]\n" +
                         "              }\n" +
                         "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data.status_name\" : \"review_ready\"\n" +
+                        "              \"nested\" : {\n" +
+                        "                \"filter\" : {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"review_data.status_name\" : \"review_ready\"\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                \"join\" : true,\n" +
+                        "                \"path\" : \"review_data\"\n" +
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"review_data.project_id\" : 1040\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.project_id\" : 1040\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2572,7 +2686,7 @@ public class TestQueryRewriter {
         MockClientAndRequest mock = new MockClientAndRequest();
         String json;
 
-        qr = new QueryRewriter(mock.client, mock.request, "#child<data>(( ( ((review_data.owner_username=E_RIDGE AND review_data.status_name:[\"REVIEW_UPDATED\",\"REVIEW_CHECKED_OUT\"]) OR (review_data.status_name:REVIEW_READY)) AND review_data.project_id = 1040 ) ) )", false, true);
+        qr = new QueryRewriter(mock.client, mock.request, "#child<data>(( ( ((review_data.owner_username=E_RIDGE WITH review_data.status_name:[\"REVIEW_UPDATED\",\"REVIEW_CHECKED_OUT\"]) OR (review_data.status_name:REVIEW_READY)) WITH review_data.project_id = 1040 ) ) )", false, true);
         json = qr.rewriteQuery().toString();
 
         assertEquals("test_CVSIX_2941_NestedGroupRollupInChild",
@@ -2584,33 +2698,39 @@ public class TestQueryRewriter {
                         "    \"filter\" : {\n" +
                         "      \"has_child\" : {\n" +
                         "        \"filter\" : {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
                         "              \"bool\" : {\n" +
-                        "                \"should\" : [ {\n" +
+                        "                \"must\" : [ {\n" +
                         "                  \"bool\" : {\n" +
-                        "                    \"must\" : [ {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"review_data.owner_username\" : \"e_ridge\"\n" +
+                        "                    \"should\" : [ {\n" +
+                        "                      \"bool\" : {\n" +
+                        "                        \"must\" : [ {\n" +
+                        "                          \"term\" : {\n" +
+                        "                            \"review_data.owner_username\" : \"e_ridge\"\n" +
+                        "                          }\n" +
+                        "                        }, {\n" +
+                        "                          \"terms\" : {\n" +
+                        "                            \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
+                        "                            \"execution\" : \"plain\"\n" +
+                        "                          }\n" +
+                        "                        } ]\n" +
                         "                      }\n" +
                         "                    }, {\n" +
-                        "                      \"terms\" : {\n" +
-                        "                        \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
-                        "                        \"execution\" : \"plain\"\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"review_data.status_name\" : \"review_ready\"\n" +
                         "                      }\n" +
                         "                    } ]\n" +
                         "                  }\n" +
                         "                }, {\n" +
                         "                  \"term\" : {\n" +
-                        "                    \"review_data.status_name\" : \"review_ready\"\n" +
+                        "                    \"review_data.project_id\" : 1040\n" +
                         "                  }\n" +
                         "                } ]\n" +
                         "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data.project_id\" : 1040\n" +
-                        "              }\n" +
-                        "            } ]\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
                         "          }\n" +
                         "        },\n" +
                         "        \"child_type\" : \"data\"\n" +
@@ -2739,8 +2859,14 @@ public class TestQueryRewriter {
                         "            \"parent_type\" : \"xact\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"review_data_ridge.review_set_name\" : \"test\"\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data_ridge.review_set_name\" : \"test\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data_ridge\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -3481,9 +3607,15 @@ public class TestQueryRewriter {
                         "            \"must_not\" : {\n" +
                         "              \"bool\" : {\n" +
                         "                \"must_not\" : {\n" +
-                        "                  \"terms\" : {\n" +
-                        "                    \"review_data_cv623beta.state\" : [ \"caat\", \"doog\" ],\n" +
-                        "                    \"execution\" : \"plain\"\n" +
+                        "                  \"nested\" : {\n" +
+                        "                    \"filter\" : {\n" +
+                        "                      \"terms\" : {\n" +
+                        "                        \"review_data_cv623beta.state\" : [ \"caat\", \"doog\" ],\n" +
+                        "                        \"execution\" : \"plain\"\n" +
+                        "                      }\n" +
+                        "                    },\n" +
+                        "                    \"join\" : true,\n" +
+                        "                    \"path\" : \"review_data_cv623beta\"\n" +
                         "                  }\n" +
                         "                }\n" +
                         "              }\n" +

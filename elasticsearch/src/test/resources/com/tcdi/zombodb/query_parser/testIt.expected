@@ -49,8 +49,14 @@
                         }
                       }
                     }, {
-                      "term" : {
-                        "long.dotted.field" : "foo"
+                      "nested" : {
+                        "filter" : {
+                          "term" : {
+                            "long.dotted.field" : "foo"
+                          }
+                        },
+                        "join" : true,
+                        "path" : "long"
                       }
                     }, {
                       "bool" : {
@@ -656,25 +662,49 @@
                         "should" : [ {
                           "bool" : {
                             "must" : [ {
-                              "term" : {
-                                "review_data.owner_username" : "e_ridge"
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.owner_username" : "e_ridge"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
                               }
                             }, {
-                              "terms" : {
-                                "review_data.status_name" : [ "review_updated", "review_checked_out" ],
-                                "execution" : "plain"
+                              "nested" : {
+                                "filter" : {
+                                  "terms" : {
+                                    "review_data.status_name" : [ "review_updated", "review_checked_out" ],
+                                    "execution" : "plain"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
                               }
                             } ]
                           }
                         }, {
-                          "term" : {
-                            "review_data.status_name" : "review_ready"
+                          "nested" : {
+                            "filter" : {
+                              "term" : {
+                                "review_data.status_name" : "review_ready"
+                              }
+                            },
+                            "join" : true,
+                            "path" : "review_data"
                           }
                         } ]
                       }
                     }, {
-                      "term" : {
-                        "review_data.project_id" : 1040
+                      "nested" : {
+                        "filter" : {
+                          "term" : {
+                            "review_data.project_id" : 1040
+                          }
+                        },
+                        "join" : true,
+                        "path" : "review_data"
                       }
                     } ]
                   }
@@ -740,8 +770,14 @@
                         }
                       }
                     }, {
-                      "term" : {
-                        "review_data.assigned_reviewers" : "e_ridge"
+                      "nested" : {
+                        "filter" : {
+                          "term" : {
+                            "review_data.assigned_reviewers" : "e_ridge"
+                          }
+                        },
+                        "join" : true,
+                        "path" : "review_data"
                       }
                     }, {
                       "bool" : {
@@ -880,13 +916,25 @@
                         }, {
                           "bool" : {
                             "must" : [ {
-                              "terms" : {
-                                "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
-                                "execution" : "plain"
+                              "nested" : {
+                                "filter" : {
+                                  "terms" : {
+                                    "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
+                                    "execution" : "plain"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
                               }
                             }, {
-                              "term" : {
-                                "review_data.review_set_name" : "zipper"
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.review_set_name" : "zipper"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
                               }
                             }, {
                               "terms" : {
@@ -894,9 +942,15 @@
                                 "execution" : "and"
                               }
                             }, {
-                              "terms" : {
-                                "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
-                                "execution" : "and"
+                              "nested" : {
+                                "filter" : {
+                                  "terms" : {
+                                    "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
+                                    "execution" : "and"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
                               }
                             } ]
                           }
@@ -905,8 +959,14 @@
                             "must" : [ {
                               "bool" : {
                                 "should" : [ {
-                                  "term" : {
-                                    "review_data.review_set_name" : "food"
+                                  "nested" : {
+                                    "filter" : {
+                                      "term" : {
+                                        "review_data.review_set_name" : "food"
+                                      }
+                                    },
+                                    "join" : true,
+                                    "path" : "review_data"
                                   }
                                 }, {
                                   "term" : {
