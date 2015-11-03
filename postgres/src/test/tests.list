@@ -30,6 +30,7 @@ syntax-numeric_field_not_null-3
 syntax-expansion_by_parent_id
 syntax-numeric_field_range
 syntax-complex_query
+zdb_extended_stats
 issue-7
 issue-11
 issue-13

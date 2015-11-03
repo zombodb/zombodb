@@ -243,6 +243,10 @@ public class QueryRewriter {
         }
     }
 
+    public boolean isAggregateNested() {
+        return tree.getAggregate().isNested();
+    }
+
     public SuggestBuilder.SuggestionBuilder rewriteSuggestions() {
         try {
             _isBuildingAggregate = true;
@@ -306,10 +310,10 @@ public class QueryRewriter {
         if (subagg != null && ab instanceof AggregationBuilder)
             ((AggregationBuilder) ab).subAggregation(build(subagg));
 
-        if (metadataManager.isFieldNested(agg.getFieldname())) {
-            ab = nested(agg.getFieldname()).path(agg.getNestedPath())
+        if (agg.isNested()) {
+            ab = nested("nested").path(agg.getNestedPath())
                     .subAggregation(
-                            filter(agg.getFieldname())
+                            filter("filter")
                                     .filter(build(tree))
                                     .subAggregation(ab).subAggregation(missing("missing").field(agg.getFieldname()))
                     );
@@ -604,7 +608,7 @@ public class QueryRewriter {
             withDepth--;
         }
 
-        return withDepth == 0 ? nestedFilter(withNestedPath, fb).join(true) : fb;
+        return withDepth == 0 ? nestedFilter(withNestedPath, fb).join(shouldJoinNestedFilter()) : fb;
     }
 
     private FilterBuilder build(ASTOr node) {
@@ -626,14 +630,6 @@ public class QueryRewriter {
             qb.mustNot(build(child));
         }
         return qb;
-    }
-
-    private void rewriteFieldnames(QueryParserNode node, String base) {
-        if (node.fieldname != null && node.fieldname.startsWith(base + "."))
-            node.fieldname = node.fieldname.substring(node.fieldname.indexOf('.') + 1);
-
-        for (QueryParserNode child : node)
-            rewriteFieldnames(child, base);
     }
 
     private FilterBuilder build(ASTChild node) {
@@ -1241,9 +1237,30 @@ public class QueryRewriter {
     }
 
     private FilterBuilder maybeNest(QueryParserNode node, FilterBuilder fb) {
-        if (withDepth == 0 && node.isNested())
-            return nestedFilter(node.getNestedPath(), fb).join(true);
+        if (withDepth == 0 && node.isNested()) {
+            return nestedFilter(node.getNestedPath(), fb).join(shouldJoinNestedFilter());
+        } else if (!node.isNested()) {
+            if (_isBuildingAggregate)
+                return matchAllFilter();
+            return fb;  // it's not nested, so just return
+        }
+
+
+        if (nested != null) {
+            // we are currently nesting, so make sure this node's path
+            // matches the one we're in
+            if (node.getNestedPath().equals(nested))
+                return fb;  // since we're already nesting, no need to do anything
+            else
+                throw new RuntimeException("Attempt to use nested path '" + node.getNestedPath() + "' inside '" + nested + "'");
+        }
+
         return fb;
+    }
+
+
+    private boolean shouldJoinNestedFilter() {
+        return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
     private FilterBuilder makeParentFilter(ASTExpansion node) {

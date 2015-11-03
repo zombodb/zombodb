@@ -17,6 +17,15 @@ import java.io.*;
 import java.util.*;
 
 public class QueryParser {
+    private static class FieldnameRef {
+        private String fieldName;
+        private boolean nested;
+
+        public FieldnameRef(String fn, boolean n) {
+            fieldName = fn;
+            nested = n;
+        }
+    }
 
     public static class FieldnameAndOperator {
         String fieldname;
@@ -117,6 +126,8 @@ PARSER_END(QueryParser)
   | <TO: "/to/" >
   | <CHILD: "#child" >
   | <PARENT: "#parent" >
+
+  | <NESTED: "#nested" >
   | <TALLY: "#tally" >
   | <RANGE: "#range" >
   | <SIGNIFICANT_TERMS: "#significant_terms" >
@@ -166,47 +177,61 @@ void Aggregations() : {}
 
 void Tally() #Tally :
 {
-    Token t;
+    FieldnameRef fn;
 }
 {
-    ( <TALLY> "(" (t = Fieldname()) "," (Word()|Phrase()) "," Number() "," Word() [ "," Aggregations() ] ")" )
-    { jjtThis.fieldname = t.image; }
+    ( <TALLY> "(" (fn = Fieldname()) "," (Word()|Phrase()) "," Number() "," Word() [ "," Aggregations() ] ")" )
+    {
+        jjtThis.setIsNested(fn.nested);
+        jjtThis.fieldname = fn.fieldName;
+    }
 }
 
 void RangeAggregate() #RangeAggregate :
 {
-    Token t;
+    FieldnameRef fn;
 }
 {
-    ( <RANGE> "(" (t = Fieldname()) "," Phrase() [ "," Aggregations() ] ")" )
-    { jjtThis.fieldname = t.image; }
+    ( <RANGE> "(" (fn = Fieldname()) "," Phrase() [ "," Aggregations() ] ")" )
+    {
+        jjtThis.setIsNested(fn.nested);
+        jjtThis.fieldname = fn.fieldName;
+    }
 }
 
 void SignificantTerms() #SignificantTerms :
 {
-    Token t;
+    FieldnameRef fn;
 }
 {
-    ( <SIGNIFICANT_TERMS> "(" (t = Fieldname()) "," (Word()|Phrase()) "," Number() [ "," Aggregations() ] ")" )
-    { jjtThis.fieldname = t.image; }
+    ( <SIGNIFICANT_TERMS> "(" (fn = Fieldname()) "," (Word()|Phrase()) "," Number() [ "," Aggregations() ] ")" )
+    {
+        jjtThis.setIsNested(fn.nested);
+        jjtThis.fieldname = fn.fieldName;
+    }
 }
 
 void ExtendedStats() #ExtendedStats :
 {
-    Token t;
+    FieldnameRef fn;
 }
 {
-    ( <EXTENDED_STATS> "(" (t = Fieldname()) ")" )
-    { jjtThis.fieldname = t.image; }
+    ( <EXTENDED_STATS> "(" (fn = Fieldname()) ")" )
+    {
+        jjtThis.setIsNested(fn.nested);
+        jjtThis.fieldname = fn.fieldName;
+    }
 }
 
 void Suggest() #Suggest :
 {
-    Token t;
+    FieldnameRef fn;
 }
 {
-    ( <SUGGEST> "(" (t = Fieldname()) "," (Word()|Phrase()) "," Number() ")" )
-    { jjtThis.fieldname = t.image; }
+    ( <SUGGEST> "(" (fn = Fieldname()) "," (Word()|Phrase()) "," Number() ")" )
+    {
+        jjtThis.fieldname = fn.fieldName;
+    }
 }
 
 void Options() : {}
@@ -428,36 +453,37 @@ void OptionalBoost(QueryParserNode n) :
 
 FieldnameAndOperator OptionalFieldname() :
 {
-    Token t = null, t2 = null;
+    FieldnameRef fn = null;
     Token op = null;
 }
 {
     (
         [
-            LOOKAHEAD(2) t = Fieldname() (t2 = <OPERATOR> | t2 = <EQ> | t2 = <L_ANGLE> | t2 = <R_ANGLE>)
+            LOOKAHEAD(2) fn = Fieldname() (op = <OPERATOR> | op = <EQ> | op = <L_ANGLE> | op = <R_ANGLE>)
         ]
     )
     {
-        if (t != null) {
-            return new FieldnameAndOperator(t.image, t2.image);
+        if (fn != null) {
+            return new FieldnameAndOperator(fn.fieldName, op.image);
         } else {
             return fieldnameStack.isEmpty() ? new FieldnameAndOperator("_all", ":") : fieldnameStack.peek();
         }
     }
 }
 
-Token Fieldname() :
+FieldnameRef Fieldname() :
 {
-    Token t;
+    Token t, nested = null;
 }
 {
     (
         LOOKAHEAD(2) t = <IDENTIFIER>
       | LOOKAHEAD(2) t = <DOTTED_IDENTIFIER>
+      | nested=<NESTED> "(" t = <DOTTED_IDENTIFIER> ")"
     )
     {
         usedFieldnames.add(t.image);
-        return t;
+        return new FieldnameRef(t.image, nested != null);
     }
 }
 

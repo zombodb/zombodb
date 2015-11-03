@@ -1,0 +1,1 @@
+select * from zdb_extended_stats('so_posts', 'answer_count', 'beer');

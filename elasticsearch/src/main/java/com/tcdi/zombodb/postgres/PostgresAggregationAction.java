@@ -16,8 +16,6 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import com.tcdi.zombodb.query_parser.ASTAggregate;
-import com.tcdi.zombodb.query_parser.QueryParser;
 import com.tcdi.zombodb.query_parser.QueryRewriter;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.SearchRequestBuilder;
@@ -34,8 +32,6 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.support.RestStatusToXContentListener;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilder;
-
-import java.io.StringReader;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -71,8 +67,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
 
             if (ab != null) {
                 builder.addAggregation(ab);
-                ASTAggregate agg = new QueryParser(new StringReader(input.toLowerCase())).parse(true).getAggregate();
-                if (!rewriter.getMetadataManager().isFieldNested(agg.getFieldname())) {
+                if (!rewriter.isAggregateNested()) {
                     builder.addAggregation(missing("missing").field(rewriter.getAggregateFieldName()));
                 }
             } else if (tsb != null) {

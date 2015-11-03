@@ -19,6 +19,8 @@ package com.tcdi.zombodb.query_parser;
  * Created by e_ridge on 11/11/14.
  */
 public class ASTAggregate extends QueryParserNode {
+    private boolean isNested;
+
     public ASTAggregate(int i) {
         super(i);
     }
@@ -29,6 +31,14 @@ public class ASTAggregate extends QueryParserNode {
                 return (ASTAggregate) node;
         }
         return null;
+    }
+
+    public void setIsNested(boolean isNested) {
+        this.isNested = isNested;
+    }
+
+    public boolean isNested() {
+        return isNested;
     }
 
     public ASTAggregate(QueryParser p, int i) {

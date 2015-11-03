@@ -3,7 +3,8 @@
 package com.tcdi.zombodb.query_parser;
 
 public
-class ASTSuggest extends com.tcdi.zombodb.query_parser.QueryParserNode {
+class ASTSuggest extends com.tcdi.zombodb.query_parser.QueryParserNode { // NB:  purposely not an ASTAggregate
+
   public ASTSuggest(int id) {
     super(id);
   }

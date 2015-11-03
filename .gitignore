@@ -10,6 +10,7 @@
 *.swp
 target/
 .DS_store
+foo.*
 postgres/src/main/sql/zombodb--2.5.1.sql
 postgres/src/test/sql/setup.sql
 postgres/src/test/sql/so_comments.sql

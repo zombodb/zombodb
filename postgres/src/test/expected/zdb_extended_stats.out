@@ -1,0 +1,6 @@
+select * from zdb_extended_stats('so_posts', 'answer_count', 'beer');
+ count | total | min | max | mean | sum_of_squares |     variance     |  std_deviation  
+-------+-------+-----+-----+------+----------------+------------------+-----------------
+    21 |    84 |   1 |  14 |    4 |            590 | 12.0952380952381 | 3.4778208831448
+(1 row)
+

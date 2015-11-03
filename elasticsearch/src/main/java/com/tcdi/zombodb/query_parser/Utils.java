@@ -315,7 +315,7 @@ public class Utils {
 
             if (child.hasChildren())
                 nestedPath = validateSameNestedPath(child, nestedPath);
-            else if (!nestedPath.equals(child.getNestedPath()))
+            else if (nestedPath != null && !nestedPath.equals(child.getNestedPath()))
                 throw new RuntimeException ("WITH chain must all belong to the same nested object");
         }
 
