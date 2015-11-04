@@ -12,7 +12,7 @@ Which would find all documents that contain the words ```beer``` __and__ ```wine
 
 The ```zombodb``` query syntax provides support for searching (in no particular order):
 
-* full boolean operators (AND, OR, NOT),
+* full boolean operators (WITH, AND, OR, NOT),
 * words,
 * phrases,
 * fielded searching,
@@ -27,11 +27,11 @@ The ```zombodb``` query syntax provides support for searching (in no particular 
 
 ## Boolean expressions and operator precedence
 
-The supported set of boolean operators are the standard __NOT__, __AND__, and __OR__ operators along with proximity (__W/n__ or __WO/n__).  
+The supported set of boolean operators are the standard __NOT__, __WITH__ (for searching nested objects), __AND__, and __OR__ operators along with proximity (__W/n__ or __WO/n__).  
 
 If no operator is declared between terms, __AND__ is assumed.  Additionally, parenthetical groupings are allowed to form complex boolean expressions.
 
-The __PROXIMITY__ operators take the highest priority, followed by __NOT__, __AND__, then finally __OR__.
+The __PROXIMITY__ operators take the highest priority, followed by __NOT__, __WITH__, __AND__, then finally __OR__.
 
 For example, this query finds all documents which contain both ```beer``` __AND__ ```cheese``` plus any documents that contain ```wine```:
 
@@ -59,6 +59,7 @@ It is functionally equivalent to this query:
 
 For convenience, each boolean operator has a single-character abbreviation:
 
+* WITH: __%__
 * AND:  __&__
 * OR:  __,__
 * NOT:  __!__
@@ -85,7 +86,7 @@ Tokens are formed whenever a character in this set is found:
 "*", "?", "~", "^", "/", ":", "=",  
 "<", ">", "!", "#", "@", "(", ")",  
 "'", "\"", ".", ",", "&", "[", "]", 
-"\\"]
+"\\", "%"]
 ```
 
 To use one of the above characters in a term, it must be escaped using a backslash, *or* the term must be quoted.  Any character is allowed within a quoted phrase.
@@ -197,4 +198,40 @@ Proximity operators take the highest precedence, so when combined with other boo
 Proximity clauses can be limited to specific fields as well:  ``title:catcher w/2 title:rye``.  Note that mixed fieldnames in a proximity chain is non-sensical and will produce a parse error.
 
 
- 
+## Nested Object Searching using WITH
+
+ZomboDB automatically indexes fields of type `json` as "nested objects".  The boolean operator __WITH__ allows forming queries that match on individual nested objects.
+
+For example, if you have a field named `contributor_data` with a few values such as:
+
+```
+row #1: [ 
+   { "name": "John Doe", "age": 42, "location": "TX", "tags": ["active"] },
+   { "name": "Jane Doe", "age": 36, "location": "TX", "tags": ["nice"] }
+]
+
+row #2: [ 
+   { "name": "Bob Dole", "age": 92, "location": "KS", "tags": ["nice", "politician"] },
+   { "name": "Elizabth Dole", "age": 79, "location": "KS", "tags": ["nice"] }
+]
+
+```
+
+To find all top-level documents whose contributors are in TX and are nice:
+
+```
+contributor_data.location:TX AND contributor_data.tags:nice
+```
+
+The above finds row #1 because row #1's contributor_data structure contains elements that have a location of TX along with tags of nice.  Essentially, it found row #1 because "John Doe" matched "TX" and "Jane Doe" matched "nice".
+
+To limit the matching to only evaluate individual elements (rather than across the entire set of elements), use the __WITH__ operator:
+
+```
+contributor_data.location:TX WITH contributor_data.tags:nice
+```
+
+The above also finds row #1, but behind the scenes it only matched the "Jane Doe" subelement, because it's the only element with a location of "TX" and a tag of "nice".
+
+The __WITH__ operator has the same semantics as __AND__ but requires both its left and right sides to be a nested object field reference or a parenthetical boolean expression, and all field references must be against the same nested object.
+

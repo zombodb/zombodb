@@ -398,10 +398,11 @@ These custom domains are to be used in user tables as data types when you requir
 >```
 
 
-#### ```FUNCTION zdb_tally(table_name regclass, fieldname text, stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SET OF zdb_tally_response```
+#### ```FUNCTION zdb_tally(table_name regclass, fieldname text [, is_nested boolean], stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SET OF zdb_tally_response```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```fieldname```: The name of a field from which to derive terms  
+> ```is_nested```: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 > ```stem```:  a Regular expression by which to filter returned terms   
 > ```query```: a full text query  
 > ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
@@ -424,6 +425,52 @@ These custom domains are to be used in user tables as data types when you requir
 > SPORTS        |     1
 > THOMAS EDISON |     1
 > ```
+> 
+> Regarding the `is_nested` argument, consider data like this:
+> 
+> ```
+> row #1: contributor_data=[ 
+>   { "name": "John Doe", "age": 42, "location": "TX", "tags": ["active"] },
+>   { "name": "Jane Doe", "age": 36, "location": "TX", "tags": ["nice"] }
+]
+>
+>row #2: contributor_data=[ 
+>   { "name": "Bob Dole", "age": 92, "location": "KS", "tags": ["nice", "politician"] },
+>   { "name": "Elizabth Dole", "age": 79, "location": "KS", "tags": ["nice"] }
+>]
+> ```
+> 
+> And a query where `is_nested` is false:
+> 
+> ```
+> SELECT * FROM zdb_tally('products', 'contributor_data.name', false, '^.*', 'contributor_data.location:TX AND contributor_data.tags:nice', 5000, 'term');
+> ```
+> 
+> returns:
+> 
+>```
+>    term   | count 
+>----------+-------
+>  JANE DOE |     1
+>  JOHN DOE |     1
+>(2 rows)
+>```
+>
+>Whereas, if `is_nested` is true, only "JANE DOE" is returned because it's the only subelement of `contributor_data` that matched the query:
+> 
+> ```
+> SELECT * FROM zdb_tally('products', 'contributor_data.name', true, '^.*', 'contributor_data.location:TX WITH contributor_data.tags:nice', 5000, 'term');
+> ```
+> 
+> returns:
+> 
+> ```
+>    term   | count 
+>----------+-------
+>  JANE DOE |     1
+>(1 row)
+>```
+
 
 ## Views
 
