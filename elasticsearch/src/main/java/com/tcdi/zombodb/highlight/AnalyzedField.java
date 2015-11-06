@@ -543,7 +543,7 @@ public class AnalyzedField {
 
     private AnalyzeResponse analyzePhrase(String value) {
         try {
-            AnalyzeRequest request = new AnalyzeRequestBuilder(client.admin().indices(), indexName, value).setAnalyzer("phrase").request();
+            AnalyzeRequest request = new AnalyzeRequestBuilder(client.admin().indices(), indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
             return client.admin().indices().analyze(request).get();
         } catch (Exception e) {
             throw new RuntimeException(e);
