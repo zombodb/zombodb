@@ -289,7 +289,6 @@ public class QueryRewriter {
             return null;
 
         AbstractAggregationBuilder ab;
-        ASTAggregate subagg = agg.getSubAggregate();
 
         if (agg instanceof ASTTally)
             ab = build((ASTTally) agg);
@@ -302,9 +301,13 @@ public class QueryRewriter {
         else
             throw new RuntimeException("Unrecognized aggregation type: " + agg.getClass().getName());
 
-        // TODO:  What if the sub aggregate is in a different index?
-        if (subagg != null && ab instanceof AggregationBuilder)
+        ASTAggregate subagg = agg.getSubAggregate();
+        if (subagg != null && ab instanceof AggregationBuilder) {
+            if (!metadataManager.getMetadataForField(subagg.getFieldname()).getLink().getIndexName().equals(metadataManager.getMyIndex().getIndexName()))
+                throw new RuntimeException("Nested aggregates in separate indexes are not supported");
+
             ((AggregationBuilder) ab).subAggregation(build(subagg));
+        }
 
         if (metadataManager.isFieldNested(agg.getFieldname())) {
             ab = nested(agg.getFieldname()).path(agg.getNestedPath())
