@@ -408,6 +408,11 @@ public class AnalyzedField {
             return match((ASTArray) node);
         else if (node instanceof ASTPhrase)
             return match((ASTPhrase) node);
+        else if (node instanceof ASTNotNull) {
+            ASTWildcard wildcard = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
+            wildcard.setValue("*");
+            return match(wildcard);
+        }
         else
             throw new RuntimeException ("Don't know how to match node type: " + node.getClass().getSimpleName());
     }
