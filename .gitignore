@@ -16,4 +16,4 @@ postgres/src/test/sql/setup.sql
 postgres/src/test/sql/so_comments.sql
 postgres/results
 postgres/regression.*
-postgres/src/main/sql/zombodb--2.5.1_BETA1-2.5.1_BETA2.sql
+postgres/src/main/sql/zombodb--2.5.1_BETA1--2.5.1_BETA2.sql
