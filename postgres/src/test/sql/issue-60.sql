@@ -1,4 +1,4 @@
-create table public.mam_test_json(pk_id serial8,my_json json);
+create table public.mam_test_json(pk_id serial8 not null primary key,my_json json);
 CREATE INDEX es_mam_test_json ON public.mam_test_json USING zombodb (zdb('mam_test_json', ctid), zdb(mam_test_json.*))
 WITH (url='http://localhost:9200/', replicas=1, shards=5);
 
