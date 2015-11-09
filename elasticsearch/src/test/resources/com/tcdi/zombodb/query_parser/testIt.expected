@@ -944,9 +944,78 @@
                             }, {
                               "nested" : {
                                 "filter" : {
-                                  "terms" : {
-                                    "review_data.subject" : [ "wine", "last", "first", "wine", "cheese", "food", "foo", "bar" ],
-                                    "execution" : "and"
+                                  "term" : {
+                                    "review_data.subject" : "wine"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
+                              }
+                            }, {
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.subject" : "last"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
+                              }
+                            }, {
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.subject" : "first"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
+                              }
+                            }, {
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.subject" : "wine"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
+                              }
+                            }, {
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.subject" : "cheese"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
+                              }
+                            }, {
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.subject" : "food"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
+                              }
+                            }, {
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.subject" : "foo"
+                                  }
+                                },
+                                "join" : true,
+                                "path" : "review_data"
+                              }
+                            }, {
+                              "nested" : {
+                                "filter" : {
+                                  "term" : {
+                                    "review_data.subject" : "bar"
                                   }
                                 },
                                 "join" : true,

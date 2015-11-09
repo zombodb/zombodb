@@ -2465,9 +2465,78 @@ public class TestQueryRewriter {
                         "        }, {\n" +
                         "          \"nested\" : {\n" +
                         "            \"filter\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "                \"execution\" : \"and\"\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"wine\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"last\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"first\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"wine\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"cheese\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"food\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"foo\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"bar\"\n" +
                         "              }\n" +
                         "            },\n" +
                         "            \"join\" : true,\n" +
@@ -2574,9 +2643,18 @@ public class TestQueryRewriter {
                         "        }, {\n" +
                         "          \"nested\" : {\n" +
                         "            \"filter\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data.subject\" : [ \"wine\", \"last\", \"first\", \"wine\", \"cheese\", \"food\", \"foo\", \"bar\" ],\n" +
-                        "                \"execution\" : \"and\"\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"wine\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"last\"\n" +
                         "              }\n" +
                         "            },\n" +
                         "            \"join\" : true,\n" +
@@ -2585,6 +2663,66 @@ public class TestQueryRewriter {
                         "        }, {\n" +
                         "          \"term\" : {\n" +
                         "            \"field\" : \"food\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"first\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"wine\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"cheese\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"food\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"foo\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"review_data.subject\" : \"bar\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"review_data\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -3925,6 +4063,81 @@ public class TestQueryRewriter {
                 qr.rewriteQuery().toString());
     }
 
+    @Test
+    public void testIssue60() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
 
+        qr = new QueryRewriter(mock.client, mock.request, "details.state:NC and details.state:SC", false, true);
+
+        assertEquals("testIssue60",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [ {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"details.state\" : \"nc\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"details\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"details.state\" : \"sc\"\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"details\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
+                qr.rewriteQuery().toString());
+    }
+
+    @Test
+    public void testIssue60_WITH() throws Exception {
+        QueryRewriter qr;
+        MockClientAndRequest mock = new MockClientAndRequest();
+
+        qr = new QueryRewriter(mock.client, mock.request, "details.state:NC WITH details.state:SC", false, true);
+
+        assertEquals("testIssue60_WITH",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"nested\" : {\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"bool\" : {\n" +
+                        "            \"must\" : {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"details.state\" : [ \"nc\", \"sc\" ],\n" +
+                        "                \"execution\" : \"and\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        \"join\" : true,\n" +
+                        "        \"path\" : \"details\"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
+                qr.rewriteQuery().toString());
+    }
 }
 

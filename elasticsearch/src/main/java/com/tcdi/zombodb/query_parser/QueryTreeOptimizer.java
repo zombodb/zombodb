@@ -119,6 +119,9 @@ public class QueryTreeOptimizer {
             if (child instanceof ASTAggregate)
                 continue;
 
+            if (child.isNested() && root instanceof ASTAnd)
+                continue;
+
             if (child instanceof ASTWord || child instanceof ASTNumber || child instanceof ASTBoolean || child instanceof ASTArray) {
                 if (child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ || child.getOperator() == QueryParserNode.Operator.NE) {
                     if (child instanceof ASTArray && isAnd)
