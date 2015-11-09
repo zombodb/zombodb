@@ -12,7 +12,7 @@ for f in `find . -name pom.xml` postgres/zombodb.control docker/postgres/Dockerf
 	sed -i.bak s/${OLD}/${NEW}/g $f
 done
 
-SQL=postgres/src/main/sql/zombodb--${OLD}-${NEW}.sql
+SQL=postgres/src/main/sql/zombodb--${OLD}--${NEW}.sql
 echo "-- no sql changes" > ${SQL}
 git add ${SQL}
 echo ${SQL} >> ./.gitignore
