@@ -1,0 +1,212 @@
+{
+  "mappings": {
+    "xact": {
+      "_source": {
+        "enabled": true
+      },
+      "_all": {
+        "enabled": false
+      },
+      "_field_names": {
+        "index": "no",
+        "store": false
+      },
+      "_meta": {
+        "primary_key": "id",
+        "noxact": false
+      },
+      "date_detection": false,
+      "properties": {
+        "_xmin": {
+          "type": "integer",
+          "index": "not_analyzed",
+          "norms": {
+            "enabled": false
+          },
+          "fielddata": {
+            "format": "disabled"
+          }
+        },
+        "_xmax": {
+          "type": "integer",
+          "index": "not_analyzed",
+          "norms": {
+            "enabled": false
+          },
+          "fielddata": {
+            "format": "disabled"
+          }
+        },
+        "_cmin": {
+          "type": "integer",
+          "index": "not_analyzed",
+          "norms": {
+            "enabled": false
+          },
+          "fielddata": {
+            "format": "disabled"
+          }
+        },
+        "_cmax": {
+          "type": "integer",
+          "index": "not_analyzed",
+          "norms": {
+            "enabled": false
+          },
+          "fielddata": {
+            "format": "disabled"
+          }
+        },
+        "_xmin_is_committed": {
+          "type": "boolean",
+          "index": "not_analyzed",
+          "norms": {
+            "enabled": false
+          },
+          "fielddata": {
+            "format": "disabled"
+          }
+        },
+        "_xmax_is_committed": {
+          "type": "boolean",
+          "index": "not_analyzed",
+          "norms": {
+            "enabled": false
+          },
+          "fielddata": {
+            "format": "disabled"
+          }
+        },
+        "_partial": {
+          "type": "boolean",
+          "index": "not_analyzed",
+          "norms": {
+            "enabled": false
+          },
+          "fielddata": {
+            "format": "disabled"
+          }
+        }
+      }
+    },
+    "data": {
+      "_source": {
+        "enabled": false
+      },
+      "_all": {
+        "enabled": true,
+        "analyzer": "phrase"
+      },
+      "_field_names": {
+        "index": "no",
+        "store": false
+      },
+      "_parent": {
+        "type": "xact"
+      },
+      "_meta": {
+        "primary_key": "id",
+        "noxact": false
+      },
+      "date_detection": false,
+      "properties": {
+        "id": {
+          "store": false,
+          "type": "long",
+          "store": "true",
+          "include_in_all": "false",
+          "norms": {
+            "enabled": false
+          },
+          "index": "not_analyzed"
+        },
+        "exact_field": {
+          "store": false,
+          "type": "string",
+          "norms": {
+            "enabled": false
+          },
+          "index_options": "docs",
+          "analyzer": "exact"
+        },
+        "phrase_field": {
+          "store": false,
+          "type": "string",
+          "index_options": "positions",
+          "analyzer": "phrase",
+          "fielddata": {
+            "format": "paged_bytes"
+          },
+          "norms": {
+            "enabled": false
+          }
+        },
+        "fulltext_field": {
+          "store": false,
+          "type": "string",
+          "index_options": "positions",
+          "include_in_all": "false",
+          "analyzer": "fulltext",
+          "fielddata": {
+            "format": "disabled"
+          },
+          "norms": {
+            "enabled": false
+          }
+        },
+        "date_field": {
+          "store": false,
+          "type": "string",
+          "norms": {
+            "enabled": false
+          },
+          "index": "not_analyzed",
+          "fielddata": {
+            "format": "doc_values"
+          },
+          "fields": {
+            "date": {
+              "type": "date",
+              "index": "not_analyzed"
+            }
+          }
+        }
+      }
+    }
+  },
+  "settings": {
+    "refresh_interval": -1,
+    "number_of_shards": 5,
+    "number_of_replicas": 0,
+    "analysis": {
+      "filter": {
+        "truncate_32000": {
+          "type": "truncate",
+          "length": 32000
+        }
+      },
+      "analyzer": {
+        "default": {
+          "tokenizer": "keyword",
+          "filter": [
+            "trim",
+            "truncate_32000"
+          ]
+        },
+        "exact": {
+          "tokenizer": "keyword",
+          "filter": [
+            "trim",
+            "truncate_32000"
+          ]
+        },
+        "phrase": {
+          "tokenizer": "standard"
+        },
+        "fulltext": {
+          "tokenizer": "standard"
+        }
+      }
+    }
+  }
+}

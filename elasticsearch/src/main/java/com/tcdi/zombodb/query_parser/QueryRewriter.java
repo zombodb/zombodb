@@ -23,7 +23,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.*;
-import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
@@ -95,17 +94,16 @@ public class QueryRewriter {
     private static final String DateSuffix = ".date";
 
     private final Client client;
-    private final RestRequest request;
     private final ASTQueryTree tree;
     private final QueryParserNode rootNode;
     private final String searchPreference;
 
+    private final String indexName;
     private final String input;
     private boolean allowSingleIndex;
     private boolean ignoreASTChild;
     private final boolean useParentChild;
     private boolean _isBuildingAggregate = false;
-    private final boolean isRequestObjectAlive;
     private boolean queryRewritten = false;
     private ASTParent parentQuery;
 
@@ -113,35 +111,29 @@ public class QueryRewriter {
 
     private final IndexMetadataManager metadataManager;
 
-    static String toJson(String query) {
-        return new QueryRewriter(null, null, query, true, true).rewriteQuery().toString();
-    }
-
     static String dumpAsString(String query) throws Exception {
         return new QueryParser(new StringReader(query)).parse(true).dumpAsString();
     }
 
-    public QueryRewriter(Client client, RestRequest request, String input, boolean allowSingleIndex, boolean useParentChild) {
-        this(client, request, input, allowSingleIndex, false, useParentChild);
+    public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean useParentChild) {
+        this(client, indexName, searchPreference, input, allowSingleIndex, false, useParentChild);
     }
 
-    private QueryRewriter(Client client, RestRequest request, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild) {
-        this(client, request, input, allowSingleIndex, ignoreASTChild, useParentChild, false);
+    private QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild) {
+        this(client, indexName, searchPreference, input, allowSingleIndex, ignoreASTChild, useParentChild, false);
     }
 
-    public  QueryRewriter(Client client, RestRequest request, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean extractParentQuery) {
+    public  QueryRewriter(Client client, final String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean extractParentQuery) {
         this.client = client;
-        this.request = request;
+        this.indexName = indexName;
         this.input = input;
         this.allowSingleIndex = allowSingleIndex;
         this.ignoreASTChild = ignoreASTChild;
         this.useParentChild = useParentChild;
-        this.searchPreference = request != null ? request.param("preference") : null;
-        this.isRequestObjectAlive = request != null && request.getLocalAddress() != null;    // exists mainly for unit testing support because the request object is mocked and generally useless to us
+        this.searchPreference = searchPreference;
 
         metadataManager = new IndexMetadataManager(
                 client,
-                request,
                 new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
                     @Override
                     public String getLeftFieldname() {
@@ -150,7 +142,7 @@ public class QueryRewriter {
 
                     @Override
                     public String getIndexName() {
-                        return QueryRewriter.this.request.param("index");
+                        return indexName;
                     }
 
                     @Override
@@ -179,7 +171,6 @@ public class QueryRewriter {
 
             // load index mappings for any index defined in #options()
             metadataManager.loadReferencedMappings(tree.getOptions());
-            metadataManager.setUsedFields(parser.getUsedFieldnames());
 
             ASTAggregate aggregate = tree.getAggregate();
             ASTSuggest suggest = tree.getSuggest();
@@ -1275,7 +1266,7 @@ public class QueryRewriter {
         if (md != null && md.getNoXact())
             return null;
 
-        QueryRewriter qr = new QueryRewriter(client, request, input, allowSingleIndex, true, true);
+        QueryRewriter qr = new QueryRewriter(client, indexName, searchPreference, input, allowSingleIndex, true, true);
         QueryParserNode parentQuery = qr.tree.getChild(ASTParent.class);
         if (parentQuery != null) {
             return build(parentQuery);
@@ -1374,8 +1365,9 @@ public class QueryRewriter {
     }
 
     private FilterBuilder expand(final ASTExpansion root, final ASTIndexLink link) {
-        if (!isRequestObjectAlive)
+        if (isInTestMode())
             return build(root.getQuery());
+
         Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
 
         ASTIndexLink myIndex = metadataManager.getMyIndex();
@@ -1473,5 +1465,9 @@ public class QueryRewriter {
         }
 
         return build(last);
+    }
+
+    protected boolean isInTestMode() {
+        return false;
     }
 }

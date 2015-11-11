@@ -16,43 +16,24 @@
  */
 package com.tcdi.zombodb.query_parser;
 
-import org.elasticsearch.action.ActionFuture;
+import com.tcdi.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
-import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
-import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
-import org.elasticsearch.client.AdminClient;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.IndicesAdminClient;
-import org.elasticsearch.cluster.metadata.MappingMetaData;
-import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
- * Created by e_ridge on 10/15/14.
+ * Tests for {@link QueryRewriter}
  */
-public class TestQueryRewriter {
-    String query = "#options(id=<table.idx>id, id=<table.idx>id, id=<table.idx>id, other:(left=<table.idx>right)) #extended_stats(custodian) #tally(subject, '^.*', 1000, '_term', #significant_terms(author, '^.*', 1000))  " +
+public class TestQueryRewriter extends ZomboDBTestCase {
+    String query = "#options(id=<table.index>id, id=<table.index>id, id=<table.index>id, other:(left=<table.index>right)) #extended_stats(custodian) #tally(subject, '^.*', 1000, '_term', #significant_terms(author, '^.*', 1000))  " +
             "#child<data>(" +
             "fulltext=[beer] meeting not staff not cancelled not risk " +
-            "#expand<left_field = <index.name>right_field>(the subquery) " +
+            "#expand<left_field = <table.index>right_field>(the subquery) " +
             "#child<data>(some query) #parent<xact>(other query) #child<data>(())" +
             "long.dotted.field:foo " +
             "fuzzy~32 1-2 " +
@@ -96,236 +77,125 @@ public class TestQueryRewriter {
             "         _xmax_is_committed = false))))  " + //  that has not been committed
             ")";
 
-
-    private class MockClientAndRequest {
-        private final Client client;
-        private final RestRequest request;
-
-        public MockClientAndRequest() throws InterruptedException, java.util.concurrent.ExecutionException {
-            request = mock(RestRequest.class);
-            when(request.param("index")).thenReturn("schema.table.idxname");
-
-            client = mock(Client.class);
-            ActionFuture<GetMappingsResponse> future = mock(ActionFuture.class);
-            GetMappingsResponse response = mock(GetMappingsResponse.class);
-            AdminClient mockedAdminClient = mock(AdminClient.class);
-            IndicesAdminClient mockedIndiciesAdminClient = mock(IndicesAdminClient.class);
-
-            when(mockedAdminClient.indices()).thenReturn(mockedIndiciesAdminClient);
-            when(client.admin()).thenReturn(mockedAdminClient);
-
-            when(mockedIndiciesAdminClient.getMappings(any(GetMappingsRequest.class))).thenReturn(future);
-            when(future.get()).thenReturn(response);
-            when(response.getMappings()).then(new Answer<Object>() {
-                @Override
-                public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
-                    ImmutableOpenMap.Builder builder = new ImmutableOpenMap.Builder<>();
-                    ImmutableOpenMap.Builder builder2 = new ImmutableOpenMap.Builder<>();
-                    MappingMetaData meta = mock(MappingMetaData.class);
-
-                    when(meta.getSourceAsMap()).then(new Answer<Map>() {
-                        @Override
-                        public Map answer(InvocationOnMock invocationOnMock) throws Throwable {
-                            Map map = new HashMap();
-                            Map props = new HashMap();
-                            Map fieldProps;
-
-                            map.put("properties", props);
-
-                            fieldProps = new HashMap();
-                            props.put("exact_field", fieldProps);
-                            fieldProps.put("analyzer", "exact");
-
-                            props.put("id", fieldProps);
-                            fieldProps.put("analyzer", "exact");
-                            fieldProps.put("type", "long");
-
-                            fieldProps = new HashMap();
-                            props.put("phrase_field", fieldProps);
-                            fieldProps.put("analyzer", "phrase");
-
-                            fieldProps = new HashMap();
-                            props.put("fulltext_field", fieldProps);
-                            fieldProps.put("analyzer", "fulltext");
-
-                            fieldProps = new HashMap();
-                            props.put("date_field", fieldProps);
-                            fieldProps.put("analyzer", "date");
-
-                            fieldProps = new HashMap();
-                            props.put("date_field", fieldProps);
-                            fieldProps.put("analyzer", "date");
-                            final Map fieldsMap = new HashMap();
-                            fieldsMap.put("date", "something about date");
-                            fieldProps.put("fields", fieldsMap);
-
-                            fieldProps = new HashMap();
-                            props.put("_all", fieldProps);
-                            fieldProps.put("analyzer", "phrase");
-
-                            return map;
-                        }
-                    });
-                    builder2.put("data", meta);
-                    builder.put("schema.table.idxname", builder2.build());
-                    return builder.build();
-                }
-            });
-        }
-    }
-
     @Test
-    public void testIt() throws Exception {
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        QueryRewriter qr = new QueryRewriter(mock.client, mock.request, query, false, true);
-        QueryBuilder qb = qr.rewriteQuery();
-        assertEquals("testIt",
-                resource("testIt.expected"),
-                qb.toString());
-
-        AbstractAggregationBuilder ab = qr.rewriteAggregations();
+    public void testComplexQueryJson() throws Exception {
+        assertJson(query, resource(this.getClass(), "testComplexQueryJson.expected"));
     }
 
     @Test
     public void testComplexQueryAST() throws Exception {
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        QueryRewriter qr = new QueryRewriter(mock.client, mock.request, query, false, true);
-        assertEquals("testComplexQueryAST",
-                resource("testComplexQueryAST.expected").trim(),
-                qr.dumpAsString().trim());
-    }
-
-    private String resource(String name) throws Exception {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(TestQueryRewriter.class.getResourceAsStream(name), "UTF-8"))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (sb.length() > 0) sb.append("\n");
-                sb.append(line);
-            }
-            return sb.toString();
-        }
+        assertAST(query, resource(this.getClass(), "testComplexQueryAST.expected"));
     }
 
     @Test
     public void testSingleOption() throws Exception {
-        assertEquals("testSingleOption",
+        assertAST("#options(left=<table.index>right)",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      left=<table.index>right\n" +
+                        "      left=<db.schema.table.index>right\n" +
                         "         LeftField (value=left)\n" +
-                        "         IndexName (value=table.index)\n" +
-                        "         RightField (value=right)\n",
-                QueryRewriter.dumpAsString("#options(left=<table.index>right)"));
+                        "         IndexName (value=db.schema.table.index)\n" +
+                        "         RightField (value=right)\n"
+        );
     }
 
     @Test
     public void testMultipleOptions() throws Exception {
-        assertEquals("testMultipleOptions",
+        assertAST("#options(left=<table.index>right, left2=<table2.index2>right2)",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      left=<table.index>right\n" +
+                        "      left=<db.schema.table.index>right\n" +
                         "         LeftField (value=left)\n" +
-                        "         IndexName (value=table.index)\n" +
+                        "         IndexName (value=db.schema.table.index)\n" +
                         "         RightField (value=right)\n" +
-                        "      left2=<table2.index2>right2\n" +
+                        "      left2=<db.schema.table2.index2>right2\n" +
                         "         LeftField (value=left2)\n" +
-                        "         IndexName (value=table2.index2)\n" +
-                        "         RightField (value=right2)\n",
-                QueryRewriter.dumpAsString("#options(left=<table.index>right, left2=<table2.index2>right2)"));
+                        "         IndexName (value=db.schema.table2.index2)\n" +
+                        "         RightField (value=right2)\n"
+        );
     }
 
     @Test
     public void testSingleNamedOption() throws Exception {
-        assertEquals("testSingleNamedOption",
+        assertAST("#options(f_name:(left=<table.index>right))",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      f_name:(left=<table.index>right)\n" +
+                        "      f_name:(left=<db.schema.table.index>right)\n" +
                         "         LeftField (value=left)\n" +
-                        "         IndexName (value=table.index)\n" +
-                        "         RightField (value=right)\n",
-                QueryRewriter.dumpAsString("#options(f_name:(left=<table.index>right))"));
+                        "         IndexName (value=db.schema.table.index)\n" +
+                        "         RightField (value=right)\n"
+        );
     }
 
     @Test
     public void testMultipleNamedOptions() throws Exception {
-        assertEquals("testMultipleNamedOptions",
+        assertAST("#options(f_name:(left=<table.index>right), f_name2:(left2=<table2.index2>right2))",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      f_name:(left=<table.index>right)\n" +
+                        "      f_name:(left=<db.schema.table.index>right)\n" +
                         "         LeftField (value=left)\n" +
-                        "         IndexName (value=table.index)\n" +
+                        "         IndexName (value=db.schema.table.index)\n" +
                         "         RightField (value=right)\n" +
-                        "      f_name2:(left2=<table2.index2>right2)\n" +
+                        "      f_name2:(left2=<db.schema.table2.index2>right2)\n" +
                         "         LeftField (value=left2)\n" +
-                        "         IndexName (value=table2.index2)\n" +
-                        "         RightField (value=right2)\n",
-                QueryRewriter.dumpAsString("#options(f_name:(left=<table.index>right), f_name2:(left2=<table2.index2>right2))"));
+                        "         IndexName (value=db.schema.table2.index2)\n" +
+                        "         RightField (value=right2)\n"
+        );
     }
 
     @Test
     public void testMultipleMixedOptions() throws Exception {
-        assertEquals("testMultipleMixedOptions",
+        assertAST("#options(left=<table.index>right, f_name2:(left2=<table2.index2>right2))",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      left=<table.index>right\n" +
+                        "      left=<db.schema.table.index>right\n" +
                         "         LeftField (value=left)\n" +
-                        "         IndexName (value=table.index)\n" +
+                        "         IndexName (value=db.schema.table.index)\n" +
                         "         RightField (value=right)\n" +
-                        "      f_name2:(left2=<table2.index2>right2)\n" +
+                        "      f_name2:(left2=<db.schema.table2.index2>right2)\n" +
                         "         LeftField (value=left2)\n" +
-                        "         IndexName (value=table2.index2)\n" +
-                        "         RightField (value=right2)\n",
-                QueryRewriter.dumpAsString("#options(left=<table.index>right, f_name2:(left2=<table2.index2>right2))"));
+                        "         IndexName (value=db.schema.table2.index2)\n" +
+                        "         RightField (value=right2)\n"
+        );
     }
 
     @Test
     public void test_allFieldExpansion() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request, "beer or wine or cheese and fulltext:bob", false, true);
-        assertEquals("test_allFieldExpansion",
+        assertAST("beer or wine or cheese and fulltext:bob",
                 "QueryTree\n" +
                         "   Expansion\n" +
-                        "      null=<schema.table.idxname>null\n" +
+                        "      id=<db.schema.table.index>id\n" +
                         "      Or\n" +
                         "         And\n" +
                         "            Or\n" +
-                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=cheese, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=_all, operator=CONTAINS, value=cheese, index=schema.table.idxname)\n" +
-                        "            Word (fieldname=fulltext, operator=CONTAINS, value=bob, index=schema.table.idxname)\n" +
-                        "         Array (fieldname=fulltext_field, operator=CONTAINS, index=schema.table.idxname) (OR)\n" +
-                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=schema.table.idxname)\n" +
-                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=wine, index=schema.table.idxname)\n" +
-                        "         Array (fieldname=_all, operator=CONTAINS, index=schema.table.idxname) (OR)\n" +
-                        "            Word (fieldname=_all, operator=CONTAINS, value=beer, index=schema.table.idxname)\n" +
-                        "            Word (fieldname=_all, operator=CONTAINS, value=wine, index=schema.table.idxname)\n",
-                qr.dumpAsString());
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=cheese, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=cheese, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=fulltext, operator=CONTAINS, value=bob, index=db.schema.table.index)\n" +
+                        "         Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=wine, index=db.schema.table.index)\n" +
+                        "         Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=_all, operator=CONTAINS, value=wine, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void testASTExpansionInjection() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request, "#options(id=<main_ft.idxmain_ft>ft_id, id=<main_vol.idxmain_vol>vol_id, id=<main_other.idxmain_other>other_id) (((_xmin = 6250261 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6250261 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6250261 AND _cmax >= 0) OR (_xmax <> 6250261 AND _xmax_is_committed = false))))) AND (#child<data>((phrase_field:(beer w/500 a))))", false, true);
-        assertEquals("testASTExpansionInjection",
+        assertAST("#options(id=<main_ft.idxmain_ft>ft_id, id=<main_vol.idxmain_vol>vol_id, id=<main_other.idxmain_other>other_id) (((_xmin = 6250261 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6250261 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6250261 AND _cmax >= 0) OR (_xmax <> 6250261 AND _xmax_is_committed = false))))) AND (#child<data>((phrase_field:(beer w/500 a))))",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      id=<schema.main_ft.idxmain_ft>ft_id\n" +
+                        "      id=<db.schema.main_ft.idxmain_ft>ft_id\n" +
                         "         LeftField (value=id)\n" +
-                        "         IndexName (value=schema.main_ft.idxmain_ft)\n" +
+                        "         IndexName (value=db.schema.main_ft.idxmain_ft)\n" +
                         "         RightField (value=ft_id)\n" +
-                        "      id=<schema.main_vol.idxmain_vol>vol_id\n" +
+                        "      id=<db.schema.main_vol.idxmain_vol>vol_id\n" +
                         "         LeftField (value=id)\n" +
-                        "         IndexName (value=schema.main_vol.idxmain_vol)\n" +
+                        "         IndexName (value=db.schema.main_vol.idxmain_vol)\n" +
                         "         RightField (value=vol_id)\n" +
-                        "      id=<schema.main_other.idxmain_other>other_id\n" +
+                        "      id=<db.schema.main_other.idxmain_other>other_id\n" +
                         "         LeftField (value=id)\n" +
-                        "         IndexName (value=schema.main_other.idxmain_other)\n" +
+                        "         IndexName (value=db.schema.main_other.idxmain_other)\n" +
                         "         RightField (value=other_id)\n" +
                         "   And\n" +
                         "      Or\n" +
@@ -349,37 +219,31 @@ public class TestQueryRewriter {
                         "                  Boolean (fieldname=_xmax_is_committed, operator=EQ, value=false)\n" +
                         "      Child (type=data)\n" +
                         "         Expansion\n" +
-                        "            null=<schema.table.idxname>null\n" +
-                        "            Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n",
-                qr.dumpAsString());
+                        "            id=<db.schema.table.index>id\n" +
+                        "            Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void testASTExpansionInjection2() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request,
-                "#options(id=<main_ft.idxmain_ft>ft_id, id=<main_vol.idxmain_vol>vol_id, id=<main_other.idxmain_other>other_id) (((_xmin = 6250507 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6250507 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6250507 AND _cmax >= 0) OR (_xmax <> 6250507 AND _xmax_is_committed = false))))) AND (#child<data>((( #expand<data_cv_group_id=<this.index>data_cv_group_id> ( ( (( ( data_client_name = ANTHEM AND data_duplicate_resource = NO ) )) AND " +
+        assertAST("#options(id=<so_users.idxso_users>ft_id, id=<so_users.idxso_users>vol_id, id=<so_users.idxso_users>other_id) (((_xmin = 6250507 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6250507 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6250507 AND _cmax >= 0) OR (_xmax <> 6250507 AND _xmax_is_committed = false))))) AND (#child<data>((( #expand<data_cv_group_id=<this.index>data_cv_group_id> ( ( (( ( data_client_name = ANTHEM AND data_duplicate_resource = NO ) )) AND " +
                         "( (data_custodian = \"Querty, AMY\" OR data_custodian = \"QWERTY, COLIN\" OR data_custodian = \"QWERTY, KEITH\" OR data_custodian = \"QWERTY, PERRY\" OR data_custodian = \"QWERTY, NORM\" OR data_custodian = \"QWERTY, MIKE\" OR " +
                         "data_custodian = \"QWERTY,MIKE\" OR data_custodian = \"QWERTY, DAN\" OR data_custodian = \"QWERTY,DAN\") AND data_filter_06b = \"QWERTY*\" AND NOT data_moved_to = \"*\" ) ) ) ))))",
-                false, true);
-        assertEquals("testASTExpansionInjection2",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      id=<schema.main_ft.idxmain_ft>ft_id\n" +
+                        "      id=<db.schema.so_users.idxso_users>ft_id\n" +
                         "         LeftField (value=id)\n" +
-                        "         IndexName (value=schema.main_ft.idxmain_ft)\n" +
+                        "         IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "         RightField (value=ft_id)\n" +
-                        "      id=<schema.main_vol.idxmain_vol>vol_id\n" +
+                        "      id=<db.schema.so_users.idxso_users>vol_id\n" +
                         "         LeftField (value=id)\n" +
-                        "         IndexName (value=schema.main_vol.idxmain_vol)\n" +
+                        "         IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "         RightField (value=vol_id)\n" +
-                        "      id=<schema.main_other.idxmain_other>other_id\n" +
+                        "      id=<db.schema.so_users.idxso_users>other_id\n" +
                         "         LeftField (value=id)\n" +
-                        "         IndexName (value=schema.main_other.idxmain_other)\n" +
+                        "         IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "         RightField (value=other_id)\n" +
                         "   And\n" +
                         "      Or\n" +
@@ -404,57 +268,49 @@ public class TestQueryRewriter {
                         "      Child (type=data)\n" +
                         "         Or\n" +
                         "            Expansion\n" +
-                        "               data_cv_group_id=<schema.table.idxname>data_cv_group_id\n" +
+                        "               data_cv_group_id=<db.schema.table.index>data_cv_group_id\n" +
                         "               Expansion\n" +
-                        "                  null=<schema.table.idxname>null\n" +
+                        "                  id=<db.schema.table.index>id\n" +
                         "                  And\n" +
-                        "                     Word (fieldname=data_client_name, operator=EQ, value=anthem, index=schema.table.idxname)\n" +
-                        "                     Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=schema.table.idxname)\n" +
+                        "                     Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
                         "                     Or\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=querty, amy, ordered=true, index=schema.table.idxname)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, colin, ordered=true, index=schema.table.idxname)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, keith, ordered=true, index=schema.table.idxname)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, perry, ordered=true, index=schema.table.idxname)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, norm, ordered=true, index=schema.table.idxname)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, mike, ordered=true, index=schema.table.idxname)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=schema.table.idxname)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, dan, ordered=true, index=schema.table.idxname)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=schema.table.idxname)\n" +
-                        "                     Phrase (fieldname=data_filter_06b, operator=EQ, value=qwerty*, ordered=true, index=schema.table.idxname)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=querty, amy, ordered=true, index=db.schema.table.index)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, colin, ordered=true, index=db.schema.table.index)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, keith, ordered=true, index=db.schema.table.index)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, perry, ordered=true, index=db.schema.table.index)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, norm, ordered=true, index=db.schema.table.index)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, mike, ordered=true, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, dan, ordered=true, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "                     Phrase (fieldname=data_filter_06b, operator=EQ, value=qwerty*, ordered=true, index=db.schema.table.index)\n" +
                         "                     Not\n" +
-                        "                        NotNull (fieldname=data_moved_to, operator=EQ, index=schema.table.idxname)\n" +
+                        "                        NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
                         "            Expansion\n" +
-                        "               null=<schema.table.idxname>null\n" +
+                        "               id=<db.schema.table.index>id\n" +
                         "               And\n" +
-                        "                  Word (fieldname=data_client_name, operator=EQ, value=anthem, index=schema.table.idxname)\n" +
-                        "                  Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=schema.table.idxname)\n" +
+                        "                  Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
                         "                  Or\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=querty, amy, ordered=true, index=schema.table.idxname)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, colin, ordered=true, index=schema.table.idxname)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, keith, ordered=true, index=schema.table.idxname)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, perry, ordered=true, index=schema.table.idxname)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, norm, ordered=true, index=schema.table.idxname)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, mike, ordered=true, index=schema.table.idxname)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=schema.table.idxname)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, dan, ordered=true, index=schema.table.idxname)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=schema.table.idxname)\n" +
-                        "                  Phrase (fieldname=data_filter_06b, operator=EQ, value=qwerty*, ordered=true, index=schema.table.idxname)\n" +
+                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=querty, amy, ordered=true, index=db.schema.table.index)\n" +
+                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, colin, ordered=true, index=db.schema.table.index)\n" +
+                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, keith, ordered=true, index=db.schema.table.index)\n" +
+                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, perry, ordered=true, index=db.schema.table.index)\n" +
+                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, norm, ordered=true, index=db.schema.table.index)\n" +
+                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, mike, ordered=true, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, dan, ordered=true, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "                  Phrase (fieldname=data_filter_06b, operator=EQ, value=qwerty*, ordered=true, index=db.schema.table.index)\n" +
                         "                  Not\n" +
-                        "                     NotNull (fieldname=data_moved_to, operator=EQ, index=schema.table.idxname)\n",
-                qr.dumpAsString());
+                        "                     NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void testSimplePhrase() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:(\"this is a phrase\")", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testSimplePhrase",
+        assertJson("phrase_field:(\"this is a phrase\")",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -471,438 +327,614 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testPhraseWithEscapedWildcards() throws Exception {
-        assertEquals("parsed as phrase query", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"match\" : {\n" +
-                "          \"_all\" : {\n" +
-                "            \"query\" : \"* this phrase has ?escaped~ wildcards*\",\n" +
-                "            \"type\" : \"phrase\"\n" +
-                "          }\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'\\* this phrase has \\?escaped\\~ wildcards\\*'"));
+        assertJson("_all:'\\* this phrase has \\?escaped\\~ wildcards\\*'",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"query\" : {\n" +
+                        "            \"span_near\" : {\n" +
+                        "              \"clauses\" : [ {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"*\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"this\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"phrase\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"has\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"?escaped~\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"wildcards*\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              } ],\n" +
+                        "              \"slop\" : 0,\n" +
+                        "              \"in_order\" : true\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"query\" : {\n" +
+                        "            \"span_near\" : {\n" +
+                        "              \"clauses\" : [ {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"*\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"this\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"phrase\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"has\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"?escaped~\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"wildcards*\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              } ],\n" +
+                        "              \"slop\" : 0,\n" +
+                        "              \"in_order\" : true\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testPhraseWithFuzzyTerms() throws Exception {
-        assertEquals("parsed with fuzzy terms", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"span_near\" : {\n" +
-                "          \"clauses\" : [ {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"fuzzy\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"value\" : \"here\",\n" +
-                "                    \"prefix_length\" : 3\n" +
-                "                  }\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"fuzzy\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"value\" : \"is\",\n" +
-                "                    \"prefix_length\" : 3\n" +
-                "                  }\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"fuzzy\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"value\" : \"fuzzy\",\n" +
-                "                    \"prefix_length\" : 3\n" +
-                "                  }\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"words\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          } ],\n" +
-                "          \"slop\" : 0,\n" +
-                "          \"in_order\" : true\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'Here~ is~ fuzzy~ words'"));
+        assertJson("phrase_field:'Here~ is~ fuzzy~ words'",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"query\" : {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [ {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"fuzzy\" : {\n" +
+                        "                  \"phrase_field\" : {\n" +
+                        "                    \"value\" : \"here\",\n" +
+                        "                    \"prefix_length\" : 3\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"fuzzy\" : {\n" +
+                        "                  \"phrase_field\" : {\n" +
+                        "                    \"value\" : \"is\",\n" +
+                        "                    \"prefix_length\" : 3\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"fuzzy\" : {\n" +
+                        "                  \"phrase_field\" : {\n" +
+                        "                    \"value\" : \"fuzzy\",\n" +
+                        "                    \"prefix_length\" : 3\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"words\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          } ],\n" +
+                        "          \"slop\" : 0,\n" +
+                        "          \"in_order\" : true\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testPhraseWithEscapedFuzzyCharacters() throws Exception {
-        assertEquals("parsed with escaped fuzzy characters", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"match\" : {\n" +
-                "          \"_all\" : {\n" +
-                "            \"query\" : \"here~ is~ fuzzy~ words\",\n" +
-                "            \"type\" : \"phrase\"\n" +
-                "          }\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'Here\\~ is\\~ fuzzy\\~ words'"));
+        assertJson("phrase_field:'Here\\~ is\\~ fuzzy\\~ words'",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"query\" : {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [ {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"here~\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"is~\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"fuzzy~\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"words\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          } ],\n" +
+                        "          \"slop\" : 0,\n" +
+                        "          \"in_order\" : true\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testPhraseWithMixedEscaping() throws Exception {
-        assertEquals("parsed with mixed escaping", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"span_near\" : {\n" +
-                "          \"clauses\" : [ {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"prefix\" : {\n" +
-                "                  \"_all\" : \"this\"\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"should*\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"subparse\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"into\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"a\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"fuzzy\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"value\" : \"sp?n\",\n" +
-                "                    \"prefix_length\" : 3\n" +
-                "                  }\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          } ],\n" +
-                "          \"slop\" : 0,\n" +
-                "          \"in_order\" : true\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'this* should\\* subparse into a sp\\?n~'"));
+        assertJson("phrase_field:'this* should\\* subparse into a sp\\?n~'",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"query\" : {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [ {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"prefix\" : {\n" +
+                        "                  \"phrase_field\" : \"this\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"should*\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"subparse\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"into\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"a\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"fuzzy\" : {\n" +
+                        "                  \"phrase_field\" : {\n" +
+                        "                    \"value\" : \"sp?n\",\n" +
+                        "                    \"prefix_length\" : 3\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          } ],\n" +
+                        "          \"slop\" : 0,\n" +
+                        "          \"in_order\" : true\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testPhraseWithMetaCharacters() throws Exception {
-        assertEquals("parsed with mixed escaping and meta characters", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"span_near\" : {\n" +
-                "          \"clauses\" : [ {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"prefix\" : {\n" +
-                "                  \"_all\" : \"this\"\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"should*\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"sub:parse\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \":-\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"into\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"a\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"fuzzy\" : {\n" +
-                "                  \"_all\" : {\n" +
-                "                    \"value\" : \"sp?n\",\n" +
-                "                    \"prefix_length\" : 3\n" +
-                "                  }\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          } ],\n" +
-                "          \"slop\" : 0,\n" +
-                "          \"in_order\" : true\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'this* should\\* sub:parse :- into a sp\\?n~'"));
+        assertJson("'this* should\\* sub:parse :\\- into a sp\\?n~'",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"query\" : {\n" +
+                        "            \"span_near\" : {\n" +
+                        "              \"clauses\" : [ {\n" +
+                        "                \"span_multi\" : {\n" +
+                        "                  \"match\" : {\n" +
+                        "                    \"prefix\" : {\n" +
+                        "                      \"fulltext_field\" : \"this\"\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"should*\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"sub:parse\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \":-\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"into\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"fulltext_field\" : {\n" +
+                        "                    \"value\" : \"a\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_multi\" : {\n" +
+                        "                  \"match\" : {\n" +
+                        "                    \"fuzzy\" : {\n" +
+                        "                      \"fulltext_field\" : {\n" +
+                        "                        \"value\" : \"sp?n\",\n" +
+                        "                        \"prefix_length\" : 3\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              } ],\n" +
+                        "              \"slop\" : 0,\n" +
+                        "              \"in_order\" : true\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"query\" : {\n" +
+                        "            \"span_near\" : {\n" +
+                        "              \"clauses\" : [ {\n" +
+                        "                \"span_multi\" : {\n" +
+                        "                  \"match\" : {\n" +
+                        "                    \"prefix\" : {\n" +
+                        "                      \"_all\" : \"this\"\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"should*\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"sub:parse\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \":-\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"into\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_term\" : {\n" +
+                        "                  \"_all\" : {\n" +
+                        "                    \"value\" : \"a\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }, {\n" +
+                        "                \"span_multi\" : {\n" +
+                        "                  \"match\" : {\n" +
+                        "                    \"fuzzy\" : {\n" +
+                        "                      \"_all\" : {\n" +
+                        "                        \"value\" : \"sp?n\",\n" +
+                        "                        \"prefix_length\" : 3\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              } ],\n" +
+                        "              \"slop\" : 0,\n" +
+                        "              \"in_order\" : true\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testPhraseWithSlop() throws Exception {
-        assertEquals("phrase with slop", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"span_near\" : {\n" +
-                "          \"clauses\" : [ {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"some\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"phrase\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"containing\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"slop\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          } ],\n" +
-                "          \"slop\" : 2,\n" +
-                "          \"in_order\" : true\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'some phrase containing slop'~2"));
+        assertJson("phrase_field:'some phrase containing slop'~2",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"query\" : {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [ {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"some\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"phrase\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"containing\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"slop\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          } ],\n" +
+                        "          \"slop\" : 2,\n" +
+                        "          \"in_order\" : true\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testPhraseWithWildcards() throws Exception {
-        assertEquals("phrase with wildcards", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"span_near\" : {\n" +
-                "          \"clauses\" : [ {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"phrase\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"containing\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"wildcard\" : {\n" +
-                "                  \"_all\" : \"wild*card\"\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          } ],\n" +
-                "          \"slop\" : 0,\n" +
-                "          \"in_order\" : true\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'phrase containing wild*card'"));
+        assertJson("phrase_field:'phrase containing wild*card'",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"query\" : {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [ {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"phrase\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"containing\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"wildcard\" : {\n" +
+                        "                  \"phrase_field\" : \"wild*card\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          } ],\n" +
+                        "          \"slop\" : 0,\n" +
+                        "          \"in_order\" : true\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testAndedWildcardPhrases() throws Exception {
-        assertEquals("anded wildcard phrases", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"span_near\" : {\n" +
-                "          \"clauses\" : [ {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"phrase\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"containing\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"wildcard\" : {\n" +
-                "                  \"_all\" : \"wild*card\"\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"and\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"wildcard\" : {\n" +
-                "                  \"_all\" : \"w*ns\"\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          } ],\n" +
-                "          \"slop\" : 0,\n" +
-                "          \"in_order\" : true\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'phrase containing wild*card AND w*ns'"));
+        assertJson("phrase_field:'phrase containing wild*card AND w*ns'",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"query\" : {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [ {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"phrase\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"containing\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"wildcard\" : {\n" +
+                        "                  \"phrase_field\" : \"wild*card\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"and\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"wildcard\" : {\n" +
+                        "                  \"phrase_field\" : \"w*ns\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          } ],\n" +
+                        "          \"slop\" : 0,\n" +
+                        "          \"in_order\" : true\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testOredWildcardPhrases() throws Exception {
-        assertEquals("", "{\n" +
-                "  \"filtered\" : {\n" +
-                "    \"query\" : {\n" +
-                "      \"match_all\" : { }\n" +
-                "    },\n" +
-                "    \"filter\" : {\n" +
-                "      \"query\" : {\n" +
-                "        \"span_near\" : {\n" +
-                "          \"clauses\" : [ {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"phrase\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"containing\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"wildcard\" : {\n" +
-                "                  \"_all\" : \"wild*card\"\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_term\" : {\n" +
-                "              \"_all\" : {\n" +
-                "                \"value\" : \"or\"\n" +
-                "              }\n" +
-                "            }\n" +
-                "          }, {\n" +
-                "            \"span_multi\" : {\n" +
-                "              \"match\" : {\n" +
-                "                \"wildcard\" : {\n" +
-                "                  \"_all\" : \"w*ns\"\n" +
-                "                }\n" +
-                "              }\n" +
-                "            }\n" +
-                "          } ],\n" +
-                "          \"slop\" : 0,\n" +
-                "          \"in_order\" : true\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}", QueryRewriter.toJson("'phrase containing wild*card OR w*ns'"));
+        assertJson("phrase_field:'phrase containing wild*card OR w*ns'",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"query\" : {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [ {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"phrase\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"containing\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"wildcard\" : {\n" +
+                        "                  \"phrase_field\" : \"wild*card\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_term\" : {\n" +
+                        "              \"phrase_field\" : {\n" +
+                        "                \"value\" : \"or\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }, {\n" +
+                        "            \"span_multi\" : {\n" +
+                        "              \"match\" : {\n" +
+                        "                \"wildcard\" : {\n" +
+                        "                  \"phrase_field\" : \"w*ns\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          } ],\n" +
+                        "          \"slop\" : 0,\n" +
+                        "          \"in_order\" : true\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}");
     }
 
     @Test
     public void testCVSIX939_boolean_simpilification() throws Exception {
-        assertEquals("test id:1 and id<>1", "{\n" +
+        assertJson("id:1 and id<>1", "{\n" +
                 "  \"filtered\" : {\n" +
                 "    \"query\" : {\n" +
                 "      \"match_all\" : { }\n" +
@@ -925,17 +957,17 @@ public class TestQueryRewriter {
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
-                "}", QueryRewriter.toJson("id:1 and id<>1"));
+                "}");
     }
 
     @Test
     public void testTermAndPhraseEqual() throws Exception {
-        assertEquals("term and phrase equal", QueryRewriter.toJson("\\*test\\~"), QueryRewriter.toJson("'\\*test\\~'"));
+        assertEquals(toJson("'\\*test\\~'"), toJson("\\*test\\~"));
     }
 
     @Test
     public void testSimpleNestedGroup() throws Exception {
-        assertEquals("testSimpleNestedGroup",
+        assertJson("nested_group.field_a:value and nested_group.field_b:value",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -967,13 +999,12 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                QueryRewriter.toJson("nested_group.field_a:value and nested_group.field_b:value"));
+                        "}");
     }
 
     @Test
     public void testSimpleNestedGroup2() throws Exception {
-        assertEquals("testSimpleNestedGroup2",
+        assertJson("nested_group.field_a:value ",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -991,22 +1022,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                QueryRewriter.toJson("nested_group.field_a:value "));
+                        "}");
     }
 
     @Test
     public void testExternalNestedGroup() throws Exception {
-        String query = "#options(witness_data:(id=<witness.idxwitness>id)) witness_data.wit_first_name = 'mark' and witness_data.wit_last_name = 'matte'";
-        String json;
-
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        qr = new QueryRewriter(mock.client, mock.request, query, false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testExternalNestedGroup",
+        assertJson(
+                "#options(witness_data:(id=<table.index>id)) witness_data.wit_first_name = 'mark' and witness_data.wit_last_name = 'matte'",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -1038,21 +1060,14 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_2551() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:c-note", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX_2551",
+        assertJson(
+                "phrase_field:c-note",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -1069,21 +1084,14 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_2551_PrefixWildcard() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:c-note*", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX_2551",
+        assertJson(
+                "phrase_field:c-note*",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -1113,21 +1121,14 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_2551_EmbeddedWildcard() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:c-note*s", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX_2551",
+        assertJson(
+                "phrase_field:c-note*s",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -1157,21 +1158,14 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_2551_Fuzzy() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:c-note~2", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX_2551",
+        assertJson(
+                "phrase_field:c-note~2",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -1204,21 +1198,14 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testReverseOfCVSIX_2551() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:c-note", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("ReverseOfCVSIX_2551",
+        assertJson(
+                "exact_field:c-note",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -1230,21 +1217,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_2551_WithProximity() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:(c-note w/3 beer)", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX_2551_WithProximity",
+        assertJson("phrase_field:(c-note w/3 beer)",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -1284,21 +1263,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_2551_subjectsStarsSymbol002() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "( phrase_field : \"Qwerty \\*FREE Samples\\*\" )", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_2551_subjectsStarsSymbol002",
+        assertJson("( phrase_field : \"Qwerty \\*FREE Samples\\*\" )",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -1315,1017 +1286,797 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_2577() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "( phrase_field: \"cut-over\" OR phrase_field: \"get-prices\" )", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_2577",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"query\" : \"cut-over\",\n" +
-                        "                \"type\" : \"phrase\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"query\" : \"get-prices\",\n" +
-                        "                \"type\" : \"phrase\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("( phrase_field: \"cut-over\" OR phrase_field: \"get-prices\" )", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"bool\" : {\n" +
+                "        \"should\" : [ {\n" +
+                "          \"query\" : {\n" +
+                "            \"match\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"query\" : \"cut-over\",\n" +
+                "                \"type\" : \"phrase\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }\n" +
+                "        }, {\n" +
+                "          \"query\" : {\n" +
+                "            \"match\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"query\" : \"get-prices\",\n" +
+                "                \"type\" : \"phrase\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }\n" +
+                "        } ]\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void testTermRollups() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "id: 100 OR id: 200", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_2521",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"id\" : [ 100, 200 ],\n" +
-                        "        \"execution\" : \"plain\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("id: 100 OR id: 200", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"terms\" : {\n" +
+                "        \"id\" : [ 100, 200 ],\n" +
+                "        \"execution\" : \"plain\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void testCVSIX_2521() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "id < 100 OR id < 100", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_2521",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
-                        "          \"range\" : {\n" +
-                        "            \"id\" : {\n" +
-                        "              \"from\" : null,\n" +
-                        "              \"to\" : 100,\n" +
-                        "              \"include_lower\" : true,\n" +
-                        "              \"include_upper\" : false\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"range\" : {\n" +
-                        "            \"id\" : {\n" +
-                        "              \"from\" : null,\n" +
-                        "              \"to\" : 100,\n" +
-                        "              \"include_lower\" : true,\n" +
-                        "              \"include_upper\" : false\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("id < 100 OR id < 100", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"bool\" : {\n" +
+                "        \"should\" : [ {\n" +
+                "          \"range\" : {\n" +
+                "            \"id\" : {\n" +
+                "              \"from\" : null,\n" +
+                "              \"to\" : 100,\n" +
+                "              \"include_lower\" : true,\n" +
+                "              \"include_upper\" : false\n" +
+                "            }\n" +
+                "          }\n" +
+                "        }, {\n" +
+                "          \"range\" : {\n" +
+                "            \"id\" : {\n" +
+                "              \"from\" : null,\n" +
+                "              \"to\" : 100,\n" +
+                "              \"include_lower\" : true,\n" +
+                "              \"include_upper\" : false\n" +
+                "            }\n" +
+                "          }\n" +
+                "        } ]\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void testCVSIX_2578_AnyBareWildcard() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:'V - A - C - A - T - I - O * N'", false, true);
-
         try {
-            qr.rewriteQuery().toString();
+            qr("phrase_field:'V - A - C - A - T - I - O * N'").rewriteQuery();
             fail("CVSIX_2578 is supposed to throw an exception");
         } catch (QueryRewriter.QueryRewriteException qre) {
-            assertEquals("testCVSIX_2578_AnyBareWildcard", "Bare wildcards not supported within phrases", qre.getMessage());
+            assertEquals(qre.getMessage(), "Bare wildcards not supported within phrases");
         }
     }
 
     @Test
     public void testCVSIX_2578_SingleBareWildcard() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:'V - A - C - A -?'", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_2578_SingleBareWildcard",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"v\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"a\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"c\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"a\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_multi\" : {\n" +
-                        "              \"match\" : {\n" +
-                        "                \"wildcard\" : {\n" +
-                        "                  \"phrase_field\" : \"-?\"\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 0,\n" +
-                        "          \"in_order\" : true\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field:'V - A - C - A -?'", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"v\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"a\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"c\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"a\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_multi\" : {\n" +
+                "              \"match\" : {\n" +
+                "                \"wildcard\" : {\n" +
+                "                  \"phrase_field\" : \"-?\"\n" +
+                "                }\n" +
+                "              }\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 0,\n" +
+                "          \"in_order\" : true\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void testCVSIX_2578_AnyWildcard() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:'V - A - C - A - T - I - O* N'", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_2578_AnyWildcard",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"v\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"a\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"c\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"a\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"t\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"i\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_multi\" : {\n" +
-                        "              \"match\" : {\n" +
-                        "                \"prefix\" : {\n" +
-                        "                  \"phrase_field\" : \"o\"\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"n\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 0,\n" +
-                        "          \"in_order\" : true\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field:'V - A - C - A - T - I - O* N'", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"v\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"a\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"c\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"a\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"t\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"i\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_multi\" : {\n" +
+                "              \"match\" : {\n" +
+                "                \"prefix\" : {\n" +
+                "                  \"phrase_field\" : \"o\"\n" +
+                "                }\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"n\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 0,\n" +
+                "          \"in_order\" : true\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void testCVSIX_2578_SingleWildcard() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:'V - A - C - A - T - I?'", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_2578_SingleWildcard",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"v\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"a\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"c\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"a\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"t\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_multi\" : {\n" +
-                        "              \"match\" : {\n" +
-                        "                \"wildcard\" : {\n" +
-                        "                  \"phrase_field\" : \"i?\"\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 0,\n" +
-                        "          \"in_order\" : true\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field:'V - A - C - A - T - I?'", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"v\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"a\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"c\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"a\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"t\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_multi\" : {\n" +
+                "              \"match\" : {\n" +
+                "                \"wildcard\" : {\n" +
+                "                  \"phrase_field\" : \"i?\"\n" +
+                "                }\n" +
+                "              }\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 0,\n" +
+                "          \"in_order\" : true\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_subjectsFuzzyPhrase_001() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "( phrase_field : \"choose prize your!~2\"~!0 )", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_subjectsFuzzyPhrase_001",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"choose\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"prize\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_multi\" : {\n" +
-                        "              \"match\" : {\n" +
-                        "                \"fuzzy\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"your!\",\n" +
-                        "                    \"prefix_length\" : 2\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 0,\n" +
-                        "          \"in_order\" : false\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("( phrase_field : \"choose prize your!~2\"~!0 )", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"choose\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"prize\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_multi\" : {\n" +
+                "              \"match\" : {\n" +
+                "                \"fuzzy\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"your!\",\n" +
+                "                    \"prefix_length\" : 2\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              }\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 0,\n" +
+                "          \"in_order\" : false\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2579() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:(4-13-01* w/15 Weekend w/15 outage)", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2579",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_near\" : {\n" +
-                        "              \"clauses\" : [ {\n" +
-                        "                \"span_term\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"4\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              }, {\n" +
-                        "                \"span_term\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"13\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              }, {\n" +
-                        "                \"span_multi\" : {\n" +
-                        "                  \"match\" : {\n" +
-                        "                    \"prefix\" : {\n" +
-                        "                      \"phrase_field\" : \"01\"\n" +
-                        "                    }\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              } ],\n" +
-                        "              \"slop\" : 0,\n" +
-                        "              \"in_order\" : true\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_near\" : {\n" +
-                        "              \"clauses\" : [ {\n" +
-                        "                \"span_term\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"weekend\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              }, {\n" +
-                        "                \"span_term\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"outage\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              } ],\n" +
-                        "              \"slop\" : 15,\n" +
-                        "              \"in_order\" : false\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 15,\n" +
-                        "          \"in_order\" : false\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field:(4-13-01* w/15 Weekend w/15 outage)", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_near\" : {\n" +
+                "              \"clauses\" : [ {\n" +
+                "                \"span_term\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"4\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              }, {\n" +
+                "                \"span_term\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"13\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              }, {\n" +
+                "                \"span_multi\" : {\n" +
+                "                  \"match\" : {\n" +
+                "                    \"prefix\" : {\n" +
+                "                      \"phrase_field\" : \"01\"\n" +
+                "                    }\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              } ],\n" +
+                "              \"slop\" : 0,\n" +
+                "              \"in_order\" : true\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_near\" : {\n" +
+                "              \"clauses\" : [ {\n" +
+                "                \"span_term\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"weekend\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              }, {\n" +
+                "                \"span_term\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"outage\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              } ],\n" +
+                "              \"slop\" : 15,\n" +
+                "              \"in_order\" : false\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 15,\n" +
+                "          \"in_order\" : false\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2591() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:\"2001-*\"", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX-2591",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"prefix\" : {\n" +
-                        "        \"exact_field\" : \"2001-\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("exact_field:\"2001-*\"", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"prefix\" : {\n" +
+                "        \"exact_field\" : \"2001-\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2835_prefix() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "(exact_field = \"bob dol*\")", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX-2835_prefix",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"prefix\" : {\n" +
-                        "        \"exact_field\" : \"bob dol\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("(exact_field = \"bob dol*\")", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"prefix\" : {\n" +
+                "        \"exact_field\" : \"bob dol\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2835_wildcard() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "(exact_field = \"bob* dol*\")", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX-2835_wildcard",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"wildcard\" : {\n" +
-                        "          \"exact_field\" : \"bob* dol*\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("(exact_field = \"bob* dol*\")", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"wildcard\" : {\n" +
+                "          \"exact_field\" : \"bob* dol*\"\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2835_fuzzy() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "(exact_field = \"bob dol~\")", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX-2835_fuzzy",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"fuzzy\" : {\n" +
-                        "          \"exact_field\" : {\n" +
-                        "            \"value\" : \"bob dol\",\n" +
-                        "            \"prefix_length\" : 3\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("(exact_field = \"bob dol~\")", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"fuzzy\" : {\n" +
+                "          \"exact_field\" : {\n" +
+                "            \"value\" : \"bob dol\",\n" +
+                "            \"prefix_length\" : 3\n" +
+                "          }\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2807() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "(exact_field <> \"bob*\")", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX-2807",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"prefix\" : {\n" +
-                        "            \"exact_field\" : \"bob\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("(exact_field <> \"bob*\")", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"not\" : {\n" +
+                "        \"filter\" : {\n" +
+                "          \"prefix\" : {\n" +
+                "            \"exact_field\" : \"bob\"\n" +
+                "          }\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2807_phrase() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "(phrase_field <> \"bob*\")", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX-2807_phrase",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"prefix\" : {\n" +
-                        "            \"phrase_field\" : \"bob\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("(phrase_field <> \"bob*\")", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"not\" : {\n" +
+                "        \"filter\" : {\n" +
+                "          \"prefix\" : {\n" +
+                "            \"phrase_field\" : \"bob\"\n" +
+                "          }\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2682() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "( phrase_field:(more w/10 \"food\\*\") )", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("CVSIX-2682",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_term\" : {\n" +
-                        "              \"phrase_field\" : {\n" +
-                        "                \"value\" : \"more\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_near\" : {\n" +
-                        "              \"clauses\" : [ {\n" +
-                        "                \"span_near\" : {\n" +
-                        "                  \"clauses\" : [ {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"food*\"\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  } ],\n" +
-                        "                  \"slop\" : 0,\n" +
-                        "                  \"in_order\" : true\n" +
-                        "                }\n" +
-                        "              } ],\n" +
-                        "              \"slop\" : 0,\n" +
-                        "              \"in_order\" : true\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 10,\n" +
-                        "          \"in_order\" : false\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("( phrase_field:(more w/10 \"food\\*\") )", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_term\" : {\n" +
+                "              \"phrase_field\" : {\n" +
+                "                \"value\" : \"more\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_near\" : {\n" +
+                "              \"clauses\" : [ {\n" +
+                "                \"span_near\" : {\n" +
+                "                  \"clauses\" : [ {\n" +
+                "                    \"span_term\" : {\n" +
+                "                      \"phrase_field\" : {\n" +
+                "                        \"value\" : \"food*\"\n" +
+                "                      }\n" +
+                "                    }\n" +
+                "                  } ],\n" +
+                "                  \"slop\" : 0,\n" +
+                "                  \"in_order\" : true\n" +
+                "                }\n" +
+                "              } ],\n" +
+                "              \"slop\" : 0,\n" +
+                "              \"in_order\" : true\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 10,\n" +
+                "          \"in_order\" : false\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2579_WithQuotes() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:(\"4-13-01*\" w/15 Weekend w/15 outage)", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2579_WithQuotes",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_near\" : {\n" +
-                        "              \"clauses\" : [ {\n" +
-                        "                \"span_near\" : {\n" +
-                        "                  \"clauses\" : [ {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"4\"\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  }, {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"13\"\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  }, {\n" +
-                        "                    \"span_multi\" : {\n" +
-                        "                      \"match\" : {\n" +
-                        "                        \"prefix\" : {\n" +
-                        "                          \"phrase_field\" : \"01\"\n" +
-                        "                        }\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  } ],\n" +
-                        "                  \"slop\" : 0,\n" +
-                        "                  \"in_order\" : true\n" +
-                        "                }\n" +
-                        "              } ],\n" +
-                        "              \"slop\" : 0,\n" +
-                        "              \"in_order\" : true\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_near\" : {\n" +
-                        "              \"clauses\" : [ {\n" +
-                        "                \"span_term\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"weekend\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              }, {\n" +
-                        "                \"span_term\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"outage\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              } ],\n" +
-                        "              \"slop\" : 15,\n" +
-                        "              \"in_order\" : false\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 15,\n" +
-                        "          \"in_order\" : false\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field:(\"4-13-01*\" w/15 Weekend w/15 outage)", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_near\" : {\n" +
+                "              \"clauses\" : [ {\n" +
+                "                \"span_near\" : {\n" +
+                "                  \"clauses\" : [ {\n" +
+                "                    \"span_term\" : {\n" +
+                "                      \"phrase_field\" : {\n" +
+                "                        \"value\" : \"4\"\n" +
+                "                      }\n" +
+                "                    }\n" +
+                "                  }, {\n" +
+                "                    \"span_term\" : {\n" +
+                "                      \"phrase_field\" : {\n" +
+                "                        \"value\" : \"13\"\n" +
+                "                      }\n" +
+                "                    }\n" +
+                "                  }, {\n" +
+                "                    \"span_multi\" : {\n" +
+                "                      \"match\" : {\n" +
+                "                        \"prefix\" : {\n" +
+                "                          \"phrase_field\" : \"01\"\n" +
+                "                        }\n" +
+                "                      }\n" +
+                "                    }\n" +
+                "                  } ],\n" +
+                "                  \"slop\" : 0,\n" +
+                "                  \"in_order\" : true\n" +
+                "                }\n" +
+                "              } ],\n" +
+                "              \"slop\" : 0,\n" +
+                "              \"in_order\" : true\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_near\" : {\n" +
+                "              \"clauses\" : [ {\n" +
+                "                \"span_term\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"weekend\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              }, {\n" +
+                "                \"span_term\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"outage\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              } ],\n" +
+                "              \"slop\" : 15,\n" +
+                "              \"in_order\" : false\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 15,\n" +
+                "          \"in_order\" : false\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_MergeLiterals_AND() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:(one & two & three)", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_MergeLiterals_AND",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "        \"execution\" : \"and\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("exact_field:(one & two & three)", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"terms\" : {\n" +
+                "        \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                "        \"execution\" : \"and\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_MergeLiterals_AND_NE() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field<>(one & two & three)", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_MergeLiterals_AND_NE",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "            \"execution\" : \"plain\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("exact_field<>(one & two & three)", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"not\" : {\n" +
+                "        \"filter\" : {\n" +
+                "          \"terms\" : {\n" +
+                "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                "            \"execution\" : \"plain\"\n" +
+                "          }\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_MergeLiterals_OR_NE() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field<>(one , two , three)", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_MergeLiterals_OR_NE",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "            \"execution\" : \"and\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("exact_field<>(one , two , three)", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"not\" : {\n" +
+                "        \"filter\" : {\n" +
+                "          \"terms\" : {\n" +
+                "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                "            \"execution\" : \"and\"\n" +
+                "          }\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_MergeLiterals_OR() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:(one , two , three)", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_MergeLiterals_OR",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "        \"execution\" : \"plain\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("exact_field:(one , two , three)", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"terms\" : {\n" +
+                "        \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                "        \"execution\" : \"plain\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_MergeLiterals_AND_WithArrays() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:(one & two & three & [four,five,six])", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_MergeLiterals_AND_WithArrays",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must\" : [ {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "            \"execution\" : \"and\"\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"exact_field\" : [ \"four\", \"five\", \"six\" ],\n" +
-                        "            \"execution\" : \"plain\"\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("exact_field:(one & two & three & [four,five,six])", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"bool\" : {\n" +
+                "        \"must\" : [ {\n" +
+                "          \"terms\" : {\n" +
+                "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                "            \"execution\" : \"and\"\n" +
+                "          }\n" +
+                "        }, {\n" +
+                "          \"terms\" : {\n" +
+                "            \"exact_field\" : [ \"four\", \"five\", \"six\" ],\n" +
+                "            \"execution\" : \"plain\"\n" +
+                "          }\n" +
+                "        } ]\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_MergeLiterals_OR_WithArrays() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:(one , two , three , [four,five,six])", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_MergeLiterals_OR_WithArrays",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"one\", \"two\", \"three\", \"four\", \"five\", \"six\" ],\n" +
-                        "        \"execution\" : \"plain\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("exact_field:(one , two , three , [four,five,six])", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"terms\" : {\n" +
+                "        \"exact_field\" : [ \"one\", \"two\", \"three\", \"four\", \"five\", \"six\" ],\n" +
+                "        \"execution\" : \"plain\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_MergeLiterals_AND_OR_WithArrays() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:(one , two , three , [four,five,six] & one & two & three & [four, five, six])", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_MergeLiterals_AND_OR_WithArrays",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "            \"execution\" : \"plain\"\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"exact_field\" : [ \"four\", \"five\", \"six\", \"four\", \"five\", \"six\" ],\n" +
-                        "                \"execution\" : \"plain\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "                \"execution\" : \"and\"\n" +
-                        "              }\n" +
-                        "            } ]\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("exact_field:(one , two , three , [four,five,six] & one & two & three & [four, five, six])", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"bool\" : {\n" +
+                "        \"should\" : [ {\n" +
+                "          \"terms\" : {\n" +
+                "            \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                "            \"execution\" : \"plain\"\n" +
+                "          }\n" +
+                "        }, {\n" +
+                "          \"bool\" : {\n" +
+                "            \"must\" : [ {\n" +
+                "              \"terms\" : {\n" +
+                "                \"exact_field\" : [ \"four\", \"five\", \"six\", \"four\", \"five\", \"six\" ],\n" +
+                "                \"execution\" : \"plain\"\n" +
+                "              }\n" +
+                "            }, {\n" +
+                "              \"terms\" : {\n" +
+                "                \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                "                \"execution\" : \"and\"\n" +
+                "              }\n" +
+                "            } ]\n" +
+                "          }\n" +
+                "        } ]\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2941_DoesntWork() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "( ( ( review_data_ben.coding.responsiveness = Responsive OR review_data_ben.coding.responsiveness = \"Potentially Responsive\" OR review_data_ben.coding.responsiveness = \"Not Responsive\" OR review_data_ben.coding.responsiveness = Unreviewable ) AND review_data_ben.review_data_id = 67115 ) )", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2941_DoesntWork",
+        assertJson("( ( ( review_data_ben.coding.responsiveness = Responsive OR review_data_ben.coding.responsiveness = \"Potentially Responsive\" OR review_data_ben.coding.responsiveness = \"Not Responsive\" OR review_data_ben.coding.responsiveness = Unreviewable ) AND review_data_ben.review_data_id = 67115 ) )",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -2382,20 +2133,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2941_DoesWork() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "( (review_data_ben.review_data_id = 67115 WITH ( review_data_ben.coding.responsiveness = Responsive OR review_data_ben.coding.responsiveness = \"Potentially Responsive\" OR review_data_ben.coding.responsiveness = \"Not Responsive\" OR review_data_ben.coding.responsiveness = Unreviewable  ) ) )", false, true);
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2941_DoesWork",
+        assertJson("( (review_data_ben.review_data_id = 67115 WITH ( review_data_ben.coding.responsiveness = Responsive OR review_data_ben.coding.responsiveness = \"Potentially Responsive\" OR review_data_ben.coding.responsiveness = \"Not Responsive\" OR review_data_ben.coding.responsiveness = Unreviewable  ) ) )",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -2434,22 +2178,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2941_NestedGroupRollupWithNonNestedFields_AND() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request,
-                "(review_data.subject:(first wine cheese food foo bar) and field:drink and review_data.subject:wine and review_data.subject:last and field:food) ",
-                false, true);
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testNestedGroupRollupWithNonNestedFields_AND",
+        assertJson("(review_data.subject:(first wine cheese food foo bar) and field:drink and review_data.subject:wine and review_data.subject:last and field:food) ",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -2546,22 +2281,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2941_NestedGroupRollupWithNonNestedFields_OR() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request,
-                "(review_data.subject:(first, wine, cheese, food, foo, bar) or field:food and review_data.subject:wine or review_data.subject:last) or field:drink ",
-                false, true);
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testNestedGroupRollupWithNonNestedFields_OR",
+        assertJson("(review_data.subject:(first, wine, cheese, food, foo, bar) or field:food and review_data.subject:wine or review_data.subject:last) or field:drink ",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -2606,22 +2332,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2941_NestedGroupRollupWithNonNestedFields_BOTH() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request,
-                "(review_data.subject:(first wine cheese food foo bar) and review_data.subject:wine and review_data.subject:last and field:food) (review_data.subject:(first, wine, cheese, food, foo, bar) or review_data.subject:wine or review_data.subject:last)",
-                false, true);
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testNestedGroupRollupWithNonNestedFields_BOTH",
+        assertJson("(review_data.subject:(first wine cheese food foo bar) and review_data.subject:wine and review_data.subject:last and field:food) (review_data.subject:(first, wine, cheese, food, foo, bar) or review_data.subject:wine or review_data.subject:last)",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -2728,20 +2445,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2941_NestedGroupRollup() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "beer and ( ( ((review_data.owner_username=E_RIDGE AND review_data.status_name:[\"REVIEW_UPDATED\",\"REVIEW_CHECKED_OUT\"]) OR (review_data.status_name:REVIEW_READY)) AND review_data.project_id = 1040 ) ) ", false, true);
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2941_NestedGroupRollup",
+        assertJson("beer and ( ( ((review_data.owner_username=E_RIDGE AND review_data.status_name:[\"REVIEW_UPDATED\",\"REVIEW_CHECKED_OUT\"]) OR (review_data.status_name:REVIEW_READY)) AND review_data.project_id = 1040 ) ) ",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -2814,319 +2524,268 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2941_NestedGroupRollupInChild() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#child<data>(( ( ((review_data.owner_username=E_RIDGE WITH review_data.status_name:[\"REVIEW_UPDATED\",\"REVIEW_CHECKED_OUT\"]) OR (review_data.status_name:REVIEW_READY)) WITH review_data.project_id = 1040 ) ) )", false, true);
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2941_NestedGroupRollupInChild",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"has_child\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
-                        "                  \"bool\" : {\n" +
-                        "                    \"should\" : [ {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"review_data.owner_username\" : \"e_ridge\"\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"terms\" : {\n" +
-                        "                            \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
-                        "                            \"execution\" : \"plain\"\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"review_data.status_name\" : \"review_ready\"\n" +
-                        "                      }\n" +
-                        "                    } ]\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data.project_id\" : 1040\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"join\" : true,\n" +
-                        "            \"path\" : \"review_data\"\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"child_type\" : \"data\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("#child<data>(( ( ((review_data.owner_username=E_RIDGE WITH review_data.status_name:[\"REVIEW_UPDATED\",\"REVIEW_CHECKED_OUT\"]) OR (review_data.status_name:REVIEW_READY)) WITH review_data.project_id = 1040 ) ) )", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"has_child\" : {\n" +
+                "        \"filter\" : {\n" +
+                "          \"nested\" : {\n" +
+                "            \"filter\" : {\n" +
+                "              \"bool\" : {\n" +
+                "                \"must\" : [ {\n" +
+                "                  \"bool\" : {\n" +
+                "                    \"should\" : [ {\n" +
+                "                      \"bool\" : {\n" +
+                "                        \"must\" : [ {\n" +
+                "                          \"term\" : {\n" +
+                "                            \"review_data.owner_username\" : \"e_ridge\"\n" +
+                "                          }\n" +
+                "                        }, {\n" +
+                "                          \"terms\" : {\n" +
+                "                            \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ],\n" +
+                "                            \"execution\" : \"plain\"\n" +
+                "                          }\n" +
+                "                        } ]\n" +
+                "                      }\n" +
+                "                    }, {\n" +
+                "                      \"term\" : {\n" +
+                "                        \"review_data.status_name\" : \"review_ready\"\n" +
+                "                      }\n" +
+                "                    } ]\n" +
+                "                  }\n" +
+                "                }, {\n" +
+                "                  \"term\" : {\n" +
+                "                    \"review_data.project_id\" : 1040\n" +
+                "                  }\n" +
+                "                } ]\n" +
+                "              }\n" +
+                "            },\n" +
+                "            \"join\" : true,\n" +
+                "            \"path\" : \"review_data\"\n" +
+                "          }\n" +
+                "        },\n" +
+                "        \"child_type\" : \"data\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2941_Aggregate() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#tally(review_data_ridge.coding.responsiveness, \"^.*\", 5000, \"term\") #options(id=<main_ft.idxmain_ft>ft_id, id=<main_vol.idxmain_vol>vol_id, id=<main_other.idxmain_other>other_id) #parent<xact>((((_xmin = 6249019 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6249019 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6249019 AND _cmax >= 0) OR (_xmax <> 6249019 AND _xmax_is_committed = false)))))) AND ((review_data_ridge.review_set_name:\"test\"))", false, true);
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2941_Aggregate",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must\" : [ {\n" +
-                        "          \"has_parent\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"should\" : [ {\n" +
-                        "                  \"bool\" : {\n" +
-                        "                    \"must\" : [ {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"_xmin\" : 6249019\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"range\" : {\n" +
-                        "                        \"_cmin\" : {\n" +
-                        "                          \"from\" : null,\n" +
-                        "                          \"to\" : 0,\n" +
-                        "                          \"include_lower\" : true,\n" +
-                        "                          \"include_upper\" : false\n" +
-                        "                        }\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"should\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"_xmax\" : 0\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"bool\" : {\n" +
-                        "                            \"must\" : [ {\n" +
-                        "                              \"term\" : {\n" +
-                        "                                \"_xmax\" : 6249019\n" +
-                        "                              }\n" +
-                        "                            }, {\n" +
-                        "                              \"range\" : {\n" +
-                        "                                \"_cmax\" : {\n" +
-                        "                                  \"from\" : 0,\n" +
-                        "                                  \"to\" : null,\n" +
-                        "                                  \"include_lower\" : true,\n" +
-                        "                                  \"include_upper\" : true\n" +
-                        "                                }\n" +
-                        "                              }\n" +
-                        "                            } ]\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
-                        "                      }\n" +
-                        "                    } ]\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"bool\" : {\n" +
-                        "                    \"must\" : [ {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"_xmin_is_committed\" : true\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"should\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"_xmax\" : 0\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"bool\" : {\n" +
-                        "                            \"must\" : [ {\n" +
-                        "                              \"term\" : {\n" +
-                        "                                \"_xmax\" : 6249019\n" +
-                        "                              }\n" +
-                        "                            }, {\n" +
-                        "                              \"range\" : {\n" +
-                        "                                \"_cmax\" : {\n" +
-                        "                                  \"from\" : 0,\n" +
-                        "                                  \"to\" : null,\n" +
-                        "                                  \"include_lower\" : true,\n" +
-                        "                                  \"include_upper\" : true\n" +
-                        "                                }\n" +
-                        "                              }\n" +
-                        "                            } ]\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"bool\" : {\n" +
-                        "                            \"must\" : [ {\n" +
-                        "                              \"not\" : {\n" +
-                        "                                \"filter\" : {\n" +
-                        "                                  \"term\" : {\n" +
-                        "                                    \"_xmax\" : 6249019\n" +
-                        "                                  }\n" +
-                        "                                }\n" +
-                        "                              }\n" +
-                        "                            }, {\n" +
-                        "                              \"term\" : {\n" +
-                        "                                \"_xmax_is_committed\" : false\n" +
-                        "                              }\n" +
-                        "                            } ]\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
-                        "                      }\n" +
-                        "                    } ]\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"parent_type\" : \"xact\"\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ridge.review_set_name\" : \"test\"\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"join\" : true,\n" +
-                        "            \"path\" : \"review_data_ridge\"\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("#tally(review_data_ridge.coding.responsiveness, \"^.*\", 5000, \"term\") #options(id=<table.index>ft_id, id=<table.index>vol_id, id=<table.index>other_id) #parent<xact>((((_xmin = 6249019 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6249019 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6249019 AND _cmax >= 0) OR (_xmax <> 6249019 AND _xmax_is_committed = false)))))) AND ((review_data_ridge.review_set_name:\"test\"))", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"bool\" : {\n" +
+                "        \"must\" : [ {\n" +
+                "          \"has_parent\" : {\n" +
+                "            \"filter\" : {\n" +
+                "              \"bool\" : {\n" +
+                "                \"should\" : [ {\n" +
+                "                  \"bool\" : {\n" +
+                "                    \"must\" : [ {\n" +
+                "                      \"term\" : {\n" +
+                "                        \"_xmin\" : 6249019\n" +
+                "                      }\n" +
+                "                    }, {\n" +
+                "                      \"range\" : {\n" +
+                "                        \"_cmin\" : {\n" +
+                "                          \"from\" : null,\n" +
+                "                          \"to\" : 0,\n" +
+                "                          \"include_lower\" : true,\n" +
+                "                          \"include_upper\" : false\n" +
+                "                        }\n" +
+                "                      }\n" +
+                "                    }, {\n" +
+                "                      \"bool\" : {\n" +
+                "                        \"should\" : [ {\n" +
+                "                          \"term\" : {\n" +
+                "                            \"_xmax\" : 0\n" +
+                "                          }\n" +
+                "                        }, {\n" +
+                "                          \"bool\" : {\n" +
+                "                            \"must\" : [ {\n" +
+                "                              \"term\" : {\n" +
+                "                                \"_xmax\" : 6249019\n" +
+                "                              }\n" +
+                "                            }, {\n" +
+                "                              \"range\" : {\n" +
+                "                                \"_cmax\" : {\n" +
+                "                                  \"from\" : 0,\n" +
+                "                                  \"to\" : null,\n" +
+                "                                  \"include_lower\" : true,\n" +
+                "                                  \"include_upper\" : true\n" +
+                "                                }\n" +
+                "                              }\n" +
+                "                            } ]\n" +
+                "                          }\n" +
+                "                        } ]\n" +
+                "                      }\n" +
+                "                    } ]\n" +
+                "                  }\n" +
+                "                }, {\n" +
+                "                  \"bool\" : {\n" +
+                "                    \"must\" : [ {\n" +
+                "                      \"term\" : {\n" +
+                "                        \"_xmin_is_committed\" : true\n" +
+                "                      }\n" +
+                "                    }, {\n" +
+                "                      \"bool\" : {\n" +
+                "                        \"should\" : [ {\n" +
+                "                          \"term\" : {\n" +
+                "                            \"_xmax\" : 0\n" +
+                "                          }\n" +
+                "                        }, {\n" +
+                "                          \"bool\" : {\n" +
+                "                            \"must\" : [ {\n" +
+                "                              \"term\" : {\n" +
+                "                                \"_xmax\" : 6249019\n" +
+                "                              }\n" +
+                "                            }, {\n" +
+                "                              \"range\" : {\n" +
+                "                                \"_cmax\" : {\n" +
+                "                                  \"from\" : 0,\n" +
+                "                                  \"to\" : null,\n" +
+                "                                  \"include_lower\" : true,\n" +
+                "                                  \"include_upper\" : true\n" +
+                "                                }\n" +
+                "                              }\n" +
+                "                            } ]\n" +
+                "                          }\n" +
+                "                        }, {\n" +
+                "                          \"bool\" : {\n" +
+                "                            \"must\" : [ {\n" +
+                "                              \"not\" : {\n" +
+                "                                \"filter\" : {\n" +
+                "                                  \"term\" : {\n" +
+                "                                    \"_xmax\" : 6249019\n" +
+                "                                  }\n" +
+                "                                }\n" +
+                "                              }\n" +
+                "                            }, {\n" +
+                "                              \"term\" : {\n" +
+                "                                \"_xmax_is_committed\" : false\n" +
+                "                              }\n" +
+                "                            } ]\n" +
+                "                          }\n" +
+                "                        } ]\n" +
+                "                      }\n" +
+                "                    } ]\n" +
+                "                  }\n" +
+                "                } ]\n" +
+                "              }\n" +
+                "            },\n" +
+                "            \"parent_type\" : \"xact\"\n" +
+                "          }\n" +
+                "        }, {\n" +
+                "          \"nested\" : {\n" +
+                "            \"filter\" : {\n" +
+                "              \"term\" : {\n" +
+                "                \"review_data_ridge.review_set_name\" : \"test\"\n" +
+                "              }\n" +
+                "            },\n" +
+                "            \"join\" : true,\n" +
+                "            \"path\" : \"review_data_ridge\"\n" +
+                "          }\n" +
+                "        } ]\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_RegexWord() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:~'\\d{2}'", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_RegeWord",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"regexp\" : {\n" +
-                        "        \"phrase_field\" : \"\\\\d{2}\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field:~'\\d{2}'", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"regexp\" : {\n" +
+                "        \"phrase_field\" : \"\\\\d{2}\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_RegexPhrase() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:~'\\d{2} \\d{3}'", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_RegexPhrase",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"regexp\" : {\n" +
-                        "        \"phrase_field\" : \"\\\\d{2} \\\\d{3}\"\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field:~'\\d{2} \\d{3}'", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"regexp\" : {\n" +
+                "        \"phrase_field\" : \"\\\\d{2} \\\\d{3}\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_RegexProximity() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:~ ('[0-9]{2}' w/3 '[0-9]{3}')", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_RegexPhrase",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_multi\" : {\n" +
-                        "              \"match\" : {\n" +
-                        "                \"regexp\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"[0-9]{2}\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_multi\" : {\n" +
-                        "              \"match\" : {\n" +
-                        "                \"regexp\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"[0-9]{3}\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 3,\n" +
-                        "          \"in_order\" : false\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field:~ ('[0-9]{2}' w/3 '[0-9]{3}')", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_multi\" : {\n" +
+                "              \"match\" : {\n" +
+                "                \"regexp\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"[0-9]{2}\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_multi\" : {\n" +
+                "              \"match\" : {\n" +
+                "                \"regexp\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"[0-9]{3}\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              }\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 3,\n" +
+                "          \"in_order\" : false\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2755() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field = \"CRAZY W/5 PEOPLE W/15 FOREVER W/25 (\\\"EYE UP\\\")\"", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2755",
+        assertJson("exact_field = \"CRAZY W/5 PEOPLE W/15 FOREVER W/25 (\\\"EYE UP\\\")\"",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -3138,21 +2797,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2755_WithSingleQuotes() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field = 'CRAZY W/5 PEOPLE W/15 FOREVER W/25 (\"EYE UP\")'", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2755",
+        assertJson("exact_field = 'CRAZY W/5 PEOPLE W/15 FOREVER W/25 (\"EYE UP\")'",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -3164,21 +2815,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2770_exact() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field = \"\\\"NOTES:KARO\\?\\?\\?\\?\\?\\?\\?\"  ", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2770_exact",
+        assertJson("exact_field = \"\\\"NOTES:KARO\\?\\?\\?\\?\\?\\?\\?\"  ",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -3190,52 +2833,35 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2770_phrase() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field = \"\\\"NOTES:KARO\\?\\?\\?\\?\\?\\?\\?\"  ", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2770_phrase",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"match\" : {\n" +
-                        "          \"phrase_field\" : {\n" +
-                        "            \"query\" : \"\\\"notes:karo???????\",\n" +
-                        "            \"type\" : \"phrase\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("phrase_field = \"\\\"NOTES:KARO\\?\\?\\?\\?\\?\\?\\?\"  ", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"match\" : {\n" +
+                "          \"phrase_field\" : {\n" +
+                "            \"query\" : \"\\\"notes:karo???????\",\n" +
+                "            \"type\" : \"phrase\"\n" +
+                "          }\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_CVSIX_2766() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "exact_field:\"7 KING\\'S BENCH WALK\"", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_2766",
+        assertJson("exact_field:\"7 KING\\'S BENCH WALK\"",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -3247,65 +2873,48 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void test_CVSIX_914() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "\"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\"", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_CVSIX_914",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"fulltext_field\" : {\n" +
-                        "                \"query\" : \"xxxx17.0000000001.0000000001.0000000001.m.00.0000000-0000000\",\n" +
-                        "                \"type\" : \"phrase\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"_all\" : {\n" +
-                        "                \"query\" : \"xxxx17.0000000001.0000000001.0000000001.m.00.0000000-0000000\",\n" +
-                        "                \"type\" : \"phrase\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson("\"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\"", "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"bool\" : {\n" +
+                "        \"should\" : [ {\n" +
+                "          \"query\" : {\n" +
+                "            \"match\" : {\n" +
+                "              \"fulltext_field\" : {\n" +
+                "                \"query\" : \"xxxx17.0000000001.0000000001.0000000001.m.00.0000000-0000000\",\n" +
+                "                \"type\" : \"phrase\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }\n" +
+                "        }, {\n" +
+                "          \"query\" : {\n" +
+                "            \"match\" : {\n" +
+                "              \"_all\" : {\n" +
+                "                \"query\" : \"xxxx17.0000000001.0000000001.0000000001.m.00.0000000-0000000\",\n" +
+                "                \"type\" : \"phrase\"\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }\n" +
+                "        } ]\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void test_FlattenParentChild() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "a:1 and #child<data>(field:value or field2:value or field:value2)", false, false);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_FlattenParentChild",
+        assertJson("a:1 and #child<data>(field:value or field2:value or field:value2)",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -3327,172 +2936,145 @@ public class TestQueryRewriter {
                         "    }\n" +
                         "  }\n" +
                         "}",
-                json);
+                false
+        );
     }
 
     @Test
     public void testMixedFieldnamesNoProx() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request, "outside:(one and inside:two)", true, true);
-
-        assertEquals("testMixedFieldnamesNoProx",
+        assertAST("outside:(one and inside:two)",
                 "QueryTree\n" +
                         "   Expansion\n" +
-                        "      null=<schema.table.idxname>null\n" +
+                        "      id=<db.schema.table.index>id\n" +
                         "      And\n" +
-                        "         Word (fieldname=outside, operator=CONTAINS, value=one, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=inside, operator=CONTAINS, value=two, index=schema.table.idxname)\n",
-                qr.dumpAsString());
+                        "         Word (fieldname=outside, operator=CONTAINS, value=one, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=inside, operator=CONTAINS, value=two, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void testMixedFieldnamesWithProx() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
         try {
-            qr = new QueryRewriter(mock.client, mock.request, "outside:(one w/4 (inside:two))", true, true);
+            qr("outside:(one w/4 (inside:two))");
             fail("Should not be here");
         } catch (RuntimeException re) {
-            assertEquals("Cannot mix fieldnames in PROXIMITY expression", re.getMessage());
+            assertEquals(re.getMessage(), "Cannot mix fieldnames in PROXIMITY expression");
         }
     }
 
     @Test
     public void testProximalProximity() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
+        String query = "phrase_field:( ('1 3' w/2 '2 3') w/4 (get w/8 out) )";
 
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:( ('1 3' w/2 '2 3') w/4 (get w/8 out) )", true, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("textProximalProximity-AST",
+        assertAST(query,
                 "QueryTree\n" +
                         "   Expansion\n" +
-                        "      null=<schema.table.idxname>null\n" +
-                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=4, index=schema.table.idxname)\n" +
-                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=2, index=schema.table.idxname)\n" +
-                        "            Phrase (fieldname=phrase_field, operator=CONTAINS, value=1 3, ordered=true, index=schema.table.idxname)\n" +
-                        "            Phrase (fieldname=phrase_field, operator=CONTAINS, value=2 3, ordered=true, index=schema.table.idxname)\n" +
-                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=8, index=schema.table.idxname)\n" +
-                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=get, index=schema.table.idxname)\n" +
-                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=out, index=schema.table.idxname)\n",
-                qr.dumpAsString());
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=4, index=db.schema.table.index)\n" +
+                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=2, index=db.schema.table.index)\n" +
+                        "            Phrase (fieldname=phrase_field, operator=CONTAINS, value=1 3, ordered=true, index=db.schema.table.index)\n" +
+                        "            Phrase (fieldname=phrase_field, operator=CONTAINS, value=2 3, ordered=true, index=db.schema.table.index)\n" +
+                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=8, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=get, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=out, index=db.schema.table.index)"
+        );
 
-        assertEquals("textProximalProximity-json",
-                "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"query\" : {\n" +
-                        "        \"span_near\" : {\n" +
-                        "          \"clauses\" : [ {\n" +
-                        "            \"span_near\" : {\n" +
-                        "              \"clauses\" : [ {\n" +
-                        "                \"span_near\" : {\n" +
-                        "                  \"clauses\" : [ {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"1\"\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  }, {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"3\"\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  } ],\n" +
-                        "                  \"slop\" : 0,\n" +
-                        "                  \"in_order\" : true\n" +
-                        "                }\n" +
-                        "              }, {\n" +
-                        "                \"span_near\" : {\n" +
-                        "                  \"clauses\" : [ {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"2\"\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  }, {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"3\"\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  } ],\n" +
-                        "                  \"slop\" : 0,\n" +
-                        "                  \"in_order\" : true\n" +
-                        "                }\n" +
-                        "              } ],\n" +
-                        "              \"slop\" : 2,\n" +
-                        "              \"in_order\" : false\n" +
-                        "            }\n" +
-                        "          }, {\n" +
-                        "            \"span_near\" : {\n" +
-                        "              \"clauses\" : [ {\n" +
-                        "                \"span_term\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"get\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              }, {\n" +
-                        "                \"span_term\" : {\n" +
-                        "                  \"phrase_field\" : {\n" +
-                        "                    \"value\" : \"out\"\n" +
-                        "                  }\n" +
-                        "                }\n" +
-                        "              } ],\n" +
-                        "              \"slop\" : 8,\n" +
-                        "              \"in_order\" : false\n" +
-                        "            }\n" +
-                        "          } ],\n" +
-                        "          \"slop\" : 4,\n" +
-                        "          \"in_order\" : false\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                json);
+        assertJson(query, "{\n" +
+                "  \"filtered\" : {\n" +
+                "    \"query\" : {\n" +
+                "      \"match_all\" : { }\n" +
+                "    },\n" +
+                "    \"filter\" : {\n" +
+                "      \"query\" : {\n" +
+                "        \"span_near\" : {\n" +
+                "          \"clauses\" : [ {\n" +
+                "            \"span_near\" : {\n" +
+                "              \"clauses\" : [ {\n" +
+                "                \"span_near\" : {\n" +
+                "                  \"clauses\" : [ {\n" +
+                "                    \"span_term\" : {\n" +
+                "                      \"phrase_field\" : {\n" +
+                "                        \"value\" : \"1\"\n" +
+                "                      }\n" +
+                "                    }\n" +
+                "                  }, {\n" +
+                "                    \"span_term\" : {\n" +
+                "                      \"phrase_field\" : {\n" +
+                "                        \"value\" : \"3\"\n" +
+                "                      }\n" +
+                "                    }\n" +
+                "                  } ],\n" +
+                "                  \"slop\" : 0,\n" +
+                "                  \"in_order\" : true\n" +
+                "                }\n" +
+                "              }, {\n" +
+                "                \"span_near\" : {\n" +
+                "                  \"clauses\" : [ {\n" +
+                "                    \"span_term\" : {\n" +
+                "                      \"phrase_field\" : {\n" +
+                "                        \"value\" : \"2\"\n" +
+                "                      }\n" +
+                "                    }\n" +
+                "                  }, {\n" +
+                "                    \"span_term\" : {\n" +
+                "                      \"phrase_field\" : {\n" +
+                "                        \"value\" : \"3\"\n" +
+                "                      }\n" +
+                "                    }\n" +
+                "                  } ],\n" +
+                "                  \"slop\" : 0,\n" +
+                "                  \"in_order\" : true\n" +
+                "                }\n" +
+                "              } ],\n" +
+                "              \"slop\" : 2,\n" +
+                "              \"in_order\" : false\n" +
+                "            }\n" +
+                "          }, {\n" +
+                "            \"span_near\" : {\n" +
+                "              \"clauses\" : [ {\n" +
+                "                \"span_term\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"get\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              }, {\n" +
+                "                \"span_term\" : {\n" +
+                "                  \"phrase_field\" : {\n" +
+                "                    \"value\" : \"out\"\n" +
+                "                  }\n" +
+                "                }\n" +
+                "              } ],\n" +
+                "              \"slop\" : 8,\n" +
+                "              \"in_order\" : false\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"slop\" : 4,\n" +
+                "          \"in_order\" : false\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
     }
 
     @Test
     public void testProximalProximity2() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request, "fulltext:( (\"K F\" w/1 \"D T\") w/7 \"KN\" )", true, true);
-
-        assertEquals("textProximalProximity2",
+        assertAST("fulltext:( (\"K F\" w/1 \"D T\") w/7 \"KN\" )",
                 "QueryTree\n" +
                         "   Expansion\n" +
-                        "      null=<schema.table.idxname>null\n" +
-                        "      Proximity (fieldname=fulltext, operator=CONTAINS, distance=7, index=schema.table.idxname)\n" +
-                        "         Proximity (fieldname=fulltext, operator=CONTAINS, distance=1, index=schema.table.idxname)\n" +
-                        "            Phrase (fieldname=fulltext, operator=CONTAINS, value=k f, ordered=true, index=schema.table.idxname)\n" +
-                        "            Phrase (fieldname=fulltext, operator=CONTAINS, value=d t, ordered=true, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=fulltext, operator=CONTAINS, value=kn, index=schema.table.idxname)\n",
-                qr.dumpAsString());
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Proximity (fieldname=fulltext, operator=CONTAINS, distance=7, index=db.schema.table.index)\n" +
+                        "         Proximity (fieldname=fulltext, operator=CONTAINS, distance=1, index=db.schema.table.index)\n" +
+                        "            Phrase (fieldname=fulltext, operator=CONTAINS, value=k f, ordered=true, index=db.schema.table.index)\n" +
+                        "            Phrase (fieldname=fulltext, operator=CONTAINS, value=d t, ordered=true, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=fulltext, operator=CONTAINS, value=kn, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void test_AggregateQuery() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#tally(cp_case_name, \"^.*\", 5000, \"term\") #options(fk_doc_cp_link_doc = <documents.es_idx_test_documents>pk_doc, fk_doc_cp_link_cp = <cases.es_idx_test_cases>pk_cp) #parent<xact>((((_xmin = 5353919 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0) OR (_xmax <> 5353919 AND _xmax_is_committed = false)))))) AND ((( ( pk_doc_cp = \"*\" ) )))", true, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("test_AggregateQuery",
+        assertJson("#tally(cp_case_name, \"^.*\", 5000, \"term\") #options(fk_doc_cp_link_doc = <table.index>pk_doc, fk_doc_cp_link_cp = <table.index>pk_cp) #parent<xact>((((_xmin = 5353919 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0) OR (_xmax <> 5353919 AND _xmax_is_committed = false)))))) AND ((( ( pk_doc_cp = \"*\" ) )))",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -3608,71 +3190,70 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_2886() throws Exception {
-        assertEquals("testCVSIX_2886-1",
+        assertAST("phrase_field:[\"RESPONSIVE BATCH EDIT\"]",
                 "QueryTree\n" +
-                        "   Phrase (fieldname=phrase_field, operator=CONTAINS, value=RESPONSIVE BATCH EDIT, ordered=true)\n",
-                QueryRewriter.dumpAsString("phrase_field:[\"RESPONSIVE BATCH EDIT\"]"));
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Phrase (fieldname=phrase_field, operator=CONTAINS, value=responsive batch edit, ordered=true, index=db.schema.table.index)"
+        );
 
-        assertEquals("testCVSIX_2886-2",
+        assertAST("phrase_field:[\"RESPONSIVE BATCH EDIT\", \"Insider Trading\"]",
                 "QueryTree\n" +
-                        "   Array (fieldname=phrase_field, operator=CONTAINS) (OR)\n" +
-                        "      Phrase (fieldname=phrase_field, operator=CONTAINS, value=RESPONSIVE BATCH EDIT, ordered=true)\n" +
-                        "      Phrase (fieldname=phrase_field, operator=CONTAINS, value=Insider Trading, ordered=true)\n",
-                QueryRewriter.dumpAsString("phrase_field:[\"RESPONSIVE BATCH EDIT\", \"Insider Trading\"]"));
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Array (fieldname=phrase_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=responsive batch edit, ordered=true, index=db.schema.table.index)\n" +
+                        "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=insider trading, ordered=true, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void testCVSIX_2874() throws Exception {
-        assertEquals("ttestCVSIX_2874",
+        assertAST("( #expand<cvgroupid=<this.index>cvgroupid> ( ( ( review_data_ridge.review_set_name:*beer* ) ) ) )",
                 "QueryTree\n" +
                         "   Or\n" +
                         "      Expansion\n" +
-                        "         cvgroupid=<this.index>cvgroupid\n" +
-                        "            LeftField (value=cvgroupid)\n" +
-                        "            IndexName (value=this.index)\n" +
-                        "            RightField (value=cvgroupid)\n" +
-                        "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*)\n" +
-                        "      Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*)\n",
-                QueryRewriter.dumpAsString("( #expand<cvgroupid=<this.index>cvgroupid> ( ( ( review_data_ridge.review_set_name:*beer* ) ) ) )"));
+                        "         cvgroupid=<db.schema.table.index>cvgroupid\n" +
+                        "         Expansion\n" +
+                        "            id=<db.schema.table.index>id\n" +
+                        "            Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*, index=db.schema.table.index)\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void testCVSIX_2792() throws Exception {
-        assertEquals("testCVSIX_2792",
+        assertAST("( ( (cp_agg_wit.cp_wit_link_witness_status:[\"ALIVE\",\"ICU\"]) AND ( (cars.cid:[\"2\",\"3\",\"1\"]) AND (cars.make:[\"BUICK\",\"CHEVY\",\"FORD\",\"VOLVO\"]) ) ) )",
                 "QueryTree\n" +
-                        "   And\n" +
-                        "      Array (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS) (OR)\n" +
-                        "         Word (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, value=ALIVE)\n" +
-                        "         Word (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, value=ICU)\n" +
-                        "      Array (fieldname=cars.cid, operator=CONTAINS) (OR)\n" +
-                        "         Word (fieldname=cars.cid, operator=CONTAINS, value=2)\n" +
-                        "         Word (fieldname=cars.cid, operator=CONTAINS, value=3)\n" +
-                        "         Word (fieldname=cars.cid, operator=CONTAINS, value=1)\n" +
-                        "      Array (fieldname=cars.make, operator=CONTAINS) (OR)\n" +
-                        "         Word (fieldname=cars.make, operator=CONTAINS, value=BUICK)\n" +
-                        "         Word (fieldname=cars.make, operator=CONTAINS, value=CHEVY)\n" +
-                        "         Word (fieldname=cars.make, operator=CONTAINS, value=FORD)\n" +
-                        "         Word (fieldname=cars.make, operator=CONTAINS, value=VOLVO)\n",
-                QueryRewriter.dumpAsString("( ( (cp_agg_wit.cp_wit_link_witness_status:[\"ALIVE\",\"ICU\"]) AND ( (cars.cid:[\"2\",\"3\",\"1\"]) AND (cars.make:[\"BUICK\",\"CHEVY\",\"FORD\",\"VOLVO\"]) ) ) )"));
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Array (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Word (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, value=alive, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=cp_agg_wit.cp_wit_link_witness_status, operator=CONTAINS, value=icu, index=db.schema.table.index)\n" +
+                        "         Array (fieldname=cars.cid, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Word (fieldname=cars.cid, operator=CONTAINS, value=2, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=cars.cid, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=cars.cid, operator=CONTAINS, value=1, index=db.schema.table.index)\n" +
+                        "         Array (fieldname=cars.make, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Word (fieldname=cars.make, operator=CONTAINS, value=buick, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=cars.make, operator=CONTAINS, value=chevy, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=cars.make, operator=CONTAINS, value=ford, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=cars.make, operator=CONTAINS, value=volvo, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void testCVSIX_2990() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:(beer wo/5 wine)", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_2990",
+        assertJson("phrase_field:(beer wo/5 wine)",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -3700,35 +3281,29 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
     public void testCVSIX_3030_ast() throws Exception {
-        assertEquals("testCVSIX_3030_ast",
+        assertAST("( ( custodian = \"QUERTY, SUSAN\" AND NOT NOT review_data_cv623beta.state = CAAT NOT review_data_cv623beta.state = DOOG ) )",
                 "QueryTree\n" +
-                        "   And\n" +
-                        "      Phrase (fieldname=custodian, operator=EQ, value=QUERTY, SUSAN, ordered=true)\n" +
-                        "      Not\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Phrase (fieldname=custodian, operator=EQ, value=querty, susan, ordered=true, index=db.schema.table.index)\n" +
                         "         Not\n" +
-                        "            Array (fieldname=review_data_cv623beta.state, operator=EQ) (OR)\n" +
-                        "               Word (fieldname=review_data_cv623beta.state, operator=EQ, value=CAAT)\n" +
-                        "               Word (fieldname=review_data_cv623beta.state, operator=EQ, value=DOOG)\n",
-                QueryRewriter.dumpAsString("( ( custodian = \"QUERTY, SUSAN\" AND NOT NOT review_data_cv623beta.state = CAAT NOT review_data_cv623beta.state = DOOG ) )"));
+                        "            Not\n" +
+                        "               Array (fieldname=review_data_cv623beta.state, operator=EQ, index=db.schema.table.index) (OR)\n" +
+                        "                  Word (fieldname=review_data_cv623beta.state, operator=EQ, value=caat, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=review_data_cv623beta.state, operator=EQ, value=doog, index=db.schema.table.index)"
+        );
     }
 
     @Test
     public void testCVSIX_3030_json() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String json;
-
-        qr = new QueryRewriter(mock.client, mock.request, "( ( custodian = \"QUERTY, SUSAN\" AND NOT NOT review_data_cv623beta.state = CAAT NOT review_data_cv623beta.state = DOOG ) )", false, true);
-
-        json = qr.rewriteQuery().toString();
-
-        assertEquals("testCVSIX_3030_json",
+        assertJson("( ( custodian = \"QUERTY, SUSAN\" AND NOT NOT review_data_cv623beta.state = CAAT NOT review_data_cv623beta.state = DOOG ) )",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -3763,8 +3338,8 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                json);
+                        "}"
+        );
     }
 
     @Test
@@ -3785,51 +3360,36 @@ public class TestQueryRewriter {
 
     @Test
     public void testIssue_13() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String tree;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#options(user_data:(owner_user_id=<so_users.idxso_users>id), comment_data:(id=<so_comments.idxso_comments>post_id)) " +
-                "(user_data.display_name:j* and comment_data.user_display_name:j*)", false, true);
-
-        tree = qr.dumpAsString();
-
-        assertEquals("testIssue_13",
+        assertAST("#options(user_data:(owner_user_id=<so_users.idxso_users>id), comment_data:(id=<so_comments.idxso_comments>post_id)) " +
+                        "(user_data.display_name:j* and comment_data.user_display_name:j*)",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      user_data:(owner_user_id=<schema.so_users.idxso_users>id)\n" +
+                        "      user_data:(owner_user_id=<db.schema.so_users.idxso_users>id)\n" +
                         "         LeftField (value=owner_user_id)\n" +
-                        "         IndexName (value=schema.so_users.idxso_users)\n" +
+                        "         IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "         RightField (value=id)\n" +
-                        "      comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
+                        "      comment_data:(id=<db.schema.so_comments.idxso_comments>post_id)\n" +
                         "         LeftField (value=id)\n" +
-                        "         IndexName (value=schema.so_comments.idxso_comments)\n" +
+                        "         IndexName (value=db.schema.so_comments.idxso_comments)\n" +
                         "         RightField (value=post_id)\n" +
                         "   And\n" +
                         "      Expansion\n" +
-                        "         user_data:(owner_user_id=<schema.so_users.idxso_users>id)\n" +
+                        "         user_data:(owner_user_id=<db.schema.so_users.idxso_users>id)\n" +
                         "            LeftField (value=owner_user_id)\n" +
-                        "            IndexName (value=schema.so_users.idxso_users)\n" +
+                        "            IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "            RightField (value=id)\n" +
-                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=schema.so_users.idxso_users)\n" +
+                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=db.schema.so_users.idxso_users)\n" +
                         "      Expansion\n" +
-                        "         comment_data:(id=<schema.so_comments.idxso_comments>post_id)\n" +
+                        "         comment_data:(id=<db.schema.so_comments.idxso_comments>post_id)\n" +
                         "            LeftField (value=id)\n" +
-                        "            IndexName (value=schema.so_comments.idxso_comments)\n" +
+                        "            IndexName (value=db.schema.so_comments.idxso_comments)\n" +
                         "            RightField (value=post_id)\n" +
-                        "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=schema.so_comments.idxso_comments)\n",
-                tree);
+                        "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=db.schema.so_comments.idxso_comments)\n"
+        );
     }
 
     @Test
     public void testIssue_37_RangeAggregateParsing() throws Exception {
-        MockClientAndRequest mock = new MockClientAndRequest();
-        AbstractAggregationBuilder aggregationBuilder;
-        QueryRewriter qr;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#range(page_count, '[{\"key\":\"first\", \"to\":100}, {\"from\":100, \"to\":150}, {\"from\":150}]')", false, true);
-        aggregationBuilder = qr.rewriteAggregations();
-
         assertEquals("testIssue_37_RangeAggregateParsing",
                 "\n\"page_count\"{\n" +
                         "  \"range\" : {\n" +
@@ -3845,18 +3405,14 @@ public class TestQueryRewriter {
                         "    } ]\n" +
                         "  }\n" +
                         "}",
-                aggregationBuilder.toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string());
+                qr("#range(page_count, '[{\"key\":\"first\", \"to\":100}, {\"from\":100, \"to\":150}, {\"from\":150}]')")
+                        .rewriteAggregations()
+                        .toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string()
+        );
     }
 
     @Test
     public void testIssue_46_DateRangeAggregateParsing() throws Exception {
-        MockClientAndRequest mock = new MockClientAndRequest();
-        AbstractAggregationBuilder aggregationBuilder;
-        QueryRewriter qr;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#range(date_field, '[{\"key\": \"early\", \"to\":\"2009-01-01 00:00:00\"}, {\"from\":\"2009-01-01 00:00:00\", \"to\":\"2010-01-01 00:00:00\"}, {\"from\":\"2010-01-01 00:00:00\"}]')", false, true);
-        aggregationBuilder = qr.rewriteAggregations();
-
         assertEquals("testIssue_99_DateRangeAggregateParsing",
                 "\n\"date_field\"{\n" +
                         "  \"date_range\" : {\n" +
@@ -3872,135 +3428,97 @@ public class TestQueryRewriter {
                         "    } ]\n" +
                         "  }\n" +
                         "}",
-                aggregationBuilder.toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string());
+                qr("#range(date_field, '[{\"key\": \"early\", \"to\":\"2009-01-01 00:00:00\"}, {\"from\":\"2009-01-01 00:00:00\", \"to\":\"2010-01-01 00:00:00\"}, {\"from\":\"2010-01-01 00:00:00\"}]')")
+                        .rewriteAggregations()
+                        .toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string());
     }
 
     @Test
     public void testIssue_56() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String tree;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#expand<parent_id=<this.index>parent_id>(phrase_field:beer)", false, true);
-
-        tree = qr.dumpAsString();
-
-        assertEquals("testIssue_56",
+        assertAST("#expand<parent_id=<this.index>parent_id>(phrase_field:beer)",
                 "QueryTree\n" +
                         "   Or\n" +
                         "      Expansion\n" +
-                        "         parent_id=<schema.table.idxname>parent_id\n" +
+                        "         parent_id=<db.schema.table.index>parent_id\n" +
                         "         Expansion\n" +
-                        "            null=<schema.table.idxname>null\n" +
-                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=schema.table.idxname)\n" +
+                        "            id=<db.schema.table.index>id\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
                         "      Expansion\n" +
-                        "         null=<schema.table.idxname>null\n" +
-                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=schema.table.idxname)\n",
-                tree);
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)");
     }
 
     @Test
     public void testFieldedProximity() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String tree;
-
-        qr = new QueryRewriter(mock.client, mock.request, "phrase_field:beer w/500 phrase_field:a", false, true);
-
-        tree = qr.dumpAsString();
-
-        assertEquals("testFieldedProximity",
+        assertAST("phrase_field:beer w/500 phrase_field:a",
                 "QueryTree\n" +
                         "   Expansion\n" +
-                        "      null=<schema.table.idxname>null\n" +
-                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=schema.table.idxname)\n" +
-                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n",
-                tree);
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n"
+        );
     }
 
     @Test
     public void testWithOperatorAST() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String tree;
-
-        qr = new QueryRewriter(mock.client, mock.request, "nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)", false, true);
-
-        tree = qr.dumpAsString();
-
-        assertEquals("testWithOperatorAST",
+        assertAST("nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)",
                 "QueryTree\n" +
                         "   Expansion\n" +
-                        "      null=<schema.table.idxname>null\n" +
+                        "      id=<db.schema.table.index>id\n" +
                         "      And\n" +
                         "         With\n" +
-                        "            Array (fieldname=nested.exact_field, operator=CONTAINS, index=schema.table.idxname) (AND)\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=b, index=schema.table.idxname)\n" +
+                        "            Array (fieldname=nested.exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
                         "            Or\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=c, index=schema.table.idxname)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=c, index=db.schema.table.index)\n" +
                         "               With\n" +
-                        "                  Array (fieldname=nested.exact_field, operator=CONTAINS, index=schema.table.idxname) (AND)\n" +
-                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=d, index=schema.table.idxname)\n" +
-                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=e, index=schema.table.idxname)\n" +
+                        "                  Array (fieldname=nested.exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=d, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=e, index=db.schema.table.index)\n" +
                         "         With\n" +
-                        "            Array (fieldname=nested2.exact_field, operator=CONTAINS, index=schema.table.idxname) (AND)\n" +
-                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=b, index=schema.table.idxname)\n",
-                tree);
+                        "            Array (fieldname=nested2.exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=b, index=db.schema.table.index)");
     }
 
     @Test
     public void testExternalWithOperatorAST() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-        String tree;
-
-        qr = new QueryRewriter(mock.client, mock.request, "#options(nested:(id=<other.index>other_id)) nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)", false, true);
-
-        tree = qr.dumpAsString();
-
-        assertEquals("testWithOperatorAST",
+        assertAST("#options(nested:(id=<so_users.idxso_users>other_id)) nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)",
                 "QueryTree\n" +
                         "   Options\n" +
-                        "      nested:(id=<schema.other.index>other_id)\n" +
+                        "      nested:(id=<db.schema.so_users.idxso_users>other_id)\n" +
                         "         LeftField (value=id)\n" +
-                        "         IndexName (value=schema.other.index)\n" +
+                        "         IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "         RightField (value=other_id)\n" +
                         "   And\n" +
                         "      Expansion\n" +
-                        "         nested:(id=<schema.other.index>other_id)\n" +
+                        "         nested:(id=<db.schema.so_users.idxso_users>other_id)\n" +
                         "            LeftField (value=id)\n" +
-                        "            IndexName (value=schema.other.index)\n" +
+                        "            IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "            RightField (value=other_id)\n" +
                         "         With\n" +
-                        "            Array (fieldname=nested.exact_field, operator=CONTAINS, index=schema.other.index) (AND)\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=a, index=schema.other.index)\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=b, index=schema.other.index)\n" +
+                        "            Array (fieldname=nested.exact_field, operator=CONTAINS, index=db.schema.so_users.idxso_users) (AND)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=a, index=db.schema.so_users.idxso_users)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=b, index=db.schema.so_users.idxso_users)\n" +
                         "            Or\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=c, index=schema.other.index)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=c, index=db.schema.so_users.idxso_users)\n" +
                         "               With\n" +
-                        "                  Array (fieldname=nested.exact_field, operator=CONTAINS, index=schema.other.index) (AND)\n" +
-                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=d, index=schema.other.index)\n" +
-                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=e, index=schema.other.index)\n" +
+                        "                  Array (fieldname=nested.exact_field, operator=CONTAINS, index=db.schema.so_users.idxso_users) (AND)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=d, index=db.schema.so_users.idxso_users)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=e, index=db.schema.so_users.idxso_users)\n" +
                         "      Expansion\n" +
-                        "         null=<schema.table.idxname>null\n" +
+                        "         id=<db.schema.table.index>id\n" +
                         "         With\n" +
-                        "            Array (fieldname=nested2.exact_field, operator=CONTAINS, index=schema.table.idxname) (AND)\n" +
-                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=a, index=schema.table.idxname)\n" +
-                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=b, index=schema.table.idxname)\n",
-                tree);
+                        "            Array (fieldname=nested2.exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=b, index=db.schema.table.index)");
     }
 
     @Test
     public void testWithOperatorJSON() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request, "nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)", false, true);
-
-        assertEquals("testWithOperatorJSON",
+        assertJson("nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -4059,18 +3577,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                qr.rewriteQuery().toString());
+                        "}"
+        );
     }
 
     @Test
     public void testIssue60() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request, "details.state:NC and details.state:SC", false, true);
-
-        assertEquals("testIssue60",
+        assertJson("details.state:NC and details.state:SC",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -4102,18 +3615,13 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                qr.rewriteQuery().toString());
+                        "}"
+        );
     }
 
     @Test
     public void testIssue60_WITH() throws Exception {
-        QueryRewriter qr;
-        MockClientAndRequest mock = new MockClientAndRequest();
-
-        qr = new QueryRewriter(mock.client, mock.request, "details.state:NC WITH details.state:SC", false, true);
-
-        assertEquals("testIssue60_WITH",
+        assertJson("details.state:NC WITH details.state:SC",
                 "{\n" +
                         "  \"filtered\" : {\n" +
                         "    \"query\" : {\n" +
@@ -4136,8 +3644,8 @@ public class TestQueryRewriter {
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}",
-                qr.rewriteQuery().toString());
+                        "}"
+        );
     }
 }
 

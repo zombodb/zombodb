@@ -21,7 +21,6 @@ import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.collect.IdentityHashSet;
-import org.elasticsearch.rest.RestRequest;
 
 import java.util.*;
 
@@ -47,20 +46,13 @@ public class IndexMetadataManager {
     private final IndexRelationshipManager relationshipManager = new IndexRelationshipManager();
 
     private final Client client;
-    private final RestRequest request;
     private final ASTIndexLink originalMyIndex;
-    private Set<String> usedFields;
     private ASTIndexLink myIndex;
 
-    public IndexMetadataManager(Client client, RestRequest request, ASTIndexLink myIndex) {
+    public IndexMetadataManager(Client client, ASTIndexLink myIndex) {
         this.client = client;
-        this.request = request;
         this.myIndex = originalMyIndex = myIndex;
         loadMapping(myIndex);
-    }
-
-    public void setUsedFields(Set<String> usedFields) {
-        this.usedFields = usedFields;
     }
 
     public ASTIndexLink getOriginalMyIndex() {
@@ -162,13 +154,13 @@ public class IndexMetadataManager {
     }
 
     private void loadMapping(ASTIndexLink link) {
-        if (client == null || request == null)
+        if (client == null)
             return; // nothing we can do
 
         GetMappingsRequest getMappingsRequest = new GetMappingsRequest();
         getMappingsRequest.indices(link.getIndexName()).types("data");
-        getMappingsRequest.indicesOptions(IndicesOptions.fromRequest(request, getMappingsRequest.indicesOptions()));
-        getMappingsRequest.local(request.paramAsBoolean("local", getMappingsRequest.local()));
+        getMappingsRequest.indicesOptions(IndicesOptions.fromOptions(false, false, true, true));
+        getMappingsRequest.local(false);
         mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, client.admin().indices().getMappings(getMappingsRequest)));
         indexLinksByIndexName.put(link.getIndexName(), link);
     }

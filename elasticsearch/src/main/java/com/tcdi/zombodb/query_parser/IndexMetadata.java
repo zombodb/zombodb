@@ -84,6 +84,7 @@ class IndexMetadata {
             Map meta = (Map) mmd.getSourceAsMap().get("_meta");
 
             fields = (Map) mmd.getSourceAsMap().get("properties");
+            fields.put("_all", (Map) mmd.getSourceAsMap().get("_all"));
             pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
             Boolean noxact = meta != null ? (Boolean) meta.get("noxact") : null;
             this.noxact = noxact != null ? noxact : false;
