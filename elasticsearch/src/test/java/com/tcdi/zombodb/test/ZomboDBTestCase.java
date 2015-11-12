@@ -20,9 +20,10 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.flush.FlushRequestBuilder;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
-import org.elasticsearch.bootstrap.Bootstrap;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.io.stream.OutputStreamStreamOutput;
+import org.elasticsearch.common.logging.log4j.LogConfigurator;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.node.Node;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -30,44 +31,55 @@ import org.junit.BeforeClass;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
-import java.lang.reflect.Field;
 
+import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
+import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 import static org.junit.Assert.assertEquals;
 
 public abstract class ZomboDBTestCase {
-    protected static final String INDEX_NAME = "db.schema.table.index";
+    protected static final String DEFAULT_INDEX_NAME = "db.schema.table.index";
 
-    private static Bootstrap es;
-    private static final File path = new File("/tmp/zdb_es-" + System.currentTimeMillis());
+    private static final File HOME = new File("/tmp/zdb_es-" + System.currentTimeMillis());
+    private static final File CONFIG = new File(HOME.getAbsolutePath() + "/config");
+    private static final File LOGS = new File(HOME.getAbsolutePath() + "/logs");
+
     private static Node node;
 
     @BeforeClass
     public static void beforeClass() throws Exception {
-        bootstrapElasticsearch();
-        node = extractElasticsearchNode();
+        node = bootstrapElasticsearch();
 
-        for (String indexName : new String[] { INDEX_NAME, "db.schema.so_users.idxso_users"}) {
+        for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users"}) {
             createIndex(indexName);
             client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
             client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();
-            Thread.sleep(2500);
         }
     }
 
-    private static void bootstrapElasticsearch() throws Exception {
-        System.setProperty("es.network.host", "127.0.0.1");
-        System.setProperty("es.cluster.name", "ZomboDB_JUnit_Cluster");
-        System.setProperty("es.node.name", "tester");
-        System.setProperty("es.path.home", path.getAbsolutePath());
-        es = new Bootstrap();
-        es.init(null);
-        es.start();
-    }
+    private static Node bootstrapElasticsearch() throws Exception {
+        // copy our custom 'logging.xml' to the right place
+        CONFIG.mkdirs();
+        TestingHelper.copyFile(ZomboDBTestCase.class.getResourceAsStream("logging.yml"), new File(CONFIG.getAbsolutePath() + "/logging.yml"));
 
-    private static Node extractElasticsearchNode() throws Exception {
-        Field nodeField = Bootstrap.class.getDeclaredField("node");
-        nodeField.setAccessible(true);
-        return (Node) nodeField.get(es);
+        Settings settings = settingsBuilder()
+                .put("http.enabled", false)
+                .put("network.host", "127.0.0.1")
+                .put("cluster.name", "ZomboDB_JUnit_Cluster")
+                .put("node.name", "tester")
+                .put("path.home", HOME.getAbsolutePath())
+                .put("path.conf", CONFIG.getAbsolutePath())
+                .put("path.logs", LOGS.getAbsolutePath())
+                .build();
+
+        // make sure ES' logging system knows where to find our custom logging.xml
+        LogConfigurator.configure(settings);
+
+        // startup a standalone node to use for tests
+        return nodeBuilder()
+                .settings(settings)
+                .local(true)
+                .loadConfigSettings(false)
+                .node();
     }
 
     private static void createIndex(String indexName) throws Exception {
@@ -84,8 +96,11 @@ public abstract class ZomboDBTestCase {
 
     @AfterClass
     public static void afterClass() {
-        es.stop();
-        TestingHelper.deleteDirectory(path);
+        try {
+            node.close();
+        } finally {
+            TestingHelper.deleteDirectory(HOME);
+        }
     }
 
     protected static String resource(Class relativeTo, String name) throws Exception {
@@ -106,7 +121,7 @@ public abstract class ZomboDBTestCase {
     }
 
     protected QueryRewriter qr(String query, boolean useParentChild) {
-        return new QueryRewriter(client(), INDEX_NAME, null, query, false, useParentChild) {
+        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, false, useParentChild) {
             @Override
             protected boolean isInTestMode() {
                 return true;

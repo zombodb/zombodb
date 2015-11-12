@@ -15,11 +15,23 @@
  */package com.tcdi.zombodb.test;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 
 /**
  * Created by e_ridge on 11/11/15.
  */
 public class TestingHelper {
+
+    public static void copyFile(InputStream in, File destination) throws Exception {
+        try (FileOutputStream out = new FileOutputStream(destination)) {
+            byte[] bytes = new byte[65535];
+            int cnt;
+            while ((cnt = in.read(bytes)) > 0) {
+                out.write(bytes, 0, cnt);
+            }
+        }
+    }
 
     public static void deleteDirectory(File dir) {
         if (dir == null)
