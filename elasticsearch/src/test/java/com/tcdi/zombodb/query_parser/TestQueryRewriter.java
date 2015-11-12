@@ -3647,5 +3647,95 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
+
+    @Test
+    public void testMikeWeber() throws Exception {
+        assertJson("( " +
+                        " ( " +
+                        "  (  " +
+                        "   (internal_data.internal_set_tag_id = 369 OR internal_data.internal_set_tag_id = 370 OR internal_data.internal_set_tag_id = 371 OR internal_data.internal_set_tag_id = 298 OR internal_data.internal_set_tag_id = 367 OR internal_data.internal_set_tag_id = 295 OR internal_data.internal_set_tag_id = 296) " +
+                        "   WITH internal_data.state_id = 4424  " +
+                        "   WITH internal_data.assigned_reviewers = \"J_WEBER\"  " +
+                        "   WITH (internal_data.status_name:[\"internal_CHECKED_OUT\",\"internal_READY\"]) " +
+                        "  ) " +
+                        "   OR  " +
+                        "  (  " +
+                        "   (internal_data.internal_set_tag_id = 369 OR internal_data.internal_set_tag_id = 370 OR internal_data.internal_set_tag_id = 371 OR internal_data.internal_set_tag_id = 298 OR internal_data.internal_set_tag_id = 367 OR internal_data.internal_set_tag_id = 295 OR internal_data.internal_set_tag_id = 296)  " +
+                        "   WITH internal_data.state_id = 4424  " +
+                        "   WITH (internal_data.status_name:[\"internal_READY\",\"internal_UPDATED\",\"internal_CHECKED_OUT\",\"EXCEPTION\"]) " +
+                        "   WITH internal_data.owner_username = \"J_WEBER\"  " +
+                        "  )  " +
+                        " )  " +
+                        ")",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"must\" : [ {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"internal_data.internal_set_tag_id\" : [ 369, 370, 371, 298, 367, 295, 296 ],\n" +
+                        "                    \"execution\" : \"plain\"\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"internal_data.state_id\" : 4424\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"internal_data.assigned_reviewers\" : \"j_weber\"\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"internal_data.status_name\" : [ \"internal_checked_out\", \"internal_ready\" ],\n" +
+                        "                    \"execution\" : \"plain\"\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"internal_data\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"nested\" : {\n" +
+                        "            \"filter\" : {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"must\" : [ {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"internal_data.internal_set_tag_id\" : [ 369, 370, 371, 298, 367, 295, 296 ],\n" +
+                        "                    \"execution\" : \"plain\"\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"internal_data.state_id\" : 4424\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"internal_data.status_name\" : [ \"internal_ready\", \"internal_updated\", \"internal_checked_out\", \"exception\" ],\n" +
+                        "                    \"execution\" : \"plain\"\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"internal_data.owner_username\" : \"j_weber\"\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            \"join\" : true,\n" +
+                        "            \"path\" : \"internal_data\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 
