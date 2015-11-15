@@ -672,13 +672,6 @@ public class QueryRewriter {
         }
     }
 
-    private boolean needsConversionToPhrase(String value, String fieldname) {
-        IndexMetadata metadata = metadataManager.getMetadataForField(fieldname);
-        String analyzer = metadata != null ? metadata.getAnalyzer(fieldname) : null;
-
-        return !(analyzer == null || "exact".equals(analyzer)) && Utils.isComplexTerm(value);
-    }
-
     private FilterBuilder build(ASTWord node) {
         return buildStandard(node, new FBF() {
             @Override
