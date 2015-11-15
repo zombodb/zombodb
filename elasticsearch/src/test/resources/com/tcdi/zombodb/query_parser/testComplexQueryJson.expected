@@ -580,7 +580,7 @@
                           "query" : {
                             "match" : {
                               "fulltext_field" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -589,7 +589,7 @@
                           "query" : {
                             "match" : {
                               "_all" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -602,7 +602,7 @@
                           "query" : {
                             "match" : {
                               "fulltext_field" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -611,7 +611,7 @@
                           "query" : {
                             "match" : {
                               "_all" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -624,7 +624,7 @@
                           "query" : {
                             "match" : {
                               "fulltext_field" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -633,7 +633,7 @@
                           "query" : {
                             "match" : {
                               "_all" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -646,7 +646,7 @@
                           "query" : {
                             "match" : {
                               "fulltext_field" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -655,7 +655,7 @@
                           "query" : {
                             "match" : {
                               "_all" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -668,7 +668,7 @@
                           "query" : {
                             "match" : {
                               "fulltext_field" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -677,7 +677,7 @@
                           "query" : {
                             "match" : {
                               "_all" : {
-                                "query" : "1-2",
+                                "query" : "1 2",
                                 "type" : "phrase"
                               }
                             }
@@ -3582,110 +3582,60 @@
                     "should" : [ {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a-b-c-d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a-b-c-d"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a-b-c-d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a-b-c-d"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a-b-c-d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a-b-c-d"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a-b-c-d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a-b-c-d"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a-b-c-d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a-b-c-d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a-b-c-d"
                           }
                         } ]
                       }
@@ -3770,110 +3720,60 @@
                     "should" : [ {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a/b/c/d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a/b/c/d"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a/b/c/d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a/b/c/d"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a/b/c/d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a/b/c/d"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a/b/c/d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a/b/c/d"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "a/b/c/d"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "a/b/c/d",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "a/b/c/d"
                           }
                         } ]
                       }
@@ -3884,110 +3784,60 @@
                     "should" : [ {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "http://www.tcdi.com/?id=42"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "http://www.tcdi.com/?id=42"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "http://www.tcdi.com/?id=42"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "http://www.tcdi.com/?id=42"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "http://www.tcdi.com/?id=42"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "http://www.tcdi.com/?id=42"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "http://www.tcdi.com/?id=42"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "http://www.tcdi.com/?id=42"
                           }
                         } ]
                       }
                     }, {
                       "bool" : {
                         "should" : [ {
-                          "query" : {
-                            "match" : {
-                              "fulltext_field" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "fulltext_field" : "http://www.tcdi.com/?id=42"
                           }
                         }, {
-                          "query" : {
-                            "match" : {
-                              "_all" : {
-                                "query" : "http://www.tcdi.com/?id=42",
-                                "type" : "phrase"
-                              }
-                            }
+                          "term" : {
+                            "_all" : "http://www.tcdi.com/?id=42"
                           }
                         } ]
                       }

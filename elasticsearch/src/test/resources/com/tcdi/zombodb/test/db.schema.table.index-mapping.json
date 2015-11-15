@@ -185,26 +185,60 @@
           "length": 32000
         }
       },
+      "char_filter" : {
+        "save_escape":{
+          "type":"pattern_replace",
+          "pattern":"[\\\\]",
+          "replacement":"ZDB_ESCAPE_ZDB"
+        },
+        "save_star":{
+          "type":"pattern_replace",
+          "pattern":"[*]",
+          "replacement":"ZDB_STAR_ZDB"
+        },
+        "save_question":{
+          "type":"pattern_replace",
+          "pattern":"[?]",
+          "replacement":"ZDB_QUESTION_ZDB"
+        },
+        "save_tilde":{
+          "type":"pattern_replace",
+          "pattern":"[~]",
+          "replacement":"ZDB_TILDE_ZDB"
+        }
+      },
       "analyzer": {
         "default": {
           "tokenizer": "keyword",
-          "filter": [
-            "trim",
-            "truncate_32000"
-          ]
+          "filter": ["trim", "truncate_32000"]
+        },
+        "default_search": {
+          "tokenizer": "keyword",
+          "filter": ["trim", "truncate_32000"],
+          "char_filter": ["save_escape", "save_star", "save_question", "save_tilde"]
         },
         "exact": {
           "tokenizer": "keyword",
-          "filter": [
-            "trim",
-            "truncate_32000"
-          ]
+          "filter": ["trim", "truncate_32000"]
+        },
+        "exact_search": {
+          "tokenizer": "keyword",
+          "filter": ["trim", "truncate_32000"],
+          "char_filter": ["save_escape", "save_star", "save_question", "save_tilde"]
         },
         "phrase": {
           "tokenizer": "standard"
         },
+        "phrase_search": {
+          "tokenizer": "standard",
+          "char_filter": ["save_escape", "save_star", "save_question", "save_tilde"]
+        },
         "fulltext": {
           "tokenizer": "standard"
+        },
+        "fulltext_search": {
+          "tokenizer": "standard",
+          "char_filter": ["save_escape", "save_star", "save_question", "save_tilde"]
         }
       }
     }

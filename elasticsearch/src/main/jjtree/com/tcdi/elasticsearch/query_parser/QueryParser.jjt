@@ -144,12 +144,21 @@ PARSER_END(QueryParser)
   | <TYPENAME: "<" (<LETTER> (<LETTER> | <DIGIT>)*)+ ">" >
 
   | <NUMBER: (("-")? (["1"-"9"]) (<DIGIT>)* ("." (<DIGIT>)+)?) | (("0")+ ("." (<DIGIT>)+)) | ("0") >
-  | <WORD: ( ("\"" (~["\"", " ", "*", "?", "~"])* "\"") | ("'" (~["'", " ", "*", "?", "~"])* "'") ) | ((~[" ", "\t", "\n", "\r", "\f", "$", "*", "?", "~", "^", "/", ":", "=", "<", ">", "!", "#", "@", "(", ")", "'", "\"", ".", ",", "&", "%", "[", "]", "\\"]) | ("\\" ~[]))+ >
+
+  | <WORD:
+               (<LETTER> | <DIGIT> | ("\\"~[]))+
+        | "'"  (<LETTER> | <DIGIT> | ("\\"~[]))+ "'"
+        | "\"" (<LETTER> | <DIGIT> | ("\\"~[]))+ "\""
+    >
+
   | <PREFIX: <WORD> ("*")+ >
   | <WILDCARD:   ("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")* >
   | <NOT_NULL: ("*") | ("?") | ("\"*\"") | ("\"?\"") >
   | <FUZZY: <WORD> "~" (<DIGIT>)*>
-  | <PHRASE: ( ("\"" (~["\""] | "\\\"")* "\"") | ("'" (~["'"] | "\\'")* "'") ) ("~" ("!")? (<DIGIT>)+)? >
+  | <PHRASE: (      ("\"" (~["\""] | "\\\"")* "\"") |
+                    ("'"  (~["'"]  | "\\'")*  "'")
+             ) ("~" ("!")? (<DIGIT>)+)?
+    >
   | <SCRIPT: "$$" (~[])* "$$" >
 
   | <#LETTER: ["a"-"z", "_"] >
@@ -180,7 +189,7 @@ void Tally() #Tally :
     FieldnameRef fn;
 }
 {
-    ( <TALLY> "(" (fn = Fieldname()) "," (Word()|Phrase()) "," Number() "," Word() [ "," Aggregations() ] ")" )
+    ( <TALLY> "(" (fn = Fieldname()) "," (Word()|Phrase()) "," Number() "," (Word()|Phrase()) [ "," Aggregations() ] ")" )
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
@@ -477,7 +486,7 @@ FieldnameRef Fieldname() :
 }
 {
     (
-        LOOKAHEAD(2) t = <IDENTIFIER>
+        LOOKAHEAD(2) (t = <IDENTIFIER> | t = <WORD>)
       | LOOKAHEAD(2) t = <DOTTED_IDENTIFIER>
       | nested=<NESTED> "(" t = <DOTTED_IDENTIFIER> ")"
     )
