@@ -170,6 +170,7 @@ static void xact_complete_cleanup(XactEvent event) {
     xactCommitDataList  = NULL;
 	needBatchFinishOnCommit = false;
 	needBatchFinishOnCommit_set = false;
+	didBatchFinishOnExecutorEnd = false;
 	executorDepth = 0;
 	numHitsFound = -1;
 
