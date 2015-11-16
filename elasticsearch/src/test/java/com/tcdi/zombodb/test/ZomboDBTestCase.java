@@ -1,0 +1,152 @@
+/*
+ * Portions Copyright 2015 ZomboDB, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.tcdi.zombodb.test;
+
+import com.tcdi.zombodb.query_parser.QueryRewriter;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.admin.indices.flush.FlushRequestBuilder;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.common.io.stream.OutputStreamStreamOutput;
+import org.elasticsearch.common.logging.log4j.LogConfigurator;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.node.Node;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+
+import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
+import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
+import static org.junit.Assert.assertEquals;
+
+public abstract class ZomboDBTestCase {
+    protected static final String DEFAULT_INDEX_NAME = "db.schema.table.index";
+
+    private static final File HOME = new File("/tmp/zdb_es-" + System.currentTimeMillis());
+    private static final File CONFIG = new File(HOME.getAbsolutePath() + "/config");
+    private static final File LOGS = new File(HOME.getAbsolutePath() + "/logs");
+
+    private static Node node;
+
+    @BeforeClass
+    public static void beforeClass() throws Exception {
+        node = bootstrapElasticsearch();
+
+        for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users"}) {
+            createIndex(indexName);
+            client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
+            client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();
+        }
+    }
+
+    private static Node bootstrapElasticsearch() throws Exception {
+        // copy our custom 'logging.xml' to the right place
+        CONFIG.mkdirs();
+        TestingHelper.copyFile(ZomboDBTestCase.class.getResourceAsStream("logging.yml"), new File(CONFIG.getAbsolutePath() + "/logging.yml"));
+
+        Settings settings = settingsBuilder()
+                .put("http.enabled", false)
+                .put("network.host", "127.0.0.1")
+                .put("cluster.name", "ZomboDB_JUnit_Cluster")
+                .put("node.name", "tester")
+                .put("path.home", HOME.getAbsolutePath())
+                .put("path.conf", CONFIG.getAbsolutePath())
+                .put("path.logs", LOGS.getAbsolutePath())
+                .build();
+
+        // make sure ES' logging system knows where to find our custom logging.xml
+        LogConfigurator.configure(settings);
+
+        // startup a standalone node to use for tests
+        return nodeBuilder()
+                .settings(settings)
+                .local(true)
+                .loadConfigSettings(false)
+                .node();
+    }
+
+    private static void createIndex(String indexName) throws Exception {
+        CreateIndexRequestBuilder builder = new CreateIndexRequestBuilder(client().admin().indices(), indexName);
+        builder.setSource(resource(ZomboDBTestCase.class, indexName + "-mapping.json"));
+
+        CreateIndexResponse response = client().admin().indices().create(builder.request()).get();
+        response.writeTo(new OutputStreamStreamOutput(System.out));
+    }
+
+    protected static Client client() {
+        return node.client();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        try {
+            node.close();
+        } finally {
+            TestingHelper.deleteDirectory(HOME);
+        }
+    }
+
+    protected static String resource(Class relativeTo, String name) throws Exception {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(relativeTo.getResourceAsStream(name), "UTF-8"))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (sb.length() > 0) sb.append("\n");
+                sb.append(line);
+            }
+            return sb.toString();
+        }
+    }
+
+
+    protected QueryRewriter qr(String query) {
+        return qr(query, true);
+    }
+
+    protected QueryRewriter qr(String query, boolean useParentChild) {
+        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, false, useParentChild) {
+            @Override
+            protected boolean isInTestMode() {
+                return true;
+            }
+        };
+    }
+
+    protected void assertJson(String query, String expectedJson) throws Exception {
+        assertJson(query, expectedJson, true);
+    }
+
+    protected void assertJson(String query, String expectedJson, boolean useParentChild) throws Exception {
+        assertEquals(expectedJson.trim(), qr(query, useParentChild).rewriteQuery().toString().trim());
+    }
+
+    protected void assertAST(String query, String expectedAST) throws Exception {
+        assertEquals(expectedAST.trim(), toAST(query).trim());
+    }
+
+    protected String toJson(String query) {
+        return qr(query).rewriteQuery().toString();
+    }
+
+    protected String toAST(String query) {
+        return qr(query).dumpAsString();
+    }
+
+}

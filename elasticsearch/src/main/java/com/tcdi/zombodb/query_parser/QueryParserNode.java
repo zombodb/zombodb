@@ -113,7 +113,7 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         throw new RuntimeException("Value is not a String: " + value);
     }
 
-    public void setValue(String value) {
+    public void setValue(Object value) {
         this.value = value;
     }
 

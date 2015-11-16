@@ -15,33 +15,19 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
+import org.elasticsearch.client.Client;
 
 import java.io.StringReader;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author e_ridge
  */
 public class Utils {
-
-    public static class SubparseInfo {
-        public final Iterable<QueryParserNode> nodes;
-        public final int totalCount;
-
-        public SubparseInfo(Iterable<QueryParserNode> nodes, int totalCount, QueryParserNode.Operator operator) {
-            this.nodes = nodes;
-            this.totalCount = totalCount;
-            for (QueryParserNode node : nodes)
-                forceOperator(node, operator);
-        }
-
-        private void forceOperator(QueryParserNode root, QueryParserNode.Operator operator) {
-            root.setOperator(operator);
-            for (QueryParserNode child : root)
-                forceOperator(child, operator);
-        }
-    }
 
     public static String unescape(String s) {
         if (s == null || s.length() == 0)
@@ -68,61 +54,83 @@ public class Utils {
         return sb.toString();
     }
 
-    public static boolean hasOnlyEscapedWildcards(ASTPhrase phrase) {
-        char prev_ch = 0;
-        String value = phrase.getEscapedValue();
-        int esc = 0, unesc = 0;
-        for (int i = 0; i < value.length(); i++) {
-            char ch = value.charAt(i);
-            switch (ch) {
-                case '*':
-                case '?':
-                case '~':
-                    if (prev_ch == '\\') {
-                        // contains an escaped wildcard
-                        esc++;
-                        break;
-                    }
-                    unesc++;
-                    break;
-
-            }
-
-            prev_ch = ch;
-        }
-
-        return esc > 0 && unesc == 0;
-    }
-
-    public static int countValidWildcards(ASTPhrase phrase) {
-        char prev_ch = 0;
-        String value = phrase.getEscapedValue();
+    public static int countValidWildcards(String phrase) {
         int unesc = 0;
-        for (int i = 0; i < value.length(); i++) {
-            char ch = value.charAt(i);
+        boolean inesc = false;
+
+        for (int i = 0; i < phrase.length(); i++) {
+            char ch = phrase.charAt(i);
+
             switch (ch) {
                 case '*':
                 case '?':
                 case '~':
-                    if (prev_ch == '\\') {
+                    if (inesc) {
                         // contains an escaped wildcard
                         break;
                     }
                     unesc++;
                     break;
-
             }
 
-            prev_ch = ch;
+            inesc = !inesc && ch == '\\';
         }
 
         return unesc;
     }
 
+    public static QueryParserNode convertToWildcardNode(String fieldname, QueryParserNode.Operator operator, String value) {
+        QueryParserNode node;
+        int wildcardCount = countValidWildcards(value);
+
+        if (wildcardCount == 0) {
+            node = new ASTWord(QueryParserTreeConstants.JJTWORD);
+            node.setValue(value);
+        } else if (wildcardCount == value.length()) {
+            node = new ASTNotNull(QueryParserTreeConstants.JJTNOTNULL);
+            node.setValue(value);
+        } else if (wildcardCount > 1) {
+            node = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
+            node.setValue(value);
+        } else if (value.endsWith("*") && !value.endsWith("\\*")) {
+            node = new ASTPrefix(QueryParserTreeConstants.JJTPREFIX);
+            node.setValue(value.substring(0, value.length()-1));
+        } else if (value.endsWith("?") && !value.endsWith("\\?")) {
+            node = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
+            node.setValue(value);
+        } else if (value.endsWith("~") && !value.endsWith("\\~")) {
+            node = new ASTFuzzy(QueryParserTreeConstants.JJTFUZZY);
+            node.setValue(value.substring(0, value.length() - 1));
+        } else if (value.matches("^.*~\\d+$")) {
+            Pattern p = Pattern.compile("^(.*)~(\\d+)$");
+            Matcher m = p.matcher(value);
+
+            if (m.find()) {
+                node = new ASTFuzzy(QueryParserTreeConstants.JJTFUZZY);
+                node.fuzzyness = Integer.valueOf(m.group(2));
+                node.setValue(m.group(1));
+            } else {
+                throw new RuntimeException("Unable to determine fuzziness");
+            }
+        } else {
+            node = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
+            node.setValue(value);
+        }
+
+        node.setFieldname(fieldname);
+        node.setOperator(operator);
+
+        return node;
+    }
+
     public static String join(Collection<String> c) {
+        return join(c, " ");
+    }
+
+    public static String join(Collection<String> c, String sep) {
         StringBuilder sb = new StringBuilder();
         for (String s : c) {
-            if (sb.length() > 0) sb.append(" ");
+            if (sb.length() > 0) sb.append(sep);
             sb.append(s);
         }
         return sb.toString();
@@ -164,35 +172,29 @@ public class Utils {
         return l;
     }
 
-    public static SubparseInfo subparsePhrase(String escapedPhrase, String fieldname, QueryParserNode.Operator operator) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < escapedPhrase.length(); i++) {
-            char ch = escapedPhrase.charAt(i);
+    public static List<String> tokenizePhrase(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
+        String analyzer = metadataManager.getMetadataForField(fieldname).getAnalyzer(fieldname);
+        if (analyzer == null)
+            analyzer = "default";
 
-            if (Arrays.binarySearch(IndexMetadata.NEEDS_ESCAPES, ch) > -1) {
-                char prev = i == 0 ? 0 : escapedPhrase.charAt(i-1);
-                if (prev != '\\')
-                    sb.append("\\").append(ch);
-                else    // already escaped
-                    sb.append(ch);
-            } else {
-                sb.append(ch);
-            }
-        }
-
+        analyzer += "_search";
         try {
-            QueryParser qp = new QueryParser(new StringReader(sb.toString()));
-            ASTQueryTree tree = qp.parse(false);
-            tree.forceFieldname(fieldname);
+            AnalyzeResponse response = client.admin().indices().analyze(
+                    new AnalyzeRequestBuilder(
+                            client.admin().indices(),
+                            metadataManager.getMetadataForField(fieldname).getLink().getIndexName(),
+                            phrase
+                    ).setAnalyzer(analyzer).request()
+            ).get();
 
-            if (tree.jjtGetNumChildren() == 0)
-                throw new QueryRewriter.QueryRewriteException("PHRASE is empty");
-            else if (!(tree.getChild(0) instanceof ASTAnd))
-                return new SubparseInfo(tree, tree.countNodes(), operator);
+            List<String> tokens = new ArrayList<>();
+            for (AnalyzeResponse.AnalyzeToken t : response) {
+                tokens.add(t.getTerm());
+            }
 
-            return new SubparseInfo(tree.getChild(0), tree.getChild(0).countNodes(), operator);
-        } catch (ParseException pe) {
-            throw new QueryRewriter.QueryRewriteException(pe);
+            return tokens;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

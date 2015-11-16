@@ -118,7 +118,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         String query = request.content().toUtf8();
 
         try {
-            QueryRewriter qr = new QueryRewriter(client, request, query, allowSingleIndex, useParentChild);
+            QueryRewriter qr = new QueryRewriter(client, request.param("index"), request.param("preference"), query, allowSingleIndex, useParentChild);
             String indexName;
 
             // the request content is just our straight query string
