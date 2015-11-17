@@ -15,4 +15,3 @@ done
 SQL=postgres/src/main/sql/zombodb--${OLD}--${NEW}.sql
 echo "-- no sql changes" > ${SQL}
 git add ${SQL}
-echo ${SQL} >> ./.gitignore
