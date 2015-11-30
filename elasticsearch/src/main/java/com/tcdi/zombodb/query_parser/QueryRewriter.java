@@ -50,13 +50,13 @@ public class QueryRewriter {
     public static String[] WILDCARD_TOKENS = {"ZDB_ESCAPE_ZDB", "ZDB_STAR_ZDB", "ZDB_QUESTION_ZDB", "ZDB_TILDE_ZDB"};
     public static String[] WILDCARD_VALUES = {"\\\\",           "*",            "?",                "~"};
 
-    private static enum DateHistogramIntervals {
+    private enum DateHistogramIntervals {
         year, quarter, month, week, day, hour, minute, second
     }
 
     /* short for FilterBuilderFactory */
-    private static interface FBF {
-        public static FBF DUMMY = new FBF() {
+    private interface FBF {
+        FBF DUMMY = new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
                 throw new QueryRewriteException("Should not get here");
@@ -112,15 +112,10 @@ public class QueryRewriter {
     private final boolean useParentChild;
     private boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
-    private ASTParent parentQuery;
 
     private Map<String, StringBuilder> arrayData;
 
     private final IndexMetadataManager metadataManager;
-
-    static String dumpAsString(String query) throws Exception {
-        return new QueryParser(new StringReader(query)).parse(true).dumpAsString();
-    }
 
     public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean useParentChild) {
         this(client, indexName, searchPreference, input, allowSingleIndex, false, useParentChild);
@@ -167,7 +162,7 @@ public class QueryRewriter {
             tree = parser.parse(true);
 
             if (extractParentQuery) {
-                parentQuery = (ASTParent) tree.getChild(ASTParent.class);
+                ASTParent parentQuery = (ASTParent) tree.getChild(ASTParent.class);
                 tree.removeNode(parentQuery);
                 tree.renumber();
                 if (tree.getQueryNode() != null) {
@@ -214,14 +209,6 @@ public class QueryRewriter {
 
     public Map<String, ?> describedNestedObject(String fieldname) throws Exception {
         return metadataManager.describedNestedObject(fieldname);
-    }
-
-    public IndexMetadataManager getMetadataManager() {
-        return metadataManager;
-    }
-
-    public FilterBuilder rewriteParentQuery() {
-        return parentQuery != null ? build(parentQuery) : null;
     }
 
     public QueryBuilder rewriteQuery() {
@@ -516,11 +503,7 @@ public class QueryRewriter {
     private FilterBuilder build(QueryParserNode node) {
         if (node == null)
             return null;
-        return build(node, metadataManager.getMyIndex());
-    }
-
-    private FilterBuilder build(QueryParserNode node, ASTIndexLink link) {
-        if (node instanceof ASTChild)
+        else if (node instanceof ASTChild)
             return build((ASTChild) node);
         else if (node instanceof ASTParent)
             return build((ASTParent) node);
@@ -695,14 +678,7 @@ public class QueryRewriter {
         for (int i=0; i<tokens.size(); i++) {
             String token = tokens.get(i);
 
-            for (int j=0; j<WILDCARD_TOKENS.length; j++) {
-                String wildcard = WILDCARD_TOKENS[j];
-                String replacement = WILDCARD_VALUES[j];
-
-                if (token.contains(wildcard)) {
-                    tokens.set(i, token = token.replaceAll(wildcard, replacement));
-                }
-            }
+            token = replaceWildcardTokens(tokens, i, token);
 
             hasWildcards |= Utils.countValidWildcards(token) > 0;
         }
@@ -763,6 +739,18 @@ public class QueryRewriter {
 
     }
 
+    private String replaceWildcardTokens(List<String> tokens, int i, String token) {
+        for (int j=0; j<WILDCARD_TOKENS.length; j++) {
+            String wildcard = WILDCARD_TOKENS[j];
+            String replacement = WILDCARD_VALUES[j];
+
+            if (token.contains(wildcard)) {
+                tokens.set(i, token = token.replaceAll(wildcard, replacement));
+            }
+        }
+        return token;
+    }
+
     private FilterBuilder build(ASTNumber node) {
         return buildStandard(node, new FBF() {
             @Override
@@ -772,15 +760,19 @@ public class QueryRewriter {
         });
     }
 
-    private FilterBuilder build(ASTNull node) {
+    private void validateOperator(QueryParserNode node) {
         switch (node.getOperator()) {
             case EQ:
             case NE:
             case CONTAINS:
                 break;
             default:
-                throw new QueryRewriteException("Unsupported operator for NULL value: " + node.getOperator());
+                throw new QueryRewriteException("Unsupported operator: " + node.getOperator());
         }
+    }
+
+    private FilterBuilder build(ASTNull node) {
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -794,14 +786,7 @@ public class QueryRewriter {
         if (md != null && node.getFieldname().equalsIgnoreCase(md.getPrimaryKeyFieldName()))
             return matchAllFilter();    // optimization when we know every document has a value for the specified field
 
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for NOT NULL value: " + node.getOperator());
-        }
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -811,14 +796,7 @@ public class QueryRewriter {
     }
 
     private FilterBuilder build(ASTBoolean node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for BOOLEAN value: " + node.getOperator());
-        }
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -828,14 +806,7 @@ public class QueryRewriter {
     }
 
     private FilterBuilder build(final ASTFuzzy node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for FUZZY value: " + node.getOperator());
-        }
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -845,15 +816,7 @@ public class QueryRewriter {
     }
 
     private FilterBuilder build(final ASTPrefix node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for PREFIX value: " + node.getOperator());
-        }
-
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -863,14 +826,7 @@ public class QueryRewriter {
     }
 
     private FilterBuilder build(final ASTWildcard node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for WILDCARD value: " + node.getOperator());
-        }
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -880,14 +836,7 @@ public class QueryRewriter {
     }
 
     private FilterBuilder build(final ASTArray node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for ARRAY value: " + node.getOperator());
-        }
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -902,14 +851,7 @@ public class QueryRewriter {
     }
 
     private FilterBuilder build(final ASTArrayData node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for ARRAY value: " + node.getOperator());
-        }
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -943,14 +885,7 @@ public class QueryRewriter {
     }
 
     private FilterBuilder build(final ASTRange node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for RANGE queries: " + node.getOperator());
-        }
+        validateOperator(node);
         return buildStandard(node, new FBF() {
             @Override
             public FilterBuilder b(QueryParserNode n) {
@@ -1040,16 +975,7 @@ public class QueryRewriter {
 
         final List<String> tokens = Utils.tokenizePhrase(client, metadataManager, node.getFieldname(), node.getEscapedValue());
         for (int i=0; i<tokens.size(); i++) {
-            String token = tokens.get(i);
-
-            for (int j=0; j<WILDCARD_TOKENS.length; j++) {
-                String wildcard = WILDCARD_TOKENS[j];
-                String replacement = WILDCARD_VALUES[j];
-
-                if (token.contains(wildcard)) {
-                    tokens.set(i, token = token.replaceAll(wildcard, replacement));
-                }
-            }
+            replaceWildcardTokens(tokens, i, tokens.get(i));
         }
 
         for (Iterator<String> itr = tokens.iterator(); itr.hasNext();) {
