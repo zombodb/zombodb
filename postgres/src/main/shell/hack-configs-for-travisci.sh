@@ -8,5 +8,8 @@ http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 DONE
 
-echo "local_preload_libraries='zombodb'" >> /etc/postgresql/9.3/main/postgresql.conf
-echo "autovacuum=off" >> /etc/postgresql/9.3/main/postgresql.conf
+echo << DONE >> /etc/postgresql/9.3/main/postgresql.conf
+local_preload_libraries='zombodb'
+client_min_messages=notice
+autovacuum=off
+DONE
