@@ -6,16 +6,16 @@ env:
   - BUILD_SYSTEM=travis
 
 before_install:
-  - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
-  - echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
-  - sudo apt-get update -y -qq
-  - sudo apt-get install -y wget
-  - sudo apt-get install rpm
-  - sudo apt-get install elasticsearch
-  - sudo /etc/init.d/postgresql stop
-  - sudo apt-get remove -y postgresql-9.4
-  - sudo apt-get remove -y curl
-  - sudo apt-get install -y postgresql-server-dev-9.3
+#  - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+#  - echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
+#  - sudo apt-get update -y -qq
+#  - sudo apt-get install -y wget
+#  - sudo apt-get install rpm
+#  - sudo apt-get install elasticsearch
+#  - sudo /etc/init.d/postgresql stop
+#  - sudo apt-get remove -y postgresql-9.4
+#  - sudo apt-get remove -y curl
+#  - sudo apt-get install -y postgresql-server-dev-9.3
 
 script:
 #  - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
@@ -27,7 +27,7 @@ script:
 #  - make && sudo make install
 #  - sudo ldconfig && sudo ldconfig
 #  - cd ..
-#  - cd postgres
+  - cd postgres
 #  - make && sudo make install
 #  - ldd zombodb.so
 #  - sudo mkdir /usr/lib/postgresql/9.3/lib/plugins
