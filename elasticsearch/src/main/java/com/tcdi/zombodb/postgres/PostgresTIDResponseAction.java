@@ -30,6 +30,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.search.RestSearchAction;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -88,6 +89,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             request.params().put("type", "data");
             request.params().put("size", "32768");
             request.params().put("_source", "false");
+            request.params().put("track_scores", "true");
 
             // perform the search
             searchRequest = RestSearchAction.parseSearchRequest(request);
@@ -145,12 +147,17 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         int many = (int) searchResponse.getHits().getTotalHits();
 
         long start = System.currentTimeMillis();
-        byte[] results = new byte[1 + 8 + (many * 6)];    // NULL + totalhits + many * (sizeof (unsigned short)*3)
-        int offset = 0;
+        byte[] results = new byte[1 + 8 + 4 + (many * 10)];    // NULL + totalhits + maxscore + (many * (sizeof(int4)+sizeof(int2)+sizeof(float4)))
+        int offset = 0, maxscore_offset;
+        float maxscore = 0;
 
         results[0] = 0;
         offset++;
         offset += encodeLong(many, results, offset);
+
+        /* once we know the max score, it goes here */
+        maxscore_offset = offset;
+        offset += encodeFloat(0, results, offset);
 
         int cnt = 0;
         while (cnt < many) {
@@ -170,11 +177,13 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
             for (SearchHit hit : searchResponse.getHits()) {
                 String id;
+                float score;
                 int blockno;
                 char rowno;
 
                 try {
                     id = hit.id();
+                    score = hit.score();
                     int dash = id.indexOf('-');
                     if (dash == -1)
                         throw new Exception();
@@ -184,13 +193,20 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
                     logger.warn("hit.id()=/" + hit.id() + "/ is not in the proper format.  Defaulting to INVALID_BLOCK_NUMBER");
                     blockno = INVALID_BLOCK_NUMBER;
                     rowno = 0;
+                    score = 0;
                 }
+
+                if (score > maxscore)
+                    maxscore = score;
 
                 offset += encodeInteger(blockno, results, offset);
                 offset += encodeCharacter(rowno, results, offset);
+                offset += encodeFloat(score, results, offset);
                 cnt++;
             }
         }
+
+        encodeFloat(maxscore, results, maxscore_offset);
 
         long end = System.currentTimeMillis();
         return new BinaryTIDResponse(results, many, start, end);

@@ -27,6 +27,7 @@
 #include "util/zdbutils.h"
 
 #include "elasticsearch.h"
+#include "zdbseqscan.h"
 #include "zdb_interface.h"
 
 
@@ -380,6 +381,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 	StringInfo        endpoint = makeStringInfo();
 	StringInfo        response;
 	ZDBSearchResponse *hits;
+	ZDBScore		  max_score;
 
 	query = buildQuery(indexDescriptor, xid, cid, queries, nqueries, false);
 
@@ -395,13 +397,15 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 		elog(ERROR, "Elasticsearch didn't return enough data");
 
 	memcpy(nhits, response->data + 1, sizeof(uint64));
-	if (response->len < 1 + sizeof(uint64) + (*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber)))) /* more bounds checking */
+	if (response->len < 1 + sizeof(uint64) + (*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)))) /* more bounds checking */
 		elog(ERROR, "Elasticsearch says there's %ld hits, but didn't return all of them, len=%d", *nhits, response->len);
 
+	memcpy(&max_score, response->data + 1 + sizeof(uint64), sizeof(float4));
 	hits = palloc(sizeof(ZDBSearchResponse));
 	hits->httpResponse = response;
-	hits->hits         = (response->data + 1 + sizeof(uint64));
+	hits->hits         = (response->data + 1 + sizeof(uint64) + sizeof(float4));
 	hits->total_hits   = *nhits;
+	hits->max_score    = max_score.fscore;
 
 	freeStringInfo(endpoint);
 	freeStringInfo(query);
@@ -720,7 +724,7 @@ ZDBSearchResponse *elasticsearch_getPossiblyExpiredItems(ZDBIndexDescriptor *ind
 
 	items = palloc(sizeof(ZDBSearchResponse));
 	items->httpResponse = response;
-	items->hits         = (response->data + 1 + sizeof(uint64));
+	items->hits         = (response->data + 1 + sizeof(uint64) + sizeof(float4));
 
 	freeStringInfo(endpoint);
 	freeStringInfo(request);

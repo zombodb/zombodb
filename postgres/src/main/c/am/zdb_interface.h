@@ -134,6 +134,7 @@ typedef struct
 	StringInfo httpResponse;
 	int64      total_hits;
 	char       *hits; /* don't free directly, should be an offset into httpResponse->data */
+	float4     max_score;
 }                                     ZDBSearchResponse;
 
 extern PGDLLIMPORT relopt_kind RELOPT_KIND_ZDB;

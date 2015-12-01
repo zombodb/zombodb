@@ -205,9 +205,10 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
         } else if (nhits == 1) {
             /* optimization for a single hit -- avoids overhead of a 1-entry HTAB */
             MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+            ZDBScore score;
 
             entry->one_hit = palloc(sizeof(ItemPointerData));
-            set_item_pointer(response, 0, entry->one_hit);
+            set_item_pointer(response, 0, entry->one_hit, &score);
 
             MemoryContextSwitchTo(oldContext);
         } else {
@@ -224,8 +225,9 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
 
             for (i = 0; i < nhits; i++) {
                 ItemPointerData data;
+                ZDBScore score;
 
-                set_item_pointer(response, i, &data);
+                set_item_pointer(response, i, &data, &score);
                 hash_search(entry->scan, &data, HASH_ENTER, &found);
 
                 CHECK_FOR_INTERRUPTS();

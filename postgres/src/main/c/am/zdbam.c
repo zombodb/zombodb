@@ -659,7 +659,9 @@ zdbgettuple(PG_FUNCTION_ARGS)
 	haveMore = scanstate->currhit < scanstate->nhits;
 	if (haveMore)
 	{
-		set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self);
+		ZDBScore score;
+
+		set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, &score);
 		scanstate->currhit++;
 	}
 
@@ -690,9 +692,10 @@ zdbgetbitmap(PG_FUNCTION_ARGS)
 	for (i = 0; i < scanstate->nhits; i++)
 	{
 		ItemPointerData target;
+		ZDBScore score;
 
 		CHECK_FOR_INTERRUPTS();
-		set_item_pointer(scanstate->hits, i, &target);
+		set_item_pointer(scanstate->hits, i, &target, &score);
 		tbm_add_tuples(tbm, &target, 1, false);
 	}
 
@@ -880,10 +883,11 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 	for (i = 0; i < nitems; i++)
 	{
 		ItemPointerData *ctid = palloc(sizeof(ItemPointerData));
+		ZDBScore score;
 
 		CHECK_FOR_INTERRUPTS();
 
-		set_item_pointer(items, i, ctid);
+		set_item_pointer(items, i, ctid, &score);
 		if (!ItemPointerIsValid(ctid))
 			continue;
 
