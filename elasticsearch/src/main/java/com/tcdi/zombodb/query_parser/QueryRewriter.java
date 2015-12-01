@@ -54,16 +54,16 @@ public class QueryRewriter {
         year, quarter, month, week, day, hour, minute, second
     }
 
-    /* short for FilterBuilderFactory */
-    private interface FBF {
-        FBF DUMMY = new FBF() {
+    /* short for QueryBuilderFactory */
+    private interface QBF {
+        QBF DUMMY = new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
+            public QueryBuilder b(QueryParserNode n) {
                 throw new QueryRewriteException("Should not get here");
             }
         };
 
-        FilterBuilder b(QueryParserNode n);
+        QueryBuilder b(QueryParserNode n);
     }
 
     /**
@@ -213,7 +213,7 @@ public class QueryRewriter {
 
     public QueryBuilder rewriteQuery() {
         try {
-            return filteredQuery(matchAllQuery(), build(rootNode));
+            return build(rootNode);
         } finally {
             queryRewritten = true;
         }
@@ -302,7 +302,7 @@ public class QueryRewriter {
             ab = nested("nested").path(agg.getNestedPath())
                     .subAggregation(
                             filter("filter")
-                                    .filter(build(tree))
+                                    .filter(queryFilter(build(tree)))
                                     .subAggregation(ab).subAggregation(missing("missing").field(agg.getFieldname()))
                     );
         }
@@ -500,7 +500,7 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder build(QueryParserNode node) {
+    private QueryBuilder build(QueryParserNode node) {
         if (node == null)
             return null;
         else if (node instanceof ASTChild)
@@ -519,7 +519,7 @@ public class QueryRewriter {
         return build0(node);
     }
 
-    private FilterBuilder build0(QueryParserNode node) {
+    private QueryBuilder build0(QueryParserNode node) {
         if (node instanceof ASTArray)
             return build((ASTArray) node);
         else if (node instanceof ASTArrayData)
@@ -556,18 +556,18 @@ public class QueryRewriter {
             throw new QueryRewriteException("Unexpected node type: " + node.getClass().getName());
     }
 
-    private FilterBuilder build(ASTQueryTree root) throws QueryRewriteException {
+    private QueryBuilder build(ASTQueryTree root) throws QueryRewriteException {
         QueryParserNode queryNode = root.getQueryNode();
 
         if (queryNode == null)
-            return matchAllFilter();
+            return matchAllQuery();
 
         // and build the query
         return build(queryNode);
     }
 
-    private FilterBuilder build(ASTAnd node) {
-        BoolFilterBuilder fb = boolFilter();
+    private QueryBuilder build(ASTAnd node) {
+        BoolQueryBuilder fb = boolQuery();
 
         for (QueryParserNode child : node) {
             fb.must(build(child));
@@ -577,11 +577,11 @@ public class QueryRewriter {
 
     private int withDepth = 0;
     private String withNestedPath;
-    private FilterBuilder build(ASTWith node) {
+    private QueryBuilder build(ASTWith node) {
         if (withDepth == 0)
             withNestedPath = Utils.validateSameNestedPath(node);
 
-        BoolFilterBuilder fb = boolFilter();
+        BoolQueryBuilder fb = boolQuery();
 
         withDepth++;
         try {
@@ -592,11 +592,18 @@ public class QueryRewriter {
             withDepth--;
         }
 
-        return withDepth == 0 ? nestedFilter(withNestedPath, fb).join(shouldJoinNestedFilter()) : fb;
+        if (withDepth == 0) {
+            if (shouldJoinNestedFilter())
+                return nestedQuery(withNestedPath, fb);
+            else
+                return filteredQuery(matchAllQuery(), nestedFilter(withNestedPath, fb).join(false));
+        } else {
+            return fb;
+        }
     }
 
-    private FilterBuilder build(ASTOr node) {
-        BoolFilterBuilder fb = boolFilter();
+    private QueryBuilder build(ASTOr node) {
+        BoolQueryBuilder fb = boolQuery();
 
         for (QueryParserNode child : node) {
             fb.should(build(child));
@@ -604,11 +611,11 @@ public class QueryRewriter {
         return fb;
     }
 
-    private FilterBuilder build(ASTNot node) {
-        BoolFilterBuilder qb = boolFilter();
+    private QueryBuilder build(ASTNot node) {
+        BoolQueryBuilder qb = boolQuery();
 
         if (_isBuildingAggregate)
-            return matchAllFilter();
+            return matchAllQuery();
 
         for (QueryParserNode child : node) {
             qb.mustNot(build(child));
@@ -616,32 +623,32 @@ public class QueryRewriter {
         return qb;
     }
 
-    private FilterBuilder build(ASTChild node) {
+    private QueryBuilder build(ASTChild node) {
         if (node.hasChildren() && !ignoreASTChild) {
             if (useParentChild) {
-                return hasChildFilter(node.getTypename(), build(node.getChild(0)));
+                return hasChildQuery(node.getTypename(), build(node.getChild(0)));
             } else {
                 return build(node.getChild(0));
             }
         } else {
-            return matchAllFilter();
+            return matchAllQuery();
         }
     }
 
-    private FilterBuilder build(ASTParent node) {
+    private QueryBuilder build(ASTParent node) {
         if (_isBuildingAggregate)
-            return matchAllFilter();
+            return matchAllQuery();
         else if (node.hasChildren())
-            return hasParentFilter(node.getTypename(), build(node.getChild(0)));
+            return hasParentQuery(node.getTypename(), build(node.getChild(0)));
         else
-            return matchAllFilter();
+            return matchAllQuery();
     }
 
     private String nested = null;
 
     private Stack<ASTExpansion> generatedExpansionsStack = new Stack<>();
 
-    private FilterBuilder build(final ASTExpansion node) {
+    private QueryBuilder build(final ASTExpansion node) {
         final ASTIndexLink link = node.getIndexLink();
 
         try {
@@ -655,23 +662,23 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder build(ASTWord node) {
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(ASTWord node) {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
+            public QueryBuilder b(QueryParserNode n) {
                 Object value = n.getValue();
-                return termFilter(n.getFieldname(), value);
+                return termQuery(n.getFieldname(), value);
             }
         });
     }
 
-    private FilterBuilder build(ASTScript node) {
-        return scriptFilter(node.getValue().toString());
+    private QueryBuilder build(ASTScript node) {
+        return filteredQuery(matchAllQuery(), scriptFilter(node.getValue().toString()));
     }
 
-    private FilterBuilder build(ASTPhrase node) {
+    private QueryBuilder build(ASTPhrase node) {
         if (node.getOperator() == QueryParserNode.Operator.REGEX)
-            return buildStandard(node, FBF.DUMMY);
+            return buildStandard(node, QBF.DUMMY);
 
         final List<String> tokens = Utils.tokenizePhrase(client, metadataManager, node.getFieldname(), node.getEscapedValue());
         boolean hasWildcards = node.getDistance() > 0 || !node.isOrdered();
@@ -720,18 +727,18 @@ public class QueryRewriter {
             // build proper filters
             if (tokens.size() == 1) {
                 // only 1 token, so just return a term filter
-                return buildStandard(node, new FBF() {
+                return buildStandard(node, new QBF() {
                     @Override
-                    public FilterBuilder b(QueryParserNode n) {
-                        return termFilter(n.getFieldname(), n.getValue());
+                    public QueryBuilder b(QueryParserNode n) {
+                        return termQuery(n.getFieldname(), n.getValue());
                     }
                 });
             } else {
                 // more than 1 token, so return a query filter
-                return buildStandard(node, new FBF() {
+                return buildStandard(node, new QBF() {
                     @Override
-                    public FilterBuilder b(QueryParserNode n) {
-                        return queryFilter(matchPhraseQuery(n.getFieldname(), Utils.join(tokens)));
+                    public QueryBuilder b(QueryParserNode n) {
+                        return matchPhraseQuery(n.getFieldname(), Utils.join(tokens));
                     }
                 });
             }
@@ -751,11 +758,11 @@ public class QueryRewriter {
         return token;
     }
 
-    private FilterBuilder build(ASTNumber node) {
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(ASTNumber node) {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return termFilter(n.getFieldname(), n.getValue());
+            public QueryBuilder b(QueryParserNode n) {
+                return termQuery(n.getFieldname(), n.getValue());
             }
         });
     }
@@ -771,94 +778,108 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder build(ASTNull node) {
+    private QueryBuilder build(ASTNull node) {
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return missingFilter(n.getFieldname());
+            public QueryBuilder b(QueryParserNode n) {
+                return filteredQuery(matchAllQuery(), missingFilter(n.getFieldname()));
             }
         });
     }
 
-    private FilterBuilder build(ASTNotNull node) {
+    private QueryBuilder build(ASTNotNull node) {
         IndexMetadata md = metadataManager.getMetadataForField(node.getFieldname());
         if (md != null && node.getFieldname().equalsIgnoreCase(md.getPrimaryKeyFieldName()))
-            return matchAllFilter();    // optimization when we know every document has a value for the specified field
+            return matchAllQuery();    // optimization when we know every document has a value for the specified field
 
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return existsFilter(n.getFieldname());
+            public QueryBuilder b(QueryParserNode n) {
+                return filteredQuery(matchAllQuery(), existsFilter(n.getFieldname()));
             }
         });
     }
 
-    private FilterBuilder build(ASTBoolean node) {
+    private QueryBuilder build(ASTBoolean node) {
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return termFilter(n.getFieldname(), n.getValue());
+            public QueryBuilder b(QueryParserNode n) {
+                return termQuery(n.getFieldname(), n.getValue());
             }
         });
     }
 
-    private FilterBuilder build(final ASTFuzzy node) {
+    private QueryBuilder build(final ASTFuzzy node) {
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return queryFilter(fuzzyQuery(n.getFieldname(), n.getValue()).prefixLength(n.getFuzzyness() == 0 ? 3 : n.getFuzzyness()));
+            public QueryBuilder b(QueryParserNode n) {
+                return fuzzyQuery(n.getFieldname(), n.getValue()).prefixLength(n.getFuzzyness() == 0 ? 3 : n.getFuzzyness());
             }
         });
     }
 
-    private FilterBuilder build(final ASTPrefix node) {
+    private QueryBuilder build(final ASTPrefix node) {
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return prefixFilter(n.getFieldname(), String.valueOf(n.getValue()));
+            public QueryBuilder b(QueryParserNode n) {
+                return prefixQuery(n.getFieldname(), String.valueOf(n.getValue()));
             }
         });
     }
 
-    private FilterBuilder build(final ASTWildcard node) {
+    private QueryBuilder build(final ASTWildcard node) {
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return queryFilter(wildcardQuery(n.getFieldname(), String.valueOf(n.getValue())));
+            public QueryBuilder b(QueryParserNode n) {
+                return wildcardQuery(n.getFieldname(), String.valueOf(n.getValue()));
             }
         });
     }
 
-    private FilterBuilder build(final ASTArray node) {
+    private QueryBuilder build(final ASTArray node) {
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                boolean canUseFieldData = node.hasExternalValues() && node.getTotalExternalValues() >= 10000 && metadataManager.getMetadataForField(n.getFieldname()).canUseFieldData(n.getFieldname());
+            public QueryBuilder b(QueryParserNode n) {
                 boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
+                final Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
+                final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
+                int minShouldMatch = (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? cnt : 1;
 
-                // NB:  testing shows that "fielddata" is *significantly* faster for large number of terms, about 2x faster than "plain"
-                return termsFilter(n.getFieldname(), node.hasExternalValues() ? node.getExternalValues() : n.getChildValues())
-                        .execution( (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? "and" : canUseFieldData ? "fielddata" : "plain");
+                TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+                    @Override
+                    public Iterator<Object> iterator() {
+                        return itr.iterator();
+                    }
+
+                    @Override
+                    public int size() {
+                        return cnt;
+                    }
+                });
+
+                if (minShouldMatch > 1)
+                    builder.minimumMatch(minShouldMatch);
+                return builder;
             }
         });
     }
 
-    private FilterBuilder build(final ASTArrayData node) {
+    private QueryBuilder build(final ASTArrayData node) {
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
+            public QueryBuilder b(QueryParserNode n) {
                 boolean canUseFieldData = metadataManager.getMetadataForField(n.getFieldname()).canUseFieldData(n.getFieldname());
 
                 // NB:  testing shows that "fielddata" is *significantly* faster for large number of terms, about 2x faster than "plain"
-                return termsFilter(n.getFieldname(), new Iterable<String>() {
+                return termQuery(n.getFieldname(), new Iterable<String>() {
                     @Override
                     public Iterator<String> iterator() {
                         final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
@@ -879,19 +900,19 @@ public class QueryRewriter {
                             }
                         };
                     }
-                }).execution(canUseFieldData ? "fielddata" : "plain");
+                });
             }
         });
     }
 
-    private FilterBuilder build(final ASTRange node) {
+    private QueryBuilder build(final ASTRange node) {
         validateOperator(node);
-        return buildStandard(node, new FBF() {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
+            public QueryBuilder b(QueryParserNode n) {
                 QueryParserNode start = n.getChild(0);
                 QueryParserNode end = n.getChild(1);
-                return rangeFilter(node.getFieldname()).from(start.getValue()).to(end.getValue());
+                return rangeQuery(node.getFieldname()).from(start.getValue()).to(end.getValue());
             }
         });
     }
@@ -999,7 +1020,7 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder build(ASTProximity node) {
+    private QueryBuilder build(ASTProximity node) {
         node.forceFieldname(node.getFieldname());
 
         SpanNearQueryBuilder qb = spanNearQuery();
@@ -1010,33 +1031,33 @@ public class QueryRewriter {
             qb.clause(buildSpan(node, child));
         }
 
-        return queryFilter(qb);
+        return qb;
     }
 
-    private FilterBuilder buildStandard(QueryParserNode node, FBF fbf) {
-        return maybeNest(node, buildStandard0(node, fbf));
+    private QueryBuilder buildStandard(QueryParserNode node, QBF qbf) {
+        return maybeNest(node, buildStandard0(node, qbf));
     }
 
-    private FilterBuilder buildStandard0(QueryParserNode node, FBF fbf) {
+    private QueryBuilder buildStandard0(QueryParserNode node, QBF qbf) {
         switch (node.getOperator()) {
             case EQ:
             case CONTAINS:
-                return fbf.b(node);
+                return qbf.b(node);
 
             case NE:
-                return notFilter(fbf.b(node));
+                return filteredQuery(matchAllQuery(), notFilter(queryFilter(qbf.b(node))));
 
             case LT:
-                return rangeFilter(node.getFieldname()).lt(node.getValue());
+                return rangeQuery(node.getFieldname()).lt(node.getValue());
             case GT:
-                return rangeFilter(node.getFieldname()).gt(node.getValue());
+                return rangeQuery(node.getFieldname()).gt(node.getValue());
             case LTE:
-                return rangeFilter(node.getFieldname()).lte(node.getValue());
+                return rangeQuery(node.getFieldname()).lte(node.getValue());
             case GTE:
-                return rangeFilter(node.getFieldname()).gte(node.getValue());
+                return rangeQuery(node.getFieldname()).gte(node.getValue());
 
             case REGEX:
-                return regexpFilter(node.getFieldname(), node.getEscapedValue());
+                return regexpQuery(node.getFieldname(), node.getEscapedValue());
 
             case CONCEPT: {
                 int minTermFreq = 2;
@@ -1047,23 +1068,26 @@ public class QueryRewriter {
                     if (!"fulltext".equalsIgnoreCase(md.getAnalyzer(node.getFieldname())))
                         minTermFreq = 1;
 
-                return queryFilter(moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).minWordLength(3).minTermFreq(minTermFreq).stopWords(IndexMetadata.MLT_STOP_WORDS));
+                return moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).minWordLength(3).minTermFreq(minTermFreq).stopWords(IndexMetadata.MLT_STOP_WORDS);
             }
 
             case FUZZY_CONCEPT:
-                return queryFilter(fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO));
+                return fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO);
 
             default:
                 throw new QueryRewriteException("Unexpected operator: " + node.getOperator());
         }
     }
 
-    private FilterBuilder maybeNest(QueryParserNode node, FilterBuilder fb) {
+    private QueryBuilder maybeNest(QueryParserNode node, QueryBuilder fb) {
         if (withDepth == 0 && node.isNested()) {
-            return nestedFilter(node.getNestedPath(), fb).join(shouldJoinNestedFilter());
+            if (shouldJoinNestedFilter())
+                return nestedQuery(node.getNestedPath(), fb);
+            else
+                return filteredQuery(matchAllQuery(), nestedFilter(node.getNestedPath(), fb).join(false));
         } else if (!node.isNested()) {
             if (_isBuildingAggregate)
-                return matchAllFilter();
+                return matchAllQuery();
             return fb;  // it's not nested, so just return
         }
 
@@ -1097,7 +1121,7 @@ public class QueryRewriter {
         QueryRewriter qr = new QueryRewriter(client, indexName, searchPreference, input, allowSingleIndex, true, true);
         QueryParserNode parentQuery = qr.tree.getChild(ASTParent.class);
         if (parentQuery != null) {
-            return build(parentQuery);
+            return queryFilter(build(parentQuery));
         } else {
             return hasParentFilter("xact", qr.rewriteQuery());
         }
@@ -1135,7 +1159,7 @@ public class QueryRewriter {
             return notNull;
         }
 
-        FilterBuilder nodeFilter = build(nodeQuery);
+        QueryBuilder nodeFilter = build(nodeQuery);
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(10240)
                 .setQuery(constantScoreQuery(nodeFilter))
@@ -1192,7 +1216,7 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder expand(final ASTExpansion root, final ASTIndexLink link) {
+    private QueryBuilder expand(final ASTExpansion root, final ASTIndexLink link) {
         if (isInTestMode())
             return build(root.getQuery());
 
