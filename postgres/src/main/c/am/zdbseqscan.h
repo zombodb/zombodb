@@ -21,7 +21,7 @@
 
 typedef struct {
     union {
-        int8 iscore;
+        int32 iscore;
         float4 fscore;
     };
 } ZDBScore;
