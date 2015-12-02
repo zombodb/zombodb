@@ -12,4 +12,6 @@ cat << DONE >> /etc/postgresql/9.3/main/postgresql.conf
 local_preload_libraries='zombodb.so'
 client_min_messages=notice
 autovacuum=off
+max_connections=10
+work_mem=64kB
 DONE
