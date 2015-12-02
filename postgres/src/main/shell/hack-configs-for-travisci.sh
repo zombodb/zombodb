@@ -9,7 +9,7 @@ index.query.bool.max_clause_count: 1000000
 DONE
 
 cat << DONE >> /etc/postgresql/9.3/main/postgresql.conf
-local_preload_libraries='zombodb'
+local_preload_libraries='zombodb.so'
 client_min_messages=notice
 autovacuum=off
 DONE
