@@ -21,7 +21,6 @@ before_install:
   - sudo apt-get remove -y curl
   - sudo apt-get install -y postgresql-9.3 postgresql-server-dev-9.3
   - sudo apt-get install -y maven
-  - sudo sysctl -w vm.overcommit_memory=2
 
 script:
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
@@ -43,6 +42,7 @@ script:
   - sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
   - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
   - sudo /etc/init.d/postgresql start 9.3
+  - sudo sh -c "echo -17 > /proc/$(ps auwwx | grep postgres | awk '{print $2;}')/oom_adj"
   - cat /etc/elasticsearch/elasticsearch.yml
   - cat /etc/postgresql/9.3/main/postgresql.conf
   - sudo sleep 10
