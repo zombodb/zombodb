@@ -24,7 +24,7 @@ script:
   - tar xzf postgres/src/main/docker/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
   - cd curl-7.43.0
   - ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
-  - make && sudo make install
+  - make -j2 && sudo make install
   - sudo ldconfig && sudo ldconfig
   - cd ..
   - cd postgres
@@ -40,7 +40,11 @@ script:
   - cat /etc/postgresql/9.3/main/postgresql.conf
   - sudo sleep 10
   - make installcheck
-  - if [ -f regression.diffs ] ; then cat regression.diffs ;sudo cat /var/log/postgresql/*.log /var/log/elasticsearch/*.log ;  fi
+
+after_failure:
+  - cat regression.diffs
+  - sudo cat /var/log/postgresql/*.log
+  - sudo cat /var/log/elasticsearch/*.log
   - df -h
   - ps auwwx
   - free
