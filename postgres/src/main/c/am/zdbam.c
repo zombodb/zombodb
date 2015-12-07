@@ -403,6 +403,9 @@ void zdbam_fini(void)
 	ExecutorStart_hook = prev_ExecutorStartHook;
 	ExecutorEnd_hook   = prev_ExecutorEndHook;
 
+	ExecutorRun_hook    = prev_ExecutorRunHook;
+	ExecutorFinish_hook = prev_ExecutorFinishHook;
+
 	UnregisterXactCallback(zdbam_xact_callback, NULL);
 }
 
