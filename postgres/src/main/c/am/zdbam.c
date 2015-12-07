@@ -97,9 +97,15 @@ static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
 static List *xactCommitDataList  = NULL;
 
+/* For tracking/pushing changed tuples */
 static ExecutorStart_hook_type prev_ExecutorStartHook = NULL;
 static ExecutorEnd_hook_type   prev_ExecutorEndHook  = NULL;
+
+/* for tracking Executor nesting depth */
+static ExecutorRun_hook_type   prev_ExecutorRunHook  = NULL;
+static ExecutorFinish_hook_type   prev_ExecutorFinishHook  = NULL;
 static int executorDepth = 0;
+
 static int64 numHitsFound = -1;
 
 static Oid *findZDBIndexes(Oid relid, int *many)
@@ -176,13 +182,6 @@ static void xact_complete_cleanup(XactEvent event) {
 
 	zdb_sequential_scan_support_cleanup();
 	zdb_transaction_finish();
-
-    /*
-     * release any advisory locks we might still be holding
-     *
-     * We could definitely have some if the transaction aborted
-     */
-    DirectFunctionCall1(pg_advisory_unlock_all, PointerGetDatum(NULL));
 
     /* notify each index we used that the xact is over */
     foreach(lc, usedIndexes)
@@ -288,8 +287,6 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags)
 	if (prev_ExecutorStartHook == zdb_executor_start_hook)
 		elog(ERROR, "zdb_executor_start_hook: Somehow prev_ExecutorStartHook was set to zdb_executor_start_hook");
 
-	executorDepth++;
-
 	if (prev_ExecutorStartHook)
 		prev_ExecutorStartHook(queryDesc, eflags);
 	else
@@ -298,8 +295,6 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags)
 
 static void zdb_executor_end_hook(QueryDesc *queryDesc)
 {
-	executorDepth--;
-
 	if (executorDepth == 0)
 	{
 		zdb_sequential_scan_support_cleanup();
@@ -340,6 +335,44 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc)
 		standard_ExecutorEnd(queryDesc);
 }
 
+static void zdb_executor_run_hook(QueryDesc *queryDesc, ScanDirection direction, long count)
+{
+	executorDepth++;
+	PG_TRY();
+	{
+		if (prev_ExecutorRunHook)
+			prev_ExecutorRunHook(queryDesc, direction, count);
+		else
+			standard_ExecutorRun(queryDesc, direction, count);
+		executorDepth--;
+	}
+	PG_CATCH();
+	{
+		executorDepth--;
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+}
+
+static void zdb_executor_finish_hook(QueryDesc *queryDesc)
+{
+	executorDepth++;
+	PG_TRY();
+	{
+		if (prev_ExecutorFinishHook)
+			prev_ExecutorFinishHook(queryDesc);
+		else
+			standard_ExecutorFinish(queryDesc);
+		executorDepth--;
+	}
+	PG_CATCH();
+	{
+		executorDepth--;
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+}
+
 void zdbam_init(void)
 {
 	zdb_index_init();
@@ -351,9 +384,13 @@ void zdbam_init(void)
 
 	prev_ExecutorStartHook = ExecutorStart_hook;
 	prev_ExecutorEndHook   = ExecutorEnd_hook;
+	ExecutorStart_hook     = zdb_executor_start_hook;
+	ExecutorEnd_hook       = zdb_executor_end_hook;
 
-	ExecutorStart_hook   = zdb_executor_start_hook;
-	ExecutorEnd_hook     = zdb_executor_end_hook;
+	prev_ExecutorRunHook    = ExecutorRun_hook;
+	prev_ExecutorFinishHook = ExecutorFinish_hook;
+	ExecutorRun_hook        = zdb_executor_run_hook;
+	ExecutorFinish_hook     = zdb_executor_finish_hook;
 
 	RegisterXactCallback(zdbam_xact_callback, NULL);
 }

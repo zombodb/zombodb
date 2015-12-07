@@ -41,5 +41,20 @@ SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) =
 SELECT *
 FROM zdb_tally('tas_update_fail', 'end_date_text', '0', '^.*', '', 5000, 'term' :: zdb_tally_order);
 
+--
+-- followup to original report against issue-63
+--
+
+BEGIN;
+UPDATE tas_update_fail SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) = 1 THEN (end_date_text::date - start_date_text::date)::text ELSE NULL END WHERE pk_id = 1;
+UPDATE tas_update_fail SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) = 1 THEN (end_date_text::date - start_date_text::date)::text ELSE NULL END WHERE pk_id = 2;
+UPDATE tas_update_fail SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) = 1 THEN (end_date_text::date - start_date_text::date)::text ELSE NULL END WHERE pk_id = 3;
+UPDATE tas_update_fail SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) = 1 THEN (end_date_text::date - start_date_text::date)::text ELSE NULL END WHERE pk_id = 4;
+UPDATE tas_update_fail SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) = 1 THEN (end_date_text::date - start_date_text::date)::text ELSE NULL END WHERE pk_id = 5;
+COMMIT;
+
+SELECT *
+FROM zdb_tally('tas_update_fail', 'end_date_text', '0', '^.*', '', 5000, 'term' :: zdb_tally_order);
+
 DROP TABLE tas_update_fail CASCADE;
 DROP FUNCTION isdate(TEXT);
