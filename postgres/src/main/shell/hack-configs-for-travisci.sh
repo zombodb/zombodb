@@ -1,12 +1,17 @@
 #! /bin/sh
 
-echo << DONE >> /etc/elasticsearch/elasticsearch.yml
+cat << DONE >> /etc/elasticsearch/elasticsearch.yml
 script.disable_dynamic: false
-threadpool.bulk.queue_size: 1024
-threadpool.bulk.size: 12
+threadpool.bulk.queue_size: 10
+threadpool.bulk.size: 2
 http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 DONE
 
-echo "local_preload_libraries='zombodb'" >> /etc/postgresql/9.3/main/postgresql.conf
-echo "autovacuum=off" >> /etc/postgresql/9.3/main/postgresql.conf
+cat << DONE >> /etc/postgresql/9.3/main/postgresql.conf
+local_preload_libraries='zombodb.so'
+client_min_messages=notice
+autovacuum=off
+max_connections=10
+work_mem=64kB
+DONE

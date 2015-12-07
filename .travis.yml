@@ -6,16 +6,21 @@ env:
   - BUILD_SYSTEM=travis
 
 before_install:
+  - ls -la /etc/init.d/
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
   - echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
+  - sudo add-apt-repository -y ppa:webupd8team/java
   - sudo apt-get update -y -qq
+  - sudo apt-get install -y oracle-java7-installer
+  - sudo apt-get install -y oracle-java7-set-default
   - sudo apt-get install -y wget
-  - sudo apt-get install rpm
-  - sudo apt-get install elasticsearch
-  - sudo /etc/init.d/postgresql stop
+  - sudo apt-get install -y rpm
+  - sudo apt-get install -y elasticsearch
+  - sudo apt-get remove -y postgresql-9.1
   - sudo apt-get remove -y postgresql-9.4
   - sudo apt-get remove -y curl
-  - sudo apt-get install -y postgresql-server-dev-9.3
+  - sudo apt-get install -y postgresql-9.3 postgresql-server-dev-9.3
+  - sudo apt-get install -y maven
 
 script:
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
@@ -24,21 +29,29 @@ script:
   - tar xzf postgres/src/main/docker/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
   - cd curl-7.43.0
   - ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
-  - make && sudo make install
+  - make -j2 && sudo make install
   - sudo ldconfig && sudo ldconfig
   - cd ..
   - cd postgres
   - make && sudo make install
   - ldd zombodb.so
   - sudo mkdir /usr/lib/postgresql/9.3/lib/plugins
-  - sudo ln -s /usr/lib/postgresql/9.3/lib/zombodb.so /usr/lib/postgresql/9.3/lib/plugins/zombodb.so
+  - sudo cp /usr/lib/postgresql/9.3/lib/zombodb.so /usr/lib/postgresql/9.3/lib/plugins/zombodb.so
+  - sudo rm /usr/lib/postgresql/9.3/lib/zombodb.so
   - sudo src/main/shell/hack-configs-for-travisci.sh
   - sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
-  - sudo /etc/init.d/elasticsearch start
+  - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
   - sudo /etc/init.d/postgresql start 9.3
+  - sudo sh -c "for p in $(ps auwwx | grep postgres | awk '{print $2;}'); do echo -17 > /proc/$p/oom_adj ; done"
+  - cat /etc/elasticsearch/elasticsearch.yml
+  - cat /etc/postgresql/9.3/main/postgresql.conf
   - sudo sleep 10
   - make installcheck
-  - if [ -f regression.diffs ] ; then cat regression.diffs ;sudo cat /var/log/postgresql/*.log /var/log/elasticsearch/*.log ;  fi
+
+after_failure:
+  - cat regression.diffs
+  - sudo cat /var/log/postgresql/*.log
+  - sudo cat /var/log/elasticsearch/*.log
   - df -h
   - ps auwwx
   - free
