@@ -18,13 +18,7 @@
 
 #include "postgres.h"
 #include "fmgr.h"
-
-typedef struct {
-    union {
-        int32 iscore;
-        float4 fscore;
-    };
-} ZDBScore;
+#include "zdbscore.h"
 
 __inline static void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score)
 {

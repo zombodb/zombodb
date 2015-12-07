@@ -75,6 +75,12 @@ CREATE OR REPLACE FUNCTION zdbtupledeletedtrigger() RETURNS trigger AS '$libdir/
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
+
+--
+-- scoring support
+--
+CREATE OR REPLACE FUNCTION zdb_score(table_name regclass, ctid tid) RETURNS float4 LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
+
 --
 -- utility functions
 --

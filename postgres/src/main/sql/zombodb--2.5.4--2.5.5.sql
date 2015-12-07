@@ -1,1 +1,1 @@
--- no sql changes
+CREATE OR REPLACE FUNCTION zdb_score(table_name regclass, ctid tid) RETURNS float4 LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';

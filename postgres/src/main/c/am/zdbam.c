@@ -43,6 +43,7 @@
 #include "zdbam.h"
 #include "util/zdbutils.h"
 #include "zdbseqscan.h"
+#include "zdbscore.h"
 
 
 PG_FUNCTION_INFO_V1(zdbbuild);
@@ -699,9 +700,9 @@ zdbgettuple(PG_FUNCTION_ARGS)
 	haveMore = scanstate->currhit < scanstate->nhits;
 	if (haveMore)
 	{
-		ZDBScore score;
+		ZDB_ALLOC_SCORE();
 
-		set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, &score);
+		set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, zdb_last_score);
 		scanstate->currhit++;
 	}
 

@@ -26,6 +26,7 @@
 #include "util/zdbutils.h"
 #include "zdb_interface.h"
 #include "zdbseqscan.h"
+#include "zdbscore.h"
 
 PG_FUNCTION_INFO_V1(zdbsel);
 
@@ -53,7 +54,13 @@ typedef struct SequentialScanEntry {
     HTAB              *scan;
     ItemPointer       one_hit;
     bool              empty;
+    ZDBScore          score;
 } SequentialScanEntry;
+
+typedef struct SequentialScanTidAndScore {
+    ItemPointerData tid;
+    ZDBScore        score;
+} SequentialScanTidAndScoreEntry;
 
 List *SEQUENTIAL_SCAN_INDEXES = NULL;
 HTAB *SEQUENTIAL_SCANS        = NULL;
@@ -205,10 +212,9 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
         } else if (nhits == 1) {
             /* optimization for a single hit -- avoids overhead of a 1-entry HTAB */
             MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
-            ZDBScore score;
 
             entry->one_hit = palloc(sizeof(ItemPointerData));
-            set_item_pointer(response, 0, entry->one_hit, &score);
+            set_item_pointer(response, 0, entry->one_hit, &entry->score);
 
             MemoryContextSwitchTo(oldContext);
         } else {
@@ -217,20 +223,22 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
 
             memset(&ctl, 0, sizeof(ctl));
             ctl.keysize   = sizeof(ItemPointerData);
-            ctl.entrysize = ctl.keysize;
+            ctl.entrysize = sizeof(SequentialScanTidAndScoreEntry);
             ctl.hash      = tag_hash;
             ctl.hcxt      = TopTransactionContext;
 
             entry->scan = hash_create(query, nhits, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
 
             for (i = 0; i < nhits; i++) {
-                ItemPointerData data;
-                ZDBScore score;
-
-                set_item_pointer(response, i, &data, &score);
-                hash_search(entry->scan, &data, HASH_ENTER, &found);
+                ItemPointerData                hit_tid;
+                ZDBScore                       hit_score;
+                SequentialScanTidAndScoreEntry *tid_and_score_entry;
 
                 CHECK_FOR_INTERRUPTS();
+
+                set_item_pointer(response, i, &hit_tid, &hit_score);
+                tid_and_score_entry = hash_search(entry->scan, &hit_tid, HASH_ENTER, &found);
+                tid_and_score_entry->score = hit_score;
             }
         }
 
@@ -238,12 +246,22 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
     }
 
     /* does the tid being sequentially scanned match the query? */
-    if (entry->empty)
+    if (entry->empty) {
         found = false;
-    else if (entry->one_hit)
+    } else if (entry->one_hit) {
         found = ItemPointerEquals(tid, entry->one_hit);
-    else
-        hash_search(entry->scan, tid, HASH_FIND, &found);
+        if (found)
+            ZDB_SET_SCORE(entry->score);
+    } else {
+        SequentialScanTidAndScoreEntry *tid_and_score;
+
+        tid_and_score = hash_search(entry->scan, tid, HASH_FIND, &found);
+        if (found)
+            ZDB_SET_SCORE(tid_and_score->score);
+    }
+
+    if (!found)
+        ZDB_RESET_SCORE();
 
     PG_RETURN_BOOL(found);
 }
@@ -258,6 +276,8 @@ void zdb_sequential_scan_support_cleanup(void) {
         pfree(SEQUENTIAL_SCAN_INDEXES);
         SEQUENTIAL_SCAN_INDEXES = NULL;
     }
+
+    ZDB_RESET_SCORE();
 }
 
 Datum zdbsel(PG_FUNCTION_ARGS) {
