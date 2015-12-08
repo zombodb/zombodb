@@ -21,4 +21,10 @@ http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 DONE
 
-
+cat << DONE >> /var/lib/pgsql/9.3/data/postgresql.conf
+local_preload_libraries='zombodb.so'
+client_min_messages=notice
+autovacuum=off
+max_connections=10
+work_mem=64kB
+DONE
