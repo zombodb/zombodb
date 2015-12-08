@@ -1,5 +1,7 @@
 #! /bin/sh
 
+rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch
+
 cat << DONE > /etc/yum.repos.d/elasticsearch.repo
 [elasticsearch-1.7]
 name=Elasticsearch repository for 1.7.x packages
