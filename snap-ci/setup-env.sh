@@ -1,7 +1,7 @@
 #! /bin/sh
 
-curl https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.0.tar.gz
-tar xzf ./elasticsearch-1.7.0.tar.gz
+curl https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.0.tar.gz > es170.tgz
+tar xzf ./es170.tgz
 ln -s elasticsearch-1.7.0 ./es
 
 cat << DONE >> ./es/elasticsearch.yml
