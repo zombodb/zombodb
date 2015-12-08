@@ -520,40 +520,50 @@ public class QueryRewriter {
     }
 
     private QueryBuilder build0(QueryParserNode node) {
+        QueryBuilder qb;
         if (node instanceof ASTArray)
-            return build((ASTArray) node);
+            qb = build((ASTArray) node);
         else if (node instanceof ASTArrayData)
-            return build((ASTArrayData) node);
+            qb = build((ASTArrayData) node);
         else if (node instanceof ASTBoolean)
-            return build((ASTBoolean) node);
+            qb = build((ASTBoolean) node);
         else if (node instanceof ASTFuzzy)
-            return build((ASTFuzzy) node);
+            qb = build((ASTFuzzy) node);
         else if (node instanceof ASTNotNull)
-            return build((ASTNotNull) node);
+            qb = build((ASTNotNull) node);
         else if (node instanceof ASTNull)
-            return build((ASTNull) node);
+            qb = build((ASTNull) node);
         else if (node instanceof ASTNumber)
-            return build((ASTNumber) node);
+            qb = build((ASTNumber) node);
         else if (node instanceof ASTPhrase)
-            return build((ASTPhrase) node);
+            qb = build((ASTPhrase) node);
         else if (node instanceof ASTPrefix)
-            return build((ASTPrefix) node);
+            qb = build((ASTPrefix) node);
         else if (node instanceof ASTProximity)
-            return build((ASTProximity) node);
+            qb = build((ASTProximity) node);
         else if (node instanceof ASTQueryTree)
-            return build((ASTQueryTree) node);
+            qb = build((ASTQueryTree) node);
         else if (node instanceof ASTRange)
-            return build((ASTRange) node);
+            qb = build((ASTRange) node);
         else if (node instanceof ASTWildcard)
-            return build((ASTWildcard) node);
+            qb = build((ASTWildcard) node);
         else if (node instanceof ASTWord)
-            return build((ASTWord) node);
+            qb = build((ASTWord) node);
         else if (node instanceof ASTScript)
-            return build((ASTScript) node);
+            qb = build((ASTScript) node);
         else if (node instanceof ASTExpansion)
-            return build((ASTExpansion) node);
+            qb = build((ASTExpansion) node);
         else
             throw new QueryRewriteException("Unexpected node type: " + node.getClass().getName());
+
+        maybeBoost(node, qb);
+
+        return qb;
+    }
+
+    private void maybeBoost(QueryParserNode node, QueryBuilder qb) {
+        if (qb instanceof BoostableQueryBuilder && node.getBoost() != 0.0)
+            ((BoostableQueryBuilder) qb).boost(node.getBoost());
     }
 
     private QueryBuilder build(ASTQueryTree root) throws QueryRewriteException {
@@ -918,28 +928,33 @@ public class QueryRewriter {
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, QueryParserNode node) {
+        SpanQueryBuilder qb;
+
         if (node instanceof ASTWord)
-            return buildSpan(prox, (ASTWord) node);
+            qb = buildSpan(prox, (ASTWord) node);
         else if (node instanceof ASTNumber)
-            return buildSpan(prox, (ASTNumber) node);
+            qb = buildSpan(prox, (ASTNumber) node);
         else if (node instanceof ASTBoolean)
-            return buildSpan(prox, (ASTBoolean) node);
+            qb = buildSpan(prox, (ASTBoolean) node);
         else if (node instanceof ASTFuzzy)
-            return buildSpan(prox, (ASTFuzzy) node);
+            qb = buildSpan(prox, (ASTFuzzy) node);
         else if (node instanceof ASTPrefix)
-            return buildSpan(prox, (ASTPrefix) node);
+            qb = buildSpan(prox, (ASTPrefix) node);
         else if (node instanceof ASTWildcard)
-            return buildSpan(prox, (ASTWildcard) node);
+            qb = buildSpan(prox, (ASTWildcard) node);
         else if (node instanceof ASTPhrase)
-            return buildSpan(prox, (ASTPhrase) node);
+            qb = buildSpan(prox, (ASTPhrase) node);
         else if (node instanceof ASTNull)
-            return buildSpan(prox, (ASTNull) node);
+            qb = buildSpan(prox, (ASTNull) node);
         else if (node instanceof ASTNotNull)
             return buildSpan(prox, (ASTNotNull) node);
         else if (node instanceof ASTProximity)
-            return buildSpan((ASTProximity) node);
+            qb = buildSpan((ASTProximity) node);
         else
             throw new QueryRewriteException("Unsupported PROXIMITY node: " + node.getClass().getName());
+
+        maybeBoost(node, qb);
+        return qb;
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity node) {

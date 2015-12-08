@@ -3290,5 +3290,73 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
+
+    @Test
+    public void testQueryBoosting() throws Exception {
+        assertJson("phrase_field:(term^1.0 field:term^2.0 a^3.0 w/2 b^4.0 'some phrase'^5 fuzzy~^6 wildcard*^7)",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"value\" : \"term\",\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"field\" : {\n" +
+                        "          \"value\" : \"term\",\n" +
+                        "          \"boost\" : 2.0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_near\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"phrase_field\" : {\n" +
+                        "              \"value\" : \"a\",\n" +
+                        "              \"boost\" : 3.0\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"phrase_field\" : {\n" +
+                        "              \"value\" : \"b\",\n" +
+                        "              \"boost\" : 4.0\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ],\n" +
+                        "        \"slop\" : 2,\n" +
+                        "        \"in_order\" : false\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"match\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"query\" : \"some phrase\",\n" +
+                        "          \"type\" : \"phrase\",\n" +
+                        "          \"boost\" : 5.0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"fuzzy\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"value\" : \"fuzzy\",\n" +
+                        "          \"boost\" : 6.0,\n" +
+                        "          \"prefix_length\" : 3\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"prefix\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"prefix\" : \"wildcard\",\n" +
+                        "          \"boost\" : 7.0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 

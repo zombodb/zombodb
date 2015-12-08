@@ -37,7 +37,7 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
 
     protected String fieldname;
     protected String typename;
-    protected double boost;
+    protected float boost;
     protected int fuzzyness = 0;
     protected int distance;
     protected boolean ordered = false;
@@ -89,7 +89,7 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         return operator;
     }
 
-    public double getBoost() {
+    public float getBoost() {
         return boost;
     }
 

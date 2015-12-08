@@ -457,7 +457,7 @@ void OptionalBoost(QueryParserNode n) :
 }
 {
     { if (n == null) return; }
-    [ LOOKAHEAD(2) "^" t = <NUMBER> { n.boost = Double.valueOf(t.image); } ]
+    [ LOOKAHEAD(2) "^" t = <NUMBER> { n.boost = Float.valueOf(t.image); } ]
 }
 
 FieldnameAndOperator OptionalFieldname() :
