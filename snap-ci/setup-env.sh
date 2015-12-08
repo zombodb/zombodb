@@ -1,19 +1,10 @@
 #! /bin/sh
 
-rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch
+curl https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.0.tar.gz
+tar xzf ./elasticsearch-1.7.0.tar.gz
+ln -s elasticsearch-1.7.0 ./es
 
-cat << DONE > /etc/yum.repos.d/elasticsearch.repo
-[elasticsearch-1.7]
-name=Elasticsearch repository for 1.7.x packages
-baseurl=http://packages.elastic.co/elasticsearch/1.7/centos
-gpgcheck=1
-gpgkey=http://packages.elastic.co/GPG-KEY-elasticsearch
-enabled=1
-DONE
-
-yum -y install elasticsearch
-
-cat << DONE >> /etc/elasticsearch/elasticsearch.yml
+cat << DONE >> ./es/elasticsearch.yml
 script.disable_dynamic: false
 threadpool.bulk.queue_size: 10
 threadpool.bulk.size: 2
