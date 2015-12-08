@@ -251,17 +251,14 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
     } else if (entry->one_hit) {
         found = ItemPointerEquals(tid, entry->one_hit);
         if (found)
-            ZDB_SET_SCORE(entry->score);
+            zdb_record_score(key.indexRelOid, tid, entry->score);
     } else {
         SequentialScanTidAndScoreEntry *tid_and_score;
 
         tid_and_score = hash_search(entry->scan, tid, HASH_FIND, &found);
         if (found)
-            ZDB_SET_SCORE(tid_and_score->score);
+            zdb_record_score(key.indexRelOid, tid, tid_and_score->score);
     }
-
-    if (!found)
-        ZDB_RESET_SCORE();
 
     PG_RETURN_BOOL(found);
 }
@@ -276,8 +273,6 @@ void zdb_sequential_scan_support_cleanup(void) {
         pfree(SEQUENTIAL_SCAN_INDEXES);
         SEQUENTIAL_SCAN_INDEXES = NULL;
     }
-
-    ZDB_RESET_SCORE();
 }
 
 Datum zdbsel(PG_FUNCTION_ARGS) {

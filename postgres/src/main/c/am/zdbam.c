@@ -181,6 +181,7 @@ static void xact_complete_cleanup(XactEvent event) {
 	executorDepth = 0;
 	numHitsFound = -1;
 
+	zdb_reset_scores();
 	zdb_sequential_scan_support_cleanup();
 	zdb_transaction_finish();
 
@@ -700,10 +701,12 @@ zdbgettuple(PG_FUNCTION_ARGS)
 	haveMore = scanstate->currhit < scanstate->nhits;
 	if (haveMore)
 	{
-		ZDB_ALLOC_SCORE();
+		ZDBScore score;
 
-		set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, zdb_last_score);
+		set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, &score);
 		scanstate->currhit++;
+
+		zdb_record_score(RelationGetRelid(scan->indexRelation), &scan->xs_ctup.t_self, score);
 	}
 
 	PG_RETURN_BOOL(haveMore);

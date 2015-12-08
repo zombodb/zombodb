@@ -27,6 +27,7 @@
 #include "zdbseqscan.h"
 #include "util/zdbutils.h"
 
+PG_FUNCTION_INFO_V1(zdb_determine_index);
 PG_FUNCTION_INFO_V1(zdb_get_index_name);
 PG_FUNCTION_INFO_V1(zdb_get_url);
 PG_FUNCTION_INFO_V1(zdb_query_func);
@@ -36,6 +37,161 @@ PG_FUNCTION_INFO_V1(zdb_row_to_json);
 PG_FUNCTION_INFO_V1(zdb_internal_describe_nested_object);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
+
+Datum zdb_determine_index(PG_FUNCTION_ARGS) {
+	Oid      relid         = PG_GETARG_OID(0);
+	Oid      zdbIndexRelId = InvalidOid;
+	Relation table_or_view_rel;
+
+	table_or_view_rel = RelationIdGetRelation(relid);
+
+	switch (table_or_view_rel->rd_rel->relkind) {
+		case RELKIND_VIEW: {
+			/**
+			 * The index we use here is the index from the table specified by the column named 'zdb'
+			 * that has a functional expression that matches the functional expression of the column named 'zdb'
+			 */
+			TupleDesc tupdesc = RelationGetDescr(table_or_view_rel);
+			int       i;
+
+			for (i = 0; i < tupdesc->natts; i++) {
+				Form_pg_attribute att = tupdesc->attrs[i];
+
+				if (att->attisdropped)
+					continue;
+
+				if (strcmp("zdb", att->attname.data) == 0) {
+					StringInfo pg_rewriteQuery = makeStringInfo();
+					ListCell   *lc;
+					char       *action;
+					Query      *query;
+
+					/* figure out the view definition */
+					appendStringInfo(pg_rewriteQuery, "SELECT ev_action "
+							"FROM pg_catalog.pg_rewrite "
+							"WHERE rulename = '_RETURN' AND ev_class=%d", relid);
+
+					SPI_connect();
+					if (SPI_exec(pg_rewriteQuery->data, 2) != SPI_OK_SELECT)
+						elog(ERROR, "failed to get pg_rewrite tuple for view '%s'", RelationGetRelationName(table_or_view_rel));
+					else if (SPI_processed != 1)
+						elog(ERROR, "'%s' not a view", RelationGetRelationName(table_or_view_rel));
+
+					action = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
+
+					if (action == NULL)
+						elog(ERROR, "pg_rewrite.ev_action IS NULL for view '%s'", RelationGetRelationName(table_or_view_rel));
+
+					/* and turn it into a Query so we can walk its target list */
+					query = (Query *) linitial(stringToNode(action));
+
+					foreach(lc, query->targetList) {
+						TargetEntry *te = (TargetEntry *) lfirst(lc);
+
+						if (strcmp("zdb", te->resname) == 0 && IsA(te->expr, FuncExpr)) {
+							FuncExpr *viewFuncExpr = (FuncExpr *) te->expr;
+							Const    *tableRegclass;
+							Oid      heapRelOid;
+							Relation heapRel;
+							List     *indexes;
+							ListCell *lc2;
+
+							if (list_length(viewFuncExpr->args) != 2)
+								elog(ERROR, "the 'zdb' column for view '%s' does not have the correct number of arguments (2)", RelationGetRelationName(table_or_view_rel));
+							else if (!IsA(linitial(viewFuncExpr->args), Const))
+								elog(ERROR, "the 'zdb' column's function for view '%s' shoud have a regclass constant as the first argument", RelationGetRelationName(table_or_view_rel));
+
+							tableRegclass = (Const *) linitial(viewFuncExpr->args);
+							heapRelOid    = (Oid) DatumGetObjectId(tableRegclass->constvalue);
+
+							heapRel = RelationIdGetRelation(heapRelOid);
+							indexes = RelationGetIndexList(heapRel);
+							foreach (lc2, indexes) {
+								Oid      indexRelOid = (Oid) lfirst(lc2);
+								Relation indexRel;
+
+								indexRel = RelationIdGetRelation(indexRelOid);
+								if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0) {
+									ListCell *lc3;
+
+									foreach (lc3, RelationGetIndexExpressions(indexRel)) {
+										Node *n = (Node *) lfirst(lc3);
+
+										if (IsA(n, FuncExpr)) {
+											FuncExpr *indexFuncExpr = (FuncExpr *) n;
+
+											if (indexFuncExpr->funcid == viewFuncExpr->funcid) {
+												zdbIndexRelId = indexRelOid;
+												break;
+											}
+										}
+									}
+								}
+
+								RelationClose(indexRel);
+
+								if (zdbIndexRelId != InvalidOid)
+									break;
+							}
+
+							RelationClose(heapRel);
+						}
+
+						if (zdbIndexRelId != InvalidOid)
+							break;
+					}
+					SPI_finish();
+
+					if (zdbIndexRelId != InvalidOid)
+						break;
+				}
+			}
+
+			if (zdbIndexRelId != InvalidOid)
+				break;
+
+			elog(ERROR, "view '%s' does not have a column named 'zdb' defined as a functional expression", RelationGetRelationName(table_or_view_rel));
+			break;
+		}
+
+		case RELKIND_MATVIEW:
+		case RELKIND_RELATION: {
+			/*
+			 * the index to use is the first non-shadow "zombodb" index we find on the relation
+			 * there should only be one
+			 */
+			List     *indexes = RelationGetIndexList(table_or_view_rel);
+			ListCell *lc;
+
+			foreach(lc, indexes) {
+				Oid      indexRelOid = (Oid) lfirst(lc);
+				Relation indexRel    = RelationIdGetRelation(indexRelOid);
+
+				if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
+					zdbIndexRelId = indexRelOid;
+
+				RelationClose(indexRel);
+
+				if (zdbIndexRelId != InvalidOid)
+					break;
+			}
+			break;
+		}
+
+		case RELKIND_COMPOSITE_TYPE:
+		case RELKIND_FOREIGN_TABLE:
+		case RELKIND_INDEX:
+		case RELKIND_SEQUENCE:
+		case RELKIND_TOASTVALUE:
+		default:
+			elog(ERROR, "cannot support relkind of %c", table_or_view_rel->rd_rel->relkind);
+			break;
+	}
+
+	RelationClose(table_or_view_rel);
+
+	PG_RETURN_OID(zdbIndexRelId);
+}
 
 Datum zdb_get_index_name(PG_FUNCTION_ARGS)
 {

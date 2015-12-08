@@ -26,21 +26,10 @@ typedef struct {
     };
 } ZDBScore;
 
-#define ZDB_ALLOC_SCORE() \
-do {\
-   if (zdb_last_score == NULL) zdb_last_score = MemoryContextAlloc(TopTransactionContext, sizeof(ZDBScore)); \
-} while(0)
+void zdb_reset_scores(void);
+void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score);
 
-#define ZDB_SET_SCORE(s) \
-do {\
-  ZDB_ALLOC_SCORE(); \
-  memcpy(zdb_last_score, &s, sizeof(ZDBScore)); \
-} while(0)
 
-#define ZDB_RESET_SCORE() zdb_last_score = NULL;
-
-extern Datum zdb_score(PG_FUNCTION_ARGS);
-
-extern ZDBScore *zdb_last_score;
+extern Datum zdb_score_internal(PG_FUNCTION_ARGS);
 
 #endif

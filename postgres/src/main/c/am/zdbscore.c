@@ -16,15 +16,72 @@
 
 #include "postgres.h"
 #include "fmgr.h"
+#include "nodes/pg_list.h"
+#include "storage/itemptr.h"
+#include "utils/memutils.h"
 #include "zdbscore.h"
 
-PG_FUNCTION_INFO_V1(zdb_score);
+PG_FUNCTION_INFO_V1(zdb_score_internal);
 
-ZDBScore *zdb_last_score = NULL;
+typedef struct ZDBScoreEntry {
+    Oid             index_relid;
+    ItemPointerData ctid;
+    ZDBScore        score;
+} ZDBScoreEntry;
 
-Datum zdb_score(PG_FUNCTION_ARGS) {
-    if (zdb_last_score == NULL)
+static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid);
+
+static List *recentScores = NULL;
+
+void zdb_reset_scores(void) {
+    recentScores = NULL;
+}
+
+void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
+    ListCell      *lc;
+    ZDBScoreEntry *entry = NULL;
+
+    foreach(lc, recentScores) {
+        entry = lfirst(lc);
+        if (entry->index_relid == index_relid) {
+            break;
+        }
+        entry = NULL;
+    }
+
+    if (entry == NULL) {
+        MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+
+        entry        = palloc(sizeof(ZDBScoreEntry));
+        recentScores = lappend(recentScores, entry);
+        MemoryContextSwitchTo(oldContext);
+    }
+
+    entry->index_relid = index_relid;
+    memcpy(&entry->ctid, ctid, sizeof(ItemPointerData));
+    memcpy(&entry->score, &score, sizeof(ZDBScore));
+}
+
+static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid) {
+    ListCell *lc;
+
+    foreach(lc, recentScores) {
+        ZDBScoreEntry *entry = lfirst(lc);
+        if (entry->index_relid == index_relid && ItemPointerEquals(&entry->ctid, ctid))
+            return &entry->score;
+    }
+
+    return NULL;
+}
+
+Datum zdb_score_internal(PG_FUNCTION_ARGS) {
+    Oid         index_relid = PG_GETARG_OID(0);
+    ItemPointer ctid        = (ItemPointer) PG_GETARG_POINTER(1);
+    ZDBScore    *score;
+
+    score = zdb_lookup_score(index_relid, ctid);
+    if (score == NULL)
         PG_RETURN_NULL();
 
-    PG_RETURN_FLOAT4(zdb_last_score->fscore);
+    PG_RETURN_FLOAT4(score->fscore);
 }
