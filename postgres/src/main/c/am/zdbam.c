@@ -724,7 +724,7 @@ zdbgetbitmap(PG_FUNCTION_ARGS)
 	IndexScanDesc scan       = (IndexScanDesc) PG_GETARG_POINTER(0);
 	TIDBitmap     *tbm       = (TIDBitmap *) PG_GETARG_POINTER(1);
 	ZDBScanState  *scanstate = (ZDBScanState *) scan->opaque;
-	int           i;
+	uint64           i;
 
 	/*
 	 * force the max entries to be as many as possible
