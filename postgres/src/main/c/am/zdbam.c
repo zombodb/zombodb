@@ -577,7 +577,7 @@ zdbbuildCallback(Relation indexRel,
 	);
 
 	/*
-	 * if the tuple's XMIN and XMIN are not committed, we're going to assume it'll eventually
+	 * if the tuple's XMIN and XMAX are not committed, we're going to assume it'll eventually
 	 * be committed (likely this is from an ALTER TABLE ALTER COLUMN TYPE statement), so
 	 * we want to queue up the fact that these are "new" tuples
 	 */
