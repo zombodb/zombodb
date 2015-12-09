@@ -19,6 +19,7 @@
 #include "nodes/pg_list.h"
 #include "storage/itemptr.h"
 #include "utils/memutils.h"
+#include "utils/hsearch.h"
 #include "zdbscore.h"
 
 PG_FUNCTION_INFO_V1(zdb_score_internal);
@@ -29,12 +30,25 @@ typedef struct ZDBScoreEntry {
     ZDBScore        score;
 } ZDBScoreEntry;
 
+typedef struct ZDBBitmapScoreKey {
+    ItemPointerData ctid;
+    Oid             index_relid;
+
+} ZDBBitmapScoreKey;
+
+typedef struct ZDBBitmapScoreEntry {
+    ZDBBitmapScoreKey key;
+    ZDBScore        score;
+} ZDBBitmapScoreEntry;
+
 static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid);
 
 static List *recentScores = NULL;
+static HTAB *bitmapScores = NULL;
 
 void zdb_reset_scores(void) {
     recentScores = NULL;
+    bitmapScores = NULL;
 }
 
 void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
@@ -62,6 +76,28 @@ void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
     memcpy(&entry->score, &score, sizeof(ZDBScore));
 }
 
+void zdb_record_bitmap_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
+    bool found;
+    ZDBBitmapScoreKey key;
+    ZDBBitmapScoreEntry *entry;
+
+    if (bitmapScores == NULL) {
+        HASHCTL ctl;
+
+        ctl.keysize = sizeof(ZDBBitmapScoreKey);
+        ctl.entrysize = sizeof(ZDBBitmapScoreEntry);
+        ctl.hcxt = TopTransactionContext;
+        ctl.hash = tag_hash;
+
+        bitmapScores = hash_create("zdb bitmap scores", 32768, &ctl,  HASH_FUNCTION | HASH_CONTEXT);
+    }
+
+    key.index_relid = index_relid;
+    memcpy(&key.ctid, ctid, sizeof(ItemPointerData));
+    entry = hash_search(bitmapScores, &key, HASH_ENTER, &found);
+    memcpy(&entry->score, &score, sizeof(ZDBScore));
+}
+
 static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid) {
     ListCell *lc;
 
@@ -69,6 +105,19 @@ static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid) {
         ZDBScoreEntry *entry = lfirst(lc);
         if (entry->index_relid == index_relid && ItemPointerEquals(&entry->ctid, ctid))
             return &entry->score;
+    }
+
+    if (bitmapScores != NULL) {
+        ZDBBitmapScoreKey key;
+        ZDBBitmapScoreEntry *entry;
+        bool found;
+
+        key.index_relid = index_relid;
+        memcpy(&key.ctid, ctid, sizeof(ItemPointerData));
+        entry = hash_search(bitmapScores, &key, HASH_FIND, &found);
+        if (found) {
+            return &entry->score;
+        }
     }
 
     return NULL;

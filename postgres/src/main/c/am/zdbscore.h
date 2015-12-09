@@ -28,6 +28,7 @@ typedef struct {
 
 void zdb_reset_scores(void);
 void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score);
+void zdb_record_bitmap_score(Oid index_relid, ItemPointer ctid, ZDBScore score);
 
 
 extern Datum zdb_score_internal(PG_FUNCTION_ARGS);

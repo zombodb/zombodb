@@ -741,6 +741,8 @@ zdbgetbitmap(PG_FUNCTION_ARGS)
 		CHECK_FOR_INTERRUPTS();
 		set_item_pointer(scanstate->hits, i, &target, &score);
 		tbm_add_tuples(tbm, &target, 1, false);
+
+		zdb_record_bitmap_score(scan->indexRelation->rd_id, &target, score);
 	}
 
 	PG_RETURN_INT64(scanstate->nhits);
