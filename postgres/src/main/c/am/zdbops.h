@@ -21,6 +21,9 @@
 #include "fmgr.h"
 #include "access/tupdesc.h"
 
+extern void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid);
+extern Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid);
+
 extern Datum zdb_determine_index(PG_FUNCTION_ARGS);
 extern Datum zdb_get_index_name(PG_FUNCTION_ARGS);
 extern Datum zdb_get_url(PG_FUNCTION_ARGS);

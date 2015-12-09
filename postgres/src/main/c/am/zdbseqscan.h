@@ -20,7 +20,7 @@
 #include "fmgr.h"
 #include "zdbscore.h"
 
-__inline static void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score)
+STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score)
 {
     BlockNumber  blkno;
     OffsetNumber offno;

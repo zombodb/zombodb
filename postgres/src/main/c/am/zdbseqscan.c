@@ -26,6 +26,7 @@
 #include "util/zdbutils.h"
 #include "zdb_interface.h"
 #include "zdbseqscan.h"
+#include "zdbops.h"
 #include "zdbscore.h"
 
 PG_FUNCTION_INFO_V1(zdbsel);
@@ -108,71 +109,41 @@ static void initialize_sequential_scan_cache(void) {
 }
 
 static Oid determine_index_oid(Node *node) {
-    FuncExpr      *funcExpr;
-    Const         *tableRegclass;
-    Oid           heapRelOid;
-    Relation      heapRel;
-    List          *indexes;
-    ListCell      *lc;
+    MemoryContext          oldContext;
+    SequentialScanIndexRef *indexRef;
+    FuncExpr               *funcExpr;
+    Oid                    heapRelOid;
+    Oid                    zdbIndexRel;
+    ListCell               *lc;
 
     if (!IsA(node, FuncExpr))
         elog(ERROR, "Cannot determine index. Left side of operator is not compatible with ZomboDB.");
 
-    funcExpr      = (FuncExpr *) node;
-    tableRegclass = (Const *) linitial(funcExpr->args);
-    heapRelOid    = (Oid) DatumGetObjectId(tableRegclass->constvalue);
+    funcExpr = (FuncExpr *) node;
+    validate_zdb_funcExpr(funcExpr, &heapRelOid);
 
+    /* look in cache for the index oid */
     foreach(lc, SEQUENTIAL_SCAN_INDEXES) {
-        SequentialScanIndexRef *indexRef = (SequentialScanIndexRef *) lfirst(lc);
+        indexRef = (SequentialScanIndexRef *) lfirst(lc);
 
         if (indexRef->heapRelOid == heapRelOid && indexRef->funcOid == funcExpr->funcid) {
             return indexRef->indexRelOid;
         }
     }
 
-    heapRel = RelationIdGetRelation(heapRelOid);
-    indexes = RelationGetIndexList(heapRel);
-    foreach(lc, indexes) {
-        Relation indexRel;
-        Oid      indexRelOid;
+    /* figure out what the index oid should be */
+    zdbIndexRel = zdb_determine_index_oid(funcExpr, heapRelOid);
 
-        indexRelOid = (Oid) lfirst(lc);
-        indexRel    = RelationIdGetRelation(indexRelOid);
-        if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0) {
-            List     *indexExpressions = RelationGetIndexExpressions(indexRel);
-            ListCell *lc2;
+    /* and cache it */
+    oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    indexRef   = palloc(sizeof(SequentialScanIndexRef));
+    indexRef->funcOid     = funcExpr->funcid;
+    indexRef->heapRelOid  = heapRelOid;
+    indexRef->indexRelOid = zdbIndexRel;
+    SEQUENTIAL_SCAN_INDEXES = lappend(SEQUENTIAL_SCAN_INDEXES, indexRef);
+    MemoryContextSwitchTo(oldContext);
 
-            foreach (lc2, indexExpressions) {
-                Node *n = (Node *) lfirst(lc2);
-
-                if (IsA(n, FuncExpr)) {
-                    FuncExpr *indexFuncExpr = (FuncExpr *) n;
-                    if (indexFuncExpr->funcid == funcExpr->funcid) {
-                        SequentialScanIndexRef *indexRef;
-                        MemoryContext          oldContext = MemoryContextSwitchTo(TopTransactionContext);
-
-                        indexRef = palloc(sizeof(SequentialScanIndexRef));
-                        indexRef->funcOid     = funcExpr->funcid;
-                        indexRef->heapRelOid  = heapRelOid;
-                        indexRef->indexRelOid = indexRelOid;
-                        SEQUENTIAL_SCAN_INDEXES = lappend(SEQUENTIAL_SCAN_INDEXES, indexRef);
-
-                        MemoryContextSwitchTo(oldContext);
-
-                        RelationClose(indexRel);
-                        RelationClose(heapRel);
-
-                        return indexRelOid;
-                    }
-                }
-            }
-        }
-        RelationClose(indexRel);
-    }
-    RelationClose(heapRel);
-
-    elog(ERROR, "Unable to find ZomboDB index for '%s'", RelationGetRelationName(heapRel));
-    return InvalidOid;
+    return zdbIndexRel;
 }
 
 Datum zdb_seqscan(PG_FUNCTION_ARGS) {
