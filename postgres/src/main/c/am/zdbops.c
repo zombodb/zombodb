@@ -39,51 +39,54 @@ PG_FUNCTION_INFO_V1(zdb_internal_describe_nested_object);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
 
-static FuncExpr *extract_zdb_funcExpr_from_view(Relation viewRel, Oid *heapRelOid) {
-	MemoryContext oldContext;
-	StringInfo sql = makeStringInfo();
-	ListCell *lc;
-	char *action;
-	Query *viewDef;
-	TargetEntry *te = NULL;
-	FuncExpr *funcExpr;
+/*
+ * taken from Postgres' rewriteHandler.c
+ */
+static Query *get_view_query(Relation view) {
+	int i;
 
-	SPI_connect();
+	Assert(view->rd_rel->relkind == RELKIND_VIEW);
 
-	appendStringInfo(sql, "SELECT ev_action FROM pg_catalog.pg_rewrite where rulename = '_RETURN' and ev_class=%d", viewRel->rd_id);
+	for (i = 0; i < view->rd_rules->numLocks; i++) {
+		RewriteRule *rule = view->rd_rules->rules[i];
 
-	if (SPI_exec(sql->data, 2) != SPI_OK_SELECT)
-		elog(ERROR, "Unable to lookup view definition for '%s'", RelationGetRelationName(viewRel));
-	else if (SPI_processed == 0)
-		elog(ERROR, "No _RETURN rewrite rule found for view '%s'", RelationGetRelationName(viewRel));
-	else if (SPI_processed != 1)
-		elog(ERROR, "More than 1 _RETURN rewrite rule found for view '%s'", RelationGetRelationName(viewRel));
+		if (rule->event == CMD_SELECT) {
+			/* A _RETURN rule should have only one action */
+			if (list_length(rule->actions) != 1)
+				elog(ERROR, "invalid _RETURN rule action specification");
 
-	oldContext = MemoryContextSwitchTo(TopTransactionContext);
-	action = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
-	MemoryContextSwitchTo(oldContext);
-	SPI_finish();
-
-	viewDef = linitial(stringToNode(action));
-
-	foreach(lc, viewDef->targetList) {
-		te = (TargetEntry *) lfirst(lc);
-		if (strcmp("zdb", te->resname) == 0)
-			break;
-
-		te = NULL;
+			return (Query *) linitial(rule->actions);
+		}
 	}
 
-	if (te == NULL)
-		elog(ERROR, "No column named 'zdb' in view '%s'", RelationGetRelationName(viewRel));
-	else if (!IsA(te->expr, FuncExpr))
-		elog(ERROR, "The 'zdb' column in view '%s' is not a function", RelationGetRelationName(viewRel));
+	elog(ERROR, "failed to find _RETURN rule for view");
+	return NULL;                /* keep compiler quiet */
+}
 
-	funcExpr = (FuncExpr *) te->expr;
+static FuncExpr *extract_zdb_funcExpr_from_view(Relation viewRel, Oid *heapRelOid) {
+	ListCell *lc;
+	Query *viewDef;
+	FuncExpr *funcExpr;
 
-	validate_zdb_funcExpr(funcExpr, heapRelOid);
+	viewDef = get_view_query(viewRel);
 
-	return funcExpr;
+	foreach(lc, viewDef->targetList) {
+		TargetEntry *te = (TargetEntry *) lfirst(lc);
+
+		if (te->resname && strcmp("zdb", te->resname) == 0) {
+			if (!IsA(te->expr, FuncExpr))
+				elog(ERROR, "The 'zdb' column in view '%s' is not a function", RelationGetRelationName(viewRel));
+
+			funcExpr = (FuncExpr *) te->expr;
+
+			validate_zdb_funcExpr(funcExpr, heapRelOid);
+
+			return funcExpr;
+		}
+	}
+
+	elog(ERROR, "No column named 'zdb' in view '%s'", RelationGetRelationName(viewRel));
+	return NULL;
 }
 
 void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid) {
