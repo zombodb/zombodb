@@ -29,6 +29,7 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
 - works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCAN-SUPPORT.md) 
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
 - json columns as nested objects for flexible schemaless sub-documents
+- per-row scoring
 - custom full-text query language supporting nearly all of Elasticsearch's search features, including
   - boolean operations
   - proximity (in and out of order)
@@ -39,6 +40,7 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
   - regular expressions
   - inline scripts
   - range queries
+  - term/phrase boosting
 - query results expansion and index linking
 - extremely fast indexing
 - record count estimation
@@ -49,7 +51,6 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
 
 Not to suggest that these things are impossible, but there's a small set of non-features too:
 
-- no scoring
 - indexes are not WAL-logged by Postgres so are not recoverable in the event of a Postgres server crash
 - interoperability with various Postgres replication schemes is unknown
 - ```pg_get_indexdef()``` doesn't correctly quote index options making backup restoration annoying (would require patch to Postgres)

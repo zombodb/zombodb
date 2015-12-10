@@ -397,6 +397,27 @@ These custom domains are to be used in user tables as data types when you requir
 > ]
 >```
 
+### ```FUNCTION zdb_score(table_name regclass, ctid tid) RETURNS float4```
+> `table_name`:  The name of the table or view that is being queried and from which you want scores  
+> `ctid`: the system column named `ctid` from the underlying table being queried
+> 
+> The `zdb_score()` function retrieves the relevancy score value for each document, as determined by Elasticsearch.  It is designed to be used in either (or both) the query target list or its `ORDER BY` clause.
+> 
+> Example:
+> 
+> ```
+> SELECT zdb_score('products', products.ctid), * 
+>   FROM products 
+>  WHERE zdb('products', products.ctid) ==> 'sports or box' 
+>  ORDER BY zdb_score('products', products.ctid) desc;
+> 
+ zdb_score | id |   name   |               keywords               |         short_summary          |                                
+-----------+----+----------+--------------------------------------+--------------------------------+--------------------------------
+ 0.0349381 |  4 | Box      | {wooden,box,"negative space",square} | Just an empty box made of wood | A wooden container that will ev
+ 0.0252144 |  2 | Baseball | {baseball,sports,round}              | It's a baseball                | Throw it at a person with a big
+(2 rows)
+```
+
 
 #### ```FUNCTION zdb_tally(table_name regclass, fieldname text [, is_nested boolean], stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SET OF zdb_tally_response```
 

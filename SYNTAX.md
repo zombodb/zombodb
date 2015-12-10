@@ -16,10 +16,11 @@ The ```zombodb``` query syntax provides support for searching (in no particular 
 * words,
 * phrases,
 * fielded searching,
-* proximity (of word or phrase or combinations),
 * fuzzy words and phrases,
 * value ranges,
 * wildcards (left, middle, and right truncation),
+* term boosting
+* proximity (of word or phrase or combinations),
 * scripted searching,
 * query expansion,
 * "more like this", and
@@ -77,22 +78,17 @@ And since the __AND__ operator is the default, it could also be written as:
 ```
 
 
-## Tokenization, Escaping and Case-Sensitivity
+## Tokenization, Escaping, Case-Sensitivity, and Term Analysis
 
-Tokens are formed whenever a character in this set is found:
+Tokens are formed whenever a non-alphanumeric (plus underscore) character is found.  Technically a token is a run of characters in the set [A-Za-z0-0_], plus the set of three wildcard characters [*?~].
 
-```
-[" ", "\t", "\n", "\r", "\f", "$",
-"*", "?", "~", "^", "/", ":", "=",  
-"<", ">", "!", "#", "@", "(", ")",  
-"'", "\"", ".", ",", "&", "[", "]", 
-"\\", "%"]
-```
+To use a non-term character it must be escaped using a backslash, *or* the term must be quoted.  Any character is allowed within a quoted phrase.
 
-To use one of the above characters in a term, it must be escaped using a backslash, *or* the term must be quoted.  Any character is allowed within a quoted phrase.
+`foo\#bar`, for example, would parse as a single term.
 
 All searching is case-insensitive.  There is no difference between ```BEER``` and ```beer```.
 
+Terms and phrases are possibly sub-parsed (analyzed) using the Elasticsearch-defined search analyzer for the field being searched.  Currently, only datatypes of `phrase`, `phrase_array`, and `fulltext` support sub-parsing analysis.
 
 ## Term and Phrase Searching
 
@@ -136,13 +132,15 @@ Symbol | Description
 !=     | field does not contain term
 <>     | field does not contain term (same as != )
 /to/   | range query, in form of field:START /to/ END
-:~     | field contains terms matcing [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax)
+:~     | field contains terms matching [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax)
 :@     | ["more like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html)
 :@~    | ["fuzzy like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-field-query.html)
 
+
+
 ### Keywords
 
-The list of keywords is very short: ```and```, ```or```, ```not```, and ```null```.  To use one of these as a search term, simply quote it.
+The list of keywords is very short: `with`, `and`, `or`, `not`, and `null`.  To use one of these as a search term, simply quote it.
 
   
 
@@ -167,6 +165,30 @@ Examples:
 
 Special consideration is taken for criteria in the form of: ```field:*``` or ```field:?```.  They are re-written using Elasticsearch's ["exists filter"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-exists-filter.html).
 
+## Term/Phrase Boosting
+
+Individual terms in a query can be "boosted" in order to increase the relevancy of matching documents.  Examples for term/phrase boosting are:
+
+`beer^2.0` or `"this is a boosted phrase"^2.0` or `apple w/2 cider^2.0 w/3 vinegar`.
+
+A boost can also be applied to fielded searches, such as `author:Hemmingway^5.2 or author:Fitzgerald`.  This would rank documents whose author is Hemmingway higher, by an arbitrary amount.
+
+The boost value is a floating point number and can either be between 0 and 1 (to decrease the boosting), or greater than 1 to increase the boosting.
+
+From the Elasticsearch documentation:
+
+```
+The boost parameter is used to increase the relative weight 
+of a clause (with a boost greater than 1) or decrease the 
+relative weight (with a boost between 0 and 1), but the increase 
+or decrease is not linear. In other words, a boost of 2 does not 
+result in double the score.
+
+Instead, the new score is normalized after the boost is applied. 
+Each type of query has its own normalization algorithm, and the 
+details are beyond the scope of this book. Suffice to say that 
+a higher boost value results in a higher score.
+```
 
 
 ## Proximity Searching
