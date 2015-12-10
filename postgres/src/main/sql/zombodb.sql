@@ -193,7 +193,7 @@ BEGIN
   type_oid := zdb_determine_index(table_name);
 
   SELECT typname FROM pg_type WHERE oid = (SELECT atttypid FROM pg_attribute WHERE attrelid = table_name AND attname = fieldname) INTO data_type;
-  IF stem <> '^.*' AND data_type IN ('text', '_text', 'phrase', 'phrase_array', 'fulltext', 'varchar', '_varchar') THEN
+  IF stem <> '^.*' AND strpos(stem, '\') = 0 AND data_type IN ('text', '_text', 'phrase', 'phrase_array', 'fulltext', 'varchar', '_varchar') THEN
     new_query := format('(%s) AND (%s:~"%s")', query, fieldname, split_part(stem, '^', 2));
   ELSE
     new_query := query;

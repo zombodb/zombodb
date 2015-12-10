@@ -3358,5 +3358,44 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
+
+    @Test
+    public void testUnescape() {
+        String input = "\\\\\\\\\\\\\\\\FooBar";
+        assertEquals("\\\\\\\\FooBar", Utils.unescape(input));
+    }
+
+    @Test
+    public void testEscaping() throws Exception {
+        assertJson("exact_field:'\\\\\\\\Begings with four backslashes'",
+                "{\n" +
+                        "  \"term\" : {\n" +
+                        "    \"exact_field\" : \"\\\\\\\\begings with four backslashes\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testEscapingAsPrefix() throws Exception {
+        assertJson("exact_field:'This is a prefix query ending in four backslashes\\\\\\\\*'",
+                "{\n" +
+                        "  \"prefix\" : {\n" +
+                        "    \"exact_field\" : \"this is a prefix query ending in four backslashes\\\\\\\\\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testEscapingAsWildcard() throws Exception {
+        assertJson("exact_field:'This is a wildcard query ending in four backslashes\\\\\\\\?'",
+                "{\n" +
+                        "  \"wildcard\" : {\n" +
+                        "    \"exact_field\" : \"this is a wildcard query ending in four backslashes\\\\\\\\?\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 
