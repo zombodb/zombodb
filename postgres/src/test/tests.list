@@ -32,6 +32,8 @@ syntax-numeric_field_range
 syntax-complex_query
 zdb_extended_stats
 with-operator
+determine-index
+scoring-support
 issue-7
 issue-11
 issue-13
