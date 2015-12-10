@@ -41,6 +41,8 @@ PG_FUNCTION_INFO_V1(zdb_internal_highlight);
 
 /*
  * taken from Postgres' rewriteHandler.c
+ *
+ * NB:  This function is exposed in PG 9.4+
  */
 static Query *get_view_query(Relation view) {
 	int i;
