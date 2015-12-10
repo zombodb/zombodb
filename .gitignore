@@ -11,7 +11,7 @@
 target/
 .DS_store
 foo.*
-postgres/src/main/sql/zombodb--2.5.5.sql
+postgres/src/main/sql/zombodb--2.5.5_BETA1.sql
 postgres/src/test/sql/setup.sql
 postgres/src/test/sql/so_comments.sql
 postgres/results
