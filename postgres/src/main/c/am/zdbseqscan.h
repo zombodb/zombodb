@@ -18,14 +18,16 @@
 
 #include "postgres.h"
 #include "fmgr.h"
+#include "zdbscore.h"
 
-__inline static void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target)
+STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score)
 {
     BlockNumber  blkno;
     OffsetNumber offno;
 
-    memcpy(&blkno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(BlockNumber));
-    memcpy(&offno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber)) + sizeof(BlockNumber)), sizeof(OffsetNumber));
+    memcpy(&blkno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4))), sizeof(BlockNumber));
+    memcpy(&offno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)) + sizeof(BlockNumber)), sizeof(OffsetNumber));
+    memcpy(score,  data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)) + sizeof(BlockNumber) + sizeof(OffsetNumber)), sizeof(float4));
 
     ItemPointerSet(target, blkno, offno);
 }

@@ -7,7 +7,7 @@ Since ZomboDB is an actual Postgres index type, creating and querying full-text 
 This guide intends to demonstrate the basics using ```psql```.  A few assumptions I'm making about you are:
 
  - You have a functional Postgres v9.3 Server
- - You have a functional Elasticsearch v1.5+ cluster (even if just one node)
+ - You have a functional Elasticsearch v1.7+ cluster (even if just one node, but not Elasticsearch 2.x)
  - You're familiar with Postgres and ```psql```
  - You're familiar with Elasticsearch on at least a high-level
 

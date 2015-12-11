@@ -50,20 +50,20 @@ public class QueryRewriter {
     public static String[] WILDCARD_TOKENS = {"ZDB_ESCAPE_ZDB", "ZDB_STAR_ZDB", "ZDB_QUESTION_ZDB", "ZDB_TILDE_ZDB"};
     public static String[] WILDCARD_VALUES = {"\\\\",           "*",            "?",                "~"};
 
-    private static enum DateHistogramIntervals {
+    private enum DateHistogramIntervals {
         year, quarter, month, week, day, hour, minute, second
     }
 
-    /* short for FilterBuilderFactory */
-    private static interface FBF {
-        public static FBF DUMMY = new FBF() {
+    /* short for QueryBuilderFactory */
+    private interface QBF {
+        QBF DUMMY = new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
+            public QueryBuilder b(QueryParserNode n) {
                 throw new QueryRewriteException("Should not get here");
             }
         };
 
-        FilterBuilder b(QueryParserNode n);
+        QueryBuilder b(QueryParserNode n);
     }
 
     /**
@@ -112,15 +112,10 @@ public class QueryRewriter {
     private final boolean useParentChild;
     private boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
-    private ASTParent parentQuery;
 
     private Map<String, StringBuilder> arrayData;
 
     private final IndexMetadataManager metadataManager;
-
-    static String dumpAsString(String query) throws Exception {
-        return new QueryParser(new StringReader(query)).parse(true).dumpAsString();
-    }
 
     public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean useParentChild) {
         this(client, indexName, searchPreference, input, allowSingleIndex, false, useParentChild);
@@ -167,7 +162,7 @@ public class QueryRewriter {
             tree = parser.parse(true);
 
             if (extractParentQuery) {
-                parentQuery = (ASTParent) tree.getChild(ASTParent.class);
+                ASTParent parentQuery = (ASTParent) tree.getChild(ASTParent.class);
                 tree.removeNode(parentQuery);
                 tree.renumber();
                 if (tree.getQueryNode() != null) {
@@ -216,17 +211,9 @@ public class QueryRewriter {
         return metadataManager.describedNestedObject(fieldname);
     }
 
-    public IndexMetadataManager getMetadataManager() {
-        return metadataManager;
-    }
-
-    public FilterBuilder rewriteParentQuery() {
-        return parentQuery != null ? build(parentQuery) : null;
-    }
-
     public QueryBuilder rewriteQuery() {
         try {
-            return filteredQuery(matchAllQuery(), build(rootNode));
+            return build(rootNode);
         } finally {
             queryRewritten = true;
         }
@@ -315,7 +302,7 @@ public class QueryRewriter {
             ab = nested("nested").path(agg.getNestedPath())
                     .subAggregation(
                             filter("filter")
-                                    .filter(build(tree))
+                                    .filter(queryFilter(build(tree)))
                                     .subAggregation(ab).subAggregation(missing("missing").field(agg.getFieldname()))
                     );
         }
@@ -513,14 +500,10 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder build(QueryParserNode node) {
+    private QueryBuilder build(QueryParserNode node) {
         if (node == null)
             return null;
-        return build(node, metadataManager.getMyIndex());
-    }
-
-    private FilterBuilder build(QueryParserNode node, ASTIndexLink link) {
-        if (node instanceof ASTChild)
+        else if (node instanceof ASTChild)
             return build((ASTChild) node);
         else if (node instanceof ASTParent)
             return build((ASTParent) node);
@@ -536,55 +519,65 @@ public class QueryRewriter {
         return build0(node);
     }
 
-    private FilterBuilder build0(QueryParserNode node) {
+    private QueryBuilder build0(QueryParserNode node) {
+        QueryBuilder qb;
         if (node instanceof ASTArray)
-            return build((ASTArray) node);
+            qb = build((ASTArray) node);
         else if (node instanceof ASTArrayData)
-            return build((ASTArrayData) node);
+            qb = build((ASTArrayData) node);
         else if (node instanceof ASTBoolean)
-            return build((ASTBoolean) node);
+            qb = build((ASTBoolean) node);
         else if (node instanceof ASTFuzzy)
-            return build((ASTFuzzy) node);
+            qb = build((ASTFuzzy) node);
         else if (node instanceof ASTNotNull)
-            return build((ASTNotNull) node);
+            qb = build((ASTNotNull) node);
         else if (node instanceof ASTNull)
-            return build((ASTNull) node);
+            qb = build((ASTNull) node);
         else if (node instanceof ASTNumber)
-            return build((ASTNumber) node);
+            qb = build((ASTNumber) node);
         else if (node instanceof ASTPhrase)
-            return build((ASTPhrase) node);
+            qb = build((ASTPhrase) node);
         else if (node instanceof ASTPrefix)
-            return build((ASTPrefix) node);
+            qb = build((ASTPrefix) node);
         else if (node instanceof ASTProximity)
-            return build((ASTProximity) node);
+            qb = build((ASTProximity) node);
         else if (node instanceof ASTQueryTree)
-            return build((ASTQueryTree) node);
+            qb = build((ASTQueryTree) node);
         else if (node instanceof ASTRange)
-            return build((ASTRange) node);
+            qb = build((ASTRange) node);
         else if (node instanceof ASTWildcard)
-            return build((ASTWildcard) node);
+            qb = build((ASTWildcard) node);
         else if (node instanceof ASTWord)
-            return build((ASTWord) node);
+            qb = build((ASTWord) node);
         else if (node instanceof ASTScript)
-            return build((ASTScript) node);
+            qb = build((ASTScript) node);
         else if (node instanceof ASTExpansion)
-            return build((ASTExpansion) node);
+            qb = build((ASTExpansion) node);
         else
             throw new QueryRewriteException("Unexpected node type: " + node.getClass().getName());
+
+        maybeBoost(node, qb);
+
+        return qb;
     }
 
-    private FilterBuilder build(ASTQueryTree root) throws QueryRewriteException {
+    private void maybeBoost(QueryParserNode node, QueryBuilder qb) {
+        if (qb instanceof BoostableQueryBuilder && node.getBoost() != 0.0)
+            ((BoostableQueryBuilder) qb).boost(node.getBoost());
+    }
+
+    private QueryBuilder build(ASTQueryTree root) throws QueryRewriteException {
         QueryParserNode queryNode = root.getQueryNode();
 
         if (queryNode == null)
-            return matchAllFilter();
+            return matchAllQuery();
 
         // and build the query
         return build(queryNode);
     }
 
-    private FilterBuilder build(ASTAnd node) {
-        BoolFilterBuilder fb = boolFilter();
+    private QueryBuilder build(ASTAnd node) {
+        BoolQueryBuilder fb = boolQuery();
 
         for (QueryParserNode child : node) {
             fb.must(build(child));
@@ -594,11 +587,11 @@ public class QueryRewriter {
 
     private int withDepth = 0;
     private String withNestedPath;
-    private FilterBuilder build(ASTWith node) {
+    private QueryBuilder build(ASTWith node) {
         if (withDepth == 0)
             withNestedPath = Utils.validateSameNestedPath(node);
 
-        BoolFilterBuilder fb = boolFilter();
+        BoolQueryBuilder fb = boolQuery();
 
         withDepth++;
         try {
@@ -609,11 +602,18 @@ public class QueryRewriter {
             withDepth--;
         }
 
-        return withDepth == 0 ? nestedFilter(withNestedPath, fb).join(shouldJoinNestedFilter()) : fb;
+        if (withDepth == 0) {
+            if (shouldJoinNestedFilter())
+                return nestedQuery(withNestedPath, fb);
+            else
+                return filteredQuery(matchAllQuery(), nestedFilter(withNestedPath, fb).join(false));
+        } else {
+            return fb;
+        }
     }
 
-    private FilterBuilder build(ASTOr node) {
-        BoolFilterBuilder fb = boolFilter();
+    private QueryBuilder build(ASTOr node) {
+        BoolQueryBuilder fb = boolQuery();
 
         for (QueryParserNode child : node) {
             fb.should(build(child));
@@ -621,11 +621,11 @@ public class QueryRewriter {
         return fb;
     }
 
-    private FilterBuilder build(ASTNot node) {
-        BoolFilterBuilder qb = boolFilter();
+    private QueryBuilder build(ASTNot node) {
+        BoolQueryBuilder qb = boolQuery();
 
         if (_isBuildingAggregate)
-            return matchAllFilter();
+            return matchAllQuery();
 
         for (QueryParserNode child : node) {
             qb.mustNot(build(child));
@@ -633,32 +633,32 @@ public class QueryRewriter {
         return qb;
     }
 
-    private FilterBuilder build(ASTChild node) {
+    private QueryBuilder build(ASTChild node) {
         if (node.hasChildren() && !ignoreASTChild) {
             if (useParentChild) {
-                return hasChildFilter(node.getTypename(), build(node.getChild(0)));
+                return hasChildQuery(node.getTypename(), build(node.getChild(0)));
             } else {
                 return build(node.getChild(0));
             }
         } else {
-            return matchAllFilter();
+            return matchAllQuery();
         }
     }
 
-    private FilterBuilder build(ASTParent node) {
+    private QueryBuilder build(ASTParent node) {
         if (_isBuildingAggregate)
-            return matchAllFilter();
+            return matchAllQuery();
         else if (node.hasChildren())
-            return hasParentFilter(node.getTypename(), build(node.getChild(0)));
+            return hasParentQuery(node.getTypename(), build(node.getChild(0)));
         else
-            return matchAllFilter();
+            return matchAllQuery();
     }
 
     private String nested = null;
 
     private Stack<ASTExpansion> generatedExpansionsStack = new Stack<>();
 
-    private FilterBuilder build(final ASTExpansion node) {
+    private QueryBuilder build(final ASTExpansion node) {
         final ASTIndexLink link = node.getIndexLink();
 
         try {
@@ -672,37 +672,30 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder build(ASTWord node) {
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(ASTWord node) {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
+            public QueryBuilder b(QueryParserNode n) {
                 Object value = n.getValue();
-                return termFilter(n.getFieldname(), value);
+                return termQuery(n.getFieldname(), value);
             }
         });
     }
 
-    private FilterBuilder build(ASTScript node) {
-        return scriptFilter(node.getValue().toString());
+    private QueryBuilder build(ASTScript node) {
+        return filteredQuery(matchAllQuery(), scriptFilter(node.getValue().toString()));
     }
 
-    private FilterBuilder build(ASTPhrase node) {
+    private QueryBuilder build(ASTPhrase node) {
         if (node.getOperator() == QueryParserNode.Operator.REGEX)
-            return buildStandard(node, FBF.DUMMY);
+            return buildStandard(node, QBF.DUMMY);
 
         final List<String> tokens = Utils.tokenizePhrase(client, metadataManager, node.getFieldname(), node.getEscapedValue());
         boolean hasWildcards = node.getDistance() > 0 || !node.isOrdered();
         for (int i=0; i<tokens.size(); i++) {
             String token = tokens.get(i);
 
-            for (int j=0; j<WILDCARD_TOKENS.length; j++) {
-                String wildcard = WILDCARD_TOKENS[j];
-                String replacement = WILDCARD_VALUES[j];
-
-                if (token.contains(wildcard)) {
-                    tokens.set(i, token = token.replaceAll(wildcard, replacement));
-                }
-            }
+            token = replaceWildcardTokens(tokens, i, token);
 
             hasWildcards |= Utils.countValidWildcards(token) > 0;
         }
@@ -744,18 +737,18 @@ public class QueryRewriter {
             // build proper filters
             if (tokens.size() == 1) {
                 // only 1 token, so just return a term filter
-                return buildStandard(node, new FBF() {
+                return buildStandard(node, new QBF() {
                     @Override
-                    public FilterBuilder b(QueryParserNode n) {
-                        return termFilter(n.getFieldname(), n.getValue());
+                    public QueryBuilder b(QueryParserNode n) {
+                        return termQuery(n.getFieldname(), n.getValue());
                     }
                 });
             } else {
                 // more than 1 token, so return a query filter
-                return buildStandard(node, new FBF() {
+                return buildStandard(node, new QBF() {
                     @Override
-                    public FilterBuilder b(QueryParserNode n) {
-                        return queryFilter(matchPhraseQuery(n.getFieldname(), Utils.join(tokens)));
+                    public QueryBuilder b(QueryParserNode n) {
+                        return matchPhraseQuery(n.getFieldname(), Utils.join(tokens));
                     }
                 });
             }
@@ -763,160 +756,140 @@ public class QueryRewriter {
 
     }
 
-    private FilterBuilder build(ASTNumber node) {
-        return buildStandard(node, new FBF() {
+    private String replaceWildcardTokens(List<String> tokens, int i, String token) {
+        for (int j=0; j<WILDCARD_TOKENS.length; j++) {
+            String wildcard = WILDCARD_TOKENS[j];
+            String replacement = WILDCARD_VALUES[j];
+
+            if (token.contains(wildcard)) {
+                tokens.set(i, token = token.replaceAll(wildcard, replacement));
+            }
+        }
+        return token;
+    }
+
+    private QueryBuilder build(ASTNumber node) {
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return termFilter(n.getFieldname(), n.getValue());
+            public QueryBuilder b(QueryParserNode n) {
+                return termQuery(n.getFieldname(), n.getValue());
             }
         });
     }
 
-    private FilterBuilder build(ASTNull node) {
+    private void validateOperator(QueryParserNode node) {
         switch (node.getOperator()) {
             case EQ:
             case NE:
             case CONTAINS:
                 break;
             default:
-                throw new QueryRewriteException("Unsupported operator for NULL value: " + node.getOperator());
+                throw new QueryRewriteException("Unsupported operator: " + node.getOperator());
         }
-        return buildStandard(node, new FBF() {
+    }
+
+    private QueryBuilder build(ASTNull node) {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return missingFilter(n.getFieldname());
+            public QueryBuilder b(QueryParserNode n) {
+                return filteredQuery(matchAllQuery(), missingFilter(n.getFieldname()));
             }
         });
     }
 
-    private FilterBuilder build(ASTNotNull node) {
+    private QueryBuilder build(ASTNotNull node) {
         IndexMetadata md = metadataManager.getMetadataForField(node.getFieldname());
         if (md != null && node.getFieldname().equalsIgnoreCase(md.getPrimaryKeyFieldName()))
-            return matchAllFilter();    // optimization when we know every document has a value for the specified field
+            return matchAllQuery();    // optimization when we know every document has a value for the specified field
 
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for NOT NULL value: " + node.getOperator());
-        }
-        return buildStandard(node, new FBF() {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return existsFilter(n.getFieldname());
+            public QueryBuilder b(QueryParserNode n) {
+                return filteredQuery(matchAllQuery(), existsFilter(n.getFieldname()));
             }
         });
     }
 
-    private FilterBuilder build(ASTBoolean node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for BOOLEAN value: " + node.getOperator());
-        }
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(ASTBoolean node) {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return termFilter(n.getFieldname(), n.getValue());
+            public QueryBuilder b(QueryParserNode n) {
+                return termQuery(n.getFieldname(), n.getValue());
             }
         });
     }
 
-    private FilterBuilder build(final ASTFuzzy node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for FUZZY value: " + node.getOperator());
-        }
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(final ASTFuzzy node) {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return queryFilter(fuzzyQuery(n.getFieldname(), n.getValue()).prefixLength(n.getFuzzyness() == 0 ? 3 : n.getFuzzyness()));
+            public QueryBuilder b(QueryParserNode n) {
+                return fuzzyQuery(n.getFieldname(), n.getValue()).prefixLength(n.getFuzzyness() == 0 ? 3 : n.getFuzzyness());
             }
         });
     }
 
-    private FilterBuilder build(final ASTPrefix node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for PREFIX value: " + node.getOperator());
-        }
-
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(final ASTPrefix node) {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return prefixFilter(n.getFieldname(), String.valueOf(n.getValue()));
+            public QueryBuilder b(QueryParserNode n) {
+                return prefixQuery(n.getFieldname(), String.valueOf(n.getValue()));
             }
         });
     }
 
-    private FilterBuilder build(final ASTWildcard node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for WILDCARD value: " + node.getOperator());
-        }
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(final ASTWildcard node) {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                return queryFilter(wildcardQuery(n.getFieldname(), String.valueOf(n.getValue())));
+            public QueryBuilder b(QueryParserNode n) {
+                return wildcardQuery(n.getFieldname(), String.valueOf(n.getValue()));
             }
         });
     }
 
-    private FilterBuilder build(final ASTArray node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for ARRAY value: " + node.getOperator());
-        }
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(final ASTArray node) {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
-                boolean canUseFieldData = node.hasExternalValues() && node.getTotalExternalValues() >= 10000 && metadataManager.getMetadataForField(n.getFieldname()).canUseFieldData(n.getFieldname());
+            public QueryBuilder b(QueryParserNode n) {
                 boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
+                final Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
+                final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
+                int minShouldMatch = (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? cnt : 1;
 
-                // NB:  testing shows that "fielddata" is *significantly* faster for large number of terms, about 2x faster than "plain"
-                return termsFilter(n.getFieldname(), node.hasExternalValues() ? node.getExternalValues() : n.getChildValues())
-                        .execution( (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? "and" : canUseFieldData ? "fielddata" : "plain");
+                TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+                    @Override
+                    public Iterator<Object> iterator() {
+                        return itr.iterator();
+                    }
+
+                    @Override
+                    public int size() {
+                        return cnt;
+                    }
+                });
+
+                if (minShouldMatch > 1)
+                    builder.minimumMatch(minShouldMatch);
+                return builder;
             }
         });
     }
 
-    private FilterBuilder build(final ASTArrayData node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for ARRAY value: " + node.getOperator());
-        }
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(final ASTArrayData node) {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
+            public QueryBuilder b(QueryParserNode n) {
                 boolean canUseFieldData = metadataManager.getMetadataForField(n.getFieldname()).canUseFieldData(n.getFieldname());
 
                 // NB:  testing shows that "fielddata" is *significantly* faster for large number of terms, about 2x faster than "plain"
-                return termsFilter(n.getFieldname(), new Iterable<String>() {
+                return termQuery(n.getFieldname(), new Iterable<String>() {
                     @Override
                     public Iterator<String> iterator() {
                         final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
@@ -937,53 +910,51 @@ public class QueryRewriter {
                             }
                         };
                     }
-                }).execution(canUseFieldData ? "fielddata" : "plain");
+                });
             }
         });
     }
 
-    private FilterBuilder build(final ASTRange node) {
-        switch (node.getOperator()) {
-            case EQ:
-            case NE:
-            case CONTAINS:
-                break;
-            default:
-                throw new QueryRewriteException("Unsupported operator for RANGE queries: " + node.getOperator());
-        }
-        return buildStandard(node, new FBF() {
+    private QueryBuilder build(final ASTRange node) {
+        validateOperator(node);
+        return buildStandard(node, new QBF() {
             @Override
-            public FilterBuilder b(QueryParserNode n) {
+            public QueryBuilder b(QueryParserNode n) {
                 QueryParserNode start = n.getChild(0);
                 QueryParserNode end = n.getChild(1);
-                return rangeFilter(node.getFieldname()).from(start.getValue()).to(end.getValue());
+                return rangeQuery(node.getFieldname()).from(start.getValue()).to(end.getValue());
             }
         });
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, QueryParserNode node) {
+        SpanQueryBuilder qb;
+
         if (node instanceof ASTWord)
-            return buildSpan(prox, (ASTWord) node);
+            qb = buildSpan(prox, (ASTWord) node);
         else if (node instanceof ASTNumber)
-            return buildSpan(prox, (ASTNumber) node);
+            qb = buildSpan(prox, (ASTNumber) node);
         else if (node instanceof ASTBoolean)
-            return buildSpan(prox, (ASTBoolean) node);
+            qb = buildSpan(prox, (ASTBoolean) node);
         else if (node instanceof ASTFuzzy)
-            return buildSpan(prox, (ASTFuzzy) node);
+            qb = buildSpan(prox, (ASTFuzzy) node);
         else if (node instanceof ASTPrefix)
-            return buildSpan(prox, (ASTPrefix) node);
+            qb = buildSpan(prox, (ASTPrefix) node);
         else if (node instanceof ASTWildcard)
-            return buildSpan(prox, (ASTWildcard) node);
+            qb = buildSpan(prox, (ASTWildcard) node);
         else if (node instanceof ASTPhrase)
-            return buildSpan(prox, (ASTPhrase) node);
+            qb = buildSpan(prox, (ASTPhrase) node);
         else if (node instanceof ASTNull)
-            return buildSpan(prox, (ASTNull) node);
+            qb = buildSpan(prox, (ASTNull) node);
         else if (node instanceof ASTNotNull)
             return buildSpan(prox, (ASTNotNull) node);
         else if (node instanceof ASTProximity)
-            return buildSpan((ASTProximity) node);
+            qb = buildSpan((ASTProximity) node);
         else
             throw new QueryRewriteException("Unsupported PROXIMITY node: " + node.getClass().getName());
+
+        maybeBoost(node, qb);
+        return qb;
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity node) {
@@ -1040,16 +1011,7 @@ public class QueryRewriter {
 
         final List<String> tokens = Utils.tokenizePhrase(client, metadataManager, node.getFieldname(), node.getEscapedValue());
         for (int i=0; i<tokens.size(); i++) {
-            String token = tokens.get(i);
-
-            for (int j=0; j<WILDCARD_TOKENS.length; j++) {
-                String wildcard = WILDCARD_TOKENS[j];
-                String replacement = WILDCARD_VALUES[j];
-
-                if (token.contains(wildcard)) {
-                    tokens.set(i, token = token.replaceAll(wildcard, replacement));
-                }
-            }
+            replaceWildcardTokens(tokens, i, tokens.get(i));
         }
 
         for (Iterator<String> itr = tokens.iterator(); itr.hasNext();) {
@@ -1073,7 +1035,7 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder build(ASTProximity node) {
+    private QueryBuilder build(ASTProximity node) {
         node.forceFieldname(node.getFieldname());
 
         SpanNearQueryBuilder qb = spanNearQuery();
@@ -1084,33 +1046,33 @@ public class QueryRewriter {
             qb.clause(buildSpan(node, child));
         }
 
-        return queryFilter(qb);
+        return qb;
     }
 
-    private FilterBuilder buildStandard(QueryParserNode node, FBF fbf) {
-        return maybeNest(node, buildStandard0(node, fbf));
+    private QueryBuilder buildStandard(QueryParserNode node, QBF qbf) {
+        return maybeNest(node, buildStandard0(node, qbf));
     }
 
-    private FilterBuilder buildStandard0(QueryParserNode node, FBF fbf) {
+    private QueryBuilder buildStandard0(QueryParserNode node, QBF qbf) {
         switch (node.getOperator()) {
             case EQ:
             case CONTAINS:
-                return fbf.b(node);
+                return qbf.b(node);
 
             case NE:
-                return notFilter(fbf.b(node));
+                return filteredQuery(matchAllQuery(), notFilter(queryFilter(qbf.b(node))));
 
             case LT:
-                return rangeFilter(node.getFieldname()).lt(node.getValue());
+                return rangeQuery(node.getFieldname()).lt(node.getValue());
             case GT:
-                return rangeFilter(node.getFieldname()).gt(node.getValue());
+                return rangeQuery(node.getFieldname()).gt(node.getValue());
             case LTE:
-                return rangeFilter(node.getFieldname()).lte(node.getValue());
+                return rangeQuery(node.getFieldname()).lte(node.getValue());
             case GTE:
-                return rangeFilter(node.getFieldname()).gte(node.getValue());
+                return rangeQuery(node.getFieldname()).gte(node.getValue());
 
             case REGEX:
-                return regexpFilter(node.getFieldname(), node.getEscapedValue());
+                return regexpQuery(node.getFieldname(), node.getEscapedValue());
 
             case CONCEPT: {
                 int minTermFreq = 2;
@@ -1121,23 +1083,26 @@ public class QueryRewriter {
                     if (!"fulltext".equalsIgnoreCase(md.getAnalyzer(node.getFieldname())))
                         minTermFreq = 1;
 
-                return queryFilter(moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).minWordLength(3).minTermFreq(minTermFreq).stopWords(IndexMetadata.MLT_STOP_WORDS));
+                return moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).minWordLength(3).minTermFreq(minTermFreq).stopWords(IndexMetadata.MLT_STOP_WORDS);
             }
 
             case FUZZY_CONCEPT:
-                return queryFilter(fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO));
+                return fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO);
 
             default:
                 throw new QueryRewriteException("Unexpected operator: " + node.getOperator());
         }
     }
 
-    private FilterBuilder maybeNest(QueryParserNode node, FilterBuilder fb) {
+    private QueryBuilder maybeNest(QueryParserNode node, QueryBuilder fb) {
         if (withDepth == 0 && node.isNested()) {
-            return nestedFilter(node.getNestedPath(), fb).join(shouldJoinNestedFilter());
+            if (shouldJoinNestedFilter())
+                return nestedQuery(node.getNestedPath(), fb);
+            else
+                return filteredQuery(matchAllQuery(), nestedFilter(node.getNestedPath(), fb).join(false));
         } else if (!node.isNested()) {
             if (_isBuildingAggregate)
-                return matchAllFilter();
+                return matchAllQuery();
             return fb;  // it's not nested, so just return
         }
 
@@ -1171,7 +1136,7 @@ public class QueryRewriter {
         QueryRewriter qr = new QueryRewriter(client, indexName, searchPreference, input, allowSingleIndex, true, true);
         QueryParserNode parentQuery = qr.tree.getChild(ASTParent.class);
         if (parentQuery != null) {
-            return build(parentQuery);
+            return queryFilter(build(parentQuery));
         } else {
             return hasParentFilter("xact", qr.rewriteQuery());
         }
@@ -1209,7 +1174,7 @@ public class QueryRewriter {
             return notNull;
         }
 
-        FilterBuilder nodeFilter = build(nodeQuery);
+        QueryBuilder nodeFilter = build(nodeQuery);
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(10240)
                 .setQuery(constantScoreQuery(nodeFilter))
@@ -1266,7 +1231,7 @@ public class QueryRewriter {
         }
     }
 
-    private FilterBuilder expand(final ASTExpansion root, final ASTIndexLink link) {
+    private QueryBuilder expand(final ASTExpansion root, final ASTIndexLink link) {
         if (isInTestMode())
             return build(root.getQuery());
 

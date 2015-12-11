@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +19,12 @@
 
 #include "postgres.h"
 #include "fmgr.h"
+#include "access/tupdesc.h"
 
+extern void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid);
+extern Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid);
+
+extern Datum zdb_determine_index(PG_FUNCTION_ARGS);
 extern Datum zdb_get_index_name(PG_FUNCTION_ARGS);
 extern Datum zdb_get_url(PG_FUNCTION_ARGS);
 extern Datum zdb_query_func(PG_FUNCTION_ARGS);

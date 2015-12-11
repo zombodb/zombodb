@@ -64,6 +64,7 @@ CREATE OR REPLACE FUNCTION zdboptions(text[], boolean) RETURNS bytea LANGUAGE c 
 --
 CREATE OR REPLACE FUNCTION zdb(record) RETURNS json LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_row_to_json';
 CREATE OR REPLACE FUNCTION zdb(table_name regclass, ctid tid) RETURNS tid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid';
+CREATE OR REPLACE FUNCTION zdb_num_hits() RETURNS int8 AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_query_func(json, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 2147483647;
 CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 1;
 
@@ -75,13 +76,26 @@ CREATE OR REPLACE FUNCTION zdbtupledeletedtrigger() RETURNS trigger AS '$libdir/
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
+
+--
+-- scoring support
+--
+CREATE OR REPLACE FUNCTION zdb_score_internal(table_name regclass, ctid tid) RETURNS float4 LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_score(table_name regclass, ctid tid) RETURNS float4 LANGUAGE sql IMMUTABLE STRICT AS $$
+    SELECT zdb_score_internal(zdb_determine_index($1), $2);
+$$;
+
 --
 -- utility functions
 --
 CREATE OR REPLACE FUNCTION rest_get(url text) RETURNS json AS '$libdir/plugins/zombodb' language c;
+
+--
+-- index inspection functions
+--
+CREATE OR REPLACE FUNCTION zdb_determine_index(table_name regclass) RETURNS oid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdb_get_index_name(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_get_url(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
-CREATE OR REPLACE FUNCTION zdb_num_hits() RETURNS int8 AS '$libdir/plugins/zombodb' language c;
 
 CREATE OR REPLACE FUNCTION count_of_table(table_name REGCLASS) RETURNS INT8 LANGUAGE plpgsql AS $$
 DECLARE
@@ -143,34 +157,6 @@ CREATE VIEW zdb_index_stats_fast AS
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas
   FROM stats;
 
-CREATE OR REPLACE FUNCTION zdb_determine_index(table_name regclass) RETURNS oid STRICT VOLATILE LANGUAGE plpgsql AS $$
-DECLARE
-  exp json;
-  kind char;
-  index_oid oid;
-  namespace_oid oid;
-BEGIN
-  SELECT relkind, relnamespace INTO kind, namespace_oid FROM pg_class WHERE oid = table_name::oid;
-
-  IF kind = 'r' THEN
-    EXECUTE format('SET enable_seqscan TO OFF; EXPLAIN (FORMAT JSON) SELECT 1 FROM %s x WHERE zdb(''%s'', ctid) ==> '''' ', table_name, table_name) INTO exp;
-  ELSE
-    EXECUTE format('SET enable_seqscan TO OFF; EXPLAIN (FORMAT JSON) SELECT 1 FROM %s WHERE zdb ==> '''' ', table_name) INTO exp;
-  END IF;
-
-  IF (json_array_element(exp, 0)->'Plan'->'Plans')::text IS NOT NULL THEN
-    RETURN oid FROM pg_class WHERE relname IN (SELECT unnest(regexp_matches(exp::text, '"Index Name":\s*"(.*)",*$', 'gn')))
-    AND relam = (SELECT oid FROM pg_am WHERE amname = 'zombodb') AND relnamespace = namespace_oid;
-  END IF;
-
-  SELECT oid INTO index_oid FROM pg_class WHERE relname = (json_array_element(exp, 0)->'Plan'->>'Index Name') AND relnamespace = namespace_oid;
-  IF index_oid IS NULL THEN
-    RAISE EXCEPTION 'Unable to determine the index to use for %', table_name;
-  END IF;
-  RETURN index_oid;
-END;
-$$;
-
 CREATE OR REPLACE FUNCTION zdb_internal_actual_index_record_count(type_oid oid, type_name text) RETURNS bigint STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdb_actual_index_record_count(table_name regclass, type_name text) RETURNS bigint STRICT IMMUTABLE LANGUAGE sql AS $$
     SELECT zdb_internal_actual_index_record_count(zdb_determine_index(table_name), type_name);
@@ -207,7 +193,7 @@ BEGIN
   type_oid := zdb_determine_index(table_name);
 
   SELECT typname FROM pg_type WHERE oid = (SELECT atttypid FROM pg_attribute WHERE attrelid = table_name AND attname = fieldname) INTO data_type;
-  IF stem <> '^.*' AND data_type IN ('text', '_text', 'phrase', 'phrase_array', 'fulltext', 'varchar', '_varchar') THEN
+  IF stem <> '^.*' AND strpos(stem, '\') = 0 AND data_type IN ('text', '_text', 'phrase', 'phrase_array', 'fulltext', 'varchar', '_varchar') THEN
     new_query := format('(%s) AND (%s:~"%s")', query, fieldname, split_part(stem, '^', 2));
   ELSE
     new_query := query;

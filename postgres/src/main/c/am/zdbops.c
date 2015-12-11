@@ -20,6 +20,7 @@
 #include "catalog/pg_type.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
+#include "utils/memutils.h"
 #include "utils/rel.h"
 
 #include "zdb_interface.h"
@@ -27,6 +28,7 @@
 #include "zdbseqscan.h"
 #include "util/zdbutils.h"
 
+PG_FUNCTION_INFO_V1(zdb_determine_index);
 PG_FUNCTION_INFO_V1(zdb_get_index_name);
 PG_FUNCTION_INFO_V1(zdb_get_url);
 PG_FUNCTION_INFO_V1(zdb_query_func);
@@ -36,6 +38,170 @@ PG_FUNCTION_INFO_V1(zdb_row_to_json);
 PG_FUNCTION_INFO_V1(zdb_internal_describe_nested_object);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
+
+/*
+ * taken from Postgres' rewriteHandler.c
+ *
+ * NB:  This function is exposed in PG 9.4+
+ */
+static Query *get_view_query(Relation view) {
+	int i;
+
+	Assert(view->rd_rel->relkind == RELKIND_VIEW);
+
+	for (i = 0; i < view->rd_rules->numLocks; i++) {
+		RewriteRule *rule = view->rd_rules->rules[i];
+
+		if (rule->event == CMD_SELECT) {
+			/* A _RETURN rule should have only one action */
+			if (list_length(rule->actions) != 1)
+				elog(ERROR, "invalid _RETURN rule action specification");
+
+			return (Query *) linitial(rule->actions);
+		}
+	}
+
+	elog(ERROR, "failed to find _RETURN rule for view");
+	return NULL;                /* keep compiler quiet */
+}
+
+static FuncExpr *extract_zdb_funcExpr_from_view(Relation viewRel, Oid *heapRelOid) {
+	ListCell *lc;
+	Query *viewDef;
+	FuncExpr *funcExpr;
+
+	viewDef = get_view_query(viewRel);
+
+	foreach(lc, viewDef->targetList) {
+		TargetEntry *te = (TargetEntry *) lfirst(lc);
+
+		if (te->resname && strcmp("zdb", te->resname) == 0) {
+			if (!IsA(te->expr, FuncExpr))
+				elog(ERROR, "The 'zdb' column in view '%s' is not a function", RelationGetRelationName(viewRel));
+
+			funcExpr = (FuncExpr *) te->expr;
+
+			validate_zdb_funcExpr(funcExpr, heapRelOid);
+
+			return funcExpr;
+		}
+	}
+
+	elog(ERROR, "No column named 'zdb' in view '%s'", RelationGetRelationName(viewRel));
+	return NULL;
+}
+
+void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid) {
+	Node *a1, *a2;
+
+	if (list_length(funcExpr->args) != 2)
+		elog(ERROR, "Incorrect number of arguments to the 'zdb' column function");
+
+	a1 = linitial(funcExpr->args);
+	a2 = lsecond(funcExpr->args);
+
+	if (!IsA(a1, Const) || ((Const *) a1)->consttype != REGCLASSOID)
+		elog(ERROR, "First argument of the 'zdb' column function is not ::regclass");
+	else if (!IsA(a2, Var) || ((Var *) a2)->vartype != TIDOID)
+		elog(ERROR, "Second argument of the 'zdb' column function is not ::tid");
+
+	*heapRelOid = (Oid) DatumGetObjectId(((Const *) a1)->constvalue);
+}
+
+Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
+	/**
+     * The index we use here is the index from the table specified by the column named 'zdb'
+     * that has a functional expression that matches the functional expression of the column named 'zdb'
+     */
+	Oid      zdbIndexRelId = InvalidOid;
+	Relation heapRel;
+	List     *indexes;
+	ListCell *lc;
+
+	heapRel = RelationIdGetRelation(heapRelOid);
+	indexes = RelationGetIndexList(heapRel);
+	foreach (lc, indexes) {
+		Oid      indexRelOid = (Oid) lfirst(lc);
+		Relation indexRel;
+		NameData amname;
+
+		indexRel = RelationIdGetRelation(indexRelOid);
+		amname = indexRel->rd_am->amname;
+		RelationClose(indexRel);
+
+		if (strcmp("zombodb", amname.data) == 0) {
+			Node *n = linitial(RelationGetIndexExpressions(indexRel));
+
+			if (IsA(n, FuncExpr) && ((FuncExpr *) n)->funcid == funcExpr->funcid) {
+				zdbIndexRelId = indexRelOid;
+				break;
+			}
+		}
+	}
+
+	if (zdbIndexRelId == InvalidOid) {
+		RelationClose(heapRel);
+		elog(ERROR, "Unable to find ZomboDB index for table '%s'", RelationGetRelationName(heapRel));
+	}
+
+	RelationClose(heapRel);
+	return zdbIndexRelId;
+}
+
+Datum zdb_determine_index(PG_FUNCTION_ARGS) {
+	Oid      relid         = PG_GETARG_OID(0);
+	Oid      zdbIndexRelId = InvalidOid;
+	Relation table_or_view_rel;
+
+	table_or_view_rel = RelationIdGetRelation(relid);
+
+	switch (table_or_view_rel->rd_rel->relkind) {
+		case RELKIND_VIEW: {
+			Oid heapRelOid;
+			FuncExpr *funcExpr;
+
+			funcExpr = extract_zdb_funcExpr_from_view(table_or_view_rel, &heapRelOid);
+			zdbIndexRelId = zdb_determine_index_oid(funcExpr, heapRelOid);
+
+			break;
+		}
+
+		case RELKIND_MATVIEW:
+		case RELKIND_RELATION: {
+			/*
+			 * the index to use is the first non-shadow "zombodb" index we find on the relation.
+			 * there should only be one
+			 */
+			List     *indexes = RelationGetIndexList(table_or_view_rel);
+			ListCell *lc;
+
+			foreach(lc, indexes) {
+				Oid      indexRelOid = (Oid) lfirst(lc);
+				Relation indexRel    = RelationIdGetRelation(indexRelOid);
+
+				if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
+					zdbIndexRelId = indexRelOid;
+
+				RelationClose(indexRel);
+
+				if (zdbIndexRelId != InvalidOid)
+					break;
+			}
+			break;
+		}
+
+		default:
+			elog(ERROR, "'%s' is an unsupported kind of %c", RelationGetRelationName(table_or_view_rel), table_or_view_rel->rd_rel->relkind);
+			break;
+	}
+
+	RelationClose(table_or_view_rel);
+
+	if (zdbIndexRelId == InvalidOid)
+		elog(ERROR, "Cannot determine which ZomboDB index to use for '%s'", RelationGetRelationName(table_or_view_rel));
+
+	PG_RETURN_OID(zdbIndexRelId);
+}
 
 Datum zdb_get_index_name(PG_FUNCTION_ARGS)
 {

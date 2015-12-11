@@ -1,0 +1,78 @@
+CREATE VIEW so_posts_view_without_score AS SELECT ctid, *, zdb('so_posts', ctid) zdb FROM so_posts;
+CREATE VIEW so_posts_view_with_score AS SELECT ctid, zdb_score('so_posts', ctid), *, zdb('so_posts', ctid) zdb FROM so_posts;
+CREATE VIEW so_posts_view_no_zdb AS SELECT * FROM so_posts;
+SELECT zdb_determine_index('so_posts')::regclass;
+ zdb_determine_index 
+---------------------
+ idxso_posts
+(1 row)
+
+SELECT zdb_determine_index('so_posts_view_without_score')::regclass;
+ zdb_determine_index 
+---------------------
+ idxso_posts
+(1 row)
+
+SELECT zdb_determine_index('so_posts_view_with_score')::regclass;
+ zdb_determine_index 
+---------------------
+ idxso_posts
+(1 row)
+
+SELECT zdb_determine_index('so_posts_view_no_zdb')::regclass;
+ERROR:  No column named 'zdb' in view 'so_posts_view_no_zdb'
+SELECT zdb_score('so_posts_view_without_score', ctid) IS NOT NULL, id FROM so_posts_view_without_score WHERE zdb ==> 'beer and title:*' ORDER BY id;
+ ?column? |   id   
+----------+--------
+ t        |   2932
+ t        |  20663
+ t        |  21907
+ t        |  32956
+ t        |  36441
+ t        |  36443
+ t        |  61392
+ t        |  96580
+ t        | 103203
+ t        | 107170
+ t        | 121798
+ t        | 131841
+ t        | 136208
+ t        | 147185
+ t        | 171605
+ t        | 181140
+ t        | 187269
+ t        | 213942
+ t        | 215682
+ t        | 269590
+ t        | 272560
+(21 rows)
+
+SELECT zdb_score IS NOT NULL, zdb_score('so_posts_view_with_score', ctid) IS NOT NULL, id FROM so_posts_view_with_score WHERE zdb ==> 'beer and title:*' ORDER BY id;
+ ?column? | ?column? |   id   
+----------+----------+--------
+ t        | t        |   2932
+ t        | t        |  20663
+ t        | t        |  21907
+ t        | t        |  32956
+ t        | t        |  36441
+ t        | t        |  36443
+ t        | t        |  61392
+ t        | t        |  96580
+ t        | t        | 103203
+ t        | t        | 107170
+ t        | t        | 121798
+ t        | t        | 131841
+ t        | t        | 136208
+ t        | t        | 147185
+ t        | t        | 171605
+ t        | t        | 181140
+ t        | t        | 187269
+ t        | t        | 213942
+ t        | t        | 215682
+ t        | t        | 269590
+ t        | t        | 272560
+(21 rows)
+
+DROP VIEW so_posts_view_without_score;
+DROP VIEW so_posts_view_with_score;
+DROP VIEW so_posts_view_no_zdb;

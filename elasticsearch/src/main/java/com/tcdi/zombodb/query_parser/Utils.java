@@ -34,21 +34,17 @@ public class Utils {
             return s;
 
         StringBuilder sb  = new StringBuilder();
-        char prev_ch = 0;
         for (int i=0, len=s.length(); i<len; i++) {
             char ch = s.charAt(i);
+            if (ch == '\\') {
+                char next = i<len-1 ? s.charAt(++i) : 0;
+                if (next == 0)
+                    throw new RuntimeException("Invalid escape sequence at end of string");
 
-            switch(ch) {
-                case '\\':
-                    if (prev_ch == '\\')
-                        sb.append(ch);  // only keep backslashes that are escaped
-                    break;
-                default:
-                    sb.append(ch);
-                    break;
+                sb.append(next);
+            } else {
+                sb.append(ch);
             }
-
-            prev_ch = ch;
         }
 
         return sb.toString();
@@ -92,13 +88,13 @@ public class Utils {
         } else if (wildcardCount > 1) {
             node = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
             node.setValue(value);
-        } else if (value.endsWith("*") && !value.endsWith("\\*")) {
+        } else if (value.endsWith("*") && (!value.endsWith("\\*") || value.endsWith("\\\\*"))) {
             node = new ASTPrefix(QueryParserTreeConstants.JJTPREFIX);
             node.setValue(value.substring(0, value.length()-1));
-        } else if (value.endsWith("?") && !value.endsWith("\\?")) {
+        } else if (value.endsWith("?") && (!value.endsWith("\\?") || value.endsWith("\\\\?"))) {
             node = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
             node.setValue(value);
-        } else if (value.endsWith("~") && !value.endsWith("\\~")) {
+        } else if (value.endsWith("~") && (!value.endsWith("\\~") || value.endsWith("\\\\~"))) {
             node = new ASTFuzzy(QueryParserTreeConstants.JJTFUZZY);
             node.setValue(value.substring(0, value.length() - 1));
         } else if (value.matches("^.*~\\d+$")) {

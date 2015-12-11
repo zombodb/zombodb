@@ -43,6 +43,7 @@
 #include "zdbam.h"
 #include "util/zdbutils.h"
 #include "zdbseqscan.h"
+#include "zdbscore.h"
 
 
 PG_FUNCTION_INFO_V1(zdbbuild);
@@ -180,6 +181,7 @@ static void xact_complete_cleanup(XactEvent event) {
 	executorDepth = 0;
 	numHitsFound = -1;
 
+	zdb_reset_scores();
 	zdb_sequential_scan_support_cleanup();
 	zdb_transaction_finish();
 
@@ -575,7 +577,7 @@ zdbbuildCallback(Relation indexRel,
 	);
 
 	/*
-	 * if the tuple's XMIN and XMIN are not committed, we're going to assume it'll eventually
+	 * if the tuple's XMIN and XMAX are not committed, we're going to assume it'll eventually
 	 * be committed (likely this is from an ALTER TABLE ALTER COLUMN TYPE statement), so
 	 * we want to queue up the fact that these are "new" tuples
 	 */
@@ -699,8 +701,12 @@ zdbgettuple(PG_FUNCTION_ARGS)
 	haveMore = scanstate->currhit < scanstate->nhits;
 	if (haveMore)
 	{
-		set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self);
+		ZDBScore score;
+
+		set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, &score);
 		scanstate->currhit++;
+
+		zdb_record_score(RelationGetRelid(scan->indexRelation), &scan->xs_ctup.t_self, score);
 	}
 
 	PG_RETURN_BOOL(haveMore);
@@ -718,7 +724,7 @@ zdbgetbitmap(PG_FUNCTION_ARGS)
 	IndexScanDesc scan       = (IndexScanDesc) PG_GETARG_POINTER(0);
 	TIDBitmap     *tbm       = (TIDBitmap *) PG_GETARG_POINTER(1);
 	ZDBScanState  *scanstate = (ZDBScanState *) scan->opaque;
-	int           i;
+	uint64           i;
 
 	/*
 	 * force the max entries to be as many as possible
@@ -730,10 +736,13 @@ zdbgetbitmap(PG_FUNCTION_ARGS)
 	for (i = 0; i < scanstate->nhits; i++)
 	{
 		ItemPointerData target;
+		ZDBScore score;
 
 		CHECK_FOR_INTERRUPTS();
-		set_item_pointer(scanstate->hits, i, &target);
+		set_item_pointer(scanstate->hits, i, &target, &score);
 		tbm_add_tuples(tbm, &target, 1, false);
+
+		zdb_record_bitmap_score(scan->indexRelation->rd_id, &target, score);
 	}
 
 	PG_RETURN_INT64(scanstate->nhits);
@@ -920,10 +929,11 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 	for (i = 0; i < nitems; i++)
 	{
 		ItemPointerData *ctid = palloc(sizeof(ItemPointerData));
+		ZDBScore score;
 
 		CHECK_FOR_INTERRUPTS();
 
-		set_item_pointer(items, i, ctid);
+		set_item_pointer(items, i, ctid, &score);
 		if (!ItemPointerIsValid(ctid))
 			continue;
 
