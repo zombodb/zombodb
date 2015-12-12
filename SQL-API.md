@@ -34,7 +34,7 @@ These custom domains are to be used in user tables as data types when you requir
 
 #### ```FUNCTION zdb(table_name regclass, ctid tid) RETURNS tid```
 
-> `table_name`: The name of a table with a ZomboDB index
+> `table_name`: The name of a table with a ZomboDB index  
 > `ctid`: A Postgres "tid" tuple pointer
 >
 >This function is required when creating "zombodb" indexes as the **first** column and when performing full text queries.

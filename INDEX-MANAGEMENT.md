@@ -30,6 +30,7 @@ The `WITH` settings are:
 ### Advanced Settings
 - `options` **optional**:  `options` is a ZomboDB-specific string that allows you to define how this index relates to other indexes.  This is an advanced-use feature and is documented [here](INDEX-OPTIONS.md).
 - `shadow` **optional** (mutually exclusive with `url`): The name of an existing ZomboDB index that this index should use, but likely with a different set of options.  This too is an [advanced-use](INDEX-OPTIONS.md) feature.
+- `field_lists` **optional**:  Allows for the definition of a fields that, when queried, are dynamically expanded to search a list of other fields.  The syntax for this setting is:  `field_lists='fake_field1=[a, b, c], fake_field2=[d,e,f], ...'`.  This can be useful, for example, for searching all "date" fields at once, or defining a set of fields that represent "names" or "locations".  Note that each field in a list must be of the same underlying Postgres data type.
 
 ### Operational Settings
 - `preference` **optional**:  The Elasticsearch [search preference](https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-preference.html) to use.  The default is `null`, meaning no search preference is used.
