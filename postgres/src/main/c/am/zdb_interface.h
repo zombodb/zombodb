@@ -35,6 +35,7 @@ typedef struct
 	bool  noxact;
 	int   bulk_concurrency;
 	int   batch_size;
+	int   fieldListsValueOffset;
 } ZDBIndexOptions;
 
 
@@ -69,6 +70,10 @@ typedef struct
 #define ZDBIndexOptionsGetBatchSize(relation) \
 	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->batch_size : 12
 
+#define ZDBIndexOptionsGetFieldLists(relation) \
+    ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->fieldListsValueOffset > 0 ? \
+      (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->fieldListsValueOffset : (NULL))
+
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
@@ -92,6 +97,8 @@ typedef struct
 	char *searchPreference;
 	int bulk_concurrency;
 	int batch_size;
+
+	char *fieldLists;
 
 	ZDBIndexImplementation *implementation;
 }                                     ZDBIndexDescriptor;

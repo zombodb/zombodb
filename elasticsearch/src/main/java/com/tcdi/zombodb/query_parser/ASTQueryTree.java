@@ -2,6 +2,9 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=false,NODE_PREFIX=AST,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.tcdi.zombodb.query_parser;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class ASTQueryTree extends com.tcdi.zombodb.query_parser.QueryParserNode {
 
     public ASTQueryTree(int id) {
@@ -16,6 +19,23 @@ public class ASTQueryTree extends com.tcdi.zombodb.query_parser.QueryParserNode 
         for (QueryParserNode node : this)
             if (node instanceof ASTOptions)
                 return (ASTOptions) node;
+
+        return null;
+    }
+
+    public Map<String, ASTFieldListEntry> getFieldLists() {
+        Map<String, ASTFieldListEntry> entries = new HashMap<>();
+        for (QueryParserNode node : this) {
+            if (node instanceof ASTFieldLists) {
+                for (QueryParserNode node2 : node) {
+                    if (node2 instanceof ASTFieldListEntry)
+                        entries.put(node2.getFieldname(), (ASTFieldListEntry) node2);
+                    else
+                        throw new RuntimeException("Unexpected type: " + node2.getClass());
+                }
+                return entries;
+            }
+        }
 
         return null;
     }
@@ -38,7 +58,7 @@ public class ASTQueryTree extends com.tcdi.zombodb.query_parser.QueryParserNode 
 
     public QueryParserNode getQueryNode() {
         for (QueryParserNode node : this)
-            if (!(node instanceof ASTAggregate) && !(node instanceof ASTOptions) && !(node instanceof ASTSuggest))
+            if (!(node instanceof ASTAggregate) && !(node instanceof ASTOptions) && !(node instanceof ASTFieldLists) && !(node instanceof ASTSuggest))
                 return node;
 
         return null;

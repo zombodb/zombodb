@@ -2977,24 +2977,84 @@
                     "should" : [ {
                       "bool" : {
                         "must" : [ {
-                          "prefix" : {
-                            "field1" : "word1"
+                          "bool" : {
+                            "should" : [ {
+                              "prefix" : {
+                                "a" : "word1"
+                              }
+                            }, {
+                              "prefix" : {
+                                "b" : "word1"
+                              }
+                            }, {
+                              "prefix" : {
+                                "c" : "word1"
+                              }
+                            } ]
                           }
                         }, {
-                          "prefix" : {
-                            "field1" : "word2"
+                          "bool" : {
+                            "should" : [ {
+                              "prefix" : {
+                                "a" : "word2"
+                              }
+                            }, {
+                              "prefix" : {
+                                "b" : "word2"
+                              }
+                            }, {
+                              "prefix" : {
+                                "c" : "word2"
+                              }
+                            } ]
                           }
                         }, {
-                          "wildcard" : {
-                            "field1" : "w*ld?card*"
+                          "bool" : {
+                            "should" : [ {
+                              "wildcard" : {
+                                "a" : "w*ld?card*"
+                              }
+                            }, {
+                              "wildcard" : {
+                                "b" : "w*ld?card*"
+                              }
+                            }, {
+                              "wildcard" : {
+                                "c" : "w*ld?card*"
+                              }
+                            } ]
                           }
                         }, {
-                          "prefix" : {
-                            "field2" : "wo"
+                          "bool" : {
+                            "should" : [ {
+                              "prefix" : {
+                                "d" : "wo"
+                              }
+                            }, {
+                              "prefix" : {
+                                "e" : "wo"
+                              }
+                            }, {
+                              "prefix" : {
+                                "f" : "wo"
+                              }
+                            } ]
                           }
                         }, {
-                          "term" : {
-                            "field1" : "rd3"
+                          "bool" : {
+                            "should" : [ {
+                              "term" : {
+                                "a" : "rd3"
+                              }
+                            }, {
+                              "term" : {
+                                "b" : "rd3"
+                              }
+                            }, {
+                              "term" : {
+                                "c" : "rd3"
+                              }
+                            } ]
                           }
                         } ]
                       }
@@ -3112,30 +3172,127 @@
                               }
                             }, {
                               "term" : {
-                                "field1" : "beer"
+                                "a" : "beer"
+                              }
+                            }, {
+                              "term" : {
+                                "b" : "beer"
+                              }
+                            }, {
+                              "term" : {
+                                "c" : "beer"
                               }
                             } ]
                           }
                         }, {
                           "bool" : {
-                            "should" : {
+                            "should" : [ {
                               "terms" : {
-                                "field1" : [ "this", "merges", "arrays", 1, 2, 3, "x", "y", "z", "some phrase" ]
+                                "a" : [ "this", "merges", "arrays", 1, 2, 3, "x", "y", "z", "some phrase" ]
+                              }
+                            }, {
+                              "terms" : {
+                                "b" : [ "this", "merges", "arrays", 1, 2, 3, "x", "y", "z", "some phrase" ]
+                              }
+                            }, {
+                              "terms" : {
+                                "c" : [ "this", "merges", "arrays", 1, 2, 3, "x", "y", "z", "some phrase" ]
+                              }
+                            } ]
+                          }
+                        }, {
+                          "bool" : {
+                            "must_not" : {
+                              "bool" : {
+                                "should" : [ {
+                                  "wildcard" : {
+                                    "a" : "*gr*avy*"
+                                  }
+                                }, {
+                                  "wildcard" : {
+                                    "b" : "*gr*avy*"
+                                  }
+                                }, {
+                                  "wildcard" : {
+                                    "c" : "*gr*avy*"
+                                  }
+                                } ]
                               }
                             }
                           }
                         }, {
                           "bool" : {
-                            "must_not" : {
-                              "wildcard" : {
-                                "field1" : "*gr*avy*"
+                            "should" : [ {
+                              "term" : {
+                                "a" : {
+                                  "value" : "beer",
+                                  "boost" : 2.0
+                                }
                               }
-                            }
+                            }, {
+                              "term" : {
+                                "b" : {
+                                  "value" : "beer",
+                                  "boost" : 2.0
+                                }
+                              }
+                            }, {
+                              "term" : {
+                                "c" : {
+                                  "value" : "beer",
+                                  "boost" : 2.0
+                                }
+                              }
+                            }, {
+                              "term" : {
+                                "d" : {
+                                  "value" : "beer",
+                                  "boost" : 2.0
+                                }
+                              }
+                            }, {
+                              "term" : {
+                                "e" : {
+                                  "value" : "beer",
+                                  "boost" : 2.0
+                                }
+                              }
+                            }, {
+                              "term" : {
+                                "f" : {
+                                  "value" : "beer",
+                                  "boost" : 2.0
+                                }
+                              }
+                            } ]
                           }
                         }, {
-                          "terms" : {
-                            "field3" : [ "beer", "wine" ],
-                            "minimum_should_match" : "2"
+                          "bool" : {
+                            "should" : [ {
+                              "term" : {
+                                "a" : "wine"
+                              }
+                            }, {
+                              "term" : {
+                                "b" : "wine"
+                              }
+                            }, {
+                              "term" : {
+                                "c" : "wine"
+                              }
+                            }, {
+                              "term" : {
+                                "d" : "wine"
+                              }
+                            }, {
+                              "term" : {
+                                "e" : "wine"
+                              }
+                            }, {
+                              "term" : {
+                                "f" : "wine"
+                              }
+                            } ]
                           }
                         } ]
                       }

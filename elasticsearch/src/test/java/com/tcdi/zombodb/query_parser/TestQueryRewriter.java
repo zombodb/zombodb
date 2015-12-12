@@ -21,7 +21,9 @@ import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.junit.Test;
 
+import java.io.StringReader;
 import java.util.Arrays;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -31,6 +33,7 @@ import static org.junit.Assert.fail;
  */
 public class TestQueryRewriter extends ZomboDBTestCase {
     String query = "#options(id=<table.index>id, id=<table.index>id, id=<table.index>id, other:(left=<table.index>right)) #extended_stats(custodian) #tally(subject, '^.*', 1000, '_term', #significant_terms(author, '^.*', 1000))  " +
+            "#field_lists(field1=[a,b,c], field2=[d,e,f], field3=[a,b,c,d,e,f]) " +
             "#child<data>(" +
             "fulltext=[beer] meeting not staff not cancelled not risk " +
             "#expand<left_field = <table.index>right_field>(the subquery) " +
@@ -3396,6 +3399,50 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  }\n" +
                         "}"
         );
+    }
+
+    @Test
+    public void testFieldListParsing() throws Exception {
+        assertAST("#field_lists()",
+                "QueryTree\n" +
+                        "   FieldLists"
+        );
+
+        assertAST("#field_lists(field1=[a,b,c])",
+                "QueryTree\n" +
+                        "   FieldLists\n" +
+                        "      FieldListEntry (fieldname=field1)\n" +
+                        "         Array (index=db.schema.table.index) (OR)\n" +
+                        "            Word (value=a, index=db.schema.table.index)\n" +
+                        "            Word (value=b, index=db.schema.table.index)\n" +
+                        "            Word (value=c, index=db.schema.table.index)"
+        );
+
+        assertAST("#field_lists(field1=[a,b,c], field2=[d,e,f])",
+                "QueryTree\n" +
+                        "   FieldLists\n" +
+                        "      FieldListEntry (fieldname=field1)\n" +
+                        "         Array (index=db.schema.table.index) (OR)\n" +
+                        "            Word (value=a, index=db.schema.table.index)\n" +
+                        "            Word (value=b, index=db.schema.table.index)\n" +
+                        "            Word (value=c, index=db.schema.table.index)\n" +
+                        "      FieldListEntry (fieldname=field2)\n" +
+                        "         Array (index=db.schema.table.index) (OR)\n" +
+                        "            Word (value=d, index=db.schema.table.index)\n" +
+                        "            Word (value=e, index=db.schema.table.index)\n" +
+                        "            Word (value=f, index=db.schema.table.index)"
+        );
+
+        ASTQueryTree tree = new QueryParser(new StringReader("#field_lists(field1=[a,b,c], field2=[d,e,f])")).parse(true);
+
+        Map<String, ASTFieldListEntry> fieldLists = tree.getFieldLists();
+        assertEquals(2, tree.getFieldLists().size());
+
+        assertEquals("FieldListEntry (fieldname=field1)", fieldLists.get("field1").toString());
+        assertEquals("[a, b, c]", fieldLists.get("field1").getFields().toString());
+
+        assertEquals("FieldListEntry (fieldname=field2)", fieldLists.get("field2").toString());
+        assertEquals("[d, e, f]", fieldLists.get("field2").getFields().toString());
     }
 }
 

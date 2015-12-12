@@ -89,6 +89,10 @@ static void validate_preference(char *str) {
 	// noop
 }
 
+static void validate_field_lists(char *str) {
+	// TODO:  implement this
+}
+
 void zdb_index_init(void)
 {
 	RELOPT_KIND_ZDB = add_reloption_kind();
@@ -101,6 +105,7 @@ void zdb_index_init(void)
 	add_bool_reloption(RELOPT_KIND_ZDB, "noxact", "Disable transaction tracking for this index", false);
 	add_int_reloption(RELOPT_KIND_ZDB, "bulk_concurrency", "The maximum number of concurrent _bulk API requests", 12, 1, 12);
 	add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API", 1024*1024*8, 1024, 1024*1024*64);
+	add_string_reloption(RELOPT_KIND_ZDB, "field_lists", "field=[field1, field2, field3], other=[field4,field5]", NULL, validate_field_lists);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
@@ -129,6 +134,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->searchPreference = ZDBIndexOptionsGetSearchPreference(indexRel);
 	desc->bulk_concurrency = ZDBIndexOptionsGetBulkConcurrency(indexRel);
 	desc->batch_size       = ZDBIndexOptionsGetBatchSize(indexRel);
+	desc->fieldLists       = ZDBIndexOptionsGetFieldLists(indexRel);
 
 	if (desc->isShadow)
 	{

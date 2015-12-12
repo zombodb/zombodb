@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +16,7 @@
  */
 package com.tcdi.zombodb.query_parser;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * Created by e_ridge on 12/23/14.
@@ -31,7 +29,7 @@ public class QueryTreeOptimizer {
     }
 
     public void optimize() {
-
+        expandFieldLists(tree, tree.getFieldLists());
         validateAndFixProximityChainFieldnames(tree);
         rollupParentheticalGroups(tree);
         mergeLiterals(tree);
@@ -41,7 +39,46 @@ public class QueryTreeOptimizer {
         convertGeneratedExpansionsToASTOr(tree);
     }
 
-    static void validateAndFixProximityChainFieldnames(QueryParserNode root) {
+    private void expandFieldLists(QueryParserNode root, Map<String, ASTFieldListEntry> fieldLists) {
+        if (fieldLists == null)
+            return;
+
+        for (QueryParserNode child : root) {
+            if (child instanceof ASTFieldLists)
+                continue;
+
+            String fieldname = child.getFieldname();
+            ASTFieldListEntry list = fieldLists.get(fieldname);
+
+            if (list != null) {
+                List<String> fields = list.getFields();
+
+                if (fields.size() == 1) {
+                    child.setFieldname(fields.get(0));
+                } else {
+                    ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
+                    for (String fn : fields) {
+                        QueryParserNode newNode = child.copy();
+                        newNode.setFieldname(fn);
+                        or.jjtAddChild(newNode, or.jjtGetNumChildren());
+
+                        if (newNode instanceof ASTArray)
+                            newNode.forceFieldname(fn);
+                    }
+                    root.replaceChild(child, or);
+                }
+
+            }
+
+            if (child instanceof ASTArray)
+                continue;
+
+            // recurse into children
+            expandFieldLists(child, fieldLists);
+        }
+    }
+
+    void validateAndFixProximityChainFieldnames(QueryParserNode root) {
         if (root.children == null || root.children.size() == 0)
             return;
 

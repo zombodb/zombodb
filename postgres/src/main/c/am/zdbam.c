@@ -1016,7 +1016,8 @@ zdboptions(PG_FUNCTION_ARGS)
 			{"replicas", RELOPT_TYPE_INT, offsetof(ZDBIndexOptions, replicas)},
 			{"noxact", RELOPT_TYPE_BOOL, offsetof(ZDBIndexOptions, noxact)},
 			{"bulk_concurrency", RELOPT_TYPE_INT, offsetof(ZDBIndexOptions, bulk_concurrency)},
-			{"batch_size", RELOPT_TYPE_INT, offsetof(ZDBIndexOptions, batch_size)}
+			{"batch_size", RELOPT_TYPE_INT, offsetof(ZDBIndexOptions, batch_size)},
+			{"field_lists", RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, fieldListsValueOffset)}
 	};
 
 	options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB,

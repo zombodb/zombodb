@@ -134,6 +134,7 @@ PARSER_END(QueryParser)
   | <EXTENDED_STATS: "#extended_stats" >
   | <SUGGEST: "#suggest" >
   | <OPTIONS: "#options" >
+  | <FIELDLISTS: "#field_lists" >
   | <EXPAND: "#expand" >
 
   | <PROX: "w/"(<DIGIT>)+ >
@@ -173,7 +174,7 @@ private ASTQueryTree parse0() #QueryTree :
 {
 }
 {
-    ( Aggregations() | Options() )* [ Expression() ] <EOF>
+    ( Aggregations() | Options() | FieldLists() )* [ Expression() ] <EOF>
     {
         return jjtThis;
     }
@@ -189,7 +190,7 @@ void Tally() #Tally :
     FieldnameRef fn;
 }
 {
-    ( <TALLY> "(" (fn = Fieldname()) "," (Word()|Phrase()) "," Number() "," (Word()|Phrase()) [ "," Aggregations() ] ")" )
+    ( <TALLY> "(" (fn = TrackedFieldnameReference()) "," (Word()|Phrase()) "," Number() "," (Word()|Phrase()) [ "," Aggregations() ] ")" )
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
@@ -201,7 +202,7 @@ void RangeAggregate() #RangeAggregate :
     FieldnameRef fn;
 }
 {
-    ( <RANGE> "(" (fn = Fieldname()) "," Phrase() [ "," Aggregations() ] ")" )
+    ( <RANGE> "(" (fn = TrackedFieldnameReference()) "," Phrase() [ "," Aggregations() ] ")" )
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
@@ -213,7 +214,7 @@ void SignificantTerms() #SignificantTerms :
     FieldnameRef fn;
 }
 {
-    ( <SIGNIFICANT_TERMS> "(" (fn = Fieldname()) "," (Word()|Phrase()) "," Number() [ "," Aggregations() ] ")" )
+    ( <SIGNIFICANT_TERMS> "(" (fn = TrackedFieldnameReference()) "," (Word()|Phrase()) "," Number() [ "," Aggregations() ] ")" )
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
@@ -225,7 +226,7 @@ void ExtendedStats() #ExtendedStats :
     FieldnameRef fn;
 }
 {
-    ( <EXTENDED_STATS> "(" (fn = Fieldname()) ")" )
+    ( <EXTENDED_STATS> "(" (fn = TrackedFieldnameReference()) ")" )
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
@@ -237,7 +238,7 @@ void Suggest() #Suggest :
     FieldnameRef fn;
 }
 {
-    ( <SUGGEST> "(" (fn = Fieldname()) "," (Word()|Phrase()) "," Number() ")" )
+    ( <SUGGEST> "(" (fn = TrackedFieldnameReference()) "," (Word()|Phrase()) "," Number() ")" )
     {
         jjtThis.fieldname = fn.fieldName;
     }
@@ -253,6 +254,23 @@ void Options() : {}
             ]
             ")"
     ) #Options
+}
+
+void FieldLists() : {}
+{
+    (
+        <FIELDLISTS> "(" [ FieldListEntry() ("," FieldListEntry())*  ] ")"
+
+    ) #FieldLists
+}
+
+void FieldListEntry() #FieldListEntry :
+{
+    String fieldname;
+}
+{
+    ( fieldname = Fieldname() <EQ> Array() )
+    { jjtThis.fieldname = fieldname; }
 }
 
 void IndexLink() #IndexLink :
@@ -468,7 +486,7 @@ FieldnameAndOperator OptionalFieldname() :
 {
     (
         [
-            LOOKAHEAD(2) fn = Fieldname() (op = <OPERATOR> | op = <EQ> | op = <L_ANGLE> | op = <R_ANGLE>)
+            LOOKAHEAD(2) fn = TrackedFieldnameReference() (op = <OPERATOR> | op = <EQ> | op = <L_ANGLE> | op = <R_ANGLE>)
         ]
     )
     {
@@ -480,22 +498,34 @@ FieldnameAndOperator OptionalFieldname() :
     }
 }
 
-FieldnameRef Fieldname() :
+FieldnameRef TrackedFieldnameReference() :
 {
-    Token t, nested = null;
+    Token nested = null;
+    String fieldname;
 }
 {
     (
-        LOOKAHEAD(2) (t = <IDENTIFIER> | t = <WORD>)
-      | LOOKAHEAD(2) t = <DOTTED_IDENTIFIER>
-      | nested=<NESTED> "(" t = <DOTTED_IDENTIFIER> ")"
+        fieldname = Fieldname()
+      | nested=<NESTED> "(" fieldname = Fieldname() ")"
     )
     {
-        usedFieldnames.add(t.image);
-        return new FieldnameRef(t.image, nested != null);
+        usedFieldnames.add(fieldname);
+        return new FieldnameRef(fieldname, nested != null);
     }
 }
 
+String Fieldname() :
+{
+    Token t;
+}
+{
+    (
+       LOOKAHEAD(2) (t = <IDENTIFIER> | t = <WORD>)
+      | LOOKAHEAD(2) t = <DOTTED_IDENTIFIER>
+    )
+
+    { return t.image; }
+}
 
 QueryParserNode Range() #Range(2) : {}
 {

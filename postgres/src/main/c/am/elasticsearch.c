@@ -81,6 +81,8 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, TransactionId xid, Comman
 
 	if (desc->options)
 		appendStringInfo(baseQuery, "#options(%s) ", desc->options);
+	if (desc->fieldLists)
+		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->options);
 
 	if (isParentQuery)
 		appendStringInfo(baseQuery, "#parent<xact>(");
