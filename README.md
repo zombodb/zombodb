@@ -3,32 +3,35 @@
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
 backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.3/static/indexam.html).
 
-In practical terms, a ZomboDB index doesn't appear to Postgres any different than a standard btree index might.  As such, standard SQL commands for mutating data are fully supported: ```INSERT```, ```UPDATE```, ```DELETE```, ```COPY```, and ```VACUUM```.
+In practical terms, a ZomboDB index is no different than a standard btree index.  As such, standard SQL commands are fully supported, including `SELECT`, `BEGIN`, `COMMIT`, `ABORT`, `INSERT`, `UPDATE`, `DELETE`, `COPY`, and `VACUUM`.
 
-Behind the scenes, ZomboDB indexes communicate with Elasticsearch via HTTP and are automatically synchronized in an MVCC-safe manner as data in the underlying Postgres table changes.
+Because ZomboDB implements Postgres' Access Method API, ZomboDB indexes are MVCC-safe, even as concurrent sessions mutate underlying tables.  Following Postgres' MVCC rules means that every transaction sees, at all times, a view of the backing Elasticsearch index that is always consistent with its view of Postgres' tables.
 
-Following Postgres' MVCC rules means that transactions see, at all times, a view of the backing Elasticsearch index that is consistent with their view of Postgres tables.
+Behind the scenes, ZomboDB indexes communicate with Elasticsearch via HTTP and are automatically synchronized, in batch, when data changes.
 
-Index management happens using standard Postgres SQL commands such as ```CREATE INDEX```, ```REINDEX```, and ```ALTER INDEX```.  Searching uses standard SQL ```SELECT``` statements with a custom operator that exposes a [full-text query language](SYNTAX.md) supporting most of Elasticsearch's query constructs.
+Index management happens using standard Postgres SQL commands such as `CREATE INDEX`, `REINDEX`, and `ALTER INDEX`.  Searching uses standard SQL `SELECT` statements with a custom operator that exposes a [full-text query language](SYNTAX.md) supporting most of Elasticsearch's query constructs.
+
+Elasticsearch-calculated aggregations are also provided through custom functions.
 
 
 ## Quick Links
-   - [Upgrading to v2.5](UPGRADING-TO-v2.5.md)
    - [Latest Release](https://github.com/zombodb/zombodb/releases/latest)  
    - [Installation instructions](INSTALL.md)  
    - [Getting Started Tutorial](TUTORIAL.md)  
    - [Index Management](INDEX-MANAGEMENT.md), [Index Options](INDEX-OPTIONS.md), and [Type Mapping](TYPE-MAPPING.md)
    - [Query Syntax](SYNTAX.md)  
    - [SQL-level API](SQL-API.md)  
+   - [Upgrading to v2.5](UPGRADING-TO-v2.5.md)
 
 ## Features
 
 - transaction-safe full-text queries
-- managed & used via standard Postgres SQL
+- managed & queried via standard Postgres SQL
 - works with tables of any structure
 - works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCAN-SUPPORT.md) 
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
-- json columns as nested objects for flexible schemaless sub-documents
+- extremely fast indexing
+- record count estimation
 - custom full-text query language supporting nearly all of Elasticsearch's search features, including
   - boolean operations
   - proximity (in and out of order)
@@ -39,13 +42,12 @@ Index management happens using standard Postgres SQL commands such as ```CREATE 
   - regular expressions
   - inline scripts
   - range queries
+- json columns as nested objects for flexible schemaless sub-documents
 - query results expansion and index linking
-- extremely fast indexing
-- record count estimation
 - high-performance hit highlighting
 - access to many of Elasticsearch's aggregations, including ability to nest aggregations
 - use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
-- fairly extensive test suite
+- extensive test suite
 
 Not to suggest that these things are impossible, but there's a small set of non-features too:
 
@@ -130,7 +132,7 @@ Credit goes to Technology Concepts & Design, Inc, its management, and its develo
 
 - [Eric Ridge](mailto:eebbrr@gmail.com)
 - Google Group: [zombodb@googlegroups.com](mailto:zombodb@googlegroups.com)
-- Twitter:  @zombodb or @eeeebbbbrrrr
+- Twitter:  [@zombodb](https://twitter.com/zombodb) or [@eeeebbbbrrrr](https://twitter.com/eeeebbbbrrrr)
 - via github Issues and Pull Requests ;)
 
 
