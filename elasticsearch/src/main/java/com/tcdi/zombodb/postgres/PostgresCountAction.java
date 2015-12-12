@@ -79,6 +79,7 @@ public class PostgresCountAction extends BaseRestHandler {
         } catch (Exception e) {
             if (logger.isDebugEnabled())
                 logger.debug("Error estimating records", e);
+            throw e;
         } finally {
             long end = System.currentTimeMillis();
             logger.info("Estimated " + count + " records in " + ((end-start)/1000D) + " seconds.");
