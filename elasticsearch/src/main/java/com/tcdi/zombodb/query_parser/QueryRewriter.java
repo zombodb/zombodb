@@ -886,31 +886,37 @@ public class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                boolean canUseFieldData = metadataManager.getMetadataForField(n.getFieldname()).canUseFieldData(n.getFieldname());
+                final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
+                final int size = st.countTokens();
 
-                // NB:  testing shows that "fielddata" is *significantly* faster for large number of terms, about 2x faster than "plain"
-                return termQuery(n.getFieldname(), new Iterable<String>() {
-                    @Override
-                    public Iterator<String> iterator() {
-                        final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
-                        return new Iterator<String>() {
+                return termsQuery(n.getFieldname(),
+                        new AbstractCollection<String>() {
                             @Override
-                            public boolean hasNext() {
-                                return st.hasMoreTokens();
+                            public Iterator<String> iterator() {
+                                return new Iterator<String>() {
+                                    @Override
+                                    public boolean hasNext() {
+                                        return st.hasMoreTokens();
+                                    }
+
+                                    @Override
+                                    public String next() {
+                                        return st.nextToken();
+                                    }
+
+                                    @Override
+                                    public void remove() {
+
+                                    }
+                                };
                             }
 
                             @Override
-                            public String next() {
-                                return st.nextToken();
+                            public int size() {
+                                return size;
                             }
-
-                            @Override
-                            public void remove() {
-
-                            }
-                        };
-                    }
-                });
+                        }
+                );
             }
         });
     }
