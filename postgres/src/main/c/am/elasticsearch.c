@@ -395,14 +395,17 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 	if (response->data[0] != '\0')
 		elog(ERROR, "%s", response->data);
 
-	if (response->len < 1 + sizeof(uint64)) /* bounds checking on data returned from ES */
+	if (response->len < 1 + sizeof(uint64) + sizeof(float4)) /* bounds checking on data returned from ES */
 		elog(ERROR, "Elasticsearch didn't return enough data");
 
+    /* get the number of hits and max score from the response data */
 	memcpy(nhits, response->data + 1, sizeof(uint64));
-	if (response->len < 1 + sizeof(uint64) + (*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)))) /* more bounds checking */
+	memcpy(&max_score, response->data + 1 + sizeof(uint64), sizeof(float4));
+
+    /* and make sure we have the specified number of hits in the response data */
+	if (response->len != 1 + sizeof(uint64) + sizeof(float4) + (*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)))) /* more bounds checking */
 		elog(ERROR, "Elasticsearch says there's %ld hits, but didn't return all of them, len=%d", *nhits, response->len);
 
-	memcpy(&max_score, response->data + 1 + sizeof(uint64), sizeof(float4));
 	hits = palloc(sizeof(ZDBSearchResponse));
 	hits->httpResponse = response;
 	hits->hits         = (response->data + 1 + sizeof(uint64) + sizeof(float4));
