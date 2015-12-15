@@ -180,6 +180,14 @@ CREATE OR REPLACE FUNCTION zdb_get_index_mapping(table_name regclass) RETURNS js
     SELECT zdb_internal_get_index_mapping(zdb_determine_index(table_name));
 $$;
 
+CREATE TYPE zdb_get_index_field_lists_response AS (fieldname text, fields text[]);
+CREATE OR REPLACE FUNCTION zdb_internal_get_index_field_lists(index_oid oid) RETURNS text LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_get_index_field_lists(table_name regclass) RETURNS SETOF zdb_get_index_field_lists_response LANGUAGE sql STRICT IMMUTABLE AS $$
+    select trim((regexp_matches(x, '(.*)='))[1]) as fieldname, string_to_array((regexp_matches(x, '=\s*\[(.*?)(\]|$)'))[1], ',') fields
+      from regexp_split_to_table(zdb_internal_get_index_field_lists(zdb_determine_index($1)), '\]\s*,') x;
+$$;
+
+
 CREATE TYPE zdb_tally_order AS ENUM ('count', 'term', 'reverse_count', 'reverse_term');
 CREATE TYPE zdb_tally_response AS (term text, count bigint);
 CREATE OR REPLACE FUNCTION zdb_internal_tally(type_oid oid, fieldname text, stem text, query text, max_terms bigint, sort_order text) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';

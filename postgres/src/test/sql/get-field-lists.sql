@@ -1,0 +1,3 @@
+ALTER INDEX idxso_posts SET (field_lists='title_and_tags=[title,tags], field2=[a,b,c,d], field3=[a,d,q,z], field4=[one,two,three]');
+
+SELECT * FROM zdb_get_index_field_lists('so_posts');

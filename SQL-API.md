@@ -182,6 +182,24 @@ These custom domains are to be used in user tables as data types when you requir
 >     2 | 11799 | 1899 | 9900 | 5899.5 |      101616201 | 16004000.25 |        4000.5
 >```
 
+#### `FUNCTION public.zdb_get_index_field_lists(table_name regclass) RETURNS SETOF zdb_get_index_field_lists_response`
+
+> `table_name`:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
+> 
+> returns a resultset describing all the field lists that are defined for `table_name`.
+> 
+> Example:
+> 
+> ```
+> SELECT * FROM zdb_get_index_field_lists('some_table');
+    fieldname     |           fields           
+------------------+----------------------------
+ title_and_author | {title,author}
+ hashes           | {sha1,md5}
+(2 rows)
+
+> ```
+ 
 #### ```FUNCTION zdb_get_index_mapping(table_name regclass) RETURNS json```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index

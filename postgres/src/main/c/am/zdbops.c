@@ -37,6 +37,7 @@ PG_FUNCTION_INFO_V1(zdb_table_ref_and_tid);
 PG_FUNCTION_INFO_V1(zdb_row_to_json);
 PG_FUNCTION_INFO_V1(zdb_internal_describe_nested_object);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
+PG_FUNCTION_INFO_V1(zdb_internal_get_index_field_lists);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
 
 /*
@@ -277,6 +278,22 @@ Datum zdb_internal_get_index_mapping(PG_FUNCTION_ARGS)
 	desc = zdb_alloc_index_descriptor_by_index_oid(indexoid);
 
 	PG_RETURN_TEXT_P(CStringGetTextDatum(desc->implementation->getIndexMapping(desc)));
+}
+
+Datum zdb_internal_get_index_field_lists(PG_FUNCTION_ARGS)
+{
+	Oid index_oid = PG_GETARG_OID(0);
+	Relation indexRel;
+	ZDBIndexDescriptor *desc;
+
+	indexRel = RelationIdGetRelation(index_oid);
+	desc = zdb_alloc_index_descriptor(indexRel);
+	RelationClose(indexRel);
+
+	if (desc->fieldLists == NULL)
+		PG_RETURN_NULL();
+
+	PG_RETURN_TEXT_P(cstring_to_text(desc->fieldLists));
 }
 
 Datum zdb_internal_highlight(PG_FUNCTION_ARGS)
