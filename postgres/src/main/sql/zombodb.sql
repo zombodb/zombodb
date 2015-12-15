@@ -78,14 +78,6 @@ CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('AL
 
 
 --
--- scoring support
---
-CREATE OR REPLACE FUNCTION zdb_score_internal(table_name regclass, ctid tid) RETURNS float4 LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdb_score(table_name regclass, ctid tid) RETURNS float4 LANGUAGE sql IMMUTABLE STRICT AS $$
-    SELECT zdb_score_internal(zdb_determine_index($1), $2);
-$$;
-
---
 -- utility functions
 --
 CREATE OR REPLACE FUNCTION rest_get(url text) RETURNS json AS '$libdir/plugins/zombodb' language c;
@@ -96,6 +88,17 @@ CREATE OR REPLACE FUNCTION rest_get(url text) RETURNS json AS '$libdir/plugins/z
 CREATE OR REPLACE FUNCTION zdb_determine_index(table_name regclass) RETURNS oid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdb_get_index_name(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_get_url(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
+
+
+--
+-- scoring support
+--
+CREATE OR REPLACE FUNCTION zdb_score_internal(table_name regclass, ctid tid) RETURNS float4 LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_score(table_name regclass, ctid tid) RETURNS float4 LANGUAGE sql IMMUTABLE STRICT AS $$
+SELECT zdb_score_internal(zdb_determine_index($1), $2);
+$$;
+
+
 
 CREATE OR REPLACE FUNCTION count_of_table(table_name REGCLASS) RETURNS INT8 LANGUAGE plpgsql AS $$
 DECLARE
