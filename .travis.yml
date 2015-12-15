@@ -1,4 +1,7 @@
-language: bash
+language: java
+
+sudo: required
+dist: trusty
 
 env:
   - BUILD_SYSTEM=travis
