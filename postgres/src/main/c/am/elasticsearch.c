@@ -82,7 +82,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, TransactionId xid, Comman
 	if (desc->options)
 		appendStringInfo(baseQuery, "#options(%s) ", desc->options);
 	if (desc->fieldLists)
-		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->options);
+		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->fieldLists);
 
 	if (isParentQuery)
 		appendStringInfo(baseQuery, "#parent<xact>(");
@@ -687,14 +687,18 @@ char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, ch
 	return response->data;
 }
 
-char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, char *documentJson)
+char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *user_query, char *documentJson)
 {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request = makeStringInfo();
 	StringInfo response;
 	char *pkey = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, true);
 
-	appendStringInfo(request, "{\"query\":%s, \"primary_key\": \"%s\", \"documents\":%s}", query, pkey, documentJson);
+	appendStringInfo(request, "{\"query\":%s, \"primary_key\": \"%s\", \"documents\":%s", user_query, pkey, documentJson);
+	if (indexDescriptor->fieldLists)
+		appendStringInfo(request, ", \"field_lists\":\"%s\"", indexDescriptor->fieldLists);
+	appendStringInfoChar(request, '}');
+
 	appendStringInfo(endpoint, "%s/%s/_zdbhighlighter", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("POST", endpoint->data, request);
 

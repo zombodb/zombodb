@@ -37,7 +37,7 @@ public class ASTQueryTree extends com.tcdi.zombodb.query_parser.QueryParserNode 
             }
         }
 
-        return null;
+        return entries;
     }
 
     public ASTAggregate getAggregate() {

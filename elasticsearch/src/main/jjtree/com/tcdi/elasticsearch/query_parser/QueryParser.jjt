@@ -80,6 +80,10 @@ public class QueryParser {
 
         if (optimize)
             new QueryTreeOptimizer(tree).optimize();
+
+        for (ASTFieldListEntry entry : tree.getFieldLists().values()) {
+            usedFieldnames.addAll(entry.getFields());
+        }
         return tree;
     }
 
