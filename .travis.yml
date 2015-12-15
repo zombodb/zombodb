@@ -7,6 +7,7 @@ env:
   - BUILD_SYSTEM=travis
 
 before_install:
+  - free
   - ls -la /etc/init.d/
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
   - echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
@@ -45,13 +46,8 @@ script:
   - cat /etc/postgresql/9.3/main/postgresql.conf
   - sudo sleep 10
   - make installcheck
-
-after_failure:
-  - cat regression.diffs
-  - sudo cat /var/log/postgresql/*.log
-  - sudo cat /var/log/elasticsearch/*.log
+  - if [ -f regression.diffs ] ; then sudo at regression.diffs; sudo cat /var/log/postgresql/*.log; sudo cat /var/log/elasticsearch/*.log ; fi
   - df -h
   - ps auwwx
   - free
   - sudo dmesg
-
