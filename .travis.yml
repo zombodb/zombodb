@@ -46,7 +46,7 @@ script:
   - cat /etc/postgresql/9.3/main/postgresql.conf
   - sudo sleep 10
   - make installcheck
-  - exit 0
+  - exit 1
 
 after_failure:
   - if [ -f regression.diffs ] ; then sudo at regression.diffs; sudo cat /var/log/postgresql/*.log; sudo cat /var/log/elasticsearch/*.log ; fi
