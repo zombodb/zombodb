@@ -1,7 +1,5 @@
 language: bash
 
-sudo: required
-
 env:
   - BUILD_SYSTEM=travis
 
