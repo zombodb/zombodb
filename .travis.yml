@@ -48,4 +48,5 @@ script:
   - make installcheck
 
 after_failure:
-  - if [ -f regression.diffs ] ; then sudo at regression.diffs; sudo cat /var/log/postgresql/*.log; sudo cat /var/log/elasticsearch/*.log ; df -h ; ps auwwx ; free ; sudo dmesg; fi
+  - if [ -f regression.diffs ] ; then sudo at regression.diffs; sudo cat /var/log/postgresql/*.log; sudo cat /var/log/elasticsearch/*.log ; df -h ; ps auwwx ; free ; sudo dmesg; exit 1; fi
+  - exit 0
