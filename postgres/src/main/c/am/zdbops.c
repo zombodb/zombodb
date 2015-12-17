@@ -122,7 +122,7 @@ Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
 	heapRel = RelationIdGetRelation(heapRelOid);
 	indexes = RelationGetIndexList(heapRel);
 	foreach (lc, indexes) {
-		Oid      indexRelOid = (Oid) lfirst(lc);
+		Oid      indexRelOid = (Oid) lfirst_oid(lc);
 		Relation indexRel;
 		NameData amname;
 
@@ -177,7 +177,7 @@ Datum zdb_determine_index(PG_FUNCTION_ARGS) {
 			ListCell *lc;
 
 			foreach(lc, indexes) {
-				Oid      indexRelOid = (Oid) lfirst(lc);
+				Oid      indexRelOid = (Oid) lfirst_oid(lc);
 				Relation indexRel    = RelationIdGetRelation(indexRelOid);
 
 				if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
