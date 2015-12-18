@@ -377,6 +377,61 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor)
 	freeStringInfo(response);
 }
 
+char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId xid, CommandId cid, char **user_queries, int nqueries) {
+	StringInfo request = makeStringInfo();
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+	int i;
+
+	appendStringInfoChar(request, '[');
+	for (i=0; i<nqueries; i++) {
+		StringInfo query;
+		char *indexName;
+		char *preference;
+		char *pkey;
+
+		indexName  = descriptors[i]->fullyQualifiedName;
+		preference = descriptors[i]->searchPreference;
+		pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, false);
+		query      = buildQuery(descriptors[i], xid, cid, &user_queries[i], 1, true);
+
+		if (!preference) preference = "null";
+
+		if (i>0)
+			appendStringInfoChar(request, ',');
+
+		appendStringInfoChar(request, '{');
+
+		appendStringInfo(request, "\"indexName\":");
+		escape_json(request, indexName);
+
+		appendStringInfo(request, ",\"query\":");
+		escape_json(request, query->data);
+
+		if (preference) {
+			appendStringInfo(request, ",\"preference\":");
+			escape_json(request, preference);
+		}
+
+		if (pkey) {
+			appendStringInfo(request, ", \"pkey\":");
+			escape_json(request, pkey);
+		}
+
+		appendStringInfoChar(request, '}');
+	}
+	appendStringInfoChar(request, ']');
+
+	appendStringInfo(endpoint, "%s/%s/data/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
+	response = rest_call("POST", endpoint->data, request);
+
+	freeStringInfo(request);
+	freeStringInfo(endpoint);
+
+	return response->data;
+}
+
+
 ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits)
 {
 	StringInfo        query;

@@ -18,11 +18,14 @@
 
 #include "postgres.h"
 #include "lib/stringinfo.h"
+#include "utils/array.h"
 
 #define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
 void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen);
 void freeStringInfo(StringInfo si);
 char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing);
+Oid *oid_array_to_oids(ArrayType *arr, int *many);
+char **text_array_to_strings(ArrayType *array, int *many);
 
 #endif

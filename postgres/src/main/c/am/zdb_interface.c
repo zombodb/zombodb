@@ -270,6 +270,20 @@ void zdb_transaction_finish(void)
 }
 
 
+char *zdb_multi_search(TransactionId xid, CommandId cid, Oid *indexrelids, char **user_queries, int nqueries) {
+	int i;
+	ZDBIndexDescriptor **descriptors = (ZDBIndexDescriptor **) palloc(nqueries * (sizeof (ZDBIndexDescriptor*)));
+
+	for (i=0; i<nqueries; i++) {
+		descriptors[i] = zdb_alloc_index_descriptor_by_index_oid(indexrelids[i]);
+
+		if (!descriptors[i])
+			elog(ERROR, "Unable to create ZDBIndexDescriptor for index oid %d", indexrelids[i]);
+	}
+
+	return elasticsearch_multi_search(descriptors, xid, cid, user_queries, nqueries);
+}
+
 
 /** implementation wrapper functions */
 

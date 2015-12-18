@@ -18,6 +18,7 @@
 #include "executor/spi.h"
 #include "access/xact.h"
 #include "catalog/pg_type.h"
+#include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/memutils.h"
@@ -39,6 +40,7 @@ PG_FUNCTION_INFO_V1(zdb_internal_describe_nested_object);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_field_lists);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
+PG_FUNCTION_INFO_V1(zdb_internal_multi_search);
 
 /*
  * taken from Postgres' rewriteHandler.c
@@ -306,6 +308,30 @@ Datum zdb_internal_highlight(PG_FUNCTION_ARGS)
 	desc = zdb_alloc_index_descriptor_by_index_oid(indexoid);
 
 	PG_RETURN_TEXT_P(CStringGetTextDatum(desc->implementation->highlight(desc, query, documentJson)));
+}
+
+Datum zdb_internal_multi_search(PG_FUNCTION_ARGS)
+{
+	ArrayType *oidArray = PG_GETARG_ARRAYTYPE_P(0);
+	ArrayType *queryArray = PG_GETARG_ARRAYTYPE_P(1);
+	Oid *oids;
+	char **queries;
+	int oid_many, query_many;
+	char *response;
+
+	oids = oid_array_to_oids(oidArray, &oid_many);
+	queries = text_array_to_strings(queryArray, &query_many);
+
+	if (oid_many != query_many)
+		elog(ERROR, "Number of indexes and queries must match.  %d != %d", oid_many, query_many);
+	else if (oid_many == 0)
+		PG_RETURN_NULL();
+
+	response = zdb_multi_search(GetCurrentTransactionId(), GetCurrentCommandId(false), oids, queries, oid_many);
+	if (!response)
+		PG_RETURN_NULL();
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(response));
 }
 
 Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
