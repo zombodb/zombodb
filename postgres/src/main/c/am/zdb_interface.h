@@ -118,7 +118,7 @@ typedef struct
 	ZDBIndexDescriptor    *desc;
 
 	ItemPointer ctid;
-}                                     ZDBCommitXactData;
+} ZDBCommitXactData;
 
 typedef struct
 {
@@ -153,6 +153,8 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor_by_index_oid(Oid indexrelid);
 void               zdb_free_index_descriptor(ZDBIndexDescriptor *indexDescriptor);
 ZDBCommitXactData  *zdb_alloc_new_xact_record(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid);
 ZDBCommitXactData  *zdb_alloc_expired_xact_record(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmax, CommandId cmax);
+
+char *zdb_multi_search(TransactionId xid, CommandId cid, Oid *indexrelids, char **user_queries, int nqueries);
 
 bool zdb_index_descriptors_equal(ZDBIndexDescriptor *a, ZDBIndexDescriptor *b);
 

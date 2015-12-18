@@ -35,6 +35,7 @@ extern Datum zdb_internal_describe_nested_object(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_get_index_mapping(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_get_index_field_lists(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_highlight(PG_FUNCTION_ARGS);
+extern Datum zdb_internal_multi_search(PG_FUNCTION_ARGS);
 
 extern Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous);
 

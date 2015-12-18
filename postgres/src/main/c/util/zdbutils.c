@@ -18,6 +18,8 @@
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
 #include "lib/stringinfo.h"
+#include "utils/array.h"
+#include "utils/builtins.h"
 #include "utils/formatting.h"
 #include "utils/memutils.h"
 
@@ -92,3 +94,39 @@ char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing)
 
     return keyname;
 }
+
+
+Oid *oid_array_to_oids(ArrayType *arr, int *many)
+{
+    if (ARR_NDIM(arr) != 1 ||
+        ARR_HASNULL(arr) ||
+        ARR_ELEMTYPE(arr) != OIDOID)
+        elog(ERROR, "expected oid[] of non-null values");
+    *many = ARR_DIMS(arr)[0];
+    return (Oid *) ARR_DATA_PTR(arr);
+}
+
+char **text_array_to_strings(ArrayType *array, int *many)
+{
+    char  **result;
+    Datum *elements;
+    int   nelements;
+    int   i;
+
+    Assert(ARR_ELEMTYPE(array) == TEXTOID);
+
+    deconstruct_array(array, TEXTOID, -1, false, 'i',
+                      &elements, NULL, &nelements);
+
+    result = (char **) palloc(nelements * (sizeof (char *)));
+    for (i = 0; i < nelements; i++)
+    {
+        result[i] = TextDatumGetCString(elements[i]);
+        if (result[i] == NULL)
+            elog(ERROR, "expected text[] of non-null values");
+    }
+
+    *many = nelements;
+    return result;
+}
+

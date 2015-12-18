@@ -1,0 +1,35 @@
+select table_name, query, total from zdb_multi_search(ARRAY['so_posts', 'so_users', 'words'], 'cheese');
+ table_name | query  | total 
+------------+--------+-------
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_posts   | cheese |    48
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ so_users   | cheese |    19
+ words      | cheese |    54
+ words      | cheese |    54
+ words      | cheese |    54
+ words      | cheese |    54
+ words      | cheese |    54
+ words      | cheese |    54
+ words      | cheese |    54
+ words      | cheese |    54
+ words      | cheese |    54
+ words      | cheese |    54
+(30 rows)
+

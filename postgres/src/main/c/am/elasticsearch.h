@@ -25,6 +25,9 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
 void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor);
 
+char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId xid, CommandId cid, char **user_queries, int nqueries);
+
+
 uint64             elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 uint64             elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
 uint64             elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
