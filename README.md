@@ -46,6 +46,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
   - range queries
   - term/phrase boosting
 - query results expansion and index linking
+- search across multiple tables at once
 - high-performance hit highlighting
 - access to many of Elasticsearch's aggregations, including ability to nest aggregations
 - use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)

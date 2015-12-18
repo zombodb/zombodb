@@ -182,7 +182,7 @@ These custom domains are to be used in user tables as data types when you requir
 >     2 | 11799 | 1899 | 9900 | 5899.5 |      101616201 | 16004000.25 |        4000.5
 >```
 
-#### `FUNCTION public.zdb_get_index_field_lists(table_name regclass) RETURNS SETOF zdb_get_index_field_lists_response`
+#### `FUNCTION zdb_get_index_field_lists(table_name regclass) RETURNS SETOF zdb_get_index_field_lists_response`
 
 > `table_name`:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
 > 
@@ -306,6 +306,71 @@ These custom domains are to be used in user tables as data types when you requir
 >``` 
 >
 >NB:  depending on query complexity, the "clause" column can sometimes be incorrect or null
+
+#### `FUNCTION zdb_multi_search(table_names regclass[], query text) RETURNS SETOF zdb_multi_search_response`
+
+> `table_name`:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
+> `query`: a full text query
+> 
+> This function searches the array of tables (or views) using the specified full text query, and returns the top 10 documents from each, ordered by score in descending order.
+> 
+> The results of are the type:
+> 
+> ```
+> TYPE zdb_multi_search_response AS (
+>    table_name regclass, 
+>    query text, 
+>    total int8, 
+>    ctid tid, 
+>    score float4, 
+>    row_data json
+> );
+> ```
+> 
+> The `table_name` column indicates the table name of the matching row  
+> The `query` column indicates which query the row matched  
+> The `total` column indicates the total number of matching documents  
+> The `ctid` column indicates the Postgres system column named `ctid` that contains the row in the table on which the underlying index was created    
+> The `score` column indicates the Elasticsearch-calculated score for the row  
+> The `row_data` column is a `row_to_json()` of the matching document, excluding any columns of type `fulltext` -- this decision was made for performance reasons  
+> 
+> Note that if one of the `table_names` elements is actually a view, the returned `row_data` will be from the table that owns the index, as determined by `zdb_determine_index()`.  This means the `row_data` could have fewer properties than you expect.
+> 
+> Example (using the "contrib_regression" database that comes with ZomboDB sources):
+> 
+> ```
+> select * from zdb_multi_search(ARRAY['so_posts', 'so_users'], 'java javascript');
+ table_name |      query      | total |   ctid    |  score  |                                                                                                                
+------------+-----------------+-------+-----------+---------+----------------------------------------------------------------------------------------------------------------
+ so_posts   | java javascript |  1171 | (3952,2)  | 11.0458 | {"accepted_answer_id":70607,"answer_count":2,"closed_date":"2012-01-30 22:51:06.303-05","comment_count":1,"comm
+ so_posts   | java javascript |  1171 | (7728,3)  | 10.4871 | {"accepted_answer_id":121413,"answer_count":5,"closed_date":null,"comment_count":8,"community_owned_date":null,
+ so_posts   | java javascript |  1171 | (6969,2)  | 10.3758 | {"accepted_answer_id":112258,"answer_count":5,"closed_date":null,"comment_count":3,"community_owned_date":null,
+ so_posts   | java javascript |  1171 | (2545,5)  | 9.46877 | {"accepted_answer_id":47691,"answer_count":15,"closed_date":null,"comment_count":8,"community_owned_date":"2013
+ so_posts   | java javascript |  1171 | (15367,5) | 9.37296 | {"accepted_answer_id":null,"answer_count":2,"closed_date":"2013-11-03 20:55:10.65-05","comment_count":3,"commun
+ so_posts   | java javascript |  1171 | (6867,2)  | 9.31329 | {"accepted_answer_id":111044,"answer_count":9,"closed_date":null,"comment_count":8,"community_owned_date":null,
+ so_posts   | java javascript |  1171 | (11974,8) | 8.66756 | {"accepted_answer_id":null,"answer_count":null,"closed_date":null,"comment_count":0,"community_owned_date":null
+ so_posts   | java javascript |  1171 | (9177,6)  | 8.64198 | {"accepted_answer_id":null,"answer_count":4,"closed_date":null,"comment_count":0,"community_owned_date":null,"c
+ so_posts   | java javascript |  1171 | (15803,7) | 8.26861 | {"accepted_answer_id":223021,"answer_count":1,"closed_date":null,"comment_count":0,"community_owned_date":null,
+ so_posts   | java javascript |  1171 | (12434,3) | 8.25173 | {"accepted_answer_id":180054,"answer_count":11,"closed_date":"2015-02-23 18:45:40.173-05","comment_count":9,"co
+ so_users   | java javascript |  1309 | (1215,7)  | 3.32197 | {"account_id":29943,"age":30,"creation_date":"2012-02-22 18:54:08.103-05","display_name":"Nachiket","down_votes
+ so_users   | java javascript |  1309 | (3644,17) | 3.23258 | {"account_id":2068268,"age":25,"creation_date":"2014-12-02 22:49:02.65-05","display_name":"Tim Castelijns","dow
+ so_users   | java javascript |  1309 | (2722,1)  | 3.20018 | {"account_id":1756236,"age":20,"creation_date":"2014-02-03 18:10:40.417-05","display_name":"Calebe Oliveira","d
+ so_users   | java javascript |  1309 | (2229,41) | 3.14003 | {"account_id":462203,"age":17,"creation_date":"2013-07-20 03:41:36.817-04","display_name":"Shawn31313","down_vo
+ so_users   | java javascript |  1309 | (2071,22) | 2.99723 | {"account_id":2720548,"age":22,"creation_date":"2013-05-03 12:55:08.443-04","display_name":"Spencer Wieczorek",
+ so_users   | java javascript |  1309 | (2273,22) | 2.96903 | {"account_id":553069,"age":50,"creation_date":"2013-08-09 13:06:29.33-04","display_name":"John DeRegnaucourt","
+ so_users   | java javascript |  1309 | (2320,1)  |  2.9636 | {"account_id":286663,"age":null,"creation_date":"2013-09-01 18:16:19.683-04","display_name":"Rahul Desai","down
+ so_users   | java javascript |  1309 | (3866,1)  | 2.90212 | {"account_id":1063117,"age":25,"creation_date":"2015-02-09 23:21:19.083-05","display_name":"falsarella","down_v
+ so_users   | java javascript |  1309 | (2535,1)  | 2.87772 | {"account_id":2036664,"age":43,"creation_date":"2013-12-06 13:45:56.27-05","display_name":"josedacruz","down_vo
+ so_users   | java javascript |  1309 | (1499,1)  | 2.75175 | {"account_id":214928,"age":30,"creation_date":"2012-07-23 14:49:38.917-04","display_name":"davidbuzatto","down_
+(20 rows)
+> ```
+
+#### `FUNCTION zdb_multi_search(table_names regclass[], queries text[]) RETURNS SETOF zdb_multi_search_response`
+>
+> This function is similar to the above function that only takes a single query, except this function requires that the `table_names` and `queries` arguments be of the same length.  Each table in the `table_names` array is searched using the corresponding query from the `queries` array.
+> 
+> This allows you to search multiple tables at the same time, but each table uses a different query.
+
 
 
 #### ```FUNCTION zdb_significant_terms(table_name regclass, fieldname text, stem text, query text, max_terms bigint) RETURNS SET OF zdb_significant_terms_response```
