@@ -25,15 +25,15 @@ Elasticsearch-calculated aggregations are also provided through custom functions
 
 ## Features
 
-- transaction-safe full-text queries
+- transaction-safe full text queries
 - managed & queried via standard Postgres SQL
 - works with tables of any structure
 - works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCAN-SUPPORT.md) 
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
 - json columns as nested objects for flexible schemaless sub-documents
-- per-row scoring
+- [per-row scoring](SQL-API.md#function-zdb_scoretable_name-regclass-ctid-tid-returns-float4)
 - extremely fast indexing
-- record count estimation
+- [record count estimation](SQL-API.md#function-zdb_estimate_counttable_name-regclass-query-text-returns-bigint)
 - custom full-text query language supporting nearly all of Elasticsearch's search features, including
   - boolean operations
   - proximity (in and out of order)
@@ -46,8 +46,8 @@ Elasticsearch-calculated aggregations are also provided through custom functions
   - range queries
   - term/phrase boosting
 - query results expansion and index linking
-- search across multiple tables at once
-- high-performance hit highlighting
+- [search across multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-query-text-returns-setof-zdb_multi_search_response)
+- [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
 - access to many of Elasticsearch's aggregations, including ability to nest aggregations
 - use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
 - extensive test suite
