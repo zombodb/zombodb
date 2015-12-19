@@ -1,35 +1,7 @@
-select table_name, query, total from zdb_multi_search(ARRAY['so_posts', 'so_users', 'words'], 'cheese');
- table_name | query  | total 
-------------+--------+-------
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_posts   | cheese |    48
- so_users   | cheese |    19
- so_users   | cheese |    19
- so_users   | cheese |    19
- so_users   | cheese |    19
- so_users   | cheese |    19
- so_users   | cheese |    19
- so_users   | cheese |    19
- so_users   | cheese |    19
- so_users   | cheese |    19
- so_users   | cheese |    19
- words      | cheese |    54
- words      | cheese |    54
- words      | cheese |    54
- words      | cheese |    54
- words      | cheese |    54
- words      | cheese |    54
- words      | cheese |    54
- words      | cheese |    54
- words      | cheese |    54
- words      | cheese |    54
-(30 rows)
+select table_name, user_identifier, query, total from zdb_multi_search(ARRAY['so_posts', 'so_users'], ARRAY['a', 'b'], 'java javascript');
+ table_name | user_identifier |      query      | total 
+------------+-----------------+-----------------+-------
+ so_posts   | a               | java javascript |  1171
+ so_users   | b               | java javascript |  1309
+(2 rows)
 

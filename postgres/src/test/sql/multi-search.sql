@@ -1,1 +1,1 @@
-select table_name, query, total from zdb_multi_search(ARRAY['so_posts', 'so_users', 'words'], 'cheese');
+select table_name, user_identifier, query, total from zdb_multi_search(ARRAY['so_posts', 'so_users'], ARRAY['a', 'b'], 'java javascript');
