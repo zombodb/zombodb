@@ -430,7 +430,7 @@ DECLARE
 BEGIN
   SELECT indrelid::regclass INTO real_table_name FROM pg_index WHERE indexrelid = zdb_determine_index(table_name);
   EXECUTE format('SELECT row_to_json(x) FROM (SELECT %s, ctid FROM %s) x WHERE ctid = ''%s''',
-                 (select array_to_string(array_agg(attname), ',') from pg_attribute where attrelid = table_name and atttypid <> 'fulltext'::regtype and not attisdropped and attnum >=0),
+                 (select array_to_string(array_agg(attname), ',') from pg_attribute where attrelid = real_table_name and atttypid <> 'fulltext'::regtype and not attisdropped and attnum >=0),
                  real_table_name,
                  row_ctid) INTO row_data;
   RETURN row_data;
