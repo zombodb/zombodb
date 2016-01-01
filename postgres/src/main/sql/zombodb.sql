@@ -456,8 +456,8 @@ BEGIN
     user_identifier,
     query,
     total,
-    array_agg(score),
-    json_agg(row_data)
+    array_agg(score ORDER BY score DESC),
+    json_agg(row_data ORDER BY score DESC)
   FROM (
          SELECT
            table_names[gs]                                                                                       AS table_name,

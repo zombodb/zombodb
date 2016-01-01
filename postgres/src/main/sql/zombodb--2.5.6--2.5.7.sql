@@ -37,8 +37,8 @@ BEGIN
     user_identifier,
     query,
     total,
-    array_agg(score),
-    json_agg(row_data)
+    array_agg(score ORDER BY score DESC),
+    json_agg(row_data ORDER BY score DESC)
   FROM (
          SELECT
            table_names[gs]                                                                                       AS table_name,
@@ -55,6 +55,7 @@ BEGIN
   GROUP BY 1, 2, 3, 4;
 END;
 $$;
+
 CREATE OR REPLACE FUNCTION zdb_multi_search(table_names regclass[], user_identifier text[], query text) RETURNS SETOF zdb_multi_search_response LANGUAGE sql STRICT IMMUTABLE AS $$
   SELECT * FROM zdb_multi_search($1, $2, (SELECT array_agg($3) FROM unnest(table_names)));
 $$;
