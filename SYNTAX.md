@@ -161,7 +161,7 @@ Examples:
 ```be?r```:  would match beer, bear, etc  
 ```b*r```:  would match beer, bar, barber, etc  
 ```beer~```: would match beer, been, beep, etc  
-```beer~2```: would batch beer, bear, beep, bean, bell, etc
+```beer~2```: would match beer, bear, beep, bean, bell, etc
 
 Special consideration is taken for criteria in the form of: ```field:*``` or ```field:?```.  They are re-written using Elasticsearch's ["exists filter"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-exists-filter.html).
 
