@@ -30,7 +30,6 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.search.RestSearchAction;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -184,11 +183,10 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
                 try {
                     id = hit.id();
                     score = hit.score();
-                    int dash = id.indexOf('-');
-                    if (dash == -1)
-                        throw new Exception();
-                    blockno = Integer.valueOf(id.substring(0, dash));
-                    rowno = (char) Integer.valueOf(id.substring(dash + 1)).intValue();
+
+                    int dash = id.indexOf('-', 1);
+                    blockno = Integer.parseInt(id.substring(0, dash), 10);
+                    rowno = (char) Integer.parseInt(id.substring(dash + 1), 10);
                 } catch (Exception nfe) {
                     logger.warn("hit.id()=/" + hit.id() + "/ is not in the proper format.  Defaulting to INVALID_BLOCK_NUMBER");
                     blockno = INVALID_BLOCK_NUMBER;
