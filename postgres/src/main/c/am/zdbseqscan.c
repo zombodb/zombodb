@@ -15,6 +15,9 @@
  */
 
 #include "postgres.h"
+
+#define ZDBSEQSCAN_INCLUDE_DEFINITIONS
+
 #include "miscadmin.h"
 #include "executor/spi.h"
 #include "access/xact.h"

@@ -16,6 +16,8 @@
  */
 #include "postgres.h"
 
+#define ZDBSEQSCAN_INCLUDE_DEFINITIONS
+
 #include "miscadmin.h"
 #include "access/heapam_xlog.h"
 #include "access/nbtree.h"

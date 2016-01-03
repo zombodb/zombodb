@@ -20,6 +20,11 @@
 #include "fmgr.h"
 #include "zdbscore.h"
 
+#ifndef PG_USE_INLINE
+extern void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score);
+#endif   /* !PG_USE_INLINE */
+#if defined(PG_USE_INLINE) || defined(ZDBSEQSCAN_INCLUDE_DEFINITIONS)
+
 STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score)
 {
     BlockNumber  blkno;
@@ -31,6 +36,7 @@ STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, It
 
     ItemPointerSet(target, blkno, offno);
 }
+#endif /* PG_USE_INLINE || ZDBSEQSCAN_INCLUDE_DEFINITIONS */
 
 extern List *SEQUENTIAL_SCAN_INDEXES;
 extern HTAB *SEQUENTIAL_SCANS;
