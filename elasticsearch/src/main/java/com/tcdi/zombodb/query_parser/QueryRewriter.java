@@ -328,13 +328,21 @@ public class QueryRewriter {
     private AggregationBuilder build(ASTTally agg) {
         String fieldname = agg.getFieldname();
         IndexMetadata md = metadataManager.getMetadataForField(fieldname);
-
-//        fieldname = getAggregateFieldName();
+        DateHistogramIntervals interval = null;
+        String intervalOffset = null;
 
         boolean useHistogram = false;
         if (hasDate(md, fieldname)) {
             try {
-                DateHistogramIntervals.valueOf(agg.getStem());
+                String stem = agg.getStem();
+                int colon_idx = stem.indexOf(':');
+
+                if (colon_idx >= 0) {
+                    intervalOffset = stem.substring(colon_idx+1);
+                    stem = stem.substring(0, colon_idx);
+                }
+
+                interval = DateHistogramIntervals.valueOf(stem);
                 useHistogram = true;
             } catch (IllegalArgumentException iae) {
                 useHistogram = false;
@@ -344,9 +352,10 @@ public class QueryRewriter {
         if (useHistogram) {
             DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
                     .field(agg.getFieldname() + DateSuffix)
-                    .order(stringToDateHistogramOrder(agg.getSortOrder()));
+                    .order(stringToDateHistogramOrder(agg.getSortOrder()))
+                    .offset(intervalOffset);
 
-            switch (DateHistogramIntervals.valueOf(agg.getStem())) {
+            switch (interval) {
                 case year:
                     dhb.interval(DateHistogram.Interval.YEAR);
                     dhb.format("yyyy");
@@ -354,6 +363,10 @@ public class QueryRewriter {
                 case month:
                     dhb.interval(DateHistogram.Interval.MONTH);
                     dhb.format("yyyy-MM");
+                    break;
+                case week:
+                    dhb.interval(DateHistogram.Interval.WEEK);
+                    dhb.format("yyyy-MM-dd");
                     break;
                 case day:
                     dhb.interval(DateHistogram.Interval.DAY);

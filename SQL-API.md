@@ -492,14 +492,18 @@ These custom domains are to be used in user tables as data types when you requir
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```fieldname```: The name of a field from which to derive terms  
 > ```is_nested```: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
-> ```stem```:  a Regular expression by which to filter returned terms   
+> ```stem```:  a Regular expression by which to filter returned terms, or a date interval if the specified `fieldname` is a date or timestamp    
 > ```query```: a full text query  
 > ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
 > ```sort_order```: how to sort the terms.  one of ```'count'```, ```'term'```, ```'reverse_count'```, ```'reverse_term'```
 > 
 > This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot be used with fields of type `fulltext`.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 > 
-> If a stem is not specified, no results will be returned.  To match all terms: ```^.*```
+> If a stem is not specified, no results will be returned.  
+>
+> To match all terms: ```^.*```
+> 
+> If the specifield `fieldname` is a date/timestamp, then one of the following values are allowed for aggregating values into histogram buckets of the specified interval: `year, quarter, month, week, day, hour, minute, second`.  In all cases, an optional offset value can be specified.  For example:  `week:-1d` will offset the dates by one day so that the first day of the week will be considered to be Sunday (instead of the default of Monday).
 > 
 > Example:
 > 
