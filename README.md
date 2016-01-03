@@ -46,7 +46,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
   - range queries
   - term/phrase boosting
 - query results expansion and index linking
-- [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-query-text-returns-setof-zdb_multi_search_response)
+- [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
 - access to many of Elasticsearch's aggregations, including ability to nest aggregations
 - use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
