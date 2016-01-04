@@ -33,6 +33,7 @@ syntax-complex_query
 zdb_extended_stats
 with-operator
 determine-index
+determine-index2
 scoring-support
 issue-7
 issue-11
