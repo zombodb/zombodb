@@ -17,9 +17,6 @@ CREATE OR REPLACE FUNCTION zdb_mam_doc_to_sub(table_name REGCLASS, ctid tid)
   RETURNS tid AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid'
 LANGUAGE C IMMUTABLE STRICT
 COST 1;
-ALTER FUNCTION zdb_mam_doc_to_sub( REGCLASS, tid )
-OWNER TO cvuser;
-ERROR:  role "cvuser" does not exist
 CREATE INDEX es_idx_zdb_mam_doc_to_sub ON public.mam_doc USING zombodb (zdb_mam_doc_to_sub('public.mam_doc', ctid), zdb(mam_doc.*)) WITH (shadow='es_mam_doc', OPTIONS ='mam_doc_sub_data:(pk_mam_doc=<mam_doc_sub.es_sub>fk_mam_doc)');
 CREATE VIEW mam_doc_test AS
   SELECT
