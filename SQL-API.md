@@ -337,7 +337,7 @@ These custom domains are to be used in user tables as data types when you requir
 > The `score` column indicates the Elasticsearch-calculated scores for each matching row  
 > The `row_data` column is a json array of the `row_to_json()` for the top 10 matching documents.  Note that columns of type `fulltext` are excluded -- this is for performance reasons  
 > 
-> Note that if one of the `table_names` elements is actually a view, the returned `row_data` will be from the table that owns the index, as determined by `zdb_determine_index()`.  This means the `row_data` could have fewer properties than you expect.
+> Note that if one of the `table_names` elements is actually a view, the view must contain the primary key field name from the underlying table (as determined by `zdb_determine_index()`), otherwise an ERROR will be thrown.
 > 
 > Example (using the "contrib_regression" database that comes with ZomboDB sources):
 > 
