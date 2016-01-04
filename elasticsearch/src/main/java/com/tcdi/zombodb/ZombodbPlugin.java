@@ -38,7 +38,7 @@ public class ZombodbPlugin extends AbstractPlugin {
         module.addRestAction(PostgresMappingAction.class);
         module.addRestAction(ZombodbQueryAction.class);
         module.addRestAction(ZombodbDocumentHighlighterAction.class);
-        module.addRestAction(ZombodbMultisearchAction.class);
+        module.addRestAction(ZombodbMultiSearchAction.class);
     }
 
     @Override

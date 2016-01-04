@@ -2,6 +2,7 @@ package com.tcdi.zombodb.postgres;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.query_parser.QueryRewriter;
+import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.MultiSearchRequestBuilder;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
@@ -20,9 +21,9 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 /**
  * Created by e_ridge on 12/17/15.
  */
-public class ZombodbMultisearchAction extends BaseRestHandler {
+public class ZombodbMultiSearchAction extends BaseRestHandler {
 
-    public static class MultisearchDescriptor {
+    public static class ZDBMultiSearchDescriptor {
         private String indexName;
         private String query;
         private String preference;
@@ -62,19 +63,20 @@ public class ZombodbMultisearchAction extends BaseRestHandler {
     }
 
     @Inject
-    protected ZombodbMultisearchAction(Settings settings, RestController controller, Client client) {
+    protected ZombodbMultiSearchAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
         controller.registerHandler(GET, "/{index}/{type}/_zdbmsearch", this);
         controller.registerHandler(POST, "/{index}/{type}/_zdbmsearch", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
-        MultisearchDescriptor[] descriptors = new ObjectMapper().readValue(request.content().streamInput(), MultisearchDescriptor[].class);
+    protected void handleRequest(RestRequest request, RestChannel channel, final Client client) throws Exception {
+        final long start = System.currentTimeMillis();
+        final ZDBMultiSearchDescriptor[] descriptors = new ObjectMapper().readValue(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
         MultiSearchRequestBuilder msearchBuilder = new MultiSearchRequestBuilder(client);
         String thisType = request.param("type");
 
-        for (MultisearchDescriptor md : descriptors) {
+        for (ZDBMultiSearchDescriptor md : descriptors) {
             SearchRequestBuilder srb = new SearchRequestBuilder(client);
 
             srb.setIndices(md.getIndexName());
@@ -85,6 +87,19 @@ public class ZombodbMultisearchAction extends BaseRestHandler {
             msearchBuilder.add(srb);
         }
 
-        client.multiSearch(msearchBuilder.request(), new RestToXContentListener<MultiSearchResponse>(channel));
+        final ActionListener<MultiSearchResponse> defaultListener = new RestToXContentListener<MultiSearchResponse>(channel);
+        client.multiSearch(msearchBuilder.request(), new ActionListener<MultiSearchResponse>() {
+            @Override
+            public void onResponse(MultiSearchResponse items) {
+                long end = System.currentTimeMillis();
+                logger.info("Searched " + descriptors.length + " indexes in " + ((end-start)/1000D) + " seconds");
+                defaultListener.onResponse(items);
+            }
+
+            @Override
+            public void onFailure(Throwable e) {
+                defaultListener.onFailure(e);
+            }
+        });
     }
 }
