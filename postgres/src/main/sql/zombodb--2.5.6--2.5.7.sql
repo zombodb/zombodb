@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION zdb_id_to_ctid(id text) RETURNS tid LANGUAGE sql STRI
 SELECT ('(' || replace(id, '-', ',') || ')')::tid;
 $$;
 
-CREATE OR REPLACE FUNCTION zdb_extract_table_row(table_name regclass, row_ctid tid) RETURNS json LANGUAGE plpgsql STRICT IMMUTABLE AS $$
+CREATE OR REPLACE FUNCTION zdb_extract_table_row(table_name regclass, field_names text[], row_ctid tid) RETURNS json LANGUAGE plpgsql IMMUTABLE AS $$
 DECLARE
   is_view bool;
   pkey_column text;
@@ -25,13 +25,14 @@ BEGIN
   IF pkey_column IS NULL THEN
     /* just get what we can from the underlying table */
     EXECUTE format('SELECT row_to_json(x) FROM (SELECT %s, ctid FROM %s) x WHERE ctid = ''%s''',
-                   (select array_to_string(array_agg(attname), ',') from pg_attribute where attrelid = real_table_name and atttypid <> 'fulltext'::regtype and not attisdropped and attnum >=0),
+                   CASE WHEN field_names IS NOT NULL THEN array_to_string(field_names, ',') ELSE (select array_to_string(array_agg(attname), ',') from pg_attribute where attrelid = real_table_name and atttypid <> 'fulltext'::regtype and not attisdropped and attnum >=0) END,
                    real_table_name,
                    row_ctid) INTO row_data;
   ELSE
     /* select out of the view */
-    EXECUTE format('SELECT row_to_json(x) FROM (SELECT %s FROM %s) x WHERE %s = (SELECT %s FROM %s WHERE ctid = ''%s'')',
-                   (select array_to_string(array_agg(attname), ',') from pg_attribute where attrelid = table_name and atttypid <> 'fulltext'::regtype and not attisdropped and attnum >=0),
+    EXECUTE format('SELECT row_to_json(x) FROM (SELECT %s, %s FROM %s) x WHERE %s = (SELECT %s FROM %s WHERE ctid = ''%s'')',
+                   CASE WHEN field_names IS NOT NULL THEN array_to_string(field_names, ',') ELSE (select array_to_string(array_agg(attname), ',') from pg_attribute where attrelid = table_name and atttypid <> 'fulltext'::regtype and not attisdropped and attnum >=0) END,
+                   pkey_column,
                    table_name,
                    pkey_column,
                    pkey_column,
@@ -45,7 +46,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION zdb_internal_multi_search(table_names oid[], queries text[]) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdb_multi_search(table_names regclass[], user_identifiers text[], queries text[]) RETURNS SETOF zdb_multi_search_response LANGUAGE plpgsql STRICT IMMUTABLE AS $$
+CREATE OR REPLACE FUNCTION zdb_multi_search(table_names regclass[], user_identifiers text[], field_names text[][], queries text[]) RETURNS SETOF zdb_multi_search_response LANGUAGE plpgsql IMMUTABLE AS $$
 DECLARE
   response json;
   many integer;
@@ -74,6 +75,7 @@ BEGIN
            (json_array_elements(json_array_element(response, gs - 1) -> 'hits' -> 'hits') ->>'_score') :: FLOAT4 AS score,
            zdb_extract_table_row(
                table_names[gs],
+               (field_names[gs:gs])::text[],
                zdb_id_to_ctid(json_array_elements(json_array_element(response, gs - 1) -> 'hits' -> 'hits') ->> '_id') :: tid
            )                                                                                                     AS row_data
          FROM generate_series(1, many) gs
@@ -81,7 +83,10 @@ BEGIN
   GROUP BY 1, 2, 3, 4;
 END;
 $$;
+CREATE OR REPLACE FUNCTION zdb_multi_search(table_names regclass[], user_identifier text[], field_names text[][], query text) RETURNS SETOF zdb_multi_search_response LANGUAGE sql IMMUTABLE AS $$
+SELECT * FROM zdb_multi_search($1, $2, $3, (SELECT array_agg($4) FROM unnest(table_names)));
+$$;
 
 CREATE OR REPLACE FUNCTION zdb_multi_search(table_names regclass[], user_identifier text[], query text) RETURNS SETOF zdb_multi_search_response LANGUAGE sql STRICT IMMUTABLE AS $$
-  SELECT * FROM zdb_multi_search($1, $2, (SELECT array_agg($3) FROM unnest(table_names)));
+SELECT * FROM zdb_multi_search($1, $2, NULL, (SELECT array_agg($3) FROM unnest(table_names)));
 $$;

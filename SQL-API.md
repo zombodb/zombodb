@@ -307,10 +307,11 @@ These custom domains are to be used in user tables as data types when you requir
 >
 >NB:  depending on query complexity, the "clause" column can sometimes be incorrect or null
 
-#### `FUNCTION zdb_multi_search(table_names regclass[], user_identifiers text[], query text) RETURNS SETOF zdb_multi_search_response`
+#### `FUNCTION zdb_multi_search(table_names regclass[], user_identifiers text[], field_names[][], query text) RETURNS SETOF zdb_multi_search_response`
 
 > `table_names`:  An array of tables (or views) with ZomboDB indexes to search at the same time  
 > `user_identifiers`:  An array of arbitrary identifiers for each table.  This could be useful for a client application to distinguish between result rows that use the same underlying table.  
+> `field_names`:  A 2-d array of field names to return for each table.  If it is null, all fields (except those of type `fulltext`) will be returned.
 > `query`: a full text query
 > 
 > This function searches the array of tables using the specified full text query, and returns the top 10 documents from each in descending score order.
@@ -335,14 +336,14 @@ These custom domains are to be used in user tables as data types when you requir
 > The `query` column indicates which query the row matched  
 > The `total` column indicates the total number of matching documents  
 > The `score` column indicates the Elasticsearch-calculated scores for each matching row  
-> The `row_data` column is a json array of the `row_to_json()` for the top 10 matching documents.  Note that columns of type `fulltext` are excluded -- this is for performance reasons  
+> The `row_data` column is a json array of the `row_to_json()` for the top 10 matching documents.  If the `field_names` argument is non-null, it will contain only the fields you specified.  Otherwise, all fields, except those of type `fulltext` are returned  
 > 
 > Note that if one of the `table_names` elements is actually a view, the view must contain the primary key field name from the underlying table (as determined by `zdb_determine_index()`), otherwise an ERROR will be thrown.
 > 
 > Example (using the "contrib_regression" database that comes with ZomboDB sources):
 > 
 > ```
-> select * from zdb_multi_search(ARRAY['so_posts', 'so_users'], ARRAY['a', 'b'], 'java javascript');
+> select * from zdb_multi_search(ARRAY['so_posts', 'so_users'], ARRAY['a', 'b'], NULL, 'java javascript');
  table_name | user_identifier |      query      | total |                                       score                                       |                                                                                               
 ------------+-----------------+-----------------+-------+-----------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------
  so_posts   | a               | java javascript |  1171 | {11.0463,10.4817,10.3789,9.45525,9.36948,9.31416,8.66982,8.64361,8.26008,8.25053} | [{"accepted_answer_id":70607,"answer_count":2,"closed_date":"2012-01-30 22:51:06.303-05","comm...
