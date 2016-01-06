@@ -303,7 +303,7 @@ public class QueryRewriter {
                     .subAggregation(
                             filter("filter")
                                     .filter(queryFilter(build(tree)))
-                                    .subAggregation(ab).subAggregation(missing("missing").field(agg.getFieldname()))
+                                    .subAggregation(ab).subAggregation(missing("missing").field(getAggregateFieldName()))
                     );
         }
 
@@ -315,7 +315,7 @@ public class QueryRewriter {
             return null;
 
         TermSuggestionBuilder tsb = new TermSuggestionBuilder("suggestions");
-        tsb.field(agg.getFieldname());
+        tsb.field(getAggregateFieldName());
         tsb.size(agg.getMaxTerms());
         tsb.text(agg.getStem());
         tsb.suggestMode("always");
@@ -351,7 +351,7 @@ public class QueryRewriter {
 
         if (useHistogram) {
             DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
-                    .field(agg.getFieldname() + DateSuffix)
+                    .field(getAggregateFieldName() + DateSuffix)
                     .order(stringToDateHistogramOrder(agg.getSortOrder()))
                     .offset(intervalOffset);
 
@@ -391,7 +391,7 @@ public class QueryRewriter {
             return dhb;
         } else {
             TermsBuilder tb = terms(agg.getFieldname())
-                    .field(fieldname)
+                    .field(getAggregateFieldName())
                     .size(agg.getMaxTerms())
                     .shardSize(0)
                     .order(stringToTermsOrder(agg.getSortOrder()));
@@ -430,7 +430,7 @@ public class QueryRewriter {
         // if this is a date field, execute a date range aggregation
         if (hasDate(md, fieldname)) {
             final DateRangeBuilder dateRangeBuilder = new DateRangeBuilder(fieldname)
-                    .field(fieldname + DateSuffix);
+                    .field(getAggregateFieldName() + DateSuffix);
 
             for (final DateRangeSpecEntry e : createRangeSpec(DateRangeSpecEntry[].class, agg.getRangeSpec())) {
                 if (e.to == null && e.from == null)
@@ -448,7 +448,7 @@ public class QueryRewriter {
         } else {
             // this is not a date field so execute a normal numeric range aggregation
             final RangeBuilder rangeBuilder = new RangeBuilder(fieldname)
-                    .field(fieldname);
+                    .field(getAggregateFieldName());
 
             for (final RangeSpecEntry e : createRangeSpec(RangeSpecEntry[].class, agg.getRangeSpec())) {
                 if (e.to == null && e.from == null)
@@ -469,7 +469,7 @@ public class QueryRewriter {
     private AggregationBuilder build(ASTSignificantTerms agg) {
         IndexMetadata md = metadataManager.getMetadataForMyIndex();
         SignificantTermsBuilder stb = significantTerms(agg.getFieldname())
-                .field(agg.getFieldname())
+                .field(getAggregateFieldName())
                 .size(agg.getMaxTerms());
 
         if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
@@ -480,7 +480,7 @@ public class QueryRewriter {
 
     private AbstractAggregationBuilder build(ASTExtendedStats agg) {
         return extendedStats(agg.getFieldname())
-                .field(agg.getFieldname());
+                .field(getAggregateFieldName());
     }
 
     private static Terms.Order stringToTermsOrder(String s) {

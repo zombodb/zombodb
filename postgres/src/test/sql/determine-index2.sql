@@ -32,5 +32,8 @@ CREATE VIEW mam_doc_test AS
 
 SELECT assert(zdb_determine_index('mam_doc_test')::regclass, 'es_idx_zdb_mam_doc_to_sub'::regclass, 'picked correct index');
 
+SELECT * FROM zdb_tally('public.mam_doc_test', 'security', '0', '^.*', '', 5000, 'term'::zdb_tally_order);
+SELECT * FROM zdb_tally('public.mam_doc_test', 'mam_doc_sub_data.security', '0', '^.*', '', 5000, 'term'::zdb_tally_order);
+
 DROP TABLE mam_doc CASCADE;
 DROP TABLE mam_doc_sub CASCADE;
