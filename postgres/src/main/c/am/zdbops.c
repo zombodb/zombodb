@@ -367,7 +367,7 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"include_in_all\": \"false\",");
 			appendStringInfo(result, "\"analyzer\": \"fulltext\",");
 			appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
-			appendStringInfo(result, "\"norms\": {\"enabled\":false}");
+			appendStringInfo(result, "\"norms\": {\"enabled\":true}");
 
 		}
 		else if (strcmp("phrase", typename) == 0 || strcmp("phrase_array", typename) == 0)
@@ -377,7 +377,7 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index_options\": \"positions\",");
 			appendStringInfo(result, "\"analyzer\": \"phrase\",");
 			appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
-			appendStringInfo(result, "\"norms\": {\"enabled\":false}");
+			appendStringInfo(result, "\"norms\": {\"enabled\":true}");
 
 		}
 		else if (strcmp("date", typename) == 0 || strcmp("date[]", typename) == 0)

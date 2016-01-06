@@ -1196,24 +1196,24 @@ public class QueryRewriter {
         QueryBuilder nodeFilter = build(nodeQuery);
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(10240)
-                .setQuery(constantScoreQuery(nodeFilter))
+                .setQuery(nodeFilter)
                 .setIndices(link.getIndexName())
                 .setTypes("data")
                 .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .addFieldDataField(rightFieldname)
                 .setPostFilter(makeParentFilter(node))
+                .setTrackScores(true)
                 .setPreference(searchPreference);
 
         ActionFuture<SearchResponse> future = client.search(builder.request());
         try {
-            ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
-            array.setFieldname(leftFieldname);
-
             SearchResponse response = future != null ? future.get() : null;
             long totalHits = response == null ? -1 : response.getHits().getTotalHits();
 
             if (response == null || totalHits == 0) {
+                ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
+                array.setFieldname(leftFieldname);
                 return array;
             } else if (response.getFailedShards() > 0) {
                 StringBuilder sb = new StringBuilder();
@@ -1223,7 +1223,7 @@ public class QueryRewriter {
                 throw new QueryRewriteException(response.getFailedShards() + " shards failed:\n" + sb);
             }
 
-            Set<Object> values = new TreeSet<>();
+            ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
             int cnt = 0;
             while (cnt != totalHits) {
                 response = client.searchScroll(new SearchScrollRequestBuilder(client)
@@ -1236,15 +1236,21 @@ public class QueryRewriter {
 
                 SearchHits hits = response.getHits();
                 for (SearchHit hit : hits) {
-                    List l = hit.field(rightFieldname).getValues();
-                    if (l != null)
-                        values.addAll(l);
+                    List tokenList = hit.field(rightFieldname).getValues();
+                    if (tokenList != null) {
+                        for (Object token : tokenList) {
+                            ASTWord word = new ASTWord(QueryParserTreeConstants.JJTWORD);
+                            word.value = token;
+                            word.boost = hit.score()*100; // NB:  made up number that looks good for one particular set of real-world data
+                            word.fieldname = leftFieldname;
+                            or.jjtAddChild(word, or.jjtGetNumChildren());
+                        }
+                    }
                 }
                 cnt += hits.hits().length;
             }
-            array.setExternalValues(values, cnt);
 
-            return array;
+            return or;
         } catch (Exception e) {
             throw new QueryRewriteException(e);
         }
