@@ -593,21 +593,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 				 * The type is a domain, so we want to treat this as an analyzed string
 				 * where the type name is the actual analyzer name
 				 */
-				char *analyzer;
-				char *underscore;
-
-				/*
-				 * if the actual type name contains an underscore, we want to extract
-				 * everything up to the first one, and that becomes the analyzer name
-				 * otherwise the analyzer name is the typename, in full
-				 */
-				underscore = strchr(typename, '_');
-				if (underscore) {
-					analyzer = palloc0((underscore - typename)+1);
-					strncpy(analyzer, typename, underscore - typename);
-				} else {
-					analyzer = typename;
-				}
+				char *analyzer = typename;
 
 				switch(base_type) {
 					case TEXTOID:
