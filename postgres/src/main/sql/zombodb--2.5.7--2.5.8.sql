@@ -81,7 +81,7 @@ CREATE OR REPLACE FUNCTION zdb_define_filter(name text, definition json) RETURNS
   INSERT INTO zdb_filters(name, definition) VALUES ($1, $2);
 $$;
 
-CREATE OR REPLACE FUNCTION zdb_char_filter(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
+CREATE OR REPLACE FUNCTION zdb_define_char_filter(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
   DELETE FROM zdb_char_filters WHERE name = $1;
   INSERT INTO zdb_char_filters(name, definition) VALUES ($1, $2);
 $$;
