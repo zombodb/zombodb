@@ -164,6 +164,9 @@ public class QueryTreeOptimizer {
                     if (child instanceof ASTArray && isAnd)
                         continue;   // arrays within an ASTAnd cannot be merged
 
+                    if (child.boost != root.boost)
+                        continue;
+
                     if (child instanceof ASTArray || !Utils.isComplexTerm(child.getValue().toString())) {
 
                         array = null;

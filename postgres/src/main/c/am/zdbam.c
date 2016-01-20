@@ -450,7 +450,7 @@ zdbbuild(PG_FUNCTION_ARGS)
 		buildstate.desc->implementation->dropIndex(buildstate.desc);
 
 		/* create a new, empty index */
-		mappingDatum    = make_es_mapping(heapRel->rd_att, false);
+		mappingDatum    = make_es_mapping(heapRel->rd_id, heapRel->rd_att, false);
 		propertiesDatum = DirectFunctionCall2(json_object_field, mappingDatum, PROPERTIES);
 		properties      = TextDatumGetCString(propertiesDatum);
 
@@ -1111,7 +1111,7 @@ zdbeventtrigger(PG_FUNCTION_ARGS)
 				indexRel = relation_open(indexOids[i], AccessShareLock);
 				desc = alloc_index_descriptor(indexRel, false);
 
-				mapping = TextDatumGetCString(make_es_mapping(heapRel->rd_att, false));
+				mapping = TextDatumGetCString(make_es_mapping(heapRel->rd_id, heapRel->rd_att, false));
 				desc->implementation->updateMapping(desc, mapping);
 
 				relation_close(indexRel, AccessShareLock);

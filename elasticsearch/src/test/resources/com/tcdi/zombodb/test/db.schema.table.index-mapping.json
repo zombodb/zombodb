@@ -141,6 +141,18 @@
             "enabled": false
           }
         },
+        "czech_field": {
+          "store": false,
+          "type": "string",
+          "index_options": "positions",
+          "analyzer": "czech",
+          "fielddata": {
+            "format": "paged_bytes"
+          },
+          "norms": {
+            "enabled": false
+          }
+        },
         "fulltext_field": {
           "store": false,
           "type": "string",
@@ -185,60 +197,22 @@
           "length": 32000
         }
       },
-      "char_filter" : {
-        "save_escape":{
-          "type":"pattern_replace",
-          "pattern":"[\\\\]",
-          "replacement":"ZDB_ESCAPE_ZDB"
-        },
-        "save_star":{
-          "type":"pattern_replace",
-          "pattern":"[*]",
-          "replacement":"ZDB_STAR_ZDB"
-        },
-        "save_question":{
-          "type":"pattern_replace",
-          "pattern":"[?]",
-          "replacement":"ZDB_QUESTION_ZDB"
-        },
-        "save_tilde":{
-          "type":"pattern_replace",
-          "pattern":"[~]",
-          "replacement":"ZDB_TILDE_ZDB"
-        }
-      },
       "analyzer": {
         "default": {
           "tokenizer": "keyword",
-          "filter": ["trim", "truncate_32000"]
-        },
-        "default_search": {
-          "tokenizer": "keyword",
-          "filter": ["trim", "truncate_32000"],
-          "char_filter": ["save_escape", "save_star", "save_question", "save_tilde"]
+          "filter": ["truncate_32000", "lowercase"]
         },
         "exact": {
           "tokenizer": "keyword",
-          "filter": ["trim", "truncate_32000"]
-        },
-        "exact_search": {
-          "tokenizer": "keyword",
-          "filter": ["trim", "truncate_32000"],
-          "char_filter": ["save_escape", "save_star", "save_question", "save_tilde"]
+          "filter": ["truncate_32000","lowercase"]
         },
         "phrase": {
-          "tokenizer": "standard"
-        },
-        "phrase_search": {
           "tokenizer": "standard",
-          "char_filter": ["save_escape", "save_star", "save_question", "save_tilde"]
+          "filter": [ "lowercase" ]
         },
         "fulltext": {
-          "tokenizer": "standard"
-        },
-        "fulltext_search": {
           "tokenizer": "standard",
-          "char_filter": ["save_escape", "save_star", "save_question", "save_tilde"]
+          "filter": [ "lowercase" ]
         }
       }
     }

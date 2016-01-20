@@ -195,16 +195,16 @@ public class AnalyzedField {
                 }
             } else {
                 if (value.contains("*") || value.contains("?") || value.contains("*")) {
-                    toKeep = Utils.convertToProximity(phrase);
+                    toKeep = Utils.convertToProximityForHighlighting(phrase);
                 } else {
                     try {
                         if (client == null)
                             return;
                         AnalyzeResponse response = analyzePhrase(value);
-                        toKeep = Utils.convertToProximity(phrase.getFieldname(), response.getTokens());
+                        toKeep = Utils.convertToProximityForHighlighting(phrase.getFieldname(), response.getTokens());
                     } catch (Exception e2) {
                         try {
-                            toKeep = Utils.convertToProximity(phrase);
+                            toKeep = Utils.convertToProximityForHighlighting(phrase);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -509,7 +509,7 @@ public class AnalyzedField {
         if (phrase.getOperator() == QueryParserNode.Operator.REGEX)
             return matchRegex(phrase);
 
-        QueryParserNode node = Utils.convertToProximity(phrase);
+        QueryParserNode node = Utils.convertToProximityForHighlighting(phrase);
         if (node instanceof ASTProximity) {
             ASTProximity prox = (ASTProximity) node;
             List<ProximityGroup> scratch = new ArrayList<>();

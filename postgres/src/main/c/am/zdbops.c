@@ -17,11 +17,11 @@
 #include "postgres.h"
 #include "executor/spi.h"
 #include "access/xact.h"
+#include "catalog/indexing.h"
+#include "catalog/pg_constraint.h"
 #include "catalog/pg_type.h"
-#include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
-#include "utils/memutils.h"
 #include "utils/rel.h"
 
 #include "zdb_interface.h"
@@ -41,6 +41,8 @@ PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_field_lists);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
 PG_FUNCTION_INFO_V1(zdb_internal_multi_search);
+PG_FUNCTION_INFO_V1(zdb_internal_analyze_text);
+
 
 /*
  * taken from Postgres' rewriteHandler.c
@@ -334,7 +336,19 @@ Datum zdb_internal_multi_search(PG_FUNCTION_ARGS)
 	PG_RETURN_TEXT_P(CStringGetTextDatum(response));
 }
 
-Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
+Datum zdb_internal_analyze_text(PG_FUNCTION_ARGS)
+{
+	Oid indexRel = PG_GETARG_OID(0);
+	char *analyzer_name = GET_STR(PG_GETARG_TEXT_P(1));
+	char *data = GET_STR(PG_GETARG_TEXT_P(2));
+	ZDBIndexDescriptor *desc;
+
+	desc = zdb_alloc_index_descriptor_by_index_oid(indexRel);
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(desc->implementation->analyzeText(desc, analyzer_name, data)));
+}
+
+Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 {
 	StringInfo result = makeStringInfo();
 	char       *json;
@@ -347,16 +361,26 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 	{
 		char *name;
 		char *typename;
+		char *user_mapping;
 
 		if (tupdesc->attrs[i]->attisdropped)
 			continue;
 
         name = NameStr(tupdesc->attrs[i]->attname);
-		typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(tupdesc->attrs[i]->atttypid)));
 
 		if (cnt > 0) appendStringInfoCharMacro(result, ',');
-		appendStringInfo(result, "\"%s\": {", name);
 
+		/* if we have a user-defined mapping for this field in this table, use it */
+		user_mapping = lookup_field_mapping(CurrentMemoryContext, tableRelId, name);
+		if (user_mapping != NULL)
+		{
+			appendStringInfo(result, "\"%s\": %s", name, user_mapping);
+			continue;
+		}
+
+		/* otherwise, build a mapping based on the field type */
+		typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(tupdesc->attrs[i]->atttypid)));
+		appendStringInfo(result, "\"%s\": {", name);
 		appendStringInfo(result, "\"store\":false,");
 
 		if (strcmp("fulltext", typename) == 0)
@@ -561,14 +585,75 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 		}
 		else
 		{
-			/* unrecognized type, so just treat as an 'exact' field */
-			appendStringInfo(result, "\"type\": \"string\",");
-			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-			appendStringInfo(result, "\"index_options\": \"docs\",");
-			appendStringInfo(result, "\"analyzer\": \"exact\"");
+			Oid base_type;
 
-			/* but we do want to warn about it so users know what's happening */
-			elog(WARNING, "Unrecognized data type %s, pretending it's of type 'text'", typename);
+			if (type_is_domain(typename, &base_type))
+			{
+				/*
+				 * The type is a domain, so we want to treat this as an analyzed string
+				 * where the type name is the actual analyzer name
+				 */
+				char *analyzer;
+				char *underscore;
+
+				/*
+				 * if the actual type name contains an underscore, we want to extract
+				 * everything up to the first one, and that becomes the analyzer name
+				 * otherwise the analyzer name is the typename, in full
+				 */
+				underscore = strchr(typename, '_');
+				if (underscore) {
+					analyzer = palloc0((underscore - typename)+1);
+					strncpy(analyzer, typename, underscore - typename);
+				} else {
+					analyzer = typename;
+				}
+
+				switch(base_type) {
+					case TEXTOID:
+						/**
+						 * If the underlying type is 'text', then we want to
+						 * treat this as if it were of type 'fulltext', in that
+						 * it's NOT included in _all and fielddata is disabled
+						 */
+						appendStringInfo(result, "\"type\": \"string\",");
+						appendStringInfo(result, "\"index_options\": \"positions\",");
+						appendStringInfo(result, "\"include_in_all\": \"false\",");
+						appendStringInfo(result, "\"analyzer\": \"%s\",", analyzer);
+						appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
+						appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+						break;
+
+					case VARCHAROID:
+						/**
+						 * If the underlying type is 'varchar' (of any length), then we
+						 * want to treat this as if it were of type 'phrase' in that
+						 * it *is* included in _all and fielddata is enabled
+						 */
+						appendStringInfo(result, "\"type\": \"string\",");
+						appendStringInfo(result, "\"index_options\": \"positions\",");
+						appendStringInfo(result, "\"include_in_all\": \"true\",");
+						appendStringInfo(result, "\"analyzer\": \"%s\",", analyzer);
+						appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
+						appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+						break;
+
+					default:
+						/* Otherwise we just can't handle it */
+						elog(ERROR, "Don't know how to generate a mapping for the domain %s", typename);
+				}
+			}
+			else
+			{
+				/* we're unsure about this type, so pretend it's an 'exact' analyzed string */
+				appendStringInfo(result, "\"type\": \"string\",");
+				appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+				appendStringInfo(result, "\"index_options\": \"docs\",");
+				appendStringInfo(result, "\"analyzer\": \"exact\"");
+
+				/* warn about it so users know what's happening */
+				elog(WARNING, "Unrecognized data type %s, pretending it's of type 'text'", typename);
+			}
 		}
 
 		appendStringInfoCharMacro(result, '}');
@@ -583,4 +668,3 @@ Datum make_es_mapping(TupleDesc tupdesc, bool isAnonymous)
 
 	return CStringGetTextDatum(json);
 }
-

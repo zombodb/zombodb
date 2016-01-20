@@ -23,6 +23,8 @@
 #include "storage/itemptr.h"
 #include "utils/relcache.h"
 
+#include "util/zdbutils.h"
+
 typedef struct
 {
 	int32 vl_len_;   /* varlena header (do not touch directly!) */
@@ -185,7 +187,9 @@ typedef char *(*ZDBSuggestTerms_function)(ZDBIndexDescriptor *indexDescriptor, T
 typedef char *(*ZDBDescribeNestedObject_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname);
 typedef char *(*ZDBGetIndexMapping_function)(ZDBIndexDescriptor *indexDescriptor);
 
-typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char *query, char *documentData);
+typedef char *(*ZDBAnalyzeText_function)(ZDBIndexDescriptor *indexDescriptor, char *analyzerName, char *data);
+
+typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char *query, zdb_json documentData);
 
 typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse);
 
@@ -221,6 +225,8 @@ struct ZDBIndexImplementation
 
 	ZDBDescribeNestedObject_function describeNestedObject;
 	ZDBGetIndexMapping_function getIndexMapping;
+
+	ZDBAnalyzeText_function analyzeText;
 
 	ZDBHighlight_function highlight;
 

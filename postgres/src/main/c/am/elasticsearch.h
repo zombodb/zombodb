@@ -44,7 +44,9 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, Transacti
 char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor);
 char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, char *fieldname);
 
-char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, char *documentJson);
+char *elasticsearch_analyzeText(ZDBIndexDescriptor *indexDescriptor, char *analyzerName, char *data);
+
+char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, zdb_json documentJson);
 
 void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse);
 

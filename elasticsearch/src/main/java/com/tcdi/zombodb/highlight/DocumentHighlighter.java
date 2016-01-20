@@ -228,4 +228,20 @@ public class DocumentHighlighter {
             }
         }
     }
+
+    private <T extends QueryParserNode> T rewriteProximityClauses(T root) {
+        if (root instanceof ASTProximity) {
+            ASTProximity prox = (ASTProximity) root;
+
+            if (prox.jjtGetNumChildren() > 2) {
+               System.err.println("HERE");
+            }
+
+        }
+
+        for (QueryParserNode child : root)
+            rewriteProximityClauses(child);
+
+        return root;
+    }
 }

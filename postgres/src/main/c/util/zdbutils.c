@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,20 +26,102 @@
 
 #include "zdbutils.h"
 
+char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
+    char *definition = "";
+    StringInfo query;
+
+    SPI_connect();
+
+    query = makeStringInfo();
+    appendStringInfo(query, "select (to_json(name) || ':' || definition) from %s;", TextDatumGetCString(DirectFunctionCall1(quote_ident, CStringGetTextDatum(thing))));
+
+    if (SPI_execute(query->data, true, 0) != SPI_OK_SELECT)
+        elog(ERROR, "Problem looking up analysis thing with query: %s", query->data);
+
+    if (SPI_processed > 0) {
+        StringInfo json = makeStringInfo();
+        int i;
+
+        for (i=0; i<SPI_processed; i++) {
+            if (i>0) appendStringInfoCharMacro(json, ',');
+            appendStringInfo(json, "%s", SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
+        }
+        definition = (char *) MemoryContextAllocZero(cxt, (Size) json->len + 1);
+        memcpy(definition, json->data, json->len);
+    }
+
+    SPI_finish();
+
+    return definition;
+}
+
+char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname) {
+    char *definition = NULL;
+    StringInfo query;
+
+    SPI_connect();
+
+    query = makeStringInfo();
+    appendStringInfo(query, "select definition from zdb_mappings where table_name = %d::regclass and field_name = %s;", tableRelId, TextDatumGetCString(DirectFunctionCall1(quote_literal, CStringGetTextDatum(fieldname))));
+
+    if (SPI_execute(query->data, true, 2) != SPI_OK_SELECT)
+        elog(ERROR, "Problem looking up analysis thing with query: %s", query->data);
+
+    if (SPI_processed > 1) {
+        elog(ERROR, "Too many mappings found");
+    } else if (SPI_processed == 1) {
+        char *json = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
+        Size len = strlen(json);
+
+        definition = (char *) MemoryContextAllocZero(cxt, (Size) len + 1);
+        memcpy(definition, json, len);
+    }
+
+    SPI_finish();
+
+    return definition;
+}
+
+bool type_is_domain(char *type_name, Oid *base_type) {
+    bool rc;
+    StringInfo query;
+
+    SPI_connect();
+    query = makeStringInfo();
+    appendStringInfo(query, "SELECT typtype = 'd', typbasetype FROM pg_type WHERE typname = %s", TextDatumGetCString(DirectFunctionCall1(quote_literal, CStringGetTextDatum(type_name))));
+
+    if (SPI_execute(query->data, true, 1) != SPI_OK_SELECT)
+        elog(ERROR, "Problem determing if %s is a domain with query: %s", type_name, query->data);
+
+    if (SPI_processed == 0) {
+        rc = false;
+    } else {
+        bool isnull;
+        Datum d;
+
+        d = SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1, &isnull);
+        rc = isnull || DatumGetBool(d);
+
+        d = SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 2, &isnull);
+        *base_type = isnull ? InvalidOid : DatumGetObjectId(d);
+    }
+
+    SPI_finish();
+
+    return rc;
+}
+
+
 void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen)
 {
-    char *lcase;
     int i;
     Assert(str != NULL);
 
     /* Make more room if needed */
     enlargeStringInfo(str, datalen);
 
-    /* slam data to lowercase and copy it into the StringInfo */
-    lcase = str_tolower(data, (size_t) datalen, DEFAULT_COLLATION_OID);
-    memcpy(str->data + str->len, lcase, datalen);
-    pfree(lcase);
-
+    /* OK, append the data */
+    memcpy(str->data + str->len, data, datalen);
     for (i=str->len; i<str->len+datalen; i++) {
         switch (str->data[i]) {
             case '\r':
