@@ -5,6 +5,7 @@ CREATE TABLE analyzers_test (
   brazilian  brazilian,
   bulgarian  bulgarian,
   catalan    catalan,
+  chinese    chinese,
   cjk        cjk,
   czech      czech,
   danish     danish,
@@ -39,6 +40,7 @@ INSERT INTO analyzers_test VALUES (
   , 'esto es un exámen' -- brazilian
   , 'това е тест'
   , 'Això és un examen'
+  , '这是一个测试'
   , 'これはテストです' -- cjk (japanese)
   , 'toto je test'
   , 'dette er en test'
@@ -82,6 +84,7 @@ ORDER BY attnum;
  brazilian  | f
  bulgarian  | f
  catalan    | f
+ chinese    | f
  cjk        | f
  czech      | t
  danish     | t
@@ -108,7 +111,7 @@ ORDER BY attnum;
  swedish    | f
  turkish    | t
  thai       | f
-(32 rows)
+(33 rows)
 
 SELECT zdb_analyze_text('idxanalyzers_test', attname, (SELECT row_to_json(analyzers_test) ->> attname FROM analyzers_test))
 FROM pg_attribute
@@ -126,6 +129,12 @@ ORDER BY attnum;
  (examen,11,17,<ALPHANUM>,4)
  (тест,7,11,<ALPHANUM>,3)
  (ex,11,17,<ALPHANUM>,4)
+ (这,0,1,word,1)
+ (是,1,2,word,2)
+ (一,2,3,word,3)
+ (个,3,4,word,4)
+ (测,4,5,word,5)
+ (试,5,6,word,6)
  (これ,0,2,<DOUBLE>,1)
  (れは,1,3,<DOUBLE>,2)
  (はテ,2,4,<DOUBLE>,3)
@@ -169,7 +178,7 @@ ORDER BY attnum;
  (test,7,11,<ALPHANUM>,3)
  (นี่,0,3,word,1)
  (ทดสอบ,9,14,word,4)
-(53 rows)
+(59 rows)
 
 SELECT
   attname,
@@ -190,6 +199,7 @@ ORDER BY attname;
  brazilian  | brazilian:"esto es un exámen"
  bulgarian  | bulgarian:"това е тест"
  catalan    | catalan:"Això és un examen"
+ chinese    | chinese:"这是一个测试"
  cjk        | cjk:"これはテストです"
  czech      | czech:"toto je test"
  danish     | danish:"dette er en test"
@@ -216,6 +226,6 @@ ORDER BY attname;
  swedish    | swedish:"detta är ett prov"
  thai       | thai:"นี่คือการทดสอบ"
  turkish    | turkish:"bu bir test"
-(32 rows)
+(33 rows)
 
 DROP TABLE analyzers_test;

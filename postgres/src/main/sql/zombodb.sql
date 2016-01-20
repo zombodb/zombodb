@@ -654,6 +654,7 @@ CREATE DOMAIN basque AS text;
 CREATE DOMAIN brazilian AS text;
 CREATE DOMAIN bulgarian AS text;
 CREATE DOMAIN catalan AS text;
+CREATE DOMAIN chinese AS text;
 CREATE DOMAIN cjk AS text;
 CREATE DOMAIN czech AS text;
 CREATE DOMAIN danish AS text;

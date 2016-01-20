@@ -5,6 +5,7 @@ CREATE TABLE analyzers_test (
   brazilian  brazilian,
   bulgarian  bulgarian,
   catalan    catalan,
+  chinese    chinese,
   cjk        cjk,
   czech      czech,
   danish     danish,
@@ -41,6 +42,7 @@ INSERT INTO analyzers_test VALUES (
   , 'esto es un exámen' -- brazilian
   , 'това е тест'
   , 'Això és un examen'
+  , '这是一个测试'
   , 'これはテストです' -- cjk (japanese)
   , 'toto je test'
   , 'dette er en test'
