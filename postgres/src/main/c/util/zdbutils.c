@@ -36,6 +36,7 @@ void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, 
 
     /* slam data to lowercase and copy it into the StringInfo */
     lcase = str_tolower(data, (size_t) datalen, DEFAULT_COLLATION_OID);
+    datalen = (int) strlen(lcase);
     memcpy(str->data + str->len, lcase, datalen);
     pfree(lcase);
 
