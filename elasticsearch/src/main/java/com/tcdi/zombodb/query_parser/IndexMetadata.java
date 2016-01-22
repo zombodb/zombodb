@@ -51,25 +51,6 @@ class IndexMetadata {
             "on", "or", "such","that", "the", "their", "than", "then", "there",
             "these","they", "this", "to", "was", "will", "with"
     };
-    static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
-    static final String NEEDS_ESCAPES_AS_STRING;
-    static {
-        Arrays.sort(IndexMetadata.NEEDS_ESCAPES);
-
-        StringBuilder sb = new StringBuilder();
-        for (char ch : IndexMetadata.NEEDS_ESCAPES) {
-            switch (ch) {
-                case '[':
-                case ']':
-                case '-':
-                case '\\':
-                    sb.append("\\");
-                    break;
-            }
-            sb.append(ch);
-        }
-        NEEDS_ESCAPES_AS_STRING = sb.toString();
-    }
 
     private final ASTIndexLink link;
 

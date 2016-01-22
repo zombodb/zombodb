@@ -37,10 +37,10 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
 
     protected String fieldname;
     protected String typename;
-    protected float boost;
+    protected float boost = 0.0f;
     protected int fuzzyness = 0;
-    protected int distance;
-    protected boolean ordered = false;
+    protected int distance = 0;
+    protected boolean ordered = true;
     protected Operator operator = Operator.CONTAINS;
 
     protected ASTIndexLink indexLink;
@@ -111,6 +111,10 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         if (value instanceof String)
             return (String) value;
         throw new RuntimeException("Value is not a String: " + value);
+    }
+
+    public boolean isStringValue() {
+        return jjtGetValue() instanceof String;
     }
 
     public void setValue(Object value) {
@@ -301,9 +305,9 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
             if (sb.length() > 0) sb.append(", ");
             sb.append("distance=").append(distance);
         }
-        if (ordered) {
+        if (!ordered) {
             if (sb.length() > 0) sb.append(", ");
-            sb.append("ordered=true");
+            sb.append("ordered=").append(ordered);
         }
         if (boost > 0) {
             if (sb.length() > 0) sb.append(", ");

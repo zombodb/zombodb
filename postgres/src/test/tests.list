@@ -58,4 +58,6 @@ syntax-ASTArrayData
 issue-68
 get-field-lists
 multi-search
+analyzers
+issue-69-terms
 issue-72

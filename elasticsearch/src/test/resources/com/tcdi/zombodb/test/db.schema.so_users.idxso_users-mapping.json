@@ -274,21 +274,25 @@
           "tokenizer": "keyword",
           "filter": [
             "trim",
-            "truncate_32000"
+            "truncate_32000",
+            "lowercase"
           ]
         },
         "exact": {
           "tokenizer": "keyword",
           "filter": [
             "trim",
-            "truncate_32000"
+            "truncate_32000",
+            "lowercase"
           ]
         },
         "phrase": {
-          "tokenizer": "standard"
+          "tokenizer": "standard",
+          "filter": [ "lowercase" ]
         },
         "fulltext": {
-          "tokenizer": "standard"
+          "tokenizer": "standard",
+          "filter": [ "lowercase" ]
         }
       }
     }

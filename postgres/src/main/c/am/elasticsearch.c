@@ -19,6 +19,7 @@
 #include "miscadmin.h"
 #include "access/genam.h"
 #include "access/xact.h"
+#include "executor/spi.h"
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
@@ -200,72 +201,19 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 					"      \"number_of_shards\": %d,"
 					"      \"number_of_replicas\": 0,"
 					"      \"analysis\": {"
-					"         \"filter\": {"
-					"             \"truncate_32000\": { \"type\": \"truncate\", \"length\": 32000 }"
-					"         },"
-					"         \"char_filter\" : {"
-					"           \"save_escape\":{"
-					"             \"type\":\"pattern_replace\","
-					"             \"pattern\":\"[\\\\\\\\]\","
-					"             \"replacement\":\"ZDB_ESCAPE_ZDB\""
-					"           },"
-					"           \"save_star\":{"
-					"             \"type\":\"pattern_replace\","
-					"             \"pattern\":\"[*]\","
-					"             \"replacement\":\"ZDB_STAR_ZDB\""
-					"           },"
-					"           \"save_question\":{"
-					"             \"type\":\"pattern_replace\","
-					"             \"pattern\":\"[?]\","
-					"             \"replacement\":\"ZDB_QUESTION_ZDB\""
-					"           },"
-					"           \"save_tilde\":{"
-					"             \"type\":\"pattern_replace\","
-					"             \"pattern\":\"[~]\","
-					"             \"replacement\":\"ZDB_TILDE_ZDB\""
-					"           }"
-					"         },"
-					"         \"analyzer\": {"
-					"            \"default\": {"
-					"               \"tokenizer\": \"keyword\","
-					"               \"filter\": [\"trim\", \"truncate_32000\"]"
-					"            },"
-					"            \"exact\": {"
-					"               \"tokenizer\": \"keyword\","
-					"               \"filter\": [\"trim\", \"truncate_32000\"]"
-					"            },"
-					"            \"phrase\": {"
-					"               \"tokenizer\": \"standard\""
-					"            },"
-					"            \"fulltext\": {"
-					"               \"tokenizer\": \"standard\""
-					"            },"
-					"            \"default_search\": {"
-					"              \"tokenizer\": \"keyword\","
-					"              \"filter\": [\"trim\", \"truncate_32000\"],"
-					"              \"char_filter\": [\"save_escape\", \"save_star\", \"save_question\", \"save_tilde\"]"
-					"            },"
-					"            \"exact_search\": {"
-					"              \"tokenizer\": \"keyword\","
-					"              \"filter\": [\"trim\", \"truncate_32000\"],"
-					"              \"char_filter\": [\"save_escape\", \"save_star\", \"save_question\", \"save_tilde\"]"
-					"            },"
-					"            \"phrase_search\": {"
-					"              \"tokenizer\": \"standard\","
-					"              \"char_filter\": [\"save_escape\", \"save_star\", \"save_question\", \"save_tilde\"]"
-					"            },"
-					"            \"fulltext_search\": {"
-					"              \"tokenizer\": \"standard\","
-					"              \"char_filter\": [\"save_escape\", \"save_star\", \"save_question\", \"save_tilde\"]"
-					"            }"
-					"         }"
+					"         \"filter\": { %s },"
+					"         \"char_filter\" : { %s },"
+					"         \"analyzer\": { %s }"
 					"      }"
 					"   }"
 					"}",
 			pkey, noxact ? "true" : "false",
 			pkey, noxact ? "true" : "false",
 			fieldProperties,
-			shards
+			shards,
+            lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
+            lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
+            lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers")
 	);
 
 	appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
@@ -742,7 +690,23 @@ char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, ch
 	return response->data;
 }
 
-char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *user_query, char *documentJson)
+char *elasticsearch_analyzeText(ZDBIndexDescriptor *indexDescriptor, char *analyzerName, char *data)
+{
+	StringInfo endpoint = makeStringInfo();
+	StringInfo request = makeStringInfo();
+	StringInfo response;
+
+	appendStringInfo(request, "%s", data);
+	appendStringInfo(endpoint, "%s/%s/_analyze?analyzer=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, analyzerName);
+	response = rest_call("GET", endpoint->data, request);
+
+	freeStringInfo(endpoint);
+	freeStringInfo(request);
+	return response->data;
+
+}
+
+char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *user_query, zdb_json documentJson)
 {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request = makeStringInfo();

@@ -151,15 +151,23 @@ PARSER_END(QueryParser)
   | <NUMBER: (("-")? (["1"-"9"]) (<DIGIT>)* ("." (<DIGIT>)+)?) | (("0")+ ("." (<DIGIT>)+)) | ("0") >
 
   | <WORD:
-               (<LETTER> | <DIGIT> | ("\\"~[]))+
-        | "'"  (<LETTER> | <DIGIT> | ("\\"~[]))+ "'"
-        | "\"" (<LETTER> | <DIGIT> | ("\\"~[]))+ "\""
+               (~["'","\"",":","*","~","?","!","%","&","(",")",",","<","=",">","[","]","^"," ","\r","\n","\t","\f"] | ("\\"~[]))+
+           | ("'" ((~["'","*","?","~"," ","\r","\n","\t","\f"] | ("\\"~[]))+) "'")
+           | ("\"" ((~["\"","*","?","~"," ","\r","\n","\t","\f"] | ("\\"~[]))+) "\"")
     >
 
-  | <PREFIX: <WORD> ("*")+ >
-  | <WILDCARD:   ("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")* >
+
+  | <PREFIX: (<WORD> ("*")+)
+            | "'"  (<WORD> ("*")+) "'"
+            | "\"" (<WORD> ("*")+) "\"" >
+  | <WILDCARD: (("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")*)
+             | "'" (("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")*) "'"
+             | "\"" (("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")*) "\"" >
   | <NOT_NULL: ("*") | ("?") | ("\"*\"") | ("\"?\"") >
-  | <FUZZY: <WORD> "~" (<DIGIT>)*>
+  | <FUZZY: ( <WORD>
+             | ("'" <WORD> "'")
+             | ("\"" <WORD> "\"")
+            ) "~" (<DIGIT>)* >
   | <PHRASE: (      ("\"" (~["\""] | "\\\"")* "\"") |
                     ("'"  (~["'"]  | "\\'")*  "'")
              ) ("~" ("!")? (<DIGIT>)+)?
@@ -168,10 +176,6 @@ PARSER_END(QueryParser)
 
   | <#LETTER: ["a"-"z", "_"] >
   | <#DIGIT: ["0"-"9"] >
-  | <L_ANGLE: "<" >
-  | <R_ANGLE: ">" >
-  | <EQ: "=" >
-  | <OPERATOR: ":" | <EQ> | <L_ANGLE> | <R_ANGLE> | "<=" | ">=" | "<>" | "!=" | ":@" | ":@~" | ":~" >
 }
 
 private ASTQueryTree parse0() #QueryTree :
@@ -273,7 +277,7 @@ void FieldListEntry() #FieldListEntry :
     String fieldname;
 }
 {
-    ( fieldname = Fieldname() <EQ> Array() )
+    ( fieldname = Fieldname() "=" Array() )
     { jjtThis.fieldname = fieldname; }
 }
 
@@ -282,8 +286,8 @@ void IndexLink() #IndexLink :
     Token t;
 }
 {
-      LOOKAHEAD(2) ( LeftField() <EQ> <L_ANGLE> IndexName() <R_ANGLE> RightField() ) { jjtThis.fieldname = null; }
-    | ( t = <IDENTIFIER> { jjtThis.fieldname = t.image; } <OPERATOR> "(" LeftField() <EQ> <L_ANGLE> IndexName() <R_ANGLE> RightField() ")" )
+      LOOKAHEAD(2) ( LeftField() "=" "<" IndexName() ">" RightField() ) { jjtThis.fieldname = null; }
+    | ( t = <IDENTIFIER> { jjtThis.fieldname = t.image; } ":" "(" LeftField() "=" "<" IndexName() ">" RightField() ")" )
 }
 
 void LeftField() #LeftField :
@@ -410,6 +414,22 @@ void UnaryExpression() :
                 n.forceFieldname(fieldname.fieldname);
             }
         }
+
+        if (n != null && n.operator == QueryParserNode.Operator.REGEX && n instanceof ASTPrefix) {
+            /*
+               convert nodes that are REGEX queries that got pared into ASTPrefix nodes
+               back into generic ASTWord nodes.  This could happen if the regex ends with an
+               asterick, ie:  ^.*
+             */
+            ASTWord word = new ASTWord(QueryParserTreeConstants.JJTWORD);
+            word.value = String.valueOf(n.value) + "*";
+            word.fieldname = n.fieldname;
+            word.operator = n.operator;
+            word.boost = n.boost;
+
+            jjtree.popNode();
+            jjtree.pushNode(word);
+        }
     }
 }
 
@@ -490,7 +510,20 @@ FieldnameAndOperator OptionalFieldname() :
 {
     (
         [
-            LOOKAHEAD(2) fn = TrackedFieldnameReference() (op = <OPERATOR> | op = <EQ> | op = <L_ANGLE> | op = <R_ANGLE>)
+            LOOKAHEAD(2) fn = TrackedFieldnameReference()
+                (
+                      op = ":"
+                    | op = "="
+                    | op = "<"
+                    | op = ">"
+                    | op = "<="
+                    | op = ">="
+                    | op = "<>"
+                    | op = "!="
+                    | op = ":@"
+                    | op = ":@~"
+                    | op = ":~"
+                )
         ]
     )
     {
@@ -561,7 +594,13 @@ QueryParserNode Prefix() #Prefix :
 }
 {
     (
-        t = <PREFIX> { jjtThis.value = t.image.substring(0, t.image.indexOf('*')); }
+        t = <PREFIX>
+        {
+            if ( (t.image.startsWith("'") && t.image.endsWith("'")) || (t.image.startsWith("\"") && t.image.endsWith("\"")) )
+                t.image = t.image.substring(1, t.image.length()-1);
+
+            jjtThis.value = t.image.substring(0, t.image.indexOf('*'));
+        }
     )
     { return jjtThis; }
 }
@@ -572,7 +611,11 @@ QueryParserNode Wildcard() #Wildcard :
 }
 {
     (
-        t = <WILDCARD> { jjtThis.value = t.image; }
+        t = <WILDCARD> {
+            if ( (t.image.startsWith("'") && t.image.endsWith("'")) || (t.image.startsWith("\"") && t.image.endsWith("\"")) )
+                t.image = t.image.substring(1, t.image.length()-1);
+            jjtThis.value = t.image;
+        }
     )
     { return jjtThis; }
 }
@@ -599,6 +642,10 @@ QueryParserNode Fuzzy() #Fuzzy :
             int idx = t.image.indexOf('~');
 
             jjtThis.value = t.image.substring(0, idx);
+            if ((jjtThis.value.toString().startsWith("'") && jjtThis.value.toString().endsWith("'") ||
+               (jjtThis.value.toString().startsWith("\"") && jjtThis.value.toString().endsWith("\""))))
+               jjtThis.value = jjtThis.value.toString().substring(1, jjtThis.value.toString().length()-1);
+
 
             try {
                 jjtThis.fuzzyness = Integer.valueOf(t.image.substring(idx+1));

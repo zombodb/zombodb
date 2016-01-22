@@ -15,6 +15,9 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
@@ -29,127 +32,84 @@ import java.util.NoSuchElementException;
  * @see java.util.StringTokenizer
  */
 public class EscapingStringTokenizer {
-    public static final String DEFAULT_DELIMITERS = " \t\r\n\f";
-
-    private String _input;
-    private char[] _delim;
-    private boolean _returnDelims;
-    private int _pos = 0;
-    private char _lastDelimiter = 0;
-    private boolean _isDelimiter = false;
-    private StringBuffer _lastTokenEscaped = new StringBuffer();
-
-    protected EscapingStringTokenizer() {
-        // noop
-    }
-
-    public EscapingStringTokenizer(String str) {
-        this(str, DEFAULT_DELIMITERS, false);
-    }
+    private String input;
+    private String delimiters;
+    private boolean returnDelims;
+    private int pos = 0;
+    private boolean isDelimiter = false;
 
     public EscapingStringTokenizer(String str, String delim) {
         this(str, delim, false);
     }
 
-    public EscapingStringTokenizer(String str, String delim, boolean returnDelims) {
-        _input = str;
-        _delim = delim.toCharArray();
-        _returnDelims = returnDelims;
+    public EscapingStringTokenizer(String str, String delimiters, boolean returnDelims) {
+        input = str;
+        this.delimiters = delimiters;
+        this.returnDelims = returnDelims;
     }
 
     public boolean hasMoreTokens() {
-        int oldpos = _pos;
-        char olddelim = _lastDelimiter;
+        int tmp = pos;
         try {
-            nextToken();
-            return true;
-        }
-        catch (NoSuchElementException nsee) {
+            String next = nextToken();
+            return !next.equals("");
+        } catch (NoSuchElementException nsee) {
             return false;
+        } finally {
+            pos = tmp;
         }
-        finally {
-            _pos = oldpos;
-            _lastDelimiter = olddelim;
-        }
-    }
-
-    public String getLastTokenEscaped() {
-        return _lastTokenEscaped.toString();
     }
 
     public String nextToken() {
-        if (_pos >= _input.length())
+        if (pos >= input.length())
             throw new NoSuchElementException();
 
-        StringBuilder sb = new StringBuilder();
-        char prevch = 0;
-        char ch;
-        _lastTokenEscaped.setLength(0);
-        while (_pos < _input.length()) {
-            _lastDelimiter = ch = _input.charAt(_pos);
-            if (isDelimiter(ch, prevch))
-                break;
-            if (isDelimiter(ch, (char) 0) && prevch == '\\')
-                sb.setLength(sb.length() - 1);    // trim backslash
+        isDelimiter = false;
+        StringBuilder token = new StringBuilder();
+        while (pos < input.length()) {
+            char ch = input.charAt(pos++);
 
-            sb.append(ch);
-            _lastTokenEscaped.append(ch);
-            prevch = ch;
-            _pos++;
+            if (ch != '\\' || pos >= input.length()) {
+                if (isDelimiter(ch)) { // char is a delimiter
+                    if (token.length() == 0) { // and it's the first char we've found
+                        if (returnDelims) { // and we're asked to return them
+                            isDelimiter = true;
+                            return String.valueOf(ch);
+                        } else {
+                            continue;
+                        }
+                    } else { // we have a token
+                        --pos;
+                        return token.toString();
+                    }
+                }
+                token.append(ch);
+            } else {
+                char nextch = input.charAt(pos);
+                token.append(nextch);
+                ++pos;
+            }
         }
-        _isDelimiter = false;
-        if (prevch == 0 && _returnDelims) {
-            _isDelimiter = true;
-            sb.append(_lastDelimiter);
-            _lastTokenEscaped.append(_lastDelimiter);
-            _pos++;
-        } else if (sb.length() == 0 && !_returnDelims) {
-            _pos++;
-            return nextToken();
-        }
-
-        return sb.toString();
+        return token.toString();
     }
 
-    public String nextToken(String delim) {
-        _delim = delim.toCharArray();
-        return nextToken();
-    }
-
-    public int countTokens() {
-        // save current state
-        int oldpos = _pos;
-        char olddelim = _lastDelimiter;
-
-        int cnt = 0;
-        while (hasMoreTokens()) {
-            nextToken();
-            cnt++;
-        }
-
-        // restore state
-        _pos = oldpos;
-        _lastDelimiter = olddelim;
-
-        return cnt;
+    public Collection<String> getAllTokens() {
+        List<String> tokens = new ArrayList<>();
+        while (hasMoreTokens())
+            tokens.add(nextToken());
+        return tokens;
     }
 
     /**
      * is the last token returned a delimiter?
      */
     public boolean isDelimiter() {
-        return _isDelimiter;
+        return isDelimiter;
     }
 
 
-    private boolean isDelimiter(char ch, char prevch) {
-        for (char currentChar : _delim) {
-            if (ch == currentChar && prevch != '\\') {
-                return true;
-            }
-        }
-
-        return false;
+    private boolean isDelimiter(char ch) {
+        return delimiters.indexOf(ch) >= 0;
     }
 
 }

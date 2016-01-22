@@ -55,7 +55,9 @@ static char *wrapper_suggest_terms(ZDBIndexDescriptor *indexDescriptor, Transact
 static char *wrapper_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, char *fieldname);
 static char *wrapper_getIndexMapping(ZDBIndexDescriptor *indexDescriptor);
 
-static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, char *documentJson);
+static char *wrapper_analyzeText(ZDBIndexDescriptor *indexDescriptor, char *analyzerName, char *data);
+
+static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, zdb_json documentJson);
 
 static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
@@ -185,6 +187,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
     desc->implementation->suggest_terms        = wrapper_suggest_terms;
 	desc->implementation->describeNestedObject = wrapper_describeNestedObject;
 	desc->implementation->getIndexMapping      = wrapper_getIndexMapping;
+	desc->implementation->analyzeText          = wrapper_analyzeText;
 	desc->implementation->highlight			   = wrapper_highlight;
 	desc->implementation->freeSearchResponse   = wrapper_freeSearchResponse;
 	desc->implementation->bulkDelete           = wrapper_bulkDelete;
@@ -504,7 +507,18 @@ static char *wrapper_getIndexMapping(ZDBIndexDescriptor *indexDescriptor)
 	return results;
 }
 
-static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, char *documentJson)
+static char *wrapper_analyzeText(ZDBIndexDescriptor *indexDescriptor, char *analyzerName, char *data)
+{
+	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
+	char *results;
+
+	results = elasticsearch_analyzeText(indexDescriptor, analyzerName, data);
+
+	MemoryContextSwitchTo(oldContext);
+	return results;
+}
+
+static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, zdb_json documentJson)
 {
 	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	char *results;

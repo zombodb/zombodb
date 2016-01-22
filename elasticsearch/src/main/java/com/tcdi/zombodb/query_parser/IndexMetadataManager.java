@@ -247,10 +247,12 @@ public class IndexMetadataManager {
 
             boolean hasAllField = false;
             for (String field : md.getFields()) {
-                if (md.getIncludeInAll(field))
+                if (md.getIncludeInAll(field)) {
                     hasAllField = true;
+                    continue;
+                }
 
-                if ("fulltext".equals(md.getAnalyzer(field)))
+                if (md.getAnalyzer(field) != null)
                     fields.add(new FieldAndIndexPair(link, field, md));
 
             }

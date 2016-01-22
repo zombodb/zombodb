@@ -40,15 +40,13 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static org.elasticsearch.index.query.FilterBuilders.*;
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 
 public class QueryRewriter {
-
-    public static String[] WILDCARD_TOKENS = {"ZDB_ESCAPE_ZDB", "ZDB_STAR_ZDB", "ZDB_QUESTION_ZDB", "ZDB_TILDE_ZDB"};
-    public static String[] WILDCARD_VALUES = {"\\\\",           "*",            "?",                "~"};
 
     private enum DateHistogramIntervals {
         year, quarter, month, week, day, hour, minute, second
@@ -188,6 +186,7 @@ public class QueryRewriter {
 
             // now optimize the _all field into #expand()s, if any are in other indexes
             new IndexLinkOptimizer(tree, metadataManager).optimize();
+            new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
 
             rootNode = useParentChild ? tree : tree.getChild(ASTChild.class);
             if (ignoreASTChild) {
@@ -205,6 +204,14 @@ public class QueryRewriter {
 
     public String dumpAsString() {
         return tree.dumpAsString();
+    }
+
+    public IndexMetadataManager getMetadataManager() {
+        return metadataManager;
+    }
+
+    public QueryParserNode getQueryNode() {
+        return tree.getQueryNode();
     }
 
     public Map<String, ?> describedNestedObject(String fieldname) throws Exception {
@@ -397,7 +404,7 @@ public class QueryRewriter {
                     .order(stringToTermsOrder(agg.getSortOrder()));
 
             if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
-                tb.include(agg.getStem());
+                tb.include(agg.getStem(), Pattern.CASE_INSENSITIVE);
 
             return tb;
         }
@@ -473,7 +480,7 @@ public class QueryRewriter {
                 .size(agg.getMaxTerms());
 
         if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
-            stb.include(agg.getStem());
+            stb.include(agg.getStem(), Pattern.CASE_INSENSITIVE);
 
         return stb;
     }
@@ -690,6 +697,7 @@ public class QueryRewriter {
             @Override
             public QueryBuilder b(QueryParserNode n) {
                 Object value = n.getValue();
+
                 return termQuery(n.getFieldname(), value);
             }
         });
@@ -699,86 +707,19 @@ public class QueryRewriter {
         return filteredQuery(matchAllQuery(), scriptFilter(node.getValue().toString()));
     }
 
-    private QueryBuilder build(ASTPhrase node) {
+    private QueryBuilder build(final ASTPhrase node) {
         if (node.getOperator() == QueryParserNode.Operator.REGEX)
             return buildStandard(node, QBF.DUMMY);
 
-        final List<String> tokens = Utils.tokenizePhrase(client, metadataManager, node.getFieldname(), node.getEscapedValue());
-        boolean hasWildcards = node.getDistance() > 0 || !node.isOrdered();
-        for (int i=0; i<tokens.size(); i++) {
-            String token = tokens.get(i);
-
-            token = replaceWildcardTokens(tokens, i, token);
-
-            hasWildcards |= Utils.countValidWildcards(token) > 0;
-        }
-
-        for (Iterator<String> itr = tokens.iterator(); itr.hasNext();) {
-            String token = itr.next();
-            if (token.length() == 1) {
-                if (token.equals("\\"))
-                    itr.remove();
+        return buildStandard(node, new QBF() {
+            @Override
+            public QueryBuilder b(QueryParserNode n) {
+                MatchQueryBuilder builder = matchPhraseQuery(n.getFieldname(), n.getValue());
+                if (node.getDistance() != 0)
+                    builder.slop(node.distance);
+                return builder;
             }
-        }
-
-        if (hasWildcards) {
-            if (tokens.size() == 1) {
-                return build(Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), tokens.get(0)));
-            } else {
-
-                // convert list of tokens into a proximity query,
-                // parse it into a syntax tree
-                ASTProximity prox = new ASTProximity(QueryParserTreeConstants.JJTPROXIMITY);
-                prox.setFieldname(node.getFieldname());
-                prox.distance = node.getDistance();
-                prox.ordered = node.isOrdered();
-
-                for (int i=0; i<tokens.size(); i++) {
-                    String token = tokens.get(i);
-
-                    prox.jjtAddChild(Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), token), i);
-                }
-
-                return build(prox);
-            }
-        } else {
-            // remove escapes
-            for (int i=0; i<tokens.size(); i++) {
-                tokens.set(i, Utils.unescape(tokens.get(i)));
-            }
-
-            // build proper filters
-            if (tokens.size() == 1) {
-                // only 1 token, so just return a term filter
-                return buildStandard(node, new QBF() {
-                    @Override
-                    public QueryBuilder b(QueryParserNode n) {
-                        return termQuery(n.getFieldname(), n.getValue());
-                    }
-                });
-            } else {
-                // more than 1 token, so return a query filter
-                return buildStandard(node, new QBF() {
-                    @Override
-                    public QueryBuilder b(QueryParserNode n) {
-                        return matchPhraseQuery(n.getFieldname(), Utils.join(tokens));
-                    }
-                });
-            }
-        }
-
-    }
-
-    private String replaceWildcardTokens(List<String> tokens, int i, String token) {
-        for (int j=0; j<WILDCARD_TOKENS.length; j++) {
-            String wildcard = WILDCARD_TOKENS[j];
-            String replacement = WILDCARD_VALUES[j];
-
-            if (token.contains(wildcard)) {
-                tokens.set(i, token = token.replaceAll(wildcard, replacement));
-            }
-        }
-        return token;
+        });
     }
 
     private QueryBuilder build(ASTNumber node) {
@@ -900,36 +841,7 @@ public class QueryRewriter {
             @Override
             public QueryBuilder b(QueryParserNode n) {
                 final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
-                final int size = st.countTokens();
-
-                return termsQuery(n.getFieldname(),
-                        new AbstractCollection<String>() {
-                            @Override
-                            public Iterator<String> iterator() {
-                                return new Iterator<String>() {
-                                    @Override
-                                    public boolean hasNext() {
-                                        return st.hasMoreTokens();
-                                    }
-
-                                    @Override
-                                    public String next() {
-                                        return st.nextToken();
-                                    }
-
-                                    @Override
-                                    public void remove() {
-
-                                    }
-                                };
-                            }
-
-                            @Override
-                            public int size() {
-                                return size;
-                            }
-                        }
-                );
+                return termsQuery(n.getFieldname(), st.getAllTokens());
             }
         });
     }
@@ -1028,30 +940,7 @@ public class QueryRewriter {
         if (prox.getOperator() == QueryParserNode.Operator.REGEX)
             return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
 
-        final List<String> tokens = Utils.tokenizePhrase(client, metadataManager, node.getFieldname(), node.getEscapedValue());
-        for (int i=0; i<tokens.size(); i++) {
-            replaceWildcardTokens(tokens, i, tokens.get(i));
-        }
-
-        for (Iterator<String> itr = tokens.iterator(); itr.hasNext();) {
-            String token = itr.next();
-            if (token.length() == 1) {
-                if (token.equals("\\"))
-                    itr.remove();
-            }
-        }
-
-        if (tokens.size() == 1) {
-            return buildSpan(prox, Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), tokens.get(0)));
-        } else {
-            SpanNearQueryBuilder qb = spanNearQuery();
-            for (String token : tokens) {
-                qb.clause(buildSpan(prox, Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), token)));
-            }
-            qb.slop(0);
-            qb.inOrder(true);
-            return qb;
-        }
+        return buildSpan(prox, Utils.convertToProximity(node.getFieldname(), Utils.analyze(client, metadataManager, node.getFieldname(), node.getEscapedValue())));
     }
 
     private QueryBuilder build(ASTProximity node) {

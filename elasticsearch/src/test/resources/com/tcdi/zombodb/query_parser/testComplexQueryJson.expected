@@ -542,14 +542,14 @@
                     "should" : [ {
                       "match" : {
                         "fulltext_field" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
                     }, {
                       "match" : {
                         "_all" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
@@ -560,14 +560,14 @@
                     "should" : [ {
                       "match" : {
                         "fulltext_field" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
                     }, {
                       "match" : {
                         "_all" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
@@ -578,14 +578,14 @@
                     "should" : [ {
                       "match" : {
                         "fulltext_field" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
                     }, {
                       "match" : {
                         "_all" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
@@ -596,14 +596,14 @@
                     "should" : [ {
                       "match" : {
                         "fulltext_field" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
                     }, {
                       "match" : {
                         "_all" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
@@ -614,14 +614,14 @@
                     "should" : [ {
                       "match" : {
                         "fulltext_field" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
                     }, {
                       "match" : {
                         "_all" : {
-                          "query" : "1 2",
+                          "query" : "1-2",
                           "type" : "phrase"
                         }
                       }
@@ -2014,260 +2014,100 @@
                 "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "_all" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "_all" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "_all" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "_all" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "so"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        } ],
-                        "slop" : 42,
-                        "in_order" : true
+                      "match" : {
+                        "_all" : {
+                          "query" : "so is this",
+                          "type" : "phrase",
+                          "slop" : 42
+                        }
                       }
                     } ]
                   }
@@ -3484,60 +3324,90 @@
                 "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a-b-c-d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a-b-c-d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a-b-c-d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a-b-c-d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a-b-c-d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a-b-c-d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a-b-c-d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a-b-c-d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a-b-c-d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a-b-c-d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a-b-c-d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
@@ -3622,60 +3492,90 @@
                 "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a/b/c/d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a/b/c/d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a/b/c/d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a/b/c/d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a/b/c/d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a/b/c/d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a/b/c/d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a/b/c/d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "a/b/c/d"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "a/b/c/d"
+                      "match" : {
+                        "_all" : {
+                          "query" : "a/b/c/d",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
@@ -3686,60 +3586,90 @@
                 "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "_all" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "_all" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "_all" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "_all" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "term" : {
-                        "fulltext_field" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "fulltext_field" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     }, {
-                      "term" : {
-                        "_all" : "http://www.tcdi.com/?id=42"
+                      "match" : {
+                        "_all" : {
+                          "query" : "http://www.tcdi.com/?id=42",
+                          "type" : "phrase"
+                        }
                       }
                     } ]
                   }

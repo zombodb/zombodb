@@ -16,6 +16,9 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcdi.zombodb.highlight.AnalyzedField;
+import com.tcdi.zombodb.highlight.DocumentHighlighter;
 import com.tcdi.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
@@ -23,6 +26,8 @@ import org.junit.Test;
 
 import java.io.StringReader;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -223,7 +228,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      Child (type=data)\n" +
                         "         Expansion\n" +
                         "            id=<db.schema.table.index>id\n" +
-                        "            Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, index=db.schema.table.index)\n" +
+                        "            Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, ordered=false, index=db.schema.table.index)\n" +
                         "               Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
                         "               Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)"
         );
@@ -278,16 +283,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "                     Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
                         "                     Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
                         "                     Or\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=querty, amy, ordered=true, index=db.schema.table.index)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, colin, ordered=true, index=db.schema.table.index)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, keith, ordered=true, index=db.schema.table.index)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, perry, ordered=true, index=db.schema.table.index)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, norm, ordered=true, index=db.schema.table.index)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, mike, ordered=true, index=db.schema.table.index)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty,mike, ordered=true, index=db.schema.table.index)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, dan, ordered=true, index=db.schema.table.index)\n" +
-                        "                        Phrase (fieldname=data_custodian, operator=EQ, value=qwerty,dan, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_filter_06b, operator=EQ, value=qwerty*, ordered=true, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "                     Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
                         "                     Not\n" +
                         "                        NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
                         "            Expansion\n" +
@@ -296,16 +301,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "                  Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
                         "                  Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
                         "                  Or\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=querty, amy, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, colin, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, keith, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, perry, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, norm, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, mike, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty,mike, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty, dan, ordered=true, index=db.schema.table.index)\n" +
-                        "                     Phrase (fieldname=data_custodian, operator=EQ, value=qwerty,dan, ordered=true, index=db.schema.table.index)\n" +
-                        "                  Phrase (fieldname=data_filter_06b, operator=EQ, value=qwerty*, ordered=true, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "                  Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
                         "                  Not\n" +
                         "                     NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)"
         );
@@ -406,7 +411,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"match\" : {\n" +
                         "    \"phrase_field\" : {\n" +
-                        "      \"query\" : \"here~ is~ fuzzy~ words\",\n" +
+                        "      \"query\" : \"Here~ is~ fuzzy~ words\",\n" +
                         "      \"type\" : \"phrase\"\n" +
                         "    }\n" +
                         "  }\n" +
@@ -414,8 +419,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
-    public void testPhraseWithMixedEscaping() throws Exception {
-        assertJson("phrase_field:'this* should\\* subparse into a sp\\?n~'",
+    public void testPhraseWithMetaCharacters() throws Exception {
+        assertJson("phrase_field:'this* should\\* sub:parse :\\- into a sp\\?n~'",
                 "{\n" +
                         "  \"span_near\" : {\n" +
                         "    \"clauses\" : [ {\n" +
@@ -429,13 +434,13 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    }, {\n" +
                         "      \"span_term\" : {\n" +
                         "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"should*\"\n" +
+                        "          \"value\" : \"should\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"span_term\" : {\n" +
                         "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"subparse\"\n" +
+                        "          \"value\" : \"sub:parse\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
@@ -451,11 +456,17 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
+                        "      \"span_term\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"value\" : \"sp\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
                         "      \"span_multi\" : {\n" +
                         "        \"match\" : {\n" +
                         "          \"fuzzy\" : {\n" +
                         "            \"phrase_field\" : {\n" +
-                        "              \"value\" : \"sp?n\",\n" +
+                        "              \"value\" : \"n\",\n" +
                         "              \"prefix_length\" : 3\n" +
                         "            }\n" +
                         "          }\n" +
@@ -469,145 +480,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
-    public void testPhraseWithMetaCharacters() throws Exception {
-        assertJson("'this* should\\* sub:parse :\\- into a sp\\?n~'",
-                "{\n" +
-                        "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"span_near\" : {\n" +
-                        "        \"clauses\" : [ {\n" +
-                        "          \"span_multi\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"prefix\" : {\n" +
-                        "                \"fulltext_field\" : \"this\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"fulltext_field\" : {\n" +
-                        "              \"value\" : \"should*\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"fulltext_field\" : {\n" +
-                        "              \"value\" : \"sub:parse\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"fulltext_field\" : {\n" +
-                        "              \"value\" : \"into\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"fulltext_field\" : {\n" +
-                        "              \"value\" : \"a\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_multi\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"fuzzy\" : {\n" +
-                        "                \"fulltext_field\" : {\n" +
-                        "                  \"value\" : \"sp?n\",\n" +
-                        "                  \"prefix_length\" : 3\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        } ],\n" +
-                        "        \"slop\" : 0,\n" +
-                        "        \"in_order\" : true\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"span_near\" : {\n" +
-                        "        \"clauses\" : [ {\n" +
-                        "          \"span_multi\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"prefix\" : {\n" +
-                        "                \"_all\" : \"this\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"_all\" : {\n" +
-                        "              \"value\" : \"should*\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"_all\" : {\n" +
-                        "              \"value\" : \"sub:parse\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"_all\" : {\n" +
-                        "              \"value\" : \"into\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"_all\" : {\n" +
-                        "              \"value\" : \"a\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_multi\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"fuzzy\" : {\n" +
-                        "                \"_all\" : {\n" +
-                        "                  \"value\" : \"sp?n\",\n" +
-                        "                  \"prefix_length\" : 3\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        } ],\n" +
-                        "        \"slop\" : 0,\n" +
-                        "        \"in_order\" : true\n" +
-                        "      }\n" +
-                        "    } ]\n" +
-                        "  }\n" +
-                        "}");
-    }
-
-    @Test
     public void testPhraseWithSlop() throws Exception {
         assertJson("phrase_field:'some phrase containing slop'~2",
                 "{\n" +
-                        "  \"span_near\" : {\n" +
-                        "    \"clauses\" : [ {\n" +
-                        "      \"span_term\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"some\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"span_term\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"phrase\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"span_term\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"containing\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"span_term\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"slop\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    } ],\n" +
-                        "    \"slop\" : 2,\n" +
-                        "    \"in_order\" : true\n" +
+                        "  \"match\" : {\n" +
+                        "    \"phrase_field\" : {\n" +
+                        "      \"query\" : \"some phrase containing slop\",\n" +
+                        "      \"type\" : \"phrase\",\n" +
+                        "      \"slop\" : 2\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}");
     }
@@ -852,7 +733,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"match\" : {\n" +
                         "    \"phrase_field\" : {\n" +
-                        "      \"query\" : \"c note\",\n" +
+                        "      \"query\" : \"c-note\",\n" +
                         "      \"type\" : \"phrase\"\n" +
                         "    }\n" +
                         "  }\n" +
@@ -929,13 +810,18 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"span_term\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"note\"\n" +
+                        "      \"span_multi\" : {\n" +
+                        "        \"match\" : {\n" +
+                        "          \"fuzzy\" : {\n" +
+                        "            \"phrase_field\" : {\n" +
+                        "              \"value\" : \"note\",\n" +
+                        "              \"prefix_length\" : 2\n" +
+                        "            }\n" +
+                        "          }\n" +
                         "        }\n" +
                         "      }\n" +
                         "    } ],\n" +
-                        "    \"slop\" : 2,\n" +
+                        "    \"slop\" : 0,\n" +
                         "    \"in_order\" : true\n" +
                         "  }\n" +
                         "}"
@@ -992,12 +878,54 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testCVSIX_2551_WithFuzzyProximity() throws Exception {
+        assertJson("phrase_field:('c-note'~10 w/3 beer)",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_near\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"phrase_field\" : {\n" +
+                        "              \"value\" : \"c\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_multi\" : {\n" +
+                        "            \"match\" : {\n" +
+                        "              \"fuzzy\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"note\",\n" +
+                        "                  \"prefix_length\" : 10\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ],\n" +
+                        "        \"slop\" : 0,\n" +
+                        "        \"in_order\" : true\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_term\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"value\" : \"beer\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 3,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
     public void testCVSIX_2551_subjectsStarsSymbol002() throws Exception {
         assertJson("( phrase_field : \"Qwerty \\*FREE Samples\\*\" )",
                 "{\n" +
                         "  \"match\" : {\n" +
                         "    \"phrase_field\" : {\n" +
-                        "      \"query\" : \"qwerty *free samples*\",\n" +
+                        "      \"query\" : \"Qwerty *FREE Samples*\",\n" +
                         "      \"type\" : \"phrase\"\n" +
                         "    }\n" +
                         "  }\n" +
@@ -1013,14 +941,14 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    \"should\" : [ {\n" +
                         "      \"match\" : {\n" +
                         "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"cut over\",\n" +
+                        "          \"query\" : \"cut-over\",\n" +
                         "          \"type\" : \"phrase\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"match\" : {\n" +
                         "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"get prices\",\n" +
+                        "          \"query\" : \"get-prices\",\n" +
                         "          \"type\" : \"phrase\"\n" +
                         "        }\n" +
                         "      }\n" +
@@ -1486,6 +1414,55 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testMoreLikeThis() throws Exception {
+        assertJson("phrase_field:@'this is a test'",
+                "{\n" +
+                        "  \"mlt\" : {\n" +
+                        "    \"fields\" : [ \"phrase_field\" ],\n" +
+                        "    \"like_text\" : \"this is a test\",\n" +
+                        "    \"min_term_freq\" : 1,\n" +
+                        "    \"max_query_terms\" : 80,\n" +
+                        "    \"stop_words\" : [ \"http\", \"span\", \"class\", \"flashtext\", \"let\", \"its\", \"may\", \"well\", \"got\", \"too\", \"them\", \"really\", \"new\", \"set\", \"please\", \"how\", \"our\", \"from\", \"sent\", \"subject\", \"sincerely\", \"thank\", \"thanks\", \"just\", \"get\", \"going\", \"were\", \"much\", \"can\", \"also\", \"she\", \"her\", \"him\", \"his\", \"has\", \"been\", \"ok\", \"still\", \"okay\", \"does\", \"did\", \"about\", \"yes\", \"you\", \"your\", \"when\", \"know\", \"have\", \"who\", \"what\", \"where\", \"sir\", \"page\", \"a\", \"an\", \"and\", \"are\", \"as\", \"at\", \"be\", \"but\", \"by\", \"for\", \"if\", \"in\", \"into\", \"is\", \"it\", \"no\", \"not\", \"of\", \"on\", \"or\", \"such\", \"that\", \"the\", \"their\", \"than\", \"then\", \"there\", \"these\", \"they\", \"this\", \"to\", \"was\", \"will\", \"with\" ],\n" +
+                        "    \"min_word_length\" : 3\n" +
+                        "  }\n" +
+                        "}"
+                );
+    }
+
+    @Test
+    public void testFuzzyLikeThis() throws Exception {
+        assertJson("phrase_field:@~'this is a test'",
+                "{\n" +
+                        "  \"flt_field\" : {\n" +
+                        "    \"phrase_field\" : {\n" +
+                        "      \"like_text\" : \"this is a test\",\n" +
+                        "      \"max_query_terms\" : 80,\n" +
+                        "      \"fuzziness\" : \"AUTO\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testScript() throws Exception {
+        assertJson("$$ this.is.a.script[12] = 42; $$",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"script\" : {\n" +
+                        "        \"script\" : \" this.is.a.script[12] = 42; \"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
     public void test_CVSIX_2682() throws Exception {
         assertJson("( phrase_field:(more w/10 \"food\\*\") )",
                 "{\n" +
@@ -1499,7 +1476,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    }, {\n" +
                         "      \"span_term\" : {\n" +
                         "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"food*\"\n" +
+                        "          \"value\" : \"food\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    } ],\n" +
@@ -2278,6 +2255,32 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void test_PhraseFieldRegexEndingInWildcard() throws Exception {
+        assertJson("phrase_field:~'^.*'",
+                "{\n" +
+                        "  \"regexp\" : {\n" +
+                        "    \"phrase_field\" : {\n" +
+                        "      \"value\" : \"^.*\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void test_ExactFieldRegexEndingInWildcard() throws Exception {
+        assertJson("exact_field:~'^.*'",
+                "{\n" +
+                        "  \"regexp\" : {\n" +
+                        "    \"exact_field\" : {\n" +
+                        "      \"value\" : \"^.*\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
     public void test_RegexProximity() throws Exception {
         assertJson("phrase_field:~ ('[0-9]{2}' w/3 '[0-9]{3}')",
                 "{\n" +
@@ -2348,7 +2351,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("phrase_field = \"\\\"NOTES:KARO\\?\\?\\?\\?\\?\\?\\?\"  ",
                 "{\n" +
                         "  \"term\" : {\n" +
-                        "    \"phrase_field\" : \"\\\"notes:karo???????\"\n" +
+                        "    \"phrase_field\" : \"notes:karo\"\n" +
                         "  }\n" +
                         "}"
         );
@@ -2373,14 +2376,14 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    \"should\" : [ {\n" +
                         "      \"match\" : {\n" +
                         "        \"fulltext_field\" : {\n" +
-                        "          \"query\" : \"xxxx17.0000000001.0000000001.0000000001 m 00.0000000 0000000\",\n" +
+                        "          \"query\" : \"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\",\n" +
                         "          \"type\" : \"phrase\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"match\" : {\n" +
                         "        \"_all\" : {\n" +
-                        "          \"query\" : \"xxxx17.0000000001.0000000001.0000000001 m 00.0000000 0000000\",\n" +
+                        "          \"query\" : \"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\",\n" +
                         "          \"type\" : \"phrase\"\n" +
                         "        }\n" +
                         "      }\n" +
@@ -2440,11 +2443,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
-                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=4, index=db.schema.table.index)\n" +
-                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=2, index=db.schema.table.index)\n" +
-                        "            Phrase (fieldname=phrase_field, operator=CONTAINS, value=1 3, ordered=true, index=db.schema.table.index)\n" +
-                        "            Phrase (fieldname=phrase_field, operator=CONTAINS, value=2 3, ordered=true, index=db.schema.table.index)\n" +
-                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=8, index=db.schema.table.index)\n" +
+                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=4, ordered=false, index=db.schema.table.index)\n" +
+                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=2, ordered=false, index=db.schema.table.index)\n" +
+                        "            Phrase (fieldname=phrase_field, operator=CONTAINS, value=1 3, index=db.schema.table.index)\n" +
+                        "            Phrase (fieldname=phrase_field, operator=CONTAINS, value=2 3, index=db.schema.table.index)\n" +
+                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=8, ordered=false, index=db.schema.table.index)\n" +
                         "            Word (fieldname=phrase_field, operator=CONTAINS, value=get, index=db.schema.table.index)\n" +
                         "            Word (fieldname=phrase_field, operator=CONTAINS, value=out, index=db.schema.table.index)"
         );
@@ -2526,10 +2529,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
-                        "      Proximity (fieldname=fulltext, operator=CONTAINS, distance=7, index=db.schema.table.index)\n" +
-                        "         Proximity (fieldname=fulltext, operator=CONTAINS, distance=1, index=db.schema.table.index)\n" +
-                        "            Phrase (fieldname=fulltext, operator=CONTAINS, value=k f, ordered=true, index=db.schema.table.index)\n" +
-                        "            Phrase (fieldname=fulltext, operator=CONTAINS, value=d t, ordered=true, index=db.schema.table.index)\n" +
+                        "      Proximity (fieldname=fulltext, operator=CONTAINS, distance=7, ordered=false, index=db.schema.table.index)\n" +
+                        "         Proximity (fieldname=fulltext, operator=CONTAINS, distance=1, ordered=false, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=fulltext, operator=CONTAINS, value=k f, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=fulltext, operator=CONTAINS, value=d t, index=db.schema.table.index)\n" +
                         "         Word (fieldname=fulltext, operator=CONTAINS, value=kn, index=db.schema.table.index)"
         );
     }
@@ -2671,7 +2674,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
-                        "      Phrase (fieldname=phrase_field, operator=CONTAINS, value=responsive batch edit, ordered=true, index=db.schema.table.index)"
+                        "      Phrase (fieldname=phrase_field, operator=CONTAINS, value=RESPONSIVE BATCH EDIT, index=db.schema.table.index)"
         );
 
         assertAST("phrase_field:[\"RESPONSIVE BATCH EDIT\", \"Insider Trading\"]",
@@ -2679,14 +2682,14 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
                         "      Array (fieldname=phrase_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
-                        "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=responsive batch edit, ordered=true, index=db.schema.table.index)\n" +
-                        "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=insider trading, ordered=true, index=db.schema.table.index)"
+                        "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=RESPONSIVE BATCH EDIT, index=db.schema.table.index)\n" +
+                        "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=Insider Trading, index=db.schema.table.index)"
         );
     }
 
     @Test
     public void testCVSIX_2874() throws Exception {
-        assertAST("( #expand<cvgroupid=<this.index>cvgroupid> ( ( ( review_data_ridge.review_set_name:*beer* ) ) ) )",
+        assertAST("( #expand<cvgroupid=<this.index>cvgroupid> ( ( ( review_data_ridge.review_set_name:*BEER* ) ) ) )",
                 "QueryTree\n" +
                         "   Or\n" +
                         "      Expansion\n" +
@@ -2754,7 +2757,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
                         "      And\n" +
-                        "         Phrase (fieldname=custodian, operator=EQ, value=querty, susan, ordered=true, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=custodian, operator=EQ, value=querty, susan, index=db.schema.table.index)\n" +
                         "         Not\n" +
                         "            Not\n" +
                         "               Array (fieldname=review_data_cv623beta.state, operator=EQ, index=db.schema.table.index) (OR)\n" +
@@ -2907,9 +2910,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
-                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, index=db.schema.table.index)\n" +
+                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, ordered=false, index=db.schema.table.index)\n" +
                         "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
-                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n"
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)"
         );
     }
 
@@ -3373,7 +3376,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field:'\\\\\\\\Begings with four backslashes'",
                 "{\n" +
                         "  \"term\" : {\n" +
-                        "    \"exact_field\" : \"\\\\\\\\begings with four backslashes\"\n" +
+                        "    \"exact_field\" : \"\\\\begings with four backslashes\"\n" +
                         "  }\n" +
                         "}"
         );
@@ -3384,7 +3387,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field:'This is a prefix query ending in four backslashes\\\\\\\\*'",
                 "{\n" +
                         "  \"prefix\" : {\n" +
-                        "    \"exact_field\" : \"this is a prefix query ending in four backslashes\\\\\\\\\"\n" +
+                        "    \"exact_field\" : \"this is a prefix query ending in four backslashes\\\\\"\n" +
                         "  }\n" +
                         "}"
         );
@@ -3395,7 +3398,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field:'This is a wildcard query ending in four backslashes\\\\\\\\?'",
                 "{\n" +
                         "  \"wildcard\" : {\n" +
-                        "    \"exact_field\" : \"this is a wildcard query ending in four backslashes\\\\\\\\?\"\n" +
+                        "    \"exact_field\" : \"this is a wildcard query ending in four backslashes\\\\?\"\n" +
                         "  }\n" +
                         "}"
         );
@@ -3443,6 +3446,298 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
         assertEquals("FieldListEntry (fieldname=field2)", fieldLists.get("field2").toString());
         assertEquals("[d, e, f]", fieldLists.get("field2").getFields().toString());
+    }
+
+    @Test
+    public void testJapaneseCharacters() throws Exception {
+        assertJson("phrase_field:物質の総称である。",
+                "{\n" +
+                        "  \"match\" : {\n" +
+                        "    \"phrase_field\" : {\n" +
+                        "      \"query\" : \"物質の総称である。\",\n" +
+                        "      \"type\" : \"phrase\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testFieldEqualsDottedIdentifier() throws Exception {
+        assertJson("exact_field:some.other.field",
+                "{\n" +
+                        "  \"term\" : {\n" +
+                        "    \"exact_field\" : \"some.other.field\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testRandomStringsAST() throws Exception {
+        assertAST("exact_field:(asdflkj234-132asdfuj asiodfja;sdf #487adqerydfskf0230 &@#$23)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=asdflkj234-132asdfuj, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=asiodfja;sdf, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=#487adqerydfskf0230, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=@#$23, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testRandomStringsJson() throws Exception {
+        assertJson("phrase_field:(asdflkj234-132asdfuj asiodfja;sdf #487adqerydfskf0230 &@#$23)",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"match\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"query\" : \"asdflkj234-132asdfuj\",\n" +
+                        "          \"type\" : \"phrase\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"match\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"query\" : \"asiodfja;sdf\",\n" +
+                        "          \"type\" : \"phrase\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"phrase_field\" : \"487adqerydfskf0230\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"phrase_field\" : \"23\"\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testParsePrefixAST_exactField() throws Exception {
+        assertAST("exact_field:VALUE*",
+                "QueryTree\n" +
+                "   Expansion\n" +
+                "      id=<db.schema.table.index>id\n" +
+                "      Prefix (fieldname=exact_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+        );
+
+        assertAST("exact_field:'VALUE*'",
+                "QueryTree\n" +
+                "   Expansion\n" +
+                "      id=<db.schema.table.index>id\n" +
+                "      Prefix (fieldname=exact_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testParsePrefixJSON_exactField() throws Exception {
+        assertJson("exact_field:VALUE*",
+                "{\n" +
+                        "  \"prefix\" : {\n" +
+                        "    \"exact_field\" : \"value\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+
+        assertJson("exact_field:'VALUE*'",
+                "{\n" +
+                        "  \"prefix\" : {\n" +
+                        "    \"exact_field\" : \"value\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+    
+    @Test
+    public void testParsePrefixAST_phraseField() throws Exception {
+        assertAST("phrase_field:VALUE*",
+                "QueryTree\n" +
+                "   Expansion\n" +
+                "      id=<db.schema.table.index>id\n" +
+                "      Prefix (fieldname=phrase_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+        );
+
+        assertAST("phrase_field:'VALUE*'",
+                "QueryTree\n" +
+                "   Expansion\n" +
+                "      id=<db.schema.table.index>id\n" +
+                "      Prefix (fieldname=phrase_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testParsePrefixJSON_phraseField() throws Exception {
+        assertJson("phrase_field:value*",
+                "{\n" +
+                        "  \"prefix\" : {\n" +
+                        "    \"phrase_field\" : \"value\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+
+        assertJson("phrase_field:'value*'", 
+                "{\n" +
+                        "  \"prefix\" : {\n" +
+                        "    \"phrase_field\" : \"value\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testLeftTruncationWildcardAST() throws Exception {
+        assertAST("phrase_field:(*wildcard)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Wildcard (fieldname=phrase_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testDoubleBrackets() throws Exception {
+        assertJson("exact_field:[[a,b,c,d]]",
+                "{\n" +
+                        "  \"terms\" : {\n" +
+                        "    \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue62AST() throws Exception {
+        assertAST("phrase_field:\"* non * programmers\"",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Proximity (fieldname=phrase_field, operator=CONTAINS, index=db.schema.table.index)\n" +
+                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=non)\n" +
+                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=programmers)"
+        );
+    }
+
+    @Test
+    public void testIssue62Json() throws Exception {
+        assertJson("phrase_field:\"* non * programmers\"",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_multi\" : {\n" +
+                        "        \"match\" : {\n" +
+                        "          \"wildcard\" : {\n" +
+                        "            \"phrase_field\" : \"*\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_term\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"value\" : \"non\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_multi\" : {\n" +
+                        "        \"match\" : {\n" +
+                        "          \"wildcard\" : {\n" +
+                        "            \"phrase_field\" : \"*\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_term\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"value\" : \"programmers\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 0,\n" +
+                        "    \"in_order\" : true\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testCzech() throws Exception {
+        assertJson("czech_field:'toto je test'",
+                "{\n" +
+                        "  \"match\" : {\n" +
+                        "    \"czech_field\" : {\n" +
+                        "      \"query\" : \"toto je test\",\n" +
+                        "      \"type\" : \"phrase\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue62Highlighting() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+        DocumentHighlighter highlighter;
+        List<AnalyzedField.Token> highlights;
+
+        data.put("phrase_field", "getting non-programmers to understand the development process");
+        highlighter = new DocumentHighlighter(client(),
+                DEFAULT_INDEX_NAME,
+                "id",
+                data,
+                "phrase_field:\"* non * programmers\"");
+        highlights = highlighter.highlight();
+
+        assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"programmers\",\"startOffset\":12,\"endOffset\":23,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"non\",\"startOffset\":8,\"endOffset\":11,\"position\":2,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"}]",
+                new ObjectMapper().writeValueAsString(highlights));
+    }
+
+    @Test
+    public void testTermMergingWithBoots() throws Exception {
+        assertJson("phrase_field:(beer^3 wine)",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"value\" : \"beer\",\n" +
+                        "          \"boost\" : 3.0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"phrase_field\" : \"wine\"\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue69_REGEX_Clause() throws Exception {
+        assertAST("phrase_field:~'A.*'",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Word (fieldname=phrase_field, operator=REGEX, value=A.*, index=db.schema.table.index)"
+        );
+
+        assertAST("phrase_field:~'^A.*'",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Phrase (fieldname=phrase_field, operator=REGEX, value=^A.*, index=db.schema.table.index)"
+        );
     }
 }
 

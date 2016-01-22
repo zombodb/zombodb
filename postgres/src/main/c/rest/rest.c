@@ -252,7 +252,7 @@ StringInfo rest_call(char *method, char *url, StringInfo postData)
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEDATA, response);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (strcmp(method, "GET") != 0 && postData && postData->data) ? 1 : 0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (postData && postData->data) ? 1 : 0);
     } else {
         elog(ERROR, "Unable to initialize libcurl");
     }

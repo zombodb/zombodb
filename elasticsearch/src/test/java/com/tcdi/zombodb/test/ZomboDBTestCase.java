@@ -49,7 +49,7 @@ public abstract class ZomboDBTestCase {
     public static void beforeClass() throws Exception {
         node = bootstrapElasticsearch();
 
-        for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users"}) {
+        for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users", "db.schema.so_comments.idxso_comments"}) {
             createIndex(indexName);
             client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
             client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();

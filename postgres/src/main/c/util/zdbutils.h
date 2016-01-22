@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +23,11 @@
 
 #define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
+#define zdb_json char *
+
+char *lookup_analysis_thing(MemoryContext cxt, char *thing);
+char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname);
+bool type_is_domain(char *type_name, Oid *base_type);
 void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen);
 void freeStringInfo(StringInfo si);
 char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing);

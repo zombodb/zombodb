@@ -28,6 +28,25 @@ import java.util.regex.Pattern;
  * @author e_ridge
  */
 public class Utils {
+    static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
+    static final String NEEDS_ESCAPES_AS_STRING;
+    static {
+        Arrays.sort(NEEDS_ESCAPES);
+
+        StringBuilder sb = new StringBuilder();
+        for (char ch : NEEDS_ESCAPES) {
+            switch (ch) {
+                case '[':
+                case ']':
+                case '-':
+                case '\\':
+                    sb.append("\\");
+                    break;
+            }
+            sb.append(ch);
+        }
+        NEEDS_ESCAPES_AS_STRING = sb.toString();
+    }
 
     public static String unescape(String s) {
         if (s == null || s.length() == 0)
@@ -168,12 +187,11 @@ public class Utils {
         return l;
     }
 
-    public static List<String> tokenizePhrase(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
+    public static List<String> analyze(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
         String analyzer = metadataManager.getMetadataForField(fieldname).getAnalyzer(fieldname);
         if (analyzer == null)
-            analyzer = "default";
+            analyzer = "exact";
 
-        analyzer += "_search";
         try {
             AnalyzeResponse response = client.admin().indices().analyze(
                     new AnalyzeRequestBuilder(
@@ -194,54 +212,45 @@ public class Utils {
         }
     }
 
-    public static QueryParserNode convertToProximity(ASTPhrase phrase) {
-        String value = String.valueOf(phrase.getValue());
-        List<String> tokens = Utils.simpleTokenize(value);
+    public static QueryParserNode convertToProximityForHighlighting(ASTPhrase phrase) {
+        return convertToProximityForHighlighting(phrase.getFieldname(), Utils.simpleTokenize(String.valueOf(phrase.getValue())));
+    }
+
+    public static ASTProximity convertToProximityForHighlighting(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
+        return convertToProximityForHighlighting(fieldname, new Iterable<String>() {
+            @Override
+            public Iterator<String> iterator() {
+                final Iterator<AnalyzeResponse.AnalyzeToken> iterator = tokens.iterator();
+                return new Iterator<String>() {
+                    @Override
+                    public boolean hasNext() {
+                        return iterator.hasNext();
+                    }
+
+                    @Override
+                    public String next() {
+                        return iterator.next().getTerm();
+                    }
+
+                    @Override
+                    public void remove() {
+                        iterator.remove();
+                    }
+                };
+            }
+        });
+    }
+    public static ASTProximity convertToProximityForHighlighting(String fieldname, Iterable<String> tokens) {
         // rewrite the phrase as a proximity query
         StringBuilder sb = new StringBuilder();
         for (String token : tokens) {
-            if (sb.length() > 0) {
-                sb.append(" ");
-                sb.append("w");
-                if (phrase.isOrdered())
-                    sb.append("o");
-                sb.append("/");
-                sb.append(phrase.getDistance());
-                sb.append(" ");
-            }
-            sb.append(token.replaceAll("([" + IndexMetadata.NEEDS_ESCAPES_AS_STRING + "])", "\\\\$1"));
-        }
-
-        sb.insert(0, phrase.getFieldname() + ":(");
-        sb.append(")");
-
-        try {
-            QueryParser qp = new QueryParser(new StringReader(sb.toString()));
-            ASTQueryTree tree = qp.parse(true);
-            if (tree.countNodes() == 1)
-                return tree.getChild(0);
-            QueryParserNode prox = tree.getChild(ASTProximity.class);
-            if (prox == null)
-                throw new RuntimeException("Phrase (" + sb.toString() + ") did not parse into a proximity chain");
-            return (ASTProximity) prox;
-        } catch (RuntimeException re) {
-            throw re;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static ASTProximity convertToProximity(String fieldname, List<AnalyzeResponse.AnalyzeToken> tokens) {
-        // rewrite the phrase as a proximity query
-        StringBuilder sb = new StringBuilder();
-        for (AnalyzeResponse.AnalyzeToken token : tokens) {
             if (sb.length() > 0) {
                 sb.append(" ");
                 sb.append("wo");
                 sb.append("/0");
                 sb.append(" ");
             }
-            sb.append(token.getTerm().replaceAll("([" + IndexMetadata.NEEDS_ESCAPES_AS_STRING + "])", "\\\\$1"));
+            sb.append(token.replaceAll("([" + NEEDS_ESCAPES_AS_STRING + "])", "\\\\$1"));
         }
 
         sb.insert(0, fieldname + ":(");
@@ -261,6 +270,53 @@ public class Utils {
         }
     }
 
+
+    public static ASTProximity convertToProximity(ASTPhrase phrase) {
+        return convertToProximity(phrase.getFieldname(), Utils.simpleTokenize(String.valueOf(phrase.getValue())));
+    }
+
+    public static ASTProximity convertToProximity(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
+        return convertToProximity(fieldname, new Iterable<String>() {
+            @Override
+            public Iterator<String> iterator() {
+                final Iterator<AnalyzeResponse.AnalyzeToken> iterator = tokens.iterator();
+                return new Iterator<String>() {
+                    @Override
+                    public boolean hasNext() {
+                        return iterator.hasNext();
+                    }
+
+                    @Override
+                    public String next() {
+                        return iterator.next().getTerm();
+                    }
+
+                    @Override
+                    public void remove() {
+                        iterator.remove();
+                    }
+                };
+            }
+        });
+    }
+    public static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens) {
+        return convertToProximity(fieldname, tokens, 0);
+    }
+
+    public static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens, int distance) {
+        ASTProximity prox = new ASTProximity(QueryParserTreeConstants.JJTPROXIMITY);
+
+        prox.fieldname = fieldname;
+        prox.distance = distance;
+
+        for (String token : tokens) {
+            QueryParserNode node = convertToWildcardNode(fieldname, QueryParserNode.Operator.CONTAINS, token);
+            prox.jjtAddChild(node, prox.jjtGetNumChildren());
+        }
+
+        return prox;
+    }
+
     public static Map<String, StringBuilder> extractArrayData(String input, StringBuilder output) {
         Map<String, StringBuilder> arrayData = new HashMap<>();
         StringBuilder currentArray = null;
@@ -269,7 +325,7 @@ public class Utils {
         char nextChar;
 
         for (int i = 0, many = input.length(); i < many; i++) {
-            char ch = Character.toLowerCase(input.charAt(i));
+            char ch = input.charAt(i);
             nextChar = i < many - 1 ? input.charAt(i + 1) : 0;
 
             switch (ch) {
@@ -321,6 +377,106 @@ public class Utils {
             throw new RuntimeException ("WITH chain must all belong to a nested object");
 
         return nestedPath;
+    }
+
+    public static QueryParserNode rewriteToken(Client client, IndexMetadataManager metadataManager, QueryParserNode node) throws RuntimeException {
+        List<String> initialAnalyze;
+        int cnt;
+        boolean hasWildcards = node instanceof ASTFuzzy;
+        String input = node.getEscapedValue();
+        String newToken;
+
+        if (node instanceof ASTPrefix)
+            input += "*";
+
+        initialAnalyze = analyze(client, metadataManager, node.getFieldname(), input);
+        cnt = initialAnalyze.size();
+
+        if (cnt == 0) {
+            throw new RuntimeException("All tokens removed from input: " + input);
+        } else {
+            EscapingStringTokenizer st = new EscapingStringTokenizer(input, "*?~ \r\n\t\f", true);
+            StringBuilder sb = new StringBuilder();
+            boolean lastWasWildcard = false;
+            boolean first = true;
+
+            while (st.hasMoreTokens()) {
+                String token = st.nextToken();
+                boolean isDelimiter = st.isDelimiter();
+
+                if (isDelimiter) {
+                    sb.append(token);
+                    if (!Character.isWhitespace(token.charAt(0))) {
+                        hasWildcards = true;
+                    }
+                    lastWasWildcard = true;
+                } else {
+                    List<String> analyzed = analyze(client, metadataManager, node.getFieldname(), token);
+
+                    sb.append(join(analyzed));
+                    if (!lastWasWildcard && !first)
+                        sb.append(" ");
+                    lastWasWildcard = false;
+                }
+
+                first = false;
+            }
+
+            newToken = sb.toString().trim();
+        }
+        QueryParserNode rc;
+
+        if (!hasWildcards) {
+            if (cnt <= 1) {
+                if (node instanceof ASTPrefix) {
+                    rc = node;
+                } else {
+                    rc = new ASTWord(QueryParserTreeConstants.JJTWORD);
+                }
+            } else {
+                rc = new ASTPhrase(QueryParserTreeConstants.JJTPHRASE);
+
+                // because phrases go through analysis we want to just use whatever the user
+                // provided in this case
+                newToken = node.getEscapedValue();
+            }
+
+            rc.indexLink = node.indexLink;
+            rc.fieldname = node.fieldname;
+            rc.operator = node.operator;
+            rc.value = newToken;
+            rc.fuzzyness = node.fuzzyness;
+            rc.ordered = node.ordered;
+            rc.distance = node.distance;
+            rc.boost = node.boost;
+        } else {
+            if (node instanceof ASTFuzzy)
+                newToken += "~" + (node.ordered ? "" : "!") + node.fuzzyness;
+
+            if (cnt <= 1) {
+                rc = Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), newToken);
+            } else {
+                rc = Utils.convertToProximity(node.getFieldname(), Arrays.asList(newToken.split("[ ]+")));
+                if (rc.jjtGetNumChildren() == 1)
+                    rc = (QueryParserNode) rc.jjtGetChild(0);
+            }
+
+            rc.indexLink = node.indexLink;
+            rc.fieldname = node.fieldname;
+            rc.operator = node.operator;
+            rc.fuzzyness = node.fuzzyness;
+            rc.ordered = node.ordered;
+            rc.distance = node.distance;
+            rc.boost = node.boost;
+        }
+
+        if (rc instanceof ASTPrefix) {
+            String value = String.valueOf(rc.value);
+            if (value.endsWith("*"))
+                rc.value = value.substring(0, value.length()-1);
+        }
+
+        return rc;
     }
 
 }
