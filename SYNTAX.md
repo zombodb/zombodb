@@ -80,15 +80,24 @@ And since the __AND__ operator is the default, it could also be written as:
 
 ## Tokenization, Escaping, Case-Sensitivity, and Term Analysis
 
-Tokens are formed whenever a non-alphanumeric (plus underscore) character is found.  Technically a token is a run of characters in the set [A-Za-z0-0_], plus the set of three wildcard characters [*?~].
+During query parsing, tokens are formed whenever a character in this set is encountered:
 
-To use a non-term character it must be escaped using a backslash, *or* the term must be quoted.  Any character is allowed within a quoted phrase.
+```
+ [ "'", "\"",  ":",  "*",  "~", "?", 
+   "!",  "%",  "&",  "(",  ")", ",",
+   "<",  "=",  ">",  "[",  "]", "^",
+   " ",  "\r", "\n", "\t", "\f" ]
+```
 
-`foo\#bar`, for example, would parse as a single term.
+All other characters a valid token characters.
 
-All searching is case-insensitive.  There is no difference between ```BEER``` and ```beer```.
+To use one of the above characters it must be escaped using a backslash, *or* the term must be quoted.  Any character is allowed within a quoted phrase.
 
-Terms and phrases are possibly sub-parsed (analyzed) using the Elasticsearch-defined search analyzer for the field being searched.  Currently, only datatypes of `phrase`, `phrase_array`, and `fulltext` support sub-parsing analysis.
+`foo#bar`, for example, would parse as a single term.
+
+Terms and phrases are sub-parsed (analyzed) using the Elasticsearch-defined search analyzer for the field being searched.  Typically, analysis only happens on fields of type `phrase`, `phrase_array`, and `fulltext`.  Additionally, fields of custom `DOMAIN` types (such as `thai`, `english`, `cjk`) are also analyzed.
+
+Token case is preserved, but may or may not be significant depending on how the underlying analyzer is defined.  All the default-supported analyzers are case-insensitive (including searching fields of type `text` and `varchar`), but a custom analyzer might decide to preserve case.
 
 ## Term and Phrase Searching
 
@@ -132,7 +141,7 @@ Symbol | Description
 !=     | field does not contain term
 <>     | field does not contain term (same as != )
 /to/   | range query, in form of field:START /to/ END
-:~     | field contains terms matching [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax)
+:~     | field contains terms matching a [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax).  Note that regular expression searches are always **case sensitive**.
 :@     | ["more like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html)
 :@~    | ["fuzzy like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-field-query.html)
 
@@ -164,6 +173,8 @@ Examples:
 ```beer~2```: would match beer, bear, beep, bean, bell, etc
 
 Special consideration is taken for criteria in the form of: ```field:*``` or ```field:?```.  They are re-written using Elasticsearch's ["exists filter"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-exists-filter.html).
+
+Note that phrases can also contain wildcarded terms, such as: `field:"phrase~ w?th wild*rd"`.  In this case, the phrase is rewritten as a proximity chain such as: `field:(phrase~ w/0 w?th w/0 wild*rd)`.  See below for details on proximity searching.
 
 ## Term/Phrase Boosting
 

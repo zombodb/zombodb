@@ -5,20 +5,35 @@ While the heart of ZomboDB is an index, the extension provides a number of SQL-c
 
 ## Custom DOMAIN types
 
-These custom domains are to be used in user tables as data types when you require text parsing and analysis for a given field.
+These custom domains are to be used in user tables as data types when you require text parsing and analysis for a given field.  The [type mapping](TYPE-MAPPING.md) documentation provides much more detail.
 
 #### ```DOMAIN phrase AS text```
 
->This domain indicates to ZomboDB that the corresponding field should be analyzed in Elasticsearch
+>This domain indicates to ZomboDB that the corresponding field should be analyzed in Elasticsearch.
 
 #### ```DOMAIN fulltext AS text```
 
->Currently has exact same meaning as the ```phrase``` domain.  This might change in the future
+>Currently has exact same meaning as the ```phrase``` domain.  This might change in the future.
 
 #### ```DOMAIN phrase_array AS text[]```
 
 >Similar to ```phrase``` but each array element will be analyzed.  It's spelled this way because Postgres does not currently support arrays over DOMAIN objects, ie ```phrase[]```.
 
+#### Foreign Language Domains
+
+A domain defined as `DOMAIN foo AS text` exists for the following languages: 
+
+```
+arabic, armenian, basque, brazilian, 
+bulgarian, catalan, chinese, cjk, 
+czech, danish, dutch, english, 
+finnish, french, galician, german, 
+greek, hindi, hungarian, indonesian, 
+irish, italian, latvian, norwegian, 
+persian, portuguese, romanian, russian, 
+sorani, spanish, swedish, turkish, 
+thai
+```
 
 ## Custom Operators
 
@@ -68,6 +83,46 @@ These custom domains are to be used in user tables as data types when you requir
 > Example:
 > 
 > ```SELECT * FROM zdb_actual_index_record_count('table', 'data');```
+
+#### `FUNCTION zdb_analyze_text(index_name regclass, analyzer_name text, data text) RETURNS SETOF zdb_analyze_text_response`
+
+> `index_name`: The name of a ZomboDB index  
+> `analyzer_name`: The name of an analyzer defined in the index, or any of the default Elasticsearch [language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/analysis-lang-analyzer.html)  
+> `data`: The text to analyze
+> 
+> This function is useful for determing how a specific Elasticsearch analyzer is going to tokenize text.
+> 
+> returns a result set in the form of 
+> 
+> ```
+> TYPE zdb_analyze_text_response AS (
+>     token text, 
+>     start_offset integer, 
+>     end_offset integer, 
+>     type text, 
+>     position integer
+> );
+> ```
+> 
+> Example:
+> 
+> ```
+> SELECT * FROM zdb_analyze_text('idxso_posts', 
+>    'english', 
+>    'the quick brown fox jumped over the lazy dog''s back');
+> 
+ token | start_offset | end_offset |    type    | position 
+-------+--------------+------------+------------+----------
+ quick |            4 |          9 | <ALPHANUM> |        2
+ brown |           10 |         15 | <ALPHANUM> |        3
+ fox   |           16 |         19 | <ALPHANUM> |        4
+ jump  |           20 |         26 | <ALPHANUM> |        5
+ over  |           27 |         31 | <ALPHANUM> |        6
+ lazi  |           36 |         40 | <ALPHANUM> |        8
+ dog   |           41 |         46 | <ALPHANUM> |        9
+ back  |           47 |         51 | <ALPHANUM> |       10
+(8 rows)
+```
 
 #### ```FUNCTION zdb_arbitrary_aggregate(table_name regclass, aggregate_query json, query text) RETURNS json```
 
@@ -120,7 +175,78 @@ These custom domains are to be used in user tables as data types when you requir
  {"missing":{"doc_count":0},"availability_date":{"buckets":[{"key_as_string":"2015-07","key":1435708800000,"doc_count":1,"keywords":{"doc_count_error_upper_bound":0,"sum_other_doc_count":0,"buckets":[{"key":"box","doc_count":1},{"key":"negative space","doc_count":1},{"key":"square","doc_count":1},{"key":"wooden","doc_count":1}]}},{"key_as_string":"2015-08","key":1438387200000,"doc_count":3,"keywords":{"doc_count_error_upper_bound":0,"sum_other_doc_count":0,"buckets":[{"key":"alexander graham bell","doc_count":1},{"key":"baseball","doc_count":1},{"key":"communication","doc_count":1},{"key":"magical","doc_count":1},{"key":"primitive","doc_count":1},{"key":"round","doc_count":2},{"key":"sports","doc_count":1},{"key":"widget","doc_count":1}]}}]}}
 >```
 >
->The response is a JSON blob because it's quite difficult to project an arbitrary nested structure into a resultset with SQL.  The intent is that decoding of the response would be application-specific.
+>The response is a JSON blob because it's quite difficult to project an arbitrary nested structure into a resultset with SQL.  The intent is that decoding of the response be application-specific.
+
+#### `FUNCTION zdb_define_analyzer(name text, definition json) RETURNS void`
+> `name`: The name to give the analyzer  
+> `definition`: the JSON object definition of the analyzer
+> 
+> Allows you to define a custom Elasticsearch analyzer.  Once defined, you need to create a domain with the same name.
+> 
+> For example:
+> 
+> ```
+> SELECT zdb_define_analyzer('my_analyzer_type', '{ "tokenizer": "standard" }');
+> CREATE DOMAIN my_analyzer_type AS text;
+> CREATE TABLE foo (id serial8 PRIMARY KEY,
+>     field my_analyzer_type
+> );
+> ```
+> 
+> Only domains defined as `AS text` or `AS varchar(<size>)` are supported.
+> 
+> See the [type mapping](TYPE-MAPPING.md) documentation for for details.
+
+#### `FUNCTION zdb_define_char_filter(name text, definition json) RETURNS void`
+> `name`: The name to give the character filter  
+> `definition`: the JSON object definition of the character filter
+> 
+> Allows you to define a custom Elasticsearch character filter to be used by a custom analyzer.
+> 
+> For example:
+> 
+> ```
+> SELECT zdb_define_char_filter('zero_width_spaces', '{
+            "type":       "mapping",
+            "mappings": [ "\\u200C=> "] 
+        }');
+> ```
+> 
+> See the [type mapping](TYPE-MAPPING.md) documentation for for details.
+
+#### `FUNCTION zdb_define_filter(name text, definition json) RETURNS void`
+> `name`: The name to give the token filter  
+> `definition`: the JSON object definition of the token filter
+> 
+> Allows you to define a custom Elasticsearch token filter to be used by a custom analyzer.
+> 
+> For example:
+> 
+> ```
+> SELECT zdb_define_filter('english_stop', '{
+          "type":       "stop",
+          "stopwords":  "_english_" 
+        }');
+> ```
+> 
+> See the [type mapping](TYPE-MAPPING.md) documentation for for details.
+
+#### `FUNCTION zdb_define_mapping(table_name regclass, field_name name, definition json) RETURNS void`
+> `table_name`: The table name to receive this custom field mapping
+> `field_name`: The file in the table to which this custom field mapping will be assigned
+> 
+> Allows you to define a custom Elasticsearch field mapping for a field.
+> 
+> For example:
+> 
+> ```
+> SELECT zdb_define_mapping('my_table', 'the_field', '{
+>    "type": "string",
+>    "store": true,
+>    "include_in_all": false
+> }');
+> 
+> See the [type mapping](TYPE-MAPPING.md) documentation for for details.
 
 #### ```FUNCTION zdb_describe_nested_object(table_name regclass, fieldname text) RETURNS json```
 

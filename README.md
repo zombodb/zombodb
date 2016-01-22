@@ -28,9 +28,12 @@ Elasticsearch-calculated aggregations are also provided through custom functions
 - transaction-safe full text queries
 - managed & queried via standard Postgres SQL
 - works with tables of any structure
-- works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCAN-SUPPORT.md) 
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
-- json columns as nested objects for flexible schemaless sub-documents
+   - supports full set of Elasticsearch [language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/analysis-lang-analyzer.html)
+   - support for [custom analyzer chains](TYPE-MAPPING.md)
+   - custom [per-field mappings](TYPE-MAPPING.md)
+   - json columns as nested objects for flexible schemaless sub-documents
+- works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCAN-SUPPORT.md) 
 - [per-row scoring](SQL-API.md#function-zdb_scoretable_name-regclass-ctid-tid-returns-float4)
 - extremely fast indexing
 - [record count estimation](SQL-API.md#function-zdb_estimate_counttable_name-regclass-query-text-returns-bigint)
@@ -45,7 +48,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
   - inline scripts
   - range queries
   - term/phrase boosting
-- query results expansion and index linking
+- query results expansion and [index linking](INDEX-OPTIONS.md)
 - [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
 - access to many of Elasticsearch's aggregations, including ability to nest aggregations
@@ -54,7 +57,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
 
 Not to suggest that these things are impossible, but there's a small set of non-features too:
 
-- indexes are not WAL-logged by Postgres so are not recoverable in the event of a Postgres server crash
+- ZomboDB indexes are not WAL-logged by Postgres.  As such, are not recoverable in the event of a Postgres server crash
 - interoperability with various Postgres replication schemes is unknown
 - ```pg_get_indexdef()``` doesn't correctly quote index options making backup restoration annoying (would require patch to Postgres)
 - Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
