@@ -786,25 +786,40 @@ QueryParserNode BoolQuery() #BoolQuery :
 
 }
 {
-    ( <BOOL_QUERY> "(" [Must()] [Should()] [MustNot()] ")" )
+    ( <BOOL_QUERY> "(" ( (<MUST> Must() #Must) | (<SHOULD> Should() #Should) | (<MUST_NOT> MustNot() #MustNot) )* ")" )
     {
         return jjtThis;
     }
 }
 
-void Must() #Must : {}
+void Must() :
 {
-    <MUST> "(" ( _ignored_tokens_() | Literal() )* ")"
+    FieldnameAndOperator fop = null;
+}
+{
+    fop = OptionalFieldname() { fieldnameStack.push(fop); } "("
+        (LOOKAHEAD(3) (_ignored_tokens_() | Literal()) | Must() )*
+    { fieldnameStack.pop(); } ")"
 }
 
-void Should() #Should : {}
+void Should() :
 {
-    <SHOULD> "(" ( _ignored_tokens_() | Literal() )* ")"
+    FieldnameAndOperator fop = null;
+}
+{
+    fop = OptionalFieldname() { fieldnameStack.push(fop); } "("
+        (LOOKAHEAD(3) (_ignored_tokens_() | Literal()) | Should() )*
+    { fieldnameStack.pop(); } ")"
 }
 
-void MustNot() #MustNot : {}
+void MustNot() :
 {
-    <MUST_NOT> "(" ( _ignored_tokens_() | Literal() )* ")"
+    FieldnameAndOperator fop = null;
+}
+{
+    fop = OptionalFieldname() { fieldnameStack.push(fop); } "("
+        (LOOKAHEAD(3) (_ignored_tokens_() | Literal()) | MustNot() )*
+    { fieldnameStack.pop(); } ")"
 }
 
 void _ignored_tokens_() : {}

@@ -3887,5 +3887,30 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (fieldname=phrase_field, operator=CONTAINS, value=food, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testIssue75_IgnoreParenthesis() throws Exception {
+        assertAST("#bool(#must( and,or,not! phrase_field:(this (is title:a) test) () ) #must_not( phrase_field:(this (is title:a) test) () ) #should( phrase_field:(this (is title:a) test) () ))",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      BoolQuery\n" +
+                        "         Must\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=is, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=title, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=test, index=db.schema.table.index)\n" +
+                        "         MustNot\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=is, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=title, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=test, index=db.schema.table.index)\n" +
+                        "         Should\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=is, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=title, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=test, index=db.schema.table.index)"
+        );
+    }
 }
 
