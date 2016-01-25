@@ -3847,5 +3847,45 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 new ObjectMapper().writeValueAsString(highlights));
     }
 
+    @Test
+    public void testIssue75_Connectors() throws Exception {
+        assertAST("#bool(#must() #should() #must_not())",
+                "QueryTree\n" +
+                        "   BoolQuery\n" +
+                        "      Must\n" +
+                        "      Should\n" +
+                        "      MustNot"
+        );
+
+        assertAST("#bool(#must(and))",
+                "QueryTree\n" +
+                        "   BoolQuery\n" +
+                        "      Must"
+        );
+
+        assertAST("#bool(#must(and or not with , & ! %))",
+                "QueryTree\n" +
+                        "   BoolQuery\n" +
+                        "      Must"
+        );
+
+        assertAST("#bool(#must(and or not with , & ! % phrase_field:food))",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      BoolQuery\n" +
+                        "         Must\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=food, index=db.schema.table.index)"
+        );
+
+        assertAST("#bool(#must(phrase_field:food and or not with , & ! %))",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      BoolQuery\n" +
+                        "         Must\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=food, index=db.schema.table.index)"
+        );
+    }
 }
 

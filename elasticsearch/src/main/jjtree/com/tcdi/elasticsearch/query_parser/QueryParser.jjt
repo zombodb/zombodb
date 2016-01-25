@@ -794,15 +794,27 @@ QueryParserNode BoolQuery() #BoolQuery :
 
 void Must() #Must : {}
 {
-    <MUST> "(" (Literal() [","] ["&"] ["!"] ["%"] [<AND>] [<OR>] [<NOT>] [<WITH>] )* ")"
+    <MUST> "(" ( _ignored_tokens_() | Literal() )* ")"
 }
 
 void Should() #Should : {}
 {
-    <SHOULD> "(" (Literal() [","] ["&"] ["!"] ["%"] [<AND>] [<OR>] [<NOT>] [<WITH>] )* ")"
+    <SHOULD> "(" ( _ignored_tokens_() | Literal() )* ")"
 }
 
 void MustNot() #MustNot : {}
 {
-    <MUST_NOT> "(" (Literal() [","] ["&"] ["!"] ["%"] [<AND>] [<OR>] [<NOT>] [<WITH>] )* ")"
+    <MUST_NOT> "(" ( _ignored_tokens_() | Literal() )* ")"
+}
+
+void _ignored_tokens_() : {}
+{
+      ","
+    | "&"
+    | "!"
+    | "%"
+    | <AND>
+    | <OR>
+    | <NOT>
+    | <WITH>
 }
