@@ -535,6 +535,8 @@ public class QueryRewriter {
             return build((ASTNot) node);
         else if (node instanceof ASTOr)
             return build((ASTOr) node);
+        else if (node instanceof ASTBoolQuery)
+            return build((ASTBoolQuery) node);
 
         return build0(node);
     }
@@ -856,6 +858,27 @@ public class QueryRewriter {
                 return rangeQuery(node.getFieldname()).from(start.getValue()).to(end.getValue());
             }
         });
+    }
+
+    private QueryBuilder build(ASTBoolQuery node) {
+        BoolQueryBuilder builder = boolQuery();
+        ASTMust must = node.getMust();
+        ASTShould should = node.getShould();
+        ASTMustNot mustNot = node.getMustNot();
+
+        if (must != null)
+            for (QueryParserNode child : must)
+                builder.must(build(child));
+
+        if (should != null)
+            for (QueryParserNode child : should)
+                builder.should(build(child));
+
+        if (mustNot != null)
+            for (QueryParserNode child : mustNot)
+                builder.mustNot(build(child));
+
+        return builder;
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, QueryParserNode node) {

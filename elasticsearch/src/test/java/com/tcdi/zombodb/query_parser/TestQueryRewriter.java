@@ -3739,5 +3739,91 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      Phrase (fieldname=phrase_field, operator=REGEX, value=^A.*, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testBoolQueryAST_Issue75() throws Exception {
+        assertAST("#bool( #must(here, there and everywhere)  #should(phrase_field:abc title:xyz stuff)  #must_not(foo bar) )",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      BoolQuery\n" +
+                        "         Must\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=here, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=here, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=there, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=there, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=everywhere, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=everywhere, index=db.schema.table.index)\n" +
+                        "         Should\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=abc, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=title, operator=CONTAINS, value=xyz, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=stuff, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=stuff, index=db.schema.table.index)\n" +
+                        "         MustNot\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=bar, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=bar, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testBoolQueryJSON_Issue75() throws Exception {
+        assertJson("#bool( #must(a:here, b:there and c:everywhere)  #should(phrase_field:abc title:xyz stuff)  #must_not(x:foo y:bar) )",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"a\" : \"here\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"b\" : \"there\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"c\" : \"everywhere\"\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"must_not\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"x\" : \"foo\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"y\" : \"bar\"\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"phrase_field\" : \"abc\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"title\" : \"xyz\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"fulltext_field\" : \"stuff\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"_all\" : \"stuff\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 

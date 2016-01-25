@@ -74,6 +74,7 @@ public class QueryParser {
 
     private java.util.Set<String> usedFieldnames = new java.util.TreeSet(); // to keep fields sorted so that _all comes first
     private java.util.Stack<FieldnameAndOperator> fieldnameStack = new Stack();
+    private boolean inArray = false;
 
     public ASTQueryTree parse(boolean optimize) throws ParseException {
         ASTQueryTree tree = parse0();
@@ -140,6 +141,10 @@ PARSER_END(QueryParser)
   | <OPTIONS: "#options" >
   | <FIELDLISTS: "#field_lists" >
   | <EXPAND: "#expand" >
+  | <BOOL_QUERY: "#bool" >
+  | <MUST: "#must" >
+  | <SHOULD: "#should" >
+  | <MUST_NOT: "#must_not" >
 
   | <PROX: "w/"(<DIGIT>)+ >
   | <ORDERED_PROX: "wo/"(<DIGIT>)+ >
@@ -377,47 +382,24 @@ void ProximityOperator(QueryParserNode node) :
 void UnaryExpression() :
 {
     QueryParserNode n = null;
-    FieldnameAndOperator fieldname = null;
+    FieldnameAndOperator fao;
 }
 {
     (
-      n = Not()
-    | n = Script()
-    |
-      (
-        fieldname = OptionalFieldname()
-        (
-            LOOKAHEAD(2) "(" { fieldnameStack.push(fieldname); } Expression() { fieldnameStack.pop(); } ")"
-            | ("(" ")") // just ignore empty parens, ie:  ()
-            | ( { if (fieldname == null || "_all".equals(fieldname.fieldname)) usedFieldnames.add("_all"); }
-                (
-                      LOOKAHEAD(2) n = Range()
-                    | n = Child()
-                    | n = Parent()
-                    | n = Expansion()
-                    | n = Array()
-                    | n = ArrayData()
-                    | n = Literal()
-                ) OptionalBoost(n)
-              )
-         )
-      )
+          n = Not()
+        | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
+        | ("(" ")") // just ignore empty parens, ie:  ()
+        | n = Child()
+        | n = Parent()
+        | n = Expansion()
+        | n = BoolQuery()
+        | n = Literal()
+        | n = Script()
     )
      {
-        if (n != null && fieldname != null) {
-            if (!(n instanceof ASTChild) && !(n instanceof ASTParent) && !(n instanceof ASTExpansion)) {
-                n.fieldname = fieldname.fieldname;
-                n.operator = fieldname.operator;
-            }
-
-            if (n instanceof ASTArray) {
-                n.forceFieldname(fieldname.fieldname);
-            }
-        }
-
         if (n != null && n.operator == QueryParserNode.Operator.REGEX && n instanceof ASTPrefix) {
             /*
-               convert nodes that are REGEX queries that got pared into ASTPrefix nodes
+               convert nodes that are REGEX queries that got parsed into ASTPrefix nodes
                back into generic ASTWord nodes.  This could happen if the regex ends with an
                asterick, ie:  ^.*
              */
@@ -436,10 +418,13 @@ void UnaryExpression() :
 QueryParserNode Literal() :
 {
     QueryParserNode n = null;
+    FieldnameAndOperator fao;
 }
 {
-    (
-          n = Fuzzy()
+    fao = OptionalFieldname() (
+        LOOKAHEAD(2)
+          n = Range()
+        | n = Fuzzy()
         | n = Prefix()
         | n = Wildcard()
         | n = NotNull()
@@ -448,8 +433,27 @@ QueryParserNode Literal() :
         | n = Boolean()
         | n = Null()
         | n = Number()
-    )
-    { return n; }
+        | n = Array()
+        | n = ArrayData()
+
+    ) OptionalBoost(n)
+    {
+        if (!inArray) {
+            if (fao == null)
+               fao = fieldnameStack.isEmpty() ? null : fieldnameStack.peek();
+
+            if (n instanceof ASTRange) {
+                // don't set the fieldname of ASTRange child nodes
+                n.fieldname = fao == null ? "_all" : fao.fieldname;
+            } else {
+                // set fieldname for this node and all its children
+                n.forceFieldname(fao == null ? "_all" : fao.fieldname);
+            }
+
+            n.operator = fao == null ? QueryParserNode.Operator.CONTAINS : fao.operator;
+        }
+        return n;
+    }
 }
 
 QueryParserNode Not() #Not : {}
@@ -695,7 +699,7 @@ QueryParserNode Array() #Array(>0) :
 }
 {
     (
-        "[" Literal() ( "," Literal() )* "]"
+        "[" { inArray = true; } (Literal() ( "," Literal() )*) { inArray = false; } "]"
     )
     { return jjtThis; }
 }
@@ -775,4 +779,30 @@ QueryParserNode Script() #Script :
         jjtThis.value = t.image.substring(2, t.image.length()-2);
         return jjtThis;
     }
+}
+
+QueryParserNode BoolQuery() #BoolQuery :
+{
+
+}
+{
+    ( <BOOL_QUERY> "(" [Must()] [Should()] [MustNot()] ")" )
+    {
+        return jjtThis;
+    }
+}
+
+void Must() #Must : {}
+{
+    <MUST> "(" (Literal() [","] ["&"] ["!"] ["%"] [<AND>] [<OR>] [<NOT>] [<WITH>] )* ")"
+}
+
+void Should() #Should : {}
+{
+    <SHOULD> "(" (Literal() [","] ["&"] ["!"] ["%"] [<AND>] [<OR>] [<NOT>] [<WITH>] )* ")"
+}
+
+void MustNot() #MustNot : {}
+{
+    <MUST_NOT> "(" (Literal() [","] ["&"] ["!"] ["%"] [<AND>] [<OR>] [<NOT>] [<WITH>] )* ")"
 }
