@@ -3696,8 +3696,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 data,
                 "phrase_field:\"* non * programmers\"");
         highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
 
-        assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"programmers\",\"startOffset\":12,\"endOffset\":23,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"non\",\"startOffset\":8,\"endOffset\":11,\"position\":2,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"}]",
+        assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"non\",\"startOffset\":8,\"endOffset\":11,\"position\":2,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"programmers\",\"startOffset\":12,\"endOffset\":23,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"}]",
                 new ObjectMapper().writeValueAsString(highlights));
     }
 
@@ -3840,8 +3841,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 data,
                 "#bool(#must(phrase_field:a) #should(phrase_field:b phrase_field:c phrase_field:d) #must_not(phrase_field:e))");
         highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
 
-        assertEquals("[{\"term\":\"d\",\"startOffset\":6,\"endOffset\":7,\"position\":4,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"d\\\"\"},{\"term\":\"b\",\"startOffset\":2,\"endOffset\":3,\"position\":2,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"b\\\"\"},{\"term\":\"c\",\"startOffset\":4,\"endOffset\":5,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"c\\\"\"},{\"term\":\"a\",\"startOffset\":0,\"endOffset\":1,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"a\\\"\"}]",
+        assertEquals("[{\"term\":\"a\",\"startOffset\":0,\"endOffset\":1,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"a\\\"\"},{\"term\":\"b\",\"startOffset\":2,\"endOffset\":3,\"position\":2,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"b\\\"\"},{\"term\":\"c\",\"startOffset\":4,\"endOffset\":5,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"c\\\"\"},{\"term\":\"d\",\"startOffset\":6,\"endOffset\":7,\"position\":4,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"d\\\"\"}]",
                 new ObjectMapper().writeValueAsString(highlights));
     }
 

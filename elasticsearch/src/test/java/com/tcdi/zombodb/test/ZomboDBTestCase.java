@@ -15,6 +15,7 @@
  */
 package com.tcdi.zombodb.test;
 
+import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.query_parser.QueryRewriter;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -31,6 +32,9 @@ import org.junit.BeforeClass;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
@@ -148,5 +152,16 @@ public abstract class ZomboDBTestCase {
     protected String toAST(String query) {
         return qr(query).dumpAsString();
     }
+
+    protected void sortHighlightTokens(List<AnalyzedField.Token> highlights) {
+        Collections.sort(highlights, new Comparator<AnalyzedField.Token>() {
+            @Override
+            public int compare(AnalyzedField.Token o1, AnalyzedField.Token o2) {
+                int cmp = o1.getFieldName().compareTo(o2.getFieldName());
+                return cmp == 0 ? o1.getPosition() - o2.getPosition() : cmp;
+            }
+        });
+    }
+
 
 }
