@@ -3696,8 +3696,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 data,
                 "phrase_field:\"* non * programmers\"");
         highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
 
-        assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"programmers\",\"startOffset\":12,\"endOffset\":23,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"non\",\"startOffset\":8,\"endOffset\":11,\"position\":2,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"}]",
+        assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"non\",\"startOffset\":8,\"endOffset\":11,\"position\":2,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"programmers\",\"startOffset\":12,\"endOffset\":23,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"}]",
                 new ObjectMapper().writeValueAsString(highlights));
     }
 
@@ -3739,5 +3740,112 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      Phrase (fieldname=phrase_field, operator=REGEX, value=^A.*, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testBoolQueryAST_Issue75() throws Exception {
+        assertAST("#bool( #must(here, there and everywhere)  #should(phrase_field:abc title:xyz stuff)  #must_not(foo bar) )",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      BoolQuery\n" +
+                        "         Must\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=here, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=here, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=there, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=there, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=everywhere, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=everywhere, index=db.schema.table.index)\n" +
+                        "         Should\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=abc, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=title, operator=CONTAINS, value=xyz, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=stuff, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=stuff, index=db.schema.table.index)\n" +
+                        "         MustNot\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=bar, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=bar, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testBoolQueryJSON_Issue75() throws Exception {
+        assertJson("#bool( #must(a:here, b:there and c:everywhere)  #should(phrase_field:abc title:xyz stuff)  #must_not(x:foo y:bar) )",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"a\" : \"here\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"b\" : \"there\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"c\" : \"everywhere\"\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"must_not\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"x\" : \"foo\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"y\" : \"bar\"\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"phrase_field\" : \"abc\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"title\" : \"xyz\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"fulltext_field\" : \"stuff\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"_all\" : \"stuff\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue75Highlighting() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+        DocumentHighlighter highlighter;
+        List<AnalyzedField.Token> highlights;
+
+        data.put("phrase_field", "a b c d e");
+        highlighter = new DocumentHighlighter(client(),
+                DEFAULT_INDEX_NAME,
+                "id",
+                data,
+                "#bool(#must(phrase_field:a) #should(phrase_field:b phrase_field:c phrase_field:d) #must_not(phrase_field:e))");
+        highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
+
+        assertEquals("[{\"term\":\"a\",\"startOffset\":0,\"endOffset\":1,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"a\\\"\"},{\"term\":\"b\",\"startOffset\":2,\"endOffset\":3,\"position\":2,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"b\\\"\"},{\"term\":\"c\",\"startOffset\":4,\"endOffset\":5,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"c\\\"\"},{\"term\":\"d\",\"startOffset\":6,\"endOffset\":7,\"position\":4,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"d\\\"\"}]",
+                new ObjectMapper().writeValueAsString(highlights));
+    }
+
 }
 
