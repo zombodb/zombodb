@@ -3912,5 +3912,74 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (fieldname=phrase_field, operator=CONTAINS, value=test, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testIssue75_SupportProximityAST() throws Exception {
+        assertAST("#bool(#must( phrase_field:(a w/3 b w/7 c) )  #should( phrase_field:(a w/3 b w/7 c) ) #must_not( phrase_field:(a w/3 b w/7 c) ))",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      BoolQuery\n" +
+                        "         Must\n" +
+                        "            Proximity (fieldname=phrase_field, operator=CONTAINS, distance=3, ordered=false, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "               Proximity (fieldname=phrase_field, operator=CONTAINS, distance=7, ordered=false, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=phrase_field, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=phrase_field, operator=CONTAINS, value=c, index=db.schema.table.index)\n" +
+                        "         Should\n" +
+                        "            Proximity (fieldname=phrase_field, operator=CONTAINS, distance=3, ordered=false, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "               Proximity (fieldname=phrase_field, operator=CONTAINS, distance=7, ordered=false, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=phrase_field, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=phrase_field, operator=CONTAINS, value=c, index=db.schema.table.index)\n" +
+                        "         MustNot\n" +
+                        "            Proximity (fieldname=phrase_field, operator=CONTAINS, distance=3, ordered=false, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "               Proximity (fieldname=phrase_field, operator=CONTAINS, distance=7, ordered=false, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=phrase_field, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=phrase_field, operator=CONTAINS, value=c, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue75_SupportProximityJson() throws Exception {
+        assertJson("#bool(#must( phrase_field:(a w/3 b w/7 c) ))",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : {\n" +
+                        "      \"span_near\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"phrase_field\" : {\n" +
+                        "              \"value\" : \"a\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_near\" : {\n" +
+                        "            \"clauses\" : [ {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"b\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"c\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            } ],\n" +
+                        "            \"slop\" : 7,\n" +
+                        "            \"in_order\" : false\n" +
+                        "          }\n" +
+                        "        } ],\n" +
+                        "        \"slop\" : 3,\n" +
+                        "        \"in_order\" : false\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 

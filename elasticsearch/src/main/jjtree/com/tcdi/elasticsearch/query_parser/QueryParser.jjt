@@ -363,6 +363,13 @@ void ProximityExpression() : {}
     ) #Proximity(>1)
 }
 
+void LiteralProximityExpression() : {}
+{
+    (
+        Literal() (LOOKAHEAD(2) ProximityOperator(jjtThis) LiteralProximityExpression() )*
+    ) #Proximity(>1)
+}
+
 void ProximityOperator(QueryParserNode node) :
 {
     Token prox;
@@ -798,7 +805,7 @@ void Must() :
 }
 {
     fop = OptionalFieldname() { fieldnameStack.push(fop); } "("
-        (LOOKAHEAD(3) (_ignored_tokens_() | Literal()) | Must() )*
+        (LOOKAHEAD(3) (_ignored_tokens_() | LiteralProximityExpression()) | Must() )*
     { fieldnameStack.pop(); } ")"
 }
 
@@ -808,7 +815,7 @@ void Should() :
 }
 {
     fop = OptionalFieldname() { fieldnameStack.push(fop); } "("
-        (LOOKAHEAD(3) (_ignored_tokens_() | Literal()) | Should() )*
+        (LOOKAHEAD(3) (_ignored_tokens_() | LiteralProximityExpression()) | Should() )*
     { fieldnameStack.pop(); } ")"
 }
 
@@ -818,7 +825,7 @@ void MustNot() :
 }
 {
     fop = OptionalFieldname() { fieldnameStack.push(fop); } "("
-        (LOOKAHEAD(3) (_ignored_tokens_() | Literal()) | MustNot() )*
+        (LOOKAHEAD(3) (_ignored_tokens_() | LiteralProximityExpression()) | MustNot() )*
     { fieldnameStack.pop(); } ")"
 }
 
