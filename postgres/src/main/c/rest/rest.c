@@ -269,9 +269,7 @@ StringInfo rest_call(char *method, char *url, StringInfo postData)
 
     curl_easy_getinfo(GLOBAL_CURL_INSTANCE, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code < 200 || (response_code >=300 && response_code != 404)) {
-        text *errorText = DatumGetTextP(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("error")));
-
-        elog(ERROR, "rc=%ld; %s", response_code, errorText != NULL ? TextDatumGetCString(errorText) : response->data);
+        elog(ERROR, "rc=%ld; %s", response_code, response->data);
     }
 
     pfree(errorbuff);
