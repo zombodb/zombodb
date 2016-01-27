@@ -117,8 +117,12 @@ public class DocumentHighlighter {
         else if (node instanceof ASTExpansion)
             highlight(((ASTExpansion) node).getQuery());
         else if (node instanceof ASTBoolQuery) {
-            highlightChildren(((ASTBoolQuery) node).getMust());
-            highlightChildren(((ASTBoolQuery) node).getShould());
+            ASTBoolQuery boolQuery = (ASTBoolQuery) node;
+
+            if (boolQuery.getMust() != null)
+                highlightChildren(boolQuery.getMust());
+            if (boolQuery.getShould() != null)
+                highlightChildren(boolQuery.getShould());
         }
         else if (node instanceof ASTNot)
             ;   // do nothing for ASTNot nodes
