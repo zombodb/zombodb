@@ -1,0 +1,17 @@
+SELECT term
+FROM zdb_suggest_terms('so_posts', 'body', 'beer', '', 5000)
+LIMIT 10;
+ term  
+-------
+ BEER
+ BEEN
+ BEAR
+ BEEF
+ BEERS
+ BEEP
+ BEES
+ BETER
+ BEED
+ BEMER
+(10 rows)
+
