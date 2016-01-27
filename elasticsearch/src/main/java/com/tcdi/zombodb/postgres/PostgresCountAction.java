@@ -77,8 +77,8 @@ public class PostgresCountAction extends BaseRestHandler {
             response = new BytesRestResponse(RestStatus.OK, String.valueOf(count));
             channel.sendResponse(response);
         } catch (Exception e) {
-            if (logger.isDebugEnabled())
-                logger.debug("Error estimating records", e);
+//            if (logger.isDebugEnabled())
+            logger.error("Error estimating records", e);
             throw e;
         } finally {
             long end = System.currentTimeMillis();
