@@ -261,12 +261,22 @@ public class QueryRewriter {
         String fieldname = tree.getAggregate().getFieldname();
         IndexMetadata md = metadataManager.getMetadataForField(fieldname);
 
+        return maybeStripFieldname(fieldname, md);
+    }
+
+    public String getSuggestFieldName() {
+        String fieldname = tree.getSuggest().getFieldname();
+        IndexMetadata md = metadataManager.getMetadataForField(fieldname);
+
+        return maybeStripFieldname(fieldname, md);
+    }
+
+    private String maybeStripFieldname(String fieldname, IndexMetadata md) {
         if (fieldname.contains(".")) {
             String base = fieldname.substring(0, fieldname.indexOf('.'));
             if (base.equals(md.getLink().getFieldname()))   // strip base fieldname becase it's in a named index, not a json field
                 fieldname = fieldname.substring(fieldname.indexOf('.')+1);
         }
-
         return fieldname;
     }
 
@@ -322,7 +332,7 @@ public class QueryRewriter {
             return null;
 
         TermSuggestionBuilder tsb = new TermSuggestionBuilder("suggestions");
-        tsb.field(getAggregateFieldName());
+        tsb.field(getSuggestFieldName());
         tsb.size(agg.getMaxTerms());
         tsb.text(agg.getStem());
         tsb.suggestMode("always");

@@ -1,0 +1,17 @@
+SELECT *
+FROM zdb_suggest_terms('so_posts', 'body', 'beer', '', 5000)
+LIMIT 10;
+ term  | count 
+-------+-------
+ BEER  |   174
+ BEEN  | 18957
+ BEAR  |   415
+ BEEF  |    39
+ BEERS |    35
+ BEEP  |    22
+ BEES  |    15
+ BETER |     7
+ BEED  |     2
+ BEMER |     1
+(10 rows)
+
