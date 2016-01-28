@@ -20,6 +20,7 @@ import com.tcdi.zombodb.postgres.util.QueryAndIndexPair;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
+import org.elasticsearch.action.search.ShardSearchFailure;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.inject.Inject;
@@ -68,8 +69,15 @@ public class PostgresCountAction extends BaseRestHandler {
 
             SearchResponse searchResponse = client.search(searchRequest).get();
 
-            if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
-                throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
+            if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards()) {
+                StringBuilder sb = new StringBuilder(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
+                ShardSearchFailure[] failures = searchResponse.getShardFailures();
+                for (int i=0; i<failures.length; i++) {
+                    sb.append("\n");
+                    sb.append(i + 1).append(": ").append(failures[i].toString());
+                }
+                throw new Exception(sb.toString());
+            }
 
             count = searchResponse.getHits().getTotalHits();
 
