@@ -17,7 +17,6 @@ package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.postgres.util.OverloadedContentRestRequest;
 import com.tcdi.zombodb.postgres.util.QueryAndIndexPair;
-import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -68,16 +67,10 @@ public class PostgresCountAction extends BaseRestHandler {
             searchRequest.preference(request.param("preference"));
 
 
-            ActionFuture<SearchResponse> future = client.search(searchRequest);
+            SearchResponse searchResponse = client.search(searchRequest).get();
 
-            SearchResponse searchResponse = future.get();
-
-            if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards()) {
-                if (future.getRootFailure() != null)
-                    throw future.getRootFailure();
-                else
-                    throw new Exception((searchResponse.getTotalShards() - searchResponse.getSuccessfulShards()) + " shards failed");
-            }
+            if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
+                throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
 
             count = searchResponse.getHits().getTotalHits();
 

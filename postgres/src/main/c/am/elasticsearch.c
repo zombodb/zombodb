@@ -246,6 +246,8 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor)
 	appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("PUT", endpoint->data, indexSettings);
 
+	elasticsearch_refreshIndex(indexDescriptor);
+	
 	freeStringInfo(indexSettings);
 	freeStringInfo(response);
 	freeStringInfo(endpoint);
