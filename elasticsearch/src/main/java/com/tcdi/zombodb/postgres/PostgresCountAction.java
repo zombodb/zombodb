@@ -72,7 +72,7 @@ public class PostgresCountAction extends BaseRestHandler {
             if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards()) {
                 BytesStreamOutput so = new BytesStreamOutput();
                 searchResponse.writeTo(so);
-                throw new Exception(new String(so.bytes().toBytes()));
+                throw new Exception(so.bytes().toUtf8());
             }
 
             count = searchResponse.getHits().getTotalHits();
