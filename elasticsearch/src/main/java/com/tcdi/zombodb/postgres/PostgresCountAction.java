@@ -17,13 +17,13 @@ package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.postgres.util.OverloadedContentRestRequest;
 import com.tcdi.zombodb.postgres.util.QueryAndIndexPair;
+import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.io.stream.BytesStreamOutput;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.search.RestSearchAction;
@@ -67,12 +67,16 @@ public class PostgresCountAction extends BaseRestHandler {
             searchRequest.searchType(SearchType.COUNT);
             searchRequest.preference(request.param("preference"));
 
-            SearchResponse searchResponse = client.search(searchRequest).get();
+
+            ActionFuture<SearchResponse> future = client.search(searchRequest);
+
+            SearchResponse searchResponse = future.get();
 
             if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards()) {
-                BytesStreamOutput so = new BytesStreamOutput();
-                searchResponse.writeTo(so);
-                throw new Exception(so.bytes().toUtf8());
+                if (future.getRootFailure() != null)
+                    throw future.getRootFailure();
+                else
+                    throw new Exception((searchResponse.getTotalShards() - searchResponse.getSuccessfulShards()) + " shards failed");
             }
 
             count = searchResponse.getHits().getTotalHits();
@@ -80,10 +84,10 @@ public class PostgresCountAction extends BaseRestHandler {
             // and return that number as a string
             response = new BytesRestResponse(RestStatus.OK, String.valueOf(count));
             channel.sendResponse(response);
-        } catch (Exception e) {
+        } catch (Throwable e) {
 //            if (logger.isDebugEnabled())
             logger.error("Error estimating records", e);
-            throw e;
+            throw new RuntimeException(e);
         } finally {
             long end = System.currentTimeMillis();
             logger.info("Estimated " + count + " records in " + ((end-start)/1000D) + " seconds.");
