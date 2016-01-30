@@ -154,6 +154,26 @@ static void checkForRefreshError(StringInfo response) {
 	}
 }
 
+static void es_wait_for_index_availability(ZDBIndexDescriptor *indexDescriptor) {
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+	char *status;
+
+	/* ask ES to wait for the health status of this index to be at least yellow.  Has default timeout of 30s */
+	appendStringInfo(endpoint, "%s/_cluster/health/%s?wait_for_status=yellow", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	response = rest_call("GET", endpoint->data, NULL);
+	if (response->len == 0 || response->data[0] != '{')
+		elog(ERROR, "Response from cluster health not in correct format: %s", response->data);
+
+	status = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("status")));
+
+	/* If the index isn't available, raise an error */
+	if (status == NULL || (strcmp("green", status) != 0 && strcmp("yellow", status) != 0))
+		elog(ERROR, "Index health indicates index is not available: %s", response->data);
+
+	/* otherwise, it's all good */
+}
+
 void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, bool noxact, char *fieldProperties)
 {
 	StringInfo endpoint      = makeStringInfo();
@@ -246,14 +266,13 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor)
 	appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("PUT", endpoint->data, indexSettings);
 
-	elasticsearch_refreshIndex(indexDescriptor);
-	
+	es_wait_for_index_availability(indexDescriptor);
+
 	freeStringInfo(indexSettings);
 	freeStringInfo(response);
 	freeStringInfo(endpoint);
 
 }
-
 
 void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping)
 {
