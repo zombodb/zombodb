@@ -301,7 +301,7 @@ public class IndexMetadataManager {
         if (!relationshipManager.relationshipsDefined()) {
             for (IndexLinkAndMapping ilm : mappings) {
                 ASTIndexLink link = ilm.link;
-                relationshipManager.addRelationship(originalMyIndex.getIndexName(), link.getLeftFieldname(), link.getIndexName(), link.getRightFieldname());
+                relationshipManager.addRelationship(findField(link.getLeftFieldname()).getIndexName(), link.getLeftFieldname(), link.getIndexName(), link.getRightFieldname());
             }
         }
 

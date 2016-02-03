@@ -1204,8 +1204,8 @@ public class QueryRewriter {
                 if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
                     last = expansion.getQuery();
                 } else {
-                    String leftFieldname;
-                    String rightFieldname;
+                    String leftFieldname = null;
+                    String rightFieldname = null;
 
                     if (expansion.isGenerated()) {
 
@@ -1260,15 +1260,60 @@ public class QueryRewriter {
                                 throw new QueryRewriteException("Field equivalency cannot be determined");
                             }
                         } else {
-                            // although I think we can with a while() loop that keeps resolving field data with each
-                            // node in the path
-                            throw new QueryRewriteException("Don't know how to resolve multiple levels of indirection");
+                            oneToOne = false;
+                            int i = path.size()-1;
+                            while(i >= 0) {
+                                String leftIndex;
+                                final String rightIndex;
+
+                                rightFieldname = path.get(i);
+                                leftFieldname = path.get(--i);
+
+                                if (!rightFieldname.contains(":")) {
+                                    continue;
+                                }
+
+                                leftIndex = leftFieldname.substring(0, leftFieldname.indexOf(':'));
+                                rightIndex = rightFieldname.substring(0, rightFieldname.indexOf(':'));
+
+                                leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
+                                rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
+
+                                if (last != null) {
+                                    final String finalRightFieldname = rightFieldname;
+                                    final String finalLeftFieldname = leftFieldname;
+                                    ASTIndexLink newLink = new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
+                                        @Override
+                                        public String getLeftFieldname() {
+                                            return finalLeftFieldname;
+                                        }
+
+                                        @Override
+                                        public String getIndexName() {
+                                            return rightIndex;
+                                        }
+
+                                        @Override
+                                        public String getRightFieldname() {
+                                            return finalRightFieldname;
+                                        }
+                                    };
+                                    expansion.jjtAddChild(newLink, 0);
+                                    expansion.jjtAddChild(last, 1);
+                                }
+
+                                last = loadFielddata(expansion, leftFieldname, rightFieldname);
+
+                                i--;
+                            }
                         }
 
-                        if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
-                            last = expansion.getQuery();
-                        } else {
-                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
+                        if (last == null) {
+                            if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
+                                last = expansion.getQuery();
+                            } else {
+                                last = loadFielddata(expansion, leftFieldname, rightFieldname);
+                            }
                         }
                     }
                 }
