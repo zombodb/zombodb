@@ -172,6 +172,8 @@ public class QueryRewriter {
             // load index mappings for any index defined in #options()
             metadataManager.loadReferencedMappings(tree.getOptions());
 
+            new ArrayDataOptimizer(tree, metadataManager, arrayData).optimize();
+
             ASTAggregate aggregate = tree.getAggregate();
             ASTSuggest suggest = tree.getSuggest();
             if (aggregate != null || suggest != null) {

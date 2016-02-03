@@ -347,10 +347,12 @@ public class Utils {
                     break;
             }
 
-            if (inArrayData)
-                currentArray.append(ch);
-            else
+            if (inArrayData) {
+                if (ch != '[')
+                    currentArray.append(ch);
+            } else {
                 output.append(ch);
+            }
         }
 
         return arrayData;

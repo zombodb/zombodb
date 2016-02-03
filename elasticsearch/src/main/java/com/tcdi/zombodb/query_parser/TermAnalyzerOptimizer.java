@@ -2,6 +2,9 @@ package com.tcdi.zombodb.query_parser;
 
 import org.elasticsearch.client.Client;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by e_ridge on 1/14/16.
  */
@@ -19,6 +22,7 @@ public class TermAnalyzerOptimizer {
 
     public void optimize() {
         analyzeNodes(tree);
+        pullOutComplexTokensFromArrays(tree);
     }
 
     private void analyzeNodes(QueryParserNode root) {
@@ -45,4 +49,30 @@ public class TermAnalyzerOptimizer {
         QueryParserNode newNode = Utils.rewriteToken(client, metadataManager, node);
         ((QueryParserNode) node.parent).replaceChild(node, newNode);
     }
+
+    private void pullOutComplexTokensFromArrays(QueryParserNode root) {
+        if (root instanceof ASTArray) {
+            List<QueryParserNode> complex = new ArrayList<>();
+            for (QueryParserNode child : root) {
+                if (child instanceof ASTWord || child instanceof ASTNumber || child instanceof ASTBoolean)
+                    continue;
+                complex.add(child);
+                root.removeNode(child);
+            }
+            if (!complex.isEmpty()) {
+                root.renumber();
+                ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
+                for (QueryParserNode node : complex)
+                    or.jjtAddChild(node, or.jjtGetNumChildren());
+                ((QueryParserNode) root.parent).replaceChild(root, or);
+
+                if (root.jjtGetNumChildren() > 0)
+                    or.jjtAddChild(root, or.jjtGetNumChildren());
+            }
+        } else {
+            for (QueryParserNode child : root)
+                pullOutComplexTokensFromArrays(child);
+        }
+    }
+
 }
