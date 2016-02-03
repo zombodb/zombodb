@@ -1263,41 +1263,24 @@ public class QueryRewriter {
                             oneToOne = false;
                             int i = path.size()-1;
                             while(i >= 0) {
-                                String leftIndex;
                                 final String rightIndex;
 
                                 rightFieldname = path.get(i);
                                 leftFieldname = path.get(--i);
 
                                 if (!rightFieldname.contains(":")) {
+                                    // the right fieldname is a reference to a table not a specific field, so
+                                    // skip the path entry
                                     continue;
                                 }
 
-                                leftIndex = leftFieldname.substring(0, leftFieldname.indexOf(':'));
                                 rightIndex = rightFieldname.substring(0, rightFieldname.indexOf(':'));
 
                                 leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
                                 rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
 
                                 if (last != null) {
-                                    final String finalRightFieldname = rightFieldname;
-                                    final String finalLeftFieldname = leftFieldname;
-                                    ASTIndexLink newLink = new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
-                                        @Override
-                                        public String getLeftFieldname() {
-                                            return finalLeftFieldname;
-                                        }
-
-                                        @Override
-                                        public String getIndexName() {
-                                            return rightIndex;
-                                        }
-
-                                        @Override
-                                        public String getRightFieldname() {
-                                            return finalRightFieldname;
-                                        }
-                                    };
+                                    ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, rightIndex, rightFieldname);
                                     expansion.jjtAddChild(newLink, 0);
                                     expansion.jjtAddChild(last, 1);
                                 }
