@@ -2681,7 +2681,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
-                        "      Array (fieldname=phrase_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "      Or\n" +
                         "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=RESPONSIVE BATCH EDIT, index=db.schema.table.index)\n" +
                         "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=Insider Trading, index=db.schema.table.index)"
         );
@@ -3979,6 +3979,112 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    }\n" +
                         "  }\n" +
                         "}"
+        );
+    }
+
+    @Test
+    public void testIssue80_analyzedExactField() throws Exception {
+        String q = "exact_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
+
+        assertJson(q,
+                "{\n" +
+                        "  \"terms\" : {\n" +
+                        "    \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+
+        assertAST(q,
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=12/31/1999, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=2/3/1999, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=12/31/2016, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=unknown, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=2/2/2016, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue80_unanalyzedField() throws Exception {
+        String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
+        assertJson(q,
+                "{\n" +
+                        "  \"terms\" : {\n" +
+                        "    \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+
+        assertAST(q,
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      ArrayData (fieldname=unanalyzed_field, operator=EQ, value=$0, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue80_analyzedPhraseField() throws Exception {
+        String q = "phrase_field =[[\"This is a mIxEDcAsE PHRASE\", \"UNKNOWN\", \"12/31/1999\"]]";
+
+        assertJson(q,
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"match\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"query\" : \"This is a mIxEDcAsE PHRASE\",\n" +
+                        "          \"type\" : \"phrase\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"match\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"query\" : \"12/31/1999\",\n" +
+                        "          \"type\" : \"phrase\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"phrase_field\" : [ \"unknown\" ]\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+
+        assertAST(q,
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Or\n" +
+                        "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=This is a mIxEDcAsE PHRASE, index=db.schema.table.index)\n" +
+                        "         Phrase (fieldname=phrase_field, operator=CONTAINS, value=12/31/1999, index=db.schema.table.index)\n" +
+                        "         Array (fieldname=phrase_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=unknown, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue80_pkeyColumn() throws Exception {
+        String q = "id:[[1,2,3,4,5,6,7,8,9,10]]";
+
+        assertJson(q,
+                "{\n" +
+                        "  \"terms\" : {\n" +
+                        "    \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+
+        assertAST(q,
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      ArrayData (fieldname=id, operator=CONTAINS, value=$0, index=db.schema.table.index)"
         );
     }
 }

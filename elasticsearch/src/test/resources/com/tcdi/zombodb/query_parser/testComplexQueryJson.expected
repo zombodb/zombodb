@@ -2710,60 +2710,210 @@
                 "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "fulltext_field"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "_all"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "fulltext_field"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "_all"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "fulltext_field"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "_all"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "fulltext_field"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "_all"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "fulltext_field"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99, null ]
+                      "bool" : {
+                        "should" : [ {
+                          "filtered" : {
+                            "query" : {
+                              "match_all" : { }
+                            },
+                            "filter" : {
+                              "missing" : {
+                                "field" : "_all"
+                              }
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                          }
+                        } ]
                       }
                     } ]
                   }
@@ -3418,70 +3568,180 @@
                 "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "fulltext_field" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "_all" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "fulltext_field" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "_all" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "fulltext_field" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "_all" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "fulltext_field" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "_all" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "fulltext_field" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
-                        "minimum_should_match" : "6"
+                      "bool" : {
+                        "should" : [ {
+                          "match" : {
+                            "_all" : {
+                              "query" : "abcd",
+                              "type" : "phrase"
+                            }
+                          }
+                        }, {
+                          "terms" : {
+                            "_all" : [ "to", 10, "a", "to", "z" ],
+                            "minimum_should_match" : "5"
+                          }
+                        } ]
                       }
                     } ]
                   }
