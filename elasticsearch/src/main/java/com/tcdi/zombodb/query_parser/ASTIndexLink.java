@@ -3,6 +3,26 @@
 package com.tcdi.zombodb.query_parser;
 
 public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode {
+
+    public static ASTIndexLink create(final String leftFieldname, final String indexName, final String rightFieldname) {
+        return new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
+            @Override
+            public String getLeftFieldname() {
+                return leftFieldname;
+            }
+
+            @Override
+            public String getIndexName() {
+                return indexName;
+            }
+
+            @Override
+            public String getRightFieldname() {
+                return rightFieldname;
+            }
+        };
+    }
+
     public ASTIndexLink(int id) {
         super(id);
     }
