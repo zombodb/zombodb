@@ -633,6 +633,11 @@ INSERT INTO zdb_filters(name, definition, is_default) VALUES (
         }', true);
 
 INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
+  'default', '{
+          "tokenizer": "keyword",
+          "filter": ["trim", "zdb_truncate_32000", "lowercase"]
+        }', true);
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
   'exact', '{
           "tokenizer": "keyword",
           "filter": ["trim", "zdb_truncate_32000", "lowercase"]
