@@ -395,7 +395,10 @@ public class Utils {
         cnt = initialAnalyze.size();
 
         if (cnt == 0) {
-            throw new RuntimeException("All tokens removed from input: " + input);
+            ASTWord word = new ASTWord(QueryParserTreeConstants.JJTWORD);
+            word.value = "";
+            word.fieldname = node.fieldname;
+            return word;
         } else {
             EscapingStringTokenizer st = new EscapingStringTokenizer(input, "*?~ \r\n\t\f", true);
             StringBuilder sb = new StringBuilder();
