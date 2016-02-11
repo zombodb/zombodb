@@ -215,7 +215,7 @@ void RangeAggregate() #RangeAggregate :
     FieldnameRef fn;
 }
 {
-    ( <RANGE> "(" (fn = TrackedFieldnameReference()) "," Phrase() [ "," Aggregations() ] ")" )
+    ( <RANGE> "(" (fn = TrackedFieldnameReference()) "," (Word()|Phrase()) [ "," Aggregations() ] ")" )
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
