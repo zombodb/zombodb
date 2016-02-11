@@ -38,7 +38,7 @@ src/test/sql/so_comments.sql:
 
 installcheck: src/test/sql/setup.sql src/test/sql/so_comments.sql
 
-installcheck-random: REGRESS = $(shell echo --use-existing && (cat src/test/tests.list | grep -v ^setup | grep -v ^so_comments | grep -v ^configure | grep -v ^create-indexes) | src/main/shell/mysort)
+installcheck-random: REGRESS = $(shell echo --use-existing && (cat src/test/tests.list | grep -v ^setup | grep -v ^so_comments | grep -v ^configure | grep -v ^create-indexes | grep -v ^load-tutorial) | src/main/shell/mysort)
 installcheck-random: installcheck
 
 # add the SQL build target to the ALL build target

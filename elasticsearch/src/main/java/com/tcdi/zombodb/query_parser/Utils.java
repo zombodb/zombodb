@@ -216,7 +216,7 @@ public class Utils {
         return convertToProximityForHighlighting(phrase.getFieldname(), Utils.simpleTokenize(String.valueOf(phrase.getValue())));
     }
 
-    public static ASTProximity convertToProximityForHighlighting(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
+    public static QueryParserNode convertToProximityForHighlighting(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
         return convertToProximityForHighlighting(fieldname, new Iterable<String>() {
             @Override
             public Iterator<String> iterator() {
@@ -240,7 +240,8 @@ public class Utils {
             }
         });
     }
-    public static ASTProximity convertToProximityForHighlighting(String fieldname, Iterable<String> tokens) {
+
+    public static QueryParserNode convertToProximityForHighlighting(String fieldname, Iterable<String> tokens) {
         // rewrite the phrase as a proximity query
         StringBuilder sb = new StringBuilder();
         for (String token : tokens) {
@@ -259,10 +260,7 @@ public class Utils {
         try {
             QueryParser qp = new QueryParser(new StringReader(sb.toString()));
             ASTQueryTree tree = qp.parse(false);
-            QueryParserNode prox = tree.getChild(0);
-            if (!(prox instanceof ASTProximity))
-                throw new RuntimeException("Phrase (" + sb.toString() + ") did not parse into a proximity chain");
-            return (ASTProximity) prox;
+            return tree.getChild(0);
         } catch (RuntimeException re) {
             throw re;
         } catch (Exception e) {
@@ -270,10 +268,6 @@ public class Utils {
         }
     }
 
-
-    public static ASTProximity convertToProximity(ASTPhrase phrase) {
-        return convertToProximity(phrase.getFieldname(), Utils.simpleTokenize(String.valueOf(phrase.getValue())));
-    }
 
     public static ASTProximity convertToProximity(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
         return convertToProximity(fieldname, new Iterable<String>() {

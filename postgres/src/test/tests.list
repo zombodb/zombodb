@@ -2,6 +2,7 @@ setup
 so_comments
 configure
 create-indexes
+load-tutorial
 mappings
 counts
 words
@@ -66,3 +67,4 @@ issue-77
 issue-80
 issue-83
 issue-85
+issue-87

@@ -3703,6 +3703,32 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testIssue87() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+
+        data.put("phrase_field", "getting non-programmers to understand the development process");
+
+        for (String s : new String[] { "~", ":",  "*",  "?",
+                "!",  "%",  "&",  "(",  ")", ",",
+                "<",  "=",  ">",  "[",  "]", "^", "@", "#" }) {
+            DocumentHighlighter highlighter;
+            List<AnalyzedField.Token> highlights;
+
+            highlighter = new DocumentHighlighter(client(),
+                    DEFAULT_INDEX_NAME,
+                    "id",
+                    data,
+                    "phrase_field:'" + s + "getting'");
+            highlights = highlighter.highlight();
+            sortHighlightTokens(highlights);
+
+            assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"" + s + "getting\\\"\"}]",
+                    new ObjectMapper().writeValueAsString(highlights));
+        }
+    }
+
+    @Test
     public void testTermMergingWithBoots() throws Exception {
         assertJson("phrase_field:(beer^3 wine)",
                 "{\n" +

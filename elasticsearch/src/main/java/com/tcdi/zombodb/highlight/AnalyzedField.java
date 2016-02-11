@@ -175,7 +175,7 @@ public class AnalyzedField {
 
         public void keep(ASTPhrase phrase) {
             String value = String.valueOf(phrase.getValue());
-            List<String> tokens = Utils.simpleTokenize(value);
+            final List<String> tokens = Utils.simpleTokenize(value);
             QueryParserNode toKeep;
 
             if (phrase.getOperator() == QueryParserNode.Operator.REGEX) {
@@ -186,9 +186,20 @@ public class AnalyzedField {
             if (!phrase.isBeenSubparsed() && tokens.size() == 1 && !Utils.isComplexTerm(value)) {
                 // single-token phrase, so rewrite as a word
                 try {
-                    ASTQueryTree tree = new QueryParser(new StringReader(tokens.get(0))).parse(true);
-                    tree.forceFieldname(fieldName);
-                    toKeep = tree.getChild(0);
+                    AnalyzeResponse analyzed = analyzePhrase(tokens.get(0));
+
+                    toKeep = new ASTWord(QueryParserTreeConstants.JJTWORD) {
+                        @Override
+                        public String getDescription() {
+                            return fieldname + " " + operator + " " + "\"" + tokens.get(0) + "\"";
+                        }
+                    };
+                    if (analyzed.iterator().hasNext())
+                        toKeep.setValue(analyzed.iterator().next().getTerm());
+                    else
+                        toKeep.setValue(tokens.get(0));
+
+                    toKeep.setFieldname(fieldName);
                     toKeep.setOperator(phrase.getOperator());
                 } catch (Exception e) {
                     throw new RuntimeException(e);
