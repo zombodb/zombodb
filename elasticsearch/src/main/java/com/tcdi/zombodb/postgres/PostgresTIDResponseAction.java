@@ -80,7 +80,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             // and then change what our request looks like so it'll appear
             // as if the json version is the actual content
             long parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, false, "data".equals(request.param("type")));
+            query = buildJsonQueryFromRequestContent(client, request, false, "data".equals(request.param("type")), true);
             long parseEnd = System.nanoTime();
 
             request = new OverloadedContentRestRequest(request, new BytesArray(query.getQuery()));
@@ -96,6 +96,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             searchRequest.scroll(TimeValue.timeValueMinutes(10));
             searchRequest.searchType(SearchType.SCAN);
             searchRequest.preference(request.param("preference"));
+            searchRequest.queryCache(true);
 
             final long searchStart = System.currentTimeMillis();
             response = client.search(searchRequest).get();
@@ -115,11 +116,11 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean allowSingleIndex, boolean useParentChild) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean allowSingleIndex, boolean useParentChild, boolean doFullFieldDataLookups) {
         String query = request.content().toUtf8();
 
         try {
-            QueryRewriter qr = new QueryRewriter(client, request.param("index"), request.param("preference"), query, allowSingleIndex, useParentChild);
+            QueryRewriter qr = new QueryRewriter(client, request.param("index"), request.param("preference"), query, allowSingleIndex, useParentChild, doFullFieldDataLookups);
             String indexName;
 
             // the request content is just our straight query string

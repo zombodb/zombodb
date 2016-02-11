@@ -125,7 +125,7 @@ public abstract class ZomboDBTestCase {
     }
 
     protected QueryRewriter qr(String query, boolean useParentChild) {
-        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, false, useParentChild) {
+        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, false, useParentChild, true) {
             @Override
             protected boolean isInTestMode() {
                 return true;

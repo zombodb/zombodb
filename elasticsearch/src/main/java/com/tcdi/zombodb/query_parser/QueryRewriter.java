@@ -18,13 +18,12 @@ package com.tcdi.zombodb.query_parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.search.*;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.Fuzziness;
-import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.*;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
@@ -110,20 +109,21 @@ public class QueryRewriter {
     private final boolean useParentChild;
     private boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
+    private final boolean doFullFieldDataLookup;
 
     private Map<String, StringBuilder> arrayData;
 
     private final IndexMetadataManager metadataManager;
 
-    public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean useParentChild) {
-        this(client, indexName, searchPreference, input, allowSingleIndex, false, useParentChild);
+    public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean useParentChild, boolean doFullFieldDataLookup) {
+        this(client, indexName, searchPreference, input, allowSingleIndex, false, useParentChild, doFullFieldDataLookup);
     }
 
-    private QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild) {
-        this(client, indexName, searchPreference, input, allowSingleIndex, ignoreASTChild, useParentChild, false);
+    private QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean doFielDataLookup) {
+        this(client, indexName, searchPreference, input, allowSingleIndex, ignoreASTChild, useParentChild, false, doFielDataLookup);
     }
 
-    public  QueryRewriter(Client client, final String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean extractParentQuery) {
+    public  QueryRewriter(Client client, final String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean extractParentQuery, boolean doFielDataLookup) {
         this.client = client;
         this.indexName = indexName;
         this.input = input;
@@ -131,6 +131,7 @@ public class QueryRewriter {
         this.ignoreASTChild = ignoreASTChild;
         this.useParentChild = useParentChild;
         this.searchPreference = searchPreference;
+        this.doFullFieldDataLookup = doFielDataLookup;
 
         metadataManager = new IndexMetadataManager(
                 client,
@@ -830,21 +831,26 @@ public class QueryRewriter {
                 final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
                 int minShouldMatch = (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? cnt : 1;
 
-                TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
-                    @Override
-                    public Iterator<Object> iterator() {
-                        return itr.iterator();
-                    }
+                if (node.hasExternalValues() && minShouldMatch == 1) {
+                    TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
+                    return filteredQuery(matchAllQuery(), builder);
+                } else {
+                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+                        @Override
+                        public Iterator<Object> iterator() {
+                            return itr.iterator();
+                        }
 
-                    @Override
-                    public int size() {
-                        return cnt;
-                    }
-                });
+                        @Override
+                        public int size() {
+                            return cnt;
+                        }
+                    });
 
-                if (minShouldMatch > 1)
-                    builder.minimumMatch(minShouldMatch);
-                return builder;
+                    if (minShouldMatch > 1)
+                        builder.minimumMatch(minShouldMatch);
+                    return builder;
+                }
             }
         });
     }
@@ -1117,66 +1123,60 @@ public class QueryRewriter {
             return notNull;
         }
 
+        TermsBuilder termsBuilder = new TermsBuilder(rightFieldname)
+                .field(rightFieldname)
+                .shardSize(0)
+                .size(!doFullFieldDataLookup ? 1024 : 0);
+
         QueryBuilder nodeFilter = build(nodeQuery);
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
-                .setSize(10240)
-                .setQuery(nodeFilter)
+                .setSize(0)
+                .setSearchType(SearchType.COUNT)
+                .setQuery(constantScoreQuery(nodeFilter))
+                .setQueryCache(true)
                 .setIndices(link.getIndexName())
                 .setTypes("data")
-                .setSearchType(SearchType.SCAN)
-                .setScroll(TimeValue.timeValueMinutes(10))
-                .addFieldDataField(rightFieldname)
-                .setPostFilter(makeParentFilter(node))
-                .setTrackScores(true)
-                .setPreference(searchPreference);
+                .setTrackScores(false)
+                .setPreference(searchPreference)
+                .addAggregation(termsBuilder);
+        if (useParentChild)
+            builder.setPostFilter(makeParentFilter(node));
 
         ActionFuture<SearchResponse> future = client.search(builder.request());
+
         try {
-            SearchResponse response = future != null ? future.get() : null;
-            long totalHits = response == null ? -1 : response.getHits().getTotalHits();
+            SearchResponse response = future.get();
+            final Terms agg = (Terms) response.getAggregations().iterator().next();
 
-            if (response == null || totalHits == 0) {
-                ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
-                array.setFieldname(leftFieldname);
-                return array;
-            } else if (response.getFailedShards() > 0) {
-                StringBuilder sb = new StringBuilder();
-                for (ShardSearchFailure failure : response.getShardFailures()) {
-                    sb.append(failure).append("\n");
-                }
-                throw new QueryRewriteException(response.getFailedShards() + " shards failed:\n" + sb);
-            }
-
-            ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
-            int cnt = 0;
-            while (cnt != totalHits) {
-                response = client.searchScroll(new SearchScrollRequestBuilder(client)
-                        .setScrollId(response.getScrollId())
-                        .setScroll(TimeValue.timeValueSeconds(10))
-                        .request()).get();
-
-                if (response.getTotalShards() != response.getSuccessfulShards())
-                    throw new Exception(response.getTotalShards() - response.getSuccessfulShards() + " shards failed");
-
-                SearchHits hits = response.getHits();
-                for (SearchHit hit : hits) {
-                    List tokenList = hit.field(rightFieldname).getValues();
-                    if (tokenList != null) {
-                        for (Object token : tokenList) {
-                            ASTWord word = new ASTWord(QueryParserTreeConstants.JJTWORD);
-                            word.value = token;
-                            word.boost = hit.score()*100; // NB:  made up number that looks good for one particular set of real-world data
-                            word.fieldname = leftFieldname;
-                            or.jjtAddChild(word, or.jjtGetNumChildren());
+            ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
+            array.setFieldname(leftFieldname);
+            array.setOperator(QueryParserNode.Operator.EQ);
+            array.setExternalValues(new Iterable<Object>() {
+                @Override
+                public Iterator<Object> iterator() {
+                    final Iterator<Terms.Bucket> buckets = agg.getBuckets().iterator();
+                    return new Iterator<Object>() {
+                        @Override
+                        public boolean hasNext() {
+                            return buckets.hasNext();
                         }
-                    }
-                }
-                cnt += hits.hits().length;
-            }
 
-            return or;
+                        @Override
+                        public Object next() {
+                            return buckets.next().getKey();
+                        }
+
+                        @Override
+                        public void remove() {
+                            buckets.remove();
+                        }
+                    };
+                }
+            }, agg.getBuckets().size());
+
+            return array;
         } catch (Exception e) {
-            throw new QueryRewriteException(e);
+            throw new RuntimeException(e);
         }
     }
 

@@ -56,7 +56,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
             final long start = System.currentTimeMillis();
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             String input = request.content().toUtf8();
-            final QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), input, true, false, true, false);
+            final QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), input, true, false, true, false, true);
             QueryBuilder qb = rewriter.rewriteQuery();
             AbstractAggregationBuilder ab = rewriter.rewriteAggregations();
             SuggestBuilder.SuggestionBuilder tsb = rewriter.rewriteSuggestions();
@@ -78,6 +78,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
             builder.setNoFields();
             builder.setSearchType(SearchType.COUNT);
             builder.setPreference(request.param("preference"));
+            builder.setQueryCache(true);
 
             final ActionListener<SearchResponse> delegate = new RestStatusToXContentListener<SearchResponse>(channel);
             client.search(builder.request(), new ActionListener<SearchResponse>() {

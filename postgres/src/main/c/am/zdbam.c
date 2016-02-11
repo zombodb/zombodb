@@ -194,6 +194,7 @@ static void xact_complete_cleanup(XactEvent event) {
 
         desc->implementation->transactionFinish(desc, event == XACT_EVENT_COMMIT ? ZDB_TRANSACTION_COMMITTED : ZDB_TRANSACTION_ABORTED);
     }
+	interface_transaction_cleanup();
 }
 
 static void zdbam_commit_xact_data()
@@ -1154,7 +1155,10 @@ zdbcostestimate(PG_FUNCTION_ARGS)
 				Const *queryConst = (Const *) queryNode;
 				if (query->len > 0)
 					appendStringInfo(query, " AND ");
-				appendStringInfo(query, "(%s)", TextDatumGetCString(queryConst->constvalue));
+				if (list_length(path->indexclauses) > 1)
+					appendStringInfo(query, "(%s)", TextDatumGetCString(queryConst->constvalue));
+				else
+					appendStringInfo(query, "%s", TextDatumGetCString(queryConst->constvalue));
 			}
 		}
 	}

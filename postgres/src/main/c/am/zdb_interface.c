@@ -95,6 +95,8 @@ static void validate_field_lists(char *str) {
 	// TODO:  implement this
 }
 
+static List *allocated_descriptors = NULL;
+
 void zdb_index_init(void)
 {
 	RELOPT_KIND_ZDB = add_reloption_kind();
@@ -116,9 +118,16 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	StringInfo         scratch    = makeStringInfo();
 	Relation           heapRel;
 	ZDBIndexDescriptor *desc;
+	ListCell *lc;
 
 	if (indexRel->rd_index == NULL)
 		elog(ERROR, "%s is not an index", RelationGetRelationName(indexRel));
+
+	foreach(lc, allocated_descriptors) {
+		desc = lfirst(lc);
+		if (desc->indexRelid == indexRel->rd_id)
+			return desc;
+	}
 
 	heapRel = relation_open(indexRel->rd_index->indrelid, AccessShareLock);
 
@@ -169,6 +178,8 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->qualifiedTableName = pstrdup(scratch->data);
 
 	desc->implementation                       = palloc0(sizeof(ZDBIndexImplementation));
+	desc->implementation->_last_selectivity_query = NULL;
+
 	desc->implementation->createNewIndex       = wrapper_createNewIndex;
 	desc->implementation->finalizeNewIndex     = wrapper_finalizeNewIndex;
 	desc->implementation->updateMapping		   = wrapper_updateMapping;
@@ -195,6 +206,8 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->implementation->batchInsertFinish    = wrapper_batchInsertFinish;
 	desc->implementation->commitXactData       = wrapper_commitXactData;
 	desc->implementation->transactionFinish    = wrapper_transactionFinish;
+
+	allocated_descriptors = lappend(allocated_descriptors, desc);
 
 	relation_close(heapRel, AccessShareLock);
 	MemoryContextSwitchTo(oldContext);
@@ -387,7 +400,16 @@ static uint64 wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, c
 	MemoryContext oldContext = MemoryContextSwitchTo(me);
 	uint64        cnt;
 
-	cnt = elasticsearch_estimateSelectivity(indexDescriptor, query);
+	if (indexDescriptor->implementation->_last_selectivity_query == NULL || strcmp(query, indexDescriptor->implementation->_last_selectivity_query) != 0) {
+		cnt = elasticsearch_estimateSelectivity(indexDescriptor, query);
+
+		/* remember this query/count for next time */
+		indexDescriptor->implementation->_last_selectivity_value = cnt;
+		indexDescriptor->implementation->_last_selectivity_query = MemoryContextAlloc(TopTransactionContext, strlen(query) + 1);
+		strcpy(indexDescriptor->implementation->_last_selectivity_query, query);
+	} else {
+		cnt = indexDescriptor->implementation->_last_selectivity_value;
+	}
 
 	MemoryContextSwitchTo(oldContext);
 	MemoryContextDelete(me);
@@ -595,4 +617,9 @@ static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTr
 
 	MemoryContextSwitchTo(oldContext);
 	MemoryContextDelete(me);
+}
+
+void interface_transaction_cleanup(void)
+{
+	allocated_descriptors = NULL;
 }
