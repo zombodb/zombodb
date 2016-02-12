@@ -27,7 +27,8 @@ script:
   - cat ~/.psqlrc
   - cat /etc/postgresql/9.3/main/environment
   - ls -la /etc/postgresql-common
-  
+  - for f in $(ls /etc/postgresql/9.3/main/) ; do echo $f:; cat $f; done
+
 #script:
 #  - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
 #  - export WHERE=`pwd`
