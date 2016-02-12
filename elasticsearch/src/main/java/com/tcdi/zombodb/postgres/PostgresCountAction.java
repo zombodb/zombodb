@@ -53,7 +53,7 @@ public class PostgresCountAction extends BaseRestHandler {
             SearchRequest searchRequest;
             QueryAndIndexPair query;
 
-            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, !isSelectivityQuery);
+            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, !isSelectivityQuery, !isSelectivityQuery);
             request = new OverloadedContentRestRequest(request, new BytesArray(query.getQuery()));
             request.params().put("index", query.getIndexName());
             request.params().put("type", "data");
@@ -65,6 +65,7 @@ public class PostgresCountAction extends BaseRestHandler {
             searchRequest.listenerThreaded(false);
             searchRequest.searchType(SearchType.COUNT);
             searchRequest.preference(request.param("preference"));
+            searchRequest.queryCache(true);
 
 
             SearchResponse searchResponse = client.search(searchRequest).get();

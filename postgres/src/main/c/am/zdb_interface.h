@@ -159,6 +159,7 @@ ZDBCommitXactData  *zdb_alloc_expired_xact_record(ZDBIndexDescriptor *indexDescr
 char *zdb_multi_search(TransactionId xid, CommandId cid, Oid *indexrelids, char **user_queries, int nqueries);
 
 bool zdb_index_descriptors_equal(ZDBIndexDescriptor *a, ZDBIndexDescriptor *b);
+void interface_transaction_cleanup(void);
 
 
 /**
@@ -203,6 +204,9 @@ typedef void (*ZDBTransactionFinish_function)(ZDBIndexDescriptor *indexDescripto
 
 struct ZDBIndexImplementation
 {
+	uint64 _last_selectivity_value;
+	char *_last_selectivity_query;
+
 	ZDBCreateNewIndex_function   createNewIndex;
 	ZDBFinalizeNewIndex_function finalizeNewIndex;
 	ZDBUpdateMapping_function    updateMapping;
