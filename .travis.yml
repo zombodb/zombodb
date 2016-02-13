@@ -28,6 +28,10 @@ script:
   - cat /etc/postgresql/9.3/main/environment
   - ls -la /etc/postgresql-common
   - for f in $(ls /etc/postgresql/9.3/main/) ; do echo /etc/postgresql/9.3/main/$f:; cat /etc/postgresql/9.3/main/$f; done
+  - sudo postgres/src/main/shell/hack-configs-for-travisci.sh
+  - sudo /etc/init.d/postgresql start 9.3
+  - psql template1 -c "show all;"
+
 
 #script:
 #  - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
