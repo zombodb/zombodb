@@ -569,6 +569,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"type\": \"string\",");
 			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
 			appendStringInfo(result, "\"index_options\": \"docs\",");
+			appendStringInfo(result, "\"ignore_above\":32000,");
 			appendStringInfo(result, "\"analyzer\": \"exact\"");
 
 		}
@@ -579,6 +580,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
 			appendStringInfo(result, "\"include_in_parent\":true,");
 			appendStringInfo(result, "\"include_in_root\":true,");
+			appendStringInfo(result, "\"ignore_above\":32000,");
 			appendStringInfo(result, "\"include_in_all\":true");
 
 		}
@@ -606,6 +608,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 						appendStringInfo(result, "\"include_in_all\": \"false\",");
 						appendStringInfo(result, "\"analyzer\": \"%s\",", analyzer);
 						appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
+						appendStringInfo(result, "\"ignore_above\":32000,");
 						appendStringInfo(result, "\"norms\": {\"enabled\":true}");
 						break;
 
@@ -620,6 +623,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 						appendStringInfo(result, "\"include_in_all\": \"true\",");
 						appendStringInfo(result, "\"analyzer\": \"%s\",", analyzer);
 						appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
+						appendStringInfo(result, "\"ignore_above\":32000,");
 						appendStringInfo(result, "\"norms\": {\"enabled\":true}");
 						break;
 
@@ -634,6 +638,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 				appendStringInfo(result, "\"type\": \"string\",");
 				appendStringInfo(result, "\"norms\": {\"enabled\":false},");
 				appendStringInfo(result, "\"index_options\": \"docs\",");
+				appendStringInfo(result, "\"ignore_above\":32000,");
 				appendStringInfo(result, "\"analyzer\": \"exact\"");
 
 				/* warn about it so users know what's happening */
