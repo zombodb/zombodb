@@ -21,44 +21,45 @@ before_install:
   - sudo apt-get install -y postgresql-9.3 postgresql-server-dev-9.3
   - sudo apt-get install -y maven
 
-script:
-  - pg_config
-  - ls -la /etc/postgresql/9.3/main/
-  - cat ~/.psqlrc
-  - cat /etc/postgresql/9.3/main/environment
-  - ls -la /etc/postgresql-common
-  - for f in $(ls /etc/postgresql/9.3/main/) ; do echo /etc/postgresql/9.3/main/$f:; sudo cat /etc/postgresql/9.3/main/$f; done
-  - sudo postgres/src/main/shell/hack-configs-for-travisci.sh
-  - sudo cat /etc/postgresql/9.3/main/postgresql.conf
-  - sudo /etc/init.d/postgresql stop 9.3
-  - sudo /etc/init.d/postgresql start 9.3
-  - PAGER=cat psql -qAt template1 -c "show all;"
-
-
 #script:
-#  - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
-#  - export WHERE=`pwd`
-#  - mvn clean install
-#  - tar xzf postgres/src/main/docker/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
-#  - cd curl-7.43.0
-#  - ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
-#  - make -j2 && sudo make install
-#  - sudo ldconfig && sudo ldconfig
-#  - cd ..
-#  - cd postgres
-#  - make && sudo make install
-#  - ldd zombodb.so
-#  - sudo mkdir /usr/lib/postgresql/9.3/lib/plugins
-#  - sudo cp /usr/lib/postgresql/9.3/lib/zombodb.so /usr/lib/postgresql/9.3/lib/plugins/zombodb.so
-#  - sudo rm /usr/lib/postgresql/9.3/lib/zombodb.so
-#  - sudo src/main/shell/hack-configs-for-travisci.sh
-#  - sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
-#  - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
+#  - pg_config
+#  - ls -la /etc/postgresql/9.3/main/
+#  - cat ~/.psqlrc
+#  - cat /etc/postgresql/9.3/main/environment
+#  - ls -la /etc/postgresql-common
+#  - for f in $(ls /etc/postgresql/9.3/main/) ; do echo /etc/postgresql/9.3/main/$f:; sudo cat /etc/postgresql/9.3/main/$f; done
+#  - sudo postgres/src/main/shell/hack-configs-for-travisci.sh
+#  - sudo cat /etc/postgresql/9.3/main/postgresql.conf
+#  - sudo /etc/init.d/postgresql stop 9.3
 #  - sudo /etc/init.d/postgresql start 9.3
-#  - cat /etc/elasticsearch/elasticsearch.yml
-#  - cat /etc/postgresql/9.3/main/postgresql.conf
-#  - sudo sleep 10
-#  - make installcheck
+#  - PAGER=cat psql -qAt template1 -c "show all;"
+
+
+script:
+  - sudo /etc/init.d/postgresql stop 9.3
+  - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
+  - export WHERE=`pwd`
+  - mvn clean install
+  - tar xzf postgres/src/main/docker/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
+  - cd curl-7.43.0
+  - ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
+  - make -j2 && sudo make install
+  - sudo ldconfig && sudo ldconfig
+  - cd ..
+  - cd postgres
+  - make && sudo make install
+  - ldd zombodb.so
+  - sudo mkdir /usr/lib/postgresql/9.3/lib/plugins
+  - sudo cp /usr/lib/postgresql/9.3/lib/zombodb.so /usr/lib/postgresql/9.3/lib/plugins/zombodb.so
+  - sudo rm /usr/lib/postgresql/9.3/lib/zombodb.so
+  - sudo src/main/shell/hack-configs-for-travisci.sh
+  - sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+  - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
+  - sudo /etc/init.d/postgresql start 9.3
+  - cat /etc/elasticsearch/elasticsearch.yml
+  - cat /etc/postgresql/9.3/main/postgresql.conf
+  - sudo sleep 10
+  - make installcheck
 
 after_failure:
   - sudo cat regression.diffs
