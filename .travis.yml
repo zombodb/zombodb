@@ -21,20 +21,6 @@ before_install:
   - sudo apt-get install -y postgresql-9.3 postgresql-server-dev-9.3
   - sudo apt-get install -y maven
 
-#script:
-#  - pg_config
-#  - ls -la /etc/postgresql/9.3/main/
-#  - cat ~/.psqlrc
-#  - cat /etc/postgresql/9.3/main/environment
-#  - ls -la /etc/postgresql-common
-#  - for f in $(ls /etc/postgresql/9.3/main/) ; do echo /etc/postgresql/9.3/main/$f:; sudo cat /etc/postgresql/9.3/main/$f; done
-#  - sudo postgres/src/main/shell/hack-configs-for-travisci.sh
-#  - sudo cat /etc/postgresql/9.3/main/postgresql.conf
-#  - sudo /etc/init.d/postgresql stop 9.3
-#  - sudo /etc/init.d/postgresql start 9.3
-#  - PAGER=cat psql -qAt template1 -c "show all;"
-
-
 script:
   - sudo /etc/init.d/postgresql stop 9.3
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
