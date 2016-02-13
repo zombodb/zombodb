@@ -69,7 +69,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         QueryAndIndexPair query;
         int many = -1;
         long parseStart = 0, parseEnd = 0;
-        double buildTime = 0;
+        double buildTime = 0, searchTime = 0;
 
         try {
             parseStart = System.nanoTime();
@@ -89,7 +89,9 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
 
+            long searchStart = System.currentTimeMillis();
             response = client.search(builder.request()).get();
+            searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 
             if (response.getTotalShards() != response.getSuccessfulShards())
                 throw new Exception(response.getTotalShards() - response.getSuccessfulShards() + " shards failed");
@@ -104,7 +106,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             throw e;
         } finally {
             long totalEnd = System.nanoTime();
-            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s)");
+            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s)");
         }
     }
 
