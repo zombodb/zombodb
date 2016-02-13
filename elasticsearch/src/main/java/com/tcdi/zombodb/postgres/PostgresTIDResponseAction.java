@@ -15,22 +15,21 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import com.tcdi.zombodb.postgres.util.OverloadedContentRestRequest;
-import com.tcdi.zombodb.postgres.util.QueryAndIndexPair;
 import com.tcdi.zombodb.query_parser.QueryRewriter;
-import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.ActionFuture;
+import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchScrollRequestBuilder;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.rest.*;
-import org.elasticsearch.rest.action.search.RestSearchAction;
 import org.elasticsearch.search.SearchHit;
 
+import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -42,14 +41,12 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
     private static class BinaryTIDResponse {
         byte[] data;
         int many;
-        long start;
-        long end;
+        double ttl;
 
-        private BinaryTIDResponse(byte[] data, int many, long start, long end) {
+        private BinaryTIDResponse(byte[] data, int many, double ttl) {
             this.data = data;
             this.many = many;
-            this.start = start;
-            this.end = end;
+            this.ttl = ttl;
         }
     }
 
@@ -66,76 +63,69 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
-        final long totalStart = System.nanoTime();
-        final long searchEnd;
-
-        final SearchRequest searchRequest;
-        final SearchResponse response;
-        final BinaryTIDResponse tids;
-
-        final QueryAndIndexPair query;
+        long totalStart = System.nanoTime();
+        SearchResponse response;
+        BinaryTIDResponse tids;
+        QueryAndIndexPair query;
+        int many = -1;
+        long parseStart = 0, parseEnd = 0;
+        double buildTime = 0;
 
         try {
-            // build a json query from the request content
-            // and then change what our request looks like so it'll appear
-            // as if the json version is the actual content
-            long parseStart = System.nanoTime();
+            parseStart = System.nanoTime();
             query = buildJsonQueryFromRequestContent(client, request, false, "data".equals(request.param("type")), true);
-            long parseEnd = System.nanoTime();
+            parseEnd = System.nanoTime();
 
-            request = new OverloadedContentRestRequest(request, new BytesArray(query.getQuery()));
-            request.params().put("index", query.getIndexName());
-            request.params().put("type", "data");
-            request.params().put("size", "32768");
-            request.params().put("_source", "false");
-            request.params().put("track_scores", "true");
+            SearchRequestBuilder builder = new SearchRequestBuilder(client);
+            builder.setIndices(query.getIndexName());
+            builder.setTypes("data");
+            builder.setSize(32768);
+            builder.setScroll(TimeValue.timeValueMinutes(10));
+            builder.setSearchType(SearchType.SCAN);
+            builder.setPreference(request.param("preference"));
+            builder.setTrackScores(true);
+            builder.setQueryCache(true);
+            builder.setFetchSource(false);
+            builder.setNoFields();
+            builder.setQuery(query.getQueryBuilder());
 
-            // perform the search
-            searchRequest = RestSearchAction.parseSearchRequest(request);
-            searchRequest.listenerThreaded(false);
-            searchRequest.scroll(TimeValue.timeValueMinutes(10));
-            searchRequest.searchType(SearchType.SCAN);
-            searchRequest.preference(request.param("preference"));
-            searchRequest.queryCache(true);
-
-            final long searchStart = System.currentTimeMillis();
-            response = client.search(searchRequest).get();
+            response = client.search(builder.request()).get();
 
             if (response.getTotalShards() != response.getSuccessfulShards())
                 throw new Exception(response.getTotalShards() - response.getSuccessfulShards() + " shards failed");
 
-            searchEnd = System.currentTimeMillis();
-
             tids = buildBinaryResponse(client, response);
-            long totalEnd = System.nanoTime();
+            many = tids.many;
+            buildTime = tids.ttl;
+
             channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
-            logger.info("Found " + tids.many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, search=" + ((searchEnd - searchStart) / 1000D) + "s, build=" + ((tids.end - tids.start) / 1000D) + "s)");
         } catch (Throwable e) {
             logger.error("Problem building response", e);
             throw e;
+        } finally {
+            long totalEnd = System.nanoTime();
+            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s)");
         }
     }
 
     public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean allowSingleIndex, boolean useParentChild, boolean doFullFieldDataLookups) {
-        String query = request.content().toUtf8();
+        String queryString = request.content().toUtf8();
+        String indexName = request.param("index");
 
         try {
-            QueryRewriter qr = new QueryRewriter(client, request.param("index"), request.param("preference"), query, allowSingleIndex, useParentChild, doFullFieldDataLookups);
-            String indexName;
+            QueryRewriter qr = new QueryRewriter(client, indexName, request.param("preference"), queryString, allowSingleIndex, useParentChild, doFullFieldDataLookups);
+            QueryBuilder query;
 
-            // the request content is just our straight query string
-            // so transform it into json
-            if (query != null && query.trim().length() > 0) {
-                query = qr.rewriteQuery().toString();
+            if (queryString != null && queryString.trim().length() > 0) {
+                query = qr.rewriteQuery();
                 indexName = qr.getSearchIndexName();
             } else {
-                query = "{ \"match_all\": {} }";
-                indexName = request.param("index");
+                query = matchAllQuery();
             }
 
-            return new QueryAndIndexPair(String.format("{ \"query\": %s }", query), indexName);
+            return new QueryAndIndexPair(query, indexName);
         } catch (Exception e) {
-            throw new RuntimeException(query, e);
+            throw new RuntimeException(queryString, e);
         }
     }
 
@@ -159,20 +149,32 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         maxscore_offset = offset;
         offset += encodeFloat(0, results, offset);
 
+        // kick off the first scroll request
+        ActionFuture<SearchResponse> future = client.searchScroll(new SearchScrollRequestBuilder(client)
+                .setScrollId(searchResponse.getScrollId())
+                .setScroll(TimeValue.timeValueMinutes(10))
+                .request()
+        );
         int cnt = 0;
         while (cnt < many) {
-            searchResponse = client.searchScroll(
-                    new SearchScrollRequestBuilder(client)
-                            .setScrollId(searchResponse.getScrollId())
-                            .setScroll(TimeValue.timeValueMinutes(10))
-                            .request()
-            ).get();
+            searchResponse = future.get();
 
             if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
                 throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
 
             if (searchResponse.getHits().getHits().length == 0) {
                 throw new Exception("Underflow in buildBinaryResponse:  Expected " + many + ", got " + cnt);
+            }
+
+            if (cnt + searchResponse.getHits().getHits().length < many) {
+                // go ahead and do the next scroll request
+                // while we walk the hits of this chunk
+                future = client.searchScroll(new SearchScrollRequestBuilder(client)
+                        .setScrollId(searchResponse.getScrollId())
+                        .setScroll(TimeValue.timeValueMinutes(10))
+                        .listenerThreaded(true)
+                        .request()
+                );
             }
 
             for (SearchHit hit : searchResponse.getHits()) {
@@ -208,7 +210,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         encodeFloat(maxscore, results, maxscore_offset);
 
         long end = System.currentTimeMillis();
-        return new BinaryTIDResponse(results, many, start, end);
+        return new BinaryTIDResponse(results, many, (end-start)/1000D);
     }
 
     private static int encodeLong(long value, byte[] buffer, int offset) {

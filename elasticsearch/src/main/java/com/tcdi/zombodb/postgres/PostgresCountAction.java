@@ -15,17 +15,13 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import com.tcdi.zombodb.postgres.util.OverloadedContentRestRequest;
-import com.tcdi.zombodb.postgres.util.QueryAndIndexPair;
-import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
-import org.elasticsearch.rest.action.search.RestSearchAction;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -50,25 +46,22 @@ public class PostgresCountAction extends BaseRestHandler {
         try {
             boolean isSelectivityQuery = request.paramAsBoolean("selectivity", false);
             BytesRestResponse response;
-            SearchRequest searchRequest;
             QueryAndIndexPair query;
 
             query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, !isSelectivityQuery, !isSelectivityQuery);
-            request = new OverloadedContentRestRequest(request, new BytesArray(query.getQuery()));
-            request.params().put("index", query.getIndexName());
-            request.params().put("type", "data");
-            request.params().put("size", "0");
-            request.params().put("_source", "false");
+            SearchRequestBuilder builder = new SearchRequestBuilder(client);
+            builder.setIndices(query.getIndexName());
+            builder.setTypes("data");
+            builder.setSize(0);
+            builder.setSearchType(SearchType.COUNT);
+            builder.setPreference(request.param("preference"));
+            builder.setQueryCache(true);
+            builder.setFetchSource(false);
+            builder.setTrackScores(false);
+            builder.setNoFields();
+            builder.setQuery(query.getQueryBuilder());
 
-            // perform the search
-            searchRequest = RestSearchAction.parseSearchRequest(request);
-            searchRequest.listenerThreaded(false);
-            searchRequest.searchType(SearchType.COUNT);
-            searchRequest.preference(request.param("preference"));
-            searchRequest.queryCache(true);
-
-
-            SearchResponse searchResponse = client.search(searchRequest).get();
+            SearchResponse searchResponse = client.search(builder.request()).get();
 
             if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
                 throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");

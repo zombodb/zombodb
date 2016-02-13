@@ -13,21 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.postgres.util;
+package com.tcdi.zombodb.postgres;
+
+import org.elasticsearch.index.query.QueryBuilder;
 
 /**
  * Created by e_ridge on 2/6/15.
  */
-public class QueryAndIndexPair {
-    private final String query;
+class QueryAndIndexPair {
+    private final QueryBuilder query;
     private final String indexName;
 
-    public QueryAndIndexPair(String query, String indexName) {
+    public QueryAndIndexPair(QueryBuilder query, String indexName) {
         this.query = query;
         this.indexName = indexName;
     }
 
-    public String getQuery() {
+    public QueryBuilder getQueryBuilder() {
         return query;
     }
 
