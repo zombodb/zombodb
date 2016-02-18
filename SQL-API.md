@@ -717,6 +717,15 @@ thai
 > 
 > Terms are returned in ABC order, as they're ordered in the underlying Lucene index, which means that Elasticsearch is doing the sorting, not Postgres.  Depending on locale settings between your Elasticsearch cluster and Postgres, an `ORDER BY term` clause could order the terms differently, and should generally be avoided.
 > 
+> >NOTE:
+> >
+> >It's worth noting that the results from this function are completely unfiltered and pay no attention to Postgres' transaction visibility rules.
+> >
+> > Knowing that ZomboDB stores what Postgres might consider "dead rows" in the Elasticsearch index (until a `VACUUM` occurs), terms from these "dead rows" will also be returned.  
+> > 
+> > A "dead row" is one that has been DELETEd in Postgres, or the old version of a row that has been UPDATEd.  This also means that the `totalfreq` and `docfreq` values may be larger than what is actually searchable via a normal `SELECT` statement.
+> 
+> 
 > Example:
 > 
 > ```
