@@ -27,6 +27,7 @@ extern Datum zdb_internal_significant_terms(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_extended_stats(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_arbitrary_aggregate(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_suggest_terms(PG_FUNCTION_ARGS);
+extern Datum zdb_internal_termlist(PG_FUNCTION_ARGS);
 
 #endif
 

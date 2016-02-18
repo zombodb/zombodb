@@ -16,10 +16,14 @@
 package com.tcdi.zombodb;
 
 import com.tcdi.zombodb.postgres.*;
+import org.elasticsearch.action.ActionModule;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugins.AbstractPlugin;
 import org.elasticsearch.rest.RestModule;
+import org.xbib.elasticsearch.action.termlist.TermlistAction;
+import org.xbib.elasticsearch.action.termlist.TransportTermlistAction;
+import org.xbib.elasticsearch.rest.action.termlist.RestTermlistAction;
 
 /**
  * @author e_ridge
@@ -39,6 +43,11 @@ public class ZombodbPlugin extends AbstractPlugin {
         module.addRestAction(ZombodbQueryAction.class);
         module.addRestAction(ZombodbDocumentHighlighterAction.class);
         module.addRestAction(ZombodbMultiSearchAction.class);
+        module.addRestAction(RestTermlistAction.class);
+    }
+
+    public void onModule(ActionModule module) {
+        module.registerAction(TermlistAction.INSTANCE, TransportTermlistAction.class);
     }
 
     @Override

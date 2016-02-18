@@ -184,6 +184,7 @@ typedef char *(*ZDBSignificantTerms_function)(ZDBIndexDescriptor *indexDescripto
 typedef char *(*ZDBExtendedStats_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query);
 typedef char *(*ZDBArbitraryAggregate_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query);
 typedef char *(*ZDBSuggestTerms_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
+typedef char *(*ZDBTermList_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 
 typedef char *(*ZDBDescribeNestedObject_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname);
 typedef char *(*ZDBGetIndexMapping_function)(ZDBIndexDescriptor *indexDescriptor);
@@ -226,6 +227,7 @@ struct ZDBIndexImplementation
 	ZDBExtendedStats_function      extended_stats;
 	ZDBArbitraryAggregate_function arbitrary_aggregate;
     ZDBSuggestTerms_function       suggest_terms;
+	ZDBTermList_function           termlist;
 
 	ZDBDescribeNestedObject_function describeNestedObject;
 	ZDBGetIndexMapping_function getIndexMapping;

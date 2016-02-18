@@ -682,6 +682,32 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, Transacti
     return response->data;
 }
 
+char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, char *prefix, char *startat, uint32 size)
+{
+	StringInfo request = makeStringInfo();
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+
+	appendStringInfo(request, "{\"fieldname\":");
+	escape_json(request, fieldname);
+	appendStringInfo(request, ", \"prefix\":");
+	escape_json(request, prefix);
+	if (startat != NULL) {
+		appendStringInfo(request, ", \"startAt\":");
+		escape_json(request, startat);
+	}
+	appendStringInfo(request, ", \"size\":%d}", size);
+
+	appendStringInfo(endpoint, "%s/%s/_zdbtermlist", descriptor->url, descriptor->fullyQualifiedName);
+	response = rest_call("POST", endpoint->data, request);
+
+	freeStringInfo(request);
+	freeStringInfo(endpoint);
+
+	return response->data;
+}
+
+
 char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor)
 {
 	StringInfo endpoint = makeStringInfo();

@@ -40,6 +40,8 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, Trans
 char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query);
 char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query);
 char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
+char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, char *prefix, char *startat, uint32 size);
+
 
 char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor);
 char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, char *fieldname);
