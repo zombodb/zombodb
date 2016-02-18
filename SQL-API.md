@@ -691,6 +691,48 @@ thai
 >(1 row)
 >```
 
+#### ```FUNCTION zdb_termlist(table_name regclass, fieldname text, prefix text, startAt text, size int4) RETURNS SET OF zdb_termlist_response```
+>
+> `table_name`: The name of a table from which to select terms  
+> `fieldname`: The name of the field from which to select terms  
+> `prefix`: The prefix substring each returned term should start with, can be the empty string (ie, start at top)
+> `startAt`: The exact term value from which termlist selection should begin.  Can be NULL, otherwise the term **must** share the `prefix`
+> `size`: The total number of terms to return
+> 
+> This function directly examines the underlying Lucene index for a table/field and returns `size` terms matching the specified `prefix`.
+> 
+> Set the `startAt` argument to a non-NULL term (sharing the prefix) to enable paging through large lists of terms.
+> 
+> Returns a resultset in the form of
+> 
+> ```
+> CREATE TYPE zdb_termlist_response AS (
+  term text,
+  totalfreq bigint,
+  docfreq bigint
+);
+> ```
+> 
+> Where `totalfreq` is the total number of times the `term` appears in that field, and `docfreq` is the total number of matching documents.
+> 
+> Example:
+> 
+> ```
+> select * from zdb_termlist('products', 'long_description', 't', NULL, 20);
+     term      | totalfreq | docfreq 
+---------------+-----------+---------
+ telemarketers |         1 |       1
+ that          |         1 |       1
+ the           |         1 |       1
+ they          |         1 |       1
+ things        |         1 |       1
+ this          |         1 |       1
+ throw         |         1 |       1
+ to            |         1 |       1
+(8 rows)
+
+> ```
+
 
 ## Views
 

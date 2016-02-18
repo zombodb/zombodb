@@ -30,6 +30,7 @@ PG_FUNCTION_INFO_V1(zdb_internal_significant_terms);
 PG_FUNCTION_INFO_V1(zdb_internal_extended_stats);
 PG_FUNCTION_INFO_V1(zdb_internal_arbitrary_aggregate);
 PG_FUNCTION_INFO_V1(zdb_internal_suggest_terms);
+PG_FUNCTION_INFO_V1(zdb_internal_termlist);
 
 
 Datum zdb_internal_actual_index_record_count(PG_FUNCTION_ARGS)
@@ -151,4 +152,21 @@ Datum zdb_internal_suggest_terms(PG_FUNCTION_ARGS)
     json = desc->implementation->suggest_terms(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), fieldname, stem, query, max_terms);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
+}
+
+Datum zdb_internal_termlist(PG_FUNCTION_ARGS)
+{
+	Oid indexrelid = PG_GETARG_OID(0);
+	char *fieldname = GET_STR(PG_GETARG_TEXT_P(1));
+	char *prefix = GET_STR(PG_GETARG_TEXT_P(2));
+	char *startat = PG_ARGISNULL(3) ? NULL : GET_STR(PG_GETARG_TEXT_P(3));
+	uint32 size = PG_GETARG_UINT32(4);
+
+	ZDBIndexDescriptor *desc;
+	char *json;
+
+	desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
+	json = desc->implementation->termlist(desc, fieldname, prefix, startat, size);
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }
