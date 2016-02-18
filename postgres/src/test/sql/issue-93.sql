@@ -39,6 +39,8 @@ SELECT assert(count(*), 0, 'all terms match') FROM termlist_full f LEFT JOIN ter
 SELECT * FROM termlist_full f LEFT JOIN termlist_incr i ON f.term = i.term
 WHERE i.term IS NULL OR f.docfreq <> i.docfreq OR f.totalfreq <> i.totalfreq;
 
+SELECT * FROM termlist_full;
+SELECT * FROM termlist_incr;
 
 DROP TABLE termlist_full;
 DROP TABLE termlist_incr;
