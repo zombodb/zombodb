@@ -38,8 +38,7 @@ import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static org.elasticsearch.common.collect.Lists.newLinkedList;
@@ -79,7 +78,7 @@ public class TransportTermlistAction
         int failedShards = 0;
         List<ShardOperationFailedException> shardFailures = null;
         int numdocs = 0;
-        List<TermInfo> terms = null;
+        Map<String, TermInfo> terms = new TreeMap<>();
 
         for (int i = 0; i < shardsResponses.length(); i++) {
             Object shardResponse = shardsResponses.get(i);
@@ -97,15 +96,29 @@ public class TransportTermlistAction
                     ShardTermlistResponse resp = (ShardTermlistResponse) shardResponse;
                     numdocs += resp.getNumDocs();
 
-                    if (terms == null)
-                        terms = resp.getTermList();
-                    else
-                        terms.addAll(resp.getTermList());
+                    for (TermInfo ti : resp.getTermList()) {
+                        String term = ti.getTerm();
+                        TermInfo existing = terms.get(term);
+                        if (existing != null) {
+                            existing.setDocFreq(existing.getDocFreq() + ti.getDocFreq());
+                            existing.setTotalFreq(existing.getTotalFreq() + ti.getTotalFreq());
+                        } else {
+                            terms.put(term, ti);
+                        }
+                    }
                 }
             }
         }
 
-        return new TermlistResponse(shardsResponses.length(), successfulShards, failedShards, shardFailures, numdocs, terms);
+        List<TermInfo> values = new ArrayList<>(terms.size());
+        int cnt = 0;
+        for (TermInfo ti : terms.values()) {
+            values.add(ti);
+            if (++cnt == request.getSize())
+                break;
+        }
+
+        return new TermlistResponse(shardsResponses.length(), successfulShards, failedShards, shardFailures, numdocs, values);
     }
 
     @Override
@@ -152,48 +165,44 @@ public class TransportTermlistAction
             List<TermInfo> termsList = new LinkedList<>();
 
             if (fields != null) {
-                for (String field : fields) {
-                    if (request.getRequest().getFieldname() == null || field.equals(request.getRequest().getFieldname())) {
-                        Terms terms = fields.terms(field);
+                Terms terms = fields.terms(request.getRequest().getFieldname());
 
-                        // Returns the number of documents that have at least one
-                        if (terms != null) {
-                            TermsEnum.SeekStatus status;
-                            TermsEnum termsEnum;
-                            BytesRef term;
+                // Returns the number of documents that have at least one
+                if (terms != null) {
+                    TermsEnum.SeekStatus status;
+                    TermsEnum termsEnum;
+                    BytesRef term;
 
-                            // start iterating terms and...
-                            termsEnum = terms.iterator(null);
-                            if (prefix != null) {
-                                // seek to our term prefix (if we have one)
-                                status = termsEnum.seekCeil(prefix);
-                                term = termsEnum.term();
-                            } else {
-                                // just start at the top
-                                status = TermsEnum.SeekStatus.FOUND;
-                                term = termsEnum.next();
+                    // start iterating terms and...
+                    termsEnum = terms.iterator(null);
+                    if (prefix != null) {
+                        // seek to our term prefix (if we have one)
+                        status = termsEnum.seekCeil(prefix);
+                        term = termsEnum.term();
+                    } else {
+                        // just start at the top
+                        status = TermsEnum.SeekStatus.FOUND;
+                        term = termsEnum.next();
+                    }
+
+                    if (status != TermsEnum.SeekStatus.END) {
+                        do {
+                            String text = Term.toString(term);
+
+                            if (prefix != null && !text.startsWith(request.getRequest().getPrefix())) {
+                                // we've moved past the index terms that match our prefix
+                                break;
                             }
 
-                            if (status != TermsEnum.SeekStatus.END) {
-                                do {
-                                    String text = Term.toString(term);
+                            if (!text.equals(startAt))
+                                termsList.add(new TermInfo(text, termsEnum.docFreq(), termsEnum.totalTermFreq()));
 
-                                    if (request.getRequest().hasUsableTermPrefix() && !text.startsWith(request.getRequest().getPrefix())) {
-                                        // we've moved past the index terms that match our prefix
-                                        break;
-                                    }
-
-                                    if (!text.equals(startAt))
-                                        termsList.add(new TermInfo(text, termsEnum.docFreq(), termsEnum.totalTermFreq()));
-
-                                    if (termsList.size() == request.getRequest().getSize()) {
-                                        // we've collected as many terms as we should (for this shard)
-                                        break;
-                                    }
-
-                                } while ((term = termsEnum.next()) != null);
+                            if (termsList.size() == request.getRequest().getSize()) {
+                                // we've collected as many terms as we should (for this shard)
+                                break;
                             }
-                        }
+
+                        } while ((term = termsEnum.next()) != null);
                     }
                 }
             }

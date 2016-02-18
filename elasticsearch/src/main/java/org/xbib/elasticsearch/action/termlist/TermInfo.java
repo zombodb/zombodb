@@ -26,14 +26,14 @@ import java.io.Serializable;
 public class TermInfo implements Streamable, ToXContent, Serializable {
 
     private String term;
-    private Integer docFreq;
-    private Long totalFreq;
+    private int docFreq;
+    private long totalFreq;
 
     public TermInfo() {
 
     }
 
-    public TermInfo(String term, Integer docFreq, Long totalFreq) {
+    public TermInfo(String term, int docFreq, long totalFreq) {
         this.term = term;
         this.docFreq = docFreq;
         this.totalFreq = totalFreq;
@@ -53,7 +53,7 @@ public class TermInfo implements Streamable, ToXContent, Serializable {
         return this;
     }
 
-    public Integer getDocFreq() {
+    public int getDocFreq() {
         return docFreq;
     }
 
@@ -62,43 +62,22 @@ public class TermInfo implements Streamable, ToXContent, Serializable {
         return this;
     }
 
-    public Long getTotalFreq() {
+    public long getTotalFreq() {
         return totalFreq;
     }
 
     @Override
     public void readFrom(StreamInput in) throws IOException {
-        boolean b;
-
-        term = in.readString();
-
-        b = in.readBoolean();
-        if (b) {
-            setDocFreq(in.readInt());
-        }
-
-        b = in.readBoolean();
-        if (b) {
-            setTotalFreq(in.readVLong());
-        }
+        setTerm(in.readString());
+        setDocFreq(in.readInt());
+        setTotalFreq(in.readVLong());
     }
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeString(term);
-
-        if (docFreq != null) {
-            out.writeBoolean(true);
-            out.writeInt(docFreq);
-        } else {
-            out.writeBoolean(false);
-        }
-        if (totalFreq != null) {
-            out.writeBoolean(true);
-            out.writeVLong(totalFreq);
-        } else {
-            out.writeBoolean(false);
-        }
+        out.writeInt(docFreq);
+        out.writeVLong(totalFreq);
     }
 
     public String toString() {
@@ -115,12 +94,9 @@ public class TermInfo implements Streamable, ToXContent, Serializable {
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-        if (totalFreq != null) {
-            builder.field("totalfreq", totalFreq);
-        }
-        if (docFreq != null) {
-            builder.field("docfreq", docFreq);
-        }
+        builder.field("term", term);
+        builder.field("totalfreq", totalFreq);
+        builder.field("docfreq", docFreq);
         return builder;
     }
 }

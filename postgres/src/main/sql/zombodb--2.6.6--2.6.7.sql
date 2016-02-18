@@ -14,11 +14,9 @@ BEGIN
 
   RETURN QUERY SELECT
                  (value->>'term') AS term,
-                 sum((value->>'totalfreq')::bigint)::bigint AS totalfreq,
-                 sum((value->>'docfreq')::bigint)::bigint AS docfreq
+                 (value->>'totalfreq')::bigint AS totalfreq,
+                 (value->>'docfreq')::bigint AS docfreq
                FROM json_array_elements(response->'terms') value
-               GROUP BY 1
-               ORDER BY 1
                LIMIT CASE WHEN size > 0 THEN size ELSE 2147483647 END;
 END;
 $$;

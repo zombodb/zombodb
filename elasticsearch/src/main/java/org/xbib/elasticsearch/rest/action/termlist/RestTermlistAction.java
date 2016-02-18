@@ -63,8 +63,9 @@ public class RestTermlistAction extends BaseRestHandler {
                     builder.field("numdocs", response.getNumDocs());
                     builder.field("numterms", response.getTermlist().size());
                     builder.startArray("terms");
+
                     for (TermInfo tl : response.getTermlist()) {
-                        builder.startObject().field("term", tl.getTerm());
+                        builder.startObject();
                         tl.toXContent(builder, ToXContent.EMPTY_PARAMS);
                         builder.endObject();
                     }
