@@ -715,6 +715,8 @@ thai
 > 
 > Where `totalfreq` is the total number of times the `term` appears in that field, and `docfreq` is the total number of matching documents.
 > 
+> Terms are returned in ABC order, as they're ordered in the underlying Lucene index, which means that Elasticsearch is doing the sorting, not Postgres.  Depending on locale settings between your Elasticsearch cluster and Postgres, an `ORDER BY term` clause could order the terms differently, and should generally be avoided.
+> 
 > Example:
 > 
 > ```
