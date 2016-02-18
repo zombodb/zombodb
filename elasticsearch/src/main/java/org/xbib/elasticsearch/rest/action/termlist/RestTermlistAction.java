@@ -46,13 +46,14 @@ public class RestTermlistAction extends BaseRestHandler {
 
     public void handleRequest(final RestRequest request, final RestChannel channel, final Client client) {
         try {
-            TermListDescriptor descriptor = new ObjectMapper().readValue(request.content().toUtf8(), TermListDescriptor.class);
+            final TermListDescriptor descriptor = new ObjectMapper().readValue(request.content().toUtf8(), TermListDescriptor.class);
             TermlistRequest termlistRequest = new TermlistRequest(Strings.splitStringByCommaToArray(request.param("index")));
             termlistRequest.setFieldname(descriptor.fieldname);
             termlistRequest.setPrefix(descriptor.prefix);
             termlistRequest.setStartAt(descriptor.startAt);
             termlistRequest.setSize(descriptor.size);
             final long t0 = System.nanoTime();
+            final long start = System.currentTimeMillis();
             client.execute(TermlistAction.INSTANCE, termlistRequest, new RestBuilderListener<TermlistResponse>(channel) {
                 @Override
                 public RestResponse buildResponse(TermlistResponse response, XContentBuilder builder) throws Exception {
@@ -69,6 +70,8 @@ public class RestTermlistAction extends BaseRestHandler {
                     }
                     builder.endArray();
                     builder.endObject();
+                    long end = System.currentTimeMillis();
+                    logger.info("Retrieved " + response.getTermlist().size() + " terms from " + request.param("index") + "." + descriptor.fieldname + " in " + ((end-start)/1000D) + " seconds");
                     return new BytesRestResponse(RestStatus.OK, builder);
                 }
             });
