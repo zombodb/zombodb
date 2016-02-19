@@ -4,14 +4,14 @@ LIMIT 10;
    term   | count  
 ----------+--------
           | 129680
- A        |   9898
- A.APPEND |      1
- A.I      |      3
- A7       |      1
- AA       |      1
- AAC      |      1
- AARDVARK |      1
- AB       |      1
- ABALONE  |      1
+ a        |   9898
+ a.append |      1
+ a.i      |      3
+ a7       |      1
+ aa       |      1
+ aac      |      1
+ aardvark |      1
+ ab       |      1
+ abalone  |      1
 (10 rows)
 

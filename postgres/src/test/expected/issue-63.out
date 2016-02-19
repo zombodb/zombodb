@@ -40,7 +40,7 @@ FROM zdb_tally('tas_update_fail', 'end_date_text', '0', '^.*', '', 5000, 'term' 
  12/31/1999 |     2
  12/31/2016 |     1
  2/3/1999   |     1
- UNKNOWN    |     1
+ unknown    |     1
 (4 rows)
 
 UPDATE tas_update_fail
@@ -54,7 +54,7 @@ FROM zdb_tally('tas_update_fail', 'end_date_text', '0', '^.*', '', 5000, 'term' 
  12/31/1999 |     2
  12/31/2016 |     1
  2/3/1999   |     1
- UNKNOWN    |     1
+ unknown    |     1
 (4 rows)
 
 --
@@ -74,7 +74,7 @@ FROM zdb_tally('tas_update_fail', 'end_date_text', '0', '^.*', '', 5000, 'term' 
  12/31/1999 |     2
  12/31/2016 |     1
  2/3/1999   |     1
- UNKNOWN    |     1
+ unknown    |     1
 (4 rows)
 
 DROP TABLE tas_update_fail CASCADE;

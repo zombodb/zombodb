@@ -36,13 +36,13 @@ SELECT assert(zdb_determine_index('mam_doc_test')::regclass, 'es_idx_zdb_mam_doc
 SELECT * FROM zdb_tally('public.mam_doc_test', 'security', '0', '^.*', '', 5000, 'term'::zdb_tally_order);
  term | count 
 ------+-------
- ERIC |     1
+ eric |     1
 (1 row)
 
 SELECT * FROM zdb_tally('public.mam_doc_test', 'mam_doc_sub_data.security', '0', '^.*', '', 5000, 'term'::zdb_tally_order);
  term | count 
 ------+-------
- MARK |     1
+ mark |     1
 (1 row)
 
 DROP TABLE mam_doc CASCADE;
