@@ -12,7 +12,7 @@ CREATE TABLE products (
   availability_date date
 );
 
-COPY products FROM PROGRAM 'curl https://raw.githubusercontent.com/zombodb/zombodb/master/TUTORIAL-data.dmp';
+COPY products FROM PROGRAM 'wget -qO - https://raw.githubusercontent.com/zombodb/zombodb/master/TUTORIAL-data.dmp';
 
 CREATE INDEX idx_zdb_products
 ON products

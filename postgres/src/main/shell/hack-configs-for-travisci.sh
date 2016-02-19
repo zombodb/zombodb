@@ -15,3 +15,7 @@ autovacuum=off
 max_connections=10
 work_mem=64kB
 DONE
+
+cat << DONE > /etc/postgresql/9.3/main/pg_hba.conf
+local   all             all                                     trust
+DONE
