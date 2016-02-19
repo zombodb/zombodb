@@ -7,7 +7,7 @@ INSERT INTO issue_85(data) values ('{"title": "this is the title"}');
 SELECT * FROM zdb_tally('issue_85', 'data.title', '^.*', '', 5000, 'count');
        term        | count 
 -------------------+-------
- THIS IS THE TITLE |     1
+ this is the title |     1
 (1 row)
 
 DROP TABLE issue_85;

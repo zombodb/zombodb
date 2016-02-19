@@ -218,7 +218,7 @@ BEGIN
   IF missing IS NULL OR missing = 0 THEN
     RETURN QUERY (
       SELECT
-        coalesce(upper((x->>'key_as_string')::text), upper((x->>'key')::text)),
+        coalesce((x->>'key_as_string')::text, (x->>'key')::text),
         (x->>'doc_count')::int8
       FROM json_array_elements(buckets) x
     );
@@ -227,7 +227,7 @@ BEGIN
       SELECT * FROM (SELECT NULL::text, missing LIMIT missing) x
       UNION ALL
       SELECT
-        coalesce(upper((x->>'key_as_string')::text), upper((x->>'key')::text)),
+        coalesce((x->>'key_as_string')::text, (x->>'key')::text),
         (x->>'doc_count')::int8
       FROM json_array_elements(buckets) x
     );
@@ -290,7 +290,7 @@ BEGIN
 
   RETURN QUERY (
     SELECT
-      upper((x->>'key')::text),
+      (x->>'key')::text,
       (x->>'doc_count')::int8,
       (x->>'score')::float8
     FROM json_array_elements(buckets) x
@@ -401,9 +401,9 @@ BEGIN
   type_oid := zdb_determine_index(table_name);
   data := zdb_internal_suggest_terms(type_oid, fieldname, base, query, max_terms);
 
-  RETURN QUERY SELECT upper(base), zdb_estimate_count(table_name, fieldname || ':("' || coalesce(case when trim(base) = '' then null else trim(base) end, 'null') || '") AND (' || coalesce(query, '') || ')')
+  RETURN QUERY SELECT base, zdb_estimate_count(table_name, fieldname || ':("' || coalesce(case when trim(base) = '' then null else trim(base) end, 'null') || '") AND (' || coalesce(query, '') || ')')
                UNION ALL
-               SELECT upper((x->>'text')::text),
+               SELECT (x->>'text')::text,
                  (x->>'freq')::int8
                FROM json_array_elements(json_array_element(data->'suggest'->'suggestions', 0)->'options') x;
 END;

@@ -2,542 +2,542 @@ select * from zdb_tally('so_posts', 'owner_display_name', '^.*', '(  #expand<par
           term          | count 
 ------------------------+-------
                         |  4010
- 8KB                    |     1
- A B                    |     1
- ABAFEI                 |     1
- ADEEL ANSARI           |     1
- ADIPA GUNASEKARA       |     1
- AEDONETLIRA            |     1
- ALEXANDER SURAPHEL     |     1
- ALLEN                  |     1
- ANDREY CHASCHEV        |     1
- ANDRZEJ DOYLE          |     2
- ANDY THOMAS-CRAMER     |     1
- ANON                   |     1
- ANOTHERDAVE            |     1
- ANSGRI                 |     1
- ARAVIND CHENNURU       |     1
- AUGUSTO                |     1
- AZ651                  |     1
- BASIC                  |     1
- BENDIN                 |     1
- BESTSSS                |     1
- BILL THE LIZARD        |     1
- BILLY ONEAL            |     2
- BLAUOHR                |     1
- BLUEGOLDFISH           |     1
- BOHEMIAN               |     2
- BORIS PAVLOVIĆ         |     1
- BOT                    |     1
- CAPTAIN                |     1
- CARRKNIGHT             |     1
- CHANDRA                |     1
- CHIRAG FANSE           |     1
- CHRIS ALDRICH          |     1
- CHRIS JESTER-YOUNG     |     1
- CHRIS THOMPSON         |     1
- CLOUDANGER             |     1
- CLOUDYSTER             |     1
- CLYFE                  |     1
- CODEMED                |     1
- CORGRATH               |     1
- DANIEL C. SOBRAL       |     1
- DANIEL R HICKS         |     1
- DARTHVADER             |     1
- DAVID HARKNESS         |     1
- DAVID WALLACE          |     1
- DAVIDGR                |     1
- DCN                    |     1
- DEAN J                 |     1
- DIMONIY                |     1
- DINESH                 |     1
- DMITRI                 |     1
- DSIMCHA                |     1
- DUFFYMO                |     2
- EDIN DAZDAREVIC        |     1
- EEK                    |     1
- ELI                    |     1
- ELLERY NEWCOMER        |     1
- ERIC DAVID             |     1
- ERIC GALLUZZO          |     1
- ERICSCHAEFER           |     1
- ERNEST FRIEDMAN-HILL   |     1
- ERNESTO CHE            |     1
- EVERNOOB               |     1
- FBONNET                |     1
- FEDERICO FISSORE       |     1
- FERGIE                 |     1
- FERNANDOGARCEZ         |     1
- FIELDING               |     1
- FLAPJACKERY            |     1
- FOLONE                 |     2
- FRANK PAPE             |     1
- GARETH DAVIS           |     1
- GARGC                  |     1
- GLENPETERSON           |     1
- GLENVIEWJEFF           |     1
- GRAYGER                |     1
- HAKRE                  |     1
- HAMLET D'ARCY          |     1
- HARPER89               |     2
- HAWKEYE                |     1
- HIGHLAND MARK          |     1
- HILBRAND               |     1
- HUNTLYC                |     1
- HVGOTCODES             |     1
- IIK                    |     1
- JACK                   |     1
- JAKSKY                 |     1
- JAMES                  |     2
- JAREDPAR               |     1
- JARROD ROBERSON        |     1
- JASON                  |     1
- JASON S                |     2
- JAVA_MOUSE             |     1
- JBERG                  |     1
- JEAN-PHILIPPE PELLET   |     1
- JESPER                 |     1
- JESSE GOOD             |     1
- JMORT253               |     1
- JODONNELL              |     1
- JOE PHILLLIPS          |     1
- JOHN BLAKE             |     1
- JOHNNYBOY              |     1
- JON SKEET              |     1
- JOSEPH OTTINGER        |     1
- JSMYTH                 |     1
- JUSTIN THOMAS          |     1
- KAISERJOHAAN           |     1
- KAL                    |     1
- KAMIKAZE MERCENARY     |     1
- KARES                  |     1
- KARSTENF               |     1
- KERB                   |     1
- KESHAV.VEERAPANENI     |     1
- KEVIN                  |     1
- KEVIN MONTROSE         |     1
- KEVIN ZHANG            |     1
- KIERROW                |     1
- KIM BURGAARD           |     1
- KOCKO                  |     1
- KONRAD RUDOLPH         |     1
- KR0E                   |     1
- KROCK                  |     1
- KSHITIZ SHARMA         |     1
- LASERALLAN             |     1
- LEGALLY_CHALLENGED     |     1
- LEGEND                 |     1
- LEWICKI                |     1
- LOOSEBRUCE             |     1
- LOUIS RHYS             |     1
- LUCHIAN GRIGORE        |     1
- M. DEINUM              |     1
- MARCANDRESON           |     1
- MARIUSZS               |     1
- MARK                   |     1
- MARKO TOPOLNIK         |     1
- MARKR                  |     1
- MARTIN                 |     1
- MAT BANIK              |     1
- MATT BRIGGS            |     1
- MAX                    |     1
- MAXYM                  |     1
- MIKE STROBEL           |     1
- MIKERA                 |     1
- MORT                   |     1
- MORTEN HOLDFLOD MØLLER |     1
- MOYAMO                 |     1
- N1234                  |     1
- NAVEEN                 |     1
- NEMANJA TRIFUNOVIC     |     1
- NIKHIL KASHYAP         |     1
- NILESH                 |     1
- NISHANT                |     1
- NSFYN55                |     1
- ONEWHONEEDGUIDENSS     |     1
- OSCARRYZ               |     1
- OXBOW_LAKES            |     1
- PATRICK                |     1
- PAULMURRAY             |     1
- PETER WONE             |     1
- PINNACLE               |     1
- POLYGENELUBRICANTS     |     1
- PUBBY8                 |     1
- QUANT_DEV              |     1
- RANZILBER              |     1
- RATICULIN              |     1
- RBUSCH90               |     1
- REGULUS                |     1
- RETRODEV               |     1
- REX KERR               |     1
- RICKY                  |     1
- RIK                    |     1
- ROB WARTHEN            |     1
- ROBERT FISCHER         |     1
- ROBERT OSCHLER         |     1
- ROBIN GREEN            |     1
- ROGCG                  |     1
- ROLAND SCHNEIDER       |     1
- RUDY GRUSE             |     1
- RYAN DELUCCHI          |     1
- RYYST                  |     1
- SALIL                  |     1
- SAMIT G.               |     1
- SBRIDGES               |     1
- SCIENCE_FICTION        |     1
- SEBARMELI              |     1
- SEGY                   |     1
- SENTHIL                |     1
- SERGEY                 |     1
- SERGIO                 |     2
- SERIK                  |     1
- SHADOWFOXMI            |     1
- SHAMIS                 |     1
- SHISOFT                |     1
- SK-LOGIC               |     1
- SKEITH                 |     1
- SOC                    |     1
- SOPHIE SPERNER         |     1
- SPACE ROCKER           |     1
- SPYROSP                |     1
- SSCHAEF                |     1
- STEFAN D.              |     1
- STEPANCHEG             |     1
- STEPHEN C              |     2
- STEVE CHAMBERS         |     1
- STEVEN                 |     1
- SURESH S               |     1
- SUROOT                 |     1
- TARUN                  |     1
- TETE                   |     1
- THECOMPBOY             |     1
- THOMAS                 |     1
- THSOFT                 |     1
- TIMO GEUSCH            |     1
- TKEE2036               |     1
- TLPD                   |     1
- TOLUJU                 |     1
- TOM                    |     2
- TOM HAWTIN - TACKLINE  |     1
- TOMASZ NURKIEWICZ      |     1
- TURING COMPLETE        |     1
- UBERSOLDAT             |     1
- URI                    |     1
- USER1056758            |     1
- USER11020              |     1
- USER1249               |    46
- USER1449               |     3
- USER14719              |     1
- USER16373              |     1
- USER16482              |     1
- USER17715              |     1
- USER18046              |     1
- USER18404              |     2
- USER19000              |     1
- USER19067              |     1
- USER19382              |     1
- USER19437              |     1
- USER22904              |     1
- USER255607             |     1
- USER2567               |     1
- USER269799             |     1
- USER2860598            |     2
- USER29079              |     1
- USER39331              |     1
- USER39685              |     4
- USER40362              |     1
- USER4051               |     4
- USER42242              |     2
- USER50689              |     1
- USER57697              |     1
- USER66282              |     1
- USER664509             |     1
- USER7071               |     1
- USER7197               |     2
- USER80699              |     1
- USER852740             |     1
- USER92106              |     1
- USER967316             |     1
- VEN CODER              |     1
- VIMVQ1987              |     1
- WANG.CHANCE            |     1
- WESLEY                 |     1
- WINSTONCHURCHILL       |     1
- WOLFMANDRAGON          |     1
- WOOT4MOO               |     1
- YABA                   |     1
- ZASKE                  |     1
+ 8kb                    |     1
+ a b                    |     1
+ abafei                 |     1
+ adeel ansari           |     1
+ adipa gunasekara       |     1
+ aedonetlira            |     1
+ alexander suraphel     |     1
+ allen                  |     1
+ andrey chaschev        |     1
+ andrzej doyle          |     2
+ andy thomas-cramer     |     1
+ anon                   |     1
+ anotherdave            |     1
+ ansgri                 |     1
+ aravind chennuru       |     1
+ augusto                |     1
+ az651                  |     1
+ basic                  |     1
+ bendin                 |     1
+ bestsss                |     1
+ bill the lizard        |     1
+ billy oneal            |     2
+ blauohr                |     1
+ bluegoldfish           |     1
+ bohemian               |     2
+ boris pavlović         |     1
+ bot                    |     1
+ captain                |     1
+ carrknight             |     1
+ chandra                |     1
+ chirag fanse           |     1
+ chris aldrich          |     1
+ chris jester-young     |     1
+ chris thompson         |     1
+ cloudanger             |     1
+ cloudyster             |     1
+ clyfe                  |     1
+ codemed                |     1
+ corgrath               |     1
+ daniel c. sobral       |     1
+ daniel r hicks         |     1
+ darthvader             |     1
+ david harkness         |     1
+ david wallace          |     1
+ davidgr                |     1
+ dcn                    |     1
+ dean j                 |     1
+ dimoniy                |     1
+ dinesh                 |     1
+ dmitri                 |     1
+ dsimcha                |     1
+ duffymo                |     2
+ edin dazdarevic        |     1
+ eek                    |     1
+ eli                    |     1
+ ellery newcomer        |     1
+ eric david             |     1
+ eric galluzzo          |     1
+ ericschaefer           |     1
+ ernest friedman-hill   |     1
+ ernesto che            |     1
+ evernoob               |     1
+ fbonnet                |     1
+ federico fissore       |     1
+ fergie                 |     1
+ fernandogarcez         |     1
+ fielding               |     1
+ flapjackery            |     1
+ folone                 |     2
+ frank pape             |     1
+ gareth davis           |     1
+ gargc                  |     1
+ glenpeterson           |     1
+ glenviewjeff           |     1
+ grayger                |     1
+ hakre                  |     1
+ hamlet d'arcy          |     1
+ harper89               |     2
+ hawkeye                |     1
+ highland mark          |     1
+ hilbrand               |     1
+ huntlyc                |     1
+ hvgotcodes             |     1
+ iik                    |     1
+ jack                   |     1
+ jaksky                 |     1
+ james                  |     2
+ jaredpar               |     1
+ jarrod roberson        |     1
+ jason                  |     1
+ jason s                |     2
+ java_mouse             |     1
+ jberg                  |     1
+ jean-philippe pellet   |     1
+ jesper                 |     1
+ jesse good             |     1
+ jmort253               |     1
+ jodonnell              |     1
+ joe philllips          |     1
+ john blake             |     1
+ johnnyboy              |     1
+ jon skeet              |     1
+ joseph ottinger        |     1
+ jsmyth                 |     1
+ justin thomas          |     1
+ kaiserjohaan           |     1
+ kal                    |     1
+ kamikaze mercenary     |     1
+ kares                  |     1
+ karstenf               |     1
+ kerb                   |     1
+ keshav.veerapaneni     |     1
+ kevin                  |     1
+ kevin montrose         |     1
+ kevin zhang            |     1
+ kierrow                |     1
+ kim burgaard           |     1
+ kocko                  |     1
+ konrad rudolph         |     1
+ kr0e                   |     1
+ krock                  |     1
+ kshitiz sharma         |     1
+ laserallan             |     1
+ legally_challenged     |     1
+ legend                 |     1
+ lewicki                |     1
+ loosebruce             |     1
+ louis rhys             |     1
+ luchian grigore        |     1
+ m. deinum              |     1
+ marcandreson           |     1
+ mariuszs               |     1
+ mark                   |     1
+ marko topolnik         |     1
+ markr                  |     1
+ martin                 |     1
+ mat banik              |     1
+ matt briggs            |     1
+ max                    |     1
+ maxym                  |     1
+ mike strobel           |     1
+ mikera                 |     1
+ mort                   |     1
+ morten holdflod møller |     1
+ moyamo                 |     1
+ n1234                  |     1
+ naveen                 |     1
+ nemanja trifunovic     |     1
+ nikhil kashyap         |     1
+ nilesh                 |     1
+ nishant                |     1
+ nsfyn55                |     1
+ onewhoneedguidenss     |     1
+ oscarryz               |     1
+ oxbow_lakes            |     1
+ patrick                |     1
+ paulmurray             |     1
+ peter wone             |     1
+ pinnacle               |     1
+ polygenelubricants     |     1
+ pubby8                 |     1
+ quant_dev              |     1
+ ranzilber              |     1
+ raticulin              |     1
+ rbusch90               |     1
+ regulus                |     1
+ retrodev               |     1
+ rex kerr               |     1
+ ricky                  |     1
+ rik                    |     1
+ rob warthen            |     1
+ robert fischer         |     1
+ robert oschler         |     1
+ robin green            |     1
+ rogcg                  |     1
+ roland schneider       |     1
+ rudy gruse             |     1
+ ryan delucchi          |     1
+ ryyst                  |     1
+ salil                  |     1
+ samit g.               |     1
+ sbridges               |     1
+ science_fiction        |     1
+ sebarmeli              |     1
+ segy                   |     1
+ senthil                |     1
+ sergey                 |     1
+ sergio                 |     2
+ serik                  |     1
+ shadowfoxmi            |     1
+ shamis                 |     1
+ shisoft                |     1
+ sk-logic               |     1
+ skeith                 |     1
+ soc                    |     1
+ sophie sperner         |     1
+ space rocker           |     1
+ spyrosp                |     1
+ sschaef                |     1
+ stefan d.              |     1
+ stepancheg             |     1
+ stephen c              |     2
+ steve chambers         |     1
+ steven                 |     1
+ suresh s               |     1
+ suroot                 |     1
+ tarun                  |     1
+ tete                   |     1
+ thecompboy             |     1
+ thomas                 |     1
+ thsoft                 |     1
+ timo geusch            |     1
+ tkee2036               |     1
+ tlpd                   |     1
+ toluju                 |     1
+ tom                    |     2
+ tom hawtin - tackline  |     1
+ tomasz nurkiewicz      |     1
+ turing complete        |     1
+ ubersoldat             |     1
+ uri                    |     1
+ user1056758            |     1
+ user11020              |     1
+ user1249               |    46
+ user1449               |     3
+ user14719              |     1
+ user16373              |     1
+ user16482              |     1
+ user17715              |     1
+ user18046              |     1
+ user18404              |     2
+ user19000              |     1
+ user19067              |     1
+ user19382              |     1
+ user19437              |     1
+ user22904              |     1
+ user255607             |     1
+ user2567               |     1
+ user269799             |     1
+ user2860598            |     2
+ user29079              |     1
+ user39331              |     1
+ user39685              |     4
+ user40362              |     1
+ user4051               |     4
+ user42242              |     2
+ user50689              |     1
+ user57697              |     1
+ user66282              |     1
+ user664509             |     1
+ user7071               |     1
+ user7197               |     2
+ user80699              |     1
+ user852740             |     1
+ user92106              |     1
+ user967316             |     1
+ ven coder              |     1
+ vimvq1987              |     1
+ wang.chance            |     1
+ wesley                 |     1
+ winstonchurchill       |     1
+ wolfmandragon          |     1
+ woot4moo               |     1
+ yaba                   |     1
+ zaske                  |     1
 (266 rows)
 
 select * from zdb_tally('so_posts', 'owner_display_name', '^.*', '(  #expand<parent_id=<this.index>id> (title:java) ) ', 1000, 'term');
           term          | count 
 ------------------------+-------
                         |  4010
- 8KB                    |     1
- A B                    |     1
- ABAFEI                 |     1
- ADEEL ANSARI           |     1
- ADIPA GUNASEKARA       |     1
- AEDONETLIRA            |     1
- ALEXANDER SURAPHEL     |     1
- ALLEN                  |     1
- ANDREY CHASCHEV        |     1
- ANDRZEJ DOYLE          |     2
- ANDY THOMAS-CRAMER     |     1
- ANON                   |     1
- ANOTHERDAVE            |     1
- ANSGRI                 |     1
- ARAVIND CHENNURU       |     1
- AUGUSTO                |     1
- AZ651                  |     1
- BASIC                  |     1
- BENDIN                 |     1
- BESTSSS                |     1
- BILL THE LIZARD        |     1
- BILLY ONEAL            |     2
- BLAUOHR                |     1
- BLUEGOLDFISH           |     1
- BOHEMIAN               |     2
- BORIS PAVLOVIĆ         |     1
- BOT                    |     1
- CAPTAIN                |     1
- CARRKNIGHT             |     1
- CHANDRA                |     1
- CHIRAG FANSE           |     1
- CHRIS ALDRICH          |     1
- CHRIS JESTER-YOUNG     |     1
- CHRIS THOMPSON         |     1
- CLOUDANGER             |     1
- CLOUDYSTER             |     1
- CLYFE                  |     1
- CODEMED                |     1
- CORGRATH               |     1
- DANIEL C. SOBRAL       |     1
- DANIEL R HICKS         |     1
- DARTHVADER             |     1
- DAVID HARKNESS         |     1
- DAVID WALLACE          |     1
- DAVIDGR                |     1
- DCN                    |     1
- DEAN J                 |     1
- DIMONIY                |     1
- DINESH                 |     1
- DMITRI                 |     1
- DSIMCHA                |     1
- DUFFYMO                |     2
- EDIN DAZDAREVIC        |     1
- EEK                    |     1
- ELI                    |     1
- ELLERY NEWCOMER        |     1
- ERIC DAVID             |     1
- ERIC GALLUZZO          |     1
- ERICSCHAEFER           |     1
- ERNEST FRIEDMAN-HILL   |     1
- ERNESTO CHE            |     1
- EVERNOOB               |     1
- FBONNET                |     1
- FEDERICO FISSORE       |     1
- FERGIE                 |     1
- FERNANDOGARCEZ         |     1
- FIELDING               |     1
- FLAPJACKERY            |     1
- FOLONE                 |     2
- FRANK PAPE             |     1
- GARETH DAVIS           |     1
- GARGC                  |     1
- GLENPETERSON           |     1
- GLENVIEWJEFF           |     1
- GRAYGER                |     1
- HAKRE                  |     1
- HAMLET D'ARCY          |     1
- HARPER89               |     2
- HAWKEYE                |     1
- HIGHLAND MARK          |     1
- HILBRAND               |     1
- HUNTLYC                |     1
- HVGOTCODES             |     1
- IIK                    |     1
- JACK                   |     1
- JAKSKY                 |     1
- JAMES                  |     2
- JAREDPAR               |     1
- JARROD ROBERSON        |     1
- JASON                  |     1
- JASON S                |     2
- JAVA_MOUSE             |     1
- JBERG                  |     1
- JEAN-PHILIPPE PELLET   |     1
- JESPER                 |     1
- JESSE GOOD             |     1
- JMORT253               |     1
- JODONNELL              |     1
- JOE PHILLLIPS          |     1
- JOHN BLAKE             |     1
- JOHNNYBOY              |     1
- JON SKEET              |     1
- JOSEPH OTTINGER        |     1
- JSMYTH                 |     1
- JUSTIN THOMAS          |     1
- KAISERJOHAAN           |     1
- KAL                    |     1
- KAMIKAZE MERCENARY     |     1
- KARES                  |     1
- KARSTENF               |     1
- KERB                   |     1
- KESHAV.VEERAPANENI     |     1
- KEVIN                  |     1
- KEVIN MONTROSE         |     1
- KEVIN ZHANG            |     1
- KIERROW                |     1
- KIM BURGAARD           |     1
- KOCKO                  |     1
- KONRAD RUDOLPH         |     1
- KR0E                   |     1
- KROCK                  |     1
- KSHITIZ SHARMA         |     1
- LASERALLAN             |     1
- LEGALLY_CHALLENGED     |     1
- LEGEND                 |     1
- LEWICKI                |     1
- LOOSEBRUCE             |     1
- LOUIS RHYS             |     1
- LUCHIAN GRIGORE        |     1
- M. DEINUM              |     1
- MARCANDRESON           |     1
- MARIUSZS               |     1
- MARK                   |     1
- MARKO TOPOLNIK         |     1
- MARKR                  |     1
- MARTIN                 |     1
- MAT BANIK              |     1
- MATT BRIGGS            |     1
- MAX                    |     1
- MAXYM                  |     1
- MIKE STROBEL           |     1
- MIKERA                 |     1
- MORT                   |     1
- MORTEN HOLDFLOD MØLLER |     1
- MOYAMO                 |     1
- N1234                  |     1
- NAVEEN                 |     1
- NEMANJA TRIFUNOVIC     |     1
- NIKHIL KASHYAP         |     1
- NILESH                 |     1
- NISHANT                |     1
- NSFYN55                |     1
- ONEWHONEEDGUIDENSS     |     1
- OSCARRYZ               |     1
- OXBOW_LAKES            |     1
- PATRICK                |     1
- PAULMURRAY             |     1
- PETER WONE             |     1
- PINNACLE               |     1
- POLYGENELUBRICANTS     |     1
- PUBBY8                 |     1
- QUANT_DEV              |     1
- RANZILBER              |     1
- RATICULIN              |     1
- RBUSCH90               |     1
- REGULUS                |     1
- RETRODEV               |     1
- REX KERR               |     1
- RICKY                  |     1
- RIK                    |     1
- ROB WARTHEN            |     1
- ROBERT FISCHER         |     1
- ROBERT OSCHLER         |     1
- ROBIN GREEN            |     1
- ROGCG                  |     1
- ROLAND SCHNEIDER       |     1
- RUDY GRUSE             |     1
- RYAN DELUCCHI          |     1
- RYYST                  |     1
- SALIL                  |     1
- SAMIT G.               |     1
- SBRIDGES               |     1
- SCIENCE_FICTION        |     1
- SEBARMELI              |     1
- SEGY                   |     1
- SENTHIL                |     1
- SERGEY                 |     1
- SERGIO                 |     2
- SERIK                  |     1
- SHADOWFOXMI            |     1
- SHAMIS                 |     1
- SHISOFT                |     1
- SK-LOGIC               |     1
- SKEITH                 |     1
- SOC                    |     1
- SOPHIE SPERNER         |     1
- SPACE ROCKER           |     1
- SPYROSP                |     1
- SSCHAEF                |     1
- STEFAN D.              |     1
- STEPANCHEG             |     1
- STEPHEN C              |     2
- STEVE CHAMBERS         |     1
- STEVEN                 |     1
- SURESH S               |     1
- SUROOT                 |     1
- TARUN                  |     1
- TETE                   |     1
- THECOMPBOY             |     1
- THOMAS                 |     1
- THSOFT                 |     1
- TIMO GEUSCH            |     1
- TKEE2036               |     1
- TLPD                   |     1
- TOLUJU                 |     1
- TOM                    |     2
- TOM HAWTIN - TACKLINE  |     1
- TOMASZ NURKIEWICZ      |     1
- TURING COMPLETE        |     1
- UBERSOLDAT             |     1
- URI                    |     1
- USER1056758            |     1
- USER11020              |     1
- USER1249               |    46
- USER1449               |     3
- USER14719              |     1
- USER16373              |     1
- USER16482              |     1
- USER17715              |     1
- USER18046              |     1
- USER18404              |     2
- USER19000              |     1
- USER19067              |     1
- USER19382              |     1
- USER19437              |     1
- USER22904              |     1
- USER255607             |     1
- USER2567               |     1
- USER269799             |     1
- USER2860598            |     2
- USER29079              |     1
- USER39331              |     1
- USER39685              |     4
- USER40362              |     1
- USER4051               |     4
- USER42242              |     2
- USER50689              |     1
- USER57697              |     1
- USER66282              |     1
- USER664509             |     1
- USER7071               |     1
- USER7197               |     2
- USER80699              |     1
- USER852740             |     1
- USER92106              |     1
- USER967316             |     1
- VEN CODER              |     1
- VIMVQ1987              |     1
- WANG.CHANCE            |     1
- WESLEY                 |     1
- WINSTONCHURCHILL       |     1
- WOLFMANDRAGON          |     1
- WOOT4MOO               |     1
- YABA                   |     1
- ZASKE                  |     1
+ 8kb                    |     1
+ a b                    |     1
+ abafei                 |     1
+ adeel ansari           |     1
+ adipa gunasekara       |     1
+ aedonetlira            |     1
+ alexander suraphel     |     1
+ allen                  |     1
+ andrey chaschev        |     1
+ andrzej doyle          |     2
+ andy thomas-cramer     |     1
+ anon                   |     1
+ anotherdave            |     1
+ ansgri                 |     1
+ aravind chennuru       |     1
+ augusto                |     1
+ az651                  |     1
+ basic                  |     1
+ bendin                 |     1
+ bestsss                |     1
+ bill the lizard        |     1
+ billy oneal            |     2
+ blauohr                |     1
+ bluegoldfish           |     1
+ bohemian               |     2
+ boris pavlović         |     1
+ bot                    |     1
+ captain                |     1
+ carrknight             |     1
+ chandra                |     1
+ chirag fanse           |     1
+ chris aldrich          |     1
+ chris jester-young     |     1
+ chris thompson         |     1
+ cloudanger             |     1
+ cloudyster             |     1
+ clyfe                  |     1
+ codemed                |     1
+ corgrath               |     1
+ daniel c. sobral       |     1
+ daniel r hicks         |     1
+ darthvader             |     1
+ david harkness         |     1
+ david wallace          |     1
+ davidgr                |     1
+ dcn                    |     1
+ dean j                 |     1
+ dimoniy                |     1
+ dinesh                 |     1
+ dmitri                 |     1
+ dsimcha                |     1
+ duffymo                |     2
+ edin dazdarevic        |     1
+ eek                    |     1
+ eli                    |     1
+ ellery newcomer        |     1
+ eric david             |     1
+ eric galluzzo          |     1
+ ericschaefer           |     1
+ ernest friedman-hill   |     1
+ ernesto che            |     1
+ evernoob               |     1
+ fbonnet                |     1
+ federico fissore       |     1
+ fergie                 |     1
+ fernandogarcez         |     1
+ fielding               |     1
+ flapjackery            |     1
+ folone                 |     2
+ frank pape             |     1
+ gareth davis           |     1
+ gargc                  |     1
+ glenpeterson           |     1
+ glenviewjeff           |     1
+ grayger                |     1
+ hakre                  |     1
+ hamlet d'arcy          |     1
+ harper89               |     2
+ hawkeye                |     1
+ highland mark          |     1
+ hilbrand               |     1
+ huntlyc                |     1
+ hvgotcodes             |     1
+ iik                    |     1
+ jack                   |     1
+ jaksky                 |     1
+ james                  |     2
+ jaredpar               |     1
+ jarrod roberson        |     1
+ jason                  |     1
+ jason s                |     2
+ java_mouse             |     1
+ jberg                  |     1
+ jean-philippe pellet   |     1
+ jesper                 |     1
+ jesse good             |     1
+ jmort253               |     1
+ jodonnell              |     1
+ joe philllips          |     1
+ john blake             |     1
+ johnnyboy              |     1
+ jon skeet              |     1
+ joseph ottinger        |     1
+ jsmyth                 |     1
+ justin thomas          |     1
+ kaiserjohaan           |     1
+ kal                    |     1
+ kamikaze mercenary     |     1
+ kares                  |     1
+ karstenf               |     1
+ kerb                   |     1
+ keshav.veerapaneni     |     1
+ kevin                  |     1
+ kevin montrose         |     1
+ kevin zhang            |     1
+ kierrow                |     1
+ kim burgaard           |     1
+ kocko                  |     1
+ konrad rudolph         |     1
+ kr0e                   |     1
+ krock                  |     1
+ kshitiz sharma         |     1
+ laserallan             |     1
+ legally_challenged     |     1
+ legend                 |     1
+ lewicki                |     1
+ loosebruce             |     1
+ louis rhys             |     1
+ luchian grigore        |     1
+ m. deinum              |     1
+ marcandreson           |     1
+ mariuszs               |     1
+ mark                   |     1
+ marko topolnik         |     1
+ markr                  |     1
+ martin                 |     1
+ mat banik              |     1
+ matt briggs            |     1
+ max                    |     1
+ maxym                  |     1
+ mike strobel           |     1
+ mikera                 |     1
+ mort                   |     1
+ morten holdflod møller |     1
+ moyamo                 |     1
+ n1234                  |     1
+ naveen                 |     1
+ nemanja trifunovic     |     1
+ nikhil kashyap         |     1
+ nilesh                 |     1
+ nishant                |     1
+ nsfyn55                |     1
+ onewhoneedguidenss     |     1
+ oscarryz               |     1
+ oxbow_lakes            |     1
+ patrick                |     1
+ paulmurray             |     1
+ peter wone             |     1
+ pinnacle               |     1
+ polygenelubricants     |     1
+ pubby8                 |     1
+ quant_dev              |     1
+ ranzilber              |     1
+ raticulin              |     1
+ rbusch90               |     1
+ regulus                |     1
+ retrodev               |     1
+ rex kerr               |     1
+ ricky                  |     1
+ rik                    |     1
+ rob warthen            |     1
+ robert fischer         |     1
+ robert oschler         |     1
+ robin green            |     1
+ rogcg                  |     1
+ roland schneider       |     1
+ rudy gruse             |     1
+ ryan delucchi          |     1
+ ryyst                  |     1
+ salil                  |     1
+ samit g.               |     1
+ sbridges               |     1
+ science_fiction        |     1
+ sebarmeli              |     1
+ segy                   |     1
+ senthil                |     1
+ sergey                 |     1
+ sergio                 |     2
+ serik                  |     1
+ shadowfoxmi            |     1
+ shamis                 |     1
+ shisoft                |     1
+ sk-logic               |     1
+ skeith                 |     1
+ soc                    |     1
+ sophie sperner         |     1
+ space rocker           |     1
+ spyrosp                |     1
+ sschaef                |     1
+ stefan d.              |     1
+ stepancheg             |     1
+ stephen c              |     2
+ steve chambers         |     1
+ steven                 |     1
+ suresh s               |     1
+ suroot                 |     1
+ tarun                  |     1
+ tete                   |     1
+ thecompboy             |     1
+ thomas                 |     1
+ thsoft                 |     1
+ timo geusch            |     1
+ tkee2036               |     1
+ tlpd                   |     1
+ toluju                 |     1
+ tom                    |     2
+ tom hawtin - tackline  |     1
+ tomasz nurkiewicz      |     1
+ turing complete        |     1
+ ubersoldat             |     1
+ uri                    |     1
+ user1056758            |     1
+ user11020              |     1
+ user1249               |    46
+ user1449               |     3
+ user14719              |     1
+ user16373              |     1
+ user16482              |     1
+ user17715              |     1
+ user18046              |     1
+ user18404              |     2
+ user19000              |     1
+ user19067              |     1
+ user19382              |     1
+ user19437              |     1
+ user22904              |     1
+ user255607             |     1
+ user2567               |     1
+ user269799             |     1
+ user2860598            |     2
+ user29079              |     1
+ user39331              |     1
+ user39685              |     4
+ user40362              |     1
+ user4051               |     4
+ user42242              |     2
+ user50689              |     1
+ user57697              |     1
+ user66282              |     1
+ user664509             |     1
+ user7071               |     1
+ user7197               |     2
+ user80699              |     1
+ user852740             |     1
+ user92106              |     1
+ user967316             |     1
+ ven coder              |     1
+ vimvq1987              |     1
+ wang.chance            |     1
+ wesley                 |     1
+ winstonchurchill       |     1
+ wolfmandragon          |     1
+ woot4moo               |     1
+ yaba                   |     1
+ zaske                  |     1
 (266 rows)
 
 select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#expand<owner_display_name=<this.index>owner_display_name>(id:39338)' order by 1;
