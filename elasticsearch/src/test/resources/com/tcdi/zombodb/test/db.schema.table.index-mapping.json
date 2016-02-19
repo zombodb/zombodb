@@ -170,7 +170,7 @@
           "store": false,
           "type": "string",
           "index_options": "positions",
-          "include_in_all": "false",
+          "include_in_all": "true",
           "analyzer": "english",
           "fielddata": {
             "format": "disabled"

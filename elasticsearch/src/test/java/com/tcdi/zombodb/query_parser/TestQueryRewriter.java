@@ -4138,14 +4138,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testStopWordRemoval_allField() throws Exception {
-        assertAST("now is the time",
+        assertAST("(now is the time) OR english_field:(now is the time)",
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
                         "      Or\n" +
-                        "         Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
-                        "            Word (fieldname=english_field, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
-                        "            Word (fieldname=english_field, operator=CONTAINS, value=time, index=db.schema.table.index)\n" +
+                        "         And\n" +
+                        "            Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "               Word (fieldname=english_field, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=english_field, operator=CONTAINS, value=time, index=db.schema.table.index)\n" +
                         "         Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
                         "            Word (fieldname=fulltext_field, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
                         "            Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)\n" +
