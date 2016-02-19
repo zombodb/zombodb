@@ -21,13 +21,19 @@ public class TermAnalyzerOptimizer {
     }
 
     public void optimize() {
-        analyzeNodes(tree);
+        int cnt;
+
+        do {
+            cnt = tree.countNodes();
+            analyzeNodes(tree);
+        } while (cnt != tree.countNodes());
+
         pullOutComplexTokensFromArrays(tree);
     }
 
     private void analyzeNodes(QueryParserNode root) {
 
-        if (root instanceof ASTOptions || root instanceof ASTFieldLists || root instanceof ASTAggregate)
+        if (root == null || root instanceof ASTOptions || root instanceof ASTFieldLists || root instanceof ASTAggregate)
             return;
 
         if (root.isStringValue() && (root instanceof ASTWord || root instanceof ASTPhrase || root instanceof ASTFuzzy || root instanceof ASTPrefix || root instanceof ASTWildcard))
@@ -47,7 +53,12 @@ public class TermAnalyzerOptimizer {
         }
 
         QueryParserNode newNode = Utils.rewriteToken(client, metadataManager, node);
-        ((QueryParserNode) node.parent).replaceChild(node, newNode);
+        if (newNode instanceof ASTWord && "".equals(newNode.getValue())) {
+            ((QueryParserNode) (node.parent)).removeNode(node);
+            ((QueryParserNode) (node.parent)).renumber();
+        } else {
+            ((QueryParserNode) (node.parent)).replaceChild(node, newNode);
+        }
     }
 
     private void pullOutComplexTokensFromArrays(QueryParserNode root) {

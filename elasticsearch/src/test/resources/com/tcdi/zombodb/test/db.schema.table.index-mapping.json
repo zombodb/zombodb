@@ -166,6 +166,19 @@
             "enabled": false
           }
         },
+        "english_field": {
+          "store": false,
+          "type": "string",
+          "index_options": "positions",
+          "include_in_all": "false",
+          "analyzer": "english",
+          "fielddata": {
+            "format": "disabled"
+          },
+          "norms": {
+            "enabled": false
+          }
+        },
         "date_field": {
           "store": false,
           "type": "string",
