@@ -443,11 +443,10 @@ BEGIN
                    row_ctid) INTO row_data;
   ELSE
     /* select out of the view */
-    EXECUTE format('SELECT row_to_json(x) FROM (SELECT %s, %s FROM %s) x WHERE %s = (SELECT %s FROM %s WHERE ctid = ''%s'')',
+    EXECUTE format('SELECT row_to_json(x) FROM (SELECT %s as _zdb_pkey, %s FROM %s) x WHERE _zdb_pkey = (SELECT %s FROM %s WHERE ctid = ''%s'')',
                    CASE WHEN field_names IS NOT NULL THEN array_to_string(field_names, ',') ELSE (select array_to_string(array_agg(attname), ',') from pg_attribute where attrelid = table_name and atttypid <> 'fulltext'::regtype and not attisdropped and attnum >=0) END,
                    pkey_column,
                    table_name,
-                   pkey_column,
                    pkey_column,
                    real_table_name,
                    row_ctid
