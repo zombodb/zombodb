@@ -1,8 +1,8 @@
 setup
 so_comments
+TUTORIAL
 configure
 create-indexes
-load-tutorial
 mappings
 counts
 words

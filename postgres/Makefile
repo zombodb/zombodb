@@ -36,9 +36,12 @@ src/test/sql/setup.sql:
 src/test/sql/so_comments.sql:
 	gunzip -c src/test/sql/so_comments.sql.gz > src/test/sql/so_comments.sql
 
-installcheck: src/test/sql/setup.sql src/test/sql/so_comments.sql
+src/test/sql/TUTORIAL.sql:
+	gunzip -c src/test/sql/TUTORIAL.sql.gz > src/test/sql/TUTORIAL.sql
 
-installcheck-random: REGRESS = $(shell echo --use-existing && (cat src/test/tests.list | grep -v ^setup | grep -v ^so_comments | grep -v ^configure | grep -v ^create-indexes | grep -v ^load-tutorial) | src/main/shell/mysort)
+installcheck: src/test/sql/setup.sql src/test/sql/so_comments.sql src/test/sql/TUTORIAL.sql
+
+installcheck-random: REGRESS = $(shell echo --use-existing && (cat src/test/tests.list | grep -v ^setup | grep -v ^so_comments | grep -v ^configure | grep -v ^create-indexes | grep -v ^TUTORIAL) | src/main/shell/mysort)
 installcheck-random: installcheck
 
 # add the SQL build target to the ALL build target
@@ -54,7 +57,7 @@ DATA = $(wildcard src/main/sql/$(EXTENSION)--*--*.sql) src/main/sql/$(EXTENSION)
 ES_HOST ?= localhost
 
 # add the SQL for this version to clean target
-EXTRA_CLEAN += src/main/sql/$(EXTENSION)--$(EXTVERSION).sql src/test/sql/setup.sql src/test/sql/so_comments.sql
+EXTRA_CLEAN += src/main/sql/$(EXTENSION)--$(EXTVERSION).sql src/test/sql/setup.sql src/test/sql/so_comments.sql src/test/sql/TUTORIAL.sql
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)

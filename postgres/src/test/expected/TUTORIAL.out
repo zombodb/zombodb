@@ -10,8 +10,4 @@ CREATE TABLE products (
   discontinued boolean default false,
   availability_date date
 );
-COPY products FROM PROGRAM 'wget -qO - https://raw.githubusercontent.com/zombodb/zombodb/master/TUTORIAL-data.dmp';
-CREATE INDEX idx_zdb_products
-ON products
-USING zombodb(zdb('products', products.ctid), zdb(products))
-WITH (url='http://localhost:9200/');
+COPY products FROM stdin;

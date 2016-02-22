@@ -14,5 +14,6 @@ foo.*
 postgres/src/main/sql/zombodb--2.6.8.sql
 postgres/src/test/sql/setup.sql
 postgres/src/test/sql/so_comments.sql
+postgres/src/test/sql/TUTORIAL.sql
 postgres/results
 postgres/regression.*
