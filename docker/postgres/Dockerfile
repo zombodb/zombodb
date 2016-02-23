@@ -3,7 +3,7 @@
 #
 
 # Pull base image.
-FROM postgres:9.3
+FROM postgres:9.5
 ENV ZOMBODB_VER 2.6.8
 
 # Fetch wget
@@ -14,11 +14,11 @@ RUN \
   cd / && \
   mkdir zombodb && \
   cd zombodb && \
-  wget https://github.com/zombodb/zombodb/releases/download/v${ZOMBODB_VER}/zombodb_trusty_pg93-${ZOMBODB_VER}_amd64.deb
+  wget https://github.com/zombodb/zombodb/releases/download/v${ZOMBODB_VER}/zombodb_trusty_pg95-${ZOMBODB_VER}_amd64.deb
 
 RUN \
   cd /zombodb && \
-  dpkg -i zombodb_trusty_pg93-${ZOMBODB_VER}_amd64.deb
+  dpkg -i zombodb_trusty_pg95-${ZOMBODB_VER}_amd64.deb
 
 COPY zombodb-entrypoint.sh /
 

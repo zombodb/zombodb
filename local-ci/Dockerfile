@@ -64,7 +64,7 @@ RUN apt-get install -y -qq maven
 
 # stack
 RUN apt-get install -y -qq elasticsearch
-RUN apt-get install -y -qq postgresql-9.3 postgresql-server-dev-9.3
+RUN apt-get install -y -qq postgresql-9.5 postgresql-server-dev-9.5
 
 # custom libcurl req'd by ZomboDB to statically link against
 COPY config/curl-7.43.0.tar.gz /tmp/

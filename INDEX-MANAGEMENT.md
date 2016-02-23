@@ -55,7 +55,7 @@ NOTE:  This may change in the future such that the Elasticsearch search index is
 
 ## REINDEX
 
-To reindex an exising ZomboDB index, simply use Postgres' standard [REINDEX](http://www.postgresql.org/docs/9.3/static/sql-reindex.html) command.  All the various forms of `INDEX`, `TABLE`, and `DATABASE` are fully supported.
+To reindex an exising ZomboDB index, simply use Postgres' standard [REINDEX](http://www.postgresql.org/docs/9.5/static/sql-reindex.html) command.  All the various forms of `INDEX`, `TABLE`, and `DATABASE` are fully supported.
 
 
 ## ALTER INDEX

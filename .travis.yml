@@ -18,11 +18,11 @@ before_install:
   - sudo apt-get remove -y postgresql-9.1
   - sudo apt-get remove -y postgresql-9.4
   - sudo apt-get remove -y curl
-  - sudo apt-get install -y postgresql-9.3 postgresql-server-dev-9.3
+  - sudo apt-get install -y postgresql-9.5 postgresql-server-dev-9.5
   - sudo apt-get install -y maven
 
 script:
-  - sudo /etc/init.d/postgresql stop 9.3
+  - sudo /etc/init.d/postgresql stop 9.5
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
   - export WHERE=`pwd`
   - mvn clean install
@@ -35,15 +35,15 @@ script:
   - cd postgres
   - make && sudo make install
   - ldd zombodb.so
-  - sudo mkdir /usr/lib/postgresql/9.3/lib/plugins
-  - sudo cp /usr/lib/postgresql/9.3/lib/zombodb.so /usr/lib/postgresql/9.3/lib/plugins/zombodb.so
-  - sudo rm /usr/lib/postgresql/9.3/lib/zombodb.so
+  - sudo mkdir /usr/lib/postgresql/9.5/lib/plugins
+  - sudo cp /usr/lib/postgresql/9.5/lib/zombodb.so /usr/lib/postgresql/9.5/lib/plugins/zombodb.so
+  - sudo rm /usr/lib/postgresql/9.5/lib/zombodb.so
   - sudo src/main/shell/hack-configs-for-travisci.sh
   - sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
   - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
-  - sudo /etc/init.d/postgresql start 9.3
+  - sudo /etc/init.d/postgresql start 9.5
   - cat /etc/elasticsearch/elasticsearch.yml
-  - cat /etc/postgresql/9.3/main/postgresql.conf
+  - cat /etc/postgresql/9.5/main/postgresql.conf
   - sudo sleep 10
   - make installcheck
 

@@ -3,8 +3,9 @@ FROM ubuntu:precise
 MAINTAINER ZomboDB, LLC (zombodb@gmail.com)
 
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+RUN echo here
 RUN apt-get update -y
-RUN apt-get install -y --force-yes postgresql-server-dev-9.3
+RUN apt-get install -y --force-yes postgresql-server-dev-9.5
 RUN apt-get install -y gcc make build-essential
 
 COPY curl-7.43.0.tar.gz /usr/local/src/

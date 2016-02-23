@@ -425,18 +425,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index\": \"not_analyzed\",");
 			appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"fields\": {"
-					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", "
-					                 "               \"format\": \"yyyy-MM-dd HH:mm:ss.SSSSSSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SS||"
-					                                              "yyyy-MM-dd HH:mm:ss.S||"
-					                                              "yyyy-MM-dd HH:mm:ss\"}"
+					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"} "
 					                 "}");
 
 		}
@@ -448,19 +437,8 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index\": \"not_analyzed\",");
 			appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"fields\": {"
-					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", "
-					                 "               \"format\": \"yyyy-MM-dd HH:mm:ss.SSSSSSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SZ||"
-					                                              "yyyy-MM-dd HH:mm:ssZ\"}"
-					                 "}");
+					"   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"} "
+					"}");
 
 		}
 		else if (strcmp("time", typename) == 0 || strcmp("time[]", typename) == 0 || strcmp("time without time zone", typename) == 0 || strcmp("time without time zone[]", typename) == 0)
@@ -471,19 +449,8 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index\": \"not_analyzed\",");
 			appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"fields\": {"
-					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", "
-					                 "               \"format\": \"HH:mm:ss.SSSSSSSSSS||"
-					                                              "HH:mm:ss.SSSSSSSSS||"
-					                                              "HH:mm:ss.SSSSSSSS||"
-					                                              "HH:mm:ss.SSSSSSS||"
-					                                              "HH:mm:ss.SSSSSS||"
-					                                              "HH:mm:ss.SSSSS||"
-					                                              "HH:mm:ss.SSSS||"
-					                                              "HH:mm:ss.SSS||"
-					                                              "HH:mm:ss.SS||"
-					                                              "HH:mm:ss.S||"
-					                                              "HH:mm:ss\"}"
-					                 "}");
+					"   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"} "
+					"}");
 
 		}
 		else if (strcmp("time with time zone", typename) == 0 || strcmp("time with time zone[]", typename) == 0)
@@ -494,19 +461,8 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index\": \"not_analyzed\",");
 			appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"fields\": {"
-					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", "
-					                 "               \"format\": \"HH:mm:ss.SSSSSSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSZ||"
-					                                              "HH:mm:ss.SSSSZ||"
-					                                              "HH:mm:ss.SSSZ||"
-					                                              "HH:mm:ss.SSZ||"
-					                                              "HH:mm:ss.SZ||"
-					                                              "HH:mm:ssZ\"}"
-					                 "}");
+					"   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"} "
+					"}");
 
 		}
 		else if (strcmp("smallint", typename) == 0 || strcmp("integer", typename) == 0 ||
@@ -573,7 +529,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"analyzer\": \"exact\"");
 
 		}
-		else if (strcmp("json", typename) == 0)
+		else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0)
 		{
 			/* json field */
 			appendStringInfo(result, "\"type\": \"nested\",");

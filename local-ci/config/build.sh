@@ -24,11 +24,11 @@ mvn clean install
 
 cd postgres
 make clean install
-mkdir /usr/lib/postgresql/9.3/lib/plugins
-cp /usr/lib/postgresql/9.3/lib/zombodb.so /usr/lib/postgresql/9.3/lib/plugins/zombodb.so
-rm /usr/lib/postgresql/9.3/lib/zombodb.so
+mkdir /usr/lib/postgresql/9.5/lib/plugins
+cp /usr/lib/postgresql/9.5/lib/zombodb.so /usr/lib/postgresql/9.5/lib/plugins/zombodb.so
+rm /usr/lib/postgresql/9.5/lib/zombodb.so
 src/main/shell/hack-configs-for-travisci.sh
-sudo /etc/init.d/postgresql start 9.3
+sudo /etc/init.d/postgresql start 9.5
 createuser -s -U postgres root
 
 sleep 5
