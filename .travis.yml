@@ -5,6 +5,7 @@ dist: trusty
 
 env:
   - BUILD_SYSTEM=travis
+  - PGPORT=5432
 
 before_install:
   - free
