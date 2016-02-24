@@ -5,7 +5,6 @@ dist: trusty
 
 env:
   - BUILD_SYSTEM=travis
-  - PGPORT=5432
 
 before_install:
   - free
@@ -49,6 +48,7 @@ script:
   - sudo /etc/init.d/postgresql start 9.5
   - cat /etc/elasticsearch/elasticsearch.yml
   - cat /etc/postgresql/9.5/main/postgresql.conf
+  - sudo -u postgres createuser -s travis
   - sudo sleep 10
   - make installcheck
 

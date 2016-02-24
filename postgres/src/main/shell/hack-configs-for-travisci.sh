@@ -14,7 +14,6 @@ client_min_messages=notice
 autovacuum=off
 max_connections=10
 work_mem=64kB
-port=5432
 fsync=off
 DONE
 
