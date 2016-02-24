@@ -3,9 +3,6 @@ language: java
 sudo: required
 dist: trusty
 
-env:
-  - BUILD_SYSTEM=travis
-
 before_install:
   - free
   - ls -la /etc/init.d/
@@ -15,9 +12,9 @@ before_install:
   - sudo apt-get install -y wget
   - sudo apt-get install -y rpm
   - sudo apt-get install -y elasticsearch
-  - sudo apt-get remove -y postgresql-9.1
-  - sudo apt-get remove -y postgresql-9.4
-  - sudo apt-get remove -y curl
+  - sudo apt-get purge -y postgresql-9.1
+  - sudo apt-get purge -y postgresql-9.4
+  - sudo apt-get purge -y curl
   - sudo apt-get install -y postgresql-9.3 postgresql-server-dev-9.3
   - sudo apt-get install -y maven
 
