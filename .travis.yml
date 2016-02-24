@@ -19,7 +19,6 @@ before_install:
   - sudo apt-get remove -y postgresql-9.2
   - sudo apt-get remove -y postgresql-9.3
   - sudo apt-get remove -y postgresql-9.4
-  - sudo apt-get remove -y postgresql-9.5
   - sudo apt-get remove -y curl
   - sudo apt-get install -y postgresql-9.5 postgresql-server-dev-9.5
   - sudo apt-get install -y maven

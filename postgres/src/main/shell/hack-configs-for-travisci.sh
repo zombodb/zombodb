@@ -14,6 +14,8 @@ client_min_messages=notice
 autovacuum=off
 max_connections=10
 work_mem=64kB
+port=5432
+fsync=off
 DONE
 
 cat << DONE > /etc/postgresql/9.5/main/pg_hba.conf
