@@ -1,4 +1,3 @@
-set datestyle to 'iso, mdy';
 CREATE TABLE products (
   id SERIAL8 NOT NULL PRIMARY KEY,
   name text NOT NULL,

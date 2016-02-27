@@ -1,5 +1,3 @@
-set datestyle to 'iso, mdy';
-
 VACUUM so_posts;
 
 SELECT assert(count(*), 165240, '# of posts') FROM so_posts;
