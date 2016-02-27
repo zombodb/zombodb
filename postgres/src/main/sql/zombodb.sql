@@ -46,7 +46,6 @@ CREATE OR REPLACE FUNCTION array_upper(v text[]) RETURNS text[] IMMUTABLE LANGUA
 CREATE OR REPLACE FUNCTION zdbinsert(internal, internal, internal, internal, internal, internal) RETURNS boolean LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdbbeginscan(internal, internal, internal) RETURNS internal LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdbgettuple(internal, internal) RETURNS boolean LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbgetbitmap(internal, internal) RETURNS bigint LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdbrescan(internal, internal, internal, internal, internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdbendscan(internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdbmarkpos(internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
@@ -534,7 +533,7 @@ BEGIN
     IF NOT FOUND THEN
         -- we don't really care what these values are, because we always update them below
         INSERT INTO pg_am (amname, amstrategies, amsupport, amcanorder, amcanorderbyop, amcanbackward, amcanunique, amcanmulticol, amoptionalkey, amsearcharray, amsearchnulls, amstorage, amclusterable, ampredlocks, amkeytype, aminsert, ambeginscan, amgettuple, amgetbitmap, amrescan, amendscan, ammarkpos, amrestrpos, ambuild, ambuildempty, ambulkdelete, amvacuumcleanup, amcanreturn, amcostestimate, amoptions)
-        VALUES           ('zombodb', 1, 1, 'f', 'f', 'f', 'f', 't', 'f', 'f', 't', 't', 'f', 'f', 0, 'zdbinsert', 'zdbbeginscan', 'zdbgettuple', 'zdbgetbitmap', 'zdbrescan', 'zdbendscan', 'zdbmarkpos', 'zdbrestrpos', 'zdbbuild', 'zdbbuildempty', 'zdbbulkdelete', 'zdbvacuumcleanup', '-', 'zdbcostestimate', 'zdboptions');
+        VALUES           ('zombodb', 1, 1, 'f', 'f', 'f', 'f', 't', 'f', 'f', 't', 't', 'f', 'f', 0, 'zdbinsert', 'zdbbeginscan', 'zdbgettuple', '-', 'zdbrescan', 'zdbendscan', 'zdbmarkpos', 'zdbrestrpos', 'zdbbuild', 'zdbbuildempty', 'zdbbulkdelete', 'zdbvacuumcleanup', '-', 'zdbcostestimate', 'zdboptions');
     END IF;
 
     UPDATE pg_am SET
@@ -556,7 +555,7 @@ BEGIN
         aminsert = 'zdbinsert',
         ambeginscan = 'zdbbeginscan',
         amgettuple = 'zdbgettuple',
-        amgetbitmap = 'zdbgetbitmap',
+        amgetbitmap = '-',
         amrescan = 'zdbrescan',
         amendscan = 'zdbendscan',
         ammarkpos = 'zdbmarkpos',

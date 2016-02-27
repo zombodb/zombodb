@@ -54,7 +54,6 @@ PG_FUNCTION_INFO_V1(zdbbuildempty);
 PG_FUNCTION_INFO_V1(zdbinsert);
 PG_FUNCTION_INFO_V1(zdbbeginscan);
 PG_FUNCTION_INFO_V1(zdbgettuple);
-PG_FUNCTION_INFO_V1(zdbgetbitmap);
 PG_FUNCTION_INFO_V1(zdbrescan);
 PG_FUNCTION_INFO_V1(zdbendscan);
 PG_FUNCTION_INFO_V1(zdbmarkpos);
@@ -744,42 +743,6 @@ zdbgettuple(PG_FUNCTION_ARGS)
 	}
 
 	PG_RETURN_BOOL(haveMore);
-}
-
-/** our version of TIDBitmap so we can expose the "maxentries" */
-#include "tidbitmap_hack.h"
-
-/*
- *  zdbgetbitmap() -- gets all matching tuples, and adds them to a bitmap
- */
-Datum
-zdbgetbitmap(PG_FUNCTION_ARGS)
-{
-	IndexScanDesc scan       = (IndexScanDesc) PG_GETARG_POINTER(0);
-	TIDBitmap     *tbm       = (TIDBitmap *) PG_GETARG_POINTER(1);
-	ZDBScanState  *scanstate = (ZDBScanState *) scan->opaque;
-	uint64           i;
-
-	/*
-	 * force the max entries to be as many as possible
-	 * so that Postgres will not need to evaluate individual
-	 * tuples if the TIDBitmap becomes lossy
-	 */
-	tbm->maxentries = INT_MAX-1;
-
-	for (i = 0; i < scanstate->nhits; i++)
-	{
-		ItemPointerData target;
-		ZDBScore score;
-
-		CHECK_FOR_INTERRUPTS();
-		set_item_pointer(scanstate->hits, i, &target, &score);
-		tbm_add_tuples(tbm, &target, 1, false);
-
-		zdb_record_bitmap_score(scan->indexRelation->rd_id, &target, score);
-	}
-
-	PG_RETURN_INT64(scanstate->nhits);
 }
 
 /*
