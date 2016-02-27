@@ -20,6 +20,7 @@
 #include "catalog/indexing.h"
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_type.h"
+#include "rewrite/rewriteHandler.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/rel.h"
@@ -42,33 +43,6 @@ PG_FUNCTION_INFO_V1(zdb_internal_get_index_field_lists);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
 PG_FUNCTION_INFO_V1(zdb_internal_multi_search);
 PG_FUNCTION_INFO_V1(zdb_internal_analyze_text);
-
-
-/*
- * taken from Postgres' rewriteHandler.c
- *
- * NB:  This function is exposed in PG 9.4+
- */
-static Query *get_view_query(Relation view) {
-	int i;
-
-	Assert(view->rd_rel->relkind == RELKIND_VIEW);
-
-	for (i = 0; i < view->rd_rules->numLocks; i++) {
-		RewriteRule *rule = view->rd_rules->rules[i];
-
-		if (rule->event == CMD_SELECT) {
-			/* A _RETURN rule should have only one action */
-			if (list_length(rule->actions) != 1)
-				elog(ERROR, "invalid _RETURN rule action specification");
-
-			return (Query *) linitial(rule->actions);
-		}
-	}
-
-	elog(ERROR, "failed to find _RETURN rule for view");
-	return NULL;                /* keep compiler quiet */
-}
 
 static FuncExpr *extract_zdb_funcExpr_from_view(Relation viewRel, Oid *heapRelOid) {
 	ListCell *lc;
