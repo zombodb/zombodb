@@ -20,6 +20,7 @@
 #include "access/heapam_xlog.h"
 #include "access/nbtree.h"
 #include "access/reloptions.h"
+#include "catalog/pg_type.h"
 #include "commands/dbcommands.h"
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
@@ -64,7 +65,7 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data);
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Jsonb *data);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 static void wrapper_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData);
@@ -147,6 +148,8 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->bulk_concurrency = ZDBIndexOptionsGetBulkConcurrency(indexRel);
 	desc->batch_size       = ZDBIndexOptionsGetBatchSize(indexRel);
 	desc->fieldLists       = ZDBIndexOptionsGetFieldLists(indexRel);
+
+	getTypeInputInfo(JSONBOID, &desc->jsonbtypinput, &desc->jsonbtypioparam);
 
 	if (desc->isShadow)
 	{
@@ -585,7 +588,7 @@ static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPo
 	MemoryContextDelete(me);
 }
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data)
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Jsonb *data)
 {
 	MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 

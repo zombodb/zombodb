@@ -37,6 +37,7 @@
 #include "storage/lmgr.h"
 #include "utils/guc.h"
 #include "utils/json.h"
+#include "utils/jsonb.h"
 #include "utils/memutils.h"
 #include "utils/builtins.h"
 
@@ -558,7 +559,7 @@ zdbbuildCallback(Relation indexRel,
 	TupleDesc          tupdesc     = RelationGetDescr(indexRel);
 	ZDBBuildState      *buildstate = (ZDBBuildState *) state;
 	ZDBIndexDescriptor *desc       = buildstate->desc;
-	text               *value;
+	Jsonb               *value;
 
 	if (HeapTupleIsHeapOnly(htup))
 		elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
@@ -566,7 +567,17 @@ zdbbuildCallback(Relation indexRel,
 	if (tupdesc->natts != 2)
 		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
 
-	value = DatumGetTextP(values[1]);
+	switch(tupdesc->attrs[1]->atttypid) {
+		case JSONOID:
+			value = DatumGetJsonb(OidInputFunctionCall(desc->jsonbtypinput, TextDatumGetCString(values[1]), desc->jsonbtypioparam, -1));
+			break;
+		case JSONBOID:
+			value = DatumGetJsonb(values[1]);
+			break;
+		default:
+			elog(ERROR, "Unsupported second index column type: %d", tupdesc->attrs[1]->atttypid);
+	}
+
 	desc->implementation->batchInsertRow(
 			desc,
 			&htup->t_self,
@@ -610,7 +621,7 @@ zdbinsert(PG_FUNCTION_ARGS)
 //    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
 	TupleDesc          tupdesc  = RelationGetDescr(indexRel);
 	ZDBIndexDescriptor *desc;
-	text               *value;
+	Jsonb              *value;
 
 	desc = alloc_index_descriptor(indexRel, true);
 	if (desc->isShadow)
@@ -619,8 +630,28 @@ zdbinsert(PG_FUNCTION_ARGS)
 	if (tupdesc->natts != 2)
 		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
 
-	value = DatumGetTextP(values[1]);
-	desc->implementation->batchInsertRow(desc, ht_ctid, GetCurrentTransactionId(), 0, GetCurrentCommandId(false), GetCurrentCommandId(false), false, false, value);
+	switch(tupdesc->attrs[1]->atttypid) {
+		case JSONOID:
+			value = DatumGetJsonb(OidInputFunctionCall(desc->jsonbtypinput, TextDatumGetCString(values[1]), desc->jsonbtypioparam, -1));
+			break;
+		case JSONBOID:
+			value = DatumGetJsonb(values[1]);
+			break;
+		default:
+			elog(ERROR, "Unsupported second index column type: %d", tupdesc->attrs[1]->atttypid);
+	}
+
+	desc->implementation->batchInsertRow(
+			desc,
+			ht_ctid,
+			GetCurrentTransactionId(),
+			0,
+			GetCurrentCommandId(false),
+			GetCurrentCommandId(false),
+			false,
+			false,
+			value
+	);
 
 	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	xactCommitDataList = lappend(xactCommitDataList, zdb_alloc_new_xact_record(desc, ht_ctid));

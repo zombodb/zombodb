@@ -63,6 +63,7 @@ CREATE OR REPLACE FUNCTION zdboptions(text[], boolean) RETURNS bytea LANGUAGE c 
 -- convenience methods for index creation and querying
 --
 CREATE OR REPLACE FUNCTION zdb(record) RETURNS json LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_row_to_json';
+CREATE OR REPLACE FUNCTION zdb_to_jsonb(anyelement) RETURNS jsonb LANGUAGE internal IMMUTABLE STRICT AS $$to_jsonb$$;
 CREATE OR REPLACE FUNCTION zdb(table_name regclass, ctid tid) RETURNS tid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid';
 CREATE OR REPLACE FUNCTION zdb_num_hits() RETURNS int8 AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_query_func(json, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 2147483647;
@@ -573,13 +574,8 @@ BEGIN
 END;
 $$;
 
-CREATE OPERATOR ==> (
-    PROCEDURE = zdb_query_func,
-    LEFTARG = json,
-    RIGHTARG = text
-);
-
 CREATE OPERATOR CLASS zombodb_json_ops DEFAULT FOR TYPE json USING zombodb AS STORAGE json;
+CREATE OPERATOR CLASS zombodb_jsonb_ops DEFAULT FOR TYPE jsonb USING zombodb AS STORAGE jsonb;
 
 CREATE OPERATOR ==> (
     PROCEDURE = zdb_tid_query_func,

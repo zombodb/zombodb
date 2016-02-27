@@ -22,6 +22,7 @@
 #include "lib/stringinfo.h"
 #include "storage/itemptr.h"
 #include "utils/relcache.h"
+#include "utils/jsonb.h"
 
 #include "util/zdbutils.h"
 
@@ -101,6 +102,9 @@ typedef struct
 	int batch_size;
 
 	char *fieldLists;
+
+	Oid jsonbtypinput;
+	Oid jsonbtypioparam;
 
 	ZDBIndexImplementation *implementation;
 }                                     ZDBIndexDescriptor;
@@ -197,7 +201,7 @@ typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse
 
 typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
 
-typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data);
+typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Jsonb *data);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBIndexCommitXactData_function)(ZDBIndexDescriptor *indexDescriptor, List/*<ZDBCommitData *>*/ *datums);
 

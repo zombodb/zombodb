@@ -23,6 +23,7 @@
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
+#include "utils/jsonb.h"
 
 #include "rest/rest.h"
 #include "util/zdbutils.h"
@@ -844,7 +845,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_committed, bool xmax_committed, text *value, StringInfo bulk)
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_committed, bool xmax_committed, Jsonb *value, StringInfo bulk)
 {
 	/* the xact state */
 	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"xact\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
@@ -866,11 +867,11 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
 	/* the data */
 	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"data\",\"_parent\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid), ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
-	appendBinaryStringInfoAndStripLineBreaks(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
+	JsonbToCString(bulk, &value->root, VARSIZE(value));
 	appendStringInfoCharMacro(bulk, '\n');
 }
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data)
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Jsonb *data)
 {
 	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
 
