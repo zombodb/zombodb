@@ -1,5 +1,5 @@
-CREATE INDEX idxso_posts ON so_posts USING zombodb (zdb('so_posts', ctid), zdb_to_jsonb(so_posts)) WITH (url='http://localhost:9200/', bulk_concurrency=1, batch_size=1048576);
-CREATE INDEX idxso_users ON so_users USING zombodb (zdb('so_users', ctid), zdb_to_jsonb(so_users)) WITH (url='http://localhost:9200/', bulk_concurrency=1, batch_size=1048576);
-CREATE INDEX idxso_comments ON so_comments USING zombodb(zdb('so_comments', ctid), zdb_to_jsonb(so_comments)) WITH (url='http://localhost:9200/', bulk_concurrency=1, batch_size=1048576);
-CREATE INDEX idxwords ON words USING zombodb (zdb('words', ctid), zdb_to_jsonb(words)) WITH (url='http://localhost:9200/', bulk_concurrency=1, batch_size=1048576);
-CREATE INDEX idx_zdb_products ON products USING zombodb(zdb('products', products.ctid), zdb_to_jsonb(products)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxso_posts ON so_posts USING zombodb (zdb('so_posts', ctid), zdb(so_posts)) WITH (url='http://localhost:9200/', bulk_concurrency=1, batch_size=1048576);
+CREATE INDEX idxso_users ON so_users USING zombodb (zdb('so_users', ctid), zdb(so_users)) WITH (url='http://localhost:9200/', bulk_concurrency=1, batch_size=1048576);
+CREATE INDEX idxso_comments ON so_comments USING zombodb(zdb('so_comments', ctid), zdb(so_comments)) WITH (url='http://localhost:9200/', bulk_concurrency=1, batch_size=1048576);
+CREATE INDEX idxwords ON words USING zombodb (zdb('words', ctid), zdb(words)) WITH (url='http://localhost:9200/', bulk_concurrency=1, batch_size=1048576);
+CREATE INDEX idx_zdb_products ON products USING zombodb(zdb('products', products.ctid), zdb(products)) WITH (url='http://localhost:9200/');

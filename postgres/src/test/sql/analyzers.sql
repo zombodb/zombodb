@@ -70,7 +70,7 @@ INSERT INTO analyzers_test VALUES (
   , 'bu bir test' -- turkish
   , 'นี่คือการทดสอบ');
 
-CREATE INDEX idxanalyzers_test ON analyzers_test USING zombodb (zdb('analyzers_test', ctid), zdb_to_jsonb(analyzers_test)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxanalyzers_test ON analyzers_test USING zombodb (zdb('analyzers_test', ctid), zdb(analyzers_test)) WITH (url='http://localhost:9200/');
 SELECT
   attname,
   (SELECT zdb('analyzers_test', ctid) ==> (attname || ':test') :: TEXT

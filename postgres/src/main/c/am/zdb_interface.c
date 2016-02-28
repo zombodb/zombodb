@@ -65,7 +65,7 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Jsonb *data);
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Datum data);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 static void wrapper_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData);
@@ -588,7 +588,7 @@ static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPo
 	MemoryContextDelete(me);
 }
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Jsonb *data)
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Datum data)
 {
 	MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 

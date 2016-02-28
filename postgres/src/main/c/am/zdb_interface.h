@@ -201,7 +201,7 @@ typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse
 
 typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
 
-typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Jsonb *data);
+typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Datum data);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBIndexCommitXactData_function)(ZDBIndexDescriptor *indexDescriptor, List/*<ZDBCommitData *>*/ *datums);
 

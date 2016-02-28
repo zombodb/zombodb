@@ -558,7 +558,7 @@ zdbbuildCallback(Relation indexRel,
 	TupleDesc          tupdesc     = RelationGetDescr(indexRel);
 	ZDBBuildState      *buildstate = (ZDBBuildState *) state;
 	ZDBIndexDescriptor *desc       = buildstate->desc;
-	Jsonb               *value;
+	Datum              value;
 
 	if (HeapTupleIsHeapOnly(htup))
 		elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
@@ -568,13 +568,11 @@ zdbbuildCallback(Relation indexRel,
 
 	switch(tupdesc->attrs[1]->atttypid) {
 		case JSONOID:
-			value = DatumGetJsonb(OidInputFunctionCall(desc->jsonbtypinput, TextDatumGetCString(values[1]), desc->jsonbtypioparam, -1));
-			break;
-		case JSONBOID:
-			value = DatumGetJsonb(values[1]);
+			value = values[1];
 			break;
 		default:
 			elog(ERROR, "Unsupported second index column type: %d", tupdesc->attrs[1]->atttypid);
+			return;
 	}
 
 	desc->implementation->batchInsertRow(
@@ -620,7 +618,7 @@ zdbinsert(PG_FUNCTION_ARGS)
 //    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
 	TupleDesc          tupdesc  = RelationGetDescr(indexRel);
 	ZDBIndexDescriptor *desc;
-	Jsonb              *value;
+	Datum              value;
 
 	desc = alloc_index_descriptor(indexRel, true);
 	if (desc->isShadow)
@@ -631,13 +629,11 @@ zdbinsert(PG_FUNCTION_ARGS)
 
 	switch(tupdesc->attrs[1]->atttypid) {
 		case JSONOID:
-			value = DatumGetJsonb(OidInputFunctionCall(desc->jsonbtypinput, TextDatumGetCString(values[1]), desc->jsonbtypioparam, -1));
-			break;
-		case JSONBOID:
-			value = DatumGetJsonb(values[1]);
+			value = values[1];
 			break;
 		default:
 			elog(ERROR, "Unsupported second index column type: %d", tupdesc->attrs[1]->atttypid);
+			PG_RETURN_BOOL(false);
 	}
 
 	desc->implementation->batchInsertRow(

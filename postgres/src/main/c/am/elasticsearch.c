@@ -24,6 +24,7 @@
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/jsonb.h"
+#include "utils/memutils.h"
 
 #include "rest/rest.h"
 #include "util/zdbutils.h"
@@ -62,13 +63,15 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
 
 	if (!data && create)
 	{
+		MemoryContext oldcontext = MemoryContextSwitchTo(TopTransactionContext);
 		data = palloc(sizeof(BatchInsertData));
 		data->indexDescriptor = indexDescriptor;
-		data->rest			  = palloc0(sizeof(MultiRestState));
+		data->rest            = palloc0(sizeof(MultiRestState));
 		data->bulk            = makeStringInfo();
 		data->nprocessed      = 0;
-		data->nrequests		  = 0;
+		data->nrequests       = 0;
 		batchInsertDataList = lappend(batchInsertDataList, data);
+		MemoryContextSwitchTo(oldcontext);
 
 		rest_multi_init(data->rest, indexDescriptor->bulk_concurrency);
 	}
@@ -845,11 +848,13 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_committed, bool xmax_committed, Jsonb *value, StringInfo bulk)
+static void appendBatchInsertData(ItemPointer ht_ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_committed, bool xmax_committed, Datum value, BatchInsertData *batch)
 {
+	text         *json_string = (text *) DatumGetPointer(value);
+
 	/* the xact state */
-	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"xact\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
-	appendStringInfo(bulk, "{"
+	appendStringInfo(batch->bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"xact\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
+	appendStringInfo(batch->bulk, "{"
 					"\"_xmin\":%d,"
 					"\"_xmax\":%d,"
 					"\"_cmin\":%d,"
@@ -866,16 +871,18 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 	);
 
 	/* the data */
-	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"data\",\"_parent\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid), ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
-	JsonbToCString(bulk, &value->root, VARSIZE(value));
-	appendStringInfoCharMacro(bulk, '\n');
+	appendStringInfo(batch->bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"data\",\"_parent\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid), ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
+
+	/* append the json_string (with ending LF) */
+	appendBinaryStringInfoAndStripLineBreaks(batch->bulk, VARDATA(json_string), VARSIZE(json_string) - VARHDRSZ);
+	appendStringInfoCharMacro(batch->bulk, '\n');
 }
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Jsonb *data)
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, Datum data)
 {
 	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
 
-	appendBatchInsertData(indexDescriptor, ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch->bulk);
+	appendBatchInsertData(ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch);
 	batch->nprocessed++;
 
 	if (batch->bulk->len > indexDescriptor->batch_size)
