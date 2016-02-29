@@ -458,7 +458,7 @@ zdbbuild(PG_FUNCTION_ARGS)
 		buildstate.desc->implementation->createNewIndex(buildstate.desc, ZDBIndexOptionsGetNumberOfShards(indexRel), ZDBIndexOptionsGetNoXact(indexRel), properties);
 
 		/* do the heap scan */
-		reltuples = IndexBuildHeapScan(heapRel, indexRel, indexInfo, false, zdbbuildCallback, (void *) &buildstate);
+		reltuples = IndexBuildHeapScan(heapRel, indexRel, indexInfo, true, zdbbuildCallback, (void *) &buildstate);
 
 		/* signal that the batch inserts have stopped */
 		buildstate.desc->implementation->batchInsertFinish(buildstate.desc);

@@ -81,6 +81,10 @@ void rest_multi_init(MultiRestState *state, int nhandles) {
 	MULTI_REST_STATES = lappend(MULTI_REST_STATES, state);
 }
 
+void rest_multi_perform(MultiRestState *state) {
+    int still_running;
+    curl_multi_perform(state->multi_handle, &still_running);
+}
 
 int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo postData, bool process) {
     int i;

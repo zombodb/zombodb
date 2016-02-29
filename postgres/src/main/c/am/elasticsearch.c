@@ -885,6 +885,10 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 	appendBatchInsertData(ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch);
 	batch->nprocessed++;
 
+	if (batch->nprocessed % 1000) {
+		rest_multi_perform(batch->rest);
+	}
+
 	if (batch->bulk->len > indexDescriptor->batch_size)
 	{
 		StringInfo endpoint = makeStringInfo();
