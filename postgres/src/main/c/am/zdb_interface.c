@@ -122,6 +122,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	Relation           heapRel;
 	ZDBIndexDescriptor *desc;
 	ListCell           *lc;
+	int i;
 
 	if (indexRel->rd_index == NULL)
 		elog(ERROR, "%s is not an index", RelationGetRelationName(indexRel));
@@ -151,7 +152,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->fieldLists       = ZDBIndexOptionsGetFieldLists(indexRel);
 
 	heapTupDesc = RelationGetDescr(heapRel);
-	for (int i=0; i<heapTupDesc->natts; i++) {
+	for (i=0; i<heapTupDesc->natts; i++) {
 		if (heapTupDesc->attrs[i]->atttypid == JSONOID) {
 			desc->hasJson = true;
 			break;
