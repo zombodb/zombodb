@@ -118,9 +118,10 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 {
 	MemoryContext      oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	StringInfo         scratch    = makeStringInfo();
+	TupleDesc          heapTupDesc;
 	Relation           heapRel;
 	ZDBIndexDescriptor *desc;
-	ListCell *lc;
+	ListCell           *lc;
 
 	if (indexRel->rd_index == NULL)
 		elog(ERROR, "%s is not an index", RelationGetRelationName(indexRel));
@@ -149,7 +150,13 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->batch_size       = ZDBIndexOptionsGetBatchSize(indexRel);
 	desc->fieldLists       = ZDBIndexOptionsGetFieldLists(indexRel);
 
-	getTypeInputInfo(JSONBOID, &desc->jsonbtypinput, &desc->jsonbtypioparam);
+	heapTupDesc = RelationGetDescr(heapRel);
+	for (int i=0; i<heapTupDesc->natts; i++) {
+		if (heapTupDesc->attrs[i]->atttypid == JSONOID) {
+			desc->hasJson = true;
+			break;
+		}
+	}
 
 	if (desc->isShadow)
 	{

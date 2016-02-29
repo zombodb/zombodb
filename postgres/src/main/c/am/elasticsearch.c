@@ -848,7 +848,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ItemPointer ht_ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_committed, bool xmax_committed, Datum value, BatchInsertData *batch)
+static void appendBatchInsertData(ZDBIndexDescriptor *desc, ItemPointer ht_ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_committed, bool xmax_committed, Datum value, BatchInsertData *batch)
 {
 	text         *json_string = (text *) DatumGetPointer(value);
 
@@ -874,7 +874,10 @@ static void appendBatchInsertData(ItemPointer ht_ctid, TransactionId xmin, Trans
 	appendStringInfo(batch->bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"data\",\"_parent\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid), ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
 
 	/* append the json_string (with ending LF) */
-	appendBinaryStringInfoAndStripLineBreaks(batch->bulk, VARDATA(json_string), VARSIZE(json_string) - VARHDRSZ);
+	if (desc->hasJson)
+		appendBinaryStringInfoAndStripLineBreaks(batch->bulk, VARDATA(json_string), VARSIZE(json_string) - VARHDRSZ);
+	else
+		appendBinaryStringInfo(batch->bulk, VARDATA(json_string), VARSIZE(json_string) - VARHDRSZ);
 	appendStringInfoCharMacro(batch->bulk, '\n');
 }
 
@@ -882,7 +885,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 {
 	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
 
-	appendBatchInsertData(ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch);
+	appendBatchInsertData(indexDescriptor, ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch);
 	batch->nprocessed++;
 
 	if (batch->nprocessed % 1000) {

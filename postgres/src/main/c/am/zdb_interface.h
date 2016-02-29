@@ -86,6 +86,7 @@ typedef struct
 	int64 advisory_mutex;
 	bool isShadow;
 	bool logit;
+	bool hasJson;
 	char *databaseName;
 	char *schemaName;
 	char *tableName;
@@ -102,9 +103,6 @@ typedef struct
 	int batch_size;
 
 	char *fieldLists;
-
-	Oid jsonbtypinput;
-	Oid jsonbtypioparam;
 
 	ZDBIndexImplementation *implementation;
 }                                     ZDBIndexDescriptor;
