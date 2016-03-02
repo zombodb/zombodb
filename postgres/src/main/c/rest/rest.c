@@ -110,7 +110,7 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
 
                 curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
                 curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
-                curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
+                curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
                 curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
                 curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
@@ -242,7 +242,7 @@ StringInfo rest_call(char *method, char *url, StringInfo postData)
 		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_SHARE, GLOBAL_CURL_SHARED_STATE);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
 		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
-		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PROGRESSFUNCTION, curl_progress_func);   /* to go here so we can detect a ^C within postgres */
+		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* to go here so we can detect a ^C within postgres */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_MAXREDIRS, 0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEFUNCTION, curl_write_func);
