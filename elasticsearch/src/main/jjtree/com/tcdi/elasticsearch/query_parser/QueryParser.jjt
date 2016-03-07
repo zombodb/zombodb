@@ -541,6 +541,7 @@ FieldnameAndOperator OptionalFieldname() :
         if (fn != null) {
             return new FieldnameAndOperator(fn.fieldName, op.image);
         } else {
+            usedFieldnames.add("_all");
             return fieldnameStack.isEmpty() ? new FieldnameAndOperator("_all", ":") : fieldnameStack.peek();
         }
     }

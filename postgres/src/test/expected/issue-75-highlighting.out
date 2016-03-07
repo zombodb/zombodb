@@ -1,19 +1,10 @@
-SELECT *
+SELECT DISTINCT "fieldName"
 FROM zdb_highlight('so_posts', '#bool(#must(title:java javascript))',
-                   $$ zdb('so_posts', ctid)==>'#bool(#must(java javascript))' $$)
-ORDER BY "primaryKey", "fieldName", position
-LIMIT 10;
- primaryKey | fieldName | arrayIndex |    term    |    type    | position | startOffset | endOffset |           clause           
-------------+-----------+------------+------------+------------+----------+-------------+-----------+----------------------------
- 101241     | tags      |          0 | javascript | <ALPHANUM> |        1 |           1 |        11 | _all CONTAINS "javascript"
- 101241     | title     |          0 | javascript | <ALPHANUM> |        5 |          20 |        30 | _all CONTAINS "javascript"
- 103803     | tags      |          0 | javascript | <ALPHANUM> |        1 |           1 |        11 | _all CONTAINS "javascript"
- 110979     | tags      |          0 | javascript | <ALPHANUM> |        3 |          21 |        31 | _all CONTAINS "javascript"
- 110979     | title     |          0 | javascript | <ALPHANUM> |       13 |          65 |        75 | _all CONTAINS "javascript"
- 112249     | title     |          0 | java       | <ALPHANUM> |        6 |          21 |        25 | title CONTAINS "java"
- 112249     | title     |          0 | javascript | <ALPHANUM> |        9 |          38 |        48 | _all CONTAINS "javascript"
- 113430     | title     |          0 | java       | <ALPHANUM> |       12 |          59 |        63 | title CONTAINS "java"
- 113634     | tags      |          0 | javascript | <ALPHANUM> |        2 |           7 |        17 | _all CONTAINS "javascript"
- 113634     | title     |          0 | java       | <ALPHANUM> |        4 |          13 |        17 | title CONTAINS "java"
-(10 rows)
+                   $$ zdb('so_posts', ctid)==>'#bool(#must(java javascript))' $$) ORDER BY 1;
+ fieldName 
+-----------
+ body
+ tags
+ title
+(3 rows)
 
