@@ -227,6 +227,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 					"      \"analysis\": {"
 					"         \"filter\": { %s },"
 					"         \"char_filter\" : { %s },"
+					"         \"tokenizer\" : { %s },"
 					"         \"analyzer\": { %s }"
 					"      }"
 					"   }"
@@ -237,6 +238,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 			shards,
             lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
             lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
+            lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"),
             lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers")
 	);
 

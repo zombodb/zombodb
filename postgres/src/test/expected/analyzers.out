@@ -31,7 +31,8 @@ CREATE TABLE analyzers_test (
   spanish    spanish,
   swedish    swedish,
   turkish    turkish,
-  thai       thai
+  thai       thai,
+  fulltext_with_shingles fulltext_with_shingles
 );
 INSERT INTO analyzers_test VALUES (
   'هذا اختبار'
@@ -66,7 +67,9 @@ INSERT INTO analyzers_test VALUES (
   , 'esto es un exámen'
   , 'detta är ett prov'
   , 'bu bir test' -- turkish
-  , 'นี่คือการทดสอบ');
+  , 'นี่คือการทดสอบ'
+  , 'this is a test' -- fulltext_with_shingles
+  );
 CREATE INDEX idxanalyzers_test ON analyzers_test USING zombodb (zdb('analyzers_test', ctid), zdb(analyzers_test)) WITH (url='http://localhost:9200/');
 WARNING:  No primary key detected for public.analyzers_test, continuing anyway
 SELECT
@@ -76,42 +79,43 @@ SELECT
 FROM pg_attribute
 WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1
 ORDER BY attnum;
-  attname   | found 
-------------+-------
- arabic     | f
- armenian   | f
- basque     | f
- brazilian  | f
- bulgarian  | f
- catalan    | f
- chinese    | f
- cjk        | f
- czech      | t
- danish     | t
- dutch      | t
- english    | t
- finnish    | f
- french     | t
- galician   | f
- german     | t
- greek      | f
- hindi      | f
- hungarian  | f
- indonesian | f
- irish      | f
- italian    | f
- latvian    | t
- norwegian  | t
- persian    | f
- portuguese | t
- romanian   | t
- russian    | f
- sorani     | t
- spanish    | f
- swedish    | f
- turkish    | t
- thai       | f
-(33 rows)
+        attname         | found 
+------------------------+-------
+ arabic                 | f
+ armenian               | f
+ basque                 | f
+ brazilian              | f
+ bulgarian              | f
+ catalan                | f
+ chinese                | f
+ cjk                    | f
+ czech                  | t
+ danish                 | t
+ dutch                  | t
+ english                | t
+ finnish                | f
+ french                 | t
+ galician               | f
+ german                 | t
+ greek                  | f
+ hindi                  | f
+ hungarian              | f
+ indonesian             | f
+ irish                  | f
+ italian                | f
+ latvian                | t
+ norwegian              | t
+ persian                | f
+ portuguese             | t
+ romanian               | t
+ russian                | f
+ sorani                 | t
+ spanish                | f
+ swedish                | f
+ turkish                | t
+ thai                   | f
+ fulltext_with_shingles | t
+(34 rows)
 
 SELECT zdb_analyze_text('idxanalyzers_test', attname, (SELECT row_to_json(analyzers_test) ->> attname FROM analyzers_test))
 FROM pg_attribute
@@ -178,7 +182,14 @@ ORDER BY attnum;
  (test,7,11,<ALPHANUM>,3)
  (นี่,0,3,word,1)
  (ทดสอบ,9,14,word,4)
-(58 rows)
+ (this,0,4,<ALPHANUM>,1)
+ (this$is,0,7,shingle,1)
+ (is,5,7,<ALPHANUM>,2)
+ (is$a,5,9,shingle,2)
+ (a,8,9,<ALPHANUM>,3)
+ (a$test,8,14,shingle,3)
+ (test,10,14,<ALPHANUM>,4)
+(65 rows)
 
 SELECT
   attname,
@@ -191,41 +202,42 @@ FROM analyzers_test, (SELECT
                       WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1) x
 WHERE zdb('analyzers_test', ctid) ==> q
 ORDER BY attname;
-  attname   |                  q                   
-------------+--------------------------------------
- arabic     | arabic:"هذا اختبار"
- armenian   | armenian:"սա փորձություն է"
- basque     | basque:"hau froga bat da"
- brazilian  | brazilian:"esto es un exámen"
- bulgarian  | bulgarian:"това е тест"
- catalan    | catalan:"Això és un examen"
- chinese    | chinese:"这是一个测试"
- cjk        | cjk:"これはテストです"
- czech      | czech:"toto je test"
- danish     | danish:"dette er en test"
- dutch      | dutch:"dit is een test"
- english    | english:"this is a test"
- finnish    | finnish:"Tämä on koe"
- french     | french:"c'est un test"
- galician   | galician:"este é unha proba de"
- german     | german:"das ist ein Test"
- greek      | greek:"αυτό είναι ένα τεστ"
- hindi      | hindi:"यह एक परीक्षण है"
- hungarian  | hungarian:"ez egy teszt"
- indonesian | indonesian:"ini adalah sebuah ujian"
- irish      | irish:"tá sé seo le tástáil"
- italian    | italian:"questa è una prova"
- latvian    | latvian:"Šis ir tests"
- norwegian  | norwegian:"dette er en test"
- persian    | persian:"این یک امتحان است"
- portuguese | portuguese:"isso é um teste"
- romanian   | romanian:"acesta este un test"
- russian    | russian:"Это тест"
- sorani     | sorani:"this IS a test"
- spanish    | spanish:"esto es un exámen"
- swedish    | swedish:"detta är ett prov"
- thai       | thai:"นี่คือการทดสอบ"
- turkish    | turkish:"bu bir test"
-(33 rows)
+        attname         |                    q                    
+------------------------+-----------------------------------------
+ arabic                 | arabic:"هذا اختبار"
+ armenian               | armenian:"սա փորձություն է"
+ basque                 | basque:"hau froga bat da"
+ brazilian              | brazilian:"esto es un exámen"
+ bulgarian              | bulgarian:"това е тест"
+ catalan                | catalan:"Això és un examen"
+ chinese                | chinese:"这是一个测试"
+ cjk                    | cjk:"これはテストです"
+ czech                  | czech:"toto je test"
+ danish                 | danish:"dette er en test"
+ dutch                  | dutch:"dit is een test"
+ english                | english:"this is a test"
+ finnish                | finnish:"Tämä on koe"
+ french                 | french:"c'est un test"
+ fulltext_with_shingles | fulltext_with_shingles:"this is a test"
+ galician               | galician:"este é unha proba de"
+ german                 | german:"das ist ein Test"
+ greek                  | greek:"αυτό είναι ένα τεστ"
+ hindi                  | hindi:"यह एक परीक्षण है"
+ hungarian              | hungarian:"ez egy teszt"
+ indonesian             | indonesian:"ini adalah sebuah ujian"
+ irish                  | irish:"tá sé seo le tástáil"
+ italian                | italian:"questa è una prova"
+ latvian                | latvian:"Šis ir tests"
+ norwegian              | norwegian:"dette er en test"
+ persian                | persian:"این یک امتحان است"
+ portuguese             | portuguese:"isso é um teste"
+ romanian               | romanian:"acesta este un test"
+ russian                | russian:"Это тест"
+ sorani                 | sorani:"this IS a test"
+ spanish                | spanish:"esto es un exámen"
+ swedish                | swedish:"detta är ett prov"
+ thai                   | thai:"นี่คือการทดสอบ"
+ turkish                | turkish:"bu bir test"
+(34 rows)
 
 DROP TABLE analyzers_test;
