@@ -23,7 +23,7 @@ varchar       | string, analyzed using ZomboDB's `exact` analyzer
 character     | string, analyzed using ZomboDB's `exact` analyzer
 uuid          | string, analyzed using ZomboDB's `exact` analyzer
 json          | nested_object, where each property analyzed using ZomboDB's `exact` analyzer
-< type not listed > | string, analyzed using ZomboDB's `exact` analyzer
+unlisted type | string, analyzed using ZomboDB's `exact` analyzer
 
 (for all types above, arrays of the Postgres type are fully supported)
 
@@ -36,6 +36,7 @@ Domain Type | Elasticsearch Type
 phrase      | string, analyzed using ZomboDB's `phrase` analyzer
 phrase_array | array of strings, analyzed using ZomboDB's `phrase` analyzer
 fulltext    | string, analyzed using ZomboDB's `phrase` analyzer
+fulltext_with_shingles | string, analyzed using a 2-gram single filter for high-speed right-truncated wildcard support within "quoted phrases"
 "language domains" | string, analyzed using the Elasticsearch analyzer of that name
 
 ## ZomboDB's `exact` Analyzer
@@ -68,6 +69,14 @@ The `phrase`, `phrase_array`, and `fulltext` DOMAINS are all based on the Postgr
 Generally, this works well for latin-based languages.  Note that the analyzer does **NOT** perform stemming or stop-word removal.  This is by design.  Should you also need these abilities, you should use one of the language-specific domains.
 
 Note that fields of type `phrase` (and `phrase_array`) **are** included in Elasticsearch's `_all` field, whereas fiels of type `fulltext` are not (but are expanded at search time to include such fields).
+
+## About `fulltext_with_shingles` DOMAIN
+
+The `fulltext_with_shingles` DOMAIN is similar to the `fulltext` DOMAIN described above, except its underlying definition is such that it emits tokens not only as single terms, but pairs of terms (separated by the dollar sign).
+
+When you need high-speed right-trucated wildcard support, especially when used in "quoted phrases", this is probably the data type you want to use.
+
+Like `fulltext`, fields of this type are **not** included in the `_all` field, but queries against such fields are instead expanded at search time.
 
 ## About langauge-specific DOMAINS
 
