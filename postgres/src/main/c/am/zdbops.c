@@ -394,6 +394,18 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"norms\": {\"enabled\":true}");
 
 		}
+		else if (strcmp("fulltext_with_shingles", typename) == 0)
+		{
+			/* phrase-indexed field */
+			appendStringInfo(result, "\"type\": \"string\",");
+			appendStringInfo(result, "\"index_options\": \"positions\",");
+			appendStringInfo(result, "\"include_in_all\": \"false\",");
+			appendStringInfo(result, "\"index_analyzer\": \"fulltext_with_shingles\",");
+			appendStringInfo(result, "\"search_analyzer\": \"fulltext_with_shingles_search\",");
+			appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
+			appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+
+		}
 		else if (strcmp("phrase", typename) == 0 || strcmp("phrase_array", typename) == 0)
 		{
 			/* phrase-indexed field */

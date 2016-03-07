@@ -623,10 +623,16 @@ CREATE TABLE zdb_mappings (
   PRIMARY KEY (table_name, field_name)
 );
 
+CREATE TABLE zdb_tokenizers (
+  name text NOT NULL PRIMARY KEY,
+  definition json NOT NULL
+);
+
 SELECT pg_catalog.pg_extension_config_dump('zdb_filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_char_filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_analyzers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_mappings', '');
+SELECT pg_catalog.pg_extension_config_dump('zdb_tokenizers', '');
 
 CREATE OR REPLACE FUNCTION zdb_define_filter(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
   DELETE FROM zdb_filters WHERE name = $1;
@@ -648,12 +654,30 @@ CREATE OR REPLACE FUNCTION zdb_define_mapping(table_name regclass, field_name na
   INSERT INTO zdb_mappings(table_name, field_name, definition) VALUES ($1, $2, $3);
 $$;
 
+CREATE OR REPLACE FUNCTION zdb_define_tokenizer(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
+  DELETE FROM zdb_tokenizers WHERE name = $1;
+  INSERT INTO zdb_tokenizers(name, definition) VALUES ($1, $2);
+$$;
+
 INSERT INTO zdb_filters(name, definition, is_default) VALUES (
   'zdb_truncate_32000', '{
           "type": "truncate",
           "length": 32000
         }', true);
-
+INSERT INTO zdb_filters(name, definition, is_default) VALUES ('shingle_filter', '{
+          "type": "shingle",
+          "min_shingle_size": 2,
+          "max_shingle_size": 2,
+          "output_unigrams": true,
+          "token_separator": "$"
+        }', true);
+INSERT INTO zdb_filters(name, definition, is_default) VALUES ('shingle_filter_search', '{
+          "type": "shingle",
+          "min_shingle_size": 2,
+          "max_shingle_size": 2,
+          "output_unigrams": false,
+          "token_separator": "$"
+        }', true);
 INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
   'default', '{
           "tokenizer": "keyword",
@@ -674,6 +698,24 @@ INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
           "tokenizer": "standard",
           "filter": ["lowercase"]
         }', true);
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_shingles', '{
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "shingle_filter"
+          ]
+        }', true);
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_shingles_search', '{
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "shingle_filter_search"
+          ]
+        }', true);
+
+CREATE DOMAIN fulltext_with_shingles AS text;
 
 CREATE DOMAIN arabic AS text;
 CREATE DOMAIN armenian AS text;

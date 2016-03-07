@@ -14,6 +14,11 @@ These custom domains are to be used in user tables as data types when you requir
 #### ```DOMAIN fulltext AS text```
 
 >Currently has exact same meaning as the ```phrase``` domain.  This might change in the future.
+>
+
+#### `DOMAIN fulltext_with_shingles AS text`
+
+>Same as `fulltext` above, but provides higher performance when using right-truncated wildcards, especially when they're in a "quoted phrase", such as `body:"fried chick* is delicious"`.
 
 #### ```DOMAIN phrase_array AS text[]```
 
@@ -230,6 +235,26 @@ thai
 > ```
 > 
 > See the [type mapping](TYPE-MAPPING.md) documentation for for details.
+
+#### `FUNCTION zdb_define_tokenizer(name text, definition json) RETURNS void`
+> `name`: The name to give the tokenizer  
+> `definition`: the JSON object definition of the tokenizer
+> 
+> Allows you to define a custom Elasticsearch tokenizer to be used by a custom analyzer.
+> 
+> For example:
+> 
+> ```
+> SELECT zdb_define_filter('my_ngram_tokenizer', '{
+                        "type" : "nGram",
+                        "min_gram" : "2",
+                        "max_gram" : "3",
+                        "token_chars": [ "letter", "digit" ]
+                    }');
+> ```
+> 
+> See the [type mapping](TYPE-MAPPING.md) documentation for for details.
+
 
 #### `FUNCTION zdb_define_mapping(table_name regclass, field_name name, definition json) RETURNS void`
 > `table_name`: The table name to receive this custom field mapping

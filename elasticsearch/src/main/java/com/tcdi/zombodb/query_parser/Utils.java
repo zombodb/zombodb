@@ -49,7 +49,7 @@ public class Utils {
     }
 
     public static String unescape(String s) {
-        if (s == null || s.length() == 0)
+        if (s == null || s.length() <= 1)
             return s;
 
         StringBuilder sb  = new StringBuilder();
@@ -187,8 +187,17 @@ public class Utils {
         return l;
     }
 
-    public static List<String> analyze(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
-        String analyzer = metadataManager.getMetadataForField(fieldname).getAnalyzer(fieldname);
+    public static List<String> analyzeForSearch(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
+        String analyzer = metadataManager.getMetadataForField(fieldname).getSearchAnalyzer(fieldname);
+        return analyze(client, metadataManager, analyzer, fieldname, phrase);
+    }
+
+    public static List<String> analyzeForIndex(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
+        String analyzer = metadataManager.getMetadataForField(fieldname).getIndexAnalyzer(fieldname);
+        return analyze(client, metadataManager, analyzer, fieldname, phrase);
+    }
+
+    public static List<String> analyze(Client client, IndexMetadataManager metadataManager, String analyzer, String fieldname, String phrase) throws RuntimeException {
         if (analyzer == null)
             analyzer = "exact";
 
@@ -377,7 +386,6 @@ public class Utils {
 
     public static QueryParserNode rewriteToken(Client client, IndexMetadataManager metadataManager, QueryParserNode node) throws RuntimeException {
         List<String> initialAnalyze;
-        int cnt;
         boolean hasWildcards = node instanceof ASTFuzzy;
         String input = node.getEscapedValue();
         String newToken;
@@ -385,48 +393,27 @@ public class Utils {
         if (node instanceof ASTPrefix)
             input += "*";
 
-        initialAnalyze = analyze(client, metadataManager, node.getFieldname(), input);
-        cnt = initialAnalyze.size();
+        input = input.replaceAll("[*]", "zdb_star_zdb");
+        input = input.replaceAll("[?]", "zdb_question_zdb");
+        input = input.replaceAll("[~]", "zdb_tilde_zdb");
+        input = input.replaceAll("[\\\\]", "zdb_escape_zdb");
 
-        if (cnt == 0) {
-            ASTWord word = new ASTWord(QueryParserTreeConstants.JJTWORD);
-            word.value = "";
-            word.fieldname = node.fieldname;
-            return word;
-        } else {
-            EscapingStringTokenizer st = new EscapingStringTokenizer(input, "*?~ \r\n\t\f", true);
-            StringBuilder sb = new StringBuilder();
-            boolean lastWasWildcard = false;
-            boolean first = true;
-
-            while (st.hasMoreTokens()) {
-                String token = st.nextToken();
-                boolean isDelimiter = st.isDelimiter();
-
-                if (isDelimiter) {
-                    sb.append(token);
-                    if (!Character.isWhitespace(token.charAt(0))) {
-                        hasWildcards = true;
-                    }
-                    lastWasWildcard = true;
-                } else {
-                    List<String> analyzed = analyze(client, metadataManager, node.getFieldname(), token);
-
-                    sb.append(join(analyzed));
-                    if (!lastWasWildcard && !first)
-                        sb.append(" ");
-                    lastWasWildcard = false;
-                }
-
-                first = false;
-            }
-
-            newToken = sb.toString().trim();
+        initialAnalyze = analyzeForSearch(client, metadataManager, node.getFieldname(), input);
+        if (initialAnalyze.isEmpty()) {
+            initialAnalyze = analyzeForIndex(client, metadataManager, node.getFieldname(), input);
         }
+
+        newToken = join(initialAnalyze);
+        newToken = newToken.replaceAll("zdb_star_zdb", "*");
+        newToken = newToken.replaceAll("zdb_question_zdb", "?");
+        newToken = newToken.replaceAll("zdb_tilde_zdb", "~");
+        newToken = newToken.replaceAll("zdb_escape_zdb", "\\\\");
+
+        hasWildcards |= Utils.countValidWildcards(newToken) > 0;
         QueryParserNode rc;
 
         if (!hasWildcards) {
-            if (cnt <= 1) {
+            if (initialAnalyze.size() <= 1) {
                 if (node instanceof ASTPrefix) {
                     rc = node;
                 } else {
@@ -452,7 +439,7 @@ public class Utils {
             if (node instanceof ASTFuzzy)
                 newToken += "~" + (node.ordered ? "" : "!") + node.fuzzyness;
 
-            if (cnt <= 1) {
+            if (initialAnalyze.size() <= 1) {
                 rc = Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), newToken);
             } else {
                 rc = Utils.convertToProximity(node.getFieldname(), Arrays.asList(newToken.split("[ ]+")));

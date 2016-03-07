@@ -981,7 +981,7 @@ public class QueryRewriter {
         if (prox.getOperator() == QueryParserNode.Operator.REGEX)
             return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
 
-        return buildSpan(prox, Utils.convertToProximity(node.getFieldname(), Utils.analyze(client, metadataManager, node.getFieldname(), node.getEscapedValue())));
+        return buildSpan(prox, Utils.convertToProximity(node.getFieldname(), Utils.analyzeForSearch(client, metadataManager, node.getFieldname(), node.getEscapedValue())));
     }
 
     private QueryBuilder build(ASTProximity node) {
@@ -1029,7 +1029,7 @@ public class QueryRewriter {
                 // determine that the field being queried is NOT of type "fulltext"
                 IndexMetadata md = metadataManager.getMetadataForField(node.getFieldname());
                 if (md != null)
-                    if (!"fulltext".equalsIgnoreCase(md.getAnalyzer(node.getFieldname())))
+                    if (!"fulltext".equalsIgnoreCase(md.getSearchAnalyzer(node.getFieldname())))
                         minTermFreq = 1;
 
                 return moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).minWordLength(3).minTermFreq(minTermFreq).stopWords(IndexMetadata.MLT_STOP_WORDS);

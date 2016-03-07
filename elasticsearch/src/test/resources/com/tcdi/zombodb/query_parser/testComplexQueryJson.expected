@@ -3568,180 +3568,70 @@
                 "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "fulltext_field" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     }, {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "_all" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "fulltext_field" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     }, {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "_all" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "fulltext_field" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     }, {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "_all" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "fulltext_field" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     }, {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "_all" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "fulltext_field" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     }, {
-                      "bool" : {
-                        "should" : [ {
-                          "match" : {
-                            "_all" : {
-                              "query" : "abcd",
-                              "type" : "phrase"
-                            }
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "to", 10, "a", "to", "z" ],
-                            "minimum_should_match" : "5"
-                          }
-                        } ]
+                      "terms" : {
+                        "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                        "minimum_should_match" : "6"
                       }
                     } ]
                   }
