@@ -21,43 +21,48 @@ public class TermAnalyzerOptimizer {
     }
 
     public void optimize() {
-        int cnt;
-
-        do {
-            cnt = tree.countNodes();
-            analyzeNodes(tree);
-        } while (cnt != tree.countNodes());
-
+        analyzeNodes(tree);
         pullOutComplexTokensFromArrays(tree);
     }
 
-    private void analyzeNodes(QueryParserNode root) {
+    private boolean analyzeNodes(QueryParserNode root) {
+        boolean changed = false;
 
         if (root == null || root instanceof ASTOptions || root instanceof ASTFieldLists || root instanceof ASTAggregate)
-            return;
+            return false;
 
         if (root.isStringValue() && (root instanceof ASTWord || root instanceof ASTPhrase || root instanceof ASTFuzzy || root instanceof ASTPrefix || root instanceof ASTWildcard))
-            analyzeToken(root);
+            changed = analyzeToken(root);
 
-        for(QueryParserNode child : root)
-            analyzeNodes(child);
 
+        start_over: while(true) {
+            for (QueryParserNode child : root) {
+                if (analyzeNodes(child)) {
+                    continue start_over;
+                }
+            }
+            break;
+        }
+
+        return changed;
     }
 
-    private void analyzeToken(QueryParserNode node) {
+    private boolean analyzeToken(QueryParserNode node) {
         switch (node.getOperator()) {
             case CONCEPT:
             case FUZZY_CONCEPT:
             case REGEX:
-                return;
+                return false;
         }
 
         QueryParserNode newNode = Utils.rewriteToken(client, metadataManager, node);
         if (newNode instanceof ASTWord && "".equals(newNode.getValue())) {
             ((QueryParserNode) (node.parent)).removeNode(node);
             ((QueryParserNode) (node.parent)).renumber();
+            return true;
         } else {
             ((QueryParserNode) (node.parent)).replaceChild(node, newNode);
+            return false;
         }
     }
 

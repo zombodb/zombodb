@@ -26,7 +26,7 @@ public class ArrayDataOptimizer {
         for (QueryParserNode child : root) {
             if (child instanceof ASTArrayData) {
                 String fieldname = child.getFieldname();
-                String analyzer = metadataManager.getMetadataForField(fieldname).getAnalyzer(fieldname);
+                String analyzer = metadataManager.getMetadataForField(fieldname).getSearchAnalyzer(fieldname);
 
                 if (analyzer != null) {
                     // this field, which uses the double-bracket array syntax (ASTArrayData)

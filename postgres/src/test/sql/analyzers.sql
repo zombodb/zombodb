@@ -31,7 +31,8 @@ CREATE TABLE analyzers_test (
   spanish    spanish,
   swedish    swedish,
   turkish    turkish,
-  thai       thai
+  thai       thai,
+  fulltext_with_shingles fulltext_with_shingles
 );
 
 
@@ -68,7 +69,9 @@ INSERT INTO analyzers_test VALUES (
   , 'esto es un exámen'
   , 'detta är ett prov'
   , 'bu bir test' -- turkish
-  , 'นี่คือการทดสอบ');
+  , 'นี่คือการทดสอบ'
+  , 'this is a test' -- fulltext_with_shingles
+  );
 
 CREATE INDEX idxanalyzers_test ON analyzers_test USING zombodb (zdb('analyzers_test', ctid), zdb(analyzers_test)) WITH (url='http://localhost:9200/');
 SELECT

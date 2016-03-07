@@ -1,3 +1,46 @@
+CREATE TABLE zdb_tokenizers (
+  name text NOT NULL PRIMARY KEY,
+  definition json NOT NULL
+);
+SELECT pg_catalog.pg_extension_config_dump('zdb_tokenizers', '');
+CREATE OR REPLACE FUNCTION zdb_define_tokenizer(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
+  DELETE FROM zdb_tokenizers WHERE name = $1;
+  INSERT INTO zdb_tokenizers(name, definition) VALUES ($1, $2);
+$$;
+
+INSERT INTO zdb_filters(name, definition, is_default) VALUES ('shingle_filter', '{
+          "type": "shingle",
+          "min_shingle_size": 2,
+          "max_shingle_size": 2,
+          "output_unigrams": true,
+          "token_separator": "$"
+        }', true);
+INSERT INTO zdb_filters(name, definition, is_default) VALUES ('shingle_filter_search', '{
+          "type": "shingle",
+          "min_shingle_size": 2,
+          "max_shingle_size": 2,
+          "output_unigrams": false,
+          "token_separator": "$"
+        }', true);
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_shingles', '{
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "shingle_filter"
+          ]
+        }', true);
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_shingles_search', '{
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "shingle_filter_search"
+          ]
+        }', true);
+CREATE DOMAIN fulltext_with_shingles AS text;
+
+
 CREATE OR REPLACE FUNCTION zdb_tally(table_name regclass, fieldname text, is_nested boolean, stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SETOF zdb_tally_response STRICT IMMUTABLE LANGUAGE plpgsql AS $$
 DECLARE
   json_data json;

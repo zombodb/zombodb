@@ -434,13 +434,19 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    }, {\n" +
                         "      \"span_term\" : {\n" +
                         "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"should\"\n" +
+                        "          \"value\" : \"should*\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"span_term\" : {\n" +
                         "        \"phrase_field\" : {\n" +
                         "          \"value\" : \"sub:parse\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_term\" : {\n" +
+                        "        \"phrase_field\" : {\n" +
+                        "          \"value\" : \"\\\\\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
@@ -456,17 +462,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"span_term\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"sp\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
                         "      \"span_multi\" : {\n" +
                         "        \"match\" : {\n" +
                         "          \"fuzzy\" : {\n" +
                         "            \"phrase_field\" : {\n" +
-                        "              \"value\" : \"n\",\n" +
+                        "              \"value\" : \"sp?n\",\n" +
                         "              \"prefix_length\" : 3\n" +
                         "            }\n" +
                         "          }\n" +
@@ -1476,7 +1476,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    }, {\n" +
                         "      \"span_term\" : {\n" +
                         "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"food\"\n" +
+                        "          \"value\" : \"food*\"\n" +
                         "        }\n" +
                         "      }\n" +
                         "    } ],\n" +
@@ -2350,8 +2350,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_CVSIX_2770_phrase() throws Exception {
         assertJson("phrase_field = \"\\\"NOTES:KARO\\?\\?\\?\\?\\?\\?\\?\"  ",
                 "{\n" +
-                        "  \"term\" : {\n" +
-                        "    \"phrase_field\" : \"notes:karo\"\n" +
+                        "  \"match\" : {\n" +
+                        "    \"phrase_field\" : {\n" +
+                        "      \"query\" : \"\\\"NOTES:KARO???????\",\n" +
+                        "      \"type\" : \"phrase\"\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -3376,7 +3379,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field:'\\\\\\\\Begings with four backslashes'",
                 "{\n" +
                         "  \"term\" : {\n" +
-                        "    \"exact_field\" : \"\\\\begings with four backslashes\"\n" +
+                        "    \"exact_field\" : \"\\\\\\\\begings with four backslashes\"\n" +
                         "  }\n" +
                         "}"
         );
@@ -3387,7 +3390,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field:'This is a prefix query ending in four backslashes\\\\\\\\*'",
                 "{\n" +
                         "  \"prefix\" : {\n" +
-                        "    \"exact_field\" : \"this is a prefix query ending in four backslashes\\\\\"\n" +
+                        "    \"exact_field\" : \"this is a prefix query ending in four backslashes\\\\\\\\\"\n" +
                         "  }\n" +
                         "}"
         );
@@ -3398,7 +3401,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field:'This is a wildcard query ending in four backslashes\\\\\\\\?'",
                 "{\n" +
                         "  \"wildcard\" : {\n" +
-                        "    \"exact_field\" : \"this is a wildcard query ending in four backslashes\\\\?\"\n" +
+                        "    \"exact_field\" : \"this is a wildcard query ending in four backslashes\\\\\\\\?\"\n" +
                         "  }\n" +
                         "}"
         );

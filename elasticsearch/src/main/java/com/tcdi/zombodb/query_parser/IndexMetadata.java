@@ -136,10 +136,28 @@ class IndexMetadata {
         return o == null || o == Boolean.TRUE || "true".equalsIgnoreCase(String.valueOf(o));
     }
 
-    public String getAnalyzer(String fieldname) {
+    public String getSearchAnalyzer(String fieldname) {
         Map<String, Object> fieldInfo = fields.get(fieldname);
-        Object analyzer = fieldInfo == null ? null : fieldInfo.get("analyzer");
-        return analyzer == null ? null : String.valueOf(analyzer);
+        if (fieldInfo == null)
+            return null;
+
+        String analyzer = (String) fieldInfo.get("search_analyzer");
+        if (analyzer == null)
+            analyzer = (String) fieldInfo.get("analyzer");
+
+        return analyzer;
+    }
+
+    public String getIndexAnalyzer(String fieldname) {
+        Map<String, Object> fieldInfo = fields.get(fieldname);
+        if (fieldInfo == null)
+            return null;
+
+        String analyzer = (String) fieldInfo.get("index_analyzer");
+        if (analyzer == null)
+            analyzer = (String) fieldInfo.get("analyzer");
+
+        return analyzer;
     }
 
     public boolean canUseFieldData(String fieldname) {

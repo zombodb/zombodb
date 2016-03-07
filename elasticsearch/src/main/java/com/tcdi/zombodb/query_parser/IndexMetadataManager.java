@@ -252,7 +252,7 @@ public class IndexMetadataManager {
                     continue;
                 }
 
-                if (md.getAnalyzer(field) != null)
+                if (md.getSearchAnalyzer(field) != null)
                     fields.add(new FieldAndIndexPair(link, field, md));
 
             }
