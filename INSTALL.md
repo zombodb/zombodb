@@ -37,9 +37,7 @@ $ psql example -c "CREATE EXTENSION zombodb;"
 
 ## Elasticsearch Plugin
 
-ZomboDB's Elasticsearch plugin only needs to be installed on nodes that operate as "client" nodes (ie, nodes that respond to HTTP requests).  
-
-A large cluster configuration is likely to have a number of dedicated "data", "master", and "client" nodes.  Again, it is only the latter that require the plugin.
+ZomboDB's Elasticsearch plugin needs to be installed on all nodes of your Elasticsearch cluster.  This became a requirement as of v2.6.7.
 
 [Download](https://github.com/zombodb/zombodb/releases/latest) the latest release `.zip` file and use Elasticsearch's plugin utility to install ZomboDB:
 
