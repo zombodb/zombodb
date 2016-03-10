@@ -1176,7 +1176,7 @@ public class QueryRewriter {
 
             return array;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new QueryRewriteException(e);
         }
     }
 
