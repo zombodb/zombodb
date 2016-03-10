@@ -59,8 +59,8 @@ Not to suggest that these things are impossible, but there's a small set of non-
 
 - ZomboDB indexes are not WAL-logged by Postgres.  As such, are not recoverable in the event of a Postgres server crash
 - interoperability with various Postgres replication schemes is unknown
-- ```pg_get_indexdef()``` doesn't correctly quote index options making backup restoration annoying (would require patch to Postgres)
 - Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
+- `VACUUM FREEZE` (and wrap-around avoidance vacuums via autovacuum) will leave ZomboDB indexes in an inconsistent state
 
 ## History
 
