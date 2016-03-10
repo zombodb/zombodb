@@ -43,9 +43,10 @@ dockerzombodb_zombodb_postgres_1   /zombodb-entrypoint.sh postgres    Up      0.
 ```
 
 Then to create your index:
+
 ```sql
 CREATE INDEX idx_zdb_products
           ON products
-       USING zombodb(zdb(products))
+       USING zombodb(zdb('products', ctid), zdb(products))
         WITH (url='http://dockerzombodb_zombodb_elastic_1:9200/');
 ```

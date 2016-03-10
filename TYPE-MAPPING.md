@@ -43,7 +43,7 @@ fulltext_with_shingles | string, analyzed using a 2-gram single filter for high-
 
 ZomboDB configures an Elasticsearch analyzer named `exact` that is used to analyze all "text"-based Postgres types.  It is defined as:
 
-```
+```json
 {
    "tokenizer": "keyword",
    "filter": ["trim", "zdb_truncate_32000", "lowercase"]
@@ -59,7 +59,7 @@ The intent here is to provide case-insensitive, "full-value" (ie, no tokenizatio
 
 The `phrase`, `phrase_array`, and `fulltext` DOMAINS are all based on the Postgres `text` type (ie, `CREATE DOMAIN phrase AS text`).  Additionally, ZomboDB configures Elasticsearch analyzers of the same names.  All three are identically defined:
 
-```
+```json
 {
    "tokenizer": "standard",
    "filter": ["lowercase"]
@@ -112,7 +112,7 @@ ZomboDB includes a set of SQL-level functions to create an analyzer:
 
 In all cases, the `definition` argument is the JSON object definition of that particular construct.  For example, ZomboDB's `zdb_truncate_32000` filter would be defined as:
 
-```
+```sql
 SELECT zdb_define_filter('zdb_truncate_32000', '{ "type": "truncate", "length":32000 }');
 ```
 
@@ -138,13 +138,13 @@ Note that for "text" fields not included in `_all`, ZomboDB expands queries to i
 
 ZomboDB also allows you to set custom field mappings per table.field.  This begins by calling ZomboDB's `zdb_define_mapping()` function:
 
-```
-SELECT zdb_define_mapping(table_name regclass, field_name text, definition json);
+```sql
+FUNCTION zdb_define_mapping(table_name regclass, field_name text, definition json);
 ```
 
 An example for a field named `content` might be:
 
-```
+```sql
 SELECT zdb_define_mapping('my_table', 'content', '{
           "store": false,
           "type": "string",

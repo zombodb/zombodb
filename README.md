@@ -81,13 +81,13 @@ Usage is really quite simple.  Note that this is just a brief overview.  See the
 
 Install the extension:
 
-```
+```sql
 CREATE EXTENSION zombodb;
 ```
 
 Create a table:
 
-```
+```sql
 CREATE TABLE products (
     id SERIAL8 NOT NULL PRIMARY KEY,
     name text NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE products (
 
 Index it:
 
-```
+```sql
 CREATE INDEX idx_zdb_products 
                      ON products 
                   USING zombodb(zdb('products', products.ctid), zdb(products))
@@ -113,7 +113,7 @@ CREATE INDEX idx_zdb_products
 
 Query it:
 
-```
+```sql
 SELECT * FROM products WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
 ```
 

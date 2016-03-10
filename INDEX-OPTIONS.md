@@ -7,7 +7,7 @@ As the [Index Management](INDEX-MANAGEMENT.md) documetation indicated, ZomboDB s
 
 Consider that you have two tables, each with a ZomboDB index, and that your typical use case is to join the tables together in a view:
 
-```
+```sql
 CREATE TABLE book (
    id bigserial not null primary key,
    title phrase,
@@ -34,7 +34,7 @@ LEFT JOIN book_content ON book.id = book_content.book_id;
 
 Suppose you want to do a full-text query against the `books_with_content` view.  The query would be:
 
-```
+```sql
 SELECT * FROM books_with_content WHERE zdb ==> 'author:foo and content:(beer w/3 wine w/30 cheese and food)';
 ```
 
@@ -42,7 +42,7 @@ Unfortunately, the above query will return zero rows because the index on `book`
 
 We need to tell the index on `book` how to find corresponding `book_content` using an "index link".  This is done through ZomboDB's index `options`:
 
-```
+```sql
 ALTER INDEX idxbooks SET (options='id=<book_content.idxcontent>book_id');
 ```
 
@@ -60,19 +60,19 @@ Index links can also be named, such that the fields behind the link appear to be
 
 Taking the example from above:
 
-```
+```sql
 ALTER INDEX idxbooks SET (options='id=<book_content.idxcontent>book_id');
 ```
 
 We could have, for example, named the index link `book_content`:
 
-```
+```sql
 ALTER INDEX idxbooks SET (options='book_content:(id=<book_content.idxcontent>book_id)');
 ```
 
 And then the query would be:
 
-```
+```sql
 SELECT * FROM books_with_content WHERE zdb ==> 'author:foo and book_content.content:(beer w/3 wine w/30 cheese and food)';
 ```
 

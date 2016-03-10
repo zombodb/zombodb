@@ -71,7 +71,7 @@ Upgrading to a new version of ZomboDB basically involves repeating the installat
 
 When upgrading the Postgres extension (`zombodb.so`) it's a good idea to make sure the database has no active connections and that you immediately run:
 
-```
+```sql
 ALTER EXTENSION zombodb UPDATE;
 ```
 

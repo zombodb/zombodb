@@ -6,7 +6,7 @@ Index management happens through normal Postgres SQL commands.
 
 To create a ZomboDB index, use the form:
 
-```
+```sql
 CREATE INDEX idxname 
           ON table
        USING zombodb (zdb('table', table.ctid), zdb(table))
@@ -41,7 +41,7 @@ The `WITH` settings are:
 
 To drop a ZomboDB index, use Postgres' standard `DROP INDEX` command:
 
-```
+```sql
 DROP INDEX idxname;
 ```
 
@@ -62,7 +62,7 @@ To reindex an exising ZomboDB index, simply use Postgres' standard [REINDEX](htt
 
 You can use Postgres' `ALTER INDEX` command to change any of the `WITH` settings defined above.  For example:
 
-```
+```sql
 ALTER INDEX idxname SET (replicas=3);
 ALTER INDEX idxname RESET (preference);
 ```
