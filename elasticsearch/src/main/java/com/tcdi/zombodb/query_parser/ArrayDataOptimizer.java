@@ -1,6 +1,7 @@
 package com.tcdi.zombodb.query_parser;
 
 import java.io.StringReader;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -29,20 +30,28 @@ public class ArrayDataOptimizer {
                 String analyzer = metadataManager.getMetadataForField(fieldname).getAnalyzer(fieldname);
 
                 if (analyzer != null) {
-                    // this field, which uses the double-bracket array syntax (ASTArrayData)
-                    // is actually analyzed, so we need to convert it to a regular array, parse it,
-                    // and replace the ASTArrayData node in the tree
-                    StringBuilder arrayString = arrayData.get(child.getValue().toString());
-                    StringBuilder arrayQuery = new StringBuilder(arrayString.length());
+                    if ("exact".equals(analyzer)) {
+                        // we know the definition of the "exact" analyzer, and it forces things to lower-case
+                        // so we'll short-circuit analyzing each term and just force the arraydata string to lower-case
+                        String key = child.getValue().toString();
+                        StringBuilder arrayString = arrayData.get(key);
+                        arrayData.put(key, new StringBuilder(arrayString.toString().toLowerCase(Locale.ENGLISH)));
+                    } else {
+                        // this field, which uses the double-bracket array syntax (ASTArrayData)
+                        // is actually analyzed, so we need to convert it to a regular array, parse it,
+                        // and replace the ASTArrayData node in the tree
+                        StringBuilder arrayString = arrayData.get(child.getValue().toString());
+                        StringBuilder arrayQuery = new StringBuilder(arrayString.length());
 
-                    arrayQuery.append(fieldname).append(":[").append(arrayString).append("]");
+                        arrayQuery.append(fieldname).append(":[").append(arrayString).append("]");
 
-                    try {
-                        QueryParser qp = new QueryParser(new StringReader(arrayQuery.toString()));
-                        ASTQueryTree tree = qp.parse(false);
-                        root.replaceChild(child, tree.getQueryNode());
-                    } catch (Exception e) {
-                        throw new RuntimeException("Problem subparsing ArrayData", e);
+                        try {
+                            QueryParser qp = new QueryParser(new StringReader(arrayQuery.toString()));
+                            ASTQueryTree tree = qp.parse(false);
+                            root.replaceChild(child, tree.getQueryNode());
+                        } catch (Exception e) {
+                            throw new RuntimeException("Problem subparsing ArrayData", e);
+                        }
                     }
                 }
             } else {
