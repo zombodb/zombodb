@@ -1291,12 +1291,10 @@ public class QueryRewriter {
                             }
                         }
 
-                        if (last == null) {
-                            if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
-                                last = expansion.getQuery();
-                            } else {
-                                last = loadFielddata(expansion, leftFieldname, rightFieldname);
-                            }
+                        if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
+                            last = expansion.getQuery();
+                        } else {
+                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
                         }
                     }
                 }

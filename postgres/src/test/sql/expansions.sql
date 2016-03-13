@@ -6,4 +6,9 @@ select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#ex
 select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> 'body:(beer w/500 a)' order by 1;
 select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#expand<parent_id=<this.index>parent_id>((beer w/500 a))' order by 1;
 select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#expand<parent_id=<this.index>parent_id>((beer w/500 a))' order by 1;
+select assert(
+    (select count(*) from so_posts where zdb('so_posts', ctid) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer or #expand<parent_id=<this.index>parent_id>(owner_display_name:s*))'),
+    (select count(*) from so_posts where zdb('so_posts', ctid) ==> '#expand<owner_display_name=<this.index>owner_display_name>(#expand<parent_id=<this.index>parent_id>(owner_display_name:s*) or beer)'),
+    'same'
+);
 
