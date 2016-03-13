@@ -6,7 +6,7 @@ Index management happens through normal Postgres SQL commands.
 
 To create a ZomboDB index, use the form:
 
-```
+```sql
 CREATE INDEX idxname 
           ON table
        USING zombodb (zdb('table', table.ctid), zdb(table))
@@ -41,7 +41,7 @@ The `WITH` settings are:
 
 To drop a ZomboDB index, use Postgres' standard `DROP INDEX` command:
 
-```
+```sql
 DROP INDEX idxname;
 ```
 
@@ -62,11 +62,12 @@ To reindex an exising ZomboDB index, simply use Postgres' standard [REINDEX](htt
 
 You can use Postgres' `ALTER INDEX` command to change any of the `WITH` settings defined above.  For example:
 
-```
+```sql
 ALTER INDEX idxname SET (replicas=3);
 ALTER INDEX idxname RESET (preference);
 ```
 
+Currently, a `REINDEX` is required after changing an index setting that would affect the physical structure of the underlying Elasticsearch index.  This includes changing both `shards` and `replicas`, despite Elasticsearch being able to dynamically add/remove replicas.  This may be resolved in a future version.
 
 ## ALTER TABLE
 
@@ -80,3 +81,5 @@ The various forms of ALTER TABLE that add/drop columns or change column types ar
 Running a standard `VACUUM` on a table with a ZomboDB index does the minimum amount of work to remove dead rows from the backing Elastisearch index and shoud happen in a reasonable amount of time (depending, of course, on the update frequency).
 
 Running a `VACUUM FULL` on a table with a ZomboDB index, on the otherhand, is functionally equilivant to running a `REINDEX` on the table, which means a `VACUUM FULL` could take a long time to complete.
+
+A [`VACUUM FREEZE`](http://www.postgresql.org/docs/9.4/static/routine-vacuuming.html#VACUUM-FOR-WRAPAROUND) (and autovacuum's anti-wrap-around procedure) will leave ZomboDB indexes in an inconsistent state.  After a `VACUUM FREEZE` on a table, any of its ZomboDB indexes must be `REINDEX`ed.  This is because ZomboDB stores transaction visibility information in the remote Elasticsearch index (the same xmin,xmax,etc values stored on every heap tuple) and Postgres doesn't (yet) provide a way to be notified when that data is changed via VACUUM.

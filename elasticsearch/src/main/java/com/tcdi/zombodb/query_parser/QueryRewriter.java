@@ -1176,7 +1176,7 @@ public class QueryRewriter {
 
             return array;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new QueryRewriteException(e);
         }
     }
 
@@ -1291,12 +1291,10 @@ public class QueryRewriter {
                             }
                         }
 
-                        if (last == null) {
-                            if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
-                                last = expansion.getQuery();
-                            } else {
-                                last = loadFielddata(expansion, leftFieldname, rightFieldname);
-                            }
+                        if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
+                            last = expansion.getQuery();
+                        } else {
+                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
                         }
                     }
                 }

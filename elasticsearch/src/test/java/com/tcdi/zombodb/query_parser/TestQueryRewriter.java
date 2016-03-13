@@ -4027,12 +4027,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
-                        "      Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=12/31/1999, index=db.schema.table.index)\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=2/3/1999, index=db.schema.table.index)\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=12/31/2016, index=db.schema.table.index)\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=unknown, index=db.schema.table.index)\n" +
-                        "         Word (fieldname=exact_field, operator=CONTAINS, value=2/2/2016, index=db.schema.table.index)"
+                        "      ArrayData (fieldname=exact_field, operator=EQ, value=$0, index=db.schema.table.index)"
         );
     }
 

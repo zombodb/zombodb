@@ -33,16 +33,18 @@ If you're unfamiliar with Postgres extensions, spend a few minutes reading [up o
 
 Now, lets create the extension:
 
-```
-tutorial=# CREATE EXTENSION zombodb;
+```sql
+tutorial=# 
+CREATE EXTENSION zombodb;
 CREATE EXTENSION
 tutorial=#
 ```
 
 To prove to yourself that the extension is really installed, you can double-check the ```pg_extension``` system catalog:
 
-```
-tutorial=# SELECT * FROM pg_extension;
+```sql
+tutorial=# 
+SELECT * FROM pg_extension;
  extname | extowner | extnamespace | extrelocatable | extversion | extconfig | extcondition 
 ---------+----------+--------------+----------------+------------+-----------+--------------
  plpgsql |       10 |           11 | f              | 1.0        |           | 
@@ -58,8 +60,9 @@ Here you can see that ZomboDB v2.1.35 is really installed.
 
 Nothing too out of the ordinary here.  Lets create a simple table that might represent a product catalog.
 
-```
-tutorial=# CREATE TABLE products (
+```sql
+tutorial=# 
+CREATE TABLE products (
     id SERIAL8 NOT NULL PRIMARY KEY,
     name text NOT NULL,
     keywords varchar(64)[],
@@ -80,8 +83,9 @@ Before we populate the table with some data, notice that the ```short_summary```
 
 Lets COPY some data into this table before we move on to creating a ZomboDB index and querying.  Rather than fill this document with boring data, just COPY it using curl:
 
-```
-tutorial=# COPY products FROM PROGRAM 'curl https://raw.githubusercontent.com/zombodb/zombodb/master/TUTORIAL-data.dmp';
+```sql
+tutorial=# 
+COPY products FROM PROGRAM 'curl https://raw.githubusercontent.com/zombodb/zombodb/master/TUTORIAL-data.dmp';
 COPY 4
 tutorial=#
 ```
@@ -108,8 +112,9 @@ Its SQL definition looks like:
 ######(note that this function is installed as part of the ZomboDB extension, and there's nothing you need to do here)
 
 
-```
-tutorial=# \sf zdb
+```sql
+tutorial=# 
+\sf zdb
 CREATE OR REPLACE FUNCTION public.zdb(record)
  RETURNS json
  LANGUAGE c
@@ -120,8 +125,9 @@ tutorial=#
 
 Calling this function via SQL produces a JSON-formatted version of a record.  For example:
 
-```
-tutorial=# SELECT zdb(products) FROM products WHERE id = 1;
+```sql
+tutorial=# 
+SELECT zdb(products) FROM products WHERE id = 1;
                                                                                                                                             zdb                                                                                                                                             
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  {"id":1,"name":"Magical Widget","keywords":["magical","widget"],"short_summary":"A widget that is quite magical","long_description":"Magical Widgets come from the land of Magicville and are capable of things you can't imagine","price":9900,"inventory_count":42,"discontinued":false}
@@ -136,8 +142,9 @@ ZomboDB also includes a function named `zdb(regclass, tid)` which is used to sta
 
 Now that we know what `zdb(record)` and `zdb(regclass, tid)` do, lets use them to create an index:
 
-```
-tutorial=# CREATE INDEX idx_zdb_products 
+```sql
+tutorial=# 
+           CREATE INDEX idx_zdb_products 
                      ON products 
                   USING zombodb(zdb('products', products.ctid), zdb(products))
                    WITH (url='http://localhost:9200/');
@@ -172,8 +179,9 @@ Again, the ```zdb(regclass, tid)``` function simply transforms a record into jso
 
 ```==>``` is defined as taking "json" on the left and "text" on the right:
 
-```
-tutorial=# \do ==>
+```sql
+tutorial=# 
+\do ==>
                              List of operators
  Schema | Name | Left arg type | Right arg type | Result type | Description 
 --------+------+---------------+----------------+-------------+-------------
@@ -183,8 +191,9 @@ tutorial=# \do ==>
 
 A typical query would be:
 
-```
-tutorial=# SELECT * FROM products WHERE zdb('products', products.ctid) ==> 'sports or box';
+```sql
+tutorial=# 
+SELECT * FROM products WHERE zdb('products', products.ctid) ==> 'sports or box';
  id |   name   |           keywords            |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued 
 ----+----------+-------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------
   4 | Box      | {wooden,box,"negative space"} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t
@@ -196,8 +205,9 @@ tutorial=#
 
 And its query plan is:
 
-```
-tutorial=# EXPLAIN SELECT * FROM products WHERE zdb('products', ctid) ==> 'sports or box';
+```sql
+tutorial=# 
+EXPLAIN SELECT * FROM products WHERE zdb('products', ctid) ==> 'sports or box';
                                     QUERY PLAN                                     
 -----------------------------------------------------------------------------------
  Index Scan using idx_zdb_products on products  (cost=0.00..4.01 rows=1 width=153)
@@ -217,8 +227,9 @@ If, for example, you're interested in knowing the unique set of all product `key
 
 NOTE:  `zdb_tally()` only works for fields that are ***not*** of type `fulltext`.
 
-```
-tutorial=# SELECT * FROM zdb_tally('products', 'keywords', '^.*', '', 5000, 'term');
+```sql
+tutorial=# 
+SELECT * FROM zdb_tally('products', 'keywords', '^.*', '', 5000, 'term');
          term          | count 
 -----------------------+-------
  ALEXANDER GRAHAM BELL |     1
@@ -241,8 +252,9 @@ The third arugument (called the term stem) is a regular expression by which the 
 
 The fourth argument is a fulltext query by which the aggregate will be filtered.  The empty string means "no filter".  If you wanted to limit the keywords to products that are round:
 
-```
-tutorial=# SELECT * FROM zdb_tally('products', 'keywords', '^.*', 'keywords:round', 5000, 'term');
+```sql
+tutorial=# 
+SELECT * FROM zdb_tally('products', 'keywords', '^.*', 'keywords:round', 5000, 'term');
    term   | count 
 ----------+-------
  BASEBALL |     1
@@ -261,8 +273,9 @@ It cannot be used with fields of type `fulltext`.
 
 Example:
 
-```
-tutorial=# SELECT * FROM zdb_significant_terms('products', 'keywords', '^.*', '', 5000);
+```sql
+tutorial=# 
+SELECT * FROM zdb_significant_terms('products', 'keywords', '^.*', '', 5000);
 ```
 
 The fourth argument is a fulltext query by which the aggregate will be filtered.  The empty string means "no filter".  If you wanted to limit the keywords to products that are round:
@@ -271,8 +284,9 @@ The fourth argument is a fulltext query by which the aggregate will be filtered.
 
 Date/timestamp field aggregation also uses the `zdb_tally()` function, but the third argument (the term stem) can be one of `year`, `month`, `day`, `hour`, `minute`, second.  For example, to see the monthly breakdown of product availability:
 
-```
-tutorial=# SELECT * FROM zdb_tally('products', 'availability_date', 'month', '', 5000, 'term');
+```sql
+tutorial=# 
+SELECT * FROM zdb_tally('products', 'availability_date', 'month', '', 5000, 'term');
   term   | count 
 ---------+-------
  2015-07 |     1
@@ -284,8 +298,9 @@ tutorial=# SELECT * FROM zdb_tally('products', 'availability_date', 'month', '',
 
 Use `zdb_extended_stats()` to produce statistics about a numeric field.  For example:
 
-```
-tutorial=# SELECT * FROM zdb_extended_stats('products', 'price', '');
+```sql
+tutorial=# 
+SELECT * FROM zdb_extended_stats('products', 'price', '');
  count | total | min  |  max  | mean | sum_of_squares |  variance  |  std_deviation   
 -------+-------+------+-------+------+----------------+------------+------------------
      4 | 30048 | 1249 | 17000 | 7512 |      392176202 | 41613906.5 | 6450.88416420571
@@ -295,8 +310,9 @@ tutorial=# SELECT * FROM zdb_extended_stats('products', 'price', '');
 
 shows the overall numbers for the `price` field.  The last argument is a fulltext query that can be used to filter the set of records summarized by the aggregate:
 
-```
-tutorial=# SELECT * FROM zdb_extended_stats('products', 'price', 'round');
+```sql
+tutorial=# 
+SELECT * FROM zdb_extended_stats('products', 'price', 'round');
  count | total | min  | max  |  mean  | sum_of_squares |  variance   | std_deviation 
 -------+-------+------+------+--------+----------------+-------------+---------------
      2 | 11149 | 1249 | 9900 | 5574.5 |       99570001 | 18709950.25 |        4325.5
@@ -307,8 +323,9 @@ tutorial=# SELECT * FROM zdb_extended_stats('products', 'price', 'round');
 
 The `zdb_suggest_terms()` function is used to find terms "similar" (by edit distance) to a base term in `phrase`, `phrase_array`, and `fulltext` fields.  For example:
 
-```
-tutorial=# SELECT * FROM zdb_suggest_terms('products', 'long_description', 'land', '', 5000);
+```sql
+tutorial=# 
+SELECT * FROM zdb_suggest_terms('products', 'long_description', 'land', '', 5000);
  term | count 
 ------+-------
  LAND |     1
@@ -327,8 +344,9 @@ The more data you have, and the more dense it is, the more effective `zdb_sugges
 
 Aggregates can be nested following the description in [SQL-API](SQL-API.md).  An example to collect keywords by availability date is:
 
-```
-tutorial=# SELECT * 
+```sql
+tutorial=# 
+           SELECT * 
              FROM zdb_arbitrary_aggregate(
                          'products', 
                          $$ 
@@ -426,7 +444,7 @@ The last argument is a fulltext query that can be used to filter the set of docu
 
 In summary, the process of getting up and running is simply:
 
-```
+```sql
 CREATE EXTENSION zombodb;
 CREATE TABLE foo ...;
 <load data>

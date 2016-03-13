@@ -4,7 +4,7 @@ ZomboDB is capable of answering fulltext queries even when Postgres decides to p
 
 An example of such a query and its plan is:
 
-```
+```sql
 tutorial=# SELECT * FROM products 
            WHERE zdb('products', products.ctid) ==> 'round';
  id |      name      |        keywords         |         short_summary          |                                       long_description                                       | price | inventory_count | discontinued | availability_date 

@@ -6,7 +6,7 @@ If you have an existing ZomboDB v2.1.x installation, you will need to drop all y
 
 In v2.1.x, you would create an index like this:
 
-```
+```sql
 CREATE INDEX idxfoo 
           ON table 
        USING zombodb (zdb(table)) 
@@ -15,7 +15,7 @@ CREATE INDEX idxfoo
 
 In v2.5.x, you create an index like this:
 
-```
+```sql
 CREATE INDEX idxfoo 
           ON table 
        USING zombodb(zdb('table', ctid), zdb(table))
@@ -26,14 +26,14 @@ The reason for this change is that in order to support query plans that choose s
 
 As such, the SELECT syntax has a corresponding change.  In v2.1.x, the syntax was:
 
-```
+```sql
 SELECT * FROM table 
         WHERE zdb(table) ==> 'fulltext query';
 ```
 
 Whereas with v2.5.x, the syntax is:
 
-```
+```sql
 SELECT * FROM table 
         WHERE zdb('table', table.ctid) ==> 'fulltext query';
 ```

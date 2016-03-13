@@ -59,8 +59,8 @@ Not to suggest that these things are impossible, but there's a small set of non-
 
 - ZomboDB indexes are not WAL-logged by Postgres.  As such, are not recoverable in the event of a Postgres server crash
 - interoperability with various Postgres replication schemes is unknown
-- ```pg_get_indexdef()``` doesn't correctly quote index options making backup restoration annoying (would require patch to Postgres)
 - Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
+- `VACUUM FREEZE` (and wrap-around avoidance vacuums via autovacuum) will leave ZomboDB indexes in an inconsistent state
 
 ## History
 
@@ -81,13 +81,13 @@ Usage is really quite simple.  Note that this is just a brief overview.  See the
 
 Install the extension:
 
-```
+```sql
 CREATE EXTENSION zombodb;
 ```
 
 Create a table:
 
-```
+```sql
 CREATE TABLE products (
     id SERIAL8 NOT NULL PRIMARY KEY,
     name text NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE products (
 
 Index it:
 
-```
+```sql
 CREATE INDEX idx_zdb_products 
                      ON products 
                   USING zombodb(zdb('products', products.ctid), zdb(products))
@@ -113,7 +113,7 @@ CREATE INDEX idx_zdb_products
 
 Query it:
 
-```
+```sql
 SELECT * FROM products WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
 ```
 

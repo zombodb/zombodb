@@ -108,6 +108,7 @@ A phrase query: ```"Now is the time"```
 
 Phrases can be quoted using either single or double-quotes.
 
+A unique feature of ZomboDB is that wildcards (`?`, `*`, and `~`) are allowed in "quoted phrases".  Phrases that contain wildcards are transparently rewritten as proximity queries.
 
 ## Fields, Operators, Keywords
 
@@ -175,6 +176,12 @@ Examples:
 Special consideration is taken for criteria in the form of: ```field:*``` or ```field:?```.  They are re-written using Elasticsearch's ["exists filter"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-exists-filter.html).
 
 Note that phrases can also contain wildcarded terms, such as: `field:"phrase~ w?th wild*rd"`.  In this case, the phrase is rewritten as a proximity chain such as: `field:(phrase~ w/0 w?th w/0 wild*rd)`.  See below for details on proximity searching.
+
+Additionally, entire phrases can "fuzzy".  For example:
+
+`"this phrase is fuzzy"~3`
+
+This means that the words "this", "phrase", "is", and "fuzzy" must appear within three tokens of each other, but order is not important.  So it could match `"this phrase is a neat fuzzy feature"`.
 
 ## Term/Phrase Boosting
 
