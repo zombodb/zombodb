@@ -28,8 +28,8 @@ import java.util.regex.Pattern;
  * @author e_ridge
  */
 public class Utils {
-    static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
-    static final String NEEDS_ESCAPES_AS_STRING;
+    private static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
+    private static final String NEEDS_ESCAPES_AS_STRING;
     static {
         Arrays.sort(NEEDS_ESCAPES);
 
@@ -48,7 +48,7 @@ public class Utils {
         NEEDS_ESCAPES_AS_STRING = sb.toString();
     }
 
-    public static String unescape(String s) {
+    static String unescape(String s) {
         if (s == null || s.length() <= 1)
             return s;
 
@@ -69,7 +69,7 @@ public class Utils {
         return sb.toString();
     }
 
-    public static int countValidWildcards(String phrase) {
+    private static int countValidWildcards(String phrase) {
         int unesc = 0;
         boolean inesc = false;
 
@@ -94,7 +94,7 @@ public class Utils {
         return unesc;
     }
 
-    public static QueryParserNode convertToWildcardNode(String fieldname, QueryParserNode.Operator operator, String value) {
+    private static QueryParserNode convertToWildcardNode(String fieldname, QueryParserNode.Operator operator, String value) {
         QueryParserNode node;
         int wildcardCount = countValidWildcards(value);
 
@@ -138,11 +138,11 @@ public class Utils {
         return node;
     }
 
-    public static String join(Collection<String> c) {
+    private static String join(Collection<String> c) {
         return join(c, " ");
     }
 
-    public static String join(Collection<String> c, String sep) {
+    private static String join(Collection<String> c, String sep) {
         StringBuilder sb = new StringBuilder();
         for (String s : c) {
             if (sb.length() > 0) sb.append(sep);
@@ -187,17 +187,17 @@ public class Utils {
         return l;
     }
 
-    public static List<String> analyzeForSearch(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
+    static List<String> analyzeForSearch(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
         String analyzer = metadataManager.getMetadataForField(fieldname).getSearchAnalyzer(fieldname);
         return analyze(client, metadataManager, analyzer, fieldname, phrase);
     }
 
-    public static List<String> analyzeForIndex(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
+    private static List<String> analyzeForIndex(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
         String analyzer = metadataManager.getMetadataForField(fieldname).getIndexAnalyzer(fieldname);
         return analyze(client, metadataManager, analyzer, fieldname, phrase);
     }
 
-    public static List<String> analyze(Client client, IndexMetadataManager metadataManager, String analyzer, String fieldname, String phrase) throws RuntimeException {
+    private static List<String> analyze(Client client, IndexMetadataManager metadataManager, String analyzer, String fieldname, String phrase) throws RuntimeException {
         if (analyzer == null)
             analyzer = "exact";
 
@@ -250,7 +250,7 @@ public class Utils {
         });
     }
 
-    public static QueryParserNode convertToProximityForHighlighting(String fieldname, Iterable<String> tokens) {
+    private static QueryParserNode convertToProximityForHighlighting(String fieldname, Iterable<String> tokens) {
         // rewrite the phrase as a proximity query
         StringBuilder sb = new StringBuilder();
         for (String token : tokens) {
@@ -278,7 +278,7 @@ public class Utils {
     }
 
 
-    public static ASTProximity convertToProximity(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
+    static ASTProximity convertToProximity(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
         return convertToProximity(fieldname, new Iterable<String>() {
             @Override
             public Iterator<String> iterator() {
@@ -302,11 +302,11 @@ public class Utils {
             }
         });
     }
-    public static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens) {
+    static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens) {
         return convertToProximity(fieldname, tokens, 0);
     }
 
-    public static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens, int distance) {
+    private static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens, int distance) {
         ASTProximity prox = new ASTProximity(QueryParserTreeConstants.JJTPROXIMITY);
 
         prox.fieldname = fieldname;
@@ -361,10 +361,10 @@ public class Utils {
         return arrayData;
     }
 
-    public static String validateSameNestedPath(ASTWith node) {
+    static String validateSameNestedPath(ASTWith node) {
         return validateSameNestedPath(node, null);
     }
-    public static String validateSameNestedPath(QueryParserNode node, String nestedPath) {
+    private static String validateSameNestedPath(QueryParserNode node, String nestedPath) {
         if (!node.hasChildren())
             return nestedPath;
 
@@ -384,7 +384,7 @@ public class Utils {
         return nestedPath;
     }
 
-    public static QueryParserNode rewriteToken(Client client, IndexMetadataManager metadataManager, QueryParserNode node) throws RuntimeException {
+    static QueryParserNode rewriteToken(Client client, IndexMetadataManager metadataManager, QueryParserNode node) throws RuntimeException {
         List<String> initialAnalyze;
         boolean hasWildcards = node instanceof ASTFuzzy;
         String input = node.getEscapedValue();
