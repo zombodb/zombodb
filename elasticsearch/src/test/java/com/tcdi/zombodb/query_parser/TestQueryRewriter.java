@@ -4157,5 +4157,70 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (fieldname=_all, operator=CONTAINS, value=time, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testSingleQuestionMark_issue102() throws Exception {
+        assertJson("exact_field:?",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"exists\" : {\n" +
+                        "        \"field\" : \"exact_field\"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testMultipleQuestionMarks_issue102() throws Exception {
+        assertJson("exact_field:????",
+                "{\n" +
+                        "  \"wildcard\" : {\n" +
+                        "    \"exact_field\" : \"????\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testMultipleAsterisksMarks_issue102() throws Exception {
+        assertJson("exact_field:****",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"exists\" : {\n" +
+                        "        \"field\" : \"exact_field\"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testCombinationWildcardsMarks_issue102() throws Exception {
+        assertJson("exact_field:?***",
+                "{\n" +
+                        "  \"wildcard\" : {\n" +
+                        "    \"exact_field\" : \"?***\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+        assertJson("exact_field:***?",
+                "{\n" +
+                        "  \"wildcard\" : {\n" +
+                        "    \"exact_field\" : \"***?\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 

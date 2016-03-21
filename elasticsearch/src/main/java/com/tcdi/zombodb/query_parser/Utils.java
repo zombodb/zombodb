@@ -94,6 +94,29 @@ public class Utils {
         return unesc;
     }
 
+    private static int countValidStarWildcards(String phrase) {
+        int unesc = 0;
+        boolean inesc = false;
+
+        for (int i = 0; i < phrase.length(); i++) {
+            char ch = phrase.charAt(i);
+
+            switch (ch) {
+                case '*':
+                    if (inesc) {
+                        // contains an escaped wildcard
+                        break;
+                    }
+                    unesc++;
+                    break;
+            }
+
+            inesc = !inesc && ch == '\\';
+        }
+
+        return unesc;
+    }
+
     private static QueryParserNode convertToWildcardNode(String fieldname, QueryParserNode.Operator operator, String value) {
         QueryParserNode node;
         int wildcardCount = countValidWildcards(value);
@@ -101,7 +124,7 @@ public class Utils {
         if (wildcardCount == 0) {
             node = new ASTWord(QueryParserTreeConstants.JJTWORD);
             node.setValue(value);
-        } else if (wildcardCount == value.length()) {
+        } else if (countValidStarWildcards(value) == value.length() || (wildcardCount == 1 && value.length() == 1)) {
             node = new ASTNotNull(QueryParserTreeConstants.JJTNOTNULL);
             node.setValue(value);
         } else if (wildcardCount > 1) {
