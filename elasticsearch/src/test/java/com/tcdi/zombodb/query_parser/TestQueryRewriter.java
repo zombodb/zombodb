@@ -4222,5 +4222,139 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
+
+    @Test
+    public void testIssue105() throws Exception {
+        assertJson("exact_field:((red or blue) w/3 (cat or dog))",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_or\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"exact_field\" : {\n" +
+                        "              \"value\" : \"red\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"exact_field\" : {\n" +
+                        "              \"value\" : \"blue\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_or\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"exact_field\" : {\n" +
+                        "              \"value\" : \"cat\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"exact_field\" : {\n" +
+                        "              \"value\" : \"dog\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 3,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue105_complex() throws Exception {
+        assertJson("phrase_field:((service*) w/2 (area*) w/10 (negotiat* OR (bargain* w/3 food) OR contract*) w/10 provider*)",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_multi\" : {\n" +
+                        "        \"match\" : {\n" +
+                        "          \"prefix\" : {\n" +
+                        "            \"phrase_field\" : \"service\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_near\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_multi\" : {\n" +
+                        "            \"match\" : {\n" +
+                        "              \"prefix\" : {\n" +
+                        "                \"phrase_field\" : \"area\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_near\" : {\n" +
+                        "            \"clauses\" : [ {\n" +
+                        "              \"span_or\" : {\n" +
+                        "                \"clauses\" : [ {\n" +
+                        "                  \"span_multi\" : {\n" +
+                        "                    \"match\" : {\n" +
+                        "                      \"prefix\" : {\n" +
+                        "                        \"phrase_field\" : \"negotiat\"\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"span_near\" : {\n" +
+                        "                    \"clauses\" : [ {\n" +
+                        "                      \"span_multi\" : {\n" +
+                        "                        \"match\" : {\n" +
+                        "                          \"prefix\" : {\n" +
+                        "                            \"phrase_field\" : \"bargain\"\n" +
+                        "                          }\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    }, {\n" +
+                        "                      \"span_term\" : {\n" +
+                        "                        \"phrase_field\" : {\n" +
+                        "                          \"value\" : \"food\"\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    } ],\n" +
+                        "                    \"slop\" : 3,\n" +
+                        "                    \"in_order\" : false\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"span_multi\" : {\n" +
+                        "                    \"match\" : {\n" +
+                        "                      \"prefix\" : {\n" +
+                        "                        \"phrase_field\" : \"contract\"\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"span_multi\" : {\n" +
+                        "                \"match\" : {\n" +
+                        "                  \"prefix\" : {\n" +
+                        "                    \"phrase_field\" : \"provider\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            } ],\n" +
+                        "            \"slop\" : 10,\n" +
+                        "            \"in_order\" : false\n" +
+                        "          }\n" +
+                        "        } ],\n" +
+                        "        \"slop\" : 10,\n" +
+                        "        \"in_order\" : false\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 2,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 
