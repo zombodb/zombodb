@@ -1087,6 +1087,13 @@ public class QueryRewriter {
         if (parentQuery != null) {
             return queryFilter(build(parentQuery));
         } else {
+            // the parent query is on the top-level of the tree
+            // ie, it's not in a #parent() node, so if there's
+            // a #child() node, we want to remove it so the
+            // tree is just the parent query
+            QueryParserNode child = qr.tree.getChild(ASTChild.class);
+            if (child != null)
+                ((QueryParserNode) child.parent).removeNode(child);
             return hasParentFilter("xact", qr.rewriteQuery());
         }
     }
@@ -1128,20 +1135,21 @@ public class QueryRewriter {
                 .shardSize(0)
                 .size(!doFullFieldDataLookup ? 1024 : 0);
 
-        QueryBuilder nodeFilter = build(nodeQuery);
+        QueryBuilder query = constantScoreQuery(build(nodeQuery));
+        if (doFullFieldDataLookup) {
+            query = filteredQuery(query, makeParentFilter(node));
+        }
+
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(0)
                 .setSearchType(SearchType.COUNT)
-                .setQuery(constantScoreQuery(nodeFilter))
+                .setQuery(query)
                 .setQueryCache(true)
                 .setIndices(link.getIndexName())
                 .setTypes("data")
                 .setTrackScores(false)
                 .setPreference(searchPreference)
                 .addAggregation(termsBuilder);
-        if (useParentChild)
-            builder.setPostFilter(makeParentFilter(node));
-
         ActionFuture<SearchResponse> future = client.search(builder.request());
 
         try {
