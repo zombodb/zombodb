@@ -29,6 +29,14 @@ class ASTExpansion extends com.tcdi.zombodb.query_parser.QueryParserNode {
     return generated;
   }
 
+  public QueryParserNode getFilterQuery() {
+      for (QueryParserNode child : this) {
+        if (child instanceof ASTFilter)
+          return child.getChild(0);
+      }
+    return null;
+  }
+
   public void setGenerated(boolean generated) {
     this.generated = generated;
   }
