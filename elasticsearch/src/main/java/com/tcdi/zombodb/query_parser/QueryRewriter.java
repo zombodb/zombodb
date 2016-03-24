@@ -695,16 +695,26 @@ public class QueryRewriter {
 
     private QueryBuilder build(final ASTExpansion node) {
         final ASTIndexLink link = node.getIndexLink();
-
+        QueryBuilder expansionBuilder;
         try {
             if (node.isGenerated())
                 generatedExpansionsStack.push(node);
 
-            return expand(node, link);
+            expansionBuilder = expand(node, link);
         } finally {
             if (node.isGenerated())
                 generatedExpansionsStack.pop();
         }
+
+        QueryParserNode filterQuery = node.getFilterQuery();
+        if (filterQuery != null) {
+            BoolQueryBuilder bqb = boolQuery();
+            bqb.must(expansionBuilder);
+            bqb.must(build(filterQuery));
+            expansionBuilder = bqb;
+        }
+
+        return expansionBuilder;
     }
 
     private QueryBuilder build(ASTWord node) {
