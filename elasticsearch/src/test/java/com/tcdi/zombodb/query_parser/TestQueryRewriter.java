@@ -4358,7 +4358,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
-    public void testCVSIX_3374() throws Exception {
+    public void testIssue106() throws Exception {
         assertJson("( #expand<groupid=<this.index>groupid> ( field:value #filter(other_field:other_value and other_field:other_value2) ) )",
                 "{\n" +
                         "  \"bool\" : {\n" +
