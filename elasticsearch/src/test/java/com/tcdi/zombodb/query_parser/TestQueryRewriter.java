@@ -4356,5 +4356,34 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
+
+    @Test
+    public void testCVSIX_3374() throws Exception {
+        assertJson("( #expand<groupid=<this.index>groupid> ( field:value #filter(other_field:other_value and other_field:other_value2) ) )",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [ {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"field\" : \"value\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"other_field\" : [ \"other_value\", \"other_value2\" ],\n" +
+                        "            \"minimum_should_match\" : \"2\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"field\" : \"value\"\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
 }
 

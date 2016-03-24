@@ -222,7 +222,7 @@ public class QueryTreeOptimizer {
 
         // recursively optimize children the same way
         for (QueryParserNode child : root)
-            if ((child instanceof ASTWith) || (child instanceof ASTAnd) || (child instanceof ASTOr) || (child instanceof ASTNot) || (child instanceof ASTParent) || (child instanceof ASTChild) || (child instanceof ASTExpansion))
+            if ((child instanceof ASTWith) || (child instanceof ASTAnd) || (child instanceof ASTOr) || (child instanceof ASTNot) || (child instanceof ASTParent) || (child instanceof ASTChild) || (child instanceof ASTExpansion) || (child instanceof ASTFilter))
                 mergeLiterals(child);
     }
 
