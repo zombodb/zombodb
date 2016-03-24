@@ -141,6 +141,7 @@ PARSER_END(QueryParser)
   | <OPTIONS: "#options" >
   | <FIELDLISTS: "#field_lists" >
   | <EXPAND: "#expand" >
+  | <FILTER: "#filter" >
   | <BOOL_QUERY: "#bool" >
   | <MUST: "#must" >
   | <SHOULD: "#should" >
@@ -167,7 +168,8 @@ PARSER_END(QueryParser)
             | "\"" (<WORD> ("*")+) "\"" >
   | <WILDCARD: (("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")*)
              | "'" (("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")*) "'"
-             | "\"" (("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")*) "\"" >
+             | "\"" (("*" | "?")* <WORD> (("*" | "?") <WORD>)* ("*" | "?")*) "\""
+             | ("*" | "?")+ >
   | <NOT_NULL: ("*") | ("?") | ("\"*\"") | ("\"?\"") >
   | <FUZZY: ( <WORD>
              | ("'" <WORD> "'")
@@ -497,11 +499,17 @@ QueryParserNode Parent() #Parent :
 
 QueryParserNode Expansion() #Expansion : { }
 {
-    ( <EXPAND> "<" IndexLink() ">" "(" Expression() ")" )
+    ( <EXPAND> "<" IndexLink() ">" "(" Expression() [Filter()] ")" )
     {
         jjtThis.setGenerated(true);
         return jjtThis;
     }
+}
+
+QueryParserNode Filter() #Filter : {}
+{
+    ( <FILTER> "(" Expression() ")" )
+    { return jjtThis; }
 }
 
 void OptionalBoost(QueryParserNode n) :

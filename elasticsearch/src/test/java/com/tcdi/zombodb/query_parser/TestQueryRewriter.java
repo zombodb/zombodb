@@ -4157,5 +4157,233 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (fieldname=_all, operator=CONTAINS, value=time, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testSingleQuestionMark_issue102() throws Exception {
+        assertJson("exact_field:?",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"exists\" : {\n" +
+                        "        \"field\" : \"exact_field\"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testMultipleQuestionMarks_issue102() throws Exception {
+        assertJson("exact_field:????",
+                "{\n" +
+                        "  \"wildcard\" : {\n" +
+                        "    \"exact_field\" : \"????\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testMultipleAsterisksMarks_issue102() throws Exception {
+        assertJson("exact_field:****",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"exists\" : {\n" +
+                        "        \"field\" : \"exact_field\"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testCombinationWildcardsMarks_issue102() throws Exception {
+        assertJson("exact_field:?***",
+                "{\n" +
+                        "  \"wildcard\" : {\n" +
+                        "    \"exact_field\" : \"?***\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+        assertJson("exact_field:***?",
+                "{\n" +
+                        "  \"wildcard\" : {\n" +
+                        "    \"exact_field\" : \"***?\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue105() throws Exception {
+        assertJson("exact_field:((red or blue) w/3 (cat or dog))",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_or\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"exact_field\" : {\n" +
+                        "              \"value\" : \"red\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"exact_field\" : {\n" +
+                        "              \"value\" : \"blue\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_or\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"exact_field\" : {\n" +
+                        "              \"value\" : \"cat\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"exact_field\" : {\n" +
+                        "              \"value\" : \"dog\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 3,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue105_complex() throws Exception {
+        assertJson("phrase_field:((service*) w/2 (area*) w/10 (negotiat* OR (bargain* w/3 food) OR contract*) w/10 provider*)",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_multi\" : {\n" +
+                        "        \"match\" : {\n" +
+                        "          \"prefix\" : {\n" +
+                        "            \"phrase_field\" : \"service\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_near\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_multi\" : {\n" +
+                        "            \"match\" : {\n" +
+                        "              \"prefix\" : {\n" +
+                        "                \"phrase_field\" : \"area\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_near\" : {\n" +
+                        "            \"clauses\" : [ {\n" +
+                        "              \"span_or\" : {\n" +
+                        "                \"clauses\" : [ {\n" +
+                        "                  \"span_multi\" : {\n" +
+                        "                    \"match\" : {\n" +
+                        "                      \"prefix\" : {\n" +
+                        "                        \"phrase_field\" : \"negotiat\"\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"span_near\" : {\n" +
+                        "                    \"clauses\" : [ {\n" +
+                        "                      \"span_multi\" : {\n" +
+                        "                        \"match\" : {\n" +
+                        "                          \"prefix\" : {\n" +
+                        "                            \"phrase_field\" : \"bargain\"\n" +
+                        "                          }\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    }, {\n" +
+                        "                      \"span_term\" : {\n" +
+                        "                        \"phrase_field\" : {\n" +
+                        "                          \"value\" : \"food\"\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    } ],\n" +
+                        "                    \"slop\" : 3,\n" +
+                        "                    \"in_order\" : false\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"span_multi\" : {\n" +
+                        "                    \"match\" : {\n" +
+                        "                      \"prefix\" : {\n" +
+                        "                        \"phrase_field\" : \"contract\"\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"span_multi\" : {\n" +
+                        "                \"match\" : {\n" +
+                        "                  \"prefix\" : {\n" +
+                        "                    \"phrase_field\" : \"provider\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            } ],\n" +
+                        "            \"slop\" : 10,\n" +
+                        "            \"in_order\" : false\n" +
+                        "          }\n" +
+                        "        } ],\n" +
+                        "        \"slop\" : 10,\n" +
+                        "        \"in_order\" : false\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 2,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue106() throws Exception {
+        assertJson("( #expand<groupid=<this.index>groupid> ( field:value #filter(other_field:other_value and other_field:other_value2) ) )",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [ {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"field\" : \"value\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"other_field\" : [ \"other_value\", \"other_value2\" ],\n" +
+                        "            \"minimum_should_match\" : \"2\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"field\" : \"value\"\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
 }
 

@@ -695,16 +695,26 @@ public class QueryRewriter {
 
     private QueryBuilder build(final ASTExpansion node) {
         final ASTIndexLink link = node.getIndexLink();
-
+        QueryBuilder expansionBuilder;
         try {
             if (node.isGenerated())
                 generatedExpansionsStack.push(node);
 
-            return expand(node, link);
+            expansionBuilder = expand(node, link);
         } finally {
             if (node.isGenerated())
                 generatedExpansionsStack.pop();
         }
+
+        QueryParserNode filterQuery = node.getFilterQuery();
+        if (filterQuery != null) {
+            BoolQueryBuilder bqb = boolQuery();
+            bqb.must(expansionBuilder);
+            bqb.must(build(filterQuery));
+            expansionBuilder = bqb;
+        }
+
+        return expansionBuilder;
     }
 
     private QueryBuilder build(ASTWord node) {
@@ -920,6 +930,8 @@ public class QueryRewriter {
             qb = buildSpan(prox, (ASTNull) node);
         else if (node instanceof ASTNotNull)
             return buildSpan(prox, (ASTNotNull) node);
+        else if (node instanceof ASTOr)
+            qb = buildSpan(prox, (ASTOr) node);
         else if (node instanceof ASTProximity)
             qb = buildSpan((ASTProximity) node);
         else
@@ -945,36 +957,36 @@ public class QueryRewriter {
         if (prox.getOperator() == QueryParserNode.Operator.REGEX)
             return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
 
-        return spanTermQuery(prox.getFieldname(), String.valueOf(node.getValue()));
+        return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTNull node) {
         // when building spans, treat 'null' as a regular term
-        return spanTermQuery(prox.getFieldname(), String.valueOf(node.getValue()));
+        return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTNotNull node) {
-        return spanMultiTermQueryBuilder(wildcardQuery(prox.getFieldname(), String.valueOf(node.getValue())));
+        return spanMultiTermQueryBuilder(wildcardQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTNumber node) {
-        return spanTermQuery(prox.getFieldname(), String.valueOf(node.getValue()));
+        return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTBoolean node) {
-        return spanTermQuery(prox.getFieldname(), String.valueOf(node.getValue()));
+        return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTFuzzy node) {
-        return spanMultiTermQueryBuilder(fuzzyQuery(prox.getFieldname(), node.getValue()).prefixLength(node.getFuzzyness() == 0 ? 3 : node.getFuzzyness()));
+        return spanMultiTermQueryBuilder(fuzzyQuery(node.getFieldname(), node.getValue()).prefixLength(node.getFuzzyness() == 0 ? 3 : node.getFuzzyness()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTPrefix node) {
-        return spanMultiTermQueryBuilder(prefixQuery(prox.getFieldname(), String.valueOf(node.getValue())));
+        return spanMultiTermQueryBuilder(prefixQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTWildcard node) {
-        return spanMultiTermQueryBuilder(wildcardQuery(prox.getFieldname(), String.valueOf(node.getValue())));
+        return spanMultiTermQueryBuilder(wildcardQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTPhrase node) {
@@ -984,8 +996,16 @@ public class QueryRewriter {
         return buildSpan(prox, Utils.convertToProximity(node.getFieldname(), Utils.analyzeForSearch(client, metadataManager, node.getFieldname(), node.getEscapedValue())));
     }
 
+    private SpanQueryBuilder buildSpan(ASTProximity prox, ASTOr node) {
+        SpanOrQueryBuilder or = spanOrQuery();
+        for (QueryParserNode child : node)
+            or.clause(buildSpan(prox, child));
+        return or;
+    }
+
     private QueryBuilder build(ASTProximity node) {
-        node.forceFieldname(node.getFieldname());
+        if (node.getFieldname() != null)
+            node.forceFieldname(node.getFieldname());
 
         SpanNearQueryBuilder qb = spanNearQuery();
         qb.slop(node.getDistance());
@@ -1087,6 +1107,13 @@ public class QueryRewriter {
         if (parentQuery != null) {
             return queryFilter(build(parentQuery));
         } else {
+            // the parent query is on the top-level of the tree
+            // ie, it's not in a #parent() node, so if there's
+            // a #child() node, we want to remove it so the
+            // tree is just the parent query
+            QueryParserNode child = qr.tree.getChild(ASTChild.class);
+            if (child != null)
+                ((QueryParserNode) child.parent).removeNode(child);
             return hasParentFilter("xact", qr.rewriteQuery());
         }
     }
@@ -1128,20 +1155,21 @@ public class QueryRewriter {
                 .shardSize(0)
                 .size(!doFullFieldDataLookup ? 1024 : 0);
 
-        QueryBuilder nodeFilter = build(nodeQuery);
+        QueryBuilder query = constantScoreQuery(build(nodeQuery));
+        if (doFullFieldDataLookup) {
+            query = filteredQuery(query, makeParentFilter(node));
+        }
+
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(0)
                 .setSearchType(SearchType.COUNT)
-                .setQuery(constantScoreQuery(nodeFilter))
+                .setQuery(query)
                 .setQueryCache(true)
                 .setIndices(link.getIndexName())
                 .setTypes("data")
                 .setTrackScores(false)
                 .setPreference(searchPreference)
                 .addAggregation(termsBuilder);
-        if (useParentChild)
-            builder.setPostFilter(makeParentFilter(node));
-
         ActionFuture<SearchResponse> future = client.search(builder.request());
 
         try {
