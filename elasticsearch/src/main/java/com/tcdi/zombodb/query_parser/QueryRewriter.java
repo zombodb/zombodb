@@ -920,6 +920,8 @@ public class QueryRewriter {
             qb = buildSpan(prox, (ASTNull) node);
         else if (node instanceof ASTNotNull)
             return buildSpan(prox, (ASTNotNull) node);
+        else if (node instanceof ASTOr)
+            qb = buildSpan(prox, (ASTOr) node);
         else if (node instanceof ASTProximity)
             qb = buildSpan((ASTProximity) node);
         else
@@ -945,36 +947,36 @@ public class QueryRewriter {
         if (prox.getOperator() == QueryParserNode.Operator.REGEX)
             return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
 
-        return spanTermQuery(prox.getFieldname(), String.valueOf(node.getValue()));
+        return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTNull node) {
         // when building spans, treat 'null' as a regular term
-        return spanTermQuery(prox.getFieldname(), String.valueOf(node.getValue()));
+        return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTNotNull node) {
-        return spanMultiTermQueryBuilder(wildcardQuery(prox.getFieldname(), String.valueOf(node.getValue())));
+        return spanMultiTermQueryBuilder(wildcardQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTNumber node) {
-        return spanTermQuery(prox.getFieldname(), String.valueOf(node.getValue()));
+        return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTBoolean node) {
-        return spanTermQuery(prox.getFieldname(), String.valueOf(node.getValue()));
+        return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTFuzzy node) {
-        return spanMultiTermQueryBuilder(fuzzyQuery(prox.getFieldname(), node.getValue()).prefixLength(node.getFuzzyness() == 0 ? 3 : node.getFuzzyness()));
+        return spanMultiTermQueryBuilder(fuzzyQuery(node.getFieldname(), node.getValue()).prefixLength(node.getFuzzyness() == 0 ? 3 : node.getFuzzyness()));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTPrefix node) {
-        return spanMultiTermQueryBuilder(prefixQuery(prox.getFieldname(), String.valueOf(node.getValue())));
+        return spanMultiTermQueryBuilder(prefixQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTWildcard node) {
-        return spanMultiTermQueryBuilder(wildcardQuery(prox.getFieldname(), String.valueOf(node.getValue())));
+        return spanMultiTermQueryBuilder(wildcardQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTPhrase node) {
@@ -984,8 +986,16 @@ public class QueryRewriter {
         return buildSpan(prox, Utils.convertToProximity(node.getFieldname(), Utils.analyzeForSearch(client, metadataManager, node.getFieldname(), node.getEscapedValue())));
     }
 
+    private SpanQueryBuilder buildSpan(ASTProximity prox, ASTOr node) {
+        SpanOrQueryBuilder or = spanOrQuery();
+        for (QueryParserNode child : node)
+            or.clause(buildSpan(prox, child));
+        return or;
+    }
+
     private QueryBuilder build(ASTProximity node) {
-        node.forceFieldname(node.getFieldname());
+        if (node.getFieldname() != null)
+            node.forceFieldname(node.getFieldname());
 
         SpanNearQueryBuilder qb = spanNearQuery();
         qb.slop(node.getDistance());
