@@ -1,0 +1,21 @@
+CREATE TABLE issue_104 (
+  id serial8 not null primary key,
+  groupid bigint,
+  field text
+);
+CREATE INDEX idxissue104 ON issue_104 USING zombodb (zdb('issue_104', ctid), zdb(issue_104)) WITH (url='http://localhost:9200/');
+
+INSERT INTO issue_104 (groupid, field) VALUES (1, 'foo');
+INSERT INTO issue_104 (groupid, field) VALUES (1, 'bar');
+INSERT INTO issue_104 (groupid, field) VALUES (1, 'dog');
+INSERT INTO issue_104 (groupid, field) VALUES (1, 'cat');
+
+SELECT assert(count(*), 0, 'found nothing') FROM issue_104 WHERE zdb('issue_104', ctid) ==> '#expand<groupid=<this.index>groupid>(field:null)';
+
+UPDATE issue_104 SET field = NULL WHERE field = 'foo';
+SELECT assert(count(*), 4, 'found everything') FROM issue_104 WHERE zdb('issue_104', ctid) ==> '#expand<groupid=<this.index>groupid>(field:null)';
+
+UPDATE issue_104 SET field = 'foo' WHERE field IS NULL;
+SELECT assert(count(*), 0, 'found nothing') FROM issue_104 WHERE zdb('issue_104', ctid) ==> '#expand<groupid=<this.index>groupid>(field:null)';
+
+DROP TABLE issue_104;
