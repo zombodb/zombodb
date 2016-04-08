@@ -35,6 +35,7 @@
 
 #include "elasticsearch.h"
 #include "zdbseqscan.h"
+#include "zdb_interface.h"
 
 
 typedef struct
@@ -47,8 +48,8 @@ typedef struct
 } BatchInsertData;
 
 
-static StringInfo zdb_invisible_pages(Relation rel);
-static int tuple_is_visible(IndexScanDesc scan);
+static void find_invisible_ctids(Relation rel, StringInfo sb);
+static int  tuple_is_visible(IndexScanDesc scan);
 
 static List *batchInsertDataList = NULL;
 
@@ -84,7 +85,7 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
 	return data;
 }
 
-static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries)
+static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap)
 {
 	StringInfo baseQuery = makeStringInfo();
 	int i;
@@ -94,13 +95,27 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 	if (desc->fieldLists)
 		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->fieldLists);
 
-	for (i = 0; i < nqueries; i++)
-	{
-		if (i > 0) appendStringInfo(baseQuery, " AND ");
-		appendStringInfo(baseQuery, "(%s)", queries[i]);
-	}
+    if (useInvisibilityMap) {
+        Relation heapRel;
 
-	return baseQuery;
+        heapRel = RelationIdGetRelation(desc->heapRelid);
+
+        appendStringInfo(baseQuery, "(_id<>[[");
+        find_invisible_ctids(heapRel, baseQuery);
+        appendStringInfo(baseQuery, "]]) AND (");
+
+        RelationClose(heapRel);
+    }
+
+    for (i = 0; i < nqueries; i++) {
+        if (i > 0) appendStringInfo(baseQuery, " AND ");
+        appendStringInfo(baseQuery, "(%s)", queries[i]);
+    }
+
+    if (useInvisibilityMap)
+        appendStringInfoChar(baseQuery, ')');
+
+    return baseQuery;
 }
 
 static void checkForBulkError(StringInfo response, char *type) {
@@ -322,7 +337,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 		indexName  = descriptors[i]->fullyQualifiedName;
 		preference = descriptors[i]->searchPreference;
 		pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, false);
-        query      = buildQuery(descriptors[i], &user_queries[i], 1);
+        query      = buildQuery(descriptors[i], &user_queries[i], 1, true);
 
 		if (!preference) preference = "null";
 
@@ -369,7 +384,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 	ZDBSearchResponse *hits;
 	ZDBScore		  max_score;
 
-    query = buildQuery(indexDescriptor, queries, nqueries);
+    query = buildQuery(indexDescriptor, queries, nqueries, false);
 
 	appendStringInfo(endpoint, "%s/%s/data/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
@@ -436,7 +451,7 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
 	StringInfo response;
 	uint64     nhits;
 
-    query = buildQuery(indexDescriptor, queries, nqueries);
+    query = buildQuery(indexDescriptor, queries, nqueries, true);
 
 	appendStringInfo(endpoint, "%s/%s/data/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
@@ -457,14 +472,12 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
 
 uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *user_query)
 {
-	StringInfo query    = makeStringInfo();
+	StringInfo query;
 	StringInfo endpoint = makeStringInfo();
 	StringInfo response;
 	uint64     nhits;
 
-	if (indexDescriptor->options)
-		appendStringInfo(query, "#options(%s) ", indexDescriptor->options);
-	appendStringInfo(query, "%s", user_query);
+    query = buildQuery(indexDescriptor, &user_query, 1, false);
 
 	appendStringInfo(endpoint, "%s/%s/data/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
@@ -490,7 +503,7 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, 
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1, true);
 
 	appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s",
 			fieldname,
@@ -519,7 +532,7 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1, true);
 
 	appendStringInfo(request, "#range(%s, '%s') %s",
 			fieldname,
@@ -546,7 +559,7 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char 
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1, true);
 
 	appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s",
 			fieldname,
@@ -574,7 +587,7 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fi
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1, true);
 
 	appendStringInfo(request, "#extended_stats(%s) %s",
 			fieldname,
@@ -601,7 +614,7 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1, true);
 
 	appendStringInfo(request, "%s %s", aggregate_query, query->data);
 
@@ -625,7 +638,7 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fie
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1, true);
 
     appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
 
@@ -919,8 +932,7 @@ void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTra
 	batchInsertDataList = NULL;
 }
 
-static StringInfo zdb_invisible_pages(Relation rel) {
-    StringInfo sb    = makeStringInfo();
+static void find_invisible_ctids(Relation rel, StringInfo sb) {
 
     if (visibilitymap_count(rel) != rel->rd_rel->relpages) {
         BlockNumber       i;
@@ -953,7 +965,7 @@ static StringInfo zdb_invisible_pages(Relation rel) {
                     if (rc == 0) {
                         /* tuple is invisible to us */
                         if (sb->len > 0) appendStringInfoChar(sb, ',');
-                        appendStringInfo(sb, "%d_%d", i, j);
+                        appendStringInfo(sb, "\"%d-%d\"", i, j);
                     }
                 }
                 if (BufferIsValid(scan.xs_cbuf)) {
@@ -963,8 +975,6 @@ static StringInfo zdb_invisible_pages(Relation rel) {
             }
         }
     }
-
-    return sb;
 }
 
 static int tuple_is_visible(IndexScanDesc scan) {

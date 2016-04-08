@@ -135,6 +135,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 
 	/* these all come from the actual index */
 	desc->indexRelid     = RelationGetRelid(indexRel);
+    desc->heapRelid    = RelationGetRelid(heapRel);
 	desc->isShadow		 = ZDBIndexOptionsGetShadow(indexRel) != NULL;
 	desc->logit			 = false;
 	desc->databaseName   = pstrdup(get_database_name(MyDatabaseId));

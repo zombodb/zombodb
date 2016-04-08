@@ -78,6 +78,7 @@ typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
 typedef struct {
 	Oid   indexRelid;
+    Oid   heapRelid;
 	int64 advisory_mutex;
 	bool  isShadow;
 	bool  logit;
