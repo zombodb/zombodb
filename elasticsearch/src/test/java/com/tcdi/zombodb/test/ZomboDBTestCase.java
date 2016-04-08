@@ -121,11 +121,7 @@ public abstract class ZomboDBTestCase {
 
 
     protected QueryRewriter qr(String query) {
-        return qr(query, true);
-    }
-
-    protected QueryRewriter qr(String query, boolean useParentChild) {
-        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, false, useParentChild, true) {
+        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, false, true) {
             @Override
             protected boolean isInTestMode() {
                 return true;
@@ -134,11 +130,7 @@ public abstract class ZomboDBTestCase {
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
-        assertJson(query, expectedJson, true);
-    }
-
-    protected void assertJson(String query, String expectedJson, boolean useParentChild) throws Exception {
-        assertEquals(expectedJson.trim(), qr(query, useParentChild).rewriteQuery().toString().trim());
+        assertEquals(expectedJson.trim(), qr(query).rewriteQuery().toString().trim());
     }
 
     protected void assertAST(String query, String expectedAST) throws Exception {

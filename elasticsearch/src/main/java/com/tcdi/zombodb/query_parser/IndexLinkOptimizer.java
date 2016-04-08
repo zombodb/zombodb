@@ -83,7 +83,7 @@ public class IndexLinkOptimizer {
             QueryParserNode child = (QueryParserNode) root.children.get(i);
             String fieldname = child.getFieldname();
 
-            if (child instanceof ASTIndexLink || child instanceof ASTParent || child instanceof ASTAggregate || child instanceof ASTSuggest)
+            if (child instanceof ASTIndexLink || child instanceof ASTAggregate || child instanceof ASTSuggest)
                 continue;
 
             if (fieldname != null && !(child instanceof ASTExpansion)) {
@@ -121,24 +121,14 @@ public class IndexLinkOptimizer {
     }
 
     private void injectASTExpansionNodes(ASTQueryTree tree) {
-        ASTChild childQuery = (ASTChild) tree.getChild(ASTChild.class);
-        if (childQuery != null) {
-            injectASTExpansionNodes(childQuery);
-        } else {
-            for (QueryParserNode child : tree) {
-                if (child instanceof ASTOptions || child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
-                    continue;
-                injectASTExpansionNodes(child);
-            }
+        for (QueryParserNode child : tree) {
+            if (child instanceof ASTOptions || child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
+                continue;
+            injectASTExpansionNodes(child);
         }
     }
 
     private void injectASTExpansionNodes(QueryParserNode root) {
-        if (root instanceof ASTParent)
-            return;
-
-        while (root instanceof ASTChild)
-            root = root.getChild(0);
         while (root instanceof ASTExpansion)
             root = ((ASTExpansion) root).getQuery();
 
@@ -167,12 +157,6 @@ public class IndexLinkOptimizer {
     private Set<ASTIndexLink> collectIndexLinks(QueryParserNode root, Set<ASTIndexLink> links) {
         if (root == null)
             return links;
-
-        if (root instanceof ASTParent) {
-            // so that ASTParent nodes never get grouped in an ASTExpansion node
-            links.add(null);
-            return links;
-        }
 
         for (QueryParserNode child : root)
             collectIndexLinks(child, links);

@@ -32,7 +32,7 @@
 
 relopt_kind RELOPT_KIND_ZDB;
 
-static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, bool noxact, char *fieldProperties);
+static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
 static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
 static void wrapper_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 
@@ -64,7 +64,7 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data);
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 static void wrapper_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData);
@@ -107,7 +107,6 @@ void zdb_index_init(void)
 	add_string_reloption(RELOPT_KIND_ZDB, "preference", "The ?preference value used to Elasticsearch", NULL, validate_preference);
 	add_int_reloption(RELOPT_KIND_ZDB, "shards", "The number of shared for the index", 5, 1, 32768);
 	add_int_reloption(RELOPT_KIND_ZDB, "replicas", "The default number of replicas for the index", 1, 1, 32768);
-	add_bool_reloption(RELOPT_KIND_ZDB, "noxact", "Disable transaction tracking for this index", false);
 	add_int_reloption(RELOPT_KIND_ZDB, "bulk_concurrency", "The maximum number of concurrent _bulk API requests", 12, 1, 12);
 	add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API", 1024*1024*8, 1024, 1024*1024*64);
 	add_string_reloption(RELOPT_KIND_ZDB, "field_lists", "field=[field1, field2, field3], other=[field4,field5]", NULL, validate_field_lists);
@@ -231,42 +230,6 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor_by_index_oid(Oid indexrelid)
 	return desc;
 }
 
-ZDBCommitXactData *zdb_alloc_new_xact_record(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid)
-{
-	MemoryContext        oldContext = MemoryContextSwitchTo(TopTransactionContext);
-	ZDBCommitNewXactData *xactData;
-
-	xactData = palloc(sizeof(ZDBCommitNewXactData));
-	xactData->header.type = ZDB_COMMIT_TYPE_NEW;
-	xactData->header.desc = indexDescriptor;
-	xactData->header.ctid = palloc(SizeOfIptrData);
-	ItemPointerSet(xactData->header.ctid, ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
-	xactData->xmin_is_committed = true;
-
-	MemoryContextSwitchTo(oldContext);
-
-	return (ZDBCommitXactData *) xactData;
-}
-
-ZDBCommitXactData *zdb_alloc_expired_xact_record(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmax, CommandId cmax)
-{
-	MemoryContext            oldContext = MemoryContextSwitchTo(TopTransactionContext);
-	ZDBCommitExpiredXactData *xactData;
-
-	xactData = palloc(sizeof(ZDBCommitExpiredXactData));
-	xactData->header.type = ZDB_COMMIT_TYPE_EXPIRED;
-	xactData->header.desc = indexDescriptor;
-	xactData->header.ctid = palloc(SizeOfIptrData);
-	ItemPointerSet(xactData->header.ctid, ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
-	xactData->xmax              = xmax;
-	xactData->cmax              = cmax;
-	xactData->xmax_is_committed = true;
-
-	MemoryContextSwitchTo(oldContext);
-
-	return (ZDBCommitXactData *) xactData;
-}
-
 void zdb_free_index_descriptor(ZDBIndexDescriptor *indexDescriptor)
 {
 	pfree(indexDescriptor->implementation);
@@ -305,14 +268,14 @@ char *zdb_multi_search(TransactionId xid, CommandId cid, Oid *indexrelids, char 
 
 /** implementation wrapper functions */
 
-static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, bool noxact, char *fieldProperties)
+static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties)
 {
 	MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_createNewIndex", 512, 64, 64);
 	MemoryContext oldContext = MemoryContextSwitchTo(me);
 
 	Assert(!indexDescriptor->isShadow);
 
-	elasticsearch_createNewIndex(indexDescriptor, shards, noxact, fieldProperties);
+	elasticsearch_createNewIndex(indexDescriptor, shards, fieldProperties);
 
 	MemoryContextSwitchTo(oldContext);
 	MemoryContextDelete(me);
@@ -585,13 +548,13 @@ static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPo
 	MemoryContextDelete(me);
 }
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data)
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data)
 {
 	MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
 	Assert(!indexDescriptor->isShadow);
 
-	elasticsearch_batchInsertRow(indexDescriptor, ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data);
+	elasticsearch_batchInsertRow(indexDescriptor, ctid, data);
 
 	MemoryContextSwitchTo(oldContext);
 }

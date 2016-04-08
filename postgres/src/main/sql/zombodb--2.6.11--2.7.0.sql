@@ -1,1 +1,1 @@
--- no sql changes
+DROP FUNCTION zdbtupledeletedtrigger();

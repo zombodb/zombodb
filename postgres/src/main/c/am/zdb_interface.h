@@ -63,9 +63,6 @@ typedef struct
 #define ZDBIndexOptionsGetNumberOfReplicas(relation) \
 	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->replicas : 0
 
-#define ZDBIndexOptionsGetNoXact(relation) \
-	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->noxact : false
-
 #define ZDBIndexOptionsGetBulkConcurrency(relation) \
 	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->bulk_concurrency : 12
 
@@ -79,17 +76,16 @@ typedef struct
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
-typedef struct
-{
-	Oid  indexRelid;
+typedef struct {
+	Oid   indexRelid;
 	int64 advisory_mutex;
-	bool isShadow;
-	bool logit;
-	char *databaseName;
-	char *schemaName;
-	char *tableName;
-	char *indexName;
-	char *fullyQualifiedName;
+	bool  isShadow;
+	bool  logit;
+	char  *databaseName;
+	char  *schemaName;
+	char  *tableName;
+	char  *indexName;
+	char  *fullyQualifiedName;
 
 	char *qualifiedTableName;
 
@@ -97,54 +93,24 @@ typedef struct
 	char *options;
 
 	char *searchPreference;
-	int bulk_concurrency;
-	int batch_size;
+	int  bulk_concurrency;
+	int  batch_size;
 
 	char *fieldLists;
 
 	ZDBIndexImplementation *implementation;
-}                                     ZDBIndexDescriptor;
+} ZDBIndexDescriptor;
 
-typedef enum
-{
+typedef enum {
 	ZDB_TRANSACTION_COMMITTED, ZDB_TRANSACTION_ABORTED
-}                                     ZDBTransactionCompletionType;
-typedef enum
-{
-	ZDB_COMMIT_TYPE_NEW, ZDB_COMMIT_TYPE_EXPIRED, ZDB_COMMIT_TYPE_ALL
-}                                     ZDBCommitXactDataType;
+} ZDBTransactionCompletionType;
 
-typedef struct
-{
-	ZDBCommitXactDataType type;
-	ZDBIndexDescriptor    *desc;
-
-	ItemPointer ctid;
-} ZDBCommitXactData;
-
-typedef struct
-{
-	ZDBCommitXactData header;
-
-	bool xmin_is_committed;
-}                                     ZDBCommitNewXactData;
-
-typedef struct
-{
-	ZDBCommitXactData header;
-
-	bool          xmax_is_committed;
-	TransactionId xmax;
-	CommandId     cmax;
-}                                     ZDBCommitExpiredXactData;
-
-typedef struct
-{
+typedef struct {
 	StringInfo httpResponse;
 	int64      total_hits;
-	char       *hits; /* don't free directly, should be an offset into httpResponse->data */
+	char       *hits;  /* don't free directly, should be an offset into httpResponse->data */
 	float4     max_score;
-}                                     ZDBSearchResponse;
+} ZDBSearchResponse;
 
 extern PGDLLIMPORT relopt_kind RELOPT_KIND_ZDB;
 
@@ -153,8 +119,6 @@ void			   zdb_transaction_finish(void);
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel);
 ZDBIndexDescriptor *zdb_alloc_index_descriptor_by_index_oid(Oid indexrelid);
 void               zdb_free_index_descriptor(ZDBIndexDescriptor *indexDescriptor);
-ZDBCommitXactData  *zdb_alloc_new_xact_record(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid);
-ZDBCommitXactData  *zdb_alloc_expired_xact_record(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmax, CommandId cmax);
 
 char *zdb_multi_search(TransactionId xid, CommandId cid, Oid *indexrelids, char **user_queries, int nqueries);
 
@@ -165,7 +129,7 @@ void interface_transaction_cleanup(void);
 /**
 * Defines what an index implementation looks like
 */
-typedef void (*ZDBCreateNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, int shards, bool noxact, char *fieldProperties);
+typedef void (*ZDBCreateNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
 typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 
@@ -197,7 +161,7 @@ typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse
 
 typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
 
-typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data);
+typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBIndexCommitXactData_function)(ZDBIndexDescriptor *indexDescriptor, List/*<ZDBCommitData *>*/ *datums);
 
