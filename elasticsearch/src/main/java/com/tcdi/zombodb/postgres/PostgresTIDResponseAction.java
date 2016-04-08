@@ -88,7 +88,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setFetchSource(false);
             builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
-System.err.println(builder);
+
             long searchStart = System.currentTimeMillis();
             response = client.search(builder.request()).get();
             searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
