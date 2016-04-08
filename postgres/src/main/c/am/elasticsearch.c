@@ -15,21 +15,26 @@
  * limitations under the License.
  */
 #include "postgres.h"
+
 #include "fmgr.h"
+#include "pgstat.h"
 #include "miscadmin.h"
 #include "access/genam.h"
+#include "access/heapam.h"
+#include "access/relscan.h"
+#include "access/visibilitymap.h"
 #include "access/xact.h"
-#include "executor/spi.h"
 #include "storage/lmgr.h"
+#include "storage/bufmgr.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
+#include "utils/snapmgr.h"
 
 #include "rest/rest.h"
 #include "util/zdbutils.h"
 
 #include "elasticsearch.h"
 #include "zdbseqscan.h"
-#include "zdb_interface.h"
 
 
 typedef struct {
@@ -39,6 +44,10 @@ typedef struct {
     int                nprocessed;
     int                nrequests;
 } BatchInsertData;
+
+
+static StringInfo zdb_invisible_pages(Relation rel);
+static int tuple_is_visible(IndexScanDesc scan);
 
 static List *batchInsertDataList = NULL;
 
@@ -70,7 +79,7 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
     return data;
 }
 
-static StringInfo buildQuery(ZDBIndexDescriptor *desc, TransactionId xid, CommandId cid, char **queries, int nqueries) {
+static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries) {
     StringInfo baseQuery = makeStringInfo();
     int        i;
 
@@ -267,7 +276,7 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
     freeStringInfo(response);
 }
 
-char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId xid, CommandId cid, char **user_queries, int nqueries) {
+char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_queries, int nqueries) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
@@ -283,7 +292,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId
         indexName  = descriptors[i]->fullyQualifiedName;
         preference = descriptors[i]->searchPreference;
         pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, false);
-        query      = buildQuery(descriptors[i], xid, cid, &user_queries[i], 1);
+        query      = buildQuery(descriptors[i], &user_queries[i], 1);
 
         if (!preference) preference = "null";
 
@@ -322,14 +331,14 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId
 }
 
 
-ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits) {
+ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits) {
     StringInfo        query;
     StringInfo        endpoint = makeStringInfo();
     StringInfo        response;
     ZDBSearchResponse *hits;
     ZDBScore          max_score;
 
-    query = buildQuery(indexDescriptor, xid, cid, queries, nqueries);
+    query = buildQuery(indexDescriptor, queries, nqueries);
 
     appendStringInfo(endpoint, "%s/%s/data/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
@@ -389,13 +398,13 @@ uint64 elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor,
     return nhits;
 }
 
-uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries) {
+uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries) {
     StringInfo query;
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
     uint64     nhits;
 
-    query = buildQuery(indexDescriptor, xid, cid, queries, nqueries);
+    query = buildQuery(indexDescriptor, queries, nqueries);
 
     appendStringInfo(endpoint, "%s/%s/data/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
@@ -441,13 +450,13 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
     return nhits;
 }
 
-char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *user_query, int64 max_terms, char *sort_order) {
+char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms, char *sort_order) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1);
 
     appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s", fieldname, stem, max_terms, sort_order, query->data);
 
@@ -464,13 +473,13 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid
     return response->data;
 }
 
-char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *user_query) {
+char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *user_query) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1);
 
     appendStringInfo(request, "#range(%s, '%s') %s", fieldname, range_spec, query->data);
 
@@ -487,13 +496,13 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, Transact
     return response->data;
 }
 
-char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *user_query, int64 max_terms) {
+char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1);
 
     appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s", fieldname, stem, max_terms, query->data);
 
@@ -510,13 +519,13 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, Trans
     return response->data;
 }
 
-char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query) {
+char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1);
 
     appendStringInfo(request, "#extended_stats(%s) %s", fieldname, query->data);
 
@@ -534,13 +543,13 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, Transact
 }
 
 
-char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query) {
+char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1);
 
     appendStringInfo(request, "%s %s", aggregate_query, query->data);
 
@@ -557,13 +566,13 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, Tra
     return response->data;
 }
 
-char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *user_query, int64 max_terms) {
+char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
+    query = buildQuery(indexDescriptor, &user_query, 1);
 
     appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
 
@@ -832,4 +841,77 @@ void elasticsearch_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xac
 
 void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {
     batchInsertDataList = NULL;
+}
+
+static StringInfo zdb_invisible_pages(Relation rel) {
+    StringInfo sb    = makeStringInfo();
+
+    if (visibilitymap_count(rel) != rel->rd_rel->relpages) {
+        BlockNumber       i;
+        OffsetNumber      j;
+        IndexScanDescData scan;
+
+        memset(&scan, 0, sizeof(IndexScanDescData));
+        scan.heapRelation = rel;
+        scan.xs_snapshot  = GetActiveSnapshot();
+
+        for (i = 0; i < RelationGetNumberOfBlocks(rel); i++) {
+            Buffer vmap_buff = InvalidBuffer;
+            bool   allVisible;
+
+            allVisible = visibilitymap_test(rel, i, &vmap_buff);
+            if (!BufferIsInvalid(vmap_buff)) {
+                ReleaseBuffer(vmap_buff);
+                vmap_buff = InvalidBuffer;
+            }
+
+            if (!allVisible) {
+                for (j = 1; j <= MaxOffsetNumber; j++) {
+                    int rc;
+
+                    ItemPointerSet(&(scan.xs_ctup.t_self), i, j);
+                    rc = tuple_is_visible(&scan);
+                    if (rc == 2)
+                        break; /* we're done with this page */
+
+                    if (rc == 0) {
+                        /* tuple is invisible to us */
+                        if (sb->len > 0) appendStringInfoChar(sb, ',');
+                        appendStringInfo(sb, "%d_%d", i, j);
+                    }
+                }
+                if (BufferIsValid(scan.xs_cbuf)) {
+                    ReleaseBuffer(scan.xs_cbuf);
+                    scan.xs_cbuf = InvalidBuffer;
+                }
+            }
+        }
+    }
+
+    return sb;
+}
+
+static int tuple_is_visible(IndexScanDesc scan) {
+    ItemPointer tid      = &scan->xs_ctup.t_self;
+    bool        all_dead = false;
+    bool        got_heap_tuple;
+    Page        page;
+
+    if (scan->xs_cbuf == InvalidBuffer) {
+        /* Switch to correct buffer if we don't have it already */
+        scan->xs_cbuf = ReleaseAndReadBuffer(scan->xs_cbuf, scan->heapRelation, ItemPointerGetBlockNumber(tid));
+    }
+
+    page = BufferGetPage(scan->xs_cbuf);
+    if (ItemPointerGetOffsetNumber(tid) > PageGetMaxOffsetNumber(page)) {
+        /* no more items on this page */
+        return 2;
+    }
+
+    /* Obtain share-lock on the buffer so we can examine visibility */
+    LockBuffer(scan->xs_cbuf, BUFFER_LOCK_SHARE);
+    got_heap_tuple = heap_hot_search_buffer(tid, scan->heapRelation, scan->xs_cbuf, scan->xs_snapshot, &scan->xs_ctup, &all_dead, !scan->xs_continue_hot);
+    LockBuffer(scan->xs_cbuf, BUFFER_LOCK_UNLOCK);
+
+    return got_heap_tuple;
 }

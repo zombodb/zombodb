@@ -467,7 +467,7 @@ static void setup_scan(IndexScanDesc scan) {
     scanstate->queries         = queries;
     scanstate->nqueries        = scan->numberOfKeys;
     scanstate->indexDescriptor = desc;
-    scanstate->hits            = desc->implementation->searchIndex(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), queries, scan->numberOfKeys, &scanstate->nhits);
+    scanstate->hits            = desc->implementation->searchIndex(desc, queries, scan->numberOfKeys, &scanstate->nhits);
     scanstate->currhit         = 0;
 
     numHitsFound = scanstate->hits->total_hits;

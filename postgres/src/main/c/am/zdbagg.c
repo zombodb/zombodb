@@ -51,7 +51,7 @@ Datum zdb_internal_estimate_count(PG_FUNCTION_ARGS) {
     ZDBIndexDescriptor *desc;
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
-    PG_RETURN_INT64(desc->implementation->estimateCount(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), &query, 1));
+    PG_RETURN_INT64(desc->implementation->estimateCount(desc, &query, 1));
 }
 
 Datum zdb_internal_tally(PG_FUNCTION_ARGS) {
@@ -66,7 +66,7 @@ Datum zdb_internal_tally(PG_FUNCTION_ARGS) {
     char               *json;
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
-    json = desc->implementation->tally(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), fieldname, stem, query, max_terms, sort_order);
+    json = desc->implementation->tally(desc, fieldname, stem, query, max_terms, sort_order);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }
@@ -81,7 +81,7 @@ Datum zdb_internal_range_agg(PG_FUNCTION_ARGS) {
     char               *json;
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
-    json = desc->implementation->rangeAggregate(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), fieldname, range_spec, query);
+    json = desc->implementation->rangeAggregate(desc, fieldname, range_spec, query);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }
@@ -97,7 +97,7 @@ Datum zdb_internal_significant_terms(PG_FUNCTION_ARGS) {
     char               *json;
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
-    json = desc->implementation->significant_terms(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), fieldname, stem, query, max_terms);
+    json = desc->implementation->significant_terms(desc, fieldname, stem, query, max_terms);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }
@@ -111,7 +111,7 @@ Datum zdb_internal_extended_stats(PG_FUNCTION_ARGS) {
     char               *json;
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
-    json = desc->implementation->extended_stats(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), fieldname, query);
+    json = desc->implementation->extended_stats(desc, fieldname, query);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }
@@ -125,7 +125,7 @@ Datum zdb_internal_arbitrary_aggregate(PG_FUNCTION_ARGS) {
     char               *json;
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
-    json = desc->implementation->arbitrary_aggregate(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), aggregate_query, query);
+    json = desc->implementation->arbitrary_aggregate(desc, aggregate_query, query);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }
@@ -141,7 +141,7 @@ Datum zdb_internal_suggest_terms(PG_FUNCTION_ARGS) {
     char               *json;
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
-    json = desc->implementation->suggest_terms(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), fieldname, stem, query, max_terms);
+    json = desc->implementation->suggest_terms(desc, fieldname, stem, query, max_terms);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }

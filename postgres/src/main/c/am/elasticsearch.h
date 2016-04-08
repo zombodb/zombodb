@@ -25,21 +25,21 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
 void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor);
 
-char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId xid, CommandId cid, char **user_queries, int nqueries);
+char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_queries, int nqueries);
 
 
 uint64            elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
-uint64            elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
+uint64            elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 uint64            elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
-ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits);
+ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
 ZDBSearchResponse *elasticsearch_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
-char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
-char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *query);
-char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
-char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query);
-char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query);
-char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
+char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
+char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);
+char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
+char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query);
+char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query);
+char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 
 
