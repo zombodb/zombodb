@@ -38,7 +38,7 @@ typedef struct ZDBBitmapScoreKey {
 
 typedef struct ZDBBitmapScoreEntry {
     ZDBBitmapScoreKey key;
-    ZDBScore        score;
+    ZDBScore          score;
 } ZDBBitmapScoreEntry;
 
 static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid);
@@ -77,19 +77,19 @@ void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
 }
 
 void zdb_record_bitmap_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
-    bool found;
-    ZDBBitmapScoreKey key;
+    bool                found;
+    ZDBBitmapScoreKey   key;
     ZDBBitmapScoreEntry *entry;
 
     if (bitmapScores == NULL) {
         HASHCTL ctl;
 
-        ctl.keysize = sizeof(ZDBBitmapScoreKey);
+        ctl.keysize   = sizeof(ZDBBitmapScoreKey);
         ctl.entrysize = sizeof(ZDBBitmapScoreEntry);
-        ctl.hcxt = TopTransactionContext;
-        ctl.hash = tag_hash;
+        ctl.hcxt      = TopTransactionContext;
+        ctl.hash      = tag_hash;
 
-        bitmapScores = hash_create("zdb bitmap scores", 32768, &ctl,  HASH_FUNCTION | HASH_CONTEXT);
+        bitmapScores = hash_create("zdb bitmap scores", 32768, &ctl, HASH_FUNCTION | HASH_CONTEXT);
     }
 
     key.index_relid = index_relid;
@@ -108,9 +108,9 @@ static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid) {
     }
 
     if (bitmapScores != NULL) {
-        ZDBBitmapScoreKey key;
+        ZDBBitmapScoreKey   key;
         ZDBBitmapScoreEntry *entry;
-        bool found;
+        bool                found;
 
         key.index_relid = index_relid;
         memcpy(&key.ctid, ctid, sizeof(ItemPointerData));

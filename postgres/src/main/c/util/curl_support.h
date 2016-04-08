@@ -23,19 +23,19 @@
 
 #define MAX_CURL_HANDLES 12
 typedef struct MultiRestState {
-	int nhandles;
-	CURL *handles[MAX_CURL_HANDLES];
-	char *errorbuffs[MAX_CURL_HANDLES];
-	StringInfo postDatas[MAX_CURL_HANDLES];
-	StringInfo responses[MAX_CURL_HANDLES];
+    int        nhandles;
+    CURL       *handles[MAX_CURL_HANDLES];
+    char       *errorbuffs[MAX_CURL_HANDLES];
+    StringInfo postDatas[MAX_CURL_HANDLES];
+    StringInfo responses[MAX_CURL_HANDLES];
 
-	CURLM *multi_handle;
-	int available;
+    CURLM *multi_handle;
+    int   available;
 } MultiRestState;
 
 extern CURLSH *GLOBAL_CURL_SHARED_STATE;
-extern CURL *GLOBAL_CURL_INSTANCE;
-extern List *MULTI_REST_STATES;
+extern CURL   *GLOBAL_CURL_INSTANCE;
+extern List   *MULTI_REST_STATES;
 
 void curl_support_init(void);
 

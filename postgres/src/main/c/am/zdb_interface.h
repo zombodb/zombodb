@@ -25,19 +25,19 @@
 
 #include "util/zdbutils.h"
 
-typedef struct
-{
-	int32 vl_len_;   /* varlena header (do not touch directly!) */
-	int   urlValueOffset;
-	int   optionsValueOffset;
-	int   shadowValueOffset;
-	int   preferenceValueOffset;
-	int   shards;
-	int   replicas;
-	bool  noxact;
-	int   bulk_concurrency;
-	int   batch_size;
-	int   fieldListsValueOffset;
+typedef struct {
+    int32 vl_len_;
+    /* varlena header (do not touch directly!) */
+    int   urlValueOffset;
+    int   optionsValueOffset;
+    int   shadowValueOffset;
+    int   preferenceValueOffset;
+    int   shards;
+    int   replicas;
+    bool  noxact;
+    int   bulk_concurrency;
+    int   batch_size;
+    int   fieldListsValueOffset;
 } ZDBIndexOptions;
 
 
@@ -58,16 +58,16 @@ typedef struct
       (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->preferenceValueOffset : (NULL))
 
 #define ZDBIndexOptionsGetNumberOfShards(relation) \
-	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->shards : 5
+    (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->shards : 5
 
 #define ZDBIndexOptionsGetNumberOfReplicas(relation) \
-	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->replicas : 0
+    (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->replicas : 0
 
 #define ZDBIndexOptionsGetBulkConcurrency(relation) \
-	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->bulk_concurrency : 12
+    (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->bulk_concurrency : 12
 
 #define ZDBIndexOptionsGetBatchSize(relation) \
-	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->batch_size : 12
+    (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->batch_size : 12
 
 #define ZDBIndexOptionsGetFieldLists(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->fieldListsValueOffset > 0 ? \
@@ -77,45 +77,46 @@ typedef struct
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
 typedef struct {
-	Oid   indexRelid;
-	int64 advisory_mutex;
-	bool  isShadow;
-	bool  logit;
-	char  *databaseName;
-	char  *schemaName;
-	char  *tableName;
-	char  *indexName;
-	char  *fullyQualifiedName;
+    Oid   indexRelid;
+    int64 advisory_mutex;
+    bool  isShadow;
+    bool  logit;
+    char  *databaseName;
+    char  *schemaName;
+    char  *tableName;
+    char  *indexName;
+    char  *fullyQualifiedName;
 
-	char *qualifiedTableName;
+    char *qualifiedTableName;
 
-	char *url;
-	char *options;
+    char *url;
+    char *options;
 
-	char *searchPreference;
-	int  bulk_concurrency;
-	int  batch_size;
+    char *searchPreference;
+    int  bulk_concurrency;
+    int  batch_size;
 
-	char *fieldLists;
+    char *fieldLists;
 
-	ZDBIndexImplementation *implementation;
-} ZDBIndexDescriptor;
+    ZDBIndexImplementation *implementation;
+}                                     ZDBIndexDescriptor;
 
 typedef enum {
-	ZDB_TRANSACTION_COMMITTED, ZDB_TRANSACTION_ABORTED
-} ZDBTransactionCompletionType;
+    ZDB_TRANSACTION_COMMITTED, ZDB_TRANSACTION_ABORTED
+}                                     ZDBTransactionCompletionType;
 
 typedef struct {
-	StringInfo httpResponse;
-	int64      total_hits;
-	char       *hits;  /* don't free directly, should be an offset into httpResponse->data */
-	float4     max_score;
-} ZDBSearchResponse;
+    StringInfo httpResponse;
+    int64      total_hits;
+    char       *hits;
+    /* don't free directly, should be an offset into httpResponse->data */
+    float4     max_score;
+}                                     ZDBSearchResponse;
 
 extern PGDLLIMPORT relopt_kind RELOPT_KIND_ZDB;
 
 void               zdb_index_init(void);
-void			   zdb_transaction_finish(void);
+void               zdb_transaction_finish(void);
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel);
 ZDBIndexDescriptor *zdb_alloc_index_descriptor_by_index_oid(Oid indexrelid);
 void               zdb_free_index_descriptor(ZDBIndexDescriptor *indexDescriptor);
@@ -136,9 +137,9 @@ typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, c
 typedef void (*ZDBDropIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBRefreshIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 
-typedef uint64 (*ZDBActualIndexRecordCount_function)(ZDBIndexDescriptor *indexDescriptor, char *table_name);
-typedef uint64 (*ZDBEstimateCount_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
-typedef uint64 (*ZDBEstimateSelectivity_function)(ZDBIndexDescriptor *indexDescriptor, char *query);
+typedef uint64            (*ZDBActualIndexRecordCount_function)(ZDBIndexDescriptor *indexDescriptor, char *table_name);
+typedef uint64            (*ZDBEstimateCount_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
+typedef uint64            (*ZDBEstimateSelectivity_function)(ZDBIndexDescriptor *indexDescriptor, char *query);
 typedef ZDBSearchResponse *(*ZDBSearchIndex_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits);
 typedef ZDBSearchResponse *(*ZDBGetPossiblyExpiredItems)(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
@@ -167,49 +168,48 @@ typedef void (*ZDBIndexCommitXactData_function)(ZDBIndexDescriptor *indexDescrip
 
 typedef void (*ZDBTransactionFinish_function)(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
-struct ZDBIndexImplementation
-{
-	uint64 _last_selectivity_value;
-	char *_last_selectivity_query;
+struct ZDBIndexImplementation {
+    uint64 _last_selectivity_value;
+    char   *_last_selectivity_query;
 
-	ZDBCreateNewIndex_function   createNewIndex;
-	ZDBFinalizeNewIndex_function finalizeNewIndex;
-	ZDBUpdateMapping_function    updateMapping;
+    ZDBCreateNewIndex_function   createNewIndex;
+    ZDBFinalizeNewIndex_function finalizeNewIndex;
+    ZDBUpdateMapping_function    updateMapping;
 
-	ZDBDropIndex_function    dropIndex;
-	ZDBRefreshIndex_function refreshIndex;
+    ZDBDropIndex_function    dropIndex;
+    ZDBRefreshIndex_function refreshIndex;
 
-	ZDBActualIndexRecordCount_function actualIndexRecordCount;
-	ZDBEstimateCount_function estimateCount;
-	ZDBEstimateSelectivity_function estimateSelectivity;
-	ZDBSearchIndex_function   searchIndex;
-	ZDBGetPossiblyExpiredItems getPossiblyExpiredItems;
+    ZDBActualIndexRecordCount_function actualIndexRecordCount;
+    ZDBEstimateCount_function          estimateCount;
+    ZDBEstimateSelectivity_function    estimateSelectivity;
+    ZDBSearchIndex_function            searchIndex;
+    ZDBGetPossiblyExpiredItems         getPossiblyExpiredItems;
 
-	ZDBTally_function              tally;
-	ZDBRangeAggregate_function     rangeAggregate;
-	ZDBSignificantTerms_function   significant_terms;
-	ZDBExtendedStats_function      extended_stats;
-	ZDBArbitraryAggregate_function arbitrary_aggregate;
+    ZDBTally_function              tally;
+    ZDBRangeAggregate_function     rangeAggregate;
+    ZDBSignificantTerms_function   significant_terms;
+    ZDBExtendedStats_function      extended_stats;
+    ZDBArbitraryAggregate_function arbitrary_aggregate;
     ZDBSuggestTerms_function       suggest_terms;
-	ZDBTermList_function           termlist;
+    ZDBTermList_function           termlist;
 
-	ZDBDescribeNestedObject_function describeNestedObject;
-	ZDBGetIndexMapping_function getIndexMapping;
+    ZDBDescribeNestedObject_function describeNestedObject;
+    ZDBGetIndexMapping_function      getIndexMapping;
 
-	ZDBAnalyzeText_function analyzeText;
+    ZDBAnalyzeText_function analyzeText;
 
-	ZDBHighlight_function highlight;
+    ZDBHighlight_function highlight;
 
-	ZDBFreeSearchResponse_function freeSearchResponse;
+    ZDBFreeSearchResponse_function freeSearchResponse;
 
-	ZDBBulkDelete_function bulkDelete;
+    ZDBBulkDelete_function bulkDelete;
 
-	ZDBIndexBatchInsertRow_function    batchInsertRow;
-	ZDBIndexBatchInsertFinish_function batchInsertFinish;
+    ZDBIndexBatchInsertRow_function    batchInsertRow;
+    ZDBIndexBatchInsertFinish_function batchInsertFinish;
 
-	ZDBIndexCommitXactData_function commitXactData;
+    ZDBIndexCommitXactData_function commitXactData;
 
-	ZDBTransactionFinish_function transactionFinish;
+    ZDBTransactionFinish_function transactionFinish;
 };
 
 #endif

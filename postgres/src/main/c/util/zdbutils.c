@@ -27,7 +27,7 @@
 #include "zdbutils.h"
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
-    char *definition = "";
+    char       *definition = "";
     StringInfo query;
 
     SPI_connect();
@@ -40,10 +40,10 @@ char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
 
     if (SPI_processed > 0) {
         StringInfo json = makeStringInfo();
-        int i;
+        int        i;
 
-        for (i=0; i<SPI_processed; i++) {
-            if (i>0) appendStringInfoCharMacro(json, ',');
+        for (i = 0; i < SPI_processed; i++) {
+            if (i > 0) appendStringInfoCharMacro(json, ',');
             appendStringInfo(json, "%s", SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
         }
         definition = (char *) MemoryContextAllocZero(cxt, (Size) json->len + 1);
@@ -56,7 +56,7 @@ char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
 }
 
 char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname) {
-    char *definition = NULL;
+    char       *definition = NULL;
     StringInfo query;
 
     SPI_connect();
@@ -71,7 +71,7 @@ char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname) {
         elog(ERROR, "Too many mappings found");
     } else if (SPI_processed == 1) {
         char *json = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
-        Size len = strlen(json);
+        Size len   = strlen(json);
 
         definition = (char *) MemoryContextAllocZero(cxt, (Size) len + 1);
         memcpy(definition, json, len);
@@ -83,7 +83,7 @@ char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname) {
 }
 
 bool type_is_domain(char *type_name, Oid *base_type) {
-    bool rc;
+    bool       rc;
     StringInfo query;
 
     SPI_connect();
@@ -96,10 +96,10 @@ bool type_is_domain(char *type_name, Oid *base_type) {
     if (SPI_processed == 0) {
         rc = false;
     } else {
-        bool isnull;
+        bool  isnull;
         Datum d;
 
-        d = SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1, &isnull);
+        d  = SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1, &isnull);
         rc = isnull || DatumGetBool(d);
 
         d = SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 2, &isnull);
@@ -112,8 +112,7 @@ bool type_is_domain(char *type_name, Oid *base_type) {
 }
 
 
-void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen)
-{
+void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen) {
     int i;
     Assert(str != NULL);
 
@@ -122,7 +121,7 @@ void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, 
 
     /* OK, append the data */
     memcpy(str->data + str->len, data, datalen);
-    for (i=str->len; i<str->len+datalen; i++) {
+    for (i = str->len; i < str->len + datalen; i++) {
         switch (str->data[i]) {
             case '\r':
             case '\n':
@@ -147,21 +146,18 @@ void freeStringInfo(StringInfo si) {
     }
 }
 
-char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing)
-{
+char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing) {
     StringInfo sql = makeStringInfo();
-    char *keyname;
+    char       *keyname;
 
     SPI_connect();
     appendStringInfo(sql, "SELECT column_name FROM information_schema.key_column_usage WHERE table_schema = '%s' AND table_name = '%s'", schemaName, tableName);
     SPI_execute(sql->data, true, 1);
 
-    if (SPI_processed == 0)
-    {
+    if (SPI_processed == 0) {
         if (failOnMissing)
             elog(ERROR, "Cannot find primary key column for: %s.%s", schemaName, tableName);
-        else
-        {
+        else {
             SPI_finish();
             return NULL;
         }
@@ -179,18 +175,14 @@ char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing)
 }
 
 
-Oid *oid_array_to_oids(ArrayType *arr, int *many)
-{
-    if (ARR_NDIM(arr) != 1 ||
-        ARR_HASNULL(arr) ||
-        ARR_ELEMTYPE(arr) != OIDOID)
+Oid *oid_array_to_oids(ArrayType *arr, int *many) {
+    if (ARR_NDIM(arr) != 1 || ARR_HASNULL(arr) || ARR_ELEMTYPE(arr) != OIDOID)
         elog(ERROR, "expected oid[] of non-null values");
     *many = ARR_DIMS(arr)[0];
     return (Oid *) ARR_DATA_PTR(arr);
 }
 
-char **text_array_to_strings(ArrayType *array, int *many)
-{
+char **text_array_to_strings(ArrayType *array, int *many) {
     char  **result;
     Datum *elements;
     int   nelements;
@@ -198,12 +190,10 @@ char **text_array_to_strings(ArrayType *array, int *many)
 
     Assert(ARR_ELEMTYPE(array) == TEXTOID);
 
-    deconstruct_array(array, TEXTOID, -1, false, 'i',
-                      &elements, NULL, &nelements);
+    deconstruct_array(array, TEXTOID, -1, false, 'i', &elements, NULL, &nelements);
 
-    result = (char **) palloc(nelements * (sizeof (char *)));
-    for (i = 0; i < nelements; i++)
-    {
+    result = (char **) palloc(nelements * (sizeof(char *)));
+    for (i = 0; i < nelements; i++) {
         result[i] = TextDatumGetCString(elements[i]);
         if (result[i] == NULL)
             elog(ERROR, "expected text[] of non-null values");
