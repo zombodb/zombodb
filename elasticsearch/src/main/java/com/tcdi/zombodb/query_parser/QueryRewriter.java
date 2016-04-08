@@ -99,14 +99,10 @@ public class QueryRewriter {
 
     private final Client client;
     private final ASTQueryTree tree;
-    private final QueryParserNode rootNode;
     private final String searchPreference;
 
     private final String indexName;
-    private final String input;
     private boolean allowSingleIndex;
-    private boolean ignoreASTChild;
-    private final boolean useParentChild;
     private boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
     private final boolean doFullFieldDataLookup;
@@ -115,23 +111,12 @@ public class QueryRewriter {
 
     private final IndexMetadataManager metadataManager;
 
-    public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean useParentChild, boolean doFullFieldDataLookup) {
-        this(client, indexName, searchPreference, input, allowSingleIndex, false, useParentChild, doFullFieldDataLookup);
-    }
-
-    private QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean doFielDataLookup) {
-        this(client, indexName, searchPreference, input, allowSingleIndex, ignoreASTChild, useParentChild, false, doFielDataLookup);
-    }
-
-    public  QueryRewriter(Client client, final String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean extractParentQuery, boolean doFielDataLookup) {
+    public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean doFullFieldDataLookup) {
         this.client = client;
         this.indexName = indexName;
-        this.input = input;
         this.allowSingleIndex = allowSingleIndex;
-        this.ignoreASTChild = ignoreASTChild;
-        this.useParentChild = useParentChild;
         this.searchPreference = searchPreference;
-        this.doFullFieldDataLookup = doFielDataLookup;
+        this.doFullFieldDataLookup = doFullFieldDataLookup;
 
         metadataManager = new IndexMetadataManager(
                 client,
@@ -143,7 +128,7 @@ public class QueryRewriter {
 
                     @Override
                     public String getIndexName() {
-                        return indexName;
+                        return QueryRewriter.this.indexName;
                     }
 
                     @Override
@@ -159,16 +144,6 @@ public class QueryRewriter {
 
             parser = new QueryParser(new StringReader(newQuery.toString()));
             tree = parser.parse(true);
-
-            if (extractParentQuery) {
-                ASTParent parentQuery = (ASTParent) tree.getChild(ASTParent.class);
-                tree.removeNode(parentQuery);
-                tree.renumber();
-                if (tree.getQueryNode() != null) {
-                    tree.getQueryNode().removeNode(parentQuery);
-                    tree.getQueryNode().renumber();
-                }
-            }
 
             // load index mappings for any index defined in #options()
             metadataManager.loadReferencedMappings(tree.getOptions());
@@ -190,16 +165,6 @@ public class QueryRewriter {
             // now optimize the _all field into #expand()s, if any are in other indexes
             new IndexLinkOptimizer(tree, metadataManager).optimize();
             new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
-
-            rootNode = useParentChild ? tree : tree.getChild(ASTChild.class);
-            if (ignoreASTChild) {
-                ASTChild child = (ASTChild) tree.getChild(ASTChild.class);
-                if (child != null) {
-                    ((QueryParserNode) child.parent).removeNode(child);
-                    ((QueryParserNode) child.parent).renumber();
-                }
-            }
-
         } catch (ParseException pe) {
             throw new QueryRewriteException(pe);
         }
@@ -223,7 +188,7 @@ public class QueryRewriter {
 
     public QueryBuilder rewriteQuery() {
         try {
-            return build(rootNode);
+            return build(tree);
         } finally {
             queryRewritten = true;
         }
@@ -540,10 +505,6 @@ public class QueryRewriter {
     private QueryBuilder build(QueryParserNode node) {
         if (node == null)
             return null;
-        else if (node instanceof ASTChild)
-            return build((ASTChild) node);
-        else if (node instanceof ASTParent)
-            return build((ASTParent) node);
         else if (node instanceof ASTAnd)
             return build((ASTAnd) node);
         else if (node instanceof ASTWith)
@@ -670,27 +631,6 @@ public class QueryRewriter {
             qb.mustNot(build(child));
         }
         return qb;
-    }
-
-    private QueryBuilder build(ASTChild node) {
-        if (node.hasChildren() && !ignoreASTChild) {
-            if (useParentChild) {
-                return hasChildQuery(node.getTypename(), build(node.getChild(0)));
-            } else {
-                return build(node.getChild(0));
-            }
-        } else {
-            return matchAllQuery();
-        }
-    }
-
-    private QueryBuilder build(ASTParent node) {
-        if (_isBuildingAggregate)
-            return matchAllQuery();
-        else if (node.hasChildren())
-            return hasParentQuery(node.getTypename(), build(node.getChild(0)));
-        else
-            return matchAllQuery();
     }
 
     private String nested = null;
@@ -1097,31 +1037,6 @@ public class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    private FilterBuilder makeParentFilter(ASTExpansion node) {
-        if (ignoreASTChild)
-            return null;
-
-        ASTIndexLink link = node.getIndexLink();
-        IndexMetadata md = metadataManager.getMetadata(link);
-        if (md != null && md.getNoXact())
-            return null;
-
-        QueryRewriter qr = new QueryRewriter(client, indexName, searchPreference, input, allowSingleIndex, true, true);
-        QueryParserNode parentQuery = qr.tree.getChild(ASTParent.class);
-        if (parentQuery != null) {
-            return queryFilter(build(parentQuery));
-        } else {
-            // the parent query is on the top-level of the tree
-            // ie, it's not in a #parent() node, so if there's
-            // a #child() node, we want to remove it so the
-            // tree is just the parent query
-            QueryParserNode child = qr.tree.getChild(ASTChild.class);
-            if (child != null)
-                ((QueryParserNode) child.parent).removeNode(child);
-            return hasParentFilter("xact", qr.rewriteQuery());
-        }
-    }
-
     private Stack<ASTExpansion> buildExpansionStack(QueryParserNode root, Stack<ASTExpansion> stack) {
 
         if (root != null) {
@@ -1160,10 +1075,6 @@ public class QueryRewriter {
                 .size(!doFullFieldDataLookup ? 1024 : 0);
 
         QueryBuilder query = constantScoreQuery(build(nodeQuery));
-        if (doFullFieldDataLookup) {
-            query = filteredQuery(query, makeParentFilter(node));
-        }
-
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(0)
                 .setSearchType(SearchType.COUNT)

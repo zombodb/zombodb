@@ -75,7 +75,7 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
 	return data;
 }
 
-static StringInfo buildQuery(ZDBIndexDescriptor *desc, TransactionId xid, CommandId cid, char **queries, int nqueries, bool isParentQuery)
+static StringInfo buildQuery(ZDBIndexDescriptor *desc, TransactionId xid, CommandId cid, char **queries, int nqueries)
 {
 	StringInfo baseQuery = makeStringInfo();
 	int i;
@@ -85,42 +85,11 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, TransactionId xid, Comman
 	if (desc->fieldLists)
 		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->fieldLists);
 
-	if (isParentQuery)
-		appendStringInfo(baseQuery, "#parent<xact>(");
-	appendStringInfoCharMacro(baseQuery, '(');
-	/* ... from HeapTupleSatisfiesNow() */
-	appendStringInfo(baseQuery,
-			"((_xmin = %d AND "               /* inserted by the current transaction */
-			"_cmin < %d AND "                 /* before this command, and */
-			"(_xmax = 0 OR "                  /* the row has not been deleted, or */
-			"(_xmax = %d AND "                /* it was deleted by the current transaction */
-			"_cmax >= %d))) "                 /* but not before this command, */
-			"OR "                             /* or */
-			"(_xmin_is_committed = true AND " /* the row was inserted by a committed transaction, and */
-			"(_xmax = 0 OR "                  /* the row has not been deleted, or */
-			"(_xmax = %d AND "                /* the row is being deleted by this transaction */
-			"_cmax >= %d) OR "                /* but it's not deleted \"yet\", or */
-			"(_xmax <> %d AND "               /* the row was deleted by another transaction */
-			"_xmax_is_committed = false))))", /* that has not been committed */
-			xid, cid, xid, cid,
-			xid, cid, xid
-	);
-	appendStringInfoCharMacro(baseQuery, ')');
-	if (isParentQuery)
-		appendStringInfoCharMacro(baseQuery, ')');
-
-
-	appendStringInfo(baseQuery, " AND (");
-	if (!isParentQuery)
-		appendStringInfo(baseQuery, "#child<data>(");
 	for (i = 0; i < nqueries; i++)
 	{
 		if (i > 0) appendStringInfo(baseQuery, " AND ");
 		appendStringInfo(baseQuery, "(%s)", queries[i]);
 	}
-	appendStringInfoCharMacro(baseQuery, ')');	/* close off AND */
-	if (!isParentQuery)
-		appendStringInfoCharMacro(baseQuery, ')');  /* close off #child<data> */
 
 	return baseQuery;
 }
@@ -174,7 +143,7 @@ static void es_wait_for_index_availability(ZDBIndexDescriptor *indexDescriptor) 
 	/* otherwise, it's all good */
 }
 
-void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, bool noxact, char *fieldProperties)
+void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties)
 {
 	StringInfo endpoint      = makeStringInfo();
 	StringInfo indexSettings = makeStringInfo();
@@ -190,28 +159,11 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 	appendStringInfo(indexSettings,
 			"{"
 					"   \"mappings\": {"
-					"      \"xact\": {"
-					"          \"_source\": { \"enabled\": true },"
-					"          \"_all\": { \"enabled\": false },"
-					"          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-					"          \"_meta\": { \"primary_key\": \"%s\", \"noxact\": %s },"
-					"          \"date_detection\": false,"
-					"          \"properties\" : {"
-					"              \"_xmin\": { \"type\": \"integer\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_xmax\": { \"type\": \"integer\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_cmin\": { \"type\": \"integer\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_cmax\": { \"type\": \"integer\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_xmin_is_committed\": { \"type\": \"boolean\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_xmax_is_committed\": { \"type\": \"boolean\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_partial\": { \"type\": \"boolean\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} }"
-					"          }"
-					"      },"
 					"      \"data\": {"
 					"          \"_source\": { \"enabled\": false },"
 					"          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
 					"          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-					"          \"_parent\": { \"type\": \"xact\" },"
-					"          \"_meta\": { \"primary_key\": \"%s\", \"noxact\": %s },"
+					"          \"_meta\": { \"primary_key\": \"%s\" },"
 					"          \"date_detection\": false,"
 					"          \"properties\" : %s"
 					"      }"
@@ -228,8 +180,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 					"      }"
 					"   }"
 					"}",
-			pkey, noxact ? "true" : "false",
-			pkey, noxact ? "true" : "false",
+			pkey,
 			fieldProperties,
 			shards,
             lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
@@ -301,8 +252,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
 			"       \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
 			"       \"_source\": { \"enabled\": false },"
 			"       \"_field_names\": { \"index\": \"no\", \"store\": false },"
-			"       \"_parent\": { \"type\": \"xact\" },"
-			"       \"_meta\": { \"primary_key\": \"%s\", \"noxact\": %s },"
+			"       \"_meta\": { \"primary_key\": \"%s\" },"
 			"       \"properties\" : %s"
 			"   },"
 			"   \"settings\": {"
@@ -310,7 +260,6 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
 			"   }"
 			"}",
 			pkey,
-			(ZDBIndexOptionsGetNoXact(indexRel) == true) ? "true" : "false",
 			properties,
 			ZDBIndexOptionsGetNumberOfReplicas(indexRel));
 	index_close(indexRel, RowExclusiveLock);
@@ -364,7 +313,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId
 		indexName  = descriptors[i]->fullyQualifiedName;
 		preference = descriptors[i]->searchPreference;
 		pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, false);
-		query      = buildQuery(descriptors[i], xid, cid, &user_queries[i], 1, true);
+		query      = buildQuery(descriptors[i], xid, cid, &user_queries[i], 1);
 
 		if (!preference) preference = "null";
 
@@ -411,9 +360,9 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 	ZDBSearchResponse *hits;
 	ZDBScore		  max_score;
 
-	query = buildQuery(indexDescriptor, xid, cid, queries, nqueries, false);
+	query = buildQuery(indexDescriptor, xid, cid, queries, nqueries);
 
-	appendStringInfo(endpoint, "%s/%s/xact/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/data/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -478,9 +427,9 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, Transact
 	StringInfo response;
 	uint64     nhits;
 
-	query = buildQuery(indexDescriptor, xid, cid, queries, nqueries, true);
+	query = buildQuery(indexDescriptor, xid, cid, queries, nqueries);
 
-	appendStringInfo(endpoint, "%s/%s/xact/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/data/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -506,9 +455,9 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
 
 	if (indexDescriptor->options)
 		appendStringInfo(query, "#options(%s) ", indexDescriptor->options);
-	appendStringInfo(query, "#child<data>((%s))", user_query);
+	appendStringInfo(query, "%s", user_query);
 
-	appendStringInfo(endpoint, "%s/%s/xact/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/data/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
@@ -532,7 +481,7 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
 
 	appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s",
 			fieldname,
@@ -561,7 +510,7 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, Transact
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
 
 	appendStringInfo(request, "#range(%s, '%s') %s",
 			fieldname,
@@ -588,7 +537,7 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, Trans
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
 
 	appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s",
 			fieldname,
@@ -616,7 +565,7 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, Transact
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
 
 	appendStringInfo(request, "#extended_stats(%s) %s",
 			fieldname,
@@ -643,7 +592,7 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, Tra
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
 
 	appendStringInfo(request, "%s %s", aggregate_query, query->data);
 
@@ -667,7 +616,7 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, Transacti
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
+    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1);
 
     appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
 
@@ -792,7 +741,6 @@ ZDBSearchResponse *elasticsearch_getPossiblyExpiredItems(ZDBIndexDescriptor *ind
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	appendStringInfo(request, "#parent<xact>(_xmax_is_committed = true OR _xmin_is_committed = false)");
 	response = rest_call("POST", endpoint->data, request);
 	if (response->data[0] != '\0')
 		elog(ERROR, "%s", response->data);
@@ -823,7 +771,6 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	{
 		ItemPointerData *item = lfirst(lc);
 
-		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"xact\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"data\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
 		if (request->len >= indexDescriptor->batch_size)
@@ -846,37 +793,19 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_committed, bool xmax_committed, text *value, StringInfo bulk)
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk)
 {
-	/* the xact state */
-	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"xact\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
-	appendStringInfo(bulk, "{"
-					"\"_xmin\":%d,"
-					"\"_xmax\":%d,"
-					"\"_cmin\":%d,"
-					"\"_cmax\":%d,"
-					"\"_xmin_is_committed\":%s,"
-					"\"_xmax_is_committed\":%s"
-					"}\n",
-			xmin,
-			xmax,
-			cmin,
-			cmax,
-			xmin_committed ? "true" : "false",
-			xmax_committed ? "true" : "false"
-	);
-
 	/* the data */
-	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"data\",\"_parent\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid), ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
+	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"data\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
 	appendBinaryStringInfoAndStripLineBreaks(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
 	appendStringInfoCharMacro(bulk, '\n');
 }
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data)
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data)
 {
 	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
 
-	appendBatchInsertData(indexDescriptor, ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch->bulk);
+	appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk);
 	batch->nprocessed++;
 
 	if (batch->bulk->len > indexDescriptor->batch_size)
@@ -973,81 +902,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 
 void elasticsearch_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData)
 {
-	ListCell   *lc;
-	StringInfo endpoint = makeStringInfo();
-	StringInfo bulk     = makeStringInfo();
-	StringInfo response;
-	int batchno = 1;
-
-	foreach(lc, xactData)
-	{
-		ZDBCommitXactData *data = lfirst(lc);
-
-		switch (data->type)
-		{
-			case ZDB_COMMIT_TYPE_NEW:
-			{
-				ZDBCommitNewXactData *new = (ZDBCommitNewXactData *) data;
-
-				appendStringInfo(bulk,
-						"{\"update\":{\"_id\":\"%d-%d\"}}\n"
-								"{\"doc\":{\"_xmin_is_committed\":true}}\n",
-						ItemPointerGetBlockNumber(new->header.ctid),
-						ItemPointerGetOffsetNumber(new->header.ctid)
-				);
-			}
-            break;
-
-			case ZDB_COMMIT_TYPE_EXPIRED:
-			{
-				ZDBCommitExpiredXactData *expired = (ZDBCommitExpiredXactData *) data;
-
-				appendStringInfo(bulk,
-						"{\"update\":{\"_id\":\"%d-%d\"}}\n"
-								"{\"doc\":{\"_xmax\":%d,\"_cmax\":%d,\"_xmax_is_committed\":true}}\n",
-						ItemPointerGetBlockNumber(expired->header.ctid),
-						ItemPointerGetOffsetNumber(expired->header.ctid),
-						expired->xmax,
-						expired->cmax
-				);
-			}
-            break;
-
-			case ZDB_COMMIT_TYPE_ALL:
-				elog(ERROR, "Unexpected CommitXactDataType: ZDB_COMMIT_TYPE_ALL");
-				break;
-		}
-
-		if (bulk->len > indexDescriptor->batch_size)
-		{
-			elog(LOG, "POSTING %d bytes for xact data during COMMIT, batch #%d", bulk->len, batchno);
-			appendStringInfo(endpoint, "%s/%s/xact/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-			response = rest_call("POST", endpoint->data, bulk);
-			checkForBulkError(response, "xact");
-
-			resetStringInfo(bulk);
-			resetStringInfo(endpoint);
-			freeStringInfo(response);
-			batchno++;
-		}
-	}
-
-	if (batchno > 0)
-	{
-		if (batchno > 1)
-			elog(LOG, "POSTING final %d bytes for xact data during COMMIT, batch #%d", bulk->len, batchno);
-
-		appendStringInfo(endpoint, "%s/%s/xact/_bulk?refresh=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batchno ==1 ? "true" : "false");
-		response = rest_call("POST", endpoint->data, bulk);
-		checkForBulkError(response, "xact");
-		freeStringInfo(response);
-	}
-
-	if (batchno > 1)
-		elasticsearch_refreshIndex(indexDescriptor);
-
-	freeStringInfo(bulk);
-	freeStringInfo(endpoint);
+	// TODO:  implement this
 }
 
 void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType)

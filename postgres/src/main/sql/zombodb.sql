@@ -72,7 +72,6 @@ CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c
 --
 -- trigger support
 --
-CREATE OR REPLACE FUNCTION zdbtupledeletedtrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
@@ -88,6 +87,8 @@ CREATE OR REPLACE FUNCTION rest_get(url text) RETURNS json AS '$libdir/plugins/z
 CREATE OR REPLACE FUNCTION zdb_determine_index(table_name regclass) RETURNS oid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdb_get_index_name(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_get_url(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
+
+CREATE OR REPLACE FUNCTION zdb_invisible_pages(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
 
 
 --

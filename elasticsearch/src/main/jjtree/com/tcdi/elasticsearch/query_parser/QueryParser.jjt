@@ -129,8 +129,6 @@ PARSER_END(QueryParser)
   | <BOOLEAN: "true" | "false" >
 
   | <TO: "/to/" >
-  | <CHILD: "#child" >
-  | <PARENT: "#parent" >
 
   | <NESTED: "#nested" >
   | <TALLY: "#tally" >
@@ -398,8 +396,6 @@ void UnaryExpression() :
           n = Not()
         | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
         | ("(" ")") // just ignore empty parens, ie:  ()
-        | n = Child()
-        | n = Parent()
         | n = Expansion()
         | n = BoolQuery()
         | n = Literal()
@@ -471,30 +467,6 @@ QueryParserNode Not() #Not : {}
         (LOOKAHEAD(2) (<NOT>|"!") UnaryExpression() )+
     )
     { return jjtThis; }
-}
-
-QueryParserNode Child() #Child :
-{
-    Token t;
-}
-{
-    ( <CHILD>  t=<TYPENAME> "(" Expression() ")" )
-    {
-        jjtThis.typename = t.image.substring(1, t.image.length()-1);
-        return jjtThis;
-    }
-}
-
-QueryParserNode Parent() #Parent :
-{
-    Token t;
-}
-{
-    ( <PARENT> t=<TYPENAME> "(" Expression() ")" )
-    {
-        jjtThis.typename = t.image.substring(1, t.image.length()-1);
-        return jjtThis;
-    }
 }
 
 QueryParserNode Expansion() #Expansion : { }

@@ -26,8 +26,6 @@
 #include "access/xact.h"
 #include "catalog/dependency.h"
 #include "catalog/index.h"
-#include "catalog/pg_trigger.h"
-#include "commands/trigger.h"
 #include "commands/event_trigger.h"
 #include "commands/vacuum.h"
 #include "executor/executor.h"
@@ -35,7 +33,6 @@
 #include "nodes/relation.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
-#include "utils/guc.h"
 #include "utils/json.h"
 #include "utils/memutils.h"
 #include "utils/builtins.h"
@@ -43,9 +40,7 @@
 #include "zdb_interface.h"
 #include "zdbops.h"
 #include "zdbam.h"
-#include "util/zdbutils.h"
 #include "zdbseqscan.h"
-#include "zdbscore.h"
 
 
 PG_FUNCTION_INFO_V1(zdbbuild);
@@ -92,13 +87,8 @@ typedef struct
 
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state);
 
-static bool needBatchFinishOnCommit = false;
-static bool needBatchFinishOnCommit_set = false;
-static bool didBatchFinishOnExecutorEnd = false;
-
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
-static List *xactCommitDataList  = NULL;
 
 /* For tracking/pushing changed tuples */
 static ExecutorStart_hook_type prev_ExecutorStartHook = NULL;
@@ -176,10 +166,6 @@ static void xact_complete_cleanup(XactEvent event) {
     /* free up our static vars on xact finish */
     usedIndexesList     = NULL;
     indexesInsertedList = NULL;
-    xactCommitDataList  = NULL;
-	needBatchFinishOnCommit = false;
-	needBatchFinishOnCommit_set = false;
-	didBatchFinishOnExecutorEnd = false;
 	executorDepth = 0;
 	numHitsFound = -1;
 
@@ -197,94 +183,26 @@ static void xact_complete_cleanup(XactEvent event) {
 	interface_transaction_cleanup();
 }
 
-static void zdbam_commit_xact_data()
-{
-	if (xactCommitDataList)
-	{
-		ListCell *lc, *lc2;
-
-		foreach(lc, usedIndexesList)
-		{
-			ZDBIndexDescriptor *outerDesc = lfirst(lc);
-			List               *batch     = NULL;
-
-			if (outerDesc->isShadow)
-				continue;
-
-			foreach(lc2, xactCommitDataList)
-			{
-				ZDBCommitXactData *data = lfirst(lc2);
-
-				if (zdb_index_descriptors_equal(outerDesc, data->desc))
-				{
-					batch = lappend(batch, data);
-				}
-			}
-
-			if (batch)
-			{
-				outerDesc->implementation->commitXactData(outerDesc, batch);
-			}
-			list_free(batch);
-		}
-	}
-
-}
-
 static void zdbam_xact_callback(XactEvent event, void *arg)
 {
 	switch (event)
 	{
-		case XACT_EVENT_PRE_COMMIT:
-
-			if (needBatchFinishOnCommit || !didBatchFinishOnExecutorEnd)
-			{
-				ListCell *lc;
-
-				/* finish the batch insert (and refresh) for each index into which new records were inserted */
-				foreach (lc, indexesInsertedList)
-				{
-					ZDBIndexDescriptor *desc = lfirst(lc);
-					desc->implementation->batchInsertFinish(desc);
-				}
-			}
-
-
-			/*
-			 * if the transaction is about to commit we need to push the list of modified ctids
-			 */
-			zdbam_commit_xact_data();
-            break;
-
-		case XACT_EVENT_ABORT:
-            break;
-
 		case XACT_EVENT_PRE_PREPARE:
 		case XACT_EVENT_PREPARE:
 			elog(ERROR, "zombodb doesn't support prepared transactions");
 			break;
 
+		case XACT_EVENT_COMMIT:
+		case XACT_EVENT_ABORT:
+			// TODO:  Push "invisibility map" to ES
+
+			/* cleanup, the xact is over */
+			xact_complete_cleanup(event);
+			break;
+
 		default:
 			break;
 	}
-
-    /*
-     * If the transaction is finished, make sure to get it cleaned up
-     */
-
-    switch (event)
-    {
-        case XACT_EVENT_COMMIT:
-        case XACT_EVENT_ABORT:
-            /* cleanup, the xact is over */
-            xact_complete_cleanup(event);
-            break;
-
-        default:
-            break;
-    }
-
-
 }
 
 static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags)
@@ -302,33 +220,17 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc)
 {
 	if (executorDepth == 0)
 	{
+		ListCell *lc;
+
+		/* finish the batch insert (and refresh) for each index into which new records were inserted */
+		foreach (lc, indexesInsertedList)
+		{
+			ZDBIndexDescriptor *desc = lfirst(lc);
+			desc->implementation->batchInsertFinish(desc);
+		}
+
+		/* make sure to cleanup seqscan globals too */
 		zdb_sequential_scan_support_cleanup();
-
-		if (!needBatchFinishOnCommit_set)
-		{
-			/*
-			 * If the connected application_name is "postgres_fdw" then we're going to defer all
-			 * batchInsertFinish calls until the transaction commits
-			 *
-			 * The the application_name changes while the transaction is running, well, we won't
-			 * detect that.
-			 */
-			needBatchFinishOnCommit     = strcmp(application_name, "postgres_fdw") == 0 || strcmp(application_name, "dwf") == 0;
-			needBatchFinishOnCommit_set = true;
-		}
-
-		if (!needBatchFinishOnCommit)
-		{
-			ListCell *lc;
-
-			/* finish the batch insert (and refresh) for each index into which new records were inserted */
-			foreach (lc, indexesInsertedList)
-			{
-				ZDBIndexDescriptor *desc = lfirst(lc);
-				desc->implementation->batchInsertFinish(desc);
-			}
-			didBatchFinishOnExecutorEnd = true;
-		}
 	}
 
 	if (prev_ExecutorEndHook == zdb_executor_end_hook)
@@ -426,7 +328,6 @@ zdbbuild(PG_FUNCTION_ARGS)
 	IndexBuildResult *result;
 	double           reltuples = 0.0;
 	ZDBBuildState    buildstate;
-	StringInfo       triggerSQL;
 	Datum PROPERTIES = CStringGetTextDatum("properties");
 	Datum mappingDatum;
 	Datum propertiesDatum;
@@ -455,7 +356,7 @@ zdbbuild(PG_FUNCTION_ARGS)
 		propertiesDatum = DirectFunctionCall2(json_object_field, mappingDatum, PROPERTIES);
 		properties      = TextDatumGetCString(propertiesDatum);
 
-		buildstate.desc->implementation->createNewIndex(buildstate.desc, ZDBIndexOptionsGetNumberOfShards(indexRel), ZDBIndexOptionsGetNoXact(indexRel), properties);
+		buildstate.desc->implementation->createNewIndex(buildstate.desc, ZDBIndexOptionsGetNumberOfShards(indexRel), properties);
 
 		/* do the heap scan */
 		reltuples = IndexBuildHeapScan(heapRel, indexRel, indexInfo, false, zdbbuildCallback, (void *) &buildstate);
@@ -468,56 +369,6 @@ zdbbuild(PG_FUNCTION_ARGS)
 
 		/* reset the settings to reasonable values for production use */
 		buildstate.desc->implementation->finalizeNewIndex(buildstate.desc);
-
-		if (heapRel->rd_rel->relkind != 'm')
-		{
-			/* put a trigger on the table to forward UPDATEs and DELETEs into our code for ES xact synchronization */
-			SPI_connect();
-
-			triggerSQL = makeStringInfo();
-			appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", RelationGetRelid(heapRel), RelationGetRelid(indexRel));
-			if (SPI_execute(triggerSQL->data, true, 0) == SPI_OK_SELECT && SPI_processed == 0)
-			{
-				resetStringInfo(triggerSQL);
-				appendStringInfo(triggerSQL,
-						"CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
-								"       BEFORE UPDATE OR DELETE ON \"%s\".\"%s\" "
-								"       FOR EACH ROW EXECUTE PROCEDURE zdbtupledeletedtrigger('%d');"
-								"UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d';"
-								"SELECT oid "
-								"       FROM pg_trigger "
-								"       WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'",
-						RelationGetRelid(heapRel), RelationGetRelid(indexRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid(indexRel),  /* CREATE TRIGGER args */
-						RelationGetRelid(heapRel), RelationGetRelid(indexRel), /* UPDATE pg_trigger args */
-						RelationGetRelid(heapRel), RelationGetRelid(indexRel) /* SELECT FROM pg_trigger args */
-				);
-
-				if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1)
-				{
-					ObjectAddress indexAddress;
-					ObjectAddress triggerAddress;
-
-					indexAddress.classId     = RelationRelationId;
-					indexAddress.objectId    = RelationGetRelid(indexRel);
-					indexAddress.objectSubId = 0;
-
-					triggerAddress.classId     = TriggerRelationId;
-					triggerAddress.objectId    = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
-					triggerAddress.objectSubId = 0;
-
-					recordDependencyOn(&triggerAddress, &indexAddress, DEPENDENCY_INTERNAL);
-				}
-				else
-				{
-					elog(ERROR, "Cannot create trigger");
-				}
-			}
-
-			pfree(triggerSQL->data);
-			pfree(triggerSQL);
-
-			SPI_finish();
-		}
 
 		pfree(DatumGetPointer(mappingDatum));
 		pfree(DatumGetPointer(propertiesDatum));
@@ -567,30 +418,7 @@ zdbbuildCallback(Relation indexRel,
 		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
 
 	value = DatumGetTextP(values[1]);
-	desc->implementation->batchInsertRow(
-			desc,
-			&htup->t_self,
-			HeapTupleHeaderGetXmin(htup->t_data),
-			HeapTupleHeaderGetRawXmax(htup->t_data),
-			HeapTupleHeaderGetRawCommandId(htup->t_data),
-			HeapTupleHeaderGetRawCommandId(htup->t_data),
-			(htup->t_data->t_infomask & HEAP_XMIN_COMMITTED) != 0,
-			(htup->t_data->t_infomask & HEAP_XMAX_COMMITTED) != 0,
-			value
-	);
-
-	/*
-	 * if the tuple's XMIN and XMAX are not committed, we're going to assume it'll eventually
-	 * be committed (likely this is from an ALTER TABLE ALTER COLUMN TYPE statement), so
-	 * we want to queue up the fact that these are "new" tuples
-	 */
-	if (((htup->t_data->t_infomask & HEAP_XMIN_COMMITTED) == 0) && ((htup->t_data->t_infomask & HEAP_XMAX_COMMITTED) == 0))
-	{
-		MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
-
-		xactCommitDataList = lappend(xactCommitDataList, zdb_alloc_new_xact_record(desc, &htup->t_self));
-		MemoryContextSwitchTo(oldContext);
-	}
+	desc->implementation->batchInsertRow(desc, &htup->t_self, value);
 
 	buildstate->indtuples += 1;
 }
@@ -601,7 +429,6 @@ zdbbuildCallback(Relation indexRel,
 Datum
 zdbinsert(PG_FUNCTION_ARGS)
 {
-	MemoryContext      oldContext;
 	Relation           indexRel = (Relation) PG_GETARG_POINTER(0);
 	Datum              *values  = (Datum *) PG_GETARG_POINTER(1);
 //    bool	   *isnull = (bool *) PG_GETARG_POINTER(2);
@@ -620,11 +447,7 @@ zdbinsert(PG_FUNCTION_ARGS)
 		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
 
 	value = DatumGetTextP(values[1]);
-	desc->implementation->batchInsertRow(desc, ht_ctid, GetCurrentTransactionId(), 0, GetCurrentCommandId(false), GetCurrentCommandId(false), false, false, value);
-
-	oldContext = MemoryContextSwitchTo(TopTransactionContext);
-	xactCommitDataList = lappend(xactCommitDataList, zdb_alloc_new_xact_record(desc, ht_ctid));
-	MemoryContextSwitchTo(oldContext);
+	desc->implementation->batchInsertRow(desc, ht_ctid, value);
 
 	PG_RETURN_BOOL(true);
 }
@@ -1038,48 +861,6 @@ zdboptions(PG_FUNCTION_ARGS)
 	pfree(options);
 
 	PG_RETURN_BYTEA_P(rdopts);
-}
-
-Datum
-zdbtupledeletedtrigger(PG_FUNCTION_ARGS)
-{
-	MemoryContext      oldContext;
-	TriggerData        *trigdata = (TriggerData *) fcinfo->context;
-	ZDBIndexDescriptor *desc;
-	Oid                indexRelOid;
-	Relation           indexRel;
-
-	/* make sure it's called as a trigger at all */
-	if (!CALLED_AS_TRIGGER(fcinfo))
-		elog(ERROR, "zdbtupledeletedtrigger: not called by trigger manager");
-
-	if (!(TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event) || TRIGGER_FIRED_BY_DELETE(trigdata->tg_event)))
-		elog(ERROR, "zdbtupledeletedtrigger: can only be fired for UPDATE and DELETE");
-
-	if (TRIGGER_FIRED_AFTER(trigdata->tg_event))
-		elog(ERROR, "zdbtupledeletedtrigger: can only be fired as a BEFORE trigger");
-
-	if (trigdata->tg_trigger->tgnargs != 1)
-		elog(ERROR, "zdbtupledeletedtrigger: must specify the index oid as the only argument");
-
-	indexRelOid = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
-
-	oldContext = MemoryContextSwitchTo(TopTransactionContext);
-
-	indexRel = relation_open(indexRelOid, AccessShareLock);
-	desc     = alloc_index_descriptor(indexRel, false);
-	relation_close(indexRel, AccessShareLock);
-
-	/* record what is changing */
-	xactCommitDataList = lappend(xactCommitDataList, zdb_alloc_expired_xact_record(desc, &trigdata->tg_trigtuple->t_self, GetCurrentTransactionId(), GetCurrentCommandId(false)));
-
-	MemoryContextSwitchTo(oldContext);
-
-	/* return the right thing */
-	if (TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event))
-		return PointerGetDatum(trigdata->tg_newtuple);
-	else
-		return PointerGetDatum(trigdata->tg_trigtuple);
 }
 
 Datum

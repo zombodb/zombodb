@@ -73,7 +73,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, false, "data".equals(request.param("type")), true);
+            query = buildJsonQueryFromRequestContent(client, request, false, true);
             parseEnd = System.nanoTime();
 
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
@@ -88,7 +88,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setFetchSource(false);
             builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
-
+System.err.println(builder);
             long searchStart = System.currentTimeMillis();
             response = client.search(builder.request()).get();
             searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
@@ -110,7 +110,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean allowSingleIndex, boolean useParentChild, boolean doFullFieldDataLookups) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean allowSingleIndex, boolean doFullFieldDataLookups) {
         String queryString = request.content().toUtf8();
         String indexName = request.param("index");
 
@@ -118,7 +118,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             QueryBuilder query;
 
             if (queryString != null && queryString.trim().length() > 0) {
-                QueryRewriter qr = new QueryRewriter(client, indexName, request.param("preference"), queryString, allowSingleIndex, useParentChild, doFullFieldDataLookups);
+                QueryRewriter qr = new QueryRewriter(client, indexName, request.param("preference"), queryString, allowSingleIndex, doFullFieldDataLookups);
                 query = qr.rewriteQuery();
                 indexName = qr.getSearchIndexName();
             } else {
