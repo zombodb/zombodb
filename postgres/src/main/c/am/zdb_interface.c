@@ -39,18 +39,18 @@ static void wrapper_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *map
 static void wrapper_dropIndex(ZDBIndexDescriptor *indexDescriptor);
 static void wrapper_refreshIndex(ZDBIndexDescriptor *indexDescriptor);
 
-static uint64 			  wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
-static uint64             wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
-static uint64             wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
-static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits);
+static uint64            wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
+static uint64            wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
+static uint64            wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
+static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
 static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
-static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
-static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *query);
-static char *wrapper_significant_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
-static char *wrapper_extended_stats(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query);
-static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query);
-static char *wrapper_suggest_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
+static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
+static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);
+static char *wrapper_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
+static char *wrapper_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query);
+static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query);
+static char *wrapper_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 static char *wrapper_termlist(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 
 static char *wrapper_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, char *fieldname);
@@ -251,7 +251,7 @@ void zdb_transaction_finish(void)
 }
 
 
-char *zdb_multi_search(TransactionId xid, CommandId cid, Oid *indexrelids, char **user_queries, int nqueries) {
+char *zdb_multi_search(Oid *indexrelids, char **user_queries, int nqueries) {
 	int i;
 	ZDBIndexDescriptor **descriptors = (ZDBIndexDescriptor **) palloc(nqueries * (sizeof (ZDBIndexDescriptor*)));
 
@@ -262,7 +262,7 @@ char *zdb_multi_search(TransactionId xid, CommandId cid, Oid *indexrelids, char 
 			elog(ERROR, "Unable to create ZDBIndexDescriptor for index oid %d", indexrelids[i]);
 	}
 
-	return elasticsearch_multi_search(descriptors, xid, cid, user_queries, nqueries);
+    return elasticsearch_multi_search(descriptors, user_queries, nqueries);
 }
 
 
@@ -346,13 +346,13 @@ static uint64 			  wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescr
 }
 
 
-static uint64 wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries)
+static uint64 wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries)
 {
 	MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_estimateCount", 512, 64, 64);
 	MemoryContext oldContext = MemoryContextSwitchTo(me);
 	uint64        cnt;
 
-	cnt = elasticsearch_estimateCount(indexDescriptor, xid, cid, queries, nqueries);
+    cnt = elasticsearch_estimateCount(indexDescriptor, queries, nqueries);
 
 	MemoryContextSwitchTo(oldContext);
 	MemoryContextDelete(me);
@@ -381,12 +381,12 @@ static uint64 wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, c
 	return cnt;
 }
 
-static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits)
+static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits)
 {
 	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	ZDBSearchResponse *results;
 
-	results = elasticsearch_searchIndex(indexDescriptor, xid, cid, queries, nqueries, nhits);
+    results = elasticsearch_searchIndex(indexDescriptor, queries, nqueries, nhits);
 
 	MemoryContextSwitchTo(oldContext);
 	return results;
@@ -405,67 +405,67 @@ static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *in
 	return results;
 }
 
-static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order)
+static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order)
 {
 	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	char *results;
 
-	results = elasticsearch_tally(indexDescriptor, xid, cid, fieldname, stem, query, max_terms, sort_order);
+    results = elasticsearch_tally(indexDescriptor, fieldname, stem, query, max_terms, sort_order);
 
 	MemoryContextSwitchTo(oldContext);
 	return results;
 }
 
-static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *query)
+static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query)
 {
 	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	char *results;
 
-	results = elasticsearch_rangeAggregate(indexDescriptor, xid, cid, fieldname, range_spec, query);
+    results = elasticsearch_rangeAggregate(indexDescriptor, fieldname, range_spec, query);
 
 	MemoryContextSwitchTo(oldContext);
 	return results;
 }
 
-static char *wrapper_significant_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms)
+static char *wrapper_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms)
 {
 	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	char *results;
 
-	results = elasticsearch_significant_terms(indexDescriptor, xid, cid, fieldname, stem, query, max_terms);
+    results = elasticsearch_significant_terms(indexDescriptor, fieldname, stem, query, max_terms);
 
 	MemoryContextSwitchTo(oldContext);
 	return results;
 }
 
-static char *wrapper_extended_stats(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query)
+static char *wrapper_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query)
 {
 	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	char *results;
 
-	results = elasticsearch_extended_stats(indexDescriptor, xid, cid, fieldname, user_query);
+    results = elasticsearch_extended_stats(indexDescriptor, fieldname, user_query);
 
 	MemoryContextSwitchTo(oldContext);
 	return results;
 }
 
-static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query)
+static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query)
 {
 	MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	char *results;
 
-	results = elasticsearch_arbitrary_aggregate(indexDescriptor, xid, cid, aggregate_query, user_query);
+    results = elasticsearch_arbitrary_aggregate(indexDescriptor, aggregate_query, user_query);
 
 	MemoryContextSwitchTo(oldContext);
 	return results;
 }
 
-static char *wrapper_suggest_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms)
+static char *wrapper_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms)
 {
     MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
     char *results;
 
-    results = elasticsearch_suggest_terms(indexDescriptor, xid, cid, fieldname, stem, query, max_terms);
+    results = elasticsearch_suggest_terms(indexDescriptor, fieldname, stem, query, max_terms);
 
     MemoryContextSwitchTo(oldContext);
     return results;

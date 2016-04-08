@@ -329,7 +329,7 @@ Datum zdb_internal_multi_search(PG_FUNCTION_ARGS)
 	else if (oid_many == 0)
 		PG_RETURN_NULL();
 
-	response = zdb_multi_search(GetCurrentTransactionId(), GetCurrentCommandId(false), oids, queries, oid_many);
+	response = zdb_multi_search(oids, queries, oid_many);
 	if (!response)
 		PG_RETURN_NULL();
 

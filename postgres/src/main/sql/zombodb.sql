@@ -88,8 +88,6 @@ CREATE OR REPLACE FUNCTION zdb_determine_index(table_name regclass) RETURNS oid 
 CREATE OR REPLACE FUNCTION zdb_get_index_name(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_get_url(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
 
-CREATE OR REPLACE FUNCTION zdb_invisible_pages(index_name regclass) RETURNS text AS '$libdir/plugins/zombodb' language c;
-
 
 --
 -- scoring support

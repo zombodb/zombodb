@@ -120,7 +120,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel);
 ZDBIndexDescriptor *zdb_alloc_index_descriptor_by_index_oid(Oid indexrelid);
 void               zdb_free_index_descriptor(ZDBIndexDescriptor *indexDescriptor);
 
-char *zdb_multi_search(TransactionId xid, CommandId cid, Oid *indexrelids, char **user_queries, int nqueries);
+char *zdb_multi_search(Oid *indexrelids, char **user_queries, int nqueries);
 
 bool zdb_index_descriptors_equal(ZDBIndexDescriptor *a, ZDBIndexDescriptor *b);
 void interface_transaction_cleanup(void);
@@ -136,18 +136,18 @@ typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, c
 typedef void (*ZDBDropIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBRefreshIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 
-typedef uint64 (*ZDBActualIndexRecordCount_function)(ZDBIndexDescriptor *indexDescriptor, char *table_name);
-typedef uint64 (*ZDBEstimateCount_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries);
-typedef uint64 (*ZDBEstimateSelectivity_function)(ZDBIndexDescriptor *indexDescriptor, char *query);
-typedef ZDBSearchResponse *(*ZDBSearchIndex_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits);
+typedef uint64            (*ZDBActualIndexRecordCount_function)(ZDBIndexDescriptor *indexDescriptor, char *table_name);
+typedef uint64            (*ZDBEstimateCount_function)(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
+typedef uint64            (*ZDBEstimateSelectivity_function)(ZDBIndexDescriptor *indexDescriptor, char *query);
+typedef ZDBSearchResponse *(*ZDBSearchIndex_function)(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
 typedef ZDBSearchResponse *(*ZDBGetPossiblyExpiredItems)(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
-typedef char *(*ZDBTally_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
-typedef char *(*ZDBRangeAggregate_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *query);
-typedef char *(*ZDBSignificantTerms_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
-typedef char *(*ZDBExtendedStats_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query);
-typedef char *(*ZDBArbitraryAggregate_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query);
-typedef char *(*ZDBSuggestTerms_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *query, int64 max_terms);
+typedef char *(*ZDBTally_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
+typedef char *(*ZDBRangeAggregate_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);
+typedef char *(*ZDBSignificantTerms_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
+typedef char *(*ZDBExtendedStats_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query);
+typedef char *(*ZDBArbitraryAggregate_function)(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query);
+typedef char *(*ZDBSuggestTerms_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 typedef char *(*ZDBTermList_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 
 typedef char *(*ZDBDescribeNestedObject_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname);
