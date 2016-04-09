@@ -500,6 +500,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"store\": \"true\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
         } else if (strcmp("bigint", typename) == 0 || strcmp("numeric", typename) == 0 ||
@@ -509,6 +510,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"store\": \"true\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
         } else if (strcmp("float", typename) == 0 || strcmp("float[]", typename) == 0) {
@@ -516,6 +518,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"type\": \"float\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
         } else if (strcmp("double precision", typename) == 0 || strcmp("double precision[]", typename) == 0) {
@@ -523,6 +526,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"type\": \"double\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
         } else if (strcmp("boolean", typename) == 0 || strcmp("boolean[]", typename) == 0) {
@@ -530,6 +534,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"type\": \"boolean\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
         } else if (strcmp("text", typename) == 0 || strcmp("varchar", typename) == 0 ||
