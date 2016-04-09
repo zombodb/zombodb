@@ -130,6 +130,8 @@ PARSER_END(QueryParser)
 
   | <TO: "/to/" >
 
+  | <EXCLUDE: "#exclude" >
+
   | <NESTED: "#nested" >
   | <TALLY: "#tally" >
   | <RANGE: "#range" >
@@ -187,7 +189,7 @@ private ASTQueryTree parse0() #QueryTree :
 {
 }
 {
-    ( Aggregations() | Options() | FieldLists() )* [ Expression() ] <EOF>
+    ( Aggregations() | Options() | FieldLists() | Exclude() )* [ Expression() ] <EOF>
     {
         return jjtThis;
     }
@@ -284,6 +286,11 @@ void FieldListEntry() #FieldListEntry :
 {
     ( fieldname = Fieldname() "=" Array() )
     { jjtThis.fieldname = fieldname; }
+}
+
+void Exclude() #Exclude : {}
+{
+    <EXCLUDE> "<" IndexName() ">" "(" Expression() ")"
 }
 
 void IndexLink() #IndexLink :

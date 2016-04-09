@@ -20,23 +20,18 @@
 #include "pgstat.h"
 #include "miscadmin.h"
 #include "access/genam.h"
-#include "access/heapam.h"
-#include "access/relscan.h"
-#include "access/visibilitymap.h"
 #include "access/xact.h"
 #include "storage/lmgr.h"
-#include "storage/bufmgr.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
-#include "utils/snapmgr.h"
 
 #include "rest/rest.h"
 #include "util/zdbutils.h"
 
 #include "elasticsearch.h"
 #include "zdbseqscan.h"
-#include "zdb_interface.h"
 
+#define MAX_LINKED_INDEXES 1024
 
 typedef struct {
     ZDBIndexDescriptor *indexDescriptor;
@@ -46,9 +41,6 @@ typedef struct {
     int                nrequests;
 } BatchInsertData;
 
-
-static void find_invisible_ctids(Relation rel, StringInfo sb);
-static int  tuple_is_visible(IndexScanDesc scan);
 
 static List *batchInsertDataList = NULL;
 
@@ -80,8 +72,50 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
     return data;
 }
 
+static char **parse_linked_indices(char *schema, char *options, int *many) {
+    size_t len       = strlen(options);
+    size_t schemalen = strlen(schema);
+    char   **indices = palloc(MAX_LINKED_INDEXES * sizeof(char *));
+    int    i, x      = 0;
+
+    for (i = 0; i < len; i++) {
+        char ch = options[i];
+
+        switch (ch) {
+            case '<': {
+                int j = (int) schemalen;
+
+                if (x == MAX_LINKED_INDEXES)
+                    elog(ERROR, "Too many linked indices.  Max is %d", MAX_LINKED_INDEXES);
+
+
+                /* allocate buffer to store index name, schema qualified */
+                indices[x] = palloc(schemalen + NAMEDATALEN + 2);   /* +2 for '.' and \0 */
+                strcpy(indices[x], schema);
+                indices[x][j++] = '.';
+
+                while (options[++i] != '.');
+                while (options[++i] != '>' && i < len) {
+                    indices[x][j++] = options[i];
+                }
+                indices[x][j]   = '\0';
+
+                x++;
+            }
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    *many = x;
+    return indices;
+}
+
 static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap) {
     StringInfo baseQuery = makeStringInfo();
+    StringInfo ids;
     int        i;
 
     if (desc->options)
@@ -92,11 +126,29 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
     if (useInvisibilityMap) {
         Relation heapRel;
 
+        if (desc->options != NULL) {
+            int  index_cnt;
+            char **indices = parse_linked_indices(desc->schemaName, desc->options, &index_cnt);
+
+            for (i = 0; i < index_cnt; i++) {
+                ZDBIndexDescriptor *tmp = zdb_alloc_index_descriptor_by_index_oid(DatumGetObjectId(DirectFunctionCall1(text_regclass, CStringGetTextDatum(indices[i]))));
+                Relation           rel;
+
+                rel = RelationIdGetRelation(tmp->heapRelid);
+                ids = find_invisible_ctids(rel);
+
+                if (ids->len > 0)
+                    appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", tmp->fullyQualifiedName, ids->data);
+
+                RelationClose(rel);
+            }
+        }
+
         heapRel = RelationIdGetRelation(desc->heapRelid);
 
-        appendStringInfo(baseQuery, "(_id<>[[");
-        find_invisible_ctids(heapRel, baseQuery);
-        appendStringInfo(baseQuery, "]]) AND (");
+        ids = find_invisible_ctids(heapRel);
+        if (ids->len > 0)
+            appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", desc->fullyQualifiedName, ids->data);
 
         RelationClose(heapRel);
     }
@@ -105,9 +157,6 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
         if (i > 0) appendStringInfo(baseQuery, " AND ");
         appendStringInfo(baseQuery, "(%s)", queries[i]);
     }
-
-    if (useInvisibilityMap)
-        appendStringInfoChar(baseQuery, ')');
 
     return baseQuery;
 }
@@ -354,7 +403,8 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     ZDBSearchResponse *hits;
     ZDBScore          max_score;
 
-    query = buildQuery(indexDescriptor, queries, nqueries, strstr(queries[0], "#expand") != NULL);
+    query = buildQuery(indexDescriptor, queries, nqueries,
+                       strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL);
 
     appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
@@ -855,74 +905,4 @@ void elasticsearch_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xac
 
 void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {
     batchInsertDataList = NULL;
-}
-
-static void find_invisible_ctids(Relation rel, StringInfo sb) {
-
-    if (visibilitymap_count(rel) != rel->rd_rel->relpages) {
-        BlockNumber       i;
-        OffsetNumber      j;
-        IndexScanDescData scan;
-
-        memset(&scan, 0, sizeof(IndexScanDescData));
-        scan.heapRelation = rel;
-        scan.xs_snapshot  = GetActiveSnapshot();
-
-        for (i = 0; i < RelationGetNumberOfBlocks(rel); i++) {
-            Buffer vmap_buff = InvalidBuffer;
-            bool   allVisible;
-
-            allVisible = visibilitymap_test(rel, i, &vmap_buff);
-            if (!BufferIsInvalid(vmap_buff)) {
-                ReleaseBuffer(vmap_buff);
-                vmap_buff = InvalidBuffer;
-            }
-
-            if (!allVisible) {
-                for (j = 1; j <= MaxOffsetNumber; j++) {
-                    int rc;
-
-                    ItemPointerSet(&(scan.xs_ctup.t_self), i, j);
-                    rc = tuple_is_visible(&scan);
-                    if (rc == 2)
-                        break; /* we're done with this page */
-
-                    if (rc == 0) {
-                        /* tuple is invisible to us */
-                        if (sb->len > 0) appendStringInfoChar(sb, ',');
-                        appendStringInfo(sb, "\"%d-%d\"", i, j);
-                    }
-                }
-                if (BufferIsValid(scan.xs_cbuf)) {
-                    ReleaseBuffer(scan.xs_cbuf);
-                    scan.xs_cbuf = InvalidBuffer;
-                }
-            }
-        }
-    }
-}
-
-static int tuple_is_visible(IndexScanDesc scan) {
-    ItemPointer tid      = &scan->xs_ctup.t_self;
-    bool        all_dead = false;
-    bool        got_heap_tuple;
-    Page        page;
-
-    if (scan->xs_cbuf == InvalidBuffer) {
-        /* Switch to correct buffer if we don't have it already */
-        scan->xs_cbuf = ReleaseAndReadBuffer(scan->xs_cbuf, scan->heapRelation, ItemPointerGetBlockNumber(tid));
-    }
-
-    page = BufferGetPage(scan->xs_cbuf);
-    if (ItemPointerGetOffsetNumber(tid) > PageGetMaxOffsetNumber(page)) {
-        /* no more items on this page */
-        return 2;
-    }
-
-    /* Obtain share-lock on the buffer so we can examine visibility */
-    LockBuffer(scan->xs_cbuf, BUFFER_LOCK_SHARE);
-    got_heap_tuple = heap_hot_search_buffer(tid, scan->heapRelation, scan->xs_cbuf, scan->xs_snapshot, &scan->xs_ctup, &all_dead, !scan->xs_continue_hot);
-    LockBuffer(scan->xs_cbuf, BUFFER_LOCK_UNLOCK);
-
-    return got_heap_tuple;
 }
