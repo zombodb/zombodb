@@ -33,5 +33,6 @@ void freeStringInfo(StringInfo si);
 char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing);
 Oid *oid_array_to_oids(ArrayType *arr, int *many);
 char **text_array_to_strings(ArrayType *array, int *many);
+StringInfo find_invisible_ctids(Relation rel);
 
 #endif

@@ -188,7 +188,7 @@ public class QueryRewriter {
 
     public QueryBuilder rewriteQuery() {
         try {
-            return build(tree);
+            return applyExclusion(build(tree), indexName);
         } finally {
             queryRewritten = true;
         }
@@ -815,7 +815,12 @@ public class QueryRewriter {
             @Override
             public QueryBuilder b(QueryParserNode n) {
                 final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
-                return termsQuery(n.getFieldname(), st.getAllTokens());
+                if ("_id".equals(node.getFieldname())) {
+                    Collection<String> terms = st.getAllTokens();
+                    return idsQuery().addIds(terms.toArray(new String[terms.size()]));
+                } else {
+                    return termsQuery(n.getFieldname(), st.getAllTokens());
+                }
             }
         });
     }
@@ -1074,7 +1079,7 @@ public class QueryRewriter {
                 .shardSize(0)
                 .size(!doFullFieldDataLookup ? 1024 : 0);
 
-        QueryBuilder query = constantScoreQuery(build(nodeQuery));
+        QueryBuilder query = constantScoreQuery(applyExclusion(build(nodeQuery), link.getIndexName()));
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(0)
                 .setSearchType(SearchType.COUNT)
@@ -1249,6 +1254,18 @@ public class QueryRewriter {
         }
 
         return build(last);
+    }
+
+    private QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
+        QueryParserNode exclusion = tree.getExclusion(indexName);
+
+        if (exclusion != null) {
+            BoolQueryBuilder bqb = boolQuery();
+            bqb.must(query);
+            bqb.mustNot(build(exclusion));
+            query = bqb;
+        }
+        return query;
     }
 
     protected boolean isInTestMode() {

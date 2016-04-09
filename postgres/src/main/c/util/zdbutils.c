@@ -15,16 +15,23 @@
  * limitations under the License.
  */
 #include "postgres.h"
-#include "catalog/pg_collation.h"
+
+#include "access/heapam.h"
+#include "access/relscan.h"
+#include "access/visibilitymap.h"
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
 #include "lib/stringinfo.h"
+#include "storage/bufmgr.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
-#include "utils/formatting.h"
 #include "utils/memutils.h"
+#include "utils/rel.h"
+#include "utils/snapmgr.h"
 
 #include "zdbutils.h"
+
+static int tuple_is_visible(IndexScanDesc scan);
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
     char *definition = "";
@@ -213,3 +220,78 @@ char **text_array_to_strings(ArrayType *array, int *many)
     return result;
 }
 
+StringInfo find_invisible_ctids(Relation rel) {
+    int        cnt = visibilitymap_count(rel);
+    StringInfo sb  = makeStringInfo();
+
+    if (cnt == 0 || cnt != rel->rd_rel->relpages) {
+        BlockNumber       i;
+        OffsetNumber      j;
+        IndexScanDescData scan;
+        int               many = 0;
+
+        memset(&scan, 0, sizeof(IndexScanDescData));
+        scan.heapRelation = rel;
+        scan.xs_snapshot  = GetActiveSnapshot();
+
+        for (i = 0; i < RelationGetNumberOfBlocks(rel); i++) {
+            Buffer vmap_buff = InvalidBuffer;
+            bool   allVisible;
+
+            allVisible = visibilitymap_test(rel, i, &vmap_buff);
+            if (!BufferIsInvalid(vmap_buff)) {
+                ReleaseBuffer(vmap_buff);
+                vmap_buff = InvalidBuffer;
+            }
+
+            if (!allVisible) {
+                for (j = 1; j <= MaxOffsetNumber; j++) {
+                    int rc;
+
+                    ItemPointerSet(&(scan.xs_ctup.t_self), i, j);
+                    rc = tuple_is_visible(&scan);
+                    if (rc == 2)
+                        break; /* we're done with this page */
+
+                    if (rc == 0) {
+                        /* tuple is invisible to us */
+                        if (many > 0) appendStringInfoChar(sb, ',');
+                        appendStringInfo(sb, "\"%d-%d\"", i, j);
+                        many++;
+                    }
+                }
+                if (BufferIsValid(scan.xs_cbuf)) {
+                    ReleaseBuffer(scan.xs_cbuf);
+                    scan.xs_cbuf = InvalidBuffer;
+                }
+            }
+        }
+    }
+
+    return sb;
+}
+
+static int tuple_is_visible(IndexScanDesc scan) {
+    ItemPointer tid      = &scan->xs_ctup.t_self;
+    bool        all_dead = false;
+    bool        got_heap_tuple;
+    Page        page;
+
+    if (scan->xs_cbuf == InvalidBuffer) {
+        /* Switch to correct buffer if we don't have it already */
+        scan->xs_cbuf = ReleaseAndReadBuffer(scan->xs_cbuf, scan->heapRelation, ItemPointerGetBlockNumber(tid));
+    }
+
+    page = BufferGetPage(scan->xs_cbuf);
+    if (ItemPointerGetOffsetNumber(tid) > PageGetMaxOffsetNumber(page)) {
+        /* no more items on this page */
+        return 2;
+    }
+
+    /* Obtain share-lock on the buffer so we can examine visibility */
+    LockBuffer(scan->xs_cbuf, BUFFER_LOCK_SHARE);
+    got_heap_tuple = heap_hot_search_buffer(tid, scan->heapRelation, scan->xs_cbuf, scan->xs_snapshot, &scan->xs_ctup, &all_dead, !scan->xs_continue_hot);
+    LockBuffer(scan->xs_cbuf, BUFFER_LOCK_UNLOCK);
+
+    return got_heap_tuple;
+}

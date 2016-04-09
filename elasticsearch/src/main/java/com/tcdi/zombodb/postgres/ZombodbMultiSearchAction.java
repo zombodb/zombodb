@@ -74,13 +74,11 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
         final long start = System.currentTimeMillis();
         final ZDBMultiSearchDescriptor[] descriptors = new ObjectMapper().readValue(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
         MultiSearchRequestBuilder msearchBuilder = new MultiSearchRequestBuilder(client);
-        String thisType = request.param("type");
 
         for (ZDBMultiSearchDescriptor md : descriptors) {
             SearchRequestBuilder srb = new SearchRequestBuilder(client);
 
             srb.setIndices(md.getIndexName());
-            srb.setTypes(thisType);
             if (md.getPkey() != null) srb.addFieldDataField(md.getPkey());
             srb.setQuery(new QueryRewriter(client, md.getIndexName(), md.getPreference(), md.getQuery(), true, true).rewriteQuery());
 
