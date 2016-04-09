@@ -56,8 +56,8 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
     @Inject
     public PostgresTIDResponseAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
-        controller.registerHandler(GET, "/{index}/{type}/_pgtid", this);
-        controller.registerHandler(POST, "/{index}/{type}/_pgtid", this);
+        controller.registerHandler(GET, "/{index}/_pgtid", this);
+        controller.registerHandler(POST, "/{index}/_pgtid", this);
     }
 
 
@@ -78,7 +78,6 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             builder.setIndices(query.getIndexName());
-            builder.setTypes("data");
             builder.setSize(32768);
             builder.setScroll(TimeValue.timeValueMinutes(10));
             builder.setSearchType(SearchType.SCAN);

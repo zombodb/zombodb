@@ -337,7 +337,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
     }
     appendStringInfoChar(request, ']');
 
-    appendStringInfo(endpoint, "%s/%s/data/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
     response = rest_call("POST", endpoint->data, request);
 
     freeStringInfo(request);
@@ -354,9 +354,9 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     ZDBSearchResponse *hits;
     ZDBScore          max_score;
 
-    query = buildQuery(indexDescriptor, queries, nqueries, false);
+    query = buildQuery(indexDescriptor, queries, nqueries, strstr(queries[0], "#expand") != NULL);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -422,7 +422,7 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
 
     query = buildQuery(indexDescriptor, queries, nqueries, true);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -447,7 +447,7 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
 
     query = buildQuery(indexDescriptor, &user_query, 1, false);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
@@ -474,7 +474,7 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, 
 
     appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s", fieldname, stem, max_terms, sort_order, query->data);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -497,7 +497,7 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
 
     appendStringInfo(request, "#range(%s, '%s') %s", fieldname, range_spec, query->data);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -520,7 +520,7 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char 
 
     appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s", fieldname, stem, max_terms, query->data);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -543,7 +543,7 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fi
 
     appendStringInfo(request, "#extended_stats(%s) %s", fieldname, query->data);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -567,7 +567,7 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
 
     appendStringInfo(request, "%s %s", aggregate_query, query->data);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -590,7 +590,7 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fie
 
     appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -700,7 +700,7 @@ ZDBSearchResponse *elasticsearch_getPossiblyExpiredItems(ZDBIndexDescriptor *ind
     StringInfo        response;
     ZDBSearchResponse *items;
 
-    appendStringInfo(endpoint, "%s/%s/data/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
