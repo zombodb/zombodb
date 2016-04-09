@@ -34,8 +34,8 @@ public class PostgresCountAction extends BaseRestHandler {
     @Inject
     public PostgresCountAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
-        controller.registerHandler(GET, "/{index}/{type}/_pgcount", this);
-        controller.registerHandler(POST, "/{index}/{type}/_pgcount", this);
+        controller.registerHandler(GET, "/{index}/_pgcount", this);
+        controller.registerHandler(POST, "/{index}/_pgcount", this);
     }
 
     @Override
@@ -51,7 +51,6 @@ public class PostgresCountAction extends BaseRestHandler {
             query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, !isSelectivityQuery);
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             builder.setIndices(query.getIndexName());
-            builder.setTypes("data");
             builder.setSize(0);
             builder.setSearchType(SearchType.COUNT);
             builder.setPreference(request.param("preference"));
