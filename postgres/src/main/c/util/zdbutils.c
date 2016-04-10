@@ -246,7 +246,7 @@ StringInfo find_invisible_ctids(Relation rel) {
                     if (rc == 0) {
                         /* tuple is invisible to us */
                         if (many > 0) appendStringInfoChar(sb, ',');
-                        appendStringInfo(sb, "\"%d-%d\"", i, j);
+                        appendStringInfo(sb, "%d-%d", i, j);
                         many++;
                     }
                 }
