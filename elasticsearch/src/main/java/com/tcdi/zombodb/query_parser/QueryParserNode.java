@@ -202,6 +202,12 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         }
     }
 
+    protected void removeNode(int idx) {
+        if (children == null)
+            return;
+        children.remove(idx);
+    }
+
     protected void removeNode(QueryParserNode node) {
         if (children == null)
             return;

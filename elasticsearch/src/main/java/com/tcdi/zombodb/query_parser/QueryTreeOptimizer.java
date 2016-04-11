@@ -150,7 +150,7 @@ public class QueryTreeOptimizer {
         ASTArray array;
 
         Map<Integer, ASTArray> arraysByField = new TreeMap<>();
-        Set<QueryParserNode> toRemove = new HashSet<>();
+        boolean needsRenumber = false;
         for (int i=0, many=root.children.size(); i<many; i++) {
             QueryParserNode child = (QueryParserNode) root.children.get(i);
             if (child instanceof ASTAggregate)
@@ -194,17 +194,14 @@ public class QueryTreeOptimizer {
                             }
                         }
 
-                        toRemove.add(child);
+                        root.removeNode(i);
+                        needsRenumber = true;
                     }
                 }
             }
         }
 
-        if (!toRemove.isEmpty()) {
-            for (QueryParserNode node : toRemove) {
-                root.removeNode(node);
-            }
-
+        if (needsRenumber) {
             for (Map.Entry<Integer, ASTArray> entry : arraysByField.entrySet()) {
                 int idx = entry.getKey();
                 ASTArray child = entry.getValue();

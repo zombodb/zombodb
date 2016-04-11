@@ -60,8 +60,10 @@ public class TermAnalyzerOptimizer {
             ((QueryParserNode) (node.parent)).removeNode(node);
             ((QueryParserNode) (node.parent)).renumber();
             return true;
-        } else {
+        } else if (newNode != node) {
             ((QueryParserNode) (node.parent)).replaceChild(node, newNode);
+            return false;
+        } else {
             return false;
         }
     }

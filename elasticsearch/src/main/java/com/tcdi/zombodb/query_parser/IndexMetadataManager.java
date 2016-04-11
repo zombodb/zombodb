@@ -44,6 +44,7 @@ public class IndexMetadataManager {
     private List<FieldAndIndexPair> allFields;
     private Set<ASTIndexLink> usedIndexes = new IdentityHashSet<>();
     private final IndexRelationshipManager relationshipManager = new IndexRelationshipManager();
+    private Map<ASTIndexLink, IndexMetadata> metadataCache = new HashMap<>();
 
     private final Client client;
     private final ASTIndexLink originalMyIndex;
@@ -137,7 +138,10 @@ public class IndexMetadataManager {
             return null;
 
         try {
-            return new IndexMetadata(link, lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data"));
+            IndexMetadata md = metadataCache.get(link);
+            if (md == null)
+                metadataCache.put(link, md = new IndexMetadata(link, lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data")));
+            return md;
         } catch (NullPointerException npe) {
             return null;
         } catch (Exception e) {

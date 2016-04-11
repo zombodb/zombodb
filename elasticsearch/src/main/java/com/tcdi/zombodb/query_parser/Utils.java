@@ -421,6 +421,21 @@ public class Utils {
         input = input.replaceAll("[~]", "zdb_tilde_zdb");
         input = input.replaceAll("[\\\\]", "zdb_escape_zdb");
 
+        // if the input token doesn't have any wildcards (or escapes)...
+        if (input.equals(node.getEscapedValue())) {
+            // and it uses a build-in analyzer...
+            String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
+            if ((analyzer == null || "exact".equals(analyzer) || "phrase".equals(analyzer) || "fulltext".equals(analyzer) || "fulltext_with_shingles".equals(analyzer))
+                    && !Utils.isComplexTerm(input)) { // ... and is a single term
+
+                // then we'll just convert it to lowercase
+                node.setValue(input.toLowerCase());
+
+                // and return without bothering to actually run it through an analyzer
+                return node;
+            }
+        }
+
         initialAnalyze = analyzeForSearch(client, metadataManager, node.getFieldname(), input);
         if (initialAnalyze.isEmpty()) {
             initialAnalyze = analyzeForIndex(client, metadataManager, node.getFieldname(), input);
