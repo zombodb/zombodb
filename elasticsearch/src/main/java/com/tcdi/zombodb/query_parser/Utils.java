@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  * @author e_ridge
  */
 public class Utils {
-    private static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
+    private static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', 'W', 'w', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
     private static final String NEEDS_ESCAPES_AS_STRING;
     static {
         Arrays.sort(NEEDS_ESCAPES);
