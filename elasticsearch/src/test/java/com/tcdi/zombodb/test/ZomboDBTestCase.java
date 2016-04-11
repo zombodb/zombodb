@@ -55,8 +55,6 @@ public abstract class ZomboDBTestCase {
 
         for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users", "db.schema.so_comments.idxso_comments"}) {
             createIndex(indexName);
-            client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
-            client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();
         }
     }
 
@@ -87,11 +85,16 @@ public abstract class ZomboDBTestCase {
     }
 
     private static void createIndex(String indexName) throws Exception {
+        String settings = resource(ZomboDBTestCase.class, indexName + "-mapping.json");
+
+        indexName = indexName+".0";
         CreateIndexRequestBuilder builder = new CreateIndexRequestBuilder(client().admin().indices(), indexName);
-        builder.setSource(resource(ZomboDBTestCase.class, indexName + "-mapping.json"));
+        builder.setSource(settings);
 
         CreateIndexResponse response = client().admin().indices().create(builder.request()).get();
         response.writeTo(new OutputStreamStreamOutput(System.out));
+        client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
+        client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();
     }
 
     protected static Client client() {

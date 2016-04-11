@@ -197,177 +197,189 @@ static void checkForRefreshError(StringInfo response) {
 }
 
 static void es_wait_for_index_availability(ZDBIndexDescriptor *indexDescriptor) {
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response;
-	char *status;
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response;
+    char       *status;
+    int        i;
 
-	/* ask ES to wait for the health status of this index to be at least yellow.  Has default timeout of 30s */
-	appendStringInfo(endpoint, "%s/_cluster/health/%s?wait_for_status=yellow", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("GET", endpoint->data, NULL);
-	if (response->len == 0 || response->data[0] != '{')
-		elog(ERROR, "Response from cluster health not in correct format: %s", response->data);
+    for (i=0; i<indexDescriptor->shards; i++) {
+        /* ask ES to wait for the health status of this index to be at least yellow.  Has default timeout of 30s */
+        appendStringInfo(endpoint, "%s/_cluster/health/%s.%d?wait_for_status=yellow", indexDescriptor->url, indexDescriptor->fullyQualifiedName, i);
+        response = rest_call("GET", endpoint->data, NULL);
+        if (response->len == 0 || response->data[0] != '{')
+            elog(ERROR, "Response from cluster health not in correct format: %s", response->data);
 
-	status = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("status")));
+        status = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("status")));
 
-	/* If the index isn't available, raise an error */
-	if (status == NULL || (strcmp("green", status) != 0 && strcmp("yellow", status) != 0))
-		elog(ERROR, "Index health indicates index is not available: %s", response->data);
+        /* If the index isn't available, raise an error */
+        if (status == NULL || (strcmp("green", status) != 0 && strcmp("yellow", status) != 0))
+            elog(ERROR, "Index health indicates index is not available: %s", response->data);
 
-	/* otherwise, it's all good */
+        resetStringInfo(endpoint);
+    }
+
+    /* otherwise, it's all good */
 }
 
-void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties)
-{
-	StringInfo endpoint      = makeStringInfo();
-	StringInfo indexSettings = makeStringInfo();
-	StringInfo response;
-	char *pkey = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
+void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties) {
+    StringInfo endpoint      = makeStringInfo();
+    StringInfo indexSettings = makeStringInfo();
+    StringInfo response;
+    char       *pkey         = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
+    int        i;
 
-	if (pkey == NULL)
-	{
-		pkey = "__no primary key__";
-		elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
-	}
+    if (pkey == NULL) {
+        pkey = "__no primary key__";
+        elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
+    }
 
-	appendStringInfo(indexSettings,
-			"{"
-					"   \"mappings\": {"
-					"      \"data\": {"
-					"          \"_source\": { \"enabled\": false },"
-					"          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-					"          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-					"          \"_meta\": { \"primary_key\": \"%s\" },"
-					"          \"date_detection\": false,"
-					"          \"properties\" : %s"
-					"      }"
-					"   },"
-					"   \"settings\": {"
-					"      \"refresh_interval\": -1,"
-					"      \"number_of_shards\": %d,"
-					"      \"number_of_replicas\": 0,"
-					"      \"analysis\": {"
-					"         \"filter\": { %s },"
-					"         \"char_filter\" : { %s },"
-					"         \"tokenizer\" : { %s },"
-					"         \"analyzer\": { %s }"
-					"      }"
-					"   }"
-					"}",
-			pkey,
-			fieldProperties,
-			shards,
-            lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
-            lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
-            lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"),
-            lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers")
-	);
+    appendStringInfo(indexSettings, "{"
+            "   \"mappings\": {"
+            "      \"data\": {"
+            "          \"_source\": { \"enabled\": false },"
+            "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
+            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
+            "          \"_meta\": { \"primary_key\": \"%s\" },"
+            "          \"date_detection\": false,"
+            "          \"properties\" : %s"
+            "      }"
+            "   },"
+            "   \"settings\": {"
+            "      \"refresh_interval\": -1,"
+            "      \"number_of_shards\": %d,"
+            "      \"number_of_replicas\": 0,"
+            "      \"analysis\": {"
+            "         \"filter\": { %s },"
+            "         \"char_filter\" : { %s },"
+            "         \"tokenizer\" : { %s },"
+            "         \"analyzer\": { %s }"
+            "      }"
+            "   },"
+            "   \"aliases\": {"
+            "      \"%s\": {}"
+            "   }"
+            "}", pkey, fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"), indexDescriptor->fullyQualifiedName);
 
-	appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("POST", endpoint->data, indexSettings);
+    for (i=0; i<shards; i++) {
+        appendStringInfo(endpoint, "%s/%s.%d", indexDescriptor->url, indexDescriptor->fullyQualifiedName, i);
+        response = rest_call("POST", endpoint->data, indexSettings);
 
-	freeStringInfo(indexSettings);
-	freeStringInfo(response);
-	freeStringInfo(endpoint);
+        freeStringInfo(response);
+        resetStringInfo(endpoint);
+    }
+
+    freeStringInfo(indexSettings);
+    freeStringInfo(endpoint);
 }
 
-void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor)
-{
-	StringInfo endpoint      = makeStringInfo();
-	StringInfo indexSettings = makeStringInfo();
-	StringInfo response;
-	Relation indexRel;
+void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
+    StringInfo endpoint      = makeStringInfo();
+    StringInfo indexSettings = makeStringInfo();
+    StringInfo response;
+    Relation   indexRel;
+    int        i;
 
-	indexRel = index_open(indexDescriptor->indexRelid, RowExclusiveLock);
-	appendStringInfo(indexSettings,
-			"{"
-					"   \"index\": {"
-					    /* NOTE:  We DO NOT turn refresh_interval back on -- we control refreshes ourselves */
-					"      \"number_of_replicas\":%d"
-					"   }"
-					"}",
-			ZDBIndexOptionsGetNumberOfReplicas(indexRel)
-	);
-	index_close(indexRel, RowExclusiveLock);
+    indexRel = RelationIdGetRelation(indexDescriptor->indexRelid);
+    appendStringInfo(indexSettings, "{"
+            "   \"index\": {"
+            /* NOTE:  We DO NOT turn refresh_interval back on -- we control refreshes ourselves */
+            "      \"number_of_replicas\":%d"
+            "   }"
+            "}", ZDBIndexOptionsGetNumberOfReplicas(indexRel));
+    RelationClose(indexRel);
 
-	appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("PUT", endpoint->data, indexSettings);
+    for (i=0; i<indexDescriptor->shards; i++) {
+        appendStringInfo(endpoint, "%s/%s.%d/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName, i);
+        response = rest_call("PUT", endpoint->data, indexSettings);
 
-	es_wait_for_index_availability(indexDescriptor);
+        freeStringInfo(response);
+        resetStringInfo(endpoint);
+    }
 
-	freeStringInfo(indexSettings);
-	freeStringInfo(response);
-	freeStringInfo(endpoint);
+    es_wait_for_index_availability(indexDescriptor);
+
+    freeStringInfo(indexSettings);
+    freeStringInfo(endpoint);
 
 }
 
-void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping)
-{
-	char *properties;
-	Datum PROPERTIES = CStringGetTextDatum("properties");
-	StringInfo endpoint = makeStringInfo();
-	StringInfo request = makeStringInfo();
-	StringInfo response;
-	char *pkey = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
-	Relation indexRel;
+void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping) {
+    char       *properties;
+    Datum      PROPERTIES = CStringGetTextDatum("properties");
+    StringInfo endpoint   = makeStringInfo();
+    StringInfo request    = makeStringInfo();
+    StringInfo response;
+    char       *pkey      = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
+    Relation   indexRel;
 
-	if (pkey == NULL)
-	{
-		pkey = "__no primary key__";
-		elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
-	}
+    if (pkey == NULL) {
+        pkey = "__no primary key__";
+        elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
+    }
 
-	properties = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(mapping), PROPERTIES));
+    properties = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(mapping), PROPERTIES));
 
-	indexRel = index_open(indexDescriptor->indexRelid, RowExclusiveLock);
-	appendStringInfo(request,
-			"{"
-  		    "   \"data\": {"
-			"       \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-			"       \"_source\": { \"enabled\": false },"
-			"       \"_field_names\": { \"index\": \"no\", \"store\": false },"
-			"       \"_meta\": { \"primary_key\": \"%s\" },"
-			"       \"properties\" : %s"
-			"   },"
-			"   \"settings\": {"
-			"      \"number_of_replicas\": %d"
-			"   }"
-			"}",
-			pkey,
-			properties,
-			ZDBIndexOptionsGetNumberOfReplicas(indexRel));
-	index_close(indexRel, RowExclusiveLock);
+    indexRel = index_open(indexDescriptor->indexRelid, RowExclusiveLock);
+    appendStringInfo(request, "{"
+            "   \"data\": {"
+            "       \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
+            "       \"_source\": { \"enabled\": false },"
+            "       \"_field_names\": { \"index\": \"no\", \"store\": false },"
+            "       \"_meta\": { \"primary_key\": \"%s\" },"
+            "       \"properties\" : %s"
+            "   },"
+            "   \"settings\": {"
+            "      \"number_of_replicas\": %d"
+            "   }"
+            "}", pkey, properties, ZDBIndexOptionsGetNumberOfReplicas(indexRel));
+    index_close(indexRel, RowExclusiveLock);
 
-	appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("PUT", endpoint->data, request);
+    appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("PUT", endpoint->data, request);
 
-	freeStringInfo(request);
-	freeStringInfo(endpoint);
-	freeStringInfo(response);
+    freeStringInfo(request);
+    freeStringInfo(endpoint);
+    freeStringInfo(response);
 }
 
-void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor)
-{
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response = NULL;
+void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response = NULL;
+    int        i;
 
-	appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    for (i=0; i<indexDescriptor->shards; i++) {
+        appendStringInfo(endpoint, "%s/%s.%d", indexDescriptor->url, indexDescriptor->fullyQualifiedName, i);
+        response = rest_call("DELETE", endpoint->data, NULL);
+        freeStringInfo(response);
+        resetStringInfo(endpoint);
+    }
 
-	response = rest_call("DELETE", endpoint->data, NULL);
-	freeStringInfo(endpoint);
-	freeStringInfo(response);
+    freeStringInfo(endpoint);
 }
 
-void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor)
-{
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response;
+void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response;
+    int        i, many;
 
-	appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("GET", endpoint->data, NULL);
-	checkForRefreshError(response);
-	
-	freeStringInfo(endpoint);
-	freeStringInfo(response);
+    if (indexDescriptor->current_pool_index == -1) {
+        i=0;
+        many = indexDescriptor->shards;
+    } else {
+        i = indexDescriptor->current_pool_index;
+        many = i+1;
+    }
+
+    for (; i<many; i++) {
+        appendStringInfo(endpoint, "%s/%s.%d/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName, i);
+        response = rest_call("GET", endpoint->data, NULL);
+        checkForRefreshError(response);
+
+        freeStringInfo(response);
+        resetStringInfo(endpoint);
+    }
+
+    freeStringInfo(endpoint);
 }
 
 char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_queries, int nqueries) {
@@ -731,16 +743,17 @@ char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, ch
 }
 
 
-char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor)
-{
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response;
+char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor) {
+    char *indexName = palloc(strlen(indexDescriptor->fullyQualifiedName) + 3);
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response;
 
-	appendStringInfo(endpoint, "%s/%s/_mapping", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("GET", endpoint->data, NULL);
+    sprintf(indexName, "%s.0", indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s.0/_mapping", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("GET", endpoint->data, NULL);
 
-	freeStringInfo(endpoint);
-	return TextDatumGetCString(DirectFunctionCall2(json_object_field, CStringGetTextDatum(response->data), CStringGetTextDatum(indexDescriptor->fullyQualifiedName)));
+    freeStringInfo(endpoint);
+    return TextDatumGetCString(DirectFunctionCall2(json_object_field, CStringGetTextDatum(response->data), CStringGetTextDatum(indexName)));
 }
 
 char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, char *fieldname)
@@ -752,8 +765,8 @@ char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, ch
 	if (indexDescriptor->options)
 		appendStringInfo(request, "#options(%s) ", indexDescriptor->options);
 
-	appendStringInfo(endpoint, "%s/%s/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
-	response = rest_call("POST", endpoint->data, request);
+    appendStringInfo(endpoint, "%s/%s.0/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
+    response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(endpoint);
 	freeStringInfo(request);
@@ -766,9 +779,9 @@ char *elasticsearch_analyzeText(ZDBIndexDescriptor *indexDescriptor, char *analy
 	StringInfo request = makeStringInfo();
 	StringInfo response;
 
-	appendStringInfo(request, "%s", data);
-	appendStringInfo(endpoint, "%s/%s/_analyze?analyzer=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, analyzerName);
-	response = rest_call("GET", endpoint->data, request);
+    appendStringInfo(request, "%s", data);
+    appendStringInfo(endpoint, "%s/%s.0/_analyze?analyzer=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, analyzerName);
+    response = rest_call("GET", endpoint->data, request);
 
 	freeStringInfo(endpoint);
 	freeStringInfo(request);
@@ -875,15 +888,38 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
 void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data)
 {
-	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
+    BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
+
+    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk);
+    batch->nprocessed++;
+
+    if (batch->bulk->len > indexDescriptor->batch_size) {
+        StringInfo endpoint = makeStringInfo();
+        int        idx;
+
+        /* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
+        appendStringInfo(endpoint, "%s/%s.%d/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
+
+        if (batch->rest->available == 0)
+            rest_multi_partial_cleanup(batch->rest, false, true);
 
 	appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk);
 	batch->nprocessed++;
 
-	if (batch->bulk->len > indexDescriptor->batch_size)
-	{
-		StringInfo endpoint = makeStringInfo();
-		int idx;
+            rest_multi_partial_cleanup(batch->rest, false, true);
+            idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
+            if (idx < 0)
+                elog(ERROR, "Unable to add multicall after waiting");
+        }
+
+        /* reset the bulk StringInfo for the next batch of records */
+        batch->bulk = makeStringInfo();
+
+        batch->nrequests++;
+
+        elog(LOG, "Indexed %d rows for %s.%d", batch->nprocessed, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
+    }
+}
 
 		/* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
 		appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
@@ -891,11 +927,28 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 		if (batch->rest->available == 0)
 			rest_multi_partial_cleanup(batch->rest, false, true);
 
-		idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
-		if (idx < 0)
-		{
-			while(!rest_multi_is_available(batch->rest))
-				CHECK_FOR_INTERRUPTS();
+        if (batch->bulk->len > 0) {
+            StringInfo endpoint = makeStringInfo();
+            StringInfo response;
+
+            appendStringInfo(endpoint, "%s/%s.%d/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
+
+            if (batch->nrequests == 0) {
+                /*
+                 * if this is the only request being made in this batch, then we'll ?refresh=true
+                 * to avoid an additional round-trip to ES
+                 */
+                appendStringInfo(endpoint, "?refresh=true");
+                response = rest_call("POST", endpoint->data, batch->bulk);
+            } else {
+                /*
+                 * otherwise we'll do a full refresh below, so there's no need to do it here
+                 */
+                response = rest_call("POST", endpoint->data, batch->bulk);
+            }
+            checkForBulkError(response, "batch finish");
+            freeStringInfo(response);
+        }
 
 			rest_multi_partial_cleanup(batch->rest, false, true);
 			idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
@@ -912,72 +965,6 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 	}
 }
 
-void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
-{
-	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, false);
-
-	if (batch)
-	{
-		if (batch->nrequests > 0)
-		{
-			/** wait for all outstanding HTTP requests to finish */
-			while (!rest_multi_all_done(batch->rest)) {
-				rest_multi_is_available(batch->rest);
-				CHECK_FOR_INTERRUPTS();
-			}
-			rest_multi_partial_cleanup(batch->rest, true, false);
-		}
-
-		if (batch->bulk->len > 0)
-		{
-			StringInfo endpoint = makeStringInfo();
-			StringInfo response;
-
-			appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-
-			if (batch->nrequests == 0)
-			{
-				/*
-				 * if this is the only request being made in this batch, then we'll ?refresh=true
-				 * to avoid an additional round-trip to ES
-				 */
-				appendStringInfo(endpoint, "?refresh=true");
-				response = rest_call("POST", endpoint->data, batch->bulk);
-			}
-			else
-			{
-				/*
-				 * otherwise we'll do a full refresh below, so there's no need to do it here
-				 */
-				response = rest_call("POST", endpoint->data, batch->bulk);
-			}
-			checkForBulkError(response, "batch finish");
-			freeStringInfo(response);
-		}
-
-		/*
-		 * If this wasn't the only request being made in this batch
-		 * then ask ES to refresh the index
-		 */
-		if (batch->nrequests > 0)
-			elasticsearch_refreshIndex(indexDescriptor);
-
-		freeStringInfo(batch->bulk);
-
-		if (batch->nrequests > 0)
-			elog(LOG, "Indexed %d rows in %d requests for %s", batch->nprocessed, batch->nrequests+1, indexDescriptor->fullyQualifiedName);
-
-		batchInsertDataList = list_delete(batchInsertDataList, batch);
-		pfree(batch);
-	}
-}
-
-void elasticsearch_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData)
-{
-	// TODO:  implement this
-}
-
-void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType)
-{
-	batchInsertDataList = NULL;
+void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {
+    batchInsertDataList = NULL;
 }

@@ -228,7 +228,7 @@ public class Utils {
             AnalyzeResponse response = client.admin().indices().analyze(
                     new AnalyzeRequestBuilder(
                             client.admin().indices(),
-                            metadataManager.getMetadataForField(fieldname).getLink().getIndexName(),
+                            metadataManager.getMetadataForField(fieldname).getLink().getIndexName()+".0",
                             phrase
                     ).setAnalyzer(analyzer).request()
             ).get();

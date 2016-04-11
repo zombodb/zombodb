@@ -57,8 +57,6 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data);
 void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
-void elasticsearch_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData);
-
 void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
 #endif

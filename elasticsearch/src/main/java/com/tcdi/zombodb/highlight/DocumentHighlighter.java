@@ -170,7 +170,7 @@ public class DocumentHighlighter {
                                 continue;
                             analyzeData(indexName, primaryKeyFieldname, resolveAllFieldnames(null, (Map) element, new HashSet<String>()), fieldName.substring(0, fieldName.lastIndexOf('.')), (Map) element, baseDocumentData);
                         } else {
-                            AnalyzeRequestBuilder rb = new AnalyzeRequestBuilder(client.admin().indices(), indexName, String.valueOf(element).toLowerCase());
+                            AnalyzeRequestBuilder rb = new AnalyzeRequestBuilder(client.admin().indices(), indexName+".0", String.valueOf(element).toLowerCase());
                             rb.setAnalyzer("phrase");
 
                             try {
@@ -183,7 +183,7 @@ public class DocumentHighlighter {
                         }
                     }
                 } else {
-                    AnalyzeRequestBuilder rb = new AnalyzeRequestBuilder(client.admin().indices(), indexName, String.valueOf(value).toLowerCase());
+                    AnalyzeRequestBuilder rb = new AnalyzeRequestBuilder(client.admin().indices(), indexName+".0", String.valueOf(value).toLowerCase());
                     rb.setAnalyzer("phrase");
 
                     try {
