@@ -67,8 +67,6 @@ static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPo
 static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
-static void wrapper_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData);
-
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
 static void validate_url(char *str) {
@@ -101,8 +99,8 @@ void zdb_index_init(void) {
     add_string_reloption(RELOPT_KIND_ZDB, "shadow", "A zombodb index to which this one should shadow", NULL, validate_shadow);
     add_string_reloption(RELOPT_KIND_ZDB, "options", "Comma-separated list of options to pass to underlying index", NULL, validate_options);
     add_string_reloption(RELOPT_KIND_ZDB, "preference", "The ?preference value used to Elasticsearch", NULL, validate_preference);
-    add_int_reloption(RELOPT_KIND_ZDB, "shards", "The number of shared for the index", 5, 1, 32768);
-    add_int_reloption(RELOPT_KIND_ZDB, "replicas", "The default number of replicas for the index", 1, 1, 32768);
+    add_int_reloption(RELOPT_KIND_ZDB, "shards", "The number of shared for the index", 5, 1, ZDB_MAX_SHARDS);
+    add_int_reloption(RELOPT_KIND_ZDB, "replicas", "The default number of replicas for the index", 1, 1, ZDB_MAX_REPLICAS);
     add_int_reloption(RELOPT_KIND_ZDB, "bulk_concurrency", "The maximum number of concurrent _bulk API requests", 12, 1, 12);
     add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API",
                       1024 * 1024 * 8, 1024, 1024 * 1024 * 64);
@@ -144,6 +142,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->bulk_concurrency = ZDBIndexOptionsGetBulkConcurrency(indexRel);
     desc->batch_size       = ZDBIndexOptionsGetBatchSize(indexRel);
     desc->fieldLists       = ZDBIndexOptionsGetFieldLists(indexRel);
+    desc->current_pool_index = -1;
 
     if (desc->isShadow) {
         /* but some properties come from the index we're shadowing */
@@ -154,18 +153,19 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
             elog(ERROR, "No such shadow index: %s", ZDBIndexOptionsGetShadow(indexRel));
 
         shadowRel = relation_open(shadowRelid, AccessShareLock);
-        desc->advisory_mutex = (int64) oid_hash(&shadowRelid, sizeof(Oid));
+        desc->shards         = ZDBIndexOptionsGetNumberOfShards(shadowRel);
         desc->indexName      = pstrdup(RelationGetRelationName(shadowRel));
         desc->url            =
                 ZDBIndexOptionsGetUrl(shadowRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(shadowRel));
         relation_close(shadowRel, AccessShareLock);
     } else {
         /* or just from the actual index if we're not a shadow */
-        desc->advisory_mutex = (int64) oid_hash(&desc->indexRelid, sizeof(Oid));
+        desc->shards         = ZDBIndexOptionsGetNumberOfShards(indexRel);
         desc->indexName      = pstrdup(RelationGetRelationName(indexRel));
         desc->url            =
                 ZDBIndexOptionsGetUrl(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(indexRel));
     }
+    desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
 
     appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
     desc->fullyQualifiedName = pstrdup(scratch->data);
@@ -202,7 +202,6 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->bulkDelete              = wrapper_bulkDelete;
     desc->implementation->batchInsertRow          = wrapper_batchInsertRow;
     desc->implementation->batchInsertFinish       = wrapper_batchInsertFinish;
-    desc->implementation->commitXactData          = wrapper_commitXactData;
     desc->implementation->transactionFinish       = wrapper_transactionFinish;
 
     allocated_descriptors = lappend(allocated_descriptors, desc);
@@ -535,18 +534,6 @@ static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
     elasticsearch_batchInsertFinish(indexDescriptor);
 
     MemoryContextSwitchTo(oldContext);
-}
-
-static void wrapper_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData) {
-    MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_commitXactData", 512, 64, 64);
-    MemoryContext oldContext = MemoryContextSwitchTo(me);
-
-    Assert(!indexDescriptor->isShadow);
-
-    elasticsearch_commitXactData(indexDescriptor, xactData);
-
-    MemoryContextSwitchTo(oldContext);
-    MemoryContextDelete(me);
 }
 
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {

@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,7 +29,6 @@
 #include "commands/event_trigger.h"
 #include "commands/vacuum.h"
 #include "executor/executor.h"
-#include "executor/spi.h"
 #include "nodes/relation.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
@@ -62,6 +61,14 @@ PG_FUNCTION_INFO_V1(zdbcostestimate);
 
 PG_FUNCTION_INFO_V1(zdb_num_hits);
 
+/* index pool support */
+
+#define InvalidPoolIndex -1
+
+typedef struct {
+    bool allocated[ZDB_MAX_SHARDS];
+    uint32  start_at;
+} ZDBIndexPoolEntry;
 
 /* Working state for zdbbuild and its callback */
 typedef struct {
@@ -99,29 +106,51 @@ static int                      executorDepth           = 0;
 
 static int64 numHitsFound = -1;
 
-static Oid *findZDBIndexes(Oid relid, int *many) {
-    Oid        *indexes = NULL;
-    StringInfo sql;
-    int        i;
+static ZDBIndexPoolEntry *zdb_pool_get_entry(ZDBIndexDescriptor *desc) {
+    ZDBIndexPoolEntry *entry;
+    bool found;
 
-    SPI_connect();
+    LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
+    entry = (ZDBIndexPoolEntry *) ShmemInitStruct(desc->fullyQualifiedName, sizeof(ZDBIndexPoolEntry), &found);
+    if (!found)
+        memset(entry, 0, sizeof(ZDBIndexPoolEntry));
+    LWLockRelease(AddinShmemInitLock);
 
-    sql = makeStringInfo();
-    appendStringInfo(sql, "select indexrelid "
-            "from pg_index "
-            "where indrelid = %d "
-            "  and indclass[0] = (select oid from pg_opclass where opcmethod = (select oid from pg_am where amname = 'zombodb') and opcname = 'zombodb_tid_ops')", relid);
+    return entry;
+}
 
-    SPI_execute(sql->data, true, 1);
-    *many = SPI_processed;
-    if (SPI_processed > 0) {
-        indexes = (Oid *) MemoryContextAlloc(TopTransactionContext, sizeof(Oid) * SPI_processed);
-        for (i = 0; i < SPI_processed; i++)
-            indexes[i] = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
+static void zdb_pool_checkout(ZDBIndexDescriptor *desc) {
+    ZDBIndexPoolEntry *entry = zdb_pool_get_entry(desc);
+    int i;
+
+    DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex));
+    for (i=entry->start_at%desc->shards; i<desc->shards; i++) {
+        if (!entry->allocated[i]) {
+            entry->allocated[i] = true;
+            entry->start_at++;
+            break;
+        }
     }
-    SPI_finish();
+    DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
 
-    return indexes;
+    if (i == ZDB_MAX_SHARDS) {
+        // TODO:  how to wait and retry?
+        elog(ERROR, "No pool entries available");
+    }
+
+    desc->current_pool_index = i;
+}
+
+static void zdb_pool_checkin(ZDBIndexDescriptor *desc) {
+    if (desc->current_pool_index != InvalidPoolIndex) {
+        ZDBIndexPoolEntry *entry = zdb_pool_get_entry(desc);
+
+        DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex));
+        entry->allocated[desc->current_pool_index] = false;
+        DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
+
+        desc->current_pool_index = InvalidPoolIndex;
+    }
 }
 
 static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forInsert) {
@@ -171,6 +200,7 @@ static void xact_complete_cleanup(XactEvent event) {
 
         desc->implementation->transactionFinish(desc, event == XACT_EVENT_COMMIT ? ZDB_TRANSACTION_COMMITTED
                                                                                  : ZDB_TRANSACTION_ABORTED);
+        zdb_pool_checkin(desc);
     }
     interface_transaction_cleanup();
 }
@@ -184,8 +214,6 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
 
         case XACT_EVENT_COMMIT:
         case XACT_EVENT_ABORT:
-            // TODO:  Push "invisibility map" to ES
-
             /* cleanup, the xact is over */
             xact_complete_cleanup(event);
             break;
@@ -213,6 +241,7 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc) {
         foreach (lc, indexesInsertedList) {
             ZDBIndexDescriptor *desc = lfirst(lc);
             desc->implementation->batchInsertFinish(desc);
+            zdb_pool_checkin(desc);
         }
 
         /* make sure to cleanup seqscan globals too */
@@ -265,12 +294,12 @@ static void zdb_executor_finish_hook(QueryDesc *queryDesc) {
 }
 
 void zdbam_init(void) {
-    zdb_index_init();
-
     if (prev_ExecutorStartHook == zdb_executor_start_hook)
         elog(ERROR, "zdbam_init:  Unable to initialize ZomboDB.  ExecutorStartHook already assigned");
     else if (prev_ExecutorEndHook == zdb_executor_end_hook)
         elog(ERROR, "zdbam_init:  Unable to initialize ZomboDB.  ExecutorEndHook already assigned");
+
+    zdb_index_init();
 
     prev_ExecutorStartHook = ExecutorStart_hook;
     prev_ExecutorEndHook   = ExecutorEnd_hook;
@@ -389,6 +418,9 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
     if (tupdesc->natts != 2)
         elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
 
+    if (desc->current_pool_index == InvalidPoolIndex)
+        zdb_pool_checkout(desc);
+
     value = DatumGetTextP(values[1]);
     desc->implementation->batchInsertRow(desc, &htup->t_self, value);
 
@@ -415,6 +447,9 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
 
     if (tupdesc->natts != 2)
         elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+
+    if (desc->current_pool_index == InvalidPoolIndex)
+        zdb_pool_checkout(desc);
 
     value = DatumGetTextP(values[1]);
     desc->implementation->batchInsertRow(desc, ht_ctid, value);
@@ -671,7 +706,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     List                    *to_delete      = NULL;
     int                     many            = 0;
     uint64                  nitems;
-    int                     i;
+    uint64                  i;
 
     /* allocate stats if first time through, else re-use existing struct */
     if (stats == NULL)

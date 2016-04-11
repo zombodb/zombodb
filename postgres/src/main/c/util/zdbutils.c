@@ -181,6 +181,30 @@ char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing) 
     return keyname;
 }
 
+Oid *findZDBIndexes(Oid relid, int *many) {
+    Oid        *indexes = NULL;
+    StringInfo sql;
+    int        i;
+
+    SPI_connect();
+
+    sql = makeStringInfo();
+    appendStringInfo(sql, "select indexrelid "
+            "from pg_index "
+            "where indrelid = %d "
+            "  and indclass[0] = (select oid from pg_opclass where opcmethod = (select oid from pg_am where amname = 'zombodb') and opcname = 'zombodb_tid_ops')", relid);
+
+    SPI_execute(sql->data, true, 1);
+    *many = SPI_processed;
+    if (SPI_processed > 0) {
+        indexes = (Oid *) MemoryContextAlloc(TopTransactionContext, sizeof(Oid) * SPI_processed);
+        for (i = 0; i < SPI_processed; i++)
+            indexes[i] = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
+    }
+    SPI_finish();
+
+    return indexes;
+}
 
 Oid *oid_array_to_oids(ArrayType *arr, int *many) {
     if (ARR_NDIM(arr) != 1 || ARR_HASNULL(arr) || ARR_ELEMTYPE(arr) != OIDOID)

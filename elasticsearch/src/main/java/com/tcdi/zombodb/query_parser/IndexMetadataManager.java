@@ -24,9 +24,6 @@ import org.elasticsearch.common.collect.IdentityHashSet;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 2/11/15.
- */
 public class IndexMetadataManager {
 
     public static class IndexLinkAndMapping {
@@ -55,20 +52,12 @@ public class IndexMetadataManager {
         loadMapping(myIndex);
     }
 
-    public ASTIndexLink getOriginalMyIndex() {
-        return originalMyIndex;
-    }
-
     public ASTIndexLink getMyIndex() {
         return myIndex;
     }
 
     public void setMyIndex(ASTIndexLink myIndex) {
         this.myIndex = myIndex;
-    }
-
-    public boolean isMyIndexSwapped() {
-        return myIndex != originalMyIndex;
     }
 
     public Set<ASTIndexLink> getUsedIndexes() {
@@ -79,25 +68,12 @@ public class IndexMetadataManager {
         this.usedIndexes = usedIndexes;
     }
 
-    public Collection<IndexLinkAndMapping> getAllMappings() {
-        return mappings;
-    }
-
     private boolean isNestedObjectFieldExternal(String fieldname) {
         for (IndexLinkAndMapping ilap : mappings) {
             if (fieldname.equals(ilap.link.getFieldname()))
                 return true;
         }
         return false;
-    }
-
-    public boolean isFieldNested(String fieldname) {
-        if (!fieldname.contains("."))
-            return false;
-
-        IndexMetadata md = getMetadataForField(fieldname);
-        String base = fieldname.substring(0, fieldname.indexOf("."));
-        return !base.equals(md.getLink().getFieldname()) || (base.equals(md.getLink().getFieldname()) && fieldname.substring(fieldname.indexOf(".")+1).contains("."));
     }
 
     public ASTIndexLink getExternalIndexLink(String fieldname) {
@@ -137,7 +113,7 @@ public class IndexMetadataManager {
             return null;
 
         try {
-            return new IndexMetadata(link, lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data"));
+            return new IndexMetadata(link, lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()+".0").get("data"));
         } catch (NullPointerException npe) {
             return null;
         } catch (Exception e) {
@@ -158,7 +134,7 @@ public class IndexMetadataManager {
             return; // nothing we can do
 
         GetMappingsRequest getMappingsRequest = new GetMappingsRequest();
-        getMappingsRequest.indices(link.getIndexName()).types("data");
+        getMappingsRequest.indices(link.getIndexName()+".0").types("data");
         getMappingsRequest.indicesOptions(IndicesOptions.fromOptions(false, false, true, true));
         getMappingsRequest.local(false);
         mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, client.admin().indices().getMappings(getMappingsRequest)));
@@ -169,19 +145,17 @@ public class IndexMetadataManager {
         ASTIndexLink link = findField(fieldname);
         if (link == null)
             return null;
-        Map<String, ?> properties = getFieldProperties(link, fieldname);
 
-        return properties;
+        return getFieldProperties(link, fieldname);
     }
 
     private Map<String, ?> getFieldProperties(ASTIndexLink link, String fieldname) {
         try {
             if (isNestedObjectFieldExternal(fieldname)) {
                 link = getExternalIndexLink(fieldname);
-                Map properties = (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap();
-                return properties;
+                return (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()+".0").get("data").getSourceAsMap();
             } else {
-                Map properties = (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap().get("properties");
+                Map properties = (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()+".0").get("data").getSourceAsMap().get("properties");
                 return (Map<String, ?>) properties.get(fieldname);
             }
         } catch (NullPointerException npe) {
@@ -189,21 +163,6 @@ public class IndexMetadataManager {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public boolean isFieldElsewhere(String fieldname) {
-        if (fieldname == null || Arrays.binarySearch(IndexMetadata.IGNORED_FIELDS, fieldname) > -1)
-            return false;
-
-        for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings) {
-            ASTIndexLink link = ilam.link;
-
-            IndexMetadata md = getMetadata(link);
-            if (md != null && md.hasField(fieldname)) {
-                return link != myIndex;
-            }
-        }
-        return false;
     }
 
     public ASTIndexLink findField(String fieldname) {

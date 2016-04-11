@@ -40,6 +40,8 @@ typedef struct {
     int   fieldListsValueOffset;
 } ZDBIndexOptions;
 
+#define ZDB_MAX_SHARDS 64
+#define ZDB_MAX_REPLICAS 64
 
 #define ZDBIndexOptionsGetUrl(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->urlValueOffset > 0 ? \
@@ -87,6 +89,8 @@ typedef struct {
     char  *tableName;
     char  *indexName;
     char  *fullyQualifiedName;
+    int   shards;
+    int   current_pool_index;
 
     char *qualifiedTableName;
 
@@ -165,7 +169,6 @@ typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List
 
 typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
-typedef void (*ZDBIndexCommitXactData_function)(ZDBIndexDescriptor *indexDescriptor, List/*<ZDBCommitData *>*/ *datums);
 
 typedef void (*ZDBTransactionFinish_function)(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
@@ -207,8 +210,6 @@ struct ZDBIndexImplementation {
 
     ZDBIndexBatchInsertRow_function    batchInsertRow;
     ZDBIndexBatchInsertFinish_function batchInsertFinish;
-
-    ZDBIndexCommitXactData_function commitXactData;
 
     ZDBTransactionFinish_function transactionFinish;
 };
