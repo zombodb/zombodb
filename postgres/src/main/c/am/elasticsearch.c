@@ -30,6 +30,7 @@
 
 #include "elasticsearch.h"
 #include "zdbseqscan.h"
+#include "zdb_interface.h"
 
 #define MAX_LINKED_INDEXES 1024
 
@@ -888,67 +889,27 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
 void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data)
 {
-    BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
-
-    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk);
-    batch->nprocessed++;
-
-    if (batch->bulk->len > indexDescriptor->batch_size) {
-        StringInfo endpoint = makeStringInfo();
-        int        idx;
-
-        /* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-        appendStringInfo(endpoint, "%s/%s.%d/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
-
-        if (batch->rest->available == 0)
-            rest_multi_partial_cleanup(batch->rest, false, true);
+	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
 
 	appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk);
 	batch->nprocessed++;
 
-            rest_multi_partial_cleanup(batch->rest, false, true);
-            idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
-            if (idx < 0)
-                elog(ERROR, "Unable to add multicall after waiting");
-        }
-
-        /* reset the bulk StringInfo for the next batch of records */
-        batch->bulk = makeStringInfo();
-
-        batch->nrequests++;
-
-        elog(LOG, "Indexed %d rows for %s.%d", batch->nprocessed, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
-    }
-}
+	if (batch->bulk->len > indexDescriptor->batch_size)
+	{
+		StringInfo endpoint = makeStringInfo();
+		int idx;
 
 		/* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-		appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+		appendStringInfo(endpoint, "%s/%s.%d/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
 
 		if (batch->rest->available == 0)
 			rest_multi_partial_cleanup(batch->rest, false, true);
 
-        if (batch->bulk->len > 0) {
-            StringInfo endpoint = makeStringInfo();
-            StringInfo response;
-
-            appendStringInfo(endpoint, "%s/%s.%d/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
-
-            if (batch->nrequests == 0) {
-                /*
-                 * if this is the only request being made in this batch, then we'll ?refresh=true
-                 * to avoid an additional round-trip to ES
-                 */
-                appendStringInfo(endpoint, "?refresh=true");
-                response = rest_call("POST", endpoint->data, batch->bulk);
-            } else {
-                /*
-                 * otherwise we'll do a full refresh below, so there's no need to do it here
-                 */
-                response = rest_call("POST", endpoint->data, batch->bulk);
-            }
-            checkForBulkError(response, "batch finish");
-            freeStringInfo(response);
-        }
+		idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
+		if (idx < 0)
+		{
+			while(!rest_multi_is_available(batch->rest))
+				CHECK_FOR_INTERRUPTS();
 
 			rest_multi_partial_cleanup(batch->rest, false, true);
 			idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
@@ -962,6 +923,66 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 		batch->nrequests++;
 
 		elog(LOG, "Indexed %d rows for %s", batch->nprocessed, indexDescriptor->fullyQualifiedName);
+	}
+}
+
+void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
+{
+	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, false);
+
+	if (batch)
+	{
+		if (batch->nrequests > 0)
+		{
+			/** wait for all outstanding HTTP requests to finish */
+			while (!rest_multi_all_done(batch->rest)) {
+				rest_multi_is_available(batch->rest);
+				CHECK_FOR_INTERRUPTS();
+			}
+			rest_multi_partial_cleanup(batch->rest, true, false);
+		}
+
+		if (batch->bulk->len > 0)
+		{
+			StringInfo endpoint = makeStringInfo();
+			StringInfo response;
+
+			appendStringInfo(endpoint, "%s/%s.%d/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
+
+			if (batch->nrequests == 0)
+			{
+				/*
+				 * if this is the only request being made in this batch, then we'll ?refresh=true
+				 * to avoid an additional round-trip to ES
+				 */
+				appendStringInfo(endpoint, "?refresh=true");
+				response = rest_call("POST", endpoint->data, batch->bulk);
+			}
+			else
+			{
+				/*
+				 * otherwise we'll do a full refresh below, so there's no need to do it here
+				 */
+				response = rest_call("POST", endpoint->data, batch->bulk);
+			}
+			checkForBulkError(response, "batch finish");
+			freeStringInfo(response);
+		}
+
+		/*
+		 * If this wasn't the only request being made in this batch
+		 * then ask ES to refresh the index
+		 */
+		if (batch->nrequests > 0)
+			elasticsearch_refreshIndex(indexDescriptor);
+
+		freeStringInfo(batch->bulk);
+
+		if (batch->nrequests > 0)
+			elog(LOG, "Indexed %d rows in %d requests for %s.%d", batch->nprocessed, batch->nrequests+1, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
+
+		batchInsertDataList = list_delete(batchInsertDataList, batch);
+		pfree(batch);
 	}
 }
 

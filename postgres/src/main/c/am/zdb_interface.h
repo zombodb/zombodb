@@ -81,7 +81,6 @@ typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 typedef struct {
 	Oid   indexRelid;
     Oid   heapRelid;
-<<<<<<< HEAD
 	int64 advisory_mutex;
 	bool  isShadow;
 	bool  logit;
@@ -90,18 +89,8 @@ typedef struct {
 	char  *tableName;
 	char  *indexName;
 	char  *fullyQualifiedName;
-=======
-    int64 advisory_mutex;
-    bool  isShadow;
-    bool  logit;
-    char  *databaseName;
-    char  *schemaName;
-    char  *tableName;
-    char  *indexName;
-    char  *fullyQualifiedName;
-    int   shards;
-    int   current_pool_index;
->>>>>>> 55df836... - implement an index pool that lives in shared memory and round-robins around each "sub index" (one per shard)
+	int   shards;
+	int   current_pool_index;
 
 	char *qualifiedTableName;
 
