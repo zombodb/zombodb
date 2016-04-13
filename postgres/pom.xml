@@ -61,6 +61,7 @@
                                     <mappings>
                                         <mapping>
                                             <directory>/</directory>
+                                            <directoryIncluded>false</directoryIncluded>
                                             <sources>
                                                 <source>
                                                     <location>${project.build.directory}/centos6/</location>
@@ -87,6 +88,7 @@
                                     <mappings>
                                         <mapping>
                                             <directory>/</directory>
+                                            <directoryIncluded>false</directoryIncluded>
                                             <sources>
                                                 <source>
                                                     <location>${project.build.directory}/centos7/</location>
@@ -115,7 +117,7 @@
                                     </deb>
                                     <dataSet>
                                         <data>
-                                            <src>${project.build.directory}/ubuntu_trusty/</src>
+                                            <src>${project.build.directory}/ubuntu_precise/</src>
                                             <type>directory</type>
                                             <mapper>
                                                 <type>perm</type>
@@ -136,7 +138,7 @@
                                     </deb>
                                     <dataSet>
                                         <data>
-                                            <src>${project.build.directory}/ubuntu_precise/</src>
+                                            <src>${project.build.directory}/ubuntu_trusty/</src>
                                             <type>directory</type>
                                             <mapper>
                                                 <type>perm</type>
