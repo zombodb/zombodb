@@ -3867,6 +3867,26 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testProximityHighlighting() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+        DocumentHighlighter highlighter;
+        List<AnalyzedField.Token> highlights;
+
+        data.put("phrase_field", "attorneys have general blah blah blah blah networks");
+        highlighter = new DocumentHighlighter(client(),
+                DEFAULT_INDEX_NAME,
+                "id",
+                data,
+                "( ((\"attorney*\" w/2 \"general\") w/50 \"network*\") )");
+        highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
+
+        assertEquals("[{\"term\":\"attorneys\",\"startOffset\":0,\"endOffset\":9,\"position\":1,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\"},{\"term\":\"general\",\"startOffset\":15,\"endOffset\":22,\"position\":3,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\"},{\"term\":\"networks\",\"startOffset\":43,\"endOffset\":51,\"position\":8,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\"}]",
+                new ObjectMapper().writeValueAsString(highlights));
+    }
+
+    @Test
     public void testIssue75_Connectors() throws Exception {
         assertAST("#bool(#must() #should() #must_not())",
                 "QueryTree\n" +
