@@ -273,9 +273,16 @@ public class AnalyzedField {
 
             left.setOperator(proximity.getOperator());
             right.setOperator(proximity.getOperator());
-            if (right instanceof ASTProximity) {
+            if (right instanceof ASTProximity || left instanceof ASTProximity) {
                 int distance = proximity.getDistance();
                 boolean ordered = proximity.isOrdered();
+
+                if (left instanceof ASTProximity) {
+                    // swap left and right
+                    QueryParserNode tmp = right;
+                    right = left;
+                    left = tmp;
+                }
                 List<Token> leftTokens = match(left);
 
                 keep((ASTProximity) right, scratch);
