@@ -38,7 +38,7 @@ Suppose you want to do a full-text query against the `books_with_content` view. 
 SELECT * FROM books_with_content WHERE zdb ==> 'author:foo and content:(beer w/3 wine w/30 cheese and food)';
 ```
 
-Unfortunately, the above query will return zero rows because the index on `book` (which will be the chosen index due to the `zdb(book) AS zdb` column in the VIEW) doesn't have a column named `content` -- that data lives in the `book_content` table.
+Unfortunately, the above query will return zero rows because the index on `book` (which will be the chosen index due to the `zdb('book', book.ctid) AS zdb` column in the VIEW) doesn't have a column named `content` -- that data lives in the `book_content` table.
 
 We need to tell the index on `book` how to find corresponding `book_content` using an "index link".  This is done through ZomboDB's index `options`:
 
