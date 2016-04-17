@@ -82,4 +82,3 @@ Running a standard `VACUUM` on a table with a ZomboDB index does the minimum amo
 
 Running a `VACUUM FULL` on a table with a ZomboDB index, on the otherhand, is functionally equilivant to running a `REINDEX` on the table, which means a `VACUUM FULL` could take a long time to complete.
 
-A [`VACUUM FREEZE`](http://www.postgresql.org/docs/9.4/static/routine-vacuuming.html#VACUUM-FOR-WRAPAROUND) (and autovacuum's anti-wrap-around procedure) will leave ZomboDB indexes in an inconsistent state.  After a `VACUUM FREEZE` on a table, any of its ZomboDB indexes must be `REINDEX`ed.  This is because ZomboDB stores transaction visibility information in the remote Elasticsearch index (the same xmin,xmax,etc values stored on every heap tuple) and Postgres doesn't (yet) provide a way to be notified when that data is changed via VACUUM.
