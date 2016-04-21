@@ -22,26 +22,36 @@ static ZDBIndexPoolEntry *zdb_pool_get_entry(ZDBIndexDescriptor *desc) {
 
 void zdb_pool_checkout(ZDBIndexDescriptor *desc) {
     ZDBIndexPoolEntry *entry = zdb_pool_get_entry(desc);
-    int i;
-    bool got_it = false;
 
-    DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex));
-    for (i=entry->start_at%desc->shards; i<desc->shards; i++) {
-        if (!entry->allocated[i]) {
-            entry->allocated[i] = true;
-            entry->start_at++;
-            got_it = true;
-            break;
+    desc->current_pool_index = InvalidPoolIndex;
+    while (true) {
+        DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex));
+
+        if (desc->shards == 1) {
+            if (!entry->allocated[0]) {
+                entry->allocated[0] = true;
+                entry->start_at = 0;
+                desc->current_pool_index = 0;
+            }
+        } else {
+            int i;
+
+            for (i = entry->start_at % desc->shards; i < desc->shards; i++) {
+                if (!entry->allocated[i]) {
+                    entry->allocated[i] = true;
+                    entry->start_at++;
+                    desc->current_pool_index = i;
+                    break;
+                }
+            }
         }
-    }
-    DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
+        DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
 
-    if (!got_it) {
-        // TODO:  how to wait and retry?
-        elog(ERROR, "No pool entries available");
-    }
+        if (desc->current_pool_index != InvalidPoolIndex)
+            break;
 
-    desc->current_pool_index = i;
+        pg_usleep(100000);
+    }
 }
 
 void zdb_pool_checkin(ZDBIndexDescriptor *desc) {
