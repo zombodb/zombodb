@@ -96,6 +96,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
+static List *bulkDeleteList      = NULL;
 
 /* For tracking/pushing changed tuples */
 static ExecutorStart_hook_type prev_ExecutorStartHook = NULL;
@@ -193,6 +194,7 @@ static void xact_complete_cleanup(XactEvent event) {
     /* free up our static vars on xact finish */
     usedIndexesList     = NULL;
     indexesInsertedList = NULL;
+	bulkDeleteList      = NULL;
 	executorDepth = 0;
 	numHitsFound = -1;
 
@@ -752,6 +754,13 @@ zdbrestrpos(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
+
+static void bulkdelete_callback(ItemPointer ctid, void *data) {
+	ItemPointer copy = palloc(sizeof(ItemPointerData));
+	ItemPointerCopy(ctid, copy);
+	bulkDeleteList = lappend(bulkDeleteList, copy);
+}
+
 /*
  * Bulk deletion of all index entries pointing to a set of heap tuples.
  * The set of target tuples is specified via a callback routine that tells
@@ -764,15 +773,10 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 {
 	IndexVacuumInfo *info = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
 	IndexBulkDeleteResult *volatile stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
-	IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
-	void                    *callback_state = (void *) PG_GETARG_POINTER(3);
-	Relation                indexRel        = info->index;
-	ZDBIndexDescriptor      *desc;
-	ZDBSearchResponse       *items;
-	List                    *to_delete      = NULL;
-	int                     many            = 0;
-	uint64                  nitems;
-	int                     i;
+	Relation           indexRel = info->index;
+	Relation           heapRel;
+	ZDBIndexDescriptor *desc;
+	int                many     = 0;
 
 	/* allocate stats if first time through, else re-use existing struct */
 	if (stats == NULL)
@@ -782,32 +786,13 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 	if (desc->isShadow)
 		PG_RETURN_POINTER(stats);
 
-	items = desc->implementation->getPossiblyExpiredItems(desc, &nitems);
-
-	for (i = 0; i < nitems; i++)
-	{
-		ItemPointerData *ctid = palloc(sizeof(ItemPointerData));
-		ZDBScore score;
-
-		CHECK_FOR_INTERRUPTS();
-
-		set_item_pointer(items, i, ctid, &score);
-		if (!ItemPointerIsValid(ctid))
-			continue;
-
-		if (callback(ctid, callback_state))
-		{
-			to_delete = lappend(to_delete, ctid);
-			many++;
-		}
-	}
+	heapRel = RelationIdGetRelation(desc->heapRelid);
+	many = find_invisible_ctids_with_callback(heapRel, bulkdelete_callback, NULL);
+	RelationClose(heapRel);
 
 	if (many > 0)
-	{
-		desc->implementation->bulkDelete(desc, to_delete, many);
-	}
-
-	desc->implementation->freeSearchResponse(items);
+		desc->implementation->bulkDelete(desc, bulkDeleteList, many);
+	bulkDeleteList = NULL;
 
 	PG_RETURN_POINTER(stats);
 }

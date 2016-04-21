@@ -244,25 +244,38 @@ char **text_array_to_strings(ArrayType *array, int *many)
     return result;
 }
 
-StringInfo find_invisible_ctids(Relation rel) {
-    int        cnt = visibilitymap_count(rel);
-    StringInfo sb  = makeStringInfo();
+static void string_invisibility_callback(ItemPointer ctid, void *stringInfo) {
+    StringInfo sb = (StringInfo) stringInfo;
+    if (sb->len > 0)
+        appendStringInfoChar(sb, ',');
+    appendStringInfo(sb, "%d-%d", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
+}
 
-    if (cnt == 0 || cnt != rel->rd_rel->relpages) {
+StringInfo find_invisible_ctids(Relation rel) {
+    StringInfo sb = makeStringInfo();
+
+    find_invisible_ctids_with_callback(rel, string_invisibility_callback, sb);
+    return sb;
+}
+
+int find_invisible_ctids_with_callback(Relation heapRel, invisibility_callback cb, void *user_data) {
+    int cnt = visibilitymap_count(heapRel);
+    int many = 0;
+
+    if (cnt == 0 || cnt != heapRel->rd_rel->relpages) {
         BlockNumber       i;
         OffsetNumber      j;
         IndexScanDescData scan;
-        int               many = 0;
 
         memset(&scan, 0, sizeof(IndexScanDescData));
-        scan.heapRelation = rel;
+        scan.heapRelation = heapRel;
         scan.xs_snapshot  = GetActiveSnapshot();
 
-        for (i = 0; i < RelationGetNumberOfBlocks(rel); i++) {
+        for (i = 0; i < RelationGetNumberOfBlocks(heapRel); i++) {
             Buffer vmap_buff = InvalidBuffer;
             bool   allVisible;
 
-            allVisible = visibilitymap_test(rel, i, &vmap_buff);
+            allVisible = visibilitymap_test(heapRel, i, &vmap_buff);
             if (!BufferIsInvalid(vmap_buff)) {
                 ReleaseBuffer(vmap_buff);
                 vmap_buff = InvalidBuffer;
@@ -279,8 +292,7 @@ StringInfo find_invisible_ctids(Relation rel) {
 
                     if (rc == 0) {
                         /* tuple is invisible to us */
-                        if (many > 0) appendStringInfoChar(sb, ',');
-                        appendStringInfo(sb, "%d-%d", i, j);
+                        cb(&scan.xs_ctup.t_self, user_data);
                         many++;
                     }
                 }
@@ -292,7 +304,7 @@ StringInfo find_invisible_ctids(Relation rel) {
         }
     }
 
-    return sb;
+    return many;
 }
 
 static int tuple_is_visible(IndexScanDesc scan) {
