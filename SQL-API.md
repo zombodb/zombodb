@@ -70,7 +70,7 @@ thai
 
 > ```r```: a record reference
 > 
->This function is required when creating "zombodb" indexes as the **second** column.
+>This function is required as the **second** column when creating "zombodb" indexes via `CREATE INDEX`.
 >
 >returns a JSON-ified version of input record.
 >

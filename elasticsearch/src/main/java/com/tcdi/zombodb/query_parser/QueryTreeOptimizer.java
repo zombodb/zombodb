@@ -159,7 +159,7 @@ public class QueryTreeOptimizer {
             if (child.isNested() && root instanceof ASTAnd)
                 continue;
 
-            if (child instanceof ASTWord || child instanceof ASTNumber || child instanceof ASTBoolean || child instanceof ASTArray) {
+            if (child instanceof ASTWord || child instanceof ASTPhrase || child instanceof ASTNumber || child instanceof ASTBoolean || child instanceof ASTArray) {
                 if (child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ || child.getOperator() == QueryParserNode.Operator.NE) {
                     if (child instanceof ASTArray && isAnd)
                         continue;   // arrays within an ASTAnd cannot be merged
@@ -167,36 +167,33 @@ public class QueryTreeOptimizer {
                     if (child.boost != root.boost)
                         continue;
 
-                    if (child instanceof ASTArray || !Utils.isComplexTerm(child.getValue().toString())) {
-
-                        array = null;
-                        for (ASTArray a : arraysByField.values()) {
-                            if (a.getFieldname().equals(child.getFieldname()) && a.getOperator() == child.getOperator()) {
-                                array = a;
-                                break;
-                            }
+                    array = null;
+                    for (ASTArray a : arraysByField.values()) {
+                        if (a.getFieldname().equals(child.getFieldname()) && a.getOperator() == child.getOperator()) {
+                            array = a;
+                            break;
                         }
-
-                        if (array == null) {
-                            array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
-                            array.setAnd(isAnd);
-                            array.setFieldname(child.getFieldname());
-                            array.setOperator(child.getOperator());
-                            arraysByField.put(i, array);
-                        }
-
-                        if (array.parent == null) {
-                            if (child instanceof ASTArray) {
-                                array.adoptChildren(child);
-                            } else {
-                                array.jjtAddChild(child, array.jjtGetNumChildren());
-                                child.parent = array;
-                            }
-                        }
-
-                        root.removeNode(i);
-                        needsRenumber = true;
                     }
+
+                    if (array == null) {
+                        array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
+                        array.setAnd(isAnd);
+                        array.setFieldname(child.getFieldname());
+                        array.setOperator(child.getOperator());
+                        arraysByField.put(i, array);
+                    }
+
+                    if (array.parent == null) {
+                        if (child instanceof ASTArray) {
+                            array.adoptChildren(child);
+                        } else {
+                            array.jjtAddChild(child, array.jjtGetNumChildren());
+                            child.parent = array;
+                        }
+                    }
+
+                    root.removeNode(i);
+                    needsRenumber = true;
                 }
             }
         }

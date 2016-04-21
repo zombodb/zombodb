@@ -281,15 +281,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "                  Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
                         "                  Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
                         "                  Or\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "                     Array (fieldname=data_custodian, operator=EQ, index=db.schema.table.index) (OR)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
+                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
                         "                  Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
                         "                  Not\n" +
                         "                     NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
@@ -299,15 +300,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "               Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
                         "               Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
                         "               Or\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "                  Array (fieldname=data_custodian, operator=EQ, index=db.schema.table.index) (OR)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
                         "               Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
                         "               Not\n" +
                         "                  NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)"
@@ -1679,35 +1681,13 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"bool\" : {\n" +
                         "    \"must\" : [ {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"query\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ]\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"path\" : \"review_data_ben\"\n" +
+                        "      \"nested\" : {\n" +
+                        "        \"query\" : {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
                         "          }\n" +
-                        "        }, {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"query\" : {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"path\" : \"review_data_ben\"\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"nested\" : {\n" +
-                        "            \"query\" : {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            \"path\" : \"review_data_ben\"\n" +
-                        "          }\n" +
-                        "        } ]\n" +
+                        "        },\n" +
+                        "        \"path\" : \"review_data_ben\"\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"nested\" : {\n" +
@@ -1737,19 +1717,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "          }\n" +
                         "        }, {\n" +
                         "          \"bool\" : {\n" +
-                        "            \"should\" : [ {\n" +
+                        "            \"should\" : {\n" +
                         "              \"terms\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"unreviewable\" ]\n" +
+                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
                         "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : \"potentially responsive\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : \"not responsive\"\n" +
-                        "              }\n" +
-                        "            } ]\n" +
+                        "            }\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -3166,9 +3138,17 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"bool\" : {\n" +
                         "    \"must\" : [ {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"literal_term\", \"quoted_term\" ],\n" +
-                        "        \"minimum_should_match\" : \"2\"\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"wildcard\" : {\n" +
+                        "            \"exact_field\" : \"phrase with *wildcard*\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"exact_field\" : [ \"literal_term\", \"quoted_term\", \"phrase value\" ],\n" +
+                        "            \"minimum_should_match\" : \"3\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"prefix\" : {\n" +
@@ -3186,17 +3166,46 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"term\" : {\n" +
-                        "        \"exact_field\" : \"phrase value\"\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"wildcard\" : {\n" +
-                        "        \"exact_field\" : \"phrase with *wildcard*\"\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"phrase_field\" : [ \"literal_term\", \"quoted_term\" ],\n" +
-                        "        \"minimum_should_match\" : \"2\"\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"match\" : {\n" +
+                        "            \"phrase_field\" : {\n" +
+                        "              \"query\" : \"phrase value\",\n" +
+                        "              \"type\" : \"phrase\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_near\" : {\n" +
+                        "            \"clauses\" : [ {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"phrase\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"with\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"span_multi\" : {\n" +
+                        "                \"match\" : {\n" +
+                        "                  \"wildcard\" : {\n" +
+                        "                    \"phrase_field\" : \"*wildcard*\"\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            } ],\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"in_order\" : true\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"phrase_field\" : [ \"literal_term\", \"quoted_term\" ],\n" +
+                        "            \"minimum_should_match\" : \"2\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"prefix\" : {\n" +
@@ -3212,39 +3221,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "          \"value\" : \"fuzzy\",\n" +
                         "          \"prefix_length\" : 3\n" +
                         "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"phrase value\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"span_near\" : {\n" +
-                        "        \"clauses\" : [ {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"phrase_field\" : {\n" +
-                        "              \"value\" : \"phrase\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"phrase_field\" : {\n" +
-                        "              \"value\" : \"with\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_multi\" : {\n" +
-                        "            \"match\" : {\n" +
-                        "              \"wildcard\" : {\n" +
-                        "                \"phrase_field\" : \"*wildcard*\"\n" +
-                        "              }\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        } ],\n" +
-                        "        \"slop\" : 0,\n" +
-                        "        \"in_order\" : true\n" +
                         "      }\n" +
                         "    } ]\n" +
                         "  }\n" +
@@ -3472,7 +3448,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
-                        "      And\n" +
+                        "      Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
                         "         Word (fieldname=exact_field, operator=CONTAINS, value=asdflkj234-132asdfuj, index=db.schema.table.index)\n" +
                         "         Word (fieldname=exact_field, operator=CONTAINS, value=asiodfja;sdf, index=db.schema.table.index)\n" +
                         "         Word (fieldname=exact_field, operator=CONTAINS, value=#487adqerydfskf0230, index=db.schema.table.index)\n" +
@@ -3485,7 +3461,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("phrase_field:(asdflkj234-132asdfuj asiodfja;sdf #487adqerydfskf0230 &@#$23)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must\" : [ {\n" +
+                        "    \"should\" : [ {\n" +
                         "      \"match\" : {\n" +
                         "        \"phrase_field\" : {\n" +
                         "          \"query\" : \"asdflkj234-132asdfuj\",\n" +
@@ -3500,12 +3476,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"term\" : {\n" +
-                        "        \"phrase_field\" : \"487adqerydfskf0230\"\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"term\" : {\n" +
-                        "        \"phrase_field\" : \"23\"\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"phrase_field\" : [ \"487adqerydfskf0230\", \"23\" ],\n" +
+                        "        \"minimum_should_match\" : \"2\"\n" +
                         "      }\n" +
                         "    } ]\n" +
                         "  }\n" +
@@ -4395,5 +4368,76 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testExactPhrasesGetMerged() throws Exception {
+        assertJson("( (( AND ( data_client_name = WELLMARK AND (exact_field = \"asdf, CATHI (sdfg)\" OR " +
+                "exact_field = \"sdfg, qwer\" OR exact_field = \"swergs, ersd\" OR exact_field = \"wergf, fsd\" OR " +
+                "exact_field = \"DHJ, hsdgf\" OR exact_field = \"dfbg, werfdvc\" OR exact_field = \"sdfg, wwwert\" OR " +
+                "exact_field = \"ersfd, KJHSA\" OR exact_field = \"AIUKSJD, kasdf\" OR exact_field = \"sdfg, werww\") AND " +
+                "data_date_combined_family <= \"2013-12-31\" AND data_duplicate_resource = NO AND " +
+                "(data_record_type = EMAIL OR data_record_type = \"EMAIL ATTACHMENT\" OR data_record_type = \"EMAIL ATTACHMENT OLE\") AND data_filter_universal = \"*\" AND data_moved_to: null ) ) ) )",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"data_client_name\" : \"wellmark\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"exact_field\" : [ \"asdf, cathi (sdfg)\", \"sdfg, qwer\", \"swergs, ersd\", \"wergf, fsd\", \"dhj, hsdgf\", \"dfbg, werfdvc\", \"sdfg, wwwert\", \"ersfd, kjhsa\", \"aiuksjd, kasdf\", \"sdfg, werww\" ]\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"range\" : {\n" +
+                        "        \"data_date_combined_family\" : {\n" +
+                        "          \"from\" : null,\n" +
+                        "          \"to\" : \"2013-12-31\",\n" +
+                        "          \"include_lower\" : true,\n" +
+                        "          \"include_upper\" : true\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"data_duplicate_resource\" : \"no\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"data_record_type\" : [ \"email\", \"email attachment\", \"email attachment ole\" ]\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"filtered\" : {\n" +
+                        "        \"query\" : {\n" +
+                        "          \"match_all\" : { }\n" +
+                        "        },\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"exists\" : {\n" +
+                        "            \"field\" : \"data_filter_universal\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"filtered\" : {\n" +
+                        "        \"query\" : {\n" +
+                        "          \"match_all\" : { }\n" +
+                        "        },\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"missing\" : {\n" +
+                        "            \"field\" : \"data_moved_to\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+    
 }
 
