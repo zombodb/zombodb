@@ -766,7 +766,7 @@ char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, ch
 	if (indexDescriptor->options)
 		appendStringInfo(request, "#options(%s) ", indexDescriptor->options);
 
-    appendStringInfo(endpoint, "%s/%s.0/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
+    appendStringInfo(endpoint, "%s/%s/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
     response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(endpoint);

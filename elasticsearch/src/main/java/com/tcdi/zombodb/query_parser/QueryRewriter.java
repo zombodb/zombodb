@@ -187,10 +187,13 @@ public class QueryRewriter {
     }
 
     public QueryBuilder rewriteQuery() {
+        QueryBuilder qb = build(tree);
+        queryRewritten = true;
+
         try {
-            return applyExclusion(build(tree), indexName);
-        } finally {
-            queryRewritten = true;
+            return applyExclusion(qb, getAggregateIndexName());
+        } catch (Exception e) {
+            return applyExclusion(qb, getSearchIndexName());
         }
     }
 
