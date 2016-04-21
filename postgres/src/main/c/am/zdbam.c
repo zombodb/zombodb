@@ -37,6 +37,7 @@
 #include "utils/builtins.h"
 
 #include "zdb_interface.h"
+#include "zdbpool.h"
 #include "zdbops.h"
 #include "zdbam.h"
 #include "zdbseqscan.h"
@@ -60,15 +61,6 @@ PG_FUNCTION_INFO_V1(zdbeventtrigger);
 PG_FUNCTION_INFO_V1(zdbcostestimate);
 
 PG_FUNCTION_INFO_V1(zdb_num_hits);
-
-/* index pool support */
-
-#define InvalidPoolIndex -1
-
-typedef struct {
-    bool allocated[ZDB_MAX_SHARDS];
-    uint32  start_at;
-} ZDBIndexPoolEntry;
 
 /* Working state for zdbbuild and its callback */
 typedef struct
@@ -108,53 +100,6 @@ static ExecutorFinish_hook_type   prev_ExecutorFinishHook  = NULL;
 static int executorDepth = 0;
 
 static int64 numHitsFound = -1;
-
-static ZDBIndexPoolEntry *zdb_pool_get_entry(ZDBIndexDescriptor *desc) {
-    ZDBIndexPoolEntry *entry;
-    bool found;
-
-    LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
-    entry = (ZDBIndexPoolEntry *) ShmemInitStruct(desc->fullyQualifiedName, sizeof(ZDBIndexPoolEntry), &found);
-    if (!found)
-        memset(entry, 0, sizeof(ZDBIndexPoolEntry));
-    LWLockRelease(AddinShmemInitLock);
-
-    return entry;
-}
-
-static void zdb_pool_checkout(ZDBIndexDescriptor *desc) {
-    ZDBIndexPoolEntry *entry = zdb_pool_get_entry(desc);
-    int i;
-
-    DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex));
-    for (i=entry->start_at%desc->shards; i<desc->shards; i++) {
-        if (!entry->allocated[i]) {
-            entry->allocated[i] = true;
-            entry->start_at++;
-            break;
-        }
-    }
-    DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
-
-    if (i == ZDB_MAX_SHARDS) {
-        // TODO:  how to wait and retry?
-        elog(ERROR, "No pool entries available");
-    }
-
-    desc->current_pool_index = i;
-}
-
-static void zdb_pool_checkin(ZDBIndexDescriptor *desc) {
-    if (desc->current_pool_index != InvalidPoolIndex) {
-        ZDBIndexPoolEntry *entry = zdb_pool_get_entry(desc);
-
-        DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex));
-        entry->allocated[desc->current_pool_index] = false;
-        DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
-
-        desc->current_pool_index = InvalidPoolIndex;
-    }
-}
 
 static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forInsert)
 {

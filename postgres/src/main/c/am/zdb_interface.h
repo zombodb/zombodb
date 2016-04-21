@@ -40,9 +40,6 @@ typedef struct
 	int   fieldListsValueOffset;
 } ZDBIndexOptions;
 
-#define ZDB_MAX_SHARDS 64
-#define ZDB_MAX_REPLICAS 64
-
 #define ZDBIndexOptionsGetUrl(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->urlValueOffset > 0 ? \
       (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->urlValueOffset : (NULL))
