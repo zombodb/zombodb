@@ -4,7 +4,7 @@
 
 # Pull base image.
 FROM postgres:9.3
-ENV ZOMBODB_VER 2.6.11
+ENV ZOMBODB_VER 2.6.12
 
 # Fetch wget
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
