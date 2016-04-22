@@ -87,11 +87,13 @@ public class QueryTreeOptimizer {
                 {
                     Set<String> fieldnames = new HashSet<String>();
                     for (QueryParserNode n : child) {
-                        fieldnames.add(n.getFieldname());
+                        if (n.getFieldname() != null)
+                            fieldnames.add(n.getFieldname());
                     }
                     if (fieldnames.size() > 1)
                         throw new RuntimeException("Cannot mix fieldnames in PROXIMITY expression");
-                    child.setFieldname(fieldnames.iterator().next());
+                    else if (fieldnames.size() == 1)
+                        child.setFieldname(fieldnames.iterator().next());
                 }
             } else {
                 validateAndFixProximityChainFieldnames(child);
