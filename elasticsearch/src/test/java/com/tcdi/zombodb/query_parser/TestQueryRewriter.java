@@ -4438,6 +4438,112 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
-    
+
+    @Test
+    public void testProximityForIssue105_1() throws Exception {
+        assertJson("fulltext:('lunch meeting' w/100 (food or drink*))",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_term\" : {\n" +
+                        "        \"fulltext\" : {\n" +
+                        "          \"value\" : \"lunch meeting\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_or\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"fulltext\" : {\n" +
+                        "              \"value\" : \"food\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_multi\" : {\n" +
+                        "            \"match\" : {\n" +
+                        "              \"prefix\" : {\n" +
+                        "                \"fulltext\" : \"drink\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 100,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testProximityForIssue105_2() throws Exception {
+        assertJson("fulltext:(term1 w/3 (term2 OR term3)) w/10 (term or list)",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_near\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"fulltext\" : {\n" +
+                        "              \"value\" : \"term1\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_or\" : {\n" +
+                        "            \"clauses\" : [ {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"fulltext\" : {\n" +
+                        "                  \"value\" : \"term2\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"fulltext\" : {\n" +
+                        "                  \"value\" : \"term3\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            } ]\n" +
+                        "          }\n" +
+                        "        } ],\n" +
+                        "        \"slop\" : 3,\n" +
+                        "        \"in_order\" : false\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_or\" : {\n" +
+                        "        \"clauses\" : [ {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"fulltext\" : {\n" +
+                        "              \"value\" : \"term\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"fulltext\" : {\n" +
+                        "              \"value\" : \"term\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"fulltext\" : {\n" +
+                        "              \"value\" : \"list\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"span_term\" : {\n" +
+                        "            \"fulltext\" : {\n" +
+                        "              \"value\" : \"list\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 10,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
 }
 
