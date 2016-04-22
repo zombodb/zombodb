@@ -257,7 +257,7 @@ StringInfo find_invisible_ctids(Relation rel, int64 mutex) {
 
 	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(mutex));
     find_invisible_ctids_with_callback(rel, string_invisibility_callback, sb);
-	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(mutex));
+	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(mutex));
     return sb;
 }
 
