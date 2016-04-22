@@ -28,6 +28,7 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
+#include "utils/tqual.h"
 
 #include "zdbutils.h"
 
@@ -251,10 +252,12 @@ static void string_invisibility_callback(ItemPointer ctid, void *stringInfo) {
     appendStringInfo(sb, "%d-%d", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
 }
 
-StringInfo find_invisible_ctids(Relation rel) {
+StringInfo find_invisible_ctids(Relation rel, int64 mutex) {
     StringInfo sb = makeStringInfo();
 
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(mutex));
     find_invisible_ctids_with_callback(rel, string_invisibility_callback, sb);
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(mutex));
     return sb;
 }
 
@@ -296,10 +299,6 @@ int find_invisible_ctids_with_callback(Relation heapRel, invisibility_callback c
                         many++;
                     }
                 }
-                if (BufferIsValid(scan.xs_cbuf)) {
-                    ReleaseBuffer(scan.xs_cbuf);
-                    scan.xs_cbuf = InvalidBuffer;
-                }
             }
         }
     }
@@ -309,25 +308,26 @@ int find_invisible_ctids_with_callback(Relation heapRel, invisibility_callback c
 
 static int tuple_is_visible(IndexScanDesc scan) {
     ItemPointer tid      = &scan->xs_ctup.t_self;
-    bool        all_dead = false;
     bool        got_heap_tuple;
     Page        page;
+    bool        mvcc = false;
+    int maxoff;
 
-    if (scan->xs_cbuf == InvalidBuffer) {
-        /* Switch to correct buffer if we don't have it already */
-        scan->xs_cbuf = ReleaseAndReadBuffer(scan->xs_cbuf, scan->heapRelation, ItemPointerGetBlockNumber(tid));
-    }
-
+    scan->xs_cbuf = ReadBuffer(scan->heapRelation, ItemPointerGetBlockNumber(tid));
     page = BufferGetPage(scan->xs_cbuf);
-    if (ItemPointerGetOffsetNumber(tid) > PageGetMaxOffsetNumber(page)) {
+    maxoff = PageGetMaxOffsetNumber(page);
+    ReleaseBuffer(scan->xs_cbuf);
+
+    if (ItemPointerGetOffsetNumber(tid) > maxoff) {
         /* no more items on this page */
         return 2;
     }
 
     /* Obtain share-lock on the buffer so we can examine visibility */
-    LockBuffer(scan->xs_cbuf, BUFFER_LOCK_SHARE);
-    got_heap_tuple = heap_hot_search_buffer(tid, scan->heapRelation, scan->xs_cbuf, scan->xs_snapshot, &scan->xs_ctup, &all_dead, !scan->xs_continue_hot);
-    LockBuffer(scan->xs_cbuf, BUFFER_LOCK_UNLOCK);
+    got_heap_tuple = heap_fetch(scan->heapRelation, scan->xs_snapshot, &scan->xs_ctup, &scan->xs_cbuf, true, NULL);
+    if (got_heap_tuple)
+        mvcc = HeapTupleSatisfiesNow(scan->xs_ctup.t_data, scan->xs_snapshot, scan->xs_cbuf);
+    ReleaseBuffer(scan->xs_cbuf);
 
-    return got_heap_tuple;
+    return mvcc;
 }

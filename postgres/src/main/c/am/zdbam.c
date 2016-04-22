@@ -88,7 +88,6 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
-static List *bulkDeleteList      = NULL;
 
 /* For tracking/pushing changed tuples */
 static ExecutorStart_hook_type prev_ExecutorStartHook = NULL;
@@ -132,14 +131,15 @@ static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forIns
 }
 
 static void xact_complete_cleanup(XactEvent event) {
-    ListCell *lc;
-
     List *usedIndexes = usedIndexesList;
+	ListCell *lc;
+
+	/* don't leave any dangling advisory locks */
+	DirectFunctionCall1(pg_advisory_unlock_all, PointerGetDatum(NULL));
 
     /* free up our static vars on xact finish */
     usedIndexesList     = NULL;
     indexesInsertedList = NULL;
-	bulkDeleteList      = NULL;
 	executorDepth = 0;
 	numHitsFound = -1;
 
@@ -699,11 +699,22 @@ zdbrestrpos(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
+typedef struct {
+	IndexBulkDeleteCallback callback;
+	void                    *callback_state;
+	List *bulkDeleteList;
+	int many;
+} ZDBBulkDeleteState;
 
 static void bulkdelete_callback(ItemPointer ctid, void *data) {
-	ItemPointer copy = palloc(sizeof(ItemPointerData));
-	ItemPointerCopy(ctid, copy);
-	bulkDeleteList = lappend(bulkDeleteList, copy);
+	ZDBBulkDeleteState *state = (ZDBBulkDeleteState *) data;
+
+	if (state->callback(ctid, state->callback_state)) {
+		ItemPointer copy = palloc(sizeof(ItemPointerData));
+		ItemPointerCopy(ctid, copy);
+		state->bulkDeleteList = lappend(state->bulkDeleteList, copy);
+		state->many++;
+	}
 }
 
 /*
@@ -718,10 +729,12 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 {
 	IndexVacuumInfo *info = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
 	IndexBulkDeleteResult *volatile stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
+	IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
+	void                    *callback_state = (void *) PG_GETARG_POINTER(3);
 	Relation           indexRel = info->index;
 	Relation           heapRel;
 	ZDBIndexDescriptor *desc;
-	int                many     = 0;
+	ZDBBulkDeleteState *deleteState = palloc0(sizeof(ZDBBulkDeleteState));
 
 	/* allocate stats if first time through, else re-use existing struct */
 	if (stats == NULL)
@@ -731,13 +744,14 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 	if (desc->isShadow)
 		PG_RETURN_POINTER(stats);
 
+	deleteState->callback = callback;
+	deleteState->callback_state = callback_state;
 	heapRel = RelationIdGetRelation(desc->heapRelid);
-	many = find_invisible_ctids_with_callback(heapRel, bulkdelete_callback, NULL);
+	find_invisible_ctids_with_callback(heapRel, bulkdelete_callback, deleteState);
 	RelationClose(heapRel);
 
-	if (many > 0)
-		desc->implementation->bulkDelete(desc, bulkDeleteList, many);
-	bulkDeleteList = NULL;
+	if (deleteState->many > 0)
+		desc->implementation->bulkDelete(desc, deleteState->bulkDeleteList, deleteState->many);
 
 	PG_RETURN_POINTER(stats);
 }

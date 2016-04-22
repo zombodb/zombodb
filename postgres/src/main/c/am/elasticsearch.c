@@ -142,7 +142,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
                 Relation           rel;
 
                 rel = RelationIdGetRelation(tmp->heapRelid);
-                ids = find_invisible_ctids(rel);
+                ids = find_invisible_ctids(rel, tmp->advisory_mutex);
 
                 if (ids->len > 0)
                     appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", tmp->fullyQualifiedName, ids->data);
@@ -153,7 +153,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 
         heapRel = RelationIdGetRelation(desc->heapRelid);
 
-        ids = find_invisible_ctids(heapRel);
+        ids = find_invisible_ctids(heapRel, desc->advisory_mutex);
         if (ids->len > 0)
             appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", desc->fullyQualifiedName, ids->data);
 
@@ -371,6 +371,7 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
         many = i+1;
     }
 
+	DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
     for (; i<many; i++) {
         appendStringInfo(endpoint, "%s/%s.%d/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName, i);
         response = rest_call("GET", endpoint->data, NULL);
@@ -379,6 +380,7 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
         freeStringInfo(response);
         resetStringInfo(endpoint);
     }
+	DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
 
     freeStringInfo(endpoint);
 }
@@ -952,32 +954,12 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 
 			appendStringInfo(endpoint, "%s/%s.%d/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
 
-			if (batch->nrequests == 0)
-			{
-				/*
-				 * if this is the only request being made in this batch, then we'll ?refresh=true
-				 * to avoid an additional round-trip to ES
-				 */
-				appendStringInfo(endpoint, "?refresh=true");
-				response = rest_call("POST", endpoint->data, batch->bulk);
-			}
-			else
-			{
-				/*
-				 * otherwise we'll do a full refresh below, so there's no need to do it here
-				 */
-				response = rest_call("POST", endpoint->data, batch->bulk);
-			}
+			response = rest_call("POST", endpoint->data, batch->bulk);
 			checkForBulkError(response, "batch finish");
 			freeStringInfo(response);
 		}
 
-		/*
-		 * If this wasn't the only request being made in this batch
-		 * then ask ES to refresh the index
-		 */
-		if (batch->nrequests > 0)
-			elasticsearch_refreshIndex(indexDescriptor);
+		elasticsearch_refreshIndex(indexDescriptor);
 
 		freeStringInfo(batch->bulk);
 
