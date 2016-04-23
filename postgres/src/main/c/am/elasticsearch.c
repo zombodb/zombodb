@@ -954,12 +954,34 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 
 			appendStringInfo(endpoint, "%s/%s.%d/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
 
-			response = rest_call("POST", endpoint->data, batch->bulk);
+			if (batch->nrequests == 0)
+			{
+				/*
+				 * if this is the only request being made in this batch, then we'll ?refresh=true
+				 * to avoid an additional round-trip to ES
+				 */
+				appendStringInfo(endpoint, "?refresh=true");
+				DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+				response = rest_call("POST", endpoint->data, batch->bulk);
+				DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+			}
+			else
+			{
+				/*
+				 * otherwise we'll do a full refresh below, so there's no need to do it here
+				 */
+				response = rest_call("POST", endpoint->data, batch->bulk);
+			}
 			checkForBulkError(response, "batch finish");
 			freeStringInfo(response);
 		}
 
-		elasticsearch_refreshIndex(indexDescriptor);
+		/*
+		 * If this wasn't the only request being made in this batch
+		 * then ask ES to refresh the index
+		 */
+		if (batch->nrequests > 0)
+			elasticsearch_refreshIndex(indexDescriptor);
 
 		freeStringInfo(batch->bulk);
 
