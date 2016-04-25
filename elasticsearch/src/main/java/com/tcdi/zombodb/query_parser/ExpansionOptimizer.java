@@ -53,7 +53,7 @@ public class ExpansionOptimizer {
         mergeAdjacentANDs(tree);
     }
 
-    private QueryParserNode expand(final ASTExpansion root, final ASTIndexLink link) {
+    private void expand(final ASTExpansion root, final ASTIndexLink link) {
         Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
 
         ASTIndexLink myIndex = metadataManager.getMyIndex();
@@ -175,8 +175,6 @@ public class ExpansionOptimizer {
         } finally {
             metadataManager.setMyIndex(myIndex);
         }
-
-        return last;
     }
 
     private Stack<ASTExpansion> buildExpansionStack(QueryParserNode root, Stack<ASTExpansion> stack) {
