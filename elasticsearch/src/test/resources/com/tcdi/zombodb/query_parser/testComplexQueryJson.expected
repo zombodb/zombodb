@@ -2753,19 +2753,10 @@
         "must" : [ {
           "bool" : {
             "must" : [ {
-              "filtered" : {
-                "query" : {
-                  "match_all" : { }
-                },
-                "filter" : {
-                  "not" : {
-                    "filter" : {
-                      "query" : {
-                        "wildcard" : {
-                          "field" : "http*//www.*tcdi.com/"
-                        }
-                      }
-                    }
+              "bool" : {
+                "must_not" : {
+                  "wildcard" : {
+                    "field" : "http*//www.*tcdi.com/"
                   }
                 }
               }
@@ -3696,19 +3687,10 @@
                     }, {
                       "bool" : {
                         "must" : [ {
-                          "filtered" : {
-                            "query" : {
-                              "match_all" : { }
-                            },
-                            "filter" : {
-                              "not" : {
-                                "filter" : {
-                                  "query" : {
-                                    "term" : {
-                                      "_xmax" : 42
-                                    }
-                                  }
-                                }
+                          "bool" : {
+                            "must_not" : {
+                              "term" : {
+                                "_xmax" : 42
                               }
                             }
                           }

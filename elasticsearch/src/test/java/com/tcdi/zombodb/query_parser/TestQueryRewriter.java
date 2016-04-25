@@ -627,19 +627,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        \"id\" : 1\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"filtered\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"match_all\" : { }\n" +
-                        "        },\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"not\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"query\" : {\n" +
-                        "                \"term\" : {\n" +
-                        "                  \"id\" : 1\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"id\" : 1\n" +
                         "          }\n" +
                         "        }\n" +
                         "      }\n" +
@@ -1369,19 +1360,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_CVSIX_2807() throws Exception {
         assertJson("(exact_field <> \"bob*\")",
                 "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"prefix\" : {\n" +
-                        "              \"exact_field\" : \"bob\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"prefix\" : {\n" +
+                        "        \"exact_field\" : \"bob\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -1393,19 +1375,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_CVSIX_2807_phrase() throws Exception {
         assertJson("(phrase_field <> \"bob*\")",
                 "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"prefix\" : {\n" +
-                        "              \"phrase_field\" : \"bob\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"prefix\" : {\n" +
+                        "        \"phrase_field\" : \"bob\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -1560,19 +1533,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_MergeLiterals_AND_NE() throws Exception {
         assertJson("exact_field<>(one & two & three)",
                 "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"terms\" : {\n" +
-                        "              \"exact_field\" : [ \"one\", \"two\", \"three\" ]\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -1584,20 +1548,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_MergeLiterals_OR_NE() throws Exception {
         assertJson("exact_field<>(one , two , three)",
                 "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"terms\" : {\n" +
-                        "              \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "              \"minimum_should_match\" : \"3\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                        "        \"minimum_should_match\" : \"3\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -2145,19 +2100,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "                }, {\n" +
                         "                  \"bool\" : {\n" +
                         "                    \"must\" : [ {\n" +
-                        "                      \"filtered\" : {\n" +
-                        "                        \"query\" : {\n" +
-                        "                          \"match_all\" : { }\n" +
-                        "                        },\n" +
-                        "                        \"filter\" : {\n" +
-                        "                          \"not\" : {\n" +
-                        "                            \"filter\" : {\n" +
-                        "                              \"query\" : {\n" +
-                        "                                \"term\" : {\n" +
-                        "                                  \"_xmax\" : 6249019\n" +
-                        "                                }\n" +
-                        "                              }\n" +
-                        "                            }\n" +
+                        "                      \"bool\" : {\n" +
+                        "                        \"must_not\" : {\n" +
+                        "                          \"term\" : {\n" +
+                        "                            \"_xmax\" : 6249019\n" +
                         "                          }\n" +
                         "                        }\n" +
                         "                      }\n" +
@@ -2588,19 +2534,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "                }, {\n" +
                         "                  \"bool\" : {\n" +
                         "                    \"must\" : [ {\n" +
-                        "                      \"filtered\" : {\n" +
-                        "                        \"query\" : {\n" +
-                        "                          \"match_all\" : { }\n" +
-                        "                        },\n" +
-                        "                        \"filter\" : {\n" +
-                        "                          \"not\" : {\n" +
-                        "                            \"filter\" : {\n" +
-                        "                              \"query\" : {\n" +
-                        "                                \"term\" : {\n" +
-                        "                                  \"_xmax\" : 5353919\n" +
-                        "                                }\n" +
-                        "                              }\n" +
-                        "                            }\n" +
+                        "                      \"bool\" : {\n" +
+                        "                        \"must_not\" : {\n" +
+                        "                          \"term\" : {\n" +
+                        "                            \"_xmax\" : 5353919\n" +
                         "                          }\n" +
                         "                        }\n" +
                         "                      }\n" +

@@ -972,8 +972,7 @@ public class QueryRewriter {
                 return qbf.b(node);
 
             case NE:
-                return filteredQuery(matchAllQuery(), notFilter(queryFilter(qbf.b(node))));
-
+                return boolQuery().mustNot(qbf.b(node));
             case LT:
                 return rangeQuery(node.getFieldname()).lt(node.getValue());
             case GT:
