@@ -332,10 +332,11 @@ public class ExpansionOptimizer {
                         array.setFieldname(first.getFieldname());
                         array.setOperator(first.getOperator());
                         array.setExternalValues(merged, merged.size());
+
+                        root.renumber();
                         root.jjtAddChild(array, root.jjtGetNumChildren());
                     }
                 }
-                root.renumber();
 
             }
         } else {
