@@ -79,10 +79,6 @@ public class ExpansionOptimizer {
 
                     if (expansion.isGenerated()) {
 
-                        if (last == null) {
-                            last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
-                        }
-
                         // at this point 'expansion' represents the set of records that match the #expand<>(...)'s subquery
                         // all of which are targeted towards the index that contains the #expand's <fieldname>
 
