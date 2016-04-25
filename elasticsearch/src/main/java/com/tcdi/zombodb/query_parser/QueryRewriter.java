@@ -17,10 +17,6 @@
 package com.tcdi.zombodb.query_parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.*;
@@ -38,7 +34,10 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.*;
+import java.util.AbstractCollection;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static org.elasticsearch.index.query.FilterBuilders.*;
@@ -165,6 +164,8 @@ public class QueryRewriter {
             // now optimize the _all field into #expand()s, if any are in other indexes
             new IndexLinkOptimizer(tree, metadataManager).optimize();
             new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
+            if (!isInTestMode())
+                new ExpansionOptimizer(this, tree, metadataManager, client, searchPreference, allowSingleIndex, doFullFieldDataLookup).optimize();
         } catch (ParseException pe) {
             throw new QueryRewriteException(pe);
         }
@@ -505,7 +506,7 @@ public class QueryRewriter {
         }
     }
 
-    private QueryBuilder build(QueryParserNode node) {
+    QueryBuilder build(QueryParserNode node) {
         if (node == null)
             return null;
         else if (node instanceof ASTAnd)
@@ -638,30 +639,20 @@ public class QueryRewriter {
 
     private String nested = null;
 
-    private Stack<ASTExpansion> generatedExpansionsStack = new Stack<>();
-
     private QueryBuilder build(final ASTExpansion node) {
-        final ASTIndexLink link = node.getIndexLink();
-        QueryBuilder expansionBuilder;
-        try {
-            if (node.isGenerated())
-                generatedExpansionsStack.push(node);
-
-            expansionBuilder = expand(node, link);
-        } finally {
-            if (node.isGenerated())
-                generatedExpansionsStack.pop();
+        if (isInTestMode()) {
+            QueryBuilder expansionBuilder =  build(node.getQuery());
+            QueryParserNode filterQuery = node.getFilterQuery();
+            if (filterQuery != null) {
+                BoolQueryBuilder bqb = boolQuery();
+                bqb.must(expansionBuilder);
+                bqb.must(build(filterQuery));
+                expansionBuilder = bqb;
+            }
+            return expansionBuilder;
+        } else {
+            throw new IllegalStateException("Encountered ASTExpansion when we shouldn't");
         }
-
-        QueryParserNode filterQuery = node.getFilterQuery();
-        if (filterQuery != null) {
-            BoolQueryBuilder bqb = boolQuery();
-            bqb.must(expansionBuilder);
-            bqb.must(build(filterQuery));
-            expansionBuilder = bqb;
-        }
-
-        return expansionBuilder;
     }
 
     private QueryBuilder build(ASTWord node) {
@@ -1045,221 +1036,7 @@ public class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    private Stack<ASTExpansion> buildExpansionStack(QueryParserNode root, Stack<ASTExpansion> stack) {
-
-        if (root != null) {
-            if (root instanceof ASTExpansion) {
-                stack.push((ASTExpansion) root);
-                buildExpansionStack(((ASTExpansion) root).getQuery(), stack);
-            } else {
-                for (QueryParserNode child : root)
-                    buildExpansionStack(child, stack);
-            }
-        }
-        return stack;
-    }
-
-    private QueryParserNode loadFielddata(ASTExpansion node, String leftFieldname, String rightFieldname) {
-        ASTIndexLink link = node.getIndexLink();
-        QueryParserNode nodeQuery = node.getQuery();
-        IndexMetadata nodeMetadata = metadataManager.getMetadata(link);
-        IndexMetadata leftMetadata = metadataManager.getMetadataForField(leftFieldname);
-        IndexMetadata rightMetadata = metadataManager.getMetadataForField(rightFieldname);
-        boolean isPkey = nodeMetadata != null && leftMetadata != null && rightMetadata != null &&
-                nodeMetadata.getPrimaryKeyFieldName().equals(nodeQuery.getFieldname()) && leftMetadata.getPrimaryKeyFieldName().equals(leftFieldname) && rightMetadata.getPrimaryKeyFieldName().equals(rightFieldname);
-
-        if (nodeQuery instanceof ASTNotNull && isPkey) {
-            // if the query is a "not null" query against a primary key field and is targeting a primary key field
-            // we can just rewrite the query as a "not null" query against the leftFieldname
-            // and avoid doing a search at all
-            ASTNotNull notNull = new ASTNotNull(QueryParserTreeConstants.JJTNOTNULL);
-            notNull.setFieldname(leftFieldname);
-            return notNull;
-        }
-
-        TermsBuilder termsBuilder = new TermsBuilder(rightFieldname)
-                .field(rightFieldname)
-                .shardSize(0)
-                .size(!doFullFieldDataLookup ? 1024 : 0);
-
-        QueryBuilder query = constantScoreQuery(applyExclusion(build(nodeQuery), link.getIndexName()));
-        SearchRequestBuilder builder = new SearchRequestBuilder(client)
-                .setSize(0)
-                .setSearchType(SearchType.COUNT)
-                .setQuery(query)
-                .setQueryCache(true)
-                .setIndices(link.getIndexName())
-                .setTrackScores(false)
-                .setPreference(searchPreference)
-                .addAggregation(termsBuilder);
-        ActionFuture<SearchResponse> future = client.search(builder.request());
-
-        try {
-            SearchResponse response = future.get();
-            final Terms agg = (Terms) response.getAggregations().iterator().next();
-
-            ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
-            array.setFieldname(leftFieldname);
-            array.setOperator(QueryParserNode.Operator.EQ);
-            array.setExternalValues(new Iterable<Object>() {
-                @Override
-                public Iterator<Object> iterator() {
-                    final Iterator<Terms.Bucket> buckets = agg.getBuckets().iterator();
-                    return new Iterator<Object>() {
-                        @Override
-                        public boolean hasNext() {
-                            return buckets.hasNext();
-                        }
-
-                        @Override
-                        public Object next() {
-                            return buckets.next().getKey();
-                        }
-
-                        @Override
-                        public void remove() {
-                            buckets.remove();
-                        }
-                    };
-                }
-            }, agg.getBuckets().size());
-
-            return array;
-        } catch (Exception e) {
-            throw new QueryRewriteException(e);
-        }
-    }
-
-    private QueryBuilder expand(final ASTExpansion root, final ASTIndexLink link) {
-        if (isInTestMode())
-            return build(root.getQuery());
-
-        Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
-
-        ASTIndexLink myIndex = metadataManager.getMyIndex();
-        ASTIndexLink targetIndex = !generatedExpansionsStack.isEmpty() ? root.getIndexLink() : myIndex;
-        QueryParserNode last = null;
-
-        if (link.getFieldname() != null)
-            IndexLinkOptimizer.stripPath(root, link.getFieldname());
-
-        try {
-            while (!stack.isEmpty()) {
-                ASTExpansion expansion = stack.pop();
-                String expansionFieldname = expansion.getFieldname();
-
-                if (expansionFieldname == null)
-                    expansionFieldname = expansion.getIndexLink().getRightFieldname();
-
-                if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
-                    last = expansion.getQuery();
-                } else {
-                    String leftFieldname = null;
-                    String rightFieldname = null;
-
-                    if (expansion.isGenerated()) {
-
-                        if (last == null) {
-                            last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
-                        }
-
-                        // at this point 'expansion' represents the set of records that match the #expand<>(...)'s subquery
-                        // all of which are targeted towards the index that contains the #expand's <fieldname>
-
-                        // the next step is to turn them into a set of 'expansionField' values
-                        // then turn that around into a set of ids against myIndex, if the expansionField is not in myIndex
-                        last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
-
-                        ASTIndexLink expansionSourceIndex = metadataManager.findField(expansionFieldname);
-                        if (expansionSourceIndex != myIndex) {
-                            // replace the ASTExpansion in the tree with the fieldData version
-                            expansion.jjtAddChild(last, 1);
-
-                            String targetPkey = myIndex.getRightFieldname();
-                            String sourcePkey = metadataManager.getMetadata(expansion.getIndexLink().getIndexName()).getPrimaryKeyFieldName();
-
-                            leftFieldname = targetPkey;
-                            rightFieldname = sourcePkey;
-
-                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
-                        }
-                    } else {
-
-                        List<String> path = metadataManager.calculatePath(targetIndex, expansion.getIndexLink());
-
-                        boolean oneToOne = true;
-                        if (path.size() == 2) {
-                            leftFieldname = path.get(0);
-                            rightFieldname = path.get(1);
-
-                            leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                            rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-
-                        } else if (path.size() == 3) {
-                            oneToOne = false;
-                            String middleFieldname;
-
-                            leftFieldname = path.get(0);
-                            middleFieldname = path.get(1);
-                            rightFieldname = path.get(2);
-
-                            if (metadataManager.areFieldPathsEquivalent(leftFieldname, middleFieldname) && metadataManager.areFieldPathsEquivalent(middleFieldname, rightFieldname)) {
-                                leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                                rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-                            } else {
-                                throw new QueryRewriteException("Field equivalency cannot be determined");
-                            }
-                        } else {
-                            oneToOne = false;
-                            int i = path.size()-1;
-                            while(i >= 0) {
-                                final String rightIndex;
-
-                                rightFieldname = path.get(i);
-                                leftFieldname = path.get(--i);
-
-                                if (!rightFieldname.contains(":")) {
-                                    // the right fieldname is a reference to a table not a specific field, so
-                                    // skip the path entry
-                                    continue;
-                                }
-
-                                rightIndex = rightFieldname.substring(0, rightFieldname.indexOf(':'));
-
-                                leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                                rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-
-                                if (last != null) {
-                                    ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, rightIndex, rightFieldname);
-                                    expansion.jjtAddChild(newLink, 0);
-                                    expansion.jjtAddChild(last, 1);
-                                }
-
-                                last = loadFielddata(expansion, leftFieldname, rightFieldname);
-
-                                i--;
-                            }
-                        }
-
-                        if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
-                            last = expansion.getQuery();
-                        } else {
-                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
-                        }
-                    }
-                }
-
-                // replace the ASTExpansion in the tree with the fieldData version
-                ((QueryParserNode) expansion.parent).replaceChild(expansion, last);
-            }
-        } finally {
-            metadataManager.setMyIndex(myIndex);
-        }
-
-        return build(last);
-    }
-
-    private QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
+    QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
         QueryParserNode exclusion = tree.getExclusion(indexName);
 
         if (exclusion != null) {
