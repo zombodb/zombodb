@@ -281,6 +281,7 @@ public class ExpansionOptimizer {
                     if (!("integer".equals(type) || "long".equals(type)))
                         continue;
 
+                    boolean didWork = false;
                     if (child instanceof ASTArray) {
                         ASTArray array = (ASTArray) child;
 
@@ -289,12 +290,14 @@ public class ExpansionOptimizer {
                             for (Object obj : itr) {
                                 set.add(String.valueOf(obj));
                             }
+                            didWork = true;
                         }
                     } else if (child instanceof ASTNumber || child instanceof ASTWord) {
                         set.add(String.valueOf(child.getValue()));
+                        didWork = true;
                     }
 
-                    if (set.size() > 0) {
+                    if (didWork) {
                         Map<QueryParserNode, Set<Object>> map = terms.get(child.getFieldname());
 
                         if (map == null)
