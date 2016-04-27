@@ -25,7 +25,7 @@ void zdb_pool_checkout(ZDBIndexDescriptor *desc) {
 
     desc->current_pool_index = InvalidPoolIndex;
     while (true) {
-        DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex));
+        DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->pool_mutex));
 
         if (desc->shards == 1) {
             if (!entry->allocated[0]) {
@@ -45,7 +45,7 @@ void zdb_pool_checkout(ZDBIndexDescriptor *desc) {
                 }
             }
         }
-        DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
+        DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->pool_mutex));
 
         if (desc->current_pool_index != InvalidPoolIndex)
             break;
@@ -58,9 +58,9 @@ void zdb_pool_checkin(ZDBIndexDescriptor *desc) {
     if (desc->current_pool_index != InvalidPoolIndex) {
         ZDBIndexPoolEntry *entry = zdb_pool_get_entry(desc);
 
-        DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex));
+        DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(desc->pool_mutex));
         entry->allocated[desc->current_pool_index] = false;
-        DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
+        DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->pool_mutex));
 
         desc->current_pool_index = InvalidPoolIndex;
     }

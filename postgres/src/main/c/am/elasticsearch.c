@@ -142,7 +142,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
                 Relation           rel;
 
                 rel = RelationIdGetRelation(tmp->heapRelid);
-                ids = find_invisible_ctids(rel, tmp->advisory_mutex);
+                ids = find_invisible_ctids(rel);
 
                 if (ids->len > 0)
                     appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", tmp->fullyQualifiedName, ids->data);
@@ -153,7 +153,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 
         heapRel = RelationIdGetRelation(desc->heapRelid);
 
-        ids = find_invisible_ctids(heapRel, desc->advisory_mutex);
+        ids = find_invisible_ctids(heapRel);
         if (ids->len > 0)
             appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", desc->fullyQualifiedName, ids->data);
 
@@ -361,27 +361,18 @@ void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
 void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
-    int        i, many;
 
-    if (indexDescriptor->current_pool_index == -1) {
-        i=0;
-        many = indexDescriptor->shards;
-    } else {
-        i = indexDescriptor->current_pool_index;
-        many = i+1;
-    }
+	if (indexDescriptor->current_pool_index == -1)
+		appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	else
+		appendStringInfo(endpoint, "%s/%s.%d/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->current_pool_index);
 
 	DirectFunctionCall1(pg_advisory_lock_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
-    for (; i<many; i++) {
-        appendStringInfo(endpoint, "%s/%s.%d/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName, i);
-        response = rest_call("GET", endpoint->data, NULL);
-        checkForRefreshError(response);
-
-        freeStringInfo(response);
-        resetStringInfo(endpoint);
-    }
+	response = rest_call("GET", endpoint->data, NULL);
 	DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+	checkForRefreshError(response);
 
+	freeStringInfo(response);
     freeStringInfo(endpoint);
 }
 
@@ -401,6 +392,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 		indexName  = descriptors[i]->fullyQualifiedName;
 		preference = descriptors[i]->searchPreference;
 		pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, false);
+		DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(descriptors[i]->advisory_mutex));
         query      = buildQuery(descriptors[i], &user_queries[i], 1, true);
 
 		if (!preference) preference = "null";
@@ -432,6 +424,9 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 
     appendStringInfo(endpoint, "%s/%s/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
 	response = rest_call("POST", endpoint->data, request);
+	for (i=0; i<nqueries; i++) {
+		DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(descriptors[i]->advisory_mutex));
+	}
 
 	freeStringInfo(request);
 	freeStringInfo(endpoint);
@@ -447,15 +442,19 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 	StringInfo        response;
 	ZDBSearchResponse *hits;
 	ZDBScore		  max_score;
-
-    query = buildQuery(indexDescriptor, queries, nqueries,
-                       strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL);
+	bool              useInvisibilityMap = strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
 
     appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	if (useInvisibilityMap)
+		DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+	query = buildQuery(indexDescriptor, queries, nqueries, useInvisibilityMap);
 	response = rest_call("POST", endpoint->data, query);
+	if (useInvisibilityMap)
+		DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+
 	if (response->data[0] != '\0')
 		elog(ERROR, "%s", response->data);
 
@@ -516,13 +515,14 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
 	StringInfo response;
 	uint64     nhits;
 
-    query = buildQuery(indexDescriptor, queries, nqueries, true);
-
     appendStringInfo(endpoint, "%s/%s/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+	query = buildQuery(indexDescriptor, queries, nqueries, true);
 	response = rest_call("POST", endpoint->data, query);
+	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
 	if (response->data[0] == '{')
 		elog(ERROR, "%s", response->data);
 
@@ -568,20 +568,15 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, 
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1, true);
-
-	appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s",
-			fieldname,
-			stem,
-			max_terms,
-			sort_order,
-			query->data);
-
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+    query = buildQuery(indexDescriptor, &user_query, 1, true);
+	appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s", fieldname, stem, max_terms, sort_order, query->data);
 	response = rest_call("POST", endpoint->data, request);
+	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
 
 	freeStringInfo(request);
 	freeStringInfo(endpoint);
@@ -597,18 +592,15 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1, true);
-
-	appendStringInfo(request, "#range(%s, '%s') %s",
-			fieldname,
-			range_spec,
-			query->data);
-
     appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	appendStringInfo(request, "#range(%s, '%s') %s", fieldname, range_spec, query->data);
 	response = rest_call("POST", endpoint->data, request);
+	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
 
 	freeStringInfo(request);
 	freeStringInfo(endpoint);
@@ -624,19 +616,15 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char 
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1, true);
-
-	appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s",
-			fieldname,
-			stem,
-			max_terms,
-			query->data);
-
     appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s", fieldname, stem, max_terms, query->data);
 	response = rest_call("POST", endpoint->data, request);
+	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
 
 	freeStringInfo(request);
 	freeStringInfo(endpoint);
@@ -652,17 +640,15 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fi
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1, true);
-
-	appendStringInfo(request, "#extended_stats(%s) %s",
-			fieldname,
-			query->data);
-
     appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	appendStringInfo(request, "#extended_stats(%s) %s", fieldname, query->data);
 	response = rest_call("POST", endpoint->data, request);
+	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
 
 	freeStringInfo(request);
 	freeStringInfo(endpoint);
@@ -679,15 +665,15 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
 	StringInfo query;
 	StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1, true);
-
-	appendStringInfo(request, "%s %s", aggregate_query, query->data);
-
     appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	appendStringInfo(request, "%s %s", aggregate_query, query->data);
 	response = rest_call("POST", endpoint->data, request);
+	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
 
 	freeStringInfo(request);
 	freeStringInfo(endpoint);
@@ -703,15 +689,15 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fie
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, &user_query, 1, true);
-
-    appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
-
     appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
+	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
     response = rest_call("POST", endpoint->data, request);
+	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(indexDescriptor->advisory_mutex));
 
     freeStringInfo(request);
     freeStringInfo(endpoint);

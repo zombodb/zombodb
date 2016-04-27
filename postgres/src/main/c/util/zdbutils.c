@@ -16,6 +16,7 @@
  */
 #include "postgres.h"
 
+#include "miscadmin.h"
 #include "access/heapam.h"
 #include "access/relscan.h"
 #include "access/visibilitymap.h"
@@ -260,12 +261,10 @@ static void string_invisibility_callback(ItemPointer ctid, void *stringInfo) {
     appendStringInfo(sb, "%d-%d", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
 }
 
-StringInfo find_invisible_ctids(Relation rel, int64 mutex) {
+StringInfo find_invisible_ctids(Relation rel) {
     StringInfo sb = makeStringInfo();
 
-	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(mutex));
     find_invisible_ctids_with_callback(rel, false, string_invisibility_callback, sb);
-	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(mutex));
     return sb;
 }
 
@@ -282,6 +281,8 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
 
         for (blockno = 0; blockno < RelationGetNumberOfBlocks(heapRel); blockno++) {
             bool   allVisible;
+
+            CHECK_FOR_INTERRUPTS();
 
             allVisible = visibilitymap_test(heapRel, blockno, &vmap_buff);
 

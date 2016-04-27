@@ -171,6 +171,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	}
 
 	desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
+	desc->pool_mutex     = (int64) -desc->advisory_mutex;
 
 	appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
 	desc->fullyQualifiedName = pstrdup(scratch->data);
@@ -333,7 +334,7 @@ static void wrapper_refreshIndex(ZDBIndexDescriptor *indexDescriptor)
 	MemoryContextDelete(me);
 }
 
-static uint64 			  wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name)
+static uint64 wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name)
 {
 	MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_estimateCount", 512, 64, 64);
 	MemoryContext oldContext = MemoryContextSwitchTo(me);
