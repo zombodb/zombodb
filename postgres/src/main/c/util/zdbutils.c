@@ -23,6 +23,7 @@
 #include "executor/spi.h"
 #include "lib/stringinfo.h"
 #include "storage/bufmgr.h"
+#include "storage/predicate.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
@@ -32,7 +33,14 @@
 
 #include "zdbutils.h"
 
-static int tuple_is_visible(IndexScanDesc scan);
+typedef enum VisibilityType {
+    VT_VISIBLE,
+    VT_INVISIBLE,
+    VT_DEAD,
+    VT_DOES_NOT_EXIST
+} VisibilityType;
+
+static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple);
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
     char *definition = "";
@@ -256,46 +264,41 @@ StringInfo find_invisible_ctids(Relation rel, int64 mutex) {
     StringInfo sb = makeStringInfo();
 
 	DirectFunctionCall1(pg_advisory_lock_shared_int8, Int64GetDatum(mutex));
-    find_invisible_ctids_with_callback(rel, string_invisibility_callback, sb);
+    find_invisible_ctids_with_callback(rel, false, string_invisibility_callback, sb);
 	DirectFunctionCall1(pg_advisory_unlock_shared_int8, Int64GetDatum(mutex));
     return sb;
 }
 
-int find_invisible_ctids_with_callback(Relation heapRel, invisibility_callback cb, void *user_data) {
+int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data) {
+    Buffer vmap_buff = InvalidBuffer;
     int cnt = visibilitymap_count(heapRel);
     int many = 0;
 
     if (cnt == 0 || cnt != heapRel->rd_rel->relpages) {
-        BlockNumber       i;
-        OffsetNumber      j;
-        IndexScanDescData scan;
+        Snapshot snapshot = GetActiveSnapshot();
+        HeapTupleData heapTuple;
+        BlockNumber       blockno;
+        OffsetNumber      offno;
 
-        memset(&scan, 0, sizeof(IndexScanDescData));
-        scan.heapRelation = heapRel;
-        scan.xs_snapshot  = GetActiveSnapshot();
-
-        for (i = 0; i < RelationGetNumberOfBlocks(heapRel); i++) {
-            Buffer vmap_buff = InvalidBuffer;
+        for (blockno = 0; blockno < RelationGetNumberOfBlocks(heapRel); blockno++) {
             bool   allVisible;
 
-            allVisible = visibilitymap_test(heapRel, i, &vmap_buff);
-            if (!BufferIsInvalid(vmap_buff)) {
-                ReleaseBuffer(vmap_buff);
-                vmap_buff = InvalidBuffer;
-            }
+            allVisible = visibilitymap_test(heapRel, blockno, &vmap_buff);
 
             if (!allVisible) {
-                for (j = 1; j <= MaxOffsetNumber; j++) {
-                    int rc;
+                for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
+                    VisibilityType rc;
 
-                    ItemPointerSet(&(scan.xs_ctup.t_self), i, j);
-                    rc = tuple_is_visible(&scan);
-                    if (rc == 2)
+                    ItemPointerSet(&(heapTuple.t_self), blockno, offno);
+
+                    rc = tuple_is_visible(heapRel, snapshot, &heapTuple);
+
+                    if (rc == VT_DOES_NOT_EXIST)
                         break; /* we're done with this page */
 
-                    if (rc == 0) {
+                    if (isVacuum || rc == VT_INVISIBLE) {
                         /* tuple is invisible to us */
-                        cb(&scan.xs_ctup.t_self, user_data);
+                        cb(&(heapTuple.t_self), user_data);
                         many++;
                     }
                 }
@@ -303,31 +306,95 @@ int find_invisible_ctids_with_callback(Relation heapRel, invisibility_callback c
         }
     }
 
+    if (!BufferIsInvalid(vmap_buff))
+        ReleaseBuffer(vmap_buff);
+
     return many;
 }
 
-static int tuple_is_visible(IndexScanDesc scan) {
-    ItemPointer tid      = &scan->xs_ctup.t_self;
-    bool        got_heap_tuple;
-    Page        page;
-    bool        mvcc = false;
-    int maxoff;
+/**
+ * Adapted from heapam.c#heap_fetch()
+ */
+static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple) {
+    ItemPointer tid = &(tuple->t_self);
+    ItemId		lp;
+    Buffer		buffer;
+    Page		page;
+    OffsetNumber offnum;
+    bool		valid;
 
-    scan->xs_cbuf = ReadBuffer(scan->heapRelation, ItemPointerGetBlockNumber(tid));
-    page = BufferGetPage(scan->xs_cbuf);
-    maxoff = PageGetMaxOffsetNumber(page);
-    ReleaseBuffer(scan->xs_cbuf);
+    /*
+     * Fetch and pin the appropriate page of the relation.
+     */
+    buffer = ReadBuffer(relation, ItemPointerGetBlockNumber(tid));
 
-    if (ItemPointerGetOffsetNumber(tid) > maxoff) {
-        /* no more items on this page */
-        return 2;
+    /*
+     * Need share lock on buffer to examine tuple commit status.
+     */
+    LockBuffer(buffer, BUFFER_LOCK_SHARE);
+    page = BufferGetPage(buffer);
+
+    /*
+     * We'd better check for out-of-range offnum in case of VACUUM since the
+     * TID was obtained.
+     */
+    offnum = ItemPointerGetOffsetNumber(tid);
+    if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page))
+    {
+        LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+        if (BufferIsValid(buffer))
+            ReleaseBuffer(buffer);
+        tuple->t_data = NULL;
+        return VT_DOES_NOT_EXIST;
     }
 
-    /* Obtain share-lock on the buffer so we can examine visibility */
-    got_heap_tuple = heap_fetch(scan->heapRelation, scan->xs_snapshot, &scan->xs_ctup, &scan->xs_cbuf, true, NULL);
-    if (got_heap_tuple)
-        mvcc = HeapTupleSatisfiesNow(scan->xs_ctup.t_data, scan->xs_snapshot, scan->xs_cbuf);
-    ReleaseBuffer(scan->xs_cbuf);
+    /*
+     * get the item line pointer corresponding to the requested tid
+     */
+    lp = PageGetItemId(page, offnum);
 
-    return mvcc;
+    /*
+     * Must check for deleted tuple.
+     */
+    if (!ItemIdIsNormal(lp))
+    {
+        LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+        if (BufferIsValid(buffer))
+            ReleaseBuffer(buffer);
+        tuple->t_data = NULL;
+        return VT_DEAD;
+    }
+
+    /*
+     * fill in *tuple fields
+     */
+    tuple->t_data = (HeapTupleHeader) PageGetItem(page, lp);
+    tuple->t_len = ItemIdGetLength(lp);
+    tuple->t_tableOid = RelationGetRelid(relation);
+
+    /*
+     * check time qualification of tuple, then release lock
+     */
+    valid = HeapTupleSatisfiesVisibility(tuple, snapshot, buffer);
+
+    if (valid)
+        PredicateLockTuple(relation, tuple, snapshot);
+
+    CheckForSerializableConflictOut(valid, relation, tuple, buffer, snapshot);
+
+    LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+    if (BufferIsValid(buffer))
+        ReleaseBuffer(buffer);
+    tuple->t_data = NULL;
+
+    if (valid)
+    {
+        /*
+         * All checks passed, so the tuple is visible to us
+         */
+        return VT_VISIBLE;
+    }
+
+    /* Tuple failed time qual */
+    return VT_INVISIBLE;
 }

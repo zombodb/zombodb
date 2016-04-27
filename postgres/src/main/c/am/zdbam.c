@@ -747,7 +747,7 @@ zdbbulkdelete(PG_FUNCTION_ARGS)
 	deleteState->callback = callback;
 	deleteState->callback_state = callback_state;
 	heapRel = RelationIdGetRelation(desc->heapRelid);
-	find_invisible_ctids_with_callback(heapRel, bulkdelete_callback, deleteState);
+	find_invisible_ctids_with_callback(heapRel, true, bulkdelete_callback, deleteState);
 	RelationClose(heapRel);
 
 	if (deleteState->many > 0)

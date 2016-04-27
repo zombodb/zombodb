@@ -36,7 +36,7 @@ Oid  *oid_array_to_oids(ArrayType *arr, int *many);
 char **text_array_to_strings(ArrayType *array, int *many);
 
 typedef void (*invisibility_callback)(ItemPointer ctid, void *data);
-int find_invisible_ctids_with_callback(Relation heapRel, invisibility_callback cb, void *user_data);
+int        find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data);
 StringInfo find_invisible_ctids(Relation rel, int64 mutex);
 
 #endif
