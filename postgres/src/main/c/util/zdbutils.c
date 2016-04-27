@@ -37,7 +37,7 @@ typedef enum VisibilityType {
     VT_VISIBLE,
     VT_INVISIBLE,
     VT_DEAD,
-    VT_DOES_NOT_EXIST
+    VT_OUT_OF_RANGE
 } VisibilityType;
 
 static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple);
@@ -293,10 +293,10 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
 
                     rc = tuple_is_visible(heapRel, snapshot, &heapTuple);
 
-                    if (rc == VT_DOES_NOT_EXIST)
+                    if (rc == VT_OUT_OF_RANGE)
                         break; /* we're done with this page */
 
-                    if (isVacuum || rc == VT_INVISIBLE) {
+                    if (isVacuum || rc == VT_INVISIBLE || rc == VT_DEAD) {
                         /* tuple is invisible to us */
                         cb(&(heapTuple.t_self), user_data);
                         many++;
@@ -345,7 +345,7 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
         if (BufferIsValid(buffer))
             ReleaseBuffer(buffer);
         tuple->t_data = NULL;
-        return VT_DOES_NOT_EXIST;
+        return VT_OUT_OF_RANGE;
     }
 
     /*
