@@ -273,10 +273,10 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
     indexRel = RelationIdGetRelation(indexDescriptor->indexRelid);
     appendStringInfo(indexSettings, "{"
             "   \"index\": {"
-            /* NOTE:  We DO NOT turn refresh_interval back on -- we control refreshes ourselves */
+			"      \"refresh_interval\":\"%s\","
             "      \"number_of_replicas\":%d"
             "   }"
-            "}", ZDBIndexOptionsGetNumberOfReplicas(indexRel));
+            "}", ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
     RelationClose(indexRel);
 
 	appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
@@ -904,10 +904,14 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 			{
 				/*
 				 * if this is the only request being made in this batch, then we'll ?refresh=true
-				 * to avoid an additional round-trip to ES
+				 * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
+				 * and b) if the index refresh interval is -1
 				 */
-				if (!zdb_batch_mode_guc)
-					appendStringInfo(endpoint, "?refresh=true");
+				if (!zdb_batch_mode_guc) {
+					if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+						appendStringInfo(endpoint, "?refresh=true");
+					}
+				}
 
 				response = rest_call("POST", endpoint->data, batch->bulk);
 			}
@@ -925,10 +929,14 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 		if (!zdb_batch_mode_guc) {
 			/*
              * If this wasn't the only request being made in this batch
-             * then ask ES to refresh the index
+             * then ask ES to refresh the index, but only if a) we're not in batch mode
+			 * and b) if the index refresh interval is -1
              */
-			if (batch->nrequests > 0)
-				elasticsearch_refreshIndex(indexDescriptor);
+			if (batch->nrequests > 0) {
+				if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+					elasticsearch_refreshIndex(indexDescriptor);
+				}
+			}
 		}
 
 		freeStringInfo(batch->bulk);

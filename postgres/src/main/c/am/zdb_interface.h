@@ -36,6 +36,7 @@ typedef struct
 	int   optionsValueOffset;
 	int   shadowValueOffset;
 	int   preferenceValueOffset;
+	int   refreshIntervalOffset;
 	int   shards;
 	int   replicas;
 	bool  noxact;
@@ -59,6 +60,10 @@ typedef struct
 #define ZDBIndexOptionsGetSearchPreference(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->preferenceValueOffset > 0 ? \
       (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->preferenceValueOffset : (NULL))
+
+#define ZDBIndexOptionsGetRefreshInterval(relation) \
+    ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->refreshIntervalOffset > 0 ? \
+      (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->refreshIntervalOffset : (NULL))
 
 #define ZDBIndexOptionsGetNumberOfShards(relation) \
 	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->shards : 5
@@ -98,6 +103,7 @@ typedef struct {
 	char *options;
 
 	char *searchPreference;
+	char *refreshInterval;
 	int  bulk_concurrency;
 	int  batch_size;
 

@@ -36,6 +36,11 @@ The `WITH` settings are:
 - `preference` **optional**:  The Elasticsearch [search preference](https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-preference.html) to use.  The default is `null`, meaning no search preference is used.
 - `batch_concurrency` **optional**:  Specifies the maximum number of concurrent HTTP requests, per Postgres backend, to use when making "batch" changes, which include CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE statements.  The default is `12` and allowed values are in the set `[1..12]`
 - `batch_size` **optional**:  Specifies the size, in bytes, for batch POST data.  Affects CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE, and VACUUM statements.  The default is `8388608` bytes (8MB) and allowed values are `[1k..64MB]`.
+- `refresh_interval` **optional**:  This setting directly relates to Elasticsearch's [`index.refresh_interval` setting](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/setup-configuration.html#configuration-index-settings).  The default value is `-1`, meaning ZomboDB will control index refreshes such that modified rows are always immediately visible.  If a time delay is okay, change this setting to something like `5s` for five seconds.  This can help improve single-record INSERT/UPDATE performance at the expense of when the rows are actually searchable.
+
+### Per-session Settings
+
+- `zombodb.batch_mode`:  This is a boolean "GUC" that controls how ZomboDB sends index changes to Elasticsearch.  The default is `false` and means that ZomboDB sends index changes to ES on a per-statement level.  Setting this to `true` will cause ZomboDB to batch index changes through the life of the transaction, and the final set of changes won't be available for search until `COMMIT`.  This can be changed interactively by issuing `SET zombodb.batch_mode = true;`
 
 ## DROP INDEX
 

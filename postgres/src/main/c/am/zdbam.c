@@ -829,6 +829,7 @@ zdboptions(PG_FUNCTION_ARGS)
 			{"shadow", RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, shadowValueOffset)},
 			{"options", RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, optionsValueOffset)},
 			{"preference", RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, preferenceValueOffset)},
+			{"refresh_interval", RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, refreshIntervalOffset)},
 			{"shards", RELOPT_TYPE_INT, offsetof(ZDBIndexOptions, shards)},
 			{"replicas", RELOPT_TYPE_INT, offsetof(ZDBIndexOptions, replicas)},
 			{"noxact", RELOPT_TYPE_BOOL, offsetof(ZDBIndexOptions, noxact)},
