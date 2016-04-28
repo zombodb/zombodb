@@ -174,12 +174,12 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 static void checkForBulkError(StringInfo response, char *type) {
 	text *errorsText = DatumGetTextP(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("errors")));
 	if (errorsText == NULL)
-		elog(IsTransactionState() ? ERROR : WARNING, "Unexpected response from elasticsearch during %s: %s", type, response->data);
+		elog(ERROR, "Unexpected response from elasticsearch during %s: %s", type, response->data);
 	else
 	{
 		char *errors = TextDatumGetCString(errorsText);
 		if (strcmp(errors, "false") != 0)
-			elog(IsTransactionState() ? ERROR : WARNING, "Error updating %s data: %s", type, response->data);
+			elog(ERROR, "Error updating %s data: %s", type, response->data);
 		pfree(errors);
 		pfree(errorsText);
 	}
@@ -189,12 +189,12 @@ static void checkForRefreshError(StringInfo response) {
 	Datum shards = DirectFunctionCall2(json_object_field, CStringGetTextDatum(response->data), CStringGetTextDatum("_shards"));
 	text *failedText = DatumGetTextP(DirectFunctionCall2(json_object_field_text, shards, CStringGetTextDatum("failed")));
 	if (failedText == NULL)
-		elog(IsTransactionState() ? ERROR : WARNING, "Unexpected response from elasticsearch during _refresh: %s", response->data);
+		elog(ERROR, "Unexpected response from elasticsearch during _refresh: %s", response->data);
 	else
 	{
 		char *errors = TextDatumGetCString(failedText);
 		if (strcmp(errors, "0") != 0)
-			elog(IsTransactionState() ? ERROR : WARNING, "Error refresing: %s", response->data);
+			elog(ERROR, "Error refresing: %s", response->data);
 		pfree(errors);
 		pfree(failedText);
 	}
