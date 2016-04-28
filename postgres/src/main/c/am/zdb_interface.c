@@ -110,9 +110,9 @@ void zdb_index_init(void) {
 	add_string_reloption(RELOPT_KIND_ZDB, "preference", "The ?preference value used to Elasticsearch", NULL, validate_preference);
 	add_string_reloption(RELOPT_KIND_ZDB, "refresh_interval", "Frequency in which Elasticsearch indexes are refreshed.  Related to ES' index.refresh_interval setting", "-1", validate_refresh_interval);
 	add_int_reloption(RELOPT_KIND_ZDB, "shards", "The number of shared for the index", 5, 1, ZDB_MAX_SHARDS);
-	add_int_reloption(RELOPT_KIND_ZDB, "replicas", "The default number of replicas for the index", 1, 1, ZDB_MAX_REPLICAS);
+	add_int_reloption(RELOPT_KIND_ZDB, "replicas", "The default number of replicas for the index", 1, 0, ZDB_MAX_REPLICAS);
 	add_int_reloption(RELOPT_KIND_ZDB, "bulk_concurrency", "The maximum number of concurrent _bulk API requests", 12, 1, ZDB_MAX_BULK_CONCURRENCY);
-	add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API", 1024 * 1024 * 8, 1024, 1024 * 1024 * 64);
+	add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API", 1024 * 1024 * 8, 1024, (INT32_MAX/2)-1);
 	add_string_reloption(RELOPT_KIND_ZDB, "field_lists", "field=[field1, field2, field3], other=[field4,field5]", NULL, validate_field_lists);
 
 	DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
