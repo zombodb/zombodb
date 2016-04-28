@@ -82,7 +82,6 @@ typedef struct {
 	Oid   indexRelid;
     Oid   heapRelid;
 	int64 advisory_mutex;
-	int64 pool_mutex;
 	bool  isShadow;
 	bool  logit;
 	char  *databaseName;

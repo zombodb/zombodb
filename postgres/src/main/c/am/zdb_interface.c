@@ -169,7 +169,6 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	}
 
 	desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
-	desc->pool_mutex     = (int64) -desc->advisory_mutex;
 
 	appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
 	desc->fullyQualifiedName = pstrdup(scratch->data);

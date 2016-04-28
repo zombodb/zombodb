@@ -133,9 +133,6 @@ static void xact_complete_cleanup(XactEvent event) {
     List *usedIndexes = usedIndexesList;
 	ListCell *lc;
 
-	/* don't leave any dangling advisory locks */
-	DirectFunctionCall1(pg_advisory_unlock_all, PointerGetDatum(NULL));
-
     /* free up our static vars on xact finish */
     usedIndexesList     = NULL;
     indexesInsertedList = NULL;

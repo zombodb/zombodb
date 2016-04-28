@@ -35,6 +35,7 @@
 #include "zdbutils.h"
 
 typedef enum VisibilityType {
+    VT_SKIPPABLE,
     VT_VISIBLE,
     VT_INVISIBLE,
     VT_DEAD,
@@ -323,6 +324,7 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
     Page		page;
     OffsetNumber offnum;
     bool		valid;
+    VisibilityType rc;
 
     /*
      * Fetch and pin the appropriate page of the relation.
@@ -342,11 +344,8 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
     offnum = ItemPointerGetOffsetNumber(tid);
     if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page))
     {
-        LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-        if (BufferIsValid(buffer))
-            ReleaseBuffer(buffer);
-        tuple->t_data = NULL;
-        return VT_OUT_OF_RANGE;
+        rc = VT_OUT_OF_RANGE;
+        goto get_out;
     }
 
     /*
@@ -359,11 +358,8 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
      */
     if (!ItemIdIsNormal(lp))
     {
-        LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-        if (BufferIsValid(buffer))
-            ReleaseBuffer(buffer);
-        tuple->t_data = NULL;
-        return VT_DEAD;
+        rc = VT_DEAD;
+        goto get_out;
     }
 
     /*
@@ -378,24 +374,38 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
      */
     valid = HeapTupleSatisfiesVisibility(tuple, snapshot, buffer);
 
+    /*
+     * If the tuple's xmin >= to the snapshot's xmax, we can skip this entirely
+     * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
+     *
+     * In essence, we treat this as "visible", but it just gets filtered out at search time
+     */
+    if (!valid && HeapTupleHeaderGetXmin(tuple->t_data) >= snapshot->xmax) {
+        rc = VT_SKIPPABLE;
+        goto get_out;
+    }
+
     if (valid)
         PredicateLockTuple(relation, tuple, snapshot);
 
     CheckForSerializableConflictOut(valid, relation, tuple, buffer, snapshot);
-
-    LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-    if (BufferIsValid(buffer))
-        ReleaseBuffer(buffer);
-    tuple->t_data = NULL;
 
     if (valid)
     {
         /*
          * All checks passed, so the tuple is visible to us
          */
-        return VT_VISIBLE;
+        rc = VT_VISIBLE;
+        goto get_out;
     }
 
     /* Tuple failed time qual */
-    return VT_INVISIBLE;
+    rc = VT_INVISIBLE;
+
+get_out:
+    LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+    if (BufferIsValid(buffer))
+        ReleaseBuffer(buffer);
+    tuple->t_data = NULL;
+    return rc;
 }
