@@ -23,6 +23,7 @@
 #include "commands/dbcommands.h"
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 
@@ -30,6 +31,7 @@
 #include "elasticsearch.h"
 
 relopt_kind RELOPT_KIND_ZDB;
+bool zdb_batch_mode_guc;
 
 static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
 static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
@@ -95,9 +97,9 @@ static void validate_field_lists(char *str) {
 
 static List *allocated_descriptors = NULL;
 
-void zdb_index_init(void)
-{
+void zdb_index_init(void) {
 	RELOPT_KIND_ZDB = add_reloption_kind();
+
 	add_string_reloption(RELOPT_KIND_ZDB, "url", "Server URL and port", NULL, validate_url);
 	add_string_reloption(RELOPT_KIND_ZDB, "shadow", "A zombodb index to which this one should shadow", NULL, validate_shadow);
 	add_string_reloption(RELOPT_KIND_ZDB, "options", "Comma-separated list of options to pass to underlying index", NULL, validate_options);
@@ -105,8 +107,11 @@ void zdb_index_init(void)
 	add_int_reloption(RELOPT_KIND_ZDB, "shards", "The number of shared for the index", 5, 1, ZDB_MAX_SHARDS);
 	add_int_reloption(RELOPT_KIND_ZDB, "replicas", "The default number of replicas for the index", 1, 1, ZDB_MAX_REPLICAS);
 	add_int_reloption(RELOPT_KIND_ZDB, "bulk_concurrency", "The maximum number of concurrent _bulk API requests", 12, 1, 12);
-	add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API", 1024*1024*8, 1024, 1024*1024*64);
+	add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API",
+					  1024 * 1024 * 8, 1024, 1024 * 1024 * 64);
 	add_string_reloption(RELOPT_KIND_ZDB, "field_lists", "field=[field1, field2, field3], other=[field4,field5]", NULL, validate_field_lists);
+
+	DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)

@@ -162,7 +162,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
         RelationClose(heapRel);
     }
 
-	appendStringInfo(baseQuery, "(not _xid >= %d) AND ", snapshot->xmax); /* exclude records by xid that we know we cannot see */
+	appendStringInfo(baseQuery, "(not _xid > %d) AND ", snapshot->xmax); /* exclude records by xid that we know we cannot see */
     for (i = 0; i < nqueries; i++) {
         if (i > 0) appendStringInfo(baseQuery, " AND ");
         appendStringInfo(baseQuery, "(%s)", queries[i]);
@@ -906,7 +906,9 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 				 * if this is the only request being made in this batch, then we'll ?refresh=true
 				 * to avoid an additional round-trip to ES
 				 */
-				appendStringInfo(endpoint, "?refresh=true");
+				if (!zdb_batch_mode_guc)
+					appendStringInfo(endpoint, "?refresh=true");
+
 				response = rest_call("POST", endpoint->data, batch->bulk);
 			}
 			else
@@ -920,12 +922,14 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 			freeStringInfo(response);
 		}
 
-		/*
-		 * If this wasn't the only request being made in this batch
-		 * then ask ES to refresh the index
-		 */
-		if (batch->nrequests > 0)
-			elasticsearch_refreshIndex(indexDescriptor);
+		if (!zdb_batch_mode_guc) {
+			/*
+             * If this wasn't the only request being made in this batch
+             * then ask ES to refresh the index
+             */
+			if (batch->nrequests > 0)
+				elasticsearch_refreshIndex(indexDescriptor);
+		}
 
 		freeStringInfo(batch->bulk);
 

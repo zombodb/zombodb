@@ -116,7 +116,8 @@ typedef struct {
 	float4     max_score;
 } ZDBSearchResponse;
 
-extern PGDLLIMPORT relopt_kind RELOPT_KIND_ZDB;
+extern PGDLLEXPORT relopt_kind RELOPT_KIND_ZDB;
+extern PGDLLEXPORT bool zdb_batch_mode_guc;
 
 void               zdb_index_init(void);
 void			   zdb_transaction_finish(void);

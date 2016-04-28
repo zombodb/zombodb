@@ -163,11 +163,35 @@ static void zdbam_xact_callback(XactEvent event, void *arg)
 			break;
 
 		case XACT_EVENT_COMMIT:
+		{
+			if (zdb_batch_mode_guc)
+			{
+				ListCell *lc;
+
+				/* finish the batch insert (and refresh) for each index into which new records were inserted */
+				foreach (lc, indexesInsertedList) {
+					ZDBIndexDescriptor *desc = lfirst(lc);
+					elog(NOTICE, "batch mode finish for: %s", desc->indexName);
+					desc->implementation->batchInsertFinish(desc);
+					desc->implementation->refreshIndex(desc);
+				}
+			}
+
+		}
+			break;
+		case XACT_EVENT_ABORT:
+			break;
+
+		default:
+			break;
+	}
+
+	switch (event) {
+		case XACT_EVENT_COMMIT:
 		case XACT_EVENT_ABORT:
 			/* cleanup, the xact is over */
 			xact_complete_cleanup(event);
 			break;
-
 		default:
 			break;
 	}
@@ -188,13 +212,15 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc)
 {
 	if (executorDepth == 0)
 	{
-		ListCell *lc;
-
-		/* finish the batch insert (and refresh) for each index into which new records were inserted */
-		foreach (lc, indexesInsertedList)
+		if (!zdb_batch_mode_guc)
 		{
-			ZDBIndexDescriptor *desc = lfirst(lc);
-			desc->implementation->batchInsertFinish(desc);
+			ListCell *lc;
+
+			/* finish the batch insert (and refresh) for each index into which new records were inserted */
+			foreach (lc, indexesInsertedList) {
+				ZDBIndexDescriptor *desc = lfirst(lc);
+				desc->implementation->batchInsertFinish(desc);
+			}
 		}
 
 		/* make sure to cleanup seqscan globals too */
