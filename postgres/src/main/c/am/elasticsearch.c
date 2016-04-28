@@ -162,7 +162,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
         RelationClose(heapRel);
     }
 
-	appendStringInfo(baseQuery, "(not _xid > %d) AND ", snapshot->xmax); /* exclude records by xid that we know we cannot see */
+	appendStringInfo(baseQuery, "(not _xid >= %d OR _xid:%d) AND ", snapshot->xmax, GetTopTransactionId()); /* exclude records by xid that we know we cannot see */
     for (i = 0; i < nqueries; i++) {
         if (i > 0) appendStringInfo(baseQuery, " AND ");
         appendStringInfo(baseQuery, "(%s)", queries[i]);
