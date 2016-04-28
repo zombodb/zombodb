@@ -27,6 +27,8 @@
 
 #define ZDB_MAX_SHARDS 64
 #define ZDB_MAX_REPLICAS 64
+
+/* this needs to match curl_support.h:MAX_CURL_HANDLES */
 #define ZDB_MAX_BULK_CONCURRENCY 1024
 
 typedef struct
