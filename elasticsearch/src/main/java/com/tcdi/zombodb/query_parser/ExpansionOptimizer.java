@@ -280,6 +280,8 @@ public class ExpansionOptimizer {
                     String type = md.getType(child.getFieldname());
                     if (!("integer".equals(type) || "long".equals(type)))
                         continue;
+                    if (!(child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ))
+                        continue;
 
                     boolean didWork = false;
                     if (child instanceof ASTArray) {
