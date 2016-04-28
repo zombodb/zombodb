@@ -109,7 +109,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -171,7 +171,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "_all" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -237,7 +237,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -299,7 +299,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "_all" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -365,7 +365,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -427,7 +427,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "_all" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -493,7 +493,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -555,7 +555,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "_all" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -621,7 +621,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -683,7 +683,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "meeting", "001", 123, 0, "000", 0.23 ],
+                            "_all" : [ "meeting", "001", "123", "0", "000", "0.23" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -2644,7 +2644,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2663,7 +2663,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2686,7 +2686,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2705,7 +2705,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2728,7 +2728,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2747,7 +2747,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2770,7 +2770,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2789,7 +2789,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2812,7 +2812,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -2831,7 +2831,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ 1, 2, 3, "beer", "foo", "blah", true, 123.99 ]
+                            "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                           }
                         } ]
                       }
@@ -3418,7 +3418,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3448,7 +3448,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3482,7 +3482,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3512,7 +3512,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3546,7 +3546,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3576,7 +3576,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3610,7 +3610,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3640,7 +3640,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3674,7 +3674,7 @@
                           }
                         }, {
                           "terms" : {
-                            "fulltext_field" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]
@@ -3704,7 +3704,7 @@
                           }
                         }, {
                           "terms" : {
-                            "_all" : [ "abcd", "to", 10, "a", "to", "z" ],
+                            "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
                             "minimum_should_match" : "6"
                           }
                         } ]

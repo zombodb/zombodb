@@ -755,9 +755,54 @@ public class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                return termQuery(n.getFieldname(), n.getValue());
+                Object value;
+
+                String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
+                value = coerceNumber(n.getValue(), type);
+                return termQuery(n.getFieldname(), value);
             }
         });
+    }
+
+    private Object coerceNumber(Object value, String type) {
+        switch (type) {
+            case "integer":
+                value = Integer.parseInt(String.valueOf(value));
+                break;
+            case "long":
+                value = Long.parseLong(String.valueOf(value));
+                break;
+            case "double":
+                value = Double.parseDouble(String.valueOf(value));
+                break;
+            case "float":
+                value = Float.parseFloat(String.valueOf(value));
+                break;
+            case "unknown":
+                try {
+                    value = Integer.valueOf(String.valueOf(value));
+                } catch (Exception e) {
+                    try {
+                        value = Long.valueOf(String.valueOf(value));
+                    } catch (Exception e2) {
+                        try {
+                            value = Float.valueOf(String.valueOf(value));
+                        } catch (Exception e3) {
+                            try {
+                                value = Double.valueOf(String.valueOf(value));
+                            } catch (Exception e4) {
+                                // value stays unchanged
+                            }
+                        }
+                    }
+                }
+                break;
+
+            default:
+                break;
+
+        }
+        return value;
     }
 
     private void validateOperator(QueryParserNode node) {
@@ -839,20 +884,54 @@ public class QueryRewriter {
         validateOperator(node);
         return buildStandard(node, new QBF() {
             @Override
-            public QueryBuilder b(QueryParserNode n) {
+            public QueryBuilder b(final QueryParserNode n) {
                 boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
-                final Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
+                Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
                 final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
                 int minShouldMatch = (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? cnt : 1;
+                final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
 
+                switch (type) {
+                    case "integer":
+                    case "long":
+                    case "double":
+                    case "float":
+                    case "unknown":
+                        final Iterable<Object> finalItr = itr;
+                        itr = new Iterable<Object>() {
+                            private final Iterator<Object> iterator = finalItr.iterator();
+
+                            @Override
+                            public Iterator<Object> iterator() {
+                                return new Iterator<Object>() {
+                                    @Override
+                                    public boolean hasNext() {
+                                        return iterator.hasNext();
+                                    }
+
+                                    @Override
+                                    public Object next() {
+                                        Object value = iterator.next();
+                                        return coerceNumber(value, type);
+                                    }
+
+                                    @Override
+                                    public void remove() {
+                                        iterator.remove();
+                                    }
+                                };
+                            }
+                        };
+                }
                 if (node.hasExternalValues() && minShouldMatch == 1) {
                     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
                     return filteredQuery(matchAllQuery(), builder);
                 } else {
+                    final Iterable<Object> finalItr1 = itr;
                     TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
                         @Override
                         public Iterator<Object> iterator() {
-                            return itr.iterator();
+                            return finalItr1.iterator();
                         }
 
                         @Override
@@ -887,7 +966,7 @@ public class QueryRewriter {
             public QueryBuilder b(QueryParserNode n) {
                 QueryParserNode start = n.getChild(0);
                 QueryParserNode end = n.getChild(1);
-                return rangeQuery(node.getFieldname()).from(start.getValue()).to(end.getValue());
+                return rangeQuery(node.getFieldname()).from(coerceNumber(start.getValue(), "unknown")).to(coerceNumber(end.getValue(), "unknown"));
             }
         });
     }
@@ -1036,13 +1115,13 @@ public class QueryRewriter {
                 return filteredQuery(matchAllQuery(), notFilter(queryFilter(qbf.b(node))));
 
             case LT:
-                return rangeQuery(node.getFieldname()).lt(node.getValue());
+                return rangeQuery(node.getFieldname()).lt(coerceNumber(node.getValue(), "unknown"));
             case GT:
-                return rangeQuery(node.getFieldname()).gt(node.getValue());
+                return rangeQuery(node.getFieldname()).gt(coerceNumber(node.getValue(), "unknown"));
             case LTE:
-                return rangeQuery(node.getFieldname()).lte(node.getValue());
+                return rangeQuery(node.getFieldname()).lte(coerceNumber(node.getValue(), "unknown"));
             case GTE:
-                return rangeQuery(node.getFieldname()).gte(node.getValue());
+                return rangeQuery(node.getFieldname()).gte(coerceNumber(node.getValue(), "unknown"));
 
             case REGEX:
                 return regexpQuery(node.getFieldname(), node.getEscapedValue());
