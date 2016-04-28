@@ -35,6 +35,7 @@
 #include "zdbutils.h"
 
 typedef enum VisibilityType {
+    VT_SKIPPABLE,
     VT_VISIBLE,
     VT_INVISIBLE,
     VT_DEAD,
@@ -372,6 +373,17 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
      * check time qualification of tuple, then release lock
      */
     valid = HeapTupleSatisfiesVisibility(tuple, snapshot, buffer);
+
+    /*
+     * If the tuple's xmin >= to the snapshot's xmax, we can skip this entirely
+     * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
+     *
+     * In essence, we treat this as "visible", but it just gets filtered out at search time
+     */
+    if (!valid && HeapTupleHeaderGetXmin(tuple->t_data) >= snapshot->xmax) {
+        rc = VT_SKIPPABLE;
+        goto get_out;
+    }
 
     if (valid)
         PredicateLockTuple(relation, tuple, snapshot);
