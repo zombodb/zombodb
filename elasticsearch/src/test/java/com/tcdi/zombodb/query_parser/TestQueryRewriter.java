@@ -4482,5 +4482,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testGIANTNumber_Issue116() throws Exception {
+        assertJson("exact_field:90130715133114369814655",
+                "{\n" +
+                        "  \"term\" : {\n" +
+                        "    \"exact_field\" : \"90130715133114369814655\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
 }
 

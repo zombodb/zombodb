@@ -740,23 +740,7 @@ QueryParserNode Number() #Number :
 {
     (
         t = <NUMBER> {
-            try {
-                jjtThis.value = Integer.valueOf(t.image);
-            } catch (Exception e) {
-                try {
-                    jjtThis.value = Long.valueOf(t.image);
-                } catch (Exception e2) {
-                    try {
-                        jjtThis.value = Float.valueOf(t.image);
-                    } catch (Exception e3) {
-                        try {
-                            jjtThis.value = Double.valueOf(t.image);
-                        } catch (Exception e4) {
-                            throw new RuntimeException("Not a number: " + t.image, e);
-                        }
-                    }
-                }
-            }
+            jjtThis.value = t.image;
         }
     )
     { return jjtThis; }
