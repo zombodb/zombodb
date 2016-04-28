@@ -27,6 +27,7 @@
 
 #define ZDB_MAX_SHARDS 64
 #define ZDB_MAX_REPLICAS 64
+#define ZDB_MAX_BULK_CONCURRENCY 64
 
 typedef struct
 {
