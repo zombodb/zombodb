@@ -37,7 +37,6 @@
 #include "utils/builtins.h"
 
 #include "zdb_interface.h"
-#include "zdbpool.h"
 #include "zdbops.h"
 #include "zdbam.h"
 #include "zdbseqscan.h"
@@ -153,7 +152,6 @@ static void xact_complete_cleanup(XactEvent event) {
         ZDBIndexDescriptor *desc = lfirst(lc);
 
         desc->implementation->transactionFinish(desc, event == XACT_EVENT_COMMIT ? ZDB_TRANSACTION_COMMITTED : ZDB_TRANSACTION_ABORTED);
-        zdb_pool_checkin(desc);
     }
 	interface_transaction_cleanup();
 }
@@ -200,7 +198,6 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc)
 		{
 			ZDBIndexDescriptor *desc = lfirst(lc);
 			desc->implementation->batchInsertFinish(desc);
-            zdb_pool_checkin(desc);
 		}
 
 		/* make sure to cleanup seqscan globals too */
@@ -391,9 +388,6 @@ zdbbuildCallback(Relation indexRel,
 	if (tupdesc->natts != 2)
 		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
 
-    if (desc->current_pool_index == InvalidPoolIndex)
-        zdb_pool_checkout(desc);
-
 	value = DatumGetTextP(values[1]);
 	desc->implementation->batchInsertRow(desc, &htup->t_self, value);
 
@@ -423,8 +417,6 @@ zdbinsert(PG_FUNCTION_ARGS)
 	if (tupdesc->natts != 2)
 		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
 
-    if (desc->current_pool_index == InvalidPoolIndex)
-        zdb_pool_checkout(desc);
 	value = DatumGetTextP(values[1]);
 	desc->implementation->batchInsertRow(desc, ht_ctid, value);
 

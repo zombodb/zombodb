@@ -87,7 +87,6 @@ public abstract class ZomboDBTestCase {
     private static void createIndex(String indexName) throws Exception {
         String settings = resource(ZomboDBTestCase.class, indexName + "-mapping.json");
 
-        indexName = indexName+".0";
         CreateIndexRequestBuilder builder = new CreateIndexRequestBuilder(client().admin().indices(), indexName);
         builder.setSource(settings);
 

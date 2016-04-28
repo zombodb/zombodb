@@ -25,6 +25,9 @@
 
 #include "util/zdbutils.h"
 
+#define ZDB_MAX_SHARDS 64
+#define ZDB_MAX_REPLICAS 64
+
 typedef struct
 {
 	int32 vl_len_;   /* varlena header (do not touch directly!) */
@@ -88,7 +91,6 @@ typedef struct {
 	char  *indexName;
 	char  *fullyQualifiedName;
 	int   shards;
-	int   current_pool_index;
 
 	char *qualifiedTableName;
 

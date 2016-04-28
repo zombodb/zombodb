@@ -27,7 +27,6 @@
 #include "utils/memutils.h"
 
 #include "zdb_interface.h"
-#include "zdbpool.h"
 #include "elasticsearch.h"
 
 relopt_kind RELOPT_KIND_ZDB;
@@ -145,7 +144,6 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->bulk_concurrency   = ZDBIndexOptionsGetBulkConcurrency(indexRel);
 	desc->batch_size         = ZDBIndexOptionsGetBatchSize(indexRel);
 	desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel);
-	desc->current_pool_index = InvalidPoolIndex;
 
 	if (desc->isShadow)
 	{
