@@ -358,7 +358,18 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
      */
     if (!ItemIdIsNormal(lp))
     {
-        rc = VT_DEAD;
+        if (!ItemIdIsUsed(lp)) {
+            /*
+             * Technically this item is free, which means it's also *not* in our index
+             * so we don't need to actively exclude it.
+             *
+             * Should it become occupied (inserted into index) later on during this process, it's no big deal
+             * because it'll have an xmin that's outside our visible range and we filter those on the query
+             */
+            rc = VT_VISIBLE;
+        } else {
+            rc = VT_DEAD;
+        }
         goto get_out;
     }
 
