@@ -25,7 +25,6 @@
 
 #define zdb_json char *
 
-extern PGDLLEXPORT uint64 ConvertedSnapshotXmax;
 extern PGDLLEXPORT uint64 ConvertedTopTransactionId;
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing);

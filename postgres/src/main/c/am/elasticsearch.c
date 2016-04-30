@@ -24,13 +24,13 @@
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
+#include "utils/snapmgr.h"
 
 #include "rest/rest.h"
 #include "util/zdbutils.h"
 
 #include "elasticsearch.h"
 #include "zdbseqscan.h"
-#include "zdb_interface.h"
 
 #define MAX_LINKED_INDEXES 1024
 
@@ -166,8 +166,21 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
     }
 
 	if (!desc->ignoreVisibility && useInvisibilityMap) {
-		/* exclude records by xid that we know we cannot see */
-		appendStringInfo(baseQuery, "(not _xid >= %lu OR _xid:%lu) AND ", ConvertedSnapshotXmax, ConvertedTopTransactionId);
+		Snapshot snap = GetActiveSnapshot();
+
+		/*
+		 * exclude records by xid that we know we cannot see, which are
+		 *   a) anything greater than or equal to the snapshot's 'xmax'
+		 *      (but we can see ourself)
+		 */
+		appendStringInfo(baseQuery, "((not _xid >= %lu) OR _xid:%lu) AND ", convert_xid(snap->xmax), ConvertedTopTransactionId);
+
+		/*
+		 *   b) the xid of any currently running transaction
+		 */
+		for (i = 0; i<snap->xcnt; i++) {
+			appendStringInfo(baseQuery, "_xid <> %lu AND ", convert_xid(snap->xip[i]));
+		}
 	}
 
     for (i = 0; i < nqueries; i++) {

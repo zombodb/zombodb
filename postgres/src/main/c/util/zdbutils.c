@@ -25,7 +25,6 @@
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
 #include "storage/bufmgr.h"
-#include "storage/predicate.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
@@ -42,7 +41,6 @@ typedef enum VisibilityType {
     VT_OUT_OF_RANGE
 } VisibilityType;
 
-uint64 ConvertedSnapshotXmax;
 uint64 ConvertedTopTransactionId;
 
 static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer);

@@ -139,7 +139,6 @@ static void xact_complete_cleanup(XactEvent event) {
     indexesInsertedList = NULL;
 	executorDepth = 0;
 	numHitsFound = -1;
-	ConvertedSnapshotXmax = 0;
 	ConvertedTopTransactionId = 0;
 
 	zdb_reset_scores();
@@ -205,8 +204,8 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags)
 	if (prev_ExecutorStartHook == zdb_executor_start_hook)
 		elog(ERROR, "zdb_executor_start_hook: Somehow prev_ExecutorStartHook was set to zdb_executor_start_hook");
 
-	ConvertedSnapshotXmax = convert_xid(GetActiveSnapshot()->xmax);
-	ConvertedTopTransactionId = convert_xid(GetTopTransactionId());
+	if (ConvertedTopTransactionId == 0)
+		ConvertedTopTransactionId = convert_xid(GetTopTransactionId());
 
 	if (prev_ExecutorStartHook)
 		prev_ExecutorStartHook(queryDesc, eflags);
