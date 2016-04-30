@@ -146,6 +146,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
                 if (ids->len > 0)
                     appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", tmp->fullyQualifiedName, ids->data);
 
+				freeStringInfo(ids);
                 RelationClose(rel);
             }
         }
@@ -156,6 +157,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
         if (ids->len > 0)
             appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", desc->fullyQualifiedName, ids->data);
 
+		freeStringInfo(ids);
         RelationClose(heapRel);
     }
 
