@@ -352,10 +352,18 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 {
 	StringInfo result = makeStringInfo();
 	char       *json;
-	int        i, cnt = 0;
+	int        i;
 
 	appendStringInfo(result, "{\"is_anonymous\": %s,", isAnonymous ? "true" : "false");
 	appendStringInfo(result, "\"properties\": {");
+
+	appendStringInfo(result, "\"_xact\": {"
+			"\"type\":\"long\","
+			"\"fielddata\":{\"format\":\"disabled\"},"
+			"\"include_in_all\":\"false\","
+			"\"norms\": {\"enabled\":false},"
+			"\"index\": \"not_analyzed\""
+			"}");
 
 	for (i = 0; i < tupdesc->natts; i++)
 	{
@@ -368,7 +376,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 
         name = NameStr(tupdesc->attrs[i]->attname);
 
-		if (cnt > 0) appendStringInfoCharMacro(result, ',');
+		appendStringInfoCharMacro(result, ',');
 
 		/* if we have a user-defined mapping for this field in this table, use it */
 		user_mapping = lookup_field_mapping(CurrentMemoryContext, tableRelId, name);
@@ -666,7 +674,6 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 		appendStringInfoCharMacro(result, '}');
 
 		pfree(typename);
-		cnt++;
 	}
 	appendStringInfo(result, "}}");
 
