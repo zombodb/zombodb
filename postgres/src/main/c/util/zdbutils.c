@@ -284,12 +284,13 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
     int many = 0;
 
     if (cnt == 0 || cnt != heapRel->rd_rel->relpages) {
-        Snapshot snapshot = GetActiveSnapshot();
+        Snapshot      snapshot = GetActiveSnapshot();
         HeapTupleData heapTuple;
-        BlockNumber       blockno;
-        OffsetNumber      offno;
+        BlockNumber   blockno;
+        OffsetNumber  offno;
+        int           size;
 
-        for (blockno = 0; blockno < RelationGetNumberOfBlocks(heapRel); blockno++) {
+        for (blockno = 0, size = RelationGetNumberOfBlocks(heapRel); blockno < size; blockno++) {
             bool   allVisible;
 
             CHECK_FOR_INTERRUPTS();
