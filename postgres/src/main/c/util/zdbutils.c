@@ -291,13 +291,9 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
         int           size;
 
         for (blockno = 0, size = RelationGetNumberOfBlocks(heapRel); blockno < size; blockno++) {
-            bool   allVisible;
-
             CHECK_FOR_INTERRUPTS();
 
-            allVisible = visibilitymap_test(heapRel, blockno, &vmap_buff);
-
-            if (!allVisible) {
+            if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
                 Buffer buffer = InvalidBuffer;
 
                 for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
