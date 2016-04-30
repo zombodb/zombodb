@@ -25,6 +25,7 @@
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
 #include "storage/bufmgr.h"
+#include "storage/predicate.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
@@ -408,6 +409,11 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
          */
         return VT_SKIPPABLE;
     }
+
+    if (valid)
+        PredicateLockTuple(relation, tuple, snapshot);
+
+    CheckForSerializableConflictOut(valid, relation, tuple, *buffer, snapshot);
 
     if (valid)
     {
