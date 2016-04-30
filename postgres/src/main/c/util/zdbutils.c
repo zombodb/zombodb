@@ -39,14 +39,13 @@ typedef enum VisibilityType {
     VT_SKIPPABLE,
     VT_VISIBLE,
     VT_INVISIBLE,
-    VT_DEAD,
     VT_OUT_OF_RANGE
 } VisibilityType;
 
 uint64 ConvertedSnapshotXmax;
 uint64 ConvertedTopTransactionId;
 
-static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple);
+static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer);
 
 typedef struct
 {
@@ -298,27 +297,34 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
             allVisible = visibilitymap_test(heapRel, blockno, &vmap_buff);
 
             if (!allVisible) {
+                Buffer buffer = InvalidBuffer;
+
                 for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
                     VisibilityType rc;
 
                     ItemPointerSet(&(heapTuple.t_self), blockno, offno);
 
-                    rc = tuple_is_visible(heapRel, snapshot, &heapTuple);
+                    rc = tuple_is_visible(heapRel, snapshot, &heapTuple, &buffer);
 
                     if (rc == VT_OUT_OF_RANGE)
                         break; /* we're done with this page */
 
-                    if (isVacuum || rc == VT_INVISIBLE || rc == VT_DEAD) {
+                    if (isVacuum || rc == VT_INVISIBLE) {
                         /* tuple is invisible to us */
                         cb(&(heapTuple.t_self), user_data);
                         many++;
                     }
                 }
+
+                if (BufferIsValid(buffer)) {
+                    LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+                    ReleaseBuffer(buffer);
+                }
             }
         }
     }
 
-    if (!BufferIsInvalid(vmap_buff))
+    if (BufferIsValid(vmap_buff))
         ReleaseBuffer(vmap_buff);
 
     return many;
@@ -327,25 +333,25 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
 /**
  * Adapted from heapam.c#heap_fetch()
  */
-static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple) {
+static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer) {
     ItemPointer tid = &(tuple->t_self);
     ItemId		lp;
-    Buffer		buffer;
     Page		page;
     OffsetNumber offnum;
     bool		valid;
-    VisibilityType rc;
 
-    /*
-     * Fetch and pin the appropriate page of the relation.
-     */
-    buffer = ReadBuffer(relation, ItemPointerGetBlockNumber(tid));
+    if (BufferIsInvalid(*buffer)) {
+        /*
+         * Fetch and pin the appropriate page of the relation.
+         */
+        *buffer = ReadBuffer(relation, ItemPointerGetBlockNumber(tid));
 
-    /*
-     * Need share lock on buffer to examine tuple commit status.
-     */
-    LockBuffer(buffer, BUFFER_LOCK_SHARE);
-    page = BufferGetPage(buffer);
+        /*
+         * Need share lock on buffer to examine tuple commit status.
+         */
+        LockBuffer(*buffer, BUFFER_LOCK_SHARE);
+    }
+    page = BufferGetPage(*buffer);
 
     /*
      * We'd better check for out-of-range offnum in case of VACUUM since the
@@ -354,8 +360,7 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
     offnum = ItemPointerGetOffsetNumber(tid);
     if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page))
     {
-        rc = VT_OUT_OF_RANGE;
-        goto get_out;
+        return VT_OUT_OF_RANGE;
     }
 
     /*
@@ -368,7 +373,8 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
      */
     if (!ItemIdIsNormal(lp))
     {
-        if (!ItemIdIsUsed(lp)) {
+        if (!ItemIdIsUsed(lp))
+        {
             /*
              * Technically this item is free, which means it's also *not* in our index
              * so we don't need to actively exclude it.
@@ -376,11 +382,12 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
              * Should it become occupied (inserted into index) later on during this process, it's no big deal
              * because it'll have an xmin that's outside our visible range and we filter those on the query
              */
-            rc = VT_VISIBLE;
-        } else {
-            rc = VT_DEAD;
+            return VT_VISIBLE;
         }
-        goto get_out;
+        else
+        {
+            return VT_INVISIBLE;
+        }
     }
 
     /*
@@ -393,42 +400,29 @@ static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, Hea
     /*
      * check time qualification of tuple, then release lock
      */
-    valid = HeapTupleSatisfiesVisibility(tuple, snapshot, buffer);
+    valid = HeapTupleSatisfiesVisibility(tuple, snapshot, *buffer);
 
-    /*
-     * If the tuple's xmin >= to the snapshot's xmax, we can skip this entirely
-     * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
-     *
-     * In essence, we treat this as "visible", but it just gets filtered out at search time
-     */
-    if (!valid && HeapTupleHeaderGetXmin(tuple->t_data) >= snapshot->xmax) {
-        rc = VT_SKIPPABLE;
-        goto get_out;
+    if (!valid && HeapTupleHeaderGetXmin(tuple->t_data) >= snapshot->xmax)
+    {
+        /*
+         * The tuple's xmin is >= to the snapshot's xmax, so we can skip this entirely
+         * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
+         *
+         * In essence, we treat this as "visible", but it just gets filtered out at search time
+         */
+        return VT_SKIPPABLE;
     }
-
-    if (valid)
-        PredicateLockTuple(relation, tuple, snapshot);
-
-    CheckForSerializableConflictOut(valid, relation, tuple, buffer, snapshot);
 
     if (valid)
     {
         /*
          * All checks passed, so the tuple is visible to us
          */
-        rc = VT_VISIBLE;
-        goto get_out;
+        return VT_VISIBLE;
     }
 
     /* Tuple failed time qual */
-    rc = VT_INVISIBLE;
-
-get_out:
-    LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-    if (BufferIsValid(buffer))
-        ReleaseBuffer(buffer);
-    tuple->t_data = NULL;
-    return rc;
+    return VT_INVISIBLE;
 }
 
 /* adapted from Postgres' txid.c#convert_xid function */
