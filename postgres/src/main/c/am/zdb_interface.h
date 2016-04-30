@@ -41,7 +41,7 @@ typedef struct
 	int   refreshIntervalOffset;
 	int   shards;
 	int   replicas;
-	bool  noxact;
+	bool  ignoreVisibility;
 	int   bulk_concurrency;
 	int   batch_size;
 	int   fieldListsValueOffset;
@@ -83,6 +83,9 @@ typedef struct
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->fieldListsValueOffset > 0 ? \
       (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->fieldListsValueOffset : (NULL))
 
+#define ZDBIndexOptionsGetIgnoreVisibility(relation) \
+	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->ignoreVisibility : false
+
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
@@ -108,6 +111,7 @@ typedef struct {
 	char *refreshInterval;
 	int  bulk_concurrency;
 	int  batch_size;
+	bool ignoreVisibility;
 
 	char *fieldLists;
 

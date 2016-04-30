@@ -114,6 +114,7 @@ void zdb_index_init(void) {
 	add_int_reloption(RELOPT_KIND_ZDB, "bulk_concurrency", "The maximum number of concurrent _bulk API requests", 12, 1, ZDB_MAX_BULK_CONCURRENCY);
 	add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API", 1024 * 1024 * 8, 1024, (INT32_MAX/2)-1);
 	add_string_reloption(RELOPT_KIND_ZDB, "field_lists", "field=[field1, field2, field3], other=[field4,field5]", NULL, validate_field_lists);
+	add_bool_reloption(RELOPT_KIND_ZDB, "ignore_visibility", "Should queries that require visibility information actually use it?", false);
 
 	DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
 }
@@ -153,6 +154,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel);
 	desc->bulk_concurrency   = ZDBIndexOptionsGetBulkConcurrency(indexRel);
 	desc->batch_size         = ZDBIndexOptionsGetBatchSize(indexRel);
+	desc->ignoreVisibility   = ZDBIndexOptionsGetIgnoreVisibility(indexRel);
 	desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel);
 
 	if (desc->isShadow)

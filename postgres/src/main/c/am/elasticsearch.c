@@ -130,41 +130,45 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->fieldLists);
 
     if (useInvisibilityMap) {
-        Relation heapRel;
-
         if (desc->options != NULL) {
             int  index_cnt;
             char **indices = parse_linked_indices(desc->schemaName, desc->options, &index_cnt);
 
             for (i = 0; i < index_cnt; i++) {
                 ZDBIndexDescriptor *tmp = zdb_alloc_index_descriptor_by_index_oid(DatumGetObjectId(DirectFunctionCall1(text_regclass, CStringGetTextDatum(indices[i]))));
-                Relation           rel;
 
-                rel = RelationIdGetRelation(tmp->heapRelid);
-                ids = find_invisible_ctids(rel);
+                if (!tmp->ignoreVisibility) {
+                    Relation rel;
 
-                if (ids->len > 0)
-                    appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", tmp->fullyQualifiedName, ids->data);
+                    rel = RelationIdGetRelation(tmp->heapRelid);
+                    ids = find_invisible_ctids(rel);
 
-				freeStringInfo(ids);
-                RelationClose(rel);
+                    if (ids->len > 0)
+                        appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", tmp->fullyQualifiedName, ids->data);
+
+                    freeStringInfo(ids);
+                    RelationClose(rel);
+                }
             }
         }
 
-        heapRel = RelationIdGetRelation(desc->heapRelid);
+        if (!desc->ignoreVisibility) {
+            Relation heapRel = RelationIdGetRelation(desc->heapRelid);
 
-        ids = find_invisible_ctids(heapRel);
-        if (ids->len > 0)
-            appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", desc->fullyQualifiedName, ids->data);
+            ids = find_invisible_ctids(heapRel);
+            if (ids->len > 0)
+                appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", desc->fullyQualifiedName, ids->data);
 
-		freeStringInfo(ids);
-        RelationClose(heapRel);
+            freeStringInfo(ids);
+            RelationClose(heapRel);
+        }
     }
 
-	if (useInvisibilityMap) {
+	if (!desc->ignoreVisibility && useInvisibilityMap) {
 		/* exclude records by xid that we know we cannot see */
 		appendStringInfo(baseQuery, "(not _xid >= %lu OR _xid:%lu) AND ", ConvertedSnapshotXmax, ConvertedTopTransactionId);
 	}
+
     for (i = 0; i < nqueries; i++) {
         if (i > 0) appendStringInfo(baseQuery, " AND ");
         appendStringInfo(baseQuery, "(%s)", queries[i]);
