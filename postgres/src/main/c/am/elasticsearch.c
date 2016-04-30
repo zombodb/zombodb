@@ -24,14 +24,12 @@
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
-#include "utils/snapmgr.h"
 
 #include "rest/rest.h"
 #include "util/zdbutils.h"
 
 #include "elasticsearch.h"
 #include "zdbseqscan.h"
-#include "zdb_interface.h"
 
 #define MAX_LINKED_INDEXES 1024
 
@@ -122,7 +120,6 @@ static char **parse_linked_indices(char *schema, char *options, int *many) {
 
 static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap)
 {
-	Snapshot snapshot = GetActiveSnapshot();
 	StringInfo baseQuery = makeStringInfo();
     StringInfo ids;
 	int i;
@@ -162,7 +159,10 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
         RelationClose(heapRel);
     }
 
-	appendStringInfo(baseQuery, "(not _xid >= %d OR _xid:%d) AND ", snapshot->xmax, GetTopTransactionId()); /* exclude records by xid that we know we cannot see */
+	if (useInvisibilityMap) {
+		/* exclude records by xid that we know we cannot see */
+		appendStringInfo(baseQuery, "(not _xid >= %lu OR _xid:%lu) AND ", ConvertedSnapshotXmax, ConvertedTopTransactionId);
+	}
     for (i = 0; i < nqueries; i++) {
         if (i > 0) appendStringInfo(baseQuery, " AND ");
         appendStringInfo(baseQuery, "(%s)", queries[i]);
@@ -835,7 +835,7 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 		bulk->len--;
 
 	/* ...append our transaction id to the json */
-	appendStringInfo(bulk, ",\"_xid\":%d}\n", GetTopTransactionIdIfAny());
+	appendStringInfo(bulk, ",\"_xid\":%lu}\n", ConvertedTopTransactionId);
 }
 
 void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data)

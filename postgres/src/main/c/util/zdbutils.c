@@ -19,10 +19,11 @@
 #include "miscadmin.h"
 #include "access/heapam.h"
 #include "access/relscan.h"
+#include "access/transam.h"
 #include "access/visibilitymap.h"
+#include "access/xlog.h"
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
-#include "lib/stringinfo.h"
 #include "storage/bufmgr.h"
 #include "storage/predicate.h"
 #include "utils/array.h"
@@ -42,7 +43,16 @@ typedef enum VisibilityType {
     VT_OUT_OF_RANGE
 } VisibilityType;
 
+uint64 ConvertedSnapshotXmax;
+uint64 ConvertedTopTransactionId;
+
 static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple);
+
+typedef struct
+{
+    TransactionId last_xid;
+    uint32		epoch;
+} TxidEpoch;
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
     char *definition = "";
@@ -419,4 +429,25 @@ get_out:
         ReleaseBuffer(buffer);
     tuple->t_data = NULL;
     return rc;
+}
+
+/* adapted from Postgres' txid.c#convert_xid function */
+uint64 convert_xid(TransactionId xid) {
+    TxidEpoch state;
+    uint64 epoch;
+
+    GetNextXidAndEpoch(&state.last_xid, &state.epoch);
+
+    /* return special xid's as-is */
+    if (!TransactionIdIsNormal(xid))
+        return (uint64) xid;
+
+    /* xid can be on either side when near wrap-around */
+    epoch = (uint64) state.epoch;
+    if (xid > state.last_xid && TransactionIdPrecedes(xid, state.last_xid))
+        epoch--;
+    else if (xid < state.last_xid && TransactionIdFollows(xid, state.last_xid))
+        epoch++;
+
+    return (epoch << 32) | xid;
 }

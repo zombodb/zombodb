@@ -35,6 +35,7 @@
 #include "utils/json.h"
 #include "utils/memutils.h"
 #include "utils/builtins.h"
+#include "utils/snapmgr.h"
 
 #include "zdb_interface.h"
 #include "zdbops.h"
@@ -138,6 +139,8 @@ static void xact_complete_cleanup(XactEvent event) {
     indexesInsertedList = NULL;
 	executorDepth = 0;
 	numHitsFound = -1;
+	ConvertedSnapshotXmax = 0;
+	ConvertedTopTransactionId = 0;
 
 	zdb_reset_scores();
 	zdb_sequential_scan_support_cleanup();
@@ -201,6 +204,9 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags)
 {
 	if (prev_ExecutorStartHook == zdb_executor_start_hook)
 		elog(ERROR, "zdb_executor_start_hook: Somehow prev_ExecutorStartHook was set to zdb_executor_start_hook");
+
+	ConvertedSnapshotXmax = convert_xid(GetActiveSnapshot()->xmax);
+	ConvertedTopTransactionId = convert_xid(GetTopTransactionId());
 
 	if (prev_ExecutorStartHook)
 		prev_ExecutorStartHook(queryDesc, eflags);
