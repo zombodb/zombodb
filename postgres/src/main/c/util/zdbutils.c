@@ -411,11 +411,6 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
     }
 
     if (valid)
-        PredicateLockTuple(relation, tuple, snapshot);
-
-    CheckForSerializableConflictOut(valid, relation, tuple, *buffer, snapshot);
-
-    if (valid)
     {
         /*
          * All checks passed, so the tuple is visible to us
