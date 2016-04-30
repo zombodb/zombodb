@@ -30,6 +30,7 @@
 
 #include "elasticsearch.h"
 #include "zdbseqscan.h"
+#include "zdb_interface.h"
 
 #define MAX_LINKED_INDEXES 1024
 
@@ -802,13 +803,13 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	StringInfo response;
 	ListCell *lc;
 
-	appendStringInfo(endpoint, "%s/_bulk", indexDescriptor->url);
+	appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 	foreach(lc, itemPointers)
 	{
 		ItemPointer item = lfirst(lc);
 
-		appendStringInfo(request, "{\"delete\":{\"_index\":\"%s\",\"_id\":\"%d-%d\",\"_type\":\"data\"}}\n", indexDescriptor->fullyQualifiedName, ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\",\"_type\":\"data\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
 		if (request->len >= indexDescriptor->batch_size)
 		{
