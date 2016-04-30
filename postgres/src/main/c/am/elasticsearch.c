@@ -932,13 +932,13 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 			freeStringInfo(response);
 		}
 
-		if (!zdb_batch_mode_guc) {
-			/*
-             * If this wasn't the only request being made in this batch
-             * then ask ES to refresh the index, but only if a) we're not in batch mode
-			 * and b) if the index refresh interval is -1
-             */
-			if (batch->nrequests > 0) {
+		/*
+         * If this wasn't the only request being made in this batch
+         * then ask ES to refresh the index, but only if a) we're not in batch mode
+         * and b) if the index refresh interval is -1
+         */
+		if (batch->nrequests > 0) {
+			if (!zdb_batch_mode_guc) {
 				if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
 					elasticsearch_refreshIndex(indexDescriptor);
 				}
