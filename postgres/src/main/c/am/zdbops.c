@@ -42,6 +42,7 @@ PG_FUNCTION_INFO_V1(zdb_internal_get_index_field_lists);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
 PG_FUNCTION_INFO_V1(zdb_internal_multi_search);
 PG_FUNCTION_INFO_V1(zdb_internal_analyze_text);
+PG_FUNCTION_INFO_V1(zdb_internal_update_mapping);
 
 
 /*
@@ -346,6 +347,23 @@ Datum zdb_internal_analyze_text(PG_FUNCTION_ARGS)
 	desc = zdb_alloc_index_descriptor_by_index_oid(indexRel);
 
 	PG_RETURN_TEXT_P(CStringGetTextDatum(desc->implementation->analyzeText(desc, analyzer_name, data)));
+}
+
+Datum zdb_internal_update_mapping(PG_FUNCTION_ARGS)
+{
+	Oid                indexRel = PG_GETARG_OID(0);
+	ZDBIndexDescriptor *desc;
+	Relation           heapRel;
+	TupleDesc          tupdesc;
+
+	desc    = zdb_alloc_index_descriptor_by_index_oid(indexRel);
+	heapRel = RelationIdGetRelation(desc->heapRelid);
+	tupdesc = RelationGetDescr(heapRel);
+
+	desc->implementation->updateMapping(desc, TextDatumGetCString(make_es_mapping(desc->heapRelid, tupdesc, false)));
+	RelationClose(heapRel);
+
+	PG_RETURN_VOID();
 }
 
 Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)

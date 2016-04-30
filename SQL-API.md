@@ -769,6 +769,17 @@ thai
 
 > ```
 
+#### `FUNCTION zdb_update_mapping(table_name regclass) RETURNS void`
+> `table_name`:  The name of a table with a ZomboDB index
+> 
+> This function updates the backing Elasticsearch index's mapping and settings.  Useful to call after you `ALTER INDEX` to change the number of replicas or the refresh_interval.  Also can be called when certain field data type changes have been made or when new columns (with no default value) have been added.
+> 
+> Example:
+> 
+> ```sql
+> SELECT * FROM zdb_update_mapping('pdocuts');
+> ```
+
 
 ## Views
 

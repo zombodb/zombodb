@@ -320,12 +320,14 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "       \"_source\": { \"enabled\": false },"
             "       \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "       \"_meta\": { \"primary_key\": \"%s\" },"
+			"       \"date_detection\": false,"
             "       \"properties\" : %s"
             "   },"
             "   \"settings\": {"
+			"      \"refresh_interval\":\"%s\","
             "      \"number_of_replicas\": %d"
             "   }"
-            "}", pkey, properties, ZDBIndexOptionsGetNumberOfReplicas(indexRel));
+            "}", pkey, properties, ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
     index_close(indexRel, RowExclusiveLock);
 
     appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);

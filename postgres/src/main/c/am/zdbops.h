@@ -37,6 +37,7 @@ extern Datum zdb_internal_get_index_field_lists(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_highlight(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_multi_search(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_analyze_text(PG_FUNCTION_ARGS);
+extern Datum zdb_internal_update_mapping(PG_FUNCTION_ARGS);
 
 extern Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous);
 

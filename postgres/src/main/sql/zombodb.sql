@@ -159,6 +159,11 @@ CREATE VIEW zdb_index_stats_fast AS
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas
   FROM stats;
 
+CREATE OR REPLACE FUNCTION zdb_internal_update_mapping(index_oid oid) RETURNS void STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_update_mapping(table_name regclass) RETURNS void STRICT IMMUTABLE LANGUAGE sql AS $$
+    SELECT zdb_internal_update_mapping(zdb_determine_index(table_name));
+$$;
+
 CREATE OR REPLACE FUNCTION zdb_internal_actual_index_record_count(type_oid oid, type_name text) RETURNS bigint STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdb_actual_index_record_count(table_name regclass, type_name text) RETURNS bigint STRICT IMMUTABLE LANGUAGE sql AS $$
     SELECT zdb_internal_actual_index_record_count(zdb_determine_index(table_name), type_name);
