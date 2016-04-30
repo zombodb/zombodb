@@ -803,13 +803,13 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	StringInfo response;
 	ListCell *lc;
 
-	appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 	foreach(lc, itemPointers)
 	{
 		ItemPointer item = lfirst(lc);
 
-		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\",\"_type\":\"data\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
 		if (request->len >= indexDescriptor->batch_size)
 		{
@@ -836,7 +836,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk)
 {
 	/* the data */
-	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"data\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
+	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
 	appendBinaryStringInfoAndStripLineBreaks(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
 
 	/* backup to remove the last '}' of the value json, so that we can... */
@@ -860,7 +860,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 		int idx;
 
 		/* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-		appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+		appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 		if (batch->rest->available == 0)
 			rest_multi_partial_cleanup(batch->rest, false, true);
@@ -907,7 +907,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 			StringInfo endpoint = makeStringInfo();
 			StringInfo response;
 
-			appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+			appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 			if (batch->nrequests == 0)
 			{
