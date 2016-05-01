@@ -410,9 +410,6 @@ zdbbuildCallback(Relation indexRel,
 	ZDBIndexDescriptor *desc       = buildstate->desc;
 	text               *value;
 
-	if (HeapTupleIsHeapOnly(htup))
-		elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
-
 	if (tupdesc->natts != 2)
 		elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
 
