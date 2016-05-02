@@ -350,8 +350,14 @@ public class ExpansionOptimizer {
         long before, after;
         ASTExpansion expansionCopy = (ASTExpansion) expansion.copy();
 
+        //
+        // figure out how many records this expansion is likely to return
+        //
         before = estimateCount(expansion);
 
+        //
+        // then invert it (by wrapping it in an ASTNot node) and see
+        // how many records that is
         ASTNot not = new ASTNot(QueryParserTreeConstants.JJTNOT);
         not.jjtAddChild(expansionCopy.getQuery().copy(), 0);
         expansionCopy.jjtAddChild(not, 1);
@@ -359,6 +365,10 @@ public class ExpansionOptimizer {
         after = estimateCount(expansionCopy);
 
         if (after < before) {
+            //
+            // and if the inversion is fewer records, go with that, but we need to
+            // inject another ASTNot node so that the final result is the correct records
+            //
             ASTNot invertedExpansion = new ASTNot(QueryParserTreeConstants.JJTNOT);
             invertedExpansion.jjtAddChild(expansionCopy, 0);
             ((QueryParserNode) expansion.parent).replaceChild(expansion, invertedExpansion);
