@@ -109,6 +109,9 @@ class IndexMetadata {
     }
 
     public String getType(String fieldname) {
+        if (fieldname == null)
+            return "unknown";
+
         String[] parts = fieldname.split("[.]");
         if (parts.length == 1) {
             Map<String, Object> fieldProperties = fields.get(fieldname);

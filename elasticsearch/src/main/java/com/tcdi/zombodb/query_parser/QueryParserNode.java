@@ -180,6 +180,21 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         return null;
     }
 
+    public <T> Collection<T> getChildrenOfType(Class<T> t) {
+        return getChildrenOfType(this, t, new ArrayList<T>());
+    }
+
+    private <T> List<T> getChildrenOfType(QueryParserNode node, Class t, List<T> list) {
+        for (QueryParserNode child : node) {
+            if (child.getClass().isAssignableFrom(t))
+                list.add((T) child);
+
+            // recurse
+            getChildrenOfType(child, t, list);
+        }
+        return list;
+    }
+
     public int countNodes() {
         int sum = jjtGetNumChildren();
 

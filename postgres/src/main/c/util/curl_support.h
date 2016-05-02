@@ -21,7 +21,9 @@
 
 #include <curl/curl.h>
 
-#define MAX_CURL_HANDLES 12
+/* this needs to match zdb_interface.h:MAX_BULK_CONCURRENCY */
+#define MAX_CURL_HANDLES 1024
+
 typedef struct MultiRestState {
 	int nhandles;
 	CURL *handles[MAX_CURL_HANDLES];

@@ -15,16 +15,41 @@
  * limitations under the License.
  */
 #include "postgres.h"
-#include "catalog/pg_collation.h"
+
+#include "miscadmin.h"
+#include "access/heapam.h"
+#include "access/relscan.h"
+#include "access/transam.h"
+#include "access/visibilitymap.h"
+#include "access/xlog.h"
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
-#include "lib/stringinfo.h"
+#include "storage/bufmgr.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
-#include "utils/formatting.h"
 #include "utils/memutils.h"
+#include "utils/rel.h"
+#include "utils/snapmgr.h"
+#include "utils/tqual.h"
 
 #include "zdbutils.h"
+
+typedef enum VisibilityType {
+    VT_SKIPPABLE,
+    VT_VISIBLE,
+    VT_INVISIBLE,
+    VT_OUT_OF_RANGE
+} VisibilityType;
+
+uint64 ConvertedTopTransactionId;
+
+static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer);
+
+typedef struct
+{
+    TransactionId last_xid;
+    uint32		epoch;
+} TxidEpoch;
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
     char *definition = "";
@@ -178,6 +203,30 @@ char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing)
     return keyname;
 }
 
+Oid *findZDBIndexes(Oid relid, int *many) {
+    Oid        *indexes = NULL;
+    StringInfo sql;
+    int        i;
+
+    SPI_connect();
+
+    sql = makeStringInfo();
+    appendStringInfo(sql, "select indexrelid "
+            "from pg_index "
+            "where indrelid = %d "
+            "  and indclass[0] = (select oid from pg_opclass where opcmethod = (select oid from pg_am where amname = 'zombodb') and opcname = 'zombodb_tid_ops')", relid);
+
+    SPI_execute(sql->data, true, 1);
+    *many = SPI_processed;
+    if (SPI_processed > 0) {
+        indexes = (Oid *) MemoryContextAlloc(TopTransactionContext, sizeof(Oid) * SPI_processed);
+        for (i = 0; i < SPI_processed; i++)
+            indexes[i] = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
+    }
+    SPI_finish();
+
+    return indexes;
+}
 
 Oid *oid_array_to_oids(ArrayType *arr, int *many)
 {
@@ -213,3 +262,206 @@ char **text_array_to_strings(ArrayType *array, int *many)
     return result;
 }
 
+static void string_invisibility_callback(ItemPointer ctid, void *stringInfo) {
+    StringInfo sb = (StringInfo) stringInfo;
+    if (sb->len > 0)
+        appendStringInfoChar(sb, ',');
+    appendStringInfo(sb, "%d-%d", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
+}
+
+StringInfo find_invisible_ctids(Relation rel) {
+    StringInfo sb = makeStringInfo();
+
+    find_invisible_ctids_with_callback(rel, false, string_invisibility_callback, sb);
+    return sb;
+}
+
+int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data) {
+    Buffer vmap_buff = InvalidBuffer;
+    int cnt = visibilitymap_count(heapRel);
+    int many = 0, skipped = 0, pages = 0;
+
+    if (cnt == 0 || cnt != heapRel->rd_rel->relpages) {
+        Snapshot      snapshot = GetActiveSnapshot();
+        HeapTupleData heapTuple;
+        BlockNumber   blockno;
+        OffsetNumber  offno;
+        int           size;
+
+        for (blockno = 0, size = RelationGetNumberOfBlocks(heapRel); blockno < size; blockno++) {
+            CHECK_FOR_INTERRUPTS();
+
+            if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
+                Buffer buffer = InvalidBuffer;
+                pages++;
+                for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
+                    VisibilityType rc;
+
+                    ItemPointerSet(&(heapTuple.t_self), blockno, offno);
+
+                    rc = tuple_is_visible(heapRel, snapshot, &heapTuple, &buffer);
+
+                    if (rc == VT_OUT_OF_RANGE)
+                        break; /* we're done with this page */
+
+                    if (isVacuum || rc == VT_INVISIBLE) {
+                        /* tuple is invisible to us */
+                        cb(&(heapTuple.t_self), user_data);
+                        many++;
+                    } else if (rc == VT_SKIPPABLE) {
+                        skipped++;
+                    }
+                }
+
+                if (BufferIsValid(buffer)) {
+                    LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+                    ReleaseBuffer(buffer);
+                }
+            }
+        }
+    }
+
+    if (BufferIsValid(vmap_buff))
+        ReleaseBuffer(vmap_buff);
+
+    elog(DEBUG1, "[ZomboDB invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d", RelationGetRelationName(heapRel), many, skipped, pages);
+    return many;
+}
+
+/**
+ * Adapted from heapam.c#heap_fetch()
+ */
+static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer) {
+    ItemPointer tid = &(tuple->t_self);
+    ItemId		lp;
+    Page		page;
+    OffsetNumber offnum;
+    bool		valid;
+
+    if (BufferIsInvalid(*buffer)) {
+        /*
+         * Fetch and pin the appropriate page of the relation.
+         */
+        *buffer = ReadBuffer(relation, ItemPointerGetBlockNumber(tid));
+
+        /*
+         * Need share lock on buffer to examine tuple commit status.
+         */
+        LockBuffer(*buffer, BUFFER_LOCK_SHARE);
+    }
+    page = BufferGetPage(*buffer);
+
+    /*
+     * We'd better check for out-of-range offnum in case of VACUUM since the
+     * TID was obtained.
+     */
+    offnum = ItemPointerGetOffsetNumber(tid);
+    if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page))
+    {
+        return VT_OUT_OF_RANGE;
+    }
+
+    /*
+     * get the item line pointer corresponding to the requested tid
+     */
+    lp = PageGetItemId(page, offnum);
+
+    /*
+     * Must check for deleted tuple.
+     */
+    if (!ItemIdIsNormal(lp))
+    {
+        if (!ItemIdIsUsed(lp))
+        {
+            /*
+             * Technically this item is free, which means it's also *not* in our index
+             * so we don't need to actively exclude it.
+             *
+             * Should it become occupied (inserted into index) later on during this process, it's no big deal
+             * because it'll have an xmin that's outside our visible range and we filter those on the query
+             */
+            return VT_VISIBLE;
+        }
+        else
+        {
+            return VT_INVISIBLE;
+        }
+    }
+
+    /*
+     * fill in *tuple fields
+     */
+    tuple->t_data = (HeapTupleHeader) PageGetItem(page, lp);
+    tuple->t_len = ItemIdGetLength(lp);
+    tuple->t_tableOid = RelationGetRelid(relation);
+
+    /*
+     * check time qualification of tuple, then release lock
+     */
+    valid = HeapTupleSatisfiesVisibility(tuple, snapshot, *buffer);
+
+    if (!valid) {
+        int i;
+        TransactionId xmin = HeapTupleHeaderGetXmin(tuple->t_data);
+        TransactionId xmax;
+
+        if (xmin >= snapshot->xmax)
+        {
+            /*
+             * The tuple's xmin is >= to the snapshot's xmax, so we can skip this entirely
+             * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
+             *
+             * In essence, we treat this as "visible", but it just gets filtered out at search time
+             */
+            return VT_SKIPPABLE;
+        }
+
+        // NB:  Is this really a good idea, from a performance perspective, to
+        // examine xmin/xmax once for every concurrent session?
+        xmax = HeapTupleHeaderGetUpdateXid(tuple->t_data);
+        for (i = 0; i < snapshot->xcnt; i++)
+        {
+            if (xmin == snapshot->xip[i] || xmax == snapshot->xip[i])
+            {
+                /*
+                 * Similar to above, if the tuple's xmin or xmax are part of an active
+                 * transaction, we can skip it because those transaction ids will be
+                 * filtered out when we query
+                 */
+                return VT_SKIPPABLE;
+            }
+        }
+    }
+
+    if (valid)
+    {
+        /*
+         * All checks passed, so the tuple is visible to us
+         */
+        return VT_VISIBLE;
+    }
+
+    /* Tuple failed time qual */
+    return VT_INVISIBLE;
+}
+
+/* adapted from Postgres' txid.c#convert_xid function */
+uint64 convert_xid(TransactionId xid) {
+    TxidEpoch state;
+    uint64 epoch;
+
+    GetNextXidAndEpoch(&state.last_xid, &state.epoch);
+
+    /* return special xid's as-is */
+    if (!TransactionIdIsNormal(xid))
+        return (uint64) xid;
+
+    /* xid can be on either side when near wrap-around */
+    epoch = (uint64) state.epoch;
+    if (xid > state.last_xid && TransactionIdPrecedes(xid, state.last_xid))
+        epoch--;
+    else if (xid < state.last_xid && TransactionIdFollows(xid, state.last_xid))
+        epoch++;
+
+    return (epoch << 32) | xid;
+}

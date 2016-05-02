@@ -65,8 +65,8 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
     @Inject
     protected ZombodbMultiSearchAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
-        controller.registerHandler(GET, "/{index}/{type}/_zdbmsearch", this);
-        controller.registerHandler(POST, "/{index}/{type}/_zdbmsearch", this);
+        controller.registerHandler(GET, "/{index}/_zdbmsearch", this);
+        controller.registerHandler(POST, "/{index}/_zdbmsearch", this);
     }
 
     @Override
@@ -74,15 +74,13 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
         final long start = System.currentTimeMillis();
         final ZDBMultiSearchDescriptor[] descriptors = new ObjectMapper().readValue(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
         MultiSearchRequestBuilder msearchBuilder = new MultiSearchRequestBuilder(client);
-        String thisType = request.param("type");
 
         for (ZDBMultiSearchDescriptor md : descriptors) {
             SearchRequestBuilder srb = new SearchRequestBuilder(client);
 
             srb.setIndices(md.getIndexName());
-            srb.setTypes(thisType);
             if (md.getPkey() != null) srb.addFieldDataField(md.getPkey());
-            srb.setQuery(new QueryRewriter(client, md.getIndexName(), md.getPreference(), md.getQuery(), true, true, true).rewriteQuery());
+            srb.setQuery(new QueryRewriter(client, md.getIndexName(), md.getPreference(), md.getQuery(), true, true).rewriteQuery());
 
             msearchBuilder.add(srb);
         }

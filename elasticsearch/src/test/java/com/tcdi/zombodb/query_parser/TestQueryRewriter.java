@@ -39,10 +39,10 @@ import static org.junit.Assert.fail;
 public class TestQueryRewriter extends ZomboDBTestCase {
     String query = "#options(id=<table.index>id, id=<table.index>id, id=<table.index>id, other:(left=<table.index>right)) #extended_stats(custodian) #tally(subject, '^.*', 1000, '_term', #significant_terms(author, '^.*', 1000))  " +
             "#field_lists(field1=[a,b,c], field2=[d,e,f], field3=[a,b,c,d,e,f]) " +
-            "#child<data>(" +
+            "(" +
             "fulltext=[beer] meeting not staff not cancelled not risk " +
             "#expand<left_field = <table.index>right_field>(the subquery) " +
-            "#child<data>(some query) #parent<xact>(other query) #child<data>(())" +
+            "(some query) (other query) (())" +
             "long.dotted.field:foo " +
             "fuzzy~32 '1-2' " +
             "subject:['beer'] " +
@@ -190,7 +190,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testASTExpansionInjection() throws Exception {
-        assertAST("#options(id=<main_ft.idxmain_ft>ft_id, id=<main_vol.idxmain_vol>vol_id, id=<main_other.idxmain_other>other_id) (((_xmin = 6250261 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6250261 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6250261 AND _cmax >= 0) OR (_xmax <> 6250261 AND _xmax_is_committed = false))))) AND (#child<data>((phrase_field:(beer w/500 a))))",
+        assertAST("#options(id=<main_ft.idxmain_ft>ft_id, id=<main_vol.idxmain_vol>vol_id, id=<main_other.idxmain_other>other_id) (((_xmin = 6250261 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6250261 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6250261 AND _cmax >= 0) OR (_xmax <> 6250261 AND _xmax_is_committed = false))))) AND (((phrase_field:(beer w/500 a))))",
                 "QueryTree\n" +
                         "   Options\n" +
                         "      id=<db.schema.main_ft.idxmain_ft>ft_id\n" +
@@ -205,38 +205,37 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "         LeftField (value=id)\n" +
                         "         IndexName (value=db.schema.main_other.idxmain_other)\n" +
                         "         RightField (value=other_id)\n" +
-                        "   And\n" +
-                        "      Or\n" +
-                        "         And\n" +
-                        "            Number (fieldname=_xmin, operator=EQ, value=6250261)\n" +
-                        "            Number (fieldname=_cmin, operator=LT, value=0)\n" +
-                        "            Or\n" +
-                        "               Number (fieldname=_xmax, operator=EQ, value=0)\n" +
-                        "               And\n" +
-                        "                  Number (fieldname=_xmax, operator=EQ, value=6250261)\n" +
-                        "                  Number (fieldname=_cmax, operator=GTE, value=0)\n" +
-                        "         And\n" +
-                        "            Boolean (fieldname=_xmin_is_committed, operator=EQ, value=true)\n" +
-                        "            Or\n" +
-                        "               Number (fieldname=_xmax, operator=EQ, value=0)\n" +
-                        "               And\n" +
-                        "                  Number (fieldname=_xmax, operator=EQ, value=6250261)\n" +
-                        "                  Number (fieldname=_cmax, operator=GTE, value=0)\n" +
-                        "               And\n" +
-                        "                  Number (fieldname=_xmax, operator=NE, value=6250261)\n" +
-                        "                  Boolean (fieldname=_xmax_is_committed, operator=EQ, value=false)\n" +
-                        "      Child (type=data)\n" +
-                        "         Expansion\n" +
-                        "            id=<db.schema.table.index>id\n" +
-                        "            Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, ordered=false, index=db.schema.table.index)\n" +
-                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
-                        "               Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)"
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Or\n" +
+                        "            And\n" +
+                        "               Number (fieldname=_xmin, operator=EQ, value=6250261)\n" +
+                        "               Number (fieldname=_cmin, operator=LT, value=0)\n" +
+                        "               Or\n" +
+                        "                  Number (fieldname=_xmax, operator=EQ, value=0)\n" +
+                        "                  And\n" +
+                        "                     Number (fieldname=_xmax, operator=EQ, value=6250261)\n" +
+                        "                     Number (fieldname=_cmax, operator=GTE, value=0)\n" +
+                        "            And\n" +
+                        "               Boolean (fieldname=_xmin_is_committed, operator=EQ, value=true)\n" +
+                        "               Or\n" +
+                        "                  Number (fieldname=_xmax, operator=EQ, value=0)\n" +
+                        "                  And\n" +
+                        "                     Number (fieldname=_xmax, operator=EQ, value=6250261)\n" +
+                        "                     Number (fieldname=_cmax, operator=GTE, value=0)\n" +
+                        "                  And\n" +
+                        "                     Number (fieldname=_xmax, operator=NE, value=6250261)\n" +
+                        "                     Boolean (fieldname=_xmax_is_committed, operator=EQ, value=false)\n" +
+                        "         Proximity (fieldname=phrase_field, operator=CONTAINS, distance=500, ordered=false, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=a, index=db.schema.table.index)"
         );
     }
 
     @Test
     public void testASTExpansionInjection2() throws Exception {
-        assertAST("#options(id=<so_users.idxso_users>ft_id, id=<so_users.idxso_users>vol_id, id=<so_users.idxso_users>other_id) (((_xmin = 6250507 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6250507 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6250507 AND _cmax >= 0) OR (_xmax <> 6250507 AND _xmax_is_committed = false))))) AND (#child<data>((( #expand<data_cv_group_id=<this.index>data_cv_group_id> ( ( (( ( data_client_name = ANTHEM AND data_duplicate_resource = NO ) )) AND " +
+        assertAST("#options(id=<so_users.idxso_users>ft_id, id=<so_users.idxso_users>vol_id, id=<so_users.idxso_users>other_id) (((_xmin = 6250507 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6250507 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6250507 AND _cmax >= 0) OR (_xmax <> 6250507 AND _xmax_is_committed = false))))) AND (((( #expand<data_cv_group_id=<this.index>data_cv_group_id> ( ( (( ( data_client_name = ANTHEM AND data_duplicate_resource = NO ) )) AND " +
                         "( (data_custodian = \"Querty, AMY\" OR data_custodian = \"QWERTY, COLIN\" OR data_custodian = \"QWERTY, KEITH\" OR data_custodian = \"QWERTY, PERRY\" OR data_custodian = \"QWERTY, NORM\" OR data_custodian = \"QWERTY, MIKE\" OR " +
                         "data_custodian = \"QWERTY,MIKE\" OR data_custodian = \"QWERTY, DAN\" OR data_custodian = \"QWERTY,DAN\") AND data_filter_06b = \"QWERTY*\" AND NOT data_moved_to = \"*\" ) ) ) ))))",
                 "QueryTree\n" +
@@ -273,29 +272,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "               And\n" +
                         "                  Number (fieldname=_xmax, operator=NE, value=6250507)\n" +
                         "                  Boolean (fieldname=_xmax_is_committed, operator=EQ, value=false)\n" +
-                        "      Child (type=data)\n" +
-                        "         Or\n" +
-                        "            Expansion\n" +
-                        "               data_cv_group_id=<db.schema.table.index>data_cv_group_id\n" +
-                        "               Expansion\n" +
-                        "                  id=<db.schema.table.index>id\n" +
-                        "                  And\n" +
-                        "                     Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
-                        "                     Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
-                        "                     Or\n" +
-                        "                        Array (fieldname=data_custodian, operator=EQ, index=db.schema.table.index) (OR)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
-                        "                           Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
-                        "                     Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
-                        "                     Not\n" +
-                        "                        NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
+                        "      Or\n" +
+                        "         Expansion\n" +
+                        "            data_cv_group_id=<db.schema.table.index>data_cv_group_id\n" +
                         "            Expansion\n" +
                         "               id=<db.schema.table.index>id\n" +
                         "               And\n" +
@@ -314,7 +293,26 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
                         "                  Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
                         "                  Not\n" +
-                        "                     NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)"
+                        "                     NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
+                        "         Expansion\n" +
+                        "            id=<db.schema.table.index>id\n" +
+                        "            And\n" +
+                        "               Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
+                        "               Or\n" +
+                        "                  Array (fieldname=data_custodian, operator=EQ, index=db.schema.table.index) (OR)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "               Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
+                        "               Not\n" +
+                        "                  NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)"
         );
     }
 
@@ -629,19 +627,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        \"id\" : 1\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"filtered\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"match_all\" : { }\n" +
-                        "        },\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"not\" : {\n" +
-                        "            \"filter\" : {\n" +
-                        "              \"query\" : {\n" +
-                        "                \"term\" : {\n" +
-                        "                  \"id\" : 1\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"id\" : 1\n" +
                         "          }\n" +
                         "        }\n" +
                         "      }\n" +
@@ -1371,19 +1360,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_CVSIX_2807() throws Exception {
         assertJson("(exact_field <> \"bob*\")",
                 "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"prefix\" : {\n" +
-                        "              \"exact_field\" : \"bob\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"prefix\" : {\n" +
+                        "        \"exact_field\" : \"bob\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -1395,19 +1375,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_CVSIX_2807_phrase() throws Exception {
         assertJson("(phrase_field <> \"bob*\")",
                 "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"prefix\" : {\n" +
-                        "              \"phrase_field\" : \"bob\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"prefix\" : {\n" +
+                        "        \"phrase_field\" : \"bob\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -1562,19 +1533,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_MergeLiterals_AND_NE() throws Exception {
         assertJson("exact_field<>(one & two & three)",
                 "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"terms\" : {\n" +
-                        "              \"exact_field\" : [ \"one\", \"two\", \"three\" ]\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -1586,20 +1548,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_MergeLiterals_OR_NE() throws Exception {
         assertJson("exact_field<>(one , two , three)",
                 "{\n" +
-                        "  \"filtered\" : {\n" +
-                        "    \"query\" : {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    },\n" +
-                        "    \"filter\" : {\n" +
-                        "      \"not\" : {\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"query\" : {\n" +
-                        "            \"terms\" : {\n" +
-                        "              \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "              \"minimum_should_match\" : \"3\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                        "        \"minimum_should_match\" : \"3\"\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -2028,44 +1981,39 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void test_CVSIX_2941_NestedGroupRollupInChild() throws Exception {
-        assertJson("#child<data>(( ( ((review_data.owner_username=E_RIDGE WITH review_data.status_name:[\"REVIEW_UPDATED\",\"REVIEW_CHECKED_OUT\"]) OR (review_data.status_name:REVIEW_READY)) WITH review_data.project_id = 1040 ) ) )",
+        assertJson("(( ( ((review_data.owner_username=E_RIDGE WITH review_data.status_name:[\"REVIEW_UPDATED\",\"REVIEW_CHECKED_OUT\"]) OR (review_data.status_name:REVIEW_READY)) WITH review_data.project_id = 1040 ) ) )",
                 "{\n" +
-                        "  \"has_child\" : {\n" +
+                        "  \"nested\" : {\n" +
                         "    \"query\" : {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"query\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [ {\n" +
                         "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
+                        "            \"should\" : [ {\n" +
                         "              \"bool\" : {\n" +
-                        "                \"should\" : [ {\n" +
-                        "                  \"bool\" : {\n" +
-                        "                    \"must\" : [ {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"review_data.owner_username\" : \"e_ridge\"\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"terms\" : {\n" +
-                        "                        \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ]\n" +
-                        "                      }\n" +
-                        "                    } ]\n" +
+                        "                \"must\" : [ {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"review_data.owner_username\" : \"e_ridge\"\n" +
                         "                  }\n" +
                         "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data.status_name\" : \"review_ready\"\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ]\n" +
                         "                  }\n" +
                         "                } ]\n" +
                         "              }\n" +
                         "            }, {\n" +
                         "              \"term\" : {\n" +
-                        "                \"review_data.project_id\" : 1040\n" +
+                        "                \"review_data.status_name\" : \"review_ready\"\n" +
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
-                        "        },\n" +
-                        "        \"path\" : \"review_data\"\n" +
+                        "        }, {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"review_data.project_id\" : 1040\n" +
+                        "          }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    },\n" +
-                        "    \"child_type\" : \"data\"\n" +
+                        "    \"path\" : \"review_data\"\n" +
                         "  }\n" +
                         "}"
         );
@@ -2073,108 +2021,46 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void test_CVSIX_2941_Aggregate() throws Exception {
-        assertJson("#tally(review_data_ridge.coding.responsiveness, \"^.*\", 5000, \"term\") #options(id=<table.index>ft_id, id=<table.index>vol_id, id=<table.index>other_id) #parent<xact>((((_xmin = 6249019 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6249019 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6249019 AND _cmax >= 0) OR (_xmax <> 6249019 AND _xmax_is_committed = false)))))) AND ((review_data_ridge.review_set_name:\"test\"))",
+        assertJson("#tally(review_data_ridge.coding.responsiveness, \"^.*\", 5000, \"term\") #options(id=<table.index>ft_id, id=<table.index>vol_id, id=<table.index>other_id) ((((_xmin = 6249019 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 6249019 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 6249019 AND _cmax >= 0) OR (_xmax <> 6249019 AND _xmax_is_committed = false)))))) AND ((review_data_ridge.review_set_name:\"test\"))",
                 "{\n" +
                         "  \"bool\" : {\n" +
                         "    \"must\" : [ {\n" +
-                        "      \"has_parent\" : {\n" +
-                        "        \"query\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
                         "          \"bool\" : {\n" +
-                        "            \"should\" : [ {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"_xmin\" : 6249019\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"range\" : {\n" +
-                        "                    \"_cmin\" : {\n" +
-                        "                      \"from\" : null,\n" +
-                        "                      \"to\" : 0,\n" +
-                        "                      \"include_lower\" : true,\n" +
-                        "                      \"include_upper\" : false\n" +
-                        "                    }\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"bool\" : {\n" +
-                        "                    \"should\" : [ {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"_xmax\" : 0\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"_xmax\" : 6249019\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"range\" : {\n" +
-                        "                            \"_cmax\" : {\n" +
-                        "                              \"from\" : 0,\n" +
-                        "                              \"to\" : null,\n" +
-                        "                              \"include_lower\" : true,\n" +
-                        "                              \"include_upper\" : true\n" +
-                        "                            }\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
-                        "                      }\n" +
-                        "                    } ]\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
+                        "            \"must\" : [ {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"_xmin\" : 6249019\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"range\" : {\n" +
+                        "                \"_cmin\" : {\n" +
+                        "                  \"from\" : null,\n" +
+                        "                  \"to\" : 0,\n" +
+                        "                  \"include_lower\" : true,\n" +
+                        "                  \"include_upper\" : false\n" +
+                        "                }\n" +
                         "              }\n" +
                         "            }, {\n" +
                         "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
+                        "                \"should\" : [ {\n" +
                         "                  \"term\" : {\n" +
-                        "                    \"_xmin_is_committed\" : true\n" +
+                        "                    \"_xmax\" : 0\n" +
                         "                  }\n" +
                         "                }, {\n" +
                         "                  \"bool\" : {\n" +
-                        "                    \"should\" : [ {\n" +
+                        "                    \"must\" : [ {\n" +
                         "                      \"term\" : {\n" +
-                        "                        \"_xmax\" : 0\n" +
+                        "                        \"_xmax\" : 6249019\n" +
                         "                      }\n" +
                         "                    }, {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"_xmax\" : 6249019\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"range\" : {\n" +
-                        "                            \"_cmax\" : {\n" +
-                        "                              \"from\" : 0,\n" +
-                        "                              \"to\" : null,\n" +
-                        "                              \"include_lower\" : true,\n" +
-                        "                              \"include_upper\" : true\n" +
-                        "                            }\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"filtered\" : {\n" +
-                        "                            \"query\" : {\n" +
-                        "                              \"match_all\" : { }\n" +
-                        "                            },\n" +
-                        "                            \"filter\" : {\n" +
-                        "                              \"not\" : {\n" +
-                        "                                \"filter\" : {\n" +
-                        "                                  \"query\" : {\n" +
-                        "                                    \"term\" : {\n" +
-                        "                                      \"_xmax\" : 6249019\n" +
-                        "                                    }\n" +
-                        "                                  }\n" +
-                        "                                }\n" +
-                        "                              }\n" +
-                        "                            }\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"_xmax_is_committed\" : false\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
+                        "                      \"range\" : {\n" +
+                        "                        \"_cmax\" : {\n" +
+                        "                          \"from\" : 0,\n" +
+                        "                          \"to\" : null,\n" +
+                        "                          \"include_lower\" : true,\n" +
+                        "                          \"include_upper\" : true\n" +
+                        "                        }\n" +
                         "                      }\n" +
                         "                    } ]\n" +
                         "                  }\n" +
@@ -2182,8 +2068,56 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
-                        "        },\n" +
-                        "        \"parent_type\" : \"xact\"\n" +
+                        "        }, {\n" +
+                        "          \"bool\" : {\n" +
+                        "            \"must\" : [ {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"_xmin_is_committed\" : true\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"should\" : [ {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"_xmax\" : 0\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"bool\" : {\n" +
+                        "                    \"must\" : [ {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"_xmax\" : 6249019\n" +
+                        "                      }\n" +
+                        "                    }, {\n" +
+                        "                      \"range\" : {\n" +
+                        "                        \"_cmax\" : {\n" +
+                        "                          \"from\" : 0,\n" +
+                        "                          \"to\" : null,\n" +
+                        "                          \"include_lower\" : true,\n" +
+                        "                          \"include_upper\" : true\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    } ]\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"bool\" : {\n" +
+                        "                    \"must\" : [ {\n" +
+                        "                      \"bool\" : {\n" +
+                        "                        \"must_not\" : {\n" +
+                        "                          \"term\" : {\n" +
+                        "                            \"_xmax\" : 6249019\n" +
+                        "                          }\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    }, {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"_xmax_is_committed\" : false\n" +
+                        "                      }\n" +
+                        "                    } ]\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
+                        "              }\n" +
+                        "            } ]\n" +
+                        "          }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"nested\" : {\n" +
@@ -2370,21 +2304,28 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void test_FlattenParentChild() throws Exception {
-        assertJson("a:1 and #child<data>(field:value or field2:value or field:value2)",
+        assertJson("a:1 and (field:value or field2:value or field:value2)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"field\" : [ \"value\", \"value2\" ]\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"a\" : 1\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"term\" : {\n" +
-                        "        \"field2\" : \"value\"\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"field\" : [ \"value\", \"value2\" ]\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"field2\" : \"value\"\n" +
+                        "          }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    } ]\n" +
                         "  }\n" +
-                        "}",
-                false
+                        "}"
         );
     }
 
@@ -2514,108 +2455,46 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void test_AggregateQuery() throws Exception {
-        assertJson("#tally(cp_case_name, \"^.*\", 5000, \"term\") #options(fk_doc_cp_link_doc = <table.index>pk_doc, fk_doc_cp_link_cp = <table.index>pk_cp) #parent<xact>((((_xmin = 5353919 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0) OR (_xmax <> 5353919 AND _xmax_is_committed = false)))))) AND ((( ( pk_doc_cp = \"*\" ) )))",
+        assertJson("#tally(cp_case_name, \"^.*\", 5000, \"term\") #options(fk_doc_cp_link_doc = <table.index>pk_doc, fk_doc_cp_link_cp = <table.index>pk_cp) ((((_xmin = 5353919 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0) OR (_xmax <> 5353919 AND _xmax_is_committed = false)))))) AND ((( ( pk_doc_cp = \"*\" ) )))",
                 "{\n" +
                         "  \"bool\" : {\n" +
                         "    \"must\" : [ {\n" +
-                        "      \"has_parent\" : {\n" +
-                        "        \"query\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
                         "          \"bool\" : {\n" +
-                        "            \"should\" : [ {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"_xmin\" : 5353919\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"range\" : {\n" +
-                        "                    \"_cmin\" : {\n" +
-                        "                      \"from\" : null,\n" +
-                        "                      \"to\" : 0,\n" +
-                        "                      \"include_lower\" : true,\n" +
-                        "                      \"include_upper\" : false\n" +
-                        "                    }\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"bool\" : {\n" +
-                        "                    \"should\" : [ {\n" +
-                        "                      \"term\" : {\n" +
-                        "                        \"_xmax\" : 0\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"_xmax\" : 5353919\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"range\" : {\n" +
-                        "                            \"_cmax\" : {\n" +
-                        "                              \"from\" : 0,\n" +
-                        "                              \"to\" : null,\n" +
-                        "                              \"include_lower\" : true,\n" +
-                        "                              \"include_upper\" : true\n" +
-                        "                            }\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
-                        "                      }\n" +
-                        "                    } ]\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
+                        "            \"must\" : [ {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"_xmin\" : 5353919\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"range\" : {\n" +
+                        "                \"_cmin\" : {\n" +
+                        "                  \"from\" : null,\n" +
+                        "                  \"to\" : 0,\n" +
+                        "                  \"include_lower\" : true,\n" +
+                        "                  \"include_upper\" : false\n" +
+                        "                }\n" +
                         "              }\n" +
                         "            }, {\n" +
                         "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
+                        "                \"should\" : [ {\n" +
                         "                  \"term\" : {\n" +
-                        "                    \"_xmin_is_committed\" : true\n" +
+                        "                    \"_xmax\" : 0\n" +
                         "                  }\n" +
                         "                }, {\n" +
                         "                  \"bool\" : {\n" +
-                        "                    \"should\" : [ {\n" +
+                        "                    \"must\" : [ {\n" +
                         "                      \"term\" : {\n" +
-                        "                        \"_xmax\" : 0\n" +
+                        "                        \"_xmax\" : 5353919\n" +
                         "                      }\n" +
                         "                    }, {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"_xmax\" : 5353919\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"range\" : {\n" +
-                        "                            \"_cmax\" : {\n" +
-                        "                              \"from\" : 0,\n" +
-                        "                              \"to\" : null,\n" +
-                        "                              \"include_lower\" : true,\n" +
-                        "                              \"include_upper\" : true\n" +
-                        "                            }\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
-                        "                      }\n" +
-                        "                    }, {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"filtered\" : {\n" +
-                        "                            \"query\" : {\n" +
-                        "                              \"match_all\" : { }\n" +
-                        "                            },\n" +
-                        "                            \"filter\" : {\n" +
-                        "                              \"not\" : {\n" +
-                        "                                \"filter\" : {\n" +
-                        "                                  \"query\" : {\n" +
-                        "                                    \"term\" : {\n" +
-                        "                                      \"_xmax\" : 5353919\n" +
-                        "                                    }\n" +
-                        "                                  }\n" +
-                        "                                }\n" +
-                        "                              }\n" +
-                        "                            }\n" +
-                        "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"_xmax_is_committed\" : false\n" +
-                        "                          }\n" +
-                        "                        } ]\n" +
+                        "                      \"range\" : {\n" +
+                        "                        \"_cmax\" : {\n" +
+                        "                          \"from\" : 0,\n" +
+                        "                          \"to\" : null,\n" +
+                        "                          \"include_lower\" : true,\n" +
+                        "                          \"include_upper\" : true\n" +
+                        "                        }\n" +
                         "                      }\n" +
                         "                    } ]\n" +
                         "                  }\n" +
@@ -2623,8 +2502,56 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "              }\n" +
                         "            } ]\n" +
                         "          }\n" +
-                        "        },\n" +
-                        "        \"parent_type\" : \"xact\"\n" +
+                        "        }, {\n" +
+                        "          \"bool\" : {\n" +
+                        "            \"must\" : [ {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"_xmin_is_committed\" : true\n" +
+                        "              }\n" +
+                        "            }, {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"should\" : [ {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"_xmax\" : 0\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"bool\" : {\n" +
+                        "                    \"must\" : [ {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"_xmax\" : 5353919\n" +
+                        "                      }\n" +
+                        "                    }, {\n" +
+                        "                      \"range\" : {\n" +
+                        "                        \"_cmax\" : {\n" +
+                        "                          \"from\" : 0,\n" +
+                        "                          \"to\" : null,\n" +
+                        "                          \"include_lower\" : true,\n" +
+                        "                          \"include_upper\" : true\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    } ]\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"bool\" : {\n" +
+                        "                    \"must\" : [ {\n" +
+                        "                      \"bool\" : {\n" +
+                        "                        \"must_not\" : {\n" +
+                        "                          \"term\" : {\n" +
+                        "                            \"_xmax\" : 5353919\n" +
+                        "                          }\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    }, {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"_xmax_is_committed\" : false\n" +
+                        "                      }\n" +
+                        "                    } ]\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
+                        "              }\n" +
+                        "            } ]\n" +
+                        "          }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"filtered\" : {\n" +

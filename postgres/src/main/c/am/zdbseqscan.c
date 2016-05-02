@@ -20,17 +20,13 @@
 
 #include "miscadmin.h"
 #include "executor/spi.h"
-#include "access/xact.h"
-#include "nodes/relation.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "util/zdbutils.h"
 #include "zdb_interface.h"
 #include "zdbseqscan.h"
 #include "zdbops.h"
-#include "zdbscore.h"
 
 PG_FUNCTION_INFO_V1(zdbsel);
 
@@ -174,7 +170,7 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
         uint64             nhits, i;
 
         desc     = zdb_alloc_index_descriptor_by_index_oid(key.indexRelOid);
-        response = desc->implementation->searchIndex(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), &query, 1, &nhits);
+        response = desc->implementation->searchIndex(desc, &query, 1, &nhits);
 
         entry = hash_search(SEQUENTIAL_SCANS, &key, HASH_ENTER, &found);
         entry->one_hit = NULL;
