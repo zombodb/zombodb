@@ -347,24 +347,22 @@ public class ExpansionOptimizer {
     }
 
     private ASTExpansion maybeInvertExpansion(ASTExpansion expansion) {
-        if (!expansion.isGenerated()) {
-            long before, after;
-            ASTExpansion expansionCopy = (ASTExpansion) expansion.copy();
+        long before, after;
+        ASTExpansion expansionCopy = (ASTExpansion) expansion.copy();
 
-            before = estimateCount(expansion);
+        before = estimateCount(expansion);
 
-            ASTNot not = new ASTNot(QueryParserTreeConstants.JJTNOT);
-            not.jjtAddChild(expansionCopy.getQuery().copy(), 0);
-            expansionCopy.jjtAddChild(not, 1);
+        ASTNot not = new ASTNot(QueryParserTreeConstants.JJTNOT);
+        not.jjtAddChild(expansionCopy.getQuery().copy(), 0);
+        expansionCopy.jjtAddChild(not, 1);
 
-            after = estimateCount(expansionCopy);
+        after = estimateCount(expansionCopy);
 
-            if (after < before) {
-                ASTNot invertedExpansion = new ASTNot(QueryParserTreeConstants.JJTNOT);
-                invertedExpansion.jjtAddChild(expansionCopy, 0);
-                ((QueryParserNode) expansion.parent).replaceChild(expansion, invertedExpansion);
-                expansion = expansionCopy;
-            }
+        if (after < before) {
+            ASTNot invertedExpansion = new ASTNot(QueryParserTreeConstants.JJTNOT);
+            invertedExpansion.jjtAddChild(expansionCopy, 0);
+            ((QueryParserNode) expansion.parent).replaceChild(expansion, invertedExpansion);
+            expansion = expansionCopy;
         }
         return expansion;
     }
