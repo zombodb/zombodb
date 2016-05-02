@@ -35,7 +35,6 @@
 #include "utils/json.h"
 #include "utils/memutils.h"
 #include "utils/builtins.h"
-#include "utils/snapmgr.h"
 
 #include "zdb_interface.h"
 #include "zdbops.h"

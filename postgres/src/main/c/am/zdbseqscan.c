@@ -20,17 +20,13 @@
 
 #include "miscadmin.h"
 #include "executor/spi.h"
-#include "access/xact.h"
-#include "nodes/relation.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "util/zdbutils.h"
 #include "zdb_interface.h"
 #include "zdbseqscan.h"
 #include "zdbops.h"
-#include "zdbscore.h"
 
 PG_FUNCTION_INFO_V1(zdbsel);
 

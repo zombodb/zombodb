@@ -27,7 +27,6 @@
 #include "zdb_interface.h"
 #include "zdbops.h"
 #include "zdbseqscan.h"
-#include "util/zdbutils.h"
 
 PG_FUNCTION_INFO_V1(zdb_determine_index);
 PG_FUNCTION_INFO_V1(zdb_get_index_name);
