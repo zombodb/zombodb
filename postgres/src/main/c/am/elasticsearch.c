@@ -119,6 +119,31 @@ static char **parse_linked_indices(char *schema, char *options, int *many) {
     return indices;
 }
 
+static char *buildXidExclusionClause() {
+	StringInfo sb = makeStringInfo();
+	Snapshot snap = GetActiveSnapshot();
+	int i;
+
+	/*
+     * exclude records by xid that we know we cannot see, which are
+     *   a) anything greater than or equal to the snapshot's 'xmax'
+     *      (but we can see ourself)
+     */
+	appendStringInfo(sb, "(_xid >= %lu AND _xid<>%lu) OR ", convert_xid(snap->xmax), ConvertedTopTransactionId);
+
+	/*
+     *   b) the xid of any currently running transaction
+     */
+	appendStringInfo(sb, "_xid:[[");
+	for (i = 0; i<snap->xcnt; i++) {
+		if(i>0) appendStringInfoChar(sb, ',');
+		appendStringInfo(sb, "%lu", convert_xid(snap->xip[i]));
+	}
+	appendStringInfo(sb, "]]");
+
+	return sb->data;
+}
+
 static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap)
 {
 	StringInfo baseQuery = makeStringInfo();
@@ -131,6 +156,8 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->fieldLists);
 
     if (useInvisibilityMap) {
+		char *xidExclusionClause = buildXidExclusionClause();
+
         if (desc->options != NULL) {
             int  index_cnt;
             char **indices = parse_linked_indices(desc->schemaName, desc->options, &index_cnt);
@@ -145,7 +172,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
                     ids = find_invisible_ctids(rel);
 
                     if (ids->len > 0)
-                        appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", tmp->fullyQualifiedName, ids->data);
+                        appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s))", tmp->fullyQualifiedName, ids->data, xidExclusionClause);
 
                     freeStringInfo(ids);
                     RelationClose(rel);
@@ -158,30 +185,12 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 
             ids = find_invisible_ctids(heapRel);
             if (ids->len > 0)
-                appendStringInfo(baseQuery, "#exclude<%s>(_id=[[%s]])", desc->fullyQualifiedName, ids->data);
+                appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s))", desc->fullyQualifiedName, ids->data, xidExclusionClause);
 
             freeStringInfo(ids);
             RelationClose(heapRel);
         }
     }
-
-	if (!desc->ignoreVisibility && useInvisibilityMap) {
-		Snapshot snap = GetActiveSnapshot();
-
-		/*
-		 * exclude records by xid that we know we cannot see, which are
-		 *   a) anything greater than or equal to the snapshot's 'xmax'
-		 *      (but we can see ourself)
-		 */
-		appendStringInfo(baseQuery, "((not _xid >= %lu) OR _xid:%lu) AND ", convert_xid(snap->xmax), ConvertedTopTransactionId);
-
-		/*
-		 *   b) the xid of any currently running transaction
-		 */
-		for (i = 0; i<snap->xcnt; i++) {
-			appendStringInfo(baseQuery, "_xid <> %lu AND ", convert_xid(snap->xip[i]));
-		}
-	}
 
     for (i = 0; i < nqueries; i++) {
         if (i > 0) appendStringInfo(baseQuery, " AND ");
