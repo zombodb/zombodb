@@ -131,6 +131,8 @@ public class IndexLinkOptimizer {
     private void injectASTExpansionNodes(QueryParserNode root) {
         while (root instanceof ASTExpansion)
             root = ((ASTExpansion) root).getQuery();
+        while (root instanceof ASTNot)
+            root = root.getChild(0);
 
         Set<ASTIndexLink> links = collectIndexLinks(root, new HashSet<ASTIndexLink>());
         if (links.size() == 0)
