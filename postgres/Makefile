@@ -44,6 +44,10 @@ installcheck: src/test/sql/setup.sql src/test/sql/so_comments.sql src/test/sql/T
 installcheck-random: REGRESS = $(shell echo --use-existing && (cat src/test/tests.list | grep -v ^setup | grep -v ^so_comments | grep -v ^configure | grep -v ^create-indexes | grep -v ^TUTORIAL) | src/main/shell/mysort)
 installcheck-random: installcheck
 
+installcheck-concurrent: REGRESS = $(shell echo --use-existing && (cat src/test/tests.list | grep -v ^setup | grep -v ^so_comments | grep -v ^configure | grep -v ^create-indexes | grep -v ^TUTORIAL | grep -v deletes | grep -v updates) | src/main/shell/mysort)
+installcheck-concurrent: installcheck
+
+
 # add the SQL build target to the ALL build target
 all: src/main/sql/$(EXTENSION)--$(EXTVERSION).sql
 

@@ -46,8 +46,8 @@ public class PostgresAggregationAction extends BaseRestHandler {
     @Inject
     public PostgresAggregationAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
-        controller.registerHandler(GET, "/{index}/{type}/_pgagg", this);
-        controller.registerHandler(POST, "/{index}/{type}/_pgagg", this);
+        controller.registerHandler(GET, "/{index}/_pgagg", this);
+        controller.registerHandler(POST, "/{index}/_pgagg", this);
     }
 
     @Override
@@ -56,13 +56,12 @@ public class PostgresAggregationAction extends BaseRestHandler {
             final long start = System.currentTimeMillis();
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             String input = request.content().toUtf8();
-            final QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), input, true, false, true, false, true);
+            final QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), input, true, true);
             QueryBuilder qb = rewriter.rewriteQuery();
             AbstractAggregationBuilder ab = rewriter.rewriteAggregations();
             SuggestBuilder.SuggestionBuilder tsb = rewriter.rewriteSuggestions();
 
             builder.setIndices(rewriter.getAggregateIndexName());
-            builder.setTypes("data");
             builder.setQuery(qb);
 
             if (ab != null) {

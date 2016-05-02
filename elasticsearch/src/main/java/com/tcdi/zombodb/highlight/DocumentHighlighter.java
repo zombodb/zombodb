@@ -104,11 +104,7 @@ public class DocumentHighlighter {
     }
 
     private void highlight(QueryParserNode node) {
-        if (node instanceof ASTChild)
-            highlightChildren(node);
-        else if (node instanceof ASTParent)
-            highlightChildren(node);
-        else if (node instanceof ASTWith)
+        if (node instanceof ASTWith)
             highlightChildren(node);
         else if (node instanceof ASTAnd)
             highlightChildren(node);

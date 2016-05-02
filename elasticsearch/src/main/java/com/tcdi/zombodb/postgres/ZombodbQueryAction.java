@@ -32,8 +32,8 @@ public class ZombodbQueryAction extends BaseRestHandler {
     @Inject
     public ZombodbQueryAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
-        controller.registerHandler(GET, "/{index}/{type}/_zdbquery", this);
-        controller.registerHandler(POST, "/{index}/{type}/_zdbquery", this);
+        controller.registerHandler(GET, "/{index}/_zdbquery", this);
+        controller.registerHandler(POST, "/{index}/_zdbquery", this);
     }
 
     @Override
@@ -49,7 +49,7 @@ public class ZombodbQueryAction extends BaseRestHandler {
                 QueryRewriter qr;
                 String json;
 
-                qr = new QueryRewriter(client, request.param("index"), request.param("preference"), query, false, true, true);
+                qr = new QueryRewriter(client, request.param("index"), request.param("preference"), query, false, true);
                 json = qr.rewriteQuery().toString();
 
                 response = new BytesRestResponse(RestStatus.OK, "application/json", json);

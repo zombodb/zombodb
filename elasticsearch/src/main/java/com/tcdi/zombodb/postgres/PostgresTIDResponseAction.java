@@ -56,8 +56,8 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
     @Inject
     public PostgresTIDResponseAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
-        controller.registerHandler(GET, "/{index}/{type}/_pgtid", this);
-        controller.registerHandler(POST, "/{index}/{type}/_pgtid", this);
+        controller.registerHandler(GET, "/{index}/_pgtid", this);
+        controller.registerHandler(POST, "/{index}/_pgtid", this);
     }
 
 
@@ -73,12 +73,11 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, false, "data".equals(request.param("type")), true);
+            query = buildJsonQueryFromRequestContent(client, request, false, true);
             parseEnd = System.nanoTime();
 
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             builder.setIndices(query.getIndexName());
-            builder.setTypes("data");
             builder.setSize(32768);
             builder.setScroll(TimeValue.timeValueMinutes(10));
             builder.setSearchType(SearchType.SCAN);
@@ -110,7 +109,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean allowSingleIndex, boolean useParentChild, boolean doFullFieldDataLookups) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean allowSingleIndex, boolean doFullFieldDataLookups) {
         String queryString = request.content().toUtf8();
         String indexName = request.param("index");
 
@@ -118,7 +117,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             QueryBuilder query;
 
             if (queryString != null && queryString.trim().length() > 0) {
-                QueryRewriter qr = new QueryRewriter(client, indexName, request.param("preference"), queryString, allowSingleIndex, useParentChild, doFullFieldDataLookups);
+                QueryRewriter qr = new QueryRewriter(client, indexName, request.param("preference"), queryString, allowSingleIndex, doFullFieldDataLookups);
                 query = qr.rewriteQuery();
                 indexName = qr.getSearchIndexName();
             } else {
