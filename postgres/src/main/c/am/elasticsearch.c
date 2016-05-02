@@ -660,7 +660,7 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	query = buildQuery(indexDescriptor, &user_query, 1, true, false);
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
 	appendStringInfo(request, "%s %s", aggregate_query, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
