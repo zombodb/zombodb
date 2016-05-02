@@ -155,7 +155,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 	if (desc->fieldLists)
 		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->fieldLists);
 
-    if (useInvisibilityMap) {
+    if (!zdb_ignore_visibility_guc && useInvisibilityMap) {
 		char *xidExclusionClause = buildXidExclusionClause();
 
         if (desc->options != NULL) {

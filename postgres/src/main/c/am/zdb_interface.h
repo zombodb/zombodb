@@ -131,6 +131,7 @@ typedef struct {
 
 extern PGDLLEXPORT relopt_kind RELOPT_KIND_ZDB;
 extern PGDLLEXPORT bool zdb_batch_mode_guc;
+extern PGDLLEXPORT bool zdb_ignore_visibility_guc;
 
 void               zdb_index_init(void);
 void			   zdb_transaction_finish(void);

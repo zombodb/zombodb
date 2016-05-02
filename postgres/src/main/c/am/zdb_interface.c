@@ -32,6 +32,7 @@
 
 relopt_kind RELOPT_KIND_ZDB;
 bool zdb_batch_mode_guc;
+bool zdb_ignore_visibility_guc;
 
 static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
 static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
@@ -117,6 +118,7 @@ void zdb_index_init(void) {
 	add_bool_reloption(RELOPT_KIND_ZDB, "ignore_visibility", "Should queries that require visibility information actually use it?", false);
 
 	DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
+	DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
