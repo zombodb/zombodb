@@ -830,13 +830,12 @@ public class QueryRewriter {
                     case "long":
                     case "double":
                     case "float":
-                    case "unknown":
+                    case "unknown": {
                         final Iterable<Object> finalItr = itr;
                         itr = new Iterable<Object>() {
-                            private final Iterator<Object> iterator = finalItr.iterator();
-
                             @Override
                             public Iterator<Object> iterator() {
+                                final Iterator<Object> iterator = finalItr.iterator();
                                 return new Iterator<Object>() {
                                     @Override
                                     public boolean hasNext() {
@@ -856,16 +855,17 @@ public class QueryRewriter {
                                 };
                             }
                         };
+                    }
                 }
                 if (node.hasExternalValues() && minShouldMatch == 1) {
                     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
                     return filteredQuery(matchAllQuery(), builder);
                 } else {
-                    final Iterable<Object> finalItr1 = itr;
+                    final Iterable<Object> finalItr = itr;
                     TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
                         @Override
                         public Iterator<Object> iterator() {
-                            return finalItr1.iterator();
+                            return finalItr.iterator();
                         }
 
                         @Override
