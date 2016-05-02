@@ -144,7 +144,7 @@ static char *buildXidExclusionClause() {
 	return sb->data;
 }
 
-static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap)
+static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap, bool invisibilityMapRequired)
 {
 	StringInfo baseQuery = makeStringInfo();
     StringInfo ids;
@@ -171,8 +171,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
                     rel = RelationIdGetRelation(tmp->heapRelid);
                     ids = find_invisible_ctids(rel);
 
-                    if (ids->len > 0)
-                        appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s))", tmp->fullyQualifiedName, ids->data, xidExclusionClause);
+					appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s)) ", tmp->fullyQualifiedName, ids->data, xidExclusionClause);
 
                     freeStringInfo(ids);
                     RelationClose(rel);
@@ -180,16 +179,18 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
             }
         }
 
-        if (!desc->ignoreVisibility) {
-            Relation heapRel = RelationIdGetRelation(desc->heapRelid);
+		if (invisibilityMapRequired) {
+			if (!desc->ignoreVisibility) {
+				Relation heapRel = RelationIdGetRelation(desc->heapRelid);
 
-            ids = find_invisible_ctids(heapRel);
-            if (ids->len > 0)
-                appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s))", desc->fullyQualifiedName, ids->data, xidExclusionClause);
+				ids = find_invisible_ctids(heapRel);
 
-            freeStringInfo(ids);
-            RelationClose(heapRel);
-        }
+				appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s)) ", desc->fullyQualifiedName, ids->data, xidExclusionClause);
+
+				freeStringInfo(ids);
+				RelationClose(heapRel);
+			}
+		}
     }
 
     for (i = 0; i < nqueries; i++) {
@@ -400,7 +401,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 		indexName  = descriptors[i]->fullyQualifiedName;
 		preference = descriptors[i]->searchPreference;
 		pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, false);
-        query      = buildQuery(descriptors[i], &user_queries[i], 1, true);
+        query      = buildQuery(descriptors[i], &user_queries[i], 1, true, true);
 
 		if (!preference) preference = "null";
 
@@ -452,7 +453,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	query = buildQuery(indexDescriptor, queries, nqueries, useInvisibilityMap);
+	query = buildQuery(indexDescriptor, queries, nqueries, useInvisibilityMap, strstr(queries[0], "#expand") != NULL);
 	response = rest_call("POST", endpoint->data, query);
 
 	if (response->data[0] != '\0')
@@ -519,7 +520,7 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	query = buildQuery(indexDescriptor, queries, nqueries, true);
+	query = buildQuery(indexDescriptor, queries, nqueries, true, true);
 	response = rest_call("POST", endpoint->data, query);
 	if (response->data[0] == '{')
 		elog(ERROR, "%s", response->data);
@@ -540,7 +541,7 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
 	StringInfo response;
 	uint64     nhits;
 
-    query = buildQuery(indexDescriptor, &user_query, 1, false);
+    query = buildQuery(indexDescriptor, &user_query, 1, false, true);
 
     appendStringInfo(endpoint, "%s/%s/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
@@ -570,7 +571,7 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, 
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-    query = buildQuery(indexDescriptor, &user_query, 1, true);
+    query = buildQuery(indexDescriptor, &user_query, 1, true, true);
 	appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s", fieldname, stem, max_terms, sort_order, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
@@ -592,7 +593,7 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
 	appendStringInfo(request, "#range(%s, '%s') %s", fieldname, range_spec, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
@@ -614,7 +615,7 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char 
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
 	appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s", fieldname, stem, max_terms, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
@@ -636,7 +637,7 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fi
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
 	appendStringInfo(request, "#extended_stats(%s) %s", fieldname, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
@@ -659,7 +660,7 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, &user_query, 1, true, false);
 	appendStringInfo(request, "%s %s", aggregate_query, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
@@ -681,7 +682,7 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fie
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	query = buildQuery(indexDescriptor, &user_query, 1, true);
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
 	appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
     response = rest_call("POST", endpoint->data, request);
 
