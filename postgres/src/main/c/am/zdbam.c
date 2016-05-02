@@ -172,7 +172,7 @@ static void zdbam_xact_callback(XactEvent event, void *arg)
 				/* finish the batch insert (and refresh) for each index into which new records were inserted */
 				foreach (lc, indexesInsertedList) {
 					ZDBIndexDescriptor *desc = lfirst(lc);
-					elog(NOTICE, "batch mode finish for: %s", desc->indexName);
+
 					desc->implementation->batchInsertFinish(desc);
 					desc->implementation->refreshIndex(desc);
 				}
