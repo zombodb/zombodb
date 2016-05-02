@@ -279,7 +279,7 @@ StringInfo find_invisible_ctids(Relation rel) {
 int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data) {
     Buffer vmap_buff = InvalidBuffer;
     int cnt = visibilitymap_count(heapRel);
-    int many = 0;
+    int many = 0, skipped = 0, pages = 0;
 
     if (cnt == 0 || cnt != heapRel->rd_rel->relpages) {
         Snapshot      snapshot = GetActiveSnapshot();
@@ -293,7 +293,7 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
 
             if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
                 Buffer buffer = InvalidBuffer;
-
+                pages++;
                 for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
                     VisibilityType rc;
 
@@ -308,6 +308,8 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
                         /* tuple is invisible to us */
                         cb(&(heapTuple.t_self), user_data);
                         many++;
+                    } else if (rc == VT_SKIPPABLE) {
+                        skipped++;
                     }
                 }
 
@@ -322,6 +324,7 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
     if (BufferIsValid(vmap_buff))
         ReleaseBuffer(vmap_buff);
 
+    elog(DEBUG1, "[ZomboDB invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d", RelationGetRelationName(heapRel), many, skipped, pages);
     return many;
 }
 
@@ -397,15 +400,37 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
      */
     valid = HeapTupleSatisfiesVisibility(tuple, snapshot, *buffer);
 
-    if (!valid && HeapTupleHeaderGetXmin(tuple->t_data) >= snapshot->xmax)
-    {
-        /*
-         * The tuple's xmin is >= to the snapshot's xmax, so we can skip this entirely
-         * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
-         *
-         * In essence, we treat this as "visible", but it just gets filtered out at search time
-         */
-        return VT_SKIPPABLE;
+    if (!valid) {
+        int i;
+        TransactionId xmin = HeapTupleHeaderGetXmin(tuple->t_data);
+        TransactionId xmax;
+
+        if (xmin >= snapshot->xmax)
+        {
+            /*
+             * The tuple's xmin is >= to the snapshot's xmax, so we can skip this entirely
+             * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
+             *
+             * In essence, we treat this as "visible", but it just gets filtered out at search time
+             */
+            return VT_SKIPPABLE;
+        }
+
+        // NB:  Is this really a good idea, from a performance perspective, to
+        // examine xmin/xmax once for every concurrent session?
+        xmax = HeapTupleHeaderGetUpdateXid(tuple->t_data);
+        for (i = 0; i < snapshot->xcnt; i++)
+        {
+            if (xmin == snapshot->xip[i] || xmax == snapshot->xip[i])
+            {
+                /*
+                 * Similar to above, if the tuple's xmin or xmax are part of an active
+                 * transaction, we can skip it because those transaction ids will be
+                 * filtered out when we query
+                 */
+                return VT_SKIPPABLE;
+            }
+        }
     }
 
     if (valid)
