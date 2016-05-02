@@ -68,6 +68,8 @@ public class ExpansionOptimizer {
                 ASTExpansion expansion = stack.pop();
                 String expansionFieldname = expansion.getFieldname();
 
+                expansion = maybeInvertExpansion(expansion);
+
                 if (expansionFieldname == null)
                     expansionFieldname = expansion.getIndexLink().getRightFieldname();
 
@@ -341,6 +343,49 @@ public class ExpansionOptimizer {
         } else {
             for (QueryParserNode child : root)
                 mergeAdjacentANDs(child);
+        }
+    }
+
+    private ASTExpansion maybeInvertExpansion(ASTExpansion expansion) {
+        if (!expansion.isGenerated()) {
+            long before, after;
+            ASTExpansion expansionCopy = (ASTExpansion) expansion.copy();
+
+            before = estimateCount(expansion);
+
+            ASTNot not = new ASTNot(QueryParserTreeConstants.JJTNOT);
+            not.jjtAddChild(expansionCopy.getQuery().copy(), 0);
+            expansionCopy.jjtAddChild(not, 1);
+
+            after = estimateCount(expansionCopy);
+
+            if (after < before) {
+                ASTNot invertedExpansion = new ASTNot(QueryParserTreeConstants.JJTNOT);
+                invertedExpansion.jjtAddChild(expansionCopy, 0);
+                ((QueryParserNode) expansion.parent).replaceChild(expansion, invertedExpansion);
+                expansion = expansionCopy;
+            }
+        }
+        return expansion;
+    }
+
+    private long estimateCount(ASTExpansion expansion) {
+        SearchRequestBuilder builder = new SearchRequestBuilder(client);
+        builder.setIndices(expansion.getIndexLink().getIndexName());
+        builder.setSize(0);
+        builder.setSearchType(SearchType.COUNT);
+        builder.setPreference(searchPreference);
+        builder.setQueryCache(true);
+        builder.setFetchSource(false);
+        builder.setTrackScores(false);
+        builder.setNoFields();
+        builder.setQuery(rewriter.build(expansion.getQuery()));
+
+        try {
+            expansion.setHitCount(client.search(builder.request()).get().getHits().getTotalHits());
+            return expansion.getHitCount();
+        } catch (Exception e) {
+            throw new RuntimeException("Problem estimating count", e);
         }
     }
 }

@@ -6,6 +6,7 @@ public
 class ASTExpansion extends com.tcdi.zombodb.query_parser.QueryParserNode {
 
   private boolean generated;
+  private long hitCount = -1;
 
   public ASTExpansion(int id) {
     super(id);
@@ -27,6 +28,14 @@ class ASTExpansion extends com.tcdi.zombodb.query_parser.QueryParserNode {
 
   public boolean isGenerated() {
     return generated;
+  }
+
+  public long getHitCount() {
+    return hitCount;
+  }
+
+  public void setHitCount(long hitCount) {
+    this.hitCount = hitCount;
   }
 
   public QueryParserNode getFilterQuery() {
