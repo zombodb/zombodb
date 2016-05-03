@@ -29,10 +29,8 @@ PG_MODULE_MAGIC;
 #endif
 
 PG_FUNCTION_INFO_V1(rest_get);
-PG_FUNCTION_INFO_V1(rest_delete);
 
 Datum rest_get(PG_FUNCTION_ARGS);
-Datum rest_delete(PG_FUNCTION_ARGS);
 
 /*
  * Library initialization functions
@@ -58,14 +56,4 @@ Datum rest_get(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 
 	PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL)->data));
-}
-
-Datum rest_delete(PG_FUNCTION_ARGS)
-{
-	char *url = PG_ARGISNULL(0) ? NULL : GET_STR(PG_GETARG_TEXT_P(0));
-
-	if (url == NULL)
-		PG_RETURN_NULL();
-
-	PG_RETURN_TEXT_P(cstring_to_text(rest_call("DELETE", url, NULL)->data));
 }
