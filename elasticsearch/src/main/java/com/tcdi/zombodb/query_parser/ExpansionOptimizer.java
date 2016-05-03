@@ -68,8 +68,6 @@ public class ExpansionOptimizer {
                 ASTExpansion expansion = stack.pop();
                 String expansionFieldname = expansion.getFieldname();
 
-                expansion = maybeInvertExpansion(expansion);
-
                 if (expansionFieldname == null)
                     expansionFieldname = expansion.getIndexLink().getRightFieldname();
 
@@ -78,6 +76,10 @@ public class ExpansionOptimizer {
                 } else {
                     String leftFieldname = null;
                     String rightFieldname = null;
+
+                    // before we try to resolve the expansion lets figure out if
+                    // inverting it would produce less rows
+                    expansion = maybeInvertExpansion(expansion);
 
                     if (expansion.isGenerated()) {
 
