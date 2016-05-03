@@ -347,37 +347,44 @@ public class ExpansionOptimizer {
     }
 
     private ASTExpansion maybeInvertExpansion(ASTExpansion expansion) {
-        long before, after;
-        ASTExpansion expansionCopy = (ASTExpansion) expansion.copy();
+        long totalCnt, queryCnt;
 
         //
-        // figure out how many records this expansion is likely to return
+        // figure out how many records are in the index
         //
-        before = estimateCount(expansion);
+        totalCnt = estimateCount(expansion, false);
 
         //
-        // then invert it (by wrapping it in an ASTNot node) and see
-        // how many records that is
-        ASTNot not = new ASTNot(QueryParserTreeConstants.JJTNOT);
-        not.jjtAddChild(expansionCopy.getQuery().copy(), 0);
-        expansionCopy.jjtAddChild(not, 1);
+        // then how many records this expansion is likely to return
+        //
+        queryCnt = estimateCount(expansion, true);
 
-        after = estimateCount(expansionCopy);
+        if (queryCnt > totalCnt/2) {
+            QueryParserNode expansionParent = (QueryParserNode) expansion.parent;
 
-        if (after < before) {
             //
-            // and if the inversion is fewer records, go with that, but we need to
-            // inject another ASTNot node so that the final result is the correct records
+            // and if the expansion is going to return more than 1/2 the database
+            // invert it on the inner side of the expansion
             //
-            ASTNot invertedExpansion = new ASTNot(QueryParserTreeConstants.JJTNOT);
-            invertedExpansion.jjtAddChild(expansionCopy, 0);
-            ((QueryParserNode) expansion.parent).replaceChild(expansion, invertedExpansion);
-            expansion = expansionCopy;
+            ASTNot innerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
+            innerNot.jjtAddChild(expansion.getQuery(), 0);
+            expansion.jjtAddChild(innerNot, 1);
+
+            //
+            // and on the outer side.
+            //
+            // This way we're only shipping around the minimal number of rows
+            // through the rest of the query
+            //
+            ASTNot outerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
+            outerNot.jjtAddChild(expansion, 0);
+            expansionParent.replaceChild(expansion, outerNot);
         }
+
         return expansion;
     }
 
-    private long estimateCount(ASTExpansion expansion) {
+    private long estimateCount(ASTExpansion expansion, boolean useQuery) {
         SearchRequestBuilder builder = new SearchRequestBuilder(client);
         builder.setIndices(expansion.getIndexLink().getIndexName());
         builder.setSize(0);
@@ -387,11 +394,11 @@ public class ExpansionOptimizer {
         builder.setFetchSource(false);
         builder.setTrackScores(false);
         builder.setNoFields();
-        builder.setQuery(rewriter.build(expansion.getQuery()));
+        if (useQuery)
+            builder.setQuery(rewriter.build(expansion.getQuery()));
 
         try {
-            expansion.setHitCount(client.search(builder.request()).get().getHits().getTotalHits());
-            return expansion.getHitCount();
+            return client.search(builder.request()).get().getHits().getTotalHits();
         } catch (Exception e) {
             throw new RuntimeException("Problem estimating count", e);
         }
