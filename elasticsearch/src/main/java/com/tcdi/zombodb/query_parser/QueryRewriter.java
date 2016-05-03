@@ -1010,10 +1010,16 @@ public class QueryRewriter {
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTPrefix node) {
+        if (prox.getOperator() == QueryParserNode.Operator.REGEX)
+            return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
+
         return spanMultiTermQueryBuilder(prefixQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTWildcard node) {
+        if (prox.getOperator() == QueryParserNode.Operator.REGEX)
+            return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
+
         return spanMultiTermQueryBuilder(wildcardQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
