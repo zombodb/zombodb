@@ -795,6 +795,9 @@ public class QueryRewriter {
     }
 
     private QueryBuilder build(final ASTPrefix node) {
+        if (node.operator == QueryParserNode.Operator.REGEX)
+            return regexpQuery(node.getFieldname(), String.valueOf(node.getValue()));
+
         validateOperator(node);
         return buildStandard(node, new QBF() {
             @Override
@@ -805,6 +808,9 @@ public class QueryRewriter {
     }
 
     private QueryBuilder build(final ASTWildcard node) {
+        if (node.operator == QueryParserNode.Operator.REGEX)
+            return regexpQuery(node.getFieldname(), String.valueOf(node.getValue()));
+
         validateOperator(node);
         return buildStandard(node, new QBF() {
             @Override
