@@ -412,10 +412,12 @@ public class Utils {
         boolean hasWildcards = node instanceof ASTFuzzy;
         String input = node.getEscapedValue();
         String newToken;
+        boolean isComplex;
 
         if (node instanceof ASTPrefix)
             input += "*";
 
+        isComplex = Utils.isComplexTerm(input);
         input = input.replaceAll("[*]", "zdb_star_zdb");
         input = input.replaceAll("[?]", "zdb_question_zdb");
         input = input.replaceAll("[~]", "zdb_tilde_zdb");
@@ -426,7 +428,7 @@ public class Utils {
             // and it uses a build-in analyzer...
             String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
             if ((analyzer == null || "exact".equals(analyzer) || "phrase".equals(analyzer) || "fulltext".equals(analyzer) || "fulltext_with_shingles".equals(analyzer))
-                    && !Utils.isComplexTerm(input)) { // ... and is a single term
+                    && !isComplex) { // ... and is a single term
 
                 // then we'll just convert it to lowercase
                 node.setValue(input.toLowerCase());
@@ -448,8 +450,20 @@ public class Utils {
         newToken = newToken.replaceAll("zdb_escape_zdb", "\\\\");
 
         hasWildcards |= Utils.countValidWildcards(newToken) > 0;
-        QueryParserNode rc;
 
+        if (hasWildcards && !isComplex) {
+            String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
+            if (analyzer != null && analyzer.contains("_with_shingles")) {
+                node.setOperator(QueryParserNode.Operator.REGEX);
+                newToken = newToken.replaceAll("[*]", "\\[\\^\\$\\]\\*");
+                newToken = newToken.replaceAll("[?]", "\\[\\^\\$\\]\\?");
+                node.setValue(newToken);
+                return node;
+            }
+        }
+
+
+        QueryParserNode rc;
         if (!hasWildcards) {
             if (initialAnalyze.size() <= 1) {
                 if (node instanceof ASTPrefix) {

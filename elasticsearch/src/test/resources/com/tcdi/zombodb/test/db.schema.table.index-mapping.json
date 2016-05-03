@@ -166,6 +166,20 @@
             "enabled": false
           }
         },
+        "shingle_field": {
+          "store": false,
+          "type": "string",
+          "index_options": "positions",
+          "include_in_all": "true",
+          "search_analyzer": "fulltext_with_shingles_search",
+          "index_analyzer": "fulltext_with_shingles",
+          "fielddata": {
+            "format": "disabled"
+          },
+          "norms": {
+            "enabled": false
+          }
+        },
         "english_field": {
           "store": false,
           "type": "string",

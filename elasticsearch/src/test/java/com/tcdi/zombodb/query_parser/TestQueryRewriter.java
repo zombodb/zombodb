@@ -4493,5 +4493,110 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testRewritingWildcardsWithShingles_Prefix() throws Exception {
+        assertJson("shingle_field:the*",
+                "{\n" +
+                        "  \"regexp\" : {\n" +
+                        "    \"shingle_field\" : {\n" +
+                        "      \"value\" : \"the[^$]*\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testRewritingWildcardsWithShingles_STAR_MIDDLE() throws Exception {
+        assertJson("shingle_field:t*he",
+                "{\n" +
+                        "  \"regexp\" : {\n" +
+                        "    \"shingle_field\" : {\n" +
+                        "      \"value\" : \"t[^$]*he\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testRewritingWildcardsWithShingles_STAR_MIDDLE_END() throws Exception {
+        assertJson("shingle_field:t*he*",
+                "{\n" +
+                        "  \"regexp\" : {\n" +
+                        "    \"shingle_field\" : {\n" +
+                        "      \"value\" : \"t[^$]*he[^$]*\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testRewritingWildcardsWithShingles_QUESTION_END() throws Exception {
+        assertJson("shingle_field:the?",
+                "{\n" +
+                        "  \"regexp\" : {\n" +
+                        "    \"shingle_field\" : {\n" +
+                        "      \"value\" : \"the[^$]?\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testRewritingWildcardsWithShingles_QUESTION_MIDDLE_END() throws Exception {
+        assertJson("shingle_field:t?he?",
+                "{\n" +
+                        "  \"regexp\" : {\n" +
+                        "    \"shingle_field\" : {\n" +
+                        "      \"value\" : \"t[^$]?he[^$]?\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testRewritingWildcardsWithShingles_Proximity() throws Exception {
+        assertJson("shingle_field:(the* w/3 winner)",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_multi\" : {\n" +
+                        "        \"match\" : {\n" +
+                        "          \"regexp\" : {\n" +
+                        "            \"shingle_field\" : {\n" +
+                        "              \"value\" : \"the[^$]*\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_term\" : {\n" +
+                        "        \"shingle_field\" : {\n" +
+                        "          \"value\" : \"winner\"\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 3,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testRewritingWildcardsWithShingles_ProximityPhrase() throws Exception {
+        assertJson("shingle_field:'the* winner'",
+                "{\n" +
+                        "  \"wildcard\" : {\n" +
+                        "    \"shingle_field\" : \"the*$winner\"\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
 }
 
