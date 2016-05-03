@@ -42,6 +42,7 @@ PG_FUNCTION_INFO_V1(zdb_internal_highlight);
 PG_FUNCTION_INFO_V1(zdb_internal_multi_search);
 PG_FUNCTION_INFO_V1(zdb_internal_analyze_text);
 PG_FUNCTION_INFO_V1(zdb_internal_update_mapping);
+PG_FUNCTION_INFO_V1(zdb_internal_dump_query);
 
 
 /*
@@ -363,6 +364,20 @@ Datum zdb_internal_update_mapping(PG_FUNCTION_ARGS)
 	RelationClose(heapRel);
 
 	PG_RETURN_VOID();
+}
+
+Datum zdb_internal_dump_query(PG_FUNCTION_ARGS)
+{
+	Oid                indexRel   = PG_GETARG_OID(0);
+	char               *userQuery = GET_STR(PG_GETARG_TEXT_P(1));
+	ZDBIndexDescriptor *desc;
+	char               *jsonQuery;
+
+	desc = zdb_alloc_index_descriptor_by_index_oid(indexRel);
+
+	jsonQuery = desc->implementation->dumpQuery(desc, userQuery);
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(jsonQuery));
 }
 
 Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)

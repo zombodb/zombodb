@@ -362,6 +362,26 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
     freeStringInfo(response);
 }
 
+char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery)
+{
+	StringInfo        query;
+	StringInfo        endpoint = makeStringInfo();
+	StringInfo        response;
+	bool              useInvisibilityMap = strstr(userQuery, "#expand") != NULL || indexDescriptor->options != NULL;
+
+	appendStringInfo(endpoint, "%s/%s/_zdbquery", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	if (indexDescriptor->searchPreference != NULL)
+		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+
+	query = buildQuery(indexDescriptor, &userQuery, 1, useInvisibilityMap, strstr(userQuery, "#expand") != NULL);
+	response = rest_call("POST", endpoint->data, query);
+
+	freeStringInfo(query);
+	freeStringInfo(endpoint);
+
+	return response->data;
+}
+
 void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response = NULL;

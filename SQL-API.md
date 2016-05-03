@@ -302,6 +302,33 @@ thai
 > idx_zdb_products
 >```
 
+#### `FUNCTION zdb_dump_query(table_name regclass, query text) RETURNS text`
+
+> `table_name`:  The name of a table with a ZomboDB index  
+> `query`: a full text query
+> 
+> returns the Elasticsearch QueryDSL that would be executed, fully resolved with index links
+> 
+> Example:
+> 
+```
+SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
+                   zdb_dump_query                   
+----------------------------------------------------
+ {                                                 +
+   "bool" : {                                      +
+     "must" : {                                    +
+       "terms" : {                                 +
+         "subject" : [ "this", "is", "a", "test" ],+
+         "minimum_should_match" : "4"              +
+       }                                           +
+     }                                             +
+   }                                               +
+ }
+(1 row)
+```
+
+
 #### ```FUNCTION zdb_estimate_count(table_name regclass, query text) RETURNS bigint```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  

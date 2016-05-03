@@ -21,6 +21,7 @@
 void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
 void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
+char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
 void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor);

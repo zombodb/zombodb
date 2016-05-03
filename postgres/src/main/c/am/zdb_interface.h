@@ -151,6 +151,7 @@ void interface_transaction_cleanup(void);
 typedef void (*ZDBCreateNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
 typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, char *mapping);
+typedef char *(*ZDBDumpQuery_function)(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
 typedef void (*ZDBDropIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBRefreshIndex_function)(ZDBIndexDescriptor *indexDescriptor);
@@ -193,6 +194,7 @@ struct ZDBIndexImplementation
 	ZDBCreateNewIndex_function   createNewIndex;
 	ZDBFinalizeNewIndex_function finalizeNewIndex;
 	ZDBUpdateMapping_function    updateMapping;
+	ZDBDumpQuery_function		 dumpQuery;
 
 	ZDBDropIndex_function    dropIndex;
 	ZDBRefreshIndex_function refreshIndex;
