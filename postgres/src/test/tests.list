@@ -4,6 +4,7 @@ TUTORIAL
 configure
 create-indexes
 mappings
+update-mappings
 counts
 words
 updates

@@ -337,29 +337,48 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
 
     properties = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(mapping), PROPERTIES));
 
-    indexRel = index_open(indexDescriptor->indexRelid, RowExclusiveLock);
-    appendStringInfo(request, "{"
-            "   \"data\": {"
-            "       \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "       \"_source\": { \"enabled\": false },"
-            "       \"_field_names\": { \"index\": \"no\", \"store\": false },"
-            "       \"_meta\": { \"primary_key\": \"%s\" },"
-			"       \"date_detection\": false,"
-            "       \"properties\" : %s"
-            "   },"
-            "   \"settings\": {"
-			"      \"refresh_interval\":\"%s\","
-            "      \"number_of_replicas\": %d"
-            "   }"
-            "}", pkey, properties, ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
-    index_close(indexRel, RowExclusiveLock);
+    indexRel = RelationIdGetRelation(indexDescriptor->indexRelid);
+
+	/*
+	 * First, update the mapping.  It's important that we include all the same properties
+	 * as when we created the index, otherwise they'll be un-set by this call
+	 */
+	appendStringInfo(request, "{"\
+			"   \"data\": {"
+			"      \"_source\": { \"enabled\": false },"
+			"      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
+			"      \"_field_names\": { \"index\": \"no\", \"store\": false },"
+			"      \"_meta\": { \"primary_key\": \"%s\" },"
+			"      \"date_detection\": false,"
+            "      \"properties\" : %s"
+			"    }"
+            "}", pkey, properties);
 
     appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("PUT", endpoint->data, request);
+	freeStringInfo(response);
+
+	/*
+	 * Second, update the index settings we can change dynamically
+	 */
+	resetStringInfo(request);
+	resetStringInfo(endpoint);
+
+	appendStringInfo(request, "{"
+			"   \"settings\": {"
+			"      \"refresh_interval\": \"%s\","
+			"      \"number_of_replicas\": %d"
+			"   }"
+			"}", ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
+
+	appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	response = rest_call("PUT", endpoint->data, request);
+	freeStringInfo(response);
+
+	RelationClose(indexRel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
-    freeStringInfo(response);
 }
 
 char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery)
@@ -397,6 +416,7 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
 
+	elog(LOG, "[zombodb]: Refreshing index %s", indexDescriptor->fullyQualifiedName);
 	appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("GET", endpoint->data, NULL);
 	checkForRefreshError(response);
@@ -845,6 +865,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
 	ListCell *lc;
+	int cnt=0;
 
 	appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
@@ -852,25 +873,33 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	{
 		ItemPointer item = lfirst(lc);
 
+		cnt++;
 		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
 		if (request->len >= indexDescriptor->batch_size)
 		{
+			elog(LOG, "[zombodb] VACUUMing %d records of %d for %s", cnt, nitems, indexDescriptor->fullyQualifiedName);
 			response = rest_call("POST", endpoint->data, request);
 			checkForBulkError(response, "delete");
 
 			resetStringInfo(request);
 			freeStringInfo(response);
+			cnt = 0;
 		}
 	}
 
 	if (request->len > 0)
 	{
+		elog(LOG, "[zombodb] VACUUMing %d records of %d for %s", cnt, nitems, indexDescriptor->fullyQualifiedName);
 		response = rest_call("POST", endpoint->data, request);
 		checkForBulkError(response, "delete");
 	}
 
-	elasticsearch_refreshIndex(indexDescriptor);
+	if (!zdb_batch_mode_guc) {
+		if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+			elasticsearch_refreshIndex(indexDescriptor);
+		}
+	}
 
 	freeStringInfo(endpoint);
 	freeStringInfo(request);
@@ -925,7 +954,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
 		batch->nrequests++;
 
-		elog(LOG, "Indexed %d rows for %s", batch->nprocessed, indexDescriptor->fullyQualifiedName);
+		elog(LOG, "[zombodb] Indexed %d rows for %s", batch->nprocessed, indexDescriptor->fullyQualifiedName);
 	}
 }
 
@@ -994,7 +1023,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 		freeStringInfo(batch->bulk);
 
 		if (batch->nrequests > 0)
-			elog(LOG, "Indexed %d rows in %d requests for %s", batch->nprocessed, batch->nrequests+1, indexDescriptor->fullyQualifiedName);
+			elog(LOG, "[zombodb] Indexed %d rows in %d requests for %s", batch->nprocessed, batch->nrequests+1, indexDescriptor->fullyQualifiedName);
 
 		batchInsertDataList = list_delete(batchInsertDataList, batch);
 		pfree(batch);
