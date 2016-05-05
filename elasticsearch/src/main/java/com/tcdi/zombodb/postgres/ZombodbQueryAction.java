@@ -16,6 +16,7 @@
 package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.QueryRewriter;
+import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -54,9 +55,10 @@ public class ZombodbQueryAction extends BaseRestHandler {
 
                 response = new BytesRestResponse(RestStatus.OK, "application/json", json);
             } catch (Exception e) {
+                logger.error("Error building query", e);
                 XContentBuilder builder = channel.newBuilder();
                 builder.startObject();
-                builder.field("error", e.toString());
+                builder.field("error", ExceptionsHelper.stackTrace(e));
                 builder.endObject();
                 response = new BytesRestResponse(RestStatus.INTERNAL_SERVER_ERROR, builder);
             }
