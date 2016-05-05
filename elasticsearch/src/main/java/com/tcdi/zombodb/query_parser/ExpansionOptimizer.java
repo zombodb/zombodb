@@ -51,6 +51,7 @@ public class ExpansionOptimizer {
         }
 
         mergeAdjacentANDs(tree);
+        mergeAdjacentORs(tree);
     }
 
     private void expand(final ASTExpansion root, final ASTIndexLink link) {
@@ -277,41 +278,7 @@ public class ExpansionOptimizer {
 
                 Map<String, Map<QueryParserNode, Set<Object>>> terms = new HashMap<>();
 
-                for (QueryParserNode child : root) {
-                    Set<Object> set = new HashSet<>();
-
-                    IndexMetadata md = metadataManager.getMetadataForField(child.getFieldname());
-                    String type = md.getType(child.getFieldname());
-                    if (!("integer".equals(type) || "long".equals(type)))
-                        continue;
-                    if (!(child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ))
-                        continue;
-
-                    boolean didWork = false;
-                    if (child instanceof ASTArray) {
-                        ASTArray array = (ASTArray) child;
-
-                        if (!array.isAnd()) {
-                            Iterable<Object> itr = array.hasExternalValues() ? array.getExternalValues() : array.getChildValues();
-                            for (Object obj : itr) {
-                                set.add(String.valueOf(obj));
-                            }
-                            didWork = true;
-                        }
-                    } else if (child instanceof ASTNumber || child instanceof ASTWord) {
-                        set.add(String.valueOf(child.getValue()));
-                        didWork = true;
-                    }
-
-                    if (didWork) {
-                        Map<QueryParserNode, Set<Object>> map = terms.get(child.getFieldname());
-
-                        if (map == null)
-                            terms.put(child.getFieldname(), map = new HashMap<>());
-
-                        map.put(child, set);
-                    }
-                }
+                buildNodeSets(root, terms);
 
                 for(Map<QueryParserNode, Set<Object>> map : terms.values()) {
                     if (map.size() > 1) {
@@ -345,6 +312,88 @@ public class ExpansionOptimizer {
         } else {
             for (QueryParserNode child : root)
                 mergeAdjacentANDs(child);
+        }
+    }
+
+    private void mergeAdjacentORs(QueryParserNode root) {
+        if (root instanceof ASTOr) {
+            if (root.jjtGetNumChildren() > 1) {
+
+                Map<String, Map<QueryParserNode, Set<Object>>> terms = new HashMap<>();
+
+                buildNodeSets(root, terms);
+
+                for(Map<QueryParserNode, Set<Object>> map : terms.values()) {
+                    if (map.size() > 1) {
+                        Set<Object> merged = null;
+                        QueryParserNode first = null;
+                        for (Map.Entry<QueryParserNode, Set<Object>> entry : map.entrySet()) {
+                            QueryParserNode node = entry.getKey();
+                            Set<Object> value = entry.getValue();
+
+                            if (merged == null) {
+                                merged = value;
+                                first = node;
+                            } else {
+                                merged.addAll(value);
+                            }
+                            root.removeNode(node);
+                        }
+                        assert(first != null);
+
+                        ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
+                        array.setFieldname(first.getFieldname());
+                        array.setOperator(first.getOperator());
+                        array.setExternalValues(merged, merged.size());
+
+                        root.renumber();
+                        root.jjtAddChild(array, root.jjtGetNumChildren());
+                    }
+                }
+
+            }
+        } else {
+            for (QueryParserNode child : root)
+                mergeAdjacentORs(child);
+        }
+    }
+
+    private void buildNodeSets(QueryParserNode root, Map<String, Map<QueryParserNode, Set<Object>>> terms) {
+        for (QueryParserNode child : root) {
+            Set<Object> set = new HashSet<>();
+
+            IndexMetadata md = metadataManager.getMetadataForField(child.getFieldname());
+            String pkey = md.getPrimaryKeyFieldName();
+            if (pkey == null || !pkey.equals(child.getFieldname()))
+                continue;   // can only do this for primary key fields
+
+            if (!(child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ))
+                continue;
+
+            boolean didWork = false;
+            if (child instanceof ASTArray) {
+                ASTArray array = (ASTArray) child;
+
+                if (!array.isAnd()) {
+                    Iterable<Object> itr = array.hasExternalValues() ? array.getExternalValues() : array.getChildValues();
+                    for (Object obj : itr) {
+                        set.add(String.valueOf(obj));
+                    }
+                    didWork = true;
+                }
+            } else if (child instanceof ASTNumber || child instanceof ASTWord) {
+                set.add(String.valueOf(child.getValue()));
+                didWork = true;
+            }
+
+            if (didWork) {
+                Map<QueryParserNode, Set<Object>> map = terms.get(child.getFieldname());
+
+                if (map == null)
+                    terms.put(child.getFieldname(), map = new HashMap<>());
+
+                map.put(child, set);
+            }
         }
     }
 
