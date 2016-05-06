@@ -278,17 +278,17 @@ StringInfo find_invisible_ctids(Relation rel) {
 
 int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data) {
     Buffer vmap_buff = InvalidBuffer;
-    int cnt = visibilitymap_count(heapRel);
+    BlockNumber cnt = visibilitymap_count(heapRel);
+    BlockNumber numberOfBlocks = RelationGetNumberOfBlocks(heapRel);
     int many = 0, skipped = 0, pages = 0;
 
-    if (cnt == 0 || cnt != heapRel->rd_rel->relpages) {
+    if (cnt == 0 || cnt != numberOfBlocks) {
         Snapshot      snapshot = GetActiveSnapshot();
         HeapTupleData heapTuple;
         BlockNumber   blockno;
         OffsetNumber  offno;
-        int           size;
 
-        for (blockno = 0, size = RelationGetNumberOfBlocks(heapRel); blockno < size; blockno++) {
+        for (blockno = 0; blockno < numberOfBlocks; blockno++) {
             CHECK_FOR_INTERRUPTS();
 
             if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
@@ -324,7 +324,7 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
     if (BufferIsValid(vmap_buff))
         ReleaseBuffer(vmap_buff);
 
-    elog(DEBUG1, "[ZomboDB invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d", RelationGetRelationName(heapRel), many, skipped, pages);
+    elog(DEBUG1, "[ZomboDB invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d, total_blocks=%d", RelationGetRelationName(heapRel), many, skipped, pages, numberOfBlocks);
     return many;
 }
 
