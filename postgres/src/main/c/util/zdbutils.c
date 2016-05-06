@@ -277,13 +277,13 @@ StringInfo find_invisible_ctids(Relation rel) {
 }
 
 int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data) {
-    Buffer vmap_buff = InvalidBuffer;
-    BlockNumber cnt = visibilitymap_count(heapRel);
+    BlockNumber cnt            = visibilitymap_count(heapRel);
     BlockNumber numberOfBlocks = RelationGetNumberOfBlocks(heapRel);
     int many = 0, skipped = 0, pages = 0;
 
     if (cnt == 0 || cnt != numberOfBlocks) {
-        Snapshot      snapshot = GetActiveSnapshot();
+        Snapshot      snapshot  = GetActiveSnapshot();
+        Buffer        vmap_buff = InvalidBuffer;
         HeapTupleData heapTuple;
         BlockNumber   blockno;
         OffsetNumber  offno;
