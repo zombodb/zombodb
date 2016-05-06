@@ -1007,23 +1007,22 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 			freeStringInfo(response);
 		}
 
-		/*
-         * If this wasn't the only request being made in this batch
-         * then ask ES to refresh the index, but only if a) we're not in batch mode
-         * and b) if the index refresh interval is -1
-         */
+		freeStringInfo(batch->bulk);
+
 		if (batch->nrequests > 0) {
+			elog(LOG, "[zombodb] Indexed %d rows in %d requests for %s", batch->nprocessed, batch->nrequests + 1, indexDescriptor->fullyQualifiedName);
+
+			/*
+             * If this wasn't the only request being made in this batch
+             * then ask ES to refresh the index, but only if a) we're not in batch mode
+             * and b) if the index refresh interval is -1
+             */
 			if (!zdb_batch_mode_guc) {
 				if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
 					elasticsearch_refreshIndex(indexDescriptor);
 				}
 			}
 		}
-
-		freeStringInfo(batch->bulk);
-
-		if (batch->nrequests > 0)
-			elog(LOG, "[zombodb] Indexed %d rows in %d requests for %s", batch->nprocessed, batch->nrequests+1, indexDescriptor->fullyQualifiedName);
 
 		batchInsertDataList = list_delete(batchInsertDataList, batch);
 		pfree(batch);
