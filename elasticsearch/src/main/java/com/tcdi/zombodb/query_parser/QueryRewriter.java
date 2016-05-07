@@ -863,7 +863,7 @@ public class QueryRewriter {
                         };
                     }
                 }
-                if (node.hasExternalValues() && minShouldMatch == 1) {
+                if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
                     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
                     return filteredQuery(matchAllQuery(), builder);
                 } else {

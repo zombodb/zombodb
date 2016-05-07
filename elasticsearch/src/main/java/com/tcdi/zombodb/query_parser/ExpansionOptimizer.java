@@ -53,6 +53,16 @@ public class ExpansionOptimizer {
         mergeAdjacentANDs(tree);
         mergeAdjacentORs(tree);
         pullUpNOTs(tree);
+
+        flatten();
+    }
+
+    private void flatten() {
+        QueryParserNode queryNode = tree.getQueryNode();
+        if (queryNode instanceof ASTAnd || queryNode instanceof ASTOr) {
+            if (queryNode.jjtGetNumChildren() == 1)
+                ((QueryParserNode) queryNode.parent).replaceChild(queryNode, queryNode.getChild(0));
+        }
     }
 
     private void expand(final ASTExpansion root, final ASTIndexLink link) {
