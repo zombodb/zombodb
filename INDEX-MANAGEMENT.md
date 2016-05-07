@@ -34,7 +34,7 @@ The `WITH` settings are:
 
 ### Operational Settings
 - `preference` **optional**:  The Elasticsearch [search preference](https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-preference.html) to use.  The default is `null`, meaning no search preference is used.
-- `batch_concurrency` **optional**:  Specifies the maximum number of concurrent HTTP requests, per Postgres backend, to use when making "batch" changes, which include CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE statements.  The default is `12` and allowed values are in the set `[1..1024]`
+- `bulk_concurrency` **optional**:  Specifies the maximum number of concurrent HTTP requests, per Postgres backend, to use when making "batch" changes, which include CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE statements.  The default is `12` and allowed values are in the set `[1..1024]`
 - `batch_size` **optional**:  Specifies the size, in bytes, for batch POST data.  Affects CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE, and VACUUM statements.  The default is `8388608` bytes (8MB) and allowed values are `[1k..1Gb]`.
 - `refresh_interval` **optional**:  This setting directly relates to Elasticsearch's [`index.refresh_interval`](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/setup-configuration.html#configuration-index-settings).  The default value is `-1`, meaning ZomboDB will control index refreshes such that modified rows are always immediately visible.  If a time delay is okay, change this setting to something like `5s` for five seconds.  This can help improve single-record INSERT/UPDATE performance at the expense of when the rows are actually searchable.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.    
 - `ignore_visibility` **optional**:  Controls, on a per-index level, if queries that require row visibility information to be MVCC-correct should honor it.  The default is `false`, meaning all queries are MVCC-correct.  Set this to `true` if you don't need exact values for aggregates and `zdb_estimate_count()`.
@@ -92,5 +92,9 @@ Running a standard `VACUUM` on a table with a ZomboDB index does the minimum amo
 
 Running a `VACUUM FULL` on a table with a ZomboDB index, on the otherhand, is functionally equilivant to running a `REINDEX` on the table, which means a `VACUUM FULL` could take a long time to complete.
 
+<<<<<<< HEAD
 For tables with a ZomboDB indexes that are frequently UPDATEd, it's important that autovacuum be configured to be as aggressive as your I/O subsystem can afford.  This is because certain types of ZomboDB queries need to build an "invisibility map", which necessitates looking at every heap page that is not known to be all-visibile.
 
+=======
+A [`VACUUM FREEZE`](http://www.postgresql.org/docs/9.4/static/routine-vacuuming.html#VACUUM-FOR-WRAPAROUND) (and autovacuum's anti-wrap-around procedure) will leave ZomboDB indexes in an inconsistent state.  After a `VACUUM FREEZE` on a table, any of its ZomboDB indexes must be `REINDEX`ed.  This is because ZomboDB stores transaction visibility information in the remote Elasticsearch index (the same xmin,xmax,etc values stored on every heap tuple) and Postgres doesn't (yet) provide a way to be notified when that data is changed via VACUUM.
+>>>>>>> develop
