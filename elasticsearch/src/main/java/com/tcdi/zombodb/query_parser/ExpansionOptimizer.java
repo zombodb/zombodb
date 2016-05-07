@@ -381,7 +381,7 @@ public class ExpansionOptimizer {
                 for (ASTNot not : nots) {
                     QueryParserNode child = not.getChild(0);
                     if (child instanceof ASTArray) {
-                        ASTArray notArray = (ASTArray) child;
+                        final ASTArray notArray = (ASTArray) child;
                         if (notArray.hasExternalValues()) {
                             String fieldname = child.getFieldname();
                             Map<QueryParserNode, Set<Object>> array = terms.get(fieldname);
@@ -392,8 +392,17 @@ public class ExpansionOptimizer {
                                     if (node instanceof ASTArray) {
                                         Set<Object> values = entry.getValue();
 
-                                        for (Object o : notArray.getExternalValues())
-                                            values.remove(o);
+                                        values.removeAll(new HashSet<>(new AbstractCollection<Object>() {
+                                            @Override
+                                            public Iterator<Object> iterator() {
+                                                return notArray.getExternalValues().iterator();
+                                            }
+
+                                            @Override
+                                            public int size() {
+                                                return notArray.getTotalExternalValues();
+                                            }
+                                        }));
 
                                         ((ASTArray) node).setExternalValues(values, values.size());
                                         ((QueryParserNode) notArray.parent).removeNode(notArray);
