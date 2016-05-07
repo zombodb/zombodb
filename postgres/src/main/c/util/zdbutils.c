@@ -319,10 +319,10 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
                 }
             }
         }
-    }
 
-    if (BufferIsValid(vmap_buff))
-        ReleaseBuffer(vmap_buff);
+        if (BufferIsValid(vmap_buff))
+            ReleaseBuffer(vmap_buff);
+    }
 
     elog(DEBUG1, "[ZomboDB invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d, total_blocks=%d", RelationGetRelationName(heapRel), many, skipped, pages, numberOfBlocks);
     return many;
