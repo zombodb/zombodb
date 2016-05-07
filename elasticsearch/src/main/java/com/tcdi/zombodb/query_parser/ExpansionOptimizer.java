@@ -52,6 +52,7 @@ public class ExpansionOptimizer {
 
         mergeAdjacentANDs(tree);
         mergeAdjacentORs(tree);
+        pullUpNOTs(tree);
     }
 
     private void expand(final ASTExpansion root, final ASTIndexLink link) {
@@ -356,6 +357,53 @@ public class ExpansionOptimizer {
             for (QueryParserNode child : root)
                 mergeAdjacentORs(child);
         }
+    }
+
+    private void pullUpNOTs(QueryParserNode root) {
+        if (root instanceof ASTAnd) {
+            Collection<ASTNot> nots = root.getChildrenOfType(ASTNot.class);
+
+            if (nots.size() > 0) {
+                Map<String, Map<QueryParserNode, Set<Object>>> terms = new HashMap<>();
+
+                buildNodeSets(root, terms);
+
+                for (ASTNot not : nots) {
+                    QueryParserNode child = not.getChild(0);
+                    if (child instanceof ASTArray) {
+                        ASTArray notArray = (ASTArray) child;
+                        if (notArray.hasExternalValues()) {
+                            String fieldname = child.getFieldname();
+                            Map<QueryParserNode, Set<Object>> array = terms.get(fieldname);
+
+                            if (array != null) {
+                                for (Map.Entry<QueryParserNode, Set<Object>> entry : array.entrySet()) {
+                                    QueryParserNode node = entry.getKey();
+                                    if (node instanceof ASTArray) {
+                                        Set<Object> values = entry.getValue();
+
+                                        for (Object o : notArray.getExternalValues())
+                                            values.remove(o);
+
+                                        ((ASTArray) node).setExternalValues(values, values.size());
+                                        ((QueryParserNode) notArray.parent).removeNode(notArray);
+                                        ((QueryParserNode) notArray.parent).renumber();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (not.jjtGetNumChildren() == 0) {
+                        ((QueryParserNode) not.parent).removeNode(not);
+                        ((QueryParserNode) not.parent).renumber();
+                    }
+                }
+            }
+        }
+
+        for (QueryParserNode child : root)
+            pullUpNOTs(child);
     }
 
     private void buildNodeSets(QueryParserNode root, Map<String, Map<QueryParserNode, Set<Object>>> terms) {
