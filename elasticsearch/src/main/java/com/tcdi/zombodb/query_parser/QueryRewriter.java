@@ -762,8 +762,15 @@ public class QueryRewriter {
 
     private QueryBuilder build(ASTNotNull node) {
         IndexMetadata md = metadataManager.getMetadataForField(node.getFieldname());
-        if (md != null && node.getFieldname().equalsIgnoreCase(md.getPrimaryKeyFieldName()))
-            return matchAllQuery();    // optimization when we know every document has a value for the specified field
+        if (md != null && node.getFieldname().equalsIgnoreCase(md.getPrimaryKeyFieldName())) {
+            // optimization when we know every document has a value for the specified field
+            switch (node.getOperator()) {
+                case NE:
+                    return boolQuery().mustNot(matchAllQuery());
+                default:
+                    return matchAllQuery();
+            }
+        }
 
         validateOperator(node);
         return buildStandard(node, new QBF() {
