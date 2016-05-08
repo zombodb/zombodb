@@ -191,6 +191,10 @@ CREATE OR REPLACE FUNCTION zdb_get_index_field_lists(table_name regclass) RETURN
       from regexp_split_to_table(zdb_internal_get_index_field_lists(zdb_determine_index($1)), '\]\s*,') x;
 $$;
 
+CREATE OR REPLACE FUNCTION zdb_internal_dump_query(index_oid oid, user_query text) RETURNS text STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_dump_query(table_name regclass, user_query text) RETURNS text STRICT IMMUTABLE LANGUAGE sql AS $$
+  SELECT zdb_internal_dump_query(zdb_determine_index(table_name), user_query);
+$$;
 
 CREATE TYPE zdb_tally_order AS ENUM ('count', 'term', 'reverse_count', 'reverse_term');
 CREATE TYPE zdb_tally_response AS (term text, count bigint);
