@@ -119,63 +119,40 @@ public class ExpansionOptimizer {
 
                         List<String> path = metadataManager.calculatePath(targetIndex, expansion.getIndexLink());
 
-                        boolean oneToOne = true;
-                        if (path.size() == 2) {
-                            leftFieldname = path.get(0);
-                            rightFieldname = path.get(1);
+                        int i = path.size()-1;
+                        boolean oneToOne = i == 1;
+
+                        while(i >= 0) {
+                            final String rightIndex;
+
+                            rightFieldname = path.get(i);
+                            leftFieldname = path.get(--i);
+
+                            if (!rightFieldname.contains(":")) {
+                                // the right fieldname is a reference to a table not a specific field, so
+                                // skip the path entry
+                                continue;
+                            }
+
+                            rightIndex = rightFieldname.substring(0, rightFieldname.indexOf(':'));
 
                             leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
                             rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
 
-                        } else if (path.size() == 3) {
-                            oneToOne = false;
-                            String middleFieldname;
-
-                            leftFieldname = path.get(0);
-                            middleFieldname = path.get(1);
-                            rightFieldname = path.get(2);
-
-                            if (metadataManager.areFieldPathsEquivalent(leftFieldname, middleFieldname) && metadataManager.areFieldPathsEquivalent(middleFieldname, rightFieldname)) {
-                                leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                                rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-                            } else {
-                                throw new QueryRewriter.QueryRewriteException("Field equivalency cannot be determined");
+                            if (last != null && !oneToOne) {
+                                ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, rightIndex, rightFieldname);
+                                expansion.jjtAddChild(newLink, 0);
+                                expansion.jjtAddChild(last, 1);
                             }
-                        } else {
-                            oneToOne = false;
-                            int i = path.size()-1;
-                            while(i >= 0) {
-                                final String rightIndex;
 
-                                rightFieldname = path.get(i);
-                                leftFieldname = path.get(--i);
+                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
 
-                                if (!rightFieldname.contains(":")) {
-                                    // the right fieldname is a reference to a table not a specific field, so
-                                    // skip the path entry
-                                    continue;
-                                }
-
-                                rightIndex = rightFieldname.substring(0, rightFieldname.indexOf(':'));
-
-                                leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                                rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-
-                                if (last != null) {
-                                    ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, rightIndex, rightFieldname);
-                                    expansion.jjtAddChild(newLink, 0);
-                                    expansion.jjtAddChild(last, 1);
-                                }
-
-                                last = loadFielddata(expansion, leftFieldname, rightFieldname);
-
-                                i--;
-                            }
+                            i--;
                         }
 
                         if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
                             last = expansion.getQuery();
-                        } else {
+                        } else if (last == null) {
                             last = loadFielddata(expansion, leftFieldname, rightFieldname);
                         }
                     }
