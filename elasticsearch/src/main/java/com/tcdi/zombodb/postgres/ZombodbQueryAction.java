@@ -53,7 +53,6 @@ public class ZombodbQueryAction extends BaseRestHandler {
                 qr = new QueryRewriter(client, request.param("index"), request.param("preference"), query, true);
                 json = qr.rewriteQuery().toString();
 
-                System.err.println(qr.getSearchIndexName());
                 response = new BytesRestResponse(RestStatus.OK, "application/json", json);
             } catch (Exception e) {
                 logger.error("Error building query", e);
