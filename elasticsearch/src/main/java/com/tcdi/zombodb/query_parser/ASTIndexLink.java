@@ -5,22 +5,21 @@ package com.tcdi.zombodb.query_parser;
 public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode {
 
     public static ASTIndexLink create(final String leftFieldname, final String indexName, final String rightFieldname) {
-        return new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
-            @Override
-            public String getLeftFieldname() {
-                return leftFieldname;
-            }
+        ASTIndexLink link = new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK);
 
-            @Override
-            public String getIndexName() {
-                return indexName;
-            }
+        ASTLeftField left = new ASTLeftField(QueryParserTreeConstants.JJTLEFTFIELD);
+        left.setValue(leftFieldname);
+        link.jjtAddChild(left, 0);
 
-            @Override
-            public String getRightFieldname() {
-                return rightFieldname;
-            }
-        };
+        ASTIndexName index = new ASTIndexName(QueryParserTreeConstants.JJTINDEXNAME);
+        index.setValue(indexName);
+        link.jjtAddChild(index, 1);
+
+        ASTRightField right = new ASTRightField(QueryParserTreeConstants.JJTRIGHTFIELD);
+        right.setValue(rightFieldname);
+        link.jjtAddChild(right, 2);
+
+        return link;
     }
 
     public ASTIndexLink(int id) {

@@ -694,22 +694,12 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"bool\" : {\n" +
                         "    \"must\" : [ {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"witness_data.wit_first_name\" : \"mark\"\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"path\" : \"witness_data\"\n" +
+                        "      \"term\" : {\n" +
+                        "        \"wit_first_name\" : \"mark\"\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"witness_data.wit_last_name\" : \"matte\"\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"path\" : \"witness_data\"\n" +
+                        "      \"term\" : {\n" +
+                        "        \"wit_last_name\" : \"matte\"\n" +
                         "      }\n" +
                         "    } ]\n" +
                         "  }\n" +
@@ -2736,13 +2726,13 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            LeftField (value=owner_user_id)\n" +
                         "            IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "            RightField (value=id)\n" +
-                        "         Prefix (fieldname=user_data.display_name, operator=CONTAINS, value=j, index=db.schema.so_users.idxso_users)\n" +
+                        "         Prefix (fieldname=display_name, operator=CONTAINS, value=j, index=db.schema.so_users.idxso_users)\n" +
                         "      Expansion\n" +
                         "         comment_data:(id=<db.schema.so_comments.idxso_comments>post_id)\n" +
                         "            LeftField (value=id)\n" +
                         "            IndexName (value=db.schema.so_comments.idxso_comments)\n" +
                         "            RightField (value=post_id)\n" +
-                        "         Prefix (fieldname=comment_data.user_display_name, operator=CONTAINS, value=j, index=db.schema.so_comments.idxso_comments)\n"
+                        "         Prefix (fieldname=user_display_name, operator=CONTAINS, value=j, index=db.schema.so_comments.idxso_comments)"
         );
     }
 
@@ -2857,15 +2847,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            IndexName (value=db.schema.so_users.idxso_users)\n" +
                         "            RightField (value=other_id)\n" +
                         "         With\n" +
-                        "            Array (fieldname=nested.exact_field, operator=CONTAINS, index=db.schema.so_users.idxso_users) (AND)\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=a, index=db.schema.so_users.idxso_users)\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=b, index=db.schema.so_users.idxso_users)\n" +
+                        "            Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.so_users.idxso_users) (AND)\n" +
+                        "               Word (fieldname=exact_field, operator=CONTAINS, value=a, index=db.schema.so_users.idxso_users)\n" +
+                        "               Word (fieldname=exact_field, operator=CONTAINS, value=b, index=db.schema.so_users.idxso_users)\n" +
                         "            Or\n" +
-                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=c, index=db.schema.so_users.idxso_users)\n" +
+                        "               Word (fieldname=exact_field, operator=CONTAINS, value=c, index=db.schema.so_users.idxso_users)\n" +
                         "               With\n" +
-                        "                  Array (fieldname=nested.exact_field, operator=CONTAINS, index=db.schema.so_users.idxso_users) (AND)\n" +
-                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=d, index=db.schema.so_users.idxso_users)\n" +
-                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=e, index=db.schema.so_users.idxso_users)\n" +
+                        "                  Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.so_users.idxso_users) (AND)\n" +
+                        "                     Word (fieldname=exact_field, operator=CONTAINS, value=d, index=db.schema.so_users.idxso_users)\n" +
+                        "                     Word (fieldname=exact_field, operator=CONTAINS, value=e, index=db.schema.so_users.idxso_users)\n" +
                         "      Expansion\n" +
                         "         id=<db.schema.table.index>id\n" +
                         "         With\n" +

@@ -14,6 +14,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.support.RestToXContentListener;
+import solutions.siren.join.action.coordinate.CoordinateMultiSearchAction;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -80,13 +81,13 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
 
             srb.setIndices(md.getIndexName());
             if (md.getPkey() != null) srb.addFieldDataField(md.getPkey());
-            srb.setQuery(new QueryRewriter(client, md.getIndexName(), md.getPreference(), md.getQuery(), true, true).rewriteQuery());
+            srb.setQuery(new QueryRewriter(client, md.getIndexName(), md.getPreference(), md.getQuery(), true).rewriteQuery());
 
             msearchBuilder.add(srb);
         }
 
         final ActionListener<MultiSearchResponse> defaultListener = new RestToXContentListener<MultiSearchResponse>(channel);
-        client.multiSearch(msearchBuilder.request(), new ActionListener<MultiSearchResponse>() {
+        client.execute(CoordinateMultiSearchAction.INSTANCE, msearchBuilder.request(), new ActionListener<MultiSearchResponse>() {
             @Override
             public void onResponse(MultiSearchResponse items) {
                 long end = System.currentTimeMillis();

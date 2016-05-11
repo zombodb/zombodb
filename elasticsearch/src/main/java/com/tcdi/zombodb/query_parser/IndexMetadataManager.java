@@ -269,6 +269,8 @@ public class IndexMetadataManager {
         }
 
         List<String> path = relationshipManager.calcPath(source.getIndexName(), dest.getIndexName());
+        if (path.size() == 1)
+            return Collections.emptyList();
         return path.subList(1, path.size()-1);
     }
 

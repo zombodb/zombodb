@@ -31,6 +31,7 @@ import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
+import solutions.siren.join.index.query.FilterJoinBuilder;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -101,7 +102,6 @@ public class QueryRewriter {
     private final String searchPreference;
 
     private final String indexName;
-    private boolean allowSingleIndex;
     private boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
     private final boolean doFullFieldDataLookup;
@@ -110,10 +110,9 @@ public class QueryRewriter {
 
     private final IndexMetadataManager metadataManager;
 
-    public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean doFullFieldDataLookup) {
+    public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup) {
         this.client = client;
         this.indexName = indexName;
-        this.allowSingleIndex = allowSingleIndex;
         this.searchPreference = searchPreference;
         this.doFullFieldDataLookup = doFullFieldDataLookup;
 
@@ -164,8 +163,8 @@ public class QueryRewriter {
             // now optimize the _all field into #expand()s, if any are in other indexes
             new IndexLinkOptimizer(tree, metadataManager).optimize();
             new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
-            if (!isInTestMode())
-                new ExpansionOptimizer(this, tree, metadataManager, client, searchPreference, allowSingleIndex, doFullFieldDataLookup).optimize();
+//            if (!isInTestMode())
+//                new ExpansionOptimizer(this, tree, metadataManager, client, searchPreference, allowSingleIndex, doFullFieldDataLookup).optimize();
         } catch (ParseException pe) {
             throw new QueryRewriteException(pe);
         }
@@ -260,10 +259,7 @@ public class QueryRewriter {
         if (!queryRewritten)
             throw new IllegalStateException("Must call .rewriteQuery() before calling .getSearchIndexName()");
 
-        if (metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex)
-            return metadataManager.getUsedIndexes().iterator().next().getIndexName();
-        else
-            return metadataManager.getMyIndex().getIndexName();
+        return metadataManager.getMyIndex().getIndexName();
     }
 
     private AbstractAggregationBuilder build(ASTAggregate agg) {
@@ -640,18 +636,30 @@ public class QueryRewriter {
     private String nested = null;
 
     private QueryBuilder build(final ASTExpansion node) {
-        if (isInTestMode()) {
+        ASTIndexLink link = node.getIndexLink();
+        ASTIndexLink myIndex = metadataManager.getMyIndex();
+
+        if (isInTestMode() || (link.toString().equals(myIndex.toString()) && !node.isGenerated())) {
             QueryBuilder expansionBuilder =  build(node.getQuery());
             QueryParserNode filterQuery = node.getFilterQuery();
             if (filterQuery != null) {
                 BoolQueryBuilder bqb = boolQuery();
-                bqb.must(expansionBuilder);
+                bqb.must(applyExclusion(build(node.getQuery()), link.getIndexName()));
                 bqb.must(build(filterQuery));
                 expansionBuilder = bqb;
             }
             return expansionBuilder;
         } else {
-            throw new IllegalStateException("Encountered ASTExpansion when we shouldn't");
+            FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname()).path(link.getRightFieldname()).indices(link.getIndexName());
+            if (node.getFilterQuery() != null) {
+                BoolQueryBuilder bqb = boolQuery();
+                bqb.must(applyExclusion(build(node.getQuery()), link.getIndexName()));
+                bqb.must(build(node.getFilterQuery()));
+                fjb.query(bqb);
+            } else {
+                fjb.query(applyExclusion(build(node.getQuery()), link.getIndexName()));
+            }
+            return filteredQuery(matchAllQuery(), fjb);
         }
     }
 

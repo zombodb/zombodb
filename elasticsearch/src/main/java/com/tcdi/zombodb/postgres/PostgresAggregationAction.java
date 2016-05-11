@@ -32,6 +32,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.support.RestStatusToXContentListener;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilder;
+import solutions.siren.join.action.coordinate.CoordinateSearchAction;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -56,7 +57,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
             final long start = System.currentTimeMillis();
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             String input = request.content().toUtf8();
-            final QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), input, true, true);
+            final QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), input, true);
             QueryBuilder qb = rewriter.rewriteQuery();
             AbstractAggregationBuilder ab = rewriter.rewriteAggregations();
             SuggestBuilder.SuggestionBuilder tsb = rewriter.rewriteSuggestions();
@@ -80,7 +81,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
             builder.setQueryCache(true);
 
             final ActionListener<SearchResponse> delegate = new RestStatusToXContentListener<SearchResponse>(channel);
-            client.search(builder.request(), new ActionListener<SearchResponse>() {
+            client.execute(CoordinateSearchAction.INSTANCE, builder.request(), new ActionListener<SearchResponse>() {
                 @Override
                 public void onResponse(SearchResponse searchResponse) {
                     delegate.onResponse(searchResponse);

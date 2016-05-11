@@ -123,7 +123,7 @@ public abstract class ZomboDBTestCase {
 
 
     protected QueryRewriter qr(String query) {
-        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, false, true) {
+        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, true) {
             @Override
             protected boolean isInTestMode() {
                 return true;

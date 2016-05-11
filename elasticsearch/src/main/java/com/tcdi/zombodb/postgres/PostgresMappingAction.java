@@ -43,7 +43,7 @@ public class PostgresMappingAction extends BaseRestHandler {
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         BytesRestResponse response;
 
-        QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), request.content().toUtf8(), false, true);
+        QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), request.content().toUtf8(), true);
         rewriter.rewriteQuery();
         Map<String, ?> properties = rewriter.describedNestedObject(request.param("fieldname"));
 

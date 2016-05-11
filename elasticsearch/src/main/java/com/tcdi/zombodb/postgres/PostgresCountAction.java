@@ -22,6 +22,9 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
+import solutions.siren.join.action.coordinate.CoordinateMultiSearchAction;
+import solutions.siren.join.action.coordinate.CoordinateSearchAction;
+import solutions.siren.join.action.coordinate.CoordinateSearchRequestBuilder;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -48,7 +51,7 @@ public class PostgresCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, !isSelectivityQuery);
+            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, !isSelectivityQuery);
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             builder.setIndices(query.getIndexName());
             builder.setSize(0);
@@ -60,7 +63,7 @@ public class PostgresCountAction extends BaseRestHandler {
             builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
 
-            SearchResponse searchResponse = client.search(builder.request()).get();
+            SearchResponse searchResponse = client.execute(CoordinateSearchAction.INSTANCE, builder.request()).get();
 
             if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
                 throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");

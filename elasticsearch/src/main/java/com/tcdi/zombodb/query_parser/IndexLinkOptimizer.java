@@ -16,6 +16,8 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import com.google.common.collect.Lists;
+
 import java.util.*;
 
 /**
@@ -72,7 +74,7 @@ public class IndexLinkOptimizer {
             return;
         }
 
-        if (root instanceof  ASTExpansion && ((ASTExpansion) root).isGenerated()) {
+        if (root instanceof ASTExpansion && ((ASTExpansion) root).isGenerated()) {
             ASTIndexLink left = metadataManager.findField(root.getIndexLink().getLeftFieldname());
             ASTIndexLink right = metadataManager.findField(root.getIndexLink().getRightFieldname());
             usedIndexes.add(left);
@@ -141,12 +143,69 @@ public class IndexLinkOptimizer {
             if (link == null)
                 return;
 
-            ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
-            expansion.jjtAddChild(link, 0);
+            QueryParserNode parent = (QueryParserNode) root.parent;
+            Stack<String> paths = new Stack<>();
+            ASTExpansion last = null;
+            String leftFieldname = null;
+            String rightFieldname = null;
 
-            ((QueryParserNode)root.parent).replaceChild(root, expansion);
-            expansion.jjtAddChild(root, 1);
+            for (String p : Lists.reverse(metadataManager.calculatePath(link, metadataManager.getMyIndex())))
+                paths.push(p);
 
+            if (link.hasFieldname())
+                stripPath(root, link.getFieldname());
+
+            while (!paths.empty()) {
+                String current = paths.pop();
+                String next = paths.empty() ? null : paths.peek();
+
+                while (next != null && !next.contains(":")) {
+                    // consume entries that are simply index names
+                    if (paths.empty())
+                        throw new RuntimeException("Invalid path from " + link + " to " + metadataManager.getMyIndex());
+
+                    next = paths.empty() ? null : paths.pop();
+                }
+
+                ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
+                String indexName;
+
+                indexName = current.substring(0, current.indexOf(':'));
+                if (next != null) {
+                    leftFieldname = next.substring(next.indexOf(':') + 1);
+                    rightFieldname = current.substring(current.indexOf(':') + 1);
+                } else {
+                    rightFieldname = leftFieldname;
+                    leftFieldname = current.substring(current.indexOf(':') + 1);
+                }
+
+                if (leftFieldname.equals(rightFieldname))
+                    break;
+
+                if (next == null) {
+                    if (last == null)
+                        throw new IllegalStateException("Didn't correctly build expansion chain");
+
+                    ASTIndexLink currentLink = last.getIndexLink();
+                    last.jjtAddChild(ASTIndexLink.create(leftFieldname, currentLink.getIndexName(), rightFieldname), 0);
+                } else {
+                    ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, rightFieldname);
+                    expansion.jjtAddChild(newLink, 0);
+                    expansion.jjtAddChild(last == null ? root : last, 1);
+                    newLink.setFieldname(link.getFieldname());
+
+                    last = expansion;
+                }
+            }
+
+            if (last != null) {
+                parent.replaceChild(root, last);
+            } else {
+                ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
+                expansion.jjtAddChild(link, 0);
+                expansion.jjtAddChild(root, 1);
+                parent.replaceChild(root, expansion);
+            }
         } else {
             for (QueryParserNode child : root)
                 injectASTExpansionNodes(child);
@@ -257,7 +316,7 @@ public class IndexLinkOptimizer {
             rewriteIndirectReferenceIndexLinks(child);
     }
 
-    static void stripPath(QueryParserNode root, String path) {
+    private void stripPath(QueryParserNode root, String path) {
         if (root.getFieldname() != null && root.getFieldname().startsWith(path+"."))
             root.setFieldname(root.getFieldname().substring(path.length()+1));
 

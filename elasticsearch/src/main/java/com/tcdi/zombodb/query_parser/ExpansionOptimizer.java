@@ -72,9 +72,6 @@ public class ExpansionOptimizer {
         ASTIndexLink targetIndex = !generatedExpansionsStack.isEmpty() ? root.getIndexLink() : myIndex;
         QueryParserNode last = null;
 
-        if (link.getFieldname() != null)
-            IndexLinkOptimizer.stripPath(root, link.getFieldname());
-
         try {
             while (!stack.isEmpty()) {
                 ASTExpansion expansion = stack.pop();
