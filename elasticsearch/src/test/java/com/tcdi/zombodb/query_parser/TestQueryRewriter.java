@@ -4588,5 +4588,30 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testExpansionWithNamedIndexLink() throws Exception {
+        assertAST("#options(other:(left=<table.index>right)) food",
+                "QueryTree\n" +
+                        "   Options\n" +
+                        "      other:(left=<db.schema.table.index>right)\n" +
+                        "         LeftField (value=left)\n" +
+                        "         IndexName (value=db.schema.table.index)\n" +
+                        "         RightField (value=right)\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Or\n" +
+                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=food, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=_all, operator=CONTAINS, value=food, index=db.schema.table.index)\n" +
+                        "      Expansion\n" +
+                        "         other:(left=<db.schema.table.index>right)\n" +
+                        "            LeftField (value=left)\n" +
+                        "            IndexName (value=db.schema.table.index)\n" +
+                        "            RightField (value=right)\n" +
+                        "         Or\n" +
+                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=food, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=_all, operator=CONTAINS, value=food, index=db.schema.table.index)");
+    }
+
 }
 

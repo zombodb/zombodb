@@ -267,12 +267,6 @@ public class IndexMetadataManager {
     }
 
     public List<String> calculatePath(ASTIndexLink source, ASTIndexLink dest) {
-        if (source.getIndexName().equals(dest.getIndexName())) {
-            // short cut if the source and destination indexes are the same
-            // the path is just the left and right fields of the source
-            return Arrays.asList(source.getIndexName()+":"+source.getLeftFieldname(), source.getIndexName()+":"+source.getRightFieldname());
-        }
-
         if (!relationshipManager.relationshipsDefined()) {
             for (IndexLinkAndMapping ilm : mappings) {
                 ASTIndexLink link = ilm.link;
