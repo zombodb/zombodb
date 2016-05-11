@@ -159,12 +159,17 @@ public class IndexLinkOptimizer {
                 String current = paths.pop();
                 String next = paths.empty() ? null : paths.peek();
 
-                while (next != null && !next.contains(":")) {
+                if (next != null && !next.contains(":")) {
                     // consume entries that are simply index names
-                    if (paths.empty())
-                        throw new RuntimeException("Invalid path from " + link + " to " + metadataManager.getMyIndex());
+                    paths.pop();
 
-                    next = paths.empty() ? null : paths.pop();
+                    do {
+                        if (paths.empty())
+                            throw new RuntimeException("Invalid path from " + link + " to " + metadataManager.getMyIndex());
+
+                        current = paths.pop();
+                        next = paths.empty() ? null : paths.peek();
+                    } while (next != null && !next.contains(":"));
                 }
 
                 ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
@@ -175,27 +180,23 @@ public class IndexLinkOptimizer {
                     leftFieldname = next.substring(next.indexOf(':') + 1);
                     rightFieldname = current.substring(current.indexOf(':') + 1);
                 } else {
+                    if (last == null)
+                        throw new IllegalStateException("Failed to build a proper expansion tree");
+
                     rightFieldname = leftFieldname;
                     leftFieldname = current.substring(current.indexOf(':') + 1);
+                    indexName = last.getIndexLink().getIndexName();
                 }
 
                 if (leftFieldname.equals(rightFieldname))
                     break;
 
-                if (next == null) {
-                    if (last == null)
-                        throw new IllegalStateException("Didn't correctly build expansion chain");
+                ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, rightFieldname);
+                expansion.jjtAddChild(newLink, 0);
+                expansion.jjtAddChild(last == null ? root : last, 1);
+                newLink.setFieldname(link.getFieldname());
 
-                    ASTIndexLink currentLink = last.getIndexLink();
-                    last.jjtAddChild(ASTIndexLink.create(leftFieldname, currentLink.getIndexName(), rightFieldname), 0);
-                } else {
-                    ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, rightFieldname);
-                    expansion.jjtAddChild(newLink, 0);
-                    expansion.jjtAddChild(last == null ? root : last, 1);
-                    newLink.setFieldname(link.getFieldname());
-
-                    last = expansion;
-                }
+                last = expansion;
             }
 
             if (last != null) {
