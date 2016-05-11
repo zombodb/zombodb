@@ -21,18 +21,16 @@ public class ExpansionOptimizer {
     private final IndexMetadataManager metadataManager;
     private final Client client;
     private final String searchPreference;
-    private final boolean allowSingleIndex;
     private final boolean doFullFieldDataLookup;
 
     private Stack<ASTExpansion> generatedExpansionsStack = new Stack<>();
 
-    public ExpansionOptimizer(QueryRewriter rewriter, ASTQueryTree tree, IndexMetadataManager metadataManager, Client client, String searchPreference, boolean allowSingleIndex, boolean doFullFieldDataLookup) {
+    public ExpansionOptimizer(QueryRewriter rewriter, ASTQueryTree tree, IndexMetadataManager metadataManager, Client client, String searchPreference, boolean doFullFieldDataLookup) {
         this.rewriter = rewriter;
         this.tree = tree;
         this.metadataManager = metadataManager;
         this.client = client;
         this.searchPreference = searchPreference;
-        this.allowSingleIndex = allowSingleIndex;
         this.doFullFieldDataLookup = doFullFieldDataLookup;
     }
 
@@ -43,7 +41,7 @@ public class ExpansionOptimizer {
             if (expansion.isGenerated())
                 generatedExpansionsStack.push(expansion);
             try {
-                expand(expansion, expansion.getIndexLink());
+                expand(expansion);
             } finally{
                 if (expansion.isGenerated())
                     generatedExpansionsStack.pop();
@@ -65,12 +63,11 @@ public class ExpansionOptimizer {
         }
     }
 
-    private void expand(final ASTExpansion root, final ASTIndexLink link) {
+    private void expand(final ASTExpansion root) {
         Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
 
         ASTIndexLink myIndex = metadataManager.getMyIndex();
-        ASTIndexLink targetIndex = !generatedExpansionsStack.isEmpty() ? root.getIndexLink() : myIndex;
-        QueryParserNode last = null;
+        QueryParserNode last;
 
         try {
             while (!stack.isEmpty()) {
@@ -83,76 +80,7 @@ public class ExpansionOptimizer {
                 if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
                     last = expansion.getQuery();
                 } else {
-                    String leftFieldname = null;
-                    String rightFieldname = null;
-
-                    // before we try to resolve the expansion lets figure out if
-                    // inverting it would produce less rows
-                    expansion = maybeInvertExpansion(expansion);
-
-                    if (expansion.isGenerated()) {
-
-                        // at this point 'expansion' represents the set of records that match the #expand<>(...)'s subquery
-                        // all of which are targeted towards the index that contains the #expand's <fieldname>
-
-                        // the next step is to turn them into a set of 'expansionField' values
-                        // then turn that around into a set of ids against myIndex, if the expansionField is not in myIndex
-                        last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
-
-                        ASTIndexLink expansionSourceIndex = metadataManager.findField(expansionFieldname);
-                        if (expansionSourceIndex != myIndex) {
-                            // replace the ASTExpansion in the tree with the fieldData version
-                            expansion.jjtAddChild(last, 1);
-
-                            String targetPkey = myIndex.getRightFieldname();
-                            String sourcePkey = metadataManager.getMetadata(expansion.getIndexLink().getIndexName()).getPrimaryKeyFieldName();
-
-                            leftFieldname = targetPkey;
-                            rightFieldname = sourcePkey;
-
-                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
-                        }
-                    } else {
-
-                        List<String> path = metadataManager.calculatePath(targetIndex, expansion.getIndexLink());
-
-                        int i = path.size()-1;
-                        boolean oneToOne = i == 1;
-
-                        while(i >= 0) {
-                            final String rightIndex;
-
-                            rightFieldname = path.get(i);
-                            leftFieldname = path.get(--i);
-
-                            if (!rightFieldname.contains(":")) {
-                                // the right fieldname is a reference to a table not a specific field, so
-                                // skip the path entry
-                                continue;
-                            }
-
-                            rightIndex = rightFieldname.substring(0, rightFieldname.indexOf(':'));
-
-                            leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                            rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-
-                            if (last != null && !oneToOne) {
-                                ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, rightIndex, rightFieldname);
-                                expansion.jjtAddChild(newLink, 0);
-                                expansion.jjtAddChild(last, 1);
-                            }
-
-                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
-
-                            i--;
-                        }
-
-                        if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
-                            last = expansion.getQuery();
-                        } else if (last == null) {
-                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
-                        }
-                    }
+                    last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
                 }
 
                 // replace the ASTExpansion in the tree with the fieldData version
