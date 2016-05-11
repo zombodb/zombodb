@@ -233,7 +233,7 @@ public class IndexLinkOptimizer {
             total += mergeAdjacentExpansions(child);
         }
 
-        Map<ASTIndexLink, List<ASTExpansion>> sameExpansions = new IdentityHashMap<>();
+        Map<ASTIndexLink, List<ASTExpansion>> sameExpansions = new HashMap<>();
         int cnt = 0;
         for (QueryParserNode child : root) {
             if (child instanceof ASTExpansion) {

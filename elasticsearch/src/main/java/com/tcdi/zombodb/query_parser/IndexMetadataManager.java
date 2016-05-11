@@ -20,7 +20,6 @@ import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.collect.IdentityHashSet;
 
 import java.util.*;
 
@@ -39,7 +38,7 @@ public class IndexMetadataManager {
     private final List<IndexLinkAndMapping> mappings = new ArrayList<>();
     private final Map<String, ASTIndexLink> indexLinksByIndexName = new HashMap<>();
     private List<FieldAndIndexPair> allFields;
-    private Set<ASTIndexLink> usedIndexes = new IdentityHashSet<>();
+    private Set<ASTIndexLink> usedIndexes = new HashSet<>();
     private final IndexRelationshipManager relationshipManager = new IndexRelationshipManager();
     private Map<ASTIndexLink, IndexMetadata> metadataCache = new HashMap<>();
 
@@ -47,10 +46,10 @@ public class IndexMetadataManager {
     private final ASTIndexLink originalMyIndex;
     private ASTIndexLink myIndex;
 
-    public IndexMetadataManager(Client client, ASTIndexLink myIndex) {
+    public IndexMetadataManager(Client client, String indexName) {
         this.client = client;
         this.myIndex = originalMyIndex = myIndex;
-        loadMapping(myIndex);
+        myIndex = loadMapping(indexName, null);
     }
 
     public ASTIndexLink getMyIndex() {
@@ -133,16 +132,29 @@ public class IndexMetadataManager {
         return null;
     }
 
-    private void loadMapping(ASTIndexLink link) {
+    private ASTIndexLink loadMapping(String indexName, ASTIndexLink link) {
         if (client == null)
-            return; // nothing we can do
+            return link; // nothing we can do
 
         GetMappingsRequest getMappingsRequest = new GetMappingsRequest();
-        getMappingsRequest.indices(link.getIndexName()).types("data");
+        getMappingsRequest.indices(indexName).types("data");
         getMappingsRequest.indicesOptions(IndicesOptions.fromOptions(false, false, true, true));
         getMappingsRequest.local(false);
-        mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, client.admin().indices().getMappings(getMappingsRequest)));
-        indexLinksByIndexName.put(link.getIndexName(), link);
+
+        ActionFuture<GetMappingsResponse> future = client.admin().indices().getMappings(getMappingsRequest);
+        if (link == null) {
+            try {
+                GetMappingsResponse response = future.get();
+                String pkey = (String) ((Map) response.getMappings().get(indexName).get("data").getSourceAsMap().get("_meta")).get("primary_key");
+                link = ASTIndexLink.create(pkey, indexName, pkey, true);
+            } catch (Exception e) {
+                throw new RuntimeException("Problem creating anonymous ASTIndexLink for " + indexName, e);
+            }
+        }
+
+        mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, future));
+        indexLinksByIndexName.put(indexName, link);
+        return link;
     }
 
     public Map<String, ?> describedNestedObject(String fieldname) throws Exception {
@@ -239,7 +251,7 @@ public class IndexMetadataManager {
 
                 if (indexName.split("[.]").length > 2) {
                     // (hopefully) already fully qualified
-                    loadMapping(link);
+                    loadMapping(link.getIndexName(), link);
                 } else if (myIndex != null) {
                     // not fully qualified, so we need to do that (if we know our index)
                     String prefix = myIndex.getIndexName();
@@ -248,7 +260,7 @@ public class IndexMetadataManager {
 
                     // fully qualify the index name
                     link.qualifyIndexName(prefix);
-                    loadMapping(link);
+                    loadMapping(link.getIndexName(), link);
                 }
             }
         }

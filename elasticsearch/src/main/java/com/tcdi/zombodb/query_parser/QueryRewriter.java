@@ -116,24 +116,7 @@ public class QueryRewriter {
         this.searchPreference = searchPreference;
         this.doFullFieldDataLookup = doFullFieldDataLookup;
 
-        metadataManager = new IndexMetadataManager(
-                client,
-                new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
-                    @Override
-                    public String getLeftFieldname() {
-                        return metadataManager == null || metadataManager.getMetadataForMyOriginalIndex() == null ? null : metadataManager.getMetadataForMyOriginalIndex().getPrimaryKeyFieldName();
-                    }
-
-                    @Override
-                    public String getIndexName() {
-                        return QueryRewriter.this.indexName;
-                    }
-
-                    @Override
-                    public String getRightFieldname() {
-                        return metadataManager == null ||  metadataManager.getMetadataForMyOriginalIndex() == null ? null : metadataManager.getMetadataForMyOriginalIndex().getPrimaryKeyFieldName();
-                    }
-                });
+        metadataManager = new IndexMetadataManager(client, indexName);
 
         try {
             final StringBuilder newQuery = new StringBuilder(input.length());
