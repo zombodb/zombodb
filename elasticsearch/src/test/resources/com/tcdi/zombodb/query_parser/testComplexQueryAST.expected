@@ -102,12 +102,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
                      Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
@@ -146,12 +140,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
                      Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
@@ -190,12 +178,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
                      Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
@@ -291,12 +273,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
-               Expansion
-                  id=<db.schema.table.index>id
-                     LeftField (value=id)
-                     IndexName (value=db.schema.table.index)
-                     RightField (value=id)
-                  Or
                      Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
@@ -305,12 +281,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
-               Expansion
-                  id=<db.schema.table.index>id
-                     LeftField (value=id)
-                     IndexName (value=db.schema.table.index)
-                     RightField (value=id)
-                  Or
                      Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
@@ -319,12 +289,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
-               Expansion
-                  id=<db.schema.table.index>id
-                     LeftField (value=id)
-                     IndexName (value=db.schema.table.index)
-                     RightField (value=id)
-                  Or
                      Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
@@ -364,36 +328,18 @@ QueryTree
                            Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
                               Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
                               Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                     Expansion
-                        id=<db.schema.table.index>id
-                           LeftField (value=id)
-                           IndexName (value=db.schema.table.index)
-                           RightField (value=id)
-                        Or
                            Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
                               Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
                               Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
                            Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
                               Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
                               Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                     Expansion
-                        id=<db.schema.table.index>id
-                           LeftField (value=id)
-                           IndexName (value=db.schema.table.index)
-                           RightField (value=id)
-                        Or
                            Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
                               Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
                               Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
                            Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
                               Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
                               Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                     Expansion
-                        id=<db.schema.table.index>id
-                           LeftField (value=id)
-                           IndexName (value=db.schema.table.index)
-                           RightField (value=id)
-                        Or
                            Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
                               Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
                               Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
@@ -423,36 +369,18 @@ QueryTree
                         Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
                            Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
                            Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                  Expansion
-                     id=<db.schema.table.index>id
-                        LeftField (value=id)
-                        IndexName (value=db.schema.table.index)
-                        RightField (value=id)
-                     Or
                         Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
                            Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
                            Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
                         Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
                            Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
                            Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                  Expansion
-                     id=<db.schema.table.index>id
-                        LeftField (value=id)
-                        IndexName (value=db.schema.table.index)
-                        RightField (value=id)
-                     Or
                         Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
                            Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
                            Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
                         Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
                            Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
                            Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                  Expansion
-                     id=<db.schema.table.index>id
-                        LeftField (value=id)
-                        IndexName (value=db.schema.table.index)
-                        RightField (value=id)
-                     Or
                         Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
                            Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
                            Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
@@ -477,28 +405,10 @@ QueryTree
                Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
             Expansion
@@ -515,28 +425,10 @@ QueryTree
                Or
                   Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
                   Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
                   Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
                   Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
                   Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
             Expansion
@@ -553,28 +445,10 @@ QueryTree
                Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
             Expansion
@@ -591,28 +465,10 @@ QueryTree
                Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
             Expansion
@@ -629,28 +485,10 @@ QueryTree
                Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
             Expansion
@@ -667,28 +505,10 @@ QueryTree
                Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
             Expansion
@@ -748,12 +568,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=unordered)
                         Word (fieldname=_all, operator=CONTAINS, value=sloppy)
                         Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=this)
@@ -784,12 +598,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=unordered)
                         Word (fieldname=_all, operator=CONTAINS, value=sloppy)
                         Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=this)
@@ -820,12 +628,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=unordered)
                         Word (fieldname=_all, operator=CONTAINS, value=sloppy)
                         Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
                         Word (fieldname=fulltext_field, operator=CONTAINS, value=this)
@@ -899,28 +701,10 @@ QueryTree
                Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
             Expansion
@@ -957,12 +741,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
                         Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
                         Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
                      Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
@@ -985,12 +763,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
                         Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
                         Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
                      Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
@@ -1013,12 +785,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
                         Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
                         Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
                      Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
@@ -1205,36 +971,18 @@ QueryTree
                   Range (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
                      Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
                      Word (fieldname=_all, operator=CONTAINS, value=three, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Range (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
                      Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
                      Word (fieldname=fulltext_field, operator=CONTAINS, value=three, index=db.schema.table.index)
                   Range (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
                      Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
                      Word (fieldname=_all, operator=CONTAINS, value=three, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Range (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
                      Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
                      Word (fieldname=fulltext_field, operator=CONTAINS, value=three, index=db.schema.table.index)
                   Range (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
                      Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
                      Word (fieldname=_all, operator=CONTAINS, value=three, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Range (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
                      Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
                      Word (fieldname=fulltext_field, operator=CONTAINS, value=three, index=db.schema.table.index)
@@ -1279,12 +1027,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
@@ -1307,12 +1049,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
@@ -1335,12 +1071,6 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
                         Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
-            Expansion
-               id=<db.schema.table.index>id
-                  LeftField (value=id)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=id)
-               Or
                   Or
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
                      Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)

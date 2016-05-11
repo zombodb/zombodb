@@ -174,11 +174,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "match" : {
@@ -302,11 +298,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "match" : {
@@ -430,11 +422,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "match" : {
@@ -704,11 +692,7 @@
                       "terms" : {
                         "_all" : [ "staff", "cancelled", "risk" ]
                       }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
+                    }, {
                       "terms" : {
                         "fulltext_field" : [ "staff", "cancelled", "risk" ]
                       }
@@ -716,11 +700,7 @@
                       "terms" : {
                         "_all" : [ "staff", "cancelled", "risk" ]
                       }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
+                    }, {
                       "terms" : {
                         "fulltext_field" : [ "staff", "cancelled", "risk" ]
                       }
@@ -728,11 +708,7 @@
                       "terms" : {
                         "_all" : [ "staff", "cancelled", "risk" ]
                       }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
+                    }, {
                       "terms" : {
                         "fulltext_field" : [ "staff", "cancelled", "risk" ]
                       }
@@ -776,11 +752,7 @@
                             "_all" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
                           }
-                        } ]
-                      }
-                    }, {
-                      "bool" : {
-                        "should" : [ {
+                        }, {
                           "terms" : {
                             "fulltext_field" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
@@ -790,11 +762,7 @@
                             "_all" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
                           }
-                        } ]
-                      }
-                    }, {
-                      "bool" : {
-                        "should" : [ {
+                        }, {
                           "terms" : {
                             "fulltext_field" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
@@ -804,11 +772,7 @@
                             "_all" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
                           }
-                        } ]
-                      }
-                    }, {
-                      "bool" : {
-                        "should" : [ {
+                        }, {
                           "terms" : {
                             "fulltext_field" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
@@ -854,11 +818,7 @@
                             "_all" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
                           }
-                        } ]
-                      }
-                    }, {
-                      "bool" : {
-                        "should" : [ {
+                        }, {
                           "terms" : {
                             "fulltext_field" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
@@ -868,11 +828,7 @@
                             "_all" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
                           }
-                        } ]
-                      }
-                    }, {
-                      "bool" : {
-                        "should" : [ {
+                        }, {
                           "terms" : {
                             "fulltext_field" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
@@ -882,11 +838,7 @@
                             "_all" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
                           }
-                        } ]
-                      }
-                    }, {
-                      "bool" : {
-                        "should" : [ {
+                        }, {
                           "terms" : {
                             "fulltext_field" : [ "the", "subquery" ],
                             "minimum_should_match" : "2"
@@ -936,11 +888,7 @@
                       "prefix_length" : 32
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "fuzzy" : {
                     "fulltext_field" : {
                       "value" : "fuzzy",
@@ -954,11 +902,7 @@
                       "prefix_length" : 32
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "fuzzy" : {
                     "fulltext_field" : {
                       "value" : "fuzzy",
@@ -972,11 +916,7 @@
                       "prefix_length" : 32
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "fuzzy" : {
                     "fulltext_field" : {
                       "value" : "fuzzy",
@@ -1024,11 +964,7 @@
                   "prefix" : {
                     "_all" : "prefix"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "prefix" : {
                     "fulltext_field" : "prefix"
                   }
@@ -1036,11 +972,7 @@
                   "prefix" : {
                     "_all" : "prefix"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "prefix" : {
                     "fulltext_field" : "prefix"
                   }
@@ -1048,11 +980,7 @@
                   "prefix" : {
                     "_all" : "prefix"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "prefix" : {
                     "fulltext_field" : "prefix"
                   }
@@ -1088,11 +1016,7 @@
                   "wildcard" : {
                     "_all" : "*wildcard"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wildcard"
                   }
@@ -1100,11 +1024,7 @@
                   "wildcard" : {
                     "_all" : "*wildcard"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wildcard"
                   }
@@ -1112,11 +1032,7 @@
                   "wildcard" : {
                     "_all" : "*wildcard"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wildcard"
                   }
@@ -1152,11 +1068,7 @@
                   "wildcard" : {
                     "_all" : "*wildcard2*"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wildcard2*"
                   }
@@ -1164,11 +1076,7 @@
                   "wildcard" : {
                     "_all" : "*wildcard2*"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wildcard2*"
                   }
@@ -1176,11 +1084,7 @@
                   "wildcard" : {
                     "_all" : "*wildcard2*"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wildcard2*"
                   }
@@ -1216,11 +1120,7 @@
                   "wildcard" : {
                     "_all" : "*wild*card3*"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wild*card3*"
                   }
@@ -1228,11 +1128,7 @@
                   "wildcard" : {
                     "_all" : "*wild*card3*"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wild*card3*"
                   }
@@ -1240,11 +1136,7 @@
                   "wildcard" : {
                     "_all" : "*wild*card3*"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wild*card3*"
                   }
@@ -1280,11 +1172,7 @@
                   "wildcard" : {
                     "_all" : "wild*card4"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "wild*card4"
                   }
@@ -1292,11 +1180,7 @@
                   "wildcard" : {
                     "_all" : "wild*card4"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "wild*card4"
                   }
@@ -1304,11 +1188,7 @@
                   "wildcard" : {
                     "_all" : "wild*card4"
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "wildcard" : {
                     "fulltext_field" : "wild*card4"
                   }
@@ -1614,11 +1494,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "span_near" : {
@@ -1818,11 +1694,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "span_near" : {
@@ -2022,11 +1894,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "span_near" : {
@@ -2456,11 +2324,7 @@
                       "prefix_length" : 1
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "fuzzy" : {
                     "fulltext_field" : {
                       "value" : "fuzzy",
@@ -2474,11 +2338,7 @@
                       "prefix_length" : 1
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "fuzzy" : {
                     "fulltext_field" : {
                       "value" : "fuzzy",
@@ -2492,11 +2352,7 @@
                       "prefix_length" : 1
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "fuzzy" : {
                     "fulltext_field" : {
                       "value" : "fuzzy",
@@ -2574,11 +2430,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "filtered" : {
@@ -2616,11 +2468,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "filtered" : {
@@ -2658,11 +2506,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "filtered" : {
@@ -3195,11 +3039,7 @@
                       "include_upper" : true
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "range" : {
                     "fulltext_field" : {
                       "from" : "foo",
@@ -3217,11 +3057,7 @@
                       "include_upper" : true
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "range" : {
                     "fulltext_field" : {
                       "from" : "foo",
@@ -3239,11 +3075,7 @@
                       "include_upper" : true
                     }
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "range" : {
                     "fulltext_field" : {
                       "from" : "foo",
@@ -3351,11 +3183,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "match" : {
@@ -3415,11 +3243,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "match" : {
@@ -3479,11 +3303,7 @@
                       }
                     } ]
                   }
-                } ]
-              }
-            }, {
-              "bool" : {
-                "should" : [ {
+                }, {
                   "bool" : {
                     "should" : [ {
                       "match" : {
