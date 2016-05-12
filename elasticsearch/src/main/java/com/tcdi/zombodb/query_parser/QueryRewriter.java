@@ -1017,7 +1017,7 @@ public abstract class QueryRewriter {
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTPhrase node) {
-        if (prox.getOperator() == QueryParserNode.Operator.REGEX)
+        if (node.getOperator() == QueryParserNode.Operator.REGEX)
             return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
 
         return buildSpan(prox, Utils.convertToProximity(node.getFieldname(), Utils.analyzeForSearch(client, metadataManager, node.getFieldname(), node.getEscapedValue())));

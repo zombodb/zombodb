@@ -4613,5 +4613,38 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (fieldname=_all, operator=CONTAINS, value=food, index=db.schema.table.index)");
     }
 
+    @Test
+    public void testRegexProximityWithAPhrase() throws Exception {
+        assertJson("phrase_field:~\"a.*\" w/3 phrase_field:~\"b.* \"",
+                "{\n" +
+                        "  \"span_near\" : {\n" +
+                        "    \"clauses\" : [ {\n" +
+                        "      \"span_multi\" : {\n" +
+                        "        \"match\" : {\n" +
+                        "          \"regexp\" : {\n" +
+                        "            \"phrase_field\" : {\n" +
+                        "              \"value\" : \"a.*\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"span_multi\" : {\n" +
+                        "        \"match\" : {\n" +
+                        "          \"regexp\" : {\n" +
+                        "            \"phrase_field\" : {\n" +
+                        "              \"value\" : \"b.*\"\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ],\n" +
+                        "    \"slop\" : 3,\n" +
+                        "    \"in_order\" : false\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
 }
 
