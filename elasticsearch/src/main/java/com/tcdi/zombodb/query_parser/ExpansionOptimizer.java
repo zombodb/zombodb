@@ -72,10 +72,8 @@ public class ExpansionOptimizer {
         try {
             while (!stack.isEmpty()) {
                 ASTExpansion expansion = stack.pop();
-                String expansionFieldname = expansion.getFieldname();
 
-                if (expansionFieldname == null)
-                    expansionFieldname = expansion.getIndexLink().getRightFieldname();
+                expansion = maybeInvertExpansion(expansion);
 
                 if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
                     last = expansion.getQuery();
