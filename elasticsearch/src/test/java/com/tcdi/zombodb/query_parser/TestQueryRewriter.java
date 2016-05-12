@@ -4597,6 +4597,44 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testRewritingWildcardsWithShingles_NE_WildcardOnly() throws Exception {
+        assertJson("shingle_field<>*",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"filtered\" : {\n" +
+                        "        \"query\" : {\n" +
+                        "          \"match_all\" : { }\n" +
+                        "        },\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"exists\" : {\n" +
+                        "            \"field\" : \"shingle_field\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testRewritingWildcardsWithShingles_NE_ProximityPhrase() throws Exception {
+        assertJson("shingle_field<>'the* winner'",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"wildcard\" : {\n" +
+                        "        \"shingle_field\" : \"the*$winner\"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+
+    @Test
     public void testExpansionWithNamedIndexLink() throws Exception {
         assertAST("#options(other:(left=<table.index>right)) food",
                 "QueryTree\n" +
