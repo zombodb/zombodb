@@ -12,7 +12,7 @@ public class JUnitQueryRewriter extends ZomboDBQueryRewriter {
     }
 
     @Override
-    protected void performCustomOptimizations(String searchPreference, boolean doFullFieldDataLookup) {
+    protected void performCustomOptimizations() {
         // none
     }
 }

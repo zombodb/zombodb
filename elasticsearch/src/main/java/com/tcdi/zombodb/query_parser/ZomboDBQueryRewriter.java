@@ -16,7 +16,7 @@ public class ZomboDBQueryRewriter extends QueryRewriter {
     }
 
     @Override
-    protected void performCustomOptimizations(String searchPreference, boolean doFullFieldDataLookup) {
+    protected void performCustomOptimizations() {
         new ExpansionOptimizer(this, tree, metadataManager, client, searchPreference, doFullFieldDataLookup).optimize();
     }
 

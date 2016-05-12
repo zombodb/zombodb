@@ -63,8 +63,8 @@ public abstract class QueryRewriter {
             if (IS_SIREN_AVAILABLE) {
                 try {
                     Class clazz = Class.forName("com.tcdi.zombodb.query_parser.SirenQueryRewriter");
-                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, boolean.class);
-                    return (QueryRewriter) ctor.newInstance(client, indexName, input, doFullFieldDataLookup);
+                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class);
+                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup);
                 } catch (Exception e) {
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
@@ -125,6 +125,8 @@ public abstract class QueryRewriter {
     private static final String DateSuffix = ".date";
 
     protected final Client client;
+    protected final String searchPreference;
+    protected final boolean doFullFieldDataLookup;
     protected final ASTQueryTree tree;
 
     private boolean _isBuildingAggregate = false;
@@ -136,6 +138,8 @@ public abstract class QueryRewriter {
 
     public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup) {
         this.client = client;
+        this.searchPreference = searchPreference;
+        this.doFullFieldDataLookup = doFullFieldDataLookup;
 
         metadataManager = new IndexMetadataManager(client, indexName);
 
@@ -166,7 +170,7 @@ public abstract class QueryRewriter {
         }
 
         performCoreOptimizations(client);
-        performCustomOptimizations(searchPreference, doFullFieldDataLookup);
+        performCustomOptimizations();
     }
 
     protected void performCoreOptimizations(Client client) {
@@ -176,7 +180,7 @@ public abstract class QueryRewriter {
     }
 
     /* subclasses can override if additional optimizations are necessary */
-    protected abstract void performCustomOptimizations(String searchPreference, boolean doFullFieldDataLookup);
+    protected abstract void performCustomOptimizations();
 
     public String dumpAsString() {
         return tree.dumpAsString();

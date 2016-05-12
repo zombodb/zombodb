@@ -11,18 +11,16 @@ import static org.elasticsearch.index.query.QueryBuilders.*;
  * A {@link QueryRewriter} that resolves joins using SIREn:
  *      http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/
  */
+@SuppressWarnings("unused") /** used via reflection */
 public class SirenQueryRewriter extends QueryRewriter {
 
-    private final boolean doFullFieldDataLookup;
-
-    /** instantiated via reflection */
-    public SirenQueryRewriter(Client client, String indexName, String input, boolean doFullFieldDataLookup) {
+    @SuppressWarnings("unused") /** used via reflection */
+    public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup) {
         super(client, indexName, input, null, true);
-        this.doFullFieldDataLookup = doFullFieldDataLookup;
     }
 
     @Override
-    protected void performCustomOptimizations(String searchPreference, boolean doFullFieldDataLookup) {
+    protected void performCustomOptimizations() {
         // none
     }
 
@@ -52,6 +50,9 @@ public class SirenQueryRewriter extends QueryRewriter {
                 fjb.query(applyExclusion(build(node.getQuery()), link.getIndexName()));
             }
 
+            // chosen through trial and error to get close enough to 1M records
+            // in an index with 1M docs so that Postgres will decode to do a
+            // sequential scan
             if (!doFullFieldDataLookup)
                 fjb.maxTermsPerShard(1024 * 192);
 
