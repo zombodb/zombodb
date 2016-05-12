@@ -57,7 +57,6 @@ class IndexMetadata {
 
     private Map<String, Map<String, Object>> fields;
     private String pkeyFieldName;
-    private boolean noxact;
 
     public IndexMetadata(ASTIndexLink link, MappingMetaData mmd) {
         this.link = link;
@@ -67,8 +66,6 @@ class IndexMetadata {
             fields = (Map) mmd.getSourceAsMap().get("properties");
             fields.put("_all", (Map) mmd.getSourceAsMap().get("_all"));
             pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
-            Boolean noxact = meta != null ? (Boolean) meta.get("noxact") : null;
-            this.noxact = noxact != null ? noxact : false;
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
         }
@@ -80,10 +77,6 @@ class IndexMetadata {
 
     public String getPrimaryKeyFieldName() {
         return pkeyFieldName;
-    }
-
-    public boolean getNoXact() {
-        return noxact;
     }
 
     public boolean hasField(String fieldname) {

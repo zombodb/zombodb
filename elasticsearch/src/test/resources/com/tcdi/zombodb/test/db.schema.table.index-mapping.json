@@ -12,8 +12,7 @@
         "store": false
       },
       "_meta": {
-        "primary_key": "id",
-        "noxact": false
+        "primary_key": "id"
       },
       "date_detection": false,
       "properties": {
@@ -105,8 +104,7 @@
         "type": "xact"
       },
       "_meta": {
-        "primary_key": "id",
-        "noxact": false
+        "primary_key": "id"
       },
       "date_detection": false,
       "properties": {
