@@ -16,6 +16,7 @@
 package com.tcdi.zombodb.test;
 
 import com.tcdi.zombodb.highlight.AnalyzedField;
+import com.tcdi.zombodb.query_parser.JUnitQueryRewriter;
 import com.tcdi.zombodb.query_parser.QueryRewriter;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -123,12 +124,7 @@ public abstract class ZomboDBTestCase {
 
 
     protected QueryRewriter qr(String query) {
-        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, true) {
-            @Override
-            protected boolean isInTestMode() {
-                return true;
-            }
-        };
+        return new JUnitQueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, true);
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
