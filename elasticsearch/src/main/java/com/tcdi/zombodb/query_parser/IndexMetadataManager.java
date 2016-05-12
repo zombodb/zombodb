@@ -266,7 +266,7 @@ public class IndexMetadataManager {
         }
     }
 
-    public List<String> calculatePath(ASTIndexLink source, ASTIndexLink dest) {
+    public Stack<String> calculatePath(ASTIndexLink source, ASTIndexLink dest) {
         if (!relationshipManager.relationshipsDefined()) {
             for (IndexLinkAndMapping ilm : mappings) {
                 ASTIndexLink link = ilm.link;
@@ -274,10 +274,22 @@ public class IndexMetadataManager {
             }
         }
 
+        Stack<String> stack = new Stack<>();
         List<String> path = relationshipManager.calcPath(source.getIndexName(), dest.getIndexName());
-        if (path.size() == 1)
-            return Collections.emptyList();
-        return path.subList(1, path.size()-1);
+
+        if (path.size() > 1) {
+            // trim the top off the path list
+            path = path.subList(1, path.size() - 1);
+
+            // reverse it
+            Collections.reverse(path);
+
+            // and turn into a stack for use by the caller
+            for (String p : path)
+                stack.push(p);
+        }
+
+        return stack;
     }
 
     public boolean areFieldPathsEquivalent(String a, String b) {

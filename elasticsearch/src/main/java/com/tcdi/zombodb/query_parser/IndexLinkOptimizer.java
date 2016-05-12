@@ -142,15 +142,10 @@ public class IndexLinkOptimizer {
                 return;
 
             QueryParserNode parent = (QueryParserNode) root.parent;
-            Stack<String> paths = new Stack<>();
             ASTExpansion last = null;
             String leftFieldname = null;
-            String rightFieldname = null;
-            List<String> graph = metadataManager.calculatePath(link, metadataManager.getMyIndex());
-
-            Collections.reverse(graph);
-            for (String p : graph)
-                paths.push(p);
+            String rightFieldname;
+            Stack<String> paths = metadataManager.calculatePath(link, metadataManager.getMyIndex());
 
             if (link.hasFieldname())
                 stripPath(root, link.getFieldname());
