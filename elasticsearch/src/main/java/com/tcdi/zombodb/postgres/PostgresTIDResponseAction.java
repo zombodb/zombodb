@@ -28,7 +28,6 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
-import solutions.siren.join.action.coordinate.CoordinateSearchAction;
 
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -90,7 +89,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setQuery(query.getQueryBuilder());
 
             long searchStart = System.currentTimeMillis();
-            response = client.execute(CoordinateSearchAction.INSTANCE, builder.request()).get();
+            response = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).get();
             searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 
             if (response.getTotalShards() != response.getSuccessfulShards())

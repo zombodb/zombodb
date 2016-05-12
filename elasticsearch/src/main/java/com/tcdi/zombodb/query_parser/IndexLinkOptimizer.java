@@ -16,8 +16,6 @@
  */
 package com.tcdi.zombodb.query_parser;
 
-import com.google.common.collect.Lists;
-
 import java.util.*;
 
 /**
@@ -148,8 +146,10 @@ public class IndexLinkOptimizer {
             ASTExpansion last = null;
             String leftFieldname = null;
             String rightFieldname = null;
+            List<String> graph = metadataManager.calculatePath(link, metadataManager.getMyIndex());
 
-            for (String p : Lists.reverse(metadataManager.calculatePath(link, metadataManager.getMyIndex())))
+            Collections.reverse(graph);
+            for (String p : graph)
                 paths.push(p);
 
             if (link.hasFieldname())

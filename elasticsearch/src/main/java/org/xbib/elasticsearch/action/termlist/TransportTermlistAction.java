@@ -41,8 +41,6 @@ import org.elasticsearch.transport.TransportService;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import static org.elasticsearch.common.collect.Lists.newLinkedList;
-
 /**
  * Termlist index/indices action.
  */
@@ -87,7 +85,7 @@ public class TransportTermlistAction
                 logger.error(e.getMessage(), e);
                 failedShards++;
                 if (shardFailures == null) {
-                    shardFailures = newLinkedList();
+                    shardFailures = new LinkedList<>();
                 }
                 shardFailures.add(new DefaultShardOperationFailedException(e));
             } else {
