@@ -4589,6 +4589,24 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testRewritingWildcardsWithShingles_WildcardOnly() throws Exception {
+        assertJson("shingle_field:*",
+                "{\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"exists\" : {\n" +
+                        "        \"field\" : \"shingle_field\"\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
     public void testExpansionWithNamedIndexLink() throws Exception {
         assertAST("#options(other:(left=<table.index>right)) food",
                 "QueryTree\n" +

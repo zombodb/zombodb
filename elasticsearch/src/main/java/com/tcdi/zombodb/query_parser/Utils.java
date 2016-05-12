@@ -452,6 +452,10 @@ public class Utils {
         if (hasWildcards && !isComplex) {
             String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
             if (analyzer != null && analyzer.contains("_with_shingles")) {
+                QueryParserNode tmp = Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), newToken);
+                if (tmp instanceof ASTNotNull)
+                    return tmp;
+
                 node.setOperator(QueryParserNode.Operator.REGEX);
                 newToken = newToken.replaceAll("[*]", "\\[\\^\\$\\]\\*");
                 newToken = newToken.replaceAll("[?]", "\\[\\^\\$\\]\\?");
