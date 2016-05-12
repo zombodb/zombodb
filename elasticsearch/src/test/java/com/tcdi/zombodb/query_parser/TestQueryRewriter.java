@@ -2833,31 +2833,21 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testExternalWithOperatorAST() throws Exception {
-        assertAST("#options(nested:(id=<so_users.idxso_users>other_id)) nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)",
+        assertAST("nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)",
                 "QueryTree\n" +
-                        "   Options\n" +
-                        "      nested:(id=<db.schema.so_users.idxso_users>other_id)\n" +
-                        "         LeftField (value=id)\n" +
-                        "         IndexName (value=db.schema.so_users.idxso_users)\n" +
-                        "         RightField (value=other_id)\n" +
-                        "   And\n" +
-                        "      Expansion\n" +
-                        "         nested:(id=<db.schema.so_users.idxso_users>other_id)\n" +
-                        "            LeftField (value=id)\n" +
-                        "            IndexName (value=db.schema.so_users.idxso_users)\n" +
-                        "            RightField (value=other_id)\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
                         "         With\n" +
-                        "            Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.so_users.idxso_users) (AND)\n" +
-                        "               Word (fieldname=exact_field, operator=CONTAINS, value=a, index=db.schema.so_users.idxso_users)\n" +
-                        "               Word (fieldname=exact_field, operator=CONTAINS, value=b, index=db.schema.so_users.idxso_users)\n" +
+                        "            Array (fieldname=nested.exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
                         "            Or\n" +
-                        "               Word (fieldname=exact_field, operator=CONTAINS, value=c, index=db.schema.so_users.idxso_users)\n" +
+                        "               Word (fieldname=nested.exact_field, operator=CONTAINS, value=c, index=db.schema.table.index)\n" +
                         "               With\n" +
-                        "                  Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.so_users.idxso_users) (AND)\n" +
-                        "                     Word (fieldname=exact_field, operator=CONTAINS, value=d, index=db.schema.so_users.idxso_users)\n" +
-                        "                     Word (fieldname=exact_field, operator=CONTAINS, value=e, index=db.schema.so_users.idxso_users)\n" +
-                        "      Expansion\n" +
-                        "         id=<db.schema.table.index>id\n" +
+                        "                  Array (fieldname=nested.exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=d, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=nested.exact_field, operator=CONTAINS, value=e, index=db.schema.table.index)\n" +
                         "         With\n" +
                         "            Array (fieldname=nested2.exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
                         "               Word (fieldname=nested2.exact_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +

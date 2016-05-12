@@ -16,15 +16,23 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchType;
+import org.elasticsearch.client.Client;
+
 import java.util.*;
 
 public class IndexLinkOptimizer {
+    private final Client client;
+    private final QueryRewriter rewriter;
     private final ASTQueryTree tree;
     private final IndexMetadataManager metadataManager;
 
     private Set<ASTIndexLink> usedIndexes = new HashSet<>();
 
-    public IndexLinkOptimizer(ASTQueryTree tree, IndexMetadataManager metadataManager) {
+    public IndexLinkOptimizer(Client client, QueryRewriter rewriter, ASTQueryTree tree, IndexMetadataManager metadataManager) {
+        this.client = client;
+        this.rewriter = rewriter;
         this.tree = tree;
         this.metadataManager = metadataManager;
     }
@@ -134,7 +142,8 @@ public class IndexLinkOptimizer {
                 return;
 
             QueryParserNode parent = (QueryParserNode) root.parent;
-            ASTExpansion last = null;
+            QueryParserNode last = null;
+            QueryParserNode lastExpansion = null;
             String leftFieldname = null;
             String rightFieldname;
             Stack<String> paths = metadataManager.calculatePath(link, metadataManager.getMyIndex());
@@ -172,7 +181,7 @@ public class IndexLinkOptimizer {
 
                     rightFieldname = leftFieldname;
                     leftFieldname = current.substring(current.indexOf(':') + 1);
-                    indexName = last.getIndexLink().getIndexName();
+                    indexName = lastExpansion.getIndexLink().getIndexName();
                 }
 
                 if (leftFieldname.equals(rightFieldname))
@@ -183,7 +192,12 @@ public class IndexLinkOptimizer {
                 expansion.jjtAddChild(last == null ? root : last, 1);
                 newLink.setFieldname(link.getFieldname());
 
-                last = expansion;
+                lastExpansion = expansion;
+                if (last == null && !newLink.getIndexName().equals(metadataManager.getMyIndex().getIndexName())) {
+                    last = maybeInvertExpansion(expansion);
+                } else {
+                    last = expansion;
+                }
             }
 
             if (last != null) {
@@ -312,6 +326,63 @@ public class IndexLinkOptimizer {
             stripPath(child, path);
         }
 
+    }
+
+    private QueryParserNode maybeInvertExpansion(ASTExpansion expansion) {
+        long totalCnt, queryCnt;
+
+        //
+        // figure out how many records are in the index
+        //
+        totalCnt = estimateCount(expansion, false);
+
+        //
+        // then how many records this expansion is likely to return
+        //
+        queryCnt = estimateCount(expansion, true);
+
+        if (queryCnt > totalCnt/2) {
+            QueryParserNode expansionParent = (QueryParserNode) expansion.parent;
+
+            //
+            // and if the expansion is going to return more than 1/2 the database
+            // invert it on the inner side of the expansion
+            //
+            ASTNot innerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
+            innerNot.jjtAddChild(expansion.getQuery(), 0);
+            expansion.jjtAddChild(innerNot, 1);
+
+            //
+            // and on the outer side.
+            //
+            // This way we're only shipping around the minimal number of rows
+            // through the rest of the query
+            //
+            ASTNot outerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
+            outerNot.jjtAddChild(expansion, 0);
+            return outerNot;
+        }
+
+        return expansion;
+    }
+
+    private long estimateCount(ASTExpansion expansion, boolean useQuery) {
+        SearchRequestBuilder builder = new SearchRequestBuilder(client);
+        builder.setIndices(expansion.getIndexLink().getIndexName());
+        builder.setSize(0);
+        builder.setSearchType(SearchType.COUNT);
+        builder.setQueryCache(true);
+        builder.setFetchSource(false);
+        builder.setTrackScores(false);
+        builder.setNoFields();
+        if (useQuery)
+            builder.setQuery(rewriter.build(expansion.getQuery()));
+
+        try {
+            return client.search(builder.request()).get().getHits().getTotalHits();
+        } catch (Exception e) {
+            throw new RuntimeException("Problem estimating count", e);
+        }
     }
 
 }

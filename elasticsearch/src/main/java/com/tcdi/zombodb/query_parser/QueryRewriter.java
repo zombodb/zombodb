@@ -175,7 +175,7 @@ public abstract class QueryRewriter {
 
     protected void performCoreOptimizations(Client client) {
         new ArrayDataOptimizer(tree, metadataManager, arrayData).optimize();
-        new IndexLinkOptimizer(tree, metadataManager).optimize();
+        new IndexLinkOptimizer(client, this, tree, metadataManager).optimize();
         new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
     }
 

@@ -91,8 +91,6 @@ public class ExpansionOptimizer {
                 if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
                     last = expansion.getQuery();
                 } else {
-                    expansion = maybeInvertExpansion(expansion);
-
                     last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
                 }
 
@@ -376,64 +374,6 @@ public class ExpansionOptimizer {
 
                 map.put(child, set);
             }
-        }
-    }
-
-    private ASTExpansion maybeInvertExpansion(ASTExpansion expansion) {
-        long totalCnt, queryCnt;
-
-        //
-        // figure out how many records are in the index
-        //
-        totalCnt = estimateCount(expansion, false);
-
-        //
-        // then how many records this expansion is likely to return
-        //
-        queryCnt = estimateCount(expansion, true);
-
-        if (queryCnt > totalCnt/2) {
-            QueryParserNode expansionParent = (QueryParserNode) expansion.parent;
-
-            //
-            // and if the expansion is going to return more than 1/2 the database
-            // invert it on the inner side of the expansion
-            //
-            ASTNot innerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
-            innerNot.jjtAddChild(expansion.getQuery(), 0);
-            expansion.jjtAddChild(innerNot, 1);
-
-            //
-            // and on the outer side.
-            //
-            // This way we're only shipping around the minimal number of rows
-            // through the rest of the query
-            //
-            ASTNot outerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
-            outerNot.jjtAddChild(expansion, 0);
-            expansionParent.replaceChild(expansion, outerNot);
-        }
-
-        return expansion;
-    }
-
-    private long estimateCount(ASTExpansion expansion, boolean useQuery) {
-        SearchRequestBuilder builder = new SearchRequestBuilder(client);
-        builder.setIndices(expansion.getIndexLink().getIndexName());
-        builder.setSize(0);
-        builder.setSearchType(SearchType.COUNT);
-        builder.setPreference(searchPreference);
-        builder.setQueryCache(true);
-        builder.setFetchSource(false);
-        builder.setTrackScores(false);
-        builder.setNoFields();
-        if (useQuery)
-            builder.setQuery(rewriter.build(expansion.getQuery()));
-
-        try {
-            return client.search(builder.request()).get().getHits().getTotalHits();
-        } catch (Exception e) {
-            throw new RuntimeException("Problem estimating count", e);
         }
     }
 }
