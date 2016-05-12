@@ -13,8 +13,12 @@ import static org.elasticsearch.index.query.QueryBuilders.*;
  */
 public class SirenQueryRewriter extends QueryRewriter {
 
-    public SirenQueryRewriter(Client client, String indexName, String input) {
+    private final boolean doFullFieldDataLookup;
+
+    /** instantiated via reflection */
+    public SirenQueryRewriter(Client client, String indexName, String input, boolean doFullFieldDataLookup) {
         super(client, indexName, input, null, true);
+        this.doFullFieldDataLookup = doFullFieldDataLookup;
     }
 
     @Override
@@ -47,6 +51,10 @@ public class SirenQueryRewriter extends QueryRewriter {
             } else {
                 fjb.query(applyExclusion(build(node.getQuery()), link.getIndexName()));
             }
+
+            if (!doFullFieldDataLookup)
+                fjb.maxTermsPerShard(1024 * 192);
+
             return filteredQuery(matchAllQuery(), fjb);
         }
     }

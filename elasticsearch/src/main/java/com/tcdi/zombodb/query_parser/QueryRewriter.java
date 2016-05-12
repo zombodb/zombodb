@@ -63,8 +63,8 @@ public abstract class QueryRewriter {
             if (IS_SIREN_AVAILABLE) {
                 try {
                     Class clazz = Class.forName("com.tcdi.zombodb.query_parser.SirenQueryRewriter");
-                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class);
-                    return (QueryRewriter) ctor.newInstance(client, indexName, input);
+                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, boolean.class);
+                    return (QueryRewriter) ctor.newInstance(client, indexName, input, doFullFieldDataLookup);
                 } catch (Exception e) {
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
