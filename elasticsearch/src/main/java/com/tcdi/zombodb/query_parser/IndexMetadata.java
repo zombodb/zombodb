@@ -19,23 +19,10 @@ package com.tcdi.zombodb.query_parser;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
 class IndexMetadata {
-    static final String[] IGNORED_FIELDS = new String[] {
-            "_xmin",
-            "_xmax",
-            "_cmin",
-            "_cmax",
-            "_xmin_is_committed",
-            "_xmax_is_committed",
-            "_partial"
-    };
-    static {
-        Arrays.sort(IGNORED_FIELDS);
-    }
 
     static final String[] MLT_STOP_WORDS = new String[] {
             "http", "span", "class", "flashtext", "let", "its",
@@ -152,17 +139,6 @@ class IndexMetadata {
             analyzer = (String) fieldInfo.get("analyzer");
 
         return analyzer;
-    }
-
-    public boolean canUseFieldData(String fieldname) {
-        Map<String, Object> fieldInfo = fields.get(fieldname);
-        if (fieldInfo == null)
-            return false;
-        Map<String, Object> fielddata = (Map) fieldInfo.get("fielddata");
-        if (fielddata == null)
-            return true;
-
-        return !"disabled".equals(fielddata.get("format"));
     }
 
     public Set<String> getFields() {

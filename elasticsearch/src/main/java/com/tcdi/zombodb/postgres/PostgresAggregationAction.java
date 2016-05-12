@@ -76,7 +76,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
             builder.setPreference(request.param("preference"));
             builder.setQueryCache(true);
 
-            final ActionListener<SearchResponse> delegate = new RestStatusToXContentListener<SearchResponse>(channel);
+            final ActionListener<SearchResponse> delegate = new RestStatusToXContentListener<>(channel);
             client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request(), new ActionListener<SearchResponse>() {
                 @Override
                 public void onResponse(SearchResponse searchResponse) {

@@ -44,12 +44,10 @@ public class IndexMetadataManager {
     private Map<ASTIndexLink, IndexMetadata> metadataCache = new HashMap<>();
 
     private final Client client;
-    private final ASTIndexLink originalMyIndex;
     private ASTIndexLink myIndex;
 
     public IndexMetadataManager(Client client, String indexName) {
         this.client = client;
-        this.myIndex = originalMyIndex = myIndex;
         myIndex = loadMapping(indexName, null);
     }
 
@@ -96,10 +94,6 @@ public class IndexMetadataManager {
         return null;
     }
 
-    public IndexMetadata getMetadataForMyOriginalIndex() {
-        return getMetadata(originalMyIndex);
-    }
-
     public IndexMetadata getMetadataForMyIndex() {
         return getMetadata(myIndex);
     }
@@ -123,14 +117,6 @@ public class IndexMetadataManager {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public IndexMetadata getMetadata(String indexName) {
-        for (IndexLinkAndMapping ilam : mappings) {
-            if (ilam.link.getIndexName().equals(indexName))
-                return getMetadata(ilam.link);
-        }
-        return null;
     }
 
     private ASTIndexLink loadMapping(String indexName, ASTIndexLink link) {
@@ -192,9 +178,6 @@ public class IndexMetadataManager {
     private ASTIndexLink findField0(String fieldname) {
         if (fieldname.contains("."))
             fieldname = fieldname.substring(0, fieldname.indexOf('.'));
-
-        if (Arrays.binarySearch(IndexMetadata.IGNORED_FIELDS, fieldname) > -1)
-            return myIndex;
 
         for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings) {
             ASTIndexLink link = ilam.link;

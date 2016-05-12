@@ -27,7 +27,6 @@ import java.util.*;
 public class AnalyzedField {
 
     private static class ProximityGroup {
-        boolean keep;
         Stack<Token> tokens = new Stack<>();
         int min_pos;
         int max_pos;
@@ -72,14 +71,17 @@ public class AnalyzedField {
             return fieldName;
         }
 
+        @SuppressWarnings("unused")
         public Object getPrimaryKey() {
             return primaryKey;
         }
 
+        @SuppressWarnings("unused")
         public int getArrayIndex() {
             return arrayIndex;
         }
 
+        @SuppressWarnings("unused")
         public String getClause() {
             return clause;
         }

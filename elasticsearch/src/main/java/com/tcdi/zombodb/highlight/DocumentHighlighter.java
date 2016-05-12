@@ -26,24 +26,6 @@ import java.util.concurrent.ExecutionException;
 
 public class DocumentHighlighter {
 
-    public static class HighlightException extends RuntimeException {
-        public HighlightException() {
-            super();
-        }
-
-        public HighlightException(String message) {
-            super(message);
-        }
-
-        public HighlightException(String message, Throwable cause) {
-            super(message, cause);
-        }
-
-        public HighlightException(Throwable cause) {
-            super(cause);
-        }
-    }
-
     private final Client client;
     private final ASTQueryTree query;
     private final Map<String, List<AnalyzedField>> analyzedFields = new HashMap<String, List<AnalyzedField>>() {
@@ -173,9 +155,7 @@ public class DocumentHighlighter {
 
                             try {
                                 fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn+"."+fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
-                            } catch (InterruptedException e) {
-                                // ignore
-                            } catch (ExecutionException e) {
+                            } catch (InterruptedException | ExecutionException e) {
                                 // ignore
                             }
                         }
@@ -186,9 +166,7 @@ public class DocumentHighlighter {
 
                     try {
                         fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn+"."+fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
-                    } catch (InterruptedException e) {
-                        // ignore
-                    } catch (ExecutionException e) {
+                    } catch (InterruptedException | ExecutionException e) {
                         // ignore
                     }
                 }

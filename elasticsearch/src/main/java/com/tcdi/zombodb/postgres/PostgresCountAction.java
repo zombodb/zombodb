@@ -46,7 +46,7 @@ public class PostgresCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, !isSelectivityQuery);
+            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery);
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             builder.setIndices(query.getIndexName());
             builder.setSize(0);

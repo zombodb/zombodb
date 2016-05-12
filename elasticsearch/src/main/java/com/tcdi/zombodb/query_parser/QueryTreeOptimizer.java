@@ -82,7 +82,7 @@ public class QueryTreeOptimizer {
         for (QueryParserNode child : root) {
             if (child instanceof ASTProximity) {
                 {
-                    Set<String> fieldnames = new HashSet<String>();
+                    Set<String> fieldnames = new HashSet<>();
                     for (QueryParserNode n : child) {
                         if (n.getFieldname() != null)
                             fieldnames.add(n.getFieldname());

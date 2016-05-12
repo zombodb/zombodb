@@ -97,7 +97,7 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
             msearchBuilder.add(srb);
         }
 
-        final ActionListener<MultiSearchResponse> defaultListener = new RestToXContentListener<MultiSearchResponse>(channel);
+        final ActionListener<MultiSearchResponse> defaultListener = new RestToXContentListener<>(channel);
         client.execute(DynamicSearchActionHelper.getMultiSearchAction(), msearchBuilder.request(), new ActionListener<MultiSearchResponse>() {
             @Override
             public void onResponse(MultiSearchResponse items) {

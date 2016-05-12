@@ -19,7 +19,7 @@ package com.tcdi.zombodb.query_parser;
 import java.util.*;
 
 public class QueryParserNode extends SimpleNode implements Iterable<QueryParserNode>, Cloneable {
-    public static enum Operator {
+    public enum Operator {
         EQ,
         NE,
         LT,
@@ -59,11 +59,6 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    protected Object clone() throws CloneNotSupportedException {
-        return super.clone();
     }
 
     public QueryParserNode(int i) {

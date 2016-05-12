@@ -71,7 +71,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, false, true);
+            query = buildJsonQueryFromRequestContent(client, request, true);
             parseEnd = System.nanoTime();
 
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
@@ -107,7 +107,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean allowSingleIndex, boolean doFullFieldDataLookups) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean doFullFieldDataLookups) {
         String queryString = request.content().toUtf8();
         String indexName = request.param("index");
 

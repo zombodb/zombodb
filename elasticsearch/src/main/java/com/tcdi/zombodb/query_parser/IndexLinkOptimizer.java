@@ -30,39 +30,34 @@ public class IndexLinkOptimizer {
     }
 
     public void optimize() {
-        try {
-            expand_allFieldAndAssignIndexLinks(tree, metadataManager.getMyIndex());
+        expand_allFieldAndAssignIndexLinks(tree, metadataManager.getMyIndex());
+
+        QueryTreeOptimizer.rollupParentheticalGroups(tree);
+
+        injectASTExpansionNodes(tree);
+
+        int before;
+        do {
+            before = tree.countNodes();
+            while (mergeAdjacentExpansions(tree) > 0) ;
 
             QueryTreeOptimizer.rollupParentheticalGroups(tree);
-
-            injectASTExpansionNodes(tree);
-
-            int before;
-            do {
-                before = tree.countNodes();
-                while (mergeAdjacentExpansions(tree) > 0) ;
-
-                QueryTreeOptimizer.rollupParentheticalGroups(tree);
-            } while (tree.countNodes() != before);
+        } while (tree.countNodes() != before);
 
 
-            rewriteIndirectReferenceIndexLinks(tree);
+        rewriteIndirectReferenceIndexLinks(tree);
 
-            ASTAggregate agg = tree.getAggregate();
-            while (agg != null) {
-                usedIndexes.add(metadataManager.findField(agg.getFieldname()));
-                agg = agg.getSubAggregate();
-            }
-
-            metadataManager.setUsedIndexes(usedIndexes);
-        } catch (CloneNotSupportedException e) {
-            // should never happen
-            throw new RuntimeException(e);
+        ASTAggregate agg = tree.getAggregate();
+        while (agg != null) {
+            usedIndexes.add(metadataManager.findField(agg.getFieldname()));
+            agg = agg.getSubAggregate();
         }
+
+        metadataManager.setUsedIndexes(usedIndexes);
     }
 
 
-    private void expand_allFieldAndAssignIndexLinks(QueryParserNode root, ASTIndexLink currentIndex) throws CloneNotSupportedException {
+    private void expand_allFieldAndAssignIndexLinks(QueryParserNode root, ASTIndexLink currentIndex) {
         if (root == null || root.children == null || root.children.isEmpty() || (root instanceof ASTExpansion && !((ASTExpansion) root).isGenerated())) {
             if (root instanceof ASTExpansion)
                 usedIndexes.add(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()));
