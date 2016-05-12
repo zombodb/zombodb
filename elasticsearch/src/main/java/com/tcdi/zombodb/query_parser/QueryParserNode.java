@@ -18,9 +18,6 @@ package com.tcdi.zombodb.query_parser;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 10/14/14.
- */
 public class QueryParserNode extends SimpleNode implements Iterable<QueryParserNode>, Cloneable {
     public static enum Operator {
         EQ,

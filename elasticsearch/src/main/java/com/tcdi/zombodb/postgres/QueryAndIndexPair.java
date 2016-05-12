@@ -17,9 +17,6 @@ package com.tcdi.zombodb.postgres;
 
 import org.elasticsearch.index.query.QueryBuilder;
 
-/**
- * Created by e_ridge on 2/6/15.
- */
 class QueryAndIndexPair {
     private final QueryBuilder query;
     private final String indexName;

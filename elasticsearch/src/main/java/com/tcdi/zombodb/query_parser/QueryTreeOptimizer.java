@@ -18,9 +18,6 @@ package com.tcdi.zombodb.query_parser;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 12/23/14.
- */
 public class QueryTreeOptimizer {
     private final ASTQueryTree tree;
 

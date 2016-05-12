@@ -18,9 +18,6 @@ package com.tcdi.zombodb.query_parser;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 4/21/15.
- */
 public class IndexLinkOptimizer {
     private final ASTQueryTree tree;
     private final IndexMetadataManager metadataManager;

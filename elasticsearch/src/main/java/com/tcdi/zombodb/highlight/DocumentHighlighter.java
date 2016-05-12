@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +24,6 @@ import java.io.StringReader;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
-/**
- * @author e_ridge
- */
 public class DocumentHighlighter {
 
     public static class HighlightException extends RuntimeException {

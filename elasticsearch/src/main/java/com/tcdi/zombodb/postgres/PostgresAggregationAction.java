@@ -38,9 +38,6 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.missing;
 
 
-/**
- * Created by e_ridge on 11/11/14.
- */
 public class PostgresAggregationAction extends BaseRestHandler {
 
     @Inject
