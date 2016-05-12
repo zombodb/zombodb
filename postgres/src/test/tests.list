@@ -74,3 +74,4 @@ issue-93
 issue-104
 zdb_arbitrary_aggregate
 issue-111
+zdb_dump_query
