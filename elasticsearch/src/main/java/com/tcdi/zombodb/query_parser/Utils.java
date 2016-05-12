@@ -455,11 +455,19 @@ public class Utils {
                 QueryParserNode tmp = Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), newToken);
                 if (tmp instanceof ASTNotNull)
                     return tmp;
+                boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
 
                 node.setOperator(QueryParserNode.Operator.REGEX);
                 newToken = newToken.replaceAll("[*]", "\\[\\^\\$\\]\\*");
                 newToken = newToken.replaceAll("[?]", "\\[\\^\\$\\]\\?");
                 node.setValue(newToken);
+
+                if (isNE) {
+                    ASTNot not = new ASTNot(QueryParserTreeConstants.JJTNOT);
+                    not.jjtAddChild(node, 0);
+                    return not;
+                }
+
                 return node;
             }
         }

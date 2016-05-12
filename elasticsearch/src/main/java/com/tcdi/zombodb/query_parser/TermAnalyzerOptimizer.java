@@ -67,13 +67,14 @@ public class TermAnalyzerOptimizer {
                 return false;
         }
 
+        QueryParserNode parentNode = (QueryParserNode) node.parent;
         QueryParserNode newNode = Utils.rewriteToken(client, metadataManager, node);
         if (newNode instanceof ASTWord && "".equals(newNode.getValue())) {
-            ((QueryParserNode) (node.parent)).removeNode(node);
-            ((QueryParserNode) (node.parent)).renumber();
+            parentNode.removeNode(node);
+            parentNode.renumber();
             return true;
         } else if (newNode != node) {
-            ((QueryParserNode) (node.parent)).replaceChild(node, newNode);
+            parentNode.replaceChild(node, newNode);
             return false;
         } else {
             return false;
