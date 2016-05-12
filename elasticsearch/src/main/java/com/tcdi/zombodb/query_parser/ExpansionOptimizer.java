@@ -88,11 +88,11 @@ public class ExpansionOptimizer {
             while (!stack.isEmpty()) {
                 ASTExpansion expansion = stack.pop();
 
-                expansion = maybeInvertExpansion(expansion);
-
                 if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
                     last = expansion.getQuery();
                 } else {
+                    expansion = maybeInvertExpansion(expansion);
+
                     last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
                 }
 
