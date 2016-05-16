@@ -74,7 +74,7 @@ ALTER INDEX idxname SET (replicas=3);
 ALTER INDEX idxname RESET (preference);
 ```
 
-Chagning non-structure settings such as `replicas` and `refresh_interval` do not require a reindex, but do you require you call `zdb_update_mapping(tablename)` to push these changes to Elasticsearch.
+Chagning non-structure settings such as `replicas` and `refresh_interval` do not require a reindex, but do require you call `zdb_update_mapping(tablename)` to push these changes to Elasticsearch.
 
 However, a `REINDEX` is required after changing an index setting that would affect the physical structure of the underlying Elasticsearch index, specifically `shards`.  This is a limitation of Elasticsearch in that shard count is fixed at index creation time.
 
