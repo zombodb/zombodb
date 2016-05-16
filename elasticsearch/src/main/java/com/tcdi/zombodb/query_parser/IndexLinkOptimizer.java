@@ -342,8 +342,6 @@ public class IndexLinkOptimizer {
         queryCnt = estimateCount(expansion, true);
 
         if (queryCnt > totalCnt/2) {
-            QueryParserNode expansionParent = (QueryParserNode) expansion.parent;
-
             //
             // and if the expansion is going to return more than 1/2 the database
             // invert it on the inner side of the expansion
