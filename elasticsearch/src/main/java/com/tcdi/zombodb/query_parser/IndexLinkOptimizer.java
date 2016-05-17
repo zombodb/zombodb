@@ -21,8 +21,11 @@ import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class IndexLinkOptimizer {
+    private static final Map<String, Long> COUNT_ESTIMATE_CACHE = new ConcurrentHashMap<>(1000);
+
     private final Client client;
     private final QueryRewriter rewriter;
     private final ASTQueryTree tree;
@@ -376,8 +379,18 @@ public class IndexLinkOptimizer {
         if (useQuery)
             builder.setQuery(rewriter.build(expansion.getQuery()));
 
+        String key = builder.toString();
+        Long count = COUNT_ESTIMATE_CACHE.get(key);
+        if (count != null)
+            return count;
+
         try {
-            return client.search(builder.request()).get().getHits().getTotalHits();
+            count = client.search(builder.request()).get().getHits().getTotalHits();
+            if (COUNT_ESTIMATE_CACHE.size() >= 1000)
+                COUNT_ESTIMATE_CACHE.clear();
+
+            COUNT_ESTIMATE_CACHE.put(key, count);
+            return count;
         } catch (Exception e) {
             throw new RuntimeException("Problem estimating count", e);
         }
