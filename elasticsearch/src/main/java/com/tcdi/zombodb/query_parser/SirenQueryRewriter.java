@@ -31,7 +31,7 @@ public class SirenQueryRewriter extends QueryRewriter {
 
     @SuppressWarnings("unused") /** used via reflection */
     public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup) {
-        super(client, indexName, input, null, true);
+        super(client, indexName, input, searchPreference, doFullFieldDataLookup);
     }
 
     @Override
@@ -65,11 +65,8 @@ public class SirenQueryRewriter extends QueryRewriter {
                 fjb.query(applyExclusion(build(node.getQuery()), link.getIndexName()));
             }
 
-            // chosen through trial and error to get close enough to 1M records
-            // in an index with 1M docs so that Postgres will decode to do a
-            // sequential scan
             if (!doFullFieldDataLookup)
-                fjb.maxTermsPerShard(1024 * 192);
+                fjb.maxTermsPerShard(1024);
 
             return filteredQuery(matchAllQuery(), fjb);
         }
