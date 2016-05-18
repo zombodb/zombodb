@@ -15,8 +15,8 @@ for distro in ${DISTROS} ; do
 
     cd src/main/docker/zombodb-build-${distro}
 
-    docker build -t zombodb-build-${distro} .
-    docker run --rm -v $BASE:/mnt -w /mnt -e DESTDIR=target/${distro} zombodb-build-${distro} make clean install
+    docker build -t zombodb-build-${POSTGRES_VERSION}-${distro} .
+    docker run --rm -v $BASE:/mnt -w /mnt -e DESTDIR=target/${distro} zombodb-build-${POSTGRES_VERSION}-${distro} make clean install
 
     # move the zombod.so into the plugins/ directory
     cd $BASE/target

@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,28 +24,7 @@ import java.io.StringReader;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
-/**
- * @author e_ridge
- */
 public class DocumentHighlighter {
-
-    public static class HighlightException extends RuntimeException {
-        public HighlightException() {
-            super();
-        }
-
-        public HighlightException(String message) {
-            super(message);
-        }
-
-        public HighlightException(String message, Throwable cause) {
-            super(message, cause);
-        }
-
-        public HighlightException(Throwable cause) {
-            super(cause);
-        }
-    }
 
     private final Client client;
     private final ASTQueryTree query;
@@ -104,11 +84,7 @@ public class DocumentHighlighter {
     }
 
     private void highlight(QueryParserNode node) {
-        if (node instanceof ASTChild)
-            highlightChildren(node);
-        else if (node instanceof ASTParent)
-            highlightChildren(node);
-        else if (node instanceof ASTWith)
+        if (node instanceof ASTWith)
             highlightChildren(node);
         else if (node instanceof ASTAnd)
             highlightChildren(node);
@@ -179,9 +155,7 @@ public class DocumentHighlighter {
 
                             try {
                                 fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn+"."+fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
-                            } catch (InterruptedException e) {
-                                // ignore
-                            } catch (ExecutionException e) {
+                            } catch (InterruptedException | ExecutionException e) {
                                 // ignore
                             }
                         }
@@ -192,9 +166,7 @@ public class DocumentHighlighter {
 
                     try {
                         fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn+"."+fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
-                    } catch (InterruptedException e) {
-                        // ignore
-                    } catch (ExecutionException e) {
+                    } catch (InterruptedException | ExecutionException e) {
                         // ignore
                     }
                 }

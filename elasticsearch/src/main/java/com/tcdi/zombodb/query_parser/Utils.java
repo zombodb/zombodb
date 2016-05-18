@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,11 +25,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * @author e_ridge
- */
 public class Utils {
-    private static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
+    private static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', 'W', 'w', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
     private static final String NEEDS_ESCAPES_AS_STRING;
     static {
         Arrays.sort(NEEDS_ESCAPES);
@@ -412,14 +410,31 @@ public class Utils {
         boolean hasWildcards = node instanceof ASTFuzzy;
         String input = node.getEscapedValue();
         String newToken;
+        boolean isComplex;
 
         if (node instanceof ASTPrefix)
             input += "*";
 
+        isComplex = Utils.isComplexTerm(input);
         input = input.replaceAll("[*]", "zdb_star_zdb");
         input = input.replaceAll("[?]", "zdb_question_zdb");
         input = input.replaceAll("[~]", "zdb_tilde_zdb");
         input = input.replaceAll("[\\\\]", "zdb_escape_zdb");
+
+        // if the input token doesn't have any wildcards (or escapes)...
+        if (input.equals(node.getEscapedValue())) {
+            // and it uses a build-in analyzer...
+            String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
+            if ((analyzer == null || "exact".equals(analyzer) || "phrase".equals(analyzer) || "fulltext".equals(analyzer) || "fulltext_with_shingles".equals(analyzer))
+                    && !isComplex) { // ... and is a single term
+
+                // then we'll just convert it to lowercase
+                node.setValue(input.toLowerCase());
+
+                // and return without bothering to actually run it through an analyzer
+                return node;
+            }
+        }
 
         initialAnalyze = analyzeForSearch(client, metadataManager, node.getFieldname(), input);
         if (initialAnalyze.isEmpty()) {
@@ -433,8 +448,32 @@ public class Utils {
         newToken = newToken.replaceAll("zdb_escape_zdb", "\\\\");
 
         hasWildcards |= Utils.countValidWildcards(newToken) > 0;
-        QueryParserNode rc;
 
+        if (hasWildcards && !isComplex) {
+            String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
+            if (analyzer != null && analyzer.contains("_with_shingles")) {
+                QueryParserNode tmp = Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), newToken);
+                if (tmp instanceof ASTNotNull)
+                    return tmp;
+                boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
+
+                node.setOperator(QueryParserNode.Operator.REGEX);
+                newToken = newToken.replaceAll("[*]", "\\[\\^\\$\\]\\*");
+                newToken = newToken.replaceAll("[?]", "\\[\\^\\$\\]\\?");
+                node.setValue(newToken);
+
+                if (isNE) {
+                    ASTNot not = new ASTNot(QueryParserTreeConstants.JJTNOT);
+                    not.jjtAddChild(node, 0);
+                    return not;
+                }
+
+                return node;
+            }
+        }
+
+
+        QueryParserNode rc;
         if (!hasWildcards) {
             if (initialAnalyze.size() <= 1) {
                 if (node instanceof ASTPrefix) {

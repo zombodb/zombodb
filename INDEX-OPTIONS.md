@@ -38,7 +38,7 @@ Suppose you want to do a full-text query against the `books_with_content` view. 
 SELECT * FROM books_with_content WHERE zdb ==> 'author:foo and content:(beer w/3 wine w/30 cheese and food)';
 ```
 
-Unfortunately, the above query will return zero rows because the index on `book` (which will be the chosen index due to the `zdb(book) AS zdb` column in the VIEW) doesn't have a column named `content` -- that data lives in the `book_content` table.
+Unfortunately, the above query will return zero rows because the index on `book` (which will be the chosen index due to the `zdb('book', book.ctid) AS zdb` column in the VIEW) doesn't have a column named `content` -- that data lives in the `book_content` table.
 
 We need to tell the index on `book` how to find corresponding `book_content` using an "index link".  This is done through ZomboDB's index `options`:
 
@@ -50,7 +50,7 @@ Now, when you run the above query, it'll be able to transparently search **both*
 
 The `options` string is a comma-separated list in the form of `local_field=<other_table.other_index>other_field`.
 
-There are no limits on the number of options that can be set (up to an 8K string size imposed by Postgres), and the relationship types (one-to-one, one-to-many, many-to-many) don't matter.
+A maximum of 1024 comma-separated index links can be set (in the `options` property), and the relationship types (one-to-one, one-to-many, many-to-many) don't matter.
 
 This is a powerful feature because it allows you to keep your data as normalized as you want while still providing the ability to perform full text queries across all of it.
 

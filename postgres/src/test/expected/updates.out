@@ -13,7 +13,7 @@ SELECT assert(count(*), 165240, '# of posts') FROM so_posts;
  t
 (1 row)
 
-SELECT assert(zdb_estimate_count('so_posts', ''), 1000 + (SELECT count(*) FROM so_posts), 'estimated count');
+SELECT assert(zdb_estimate_count('so_posts', ''), (SELECT count(*) FROM so_posts), 'estimated count');
  assert 
 --------
  t
@@ -34,7 +34,7 @@ SELECT assert(count(*), 165240, '# of posts') FROM so_posts;
  t
 (1 row)
 
-SELECT assert(zdb_estimate_count('so_posts', ''), 1000 + (SELECT count(*) FROM so_posts), 'estimated count');
+SELECT assert(zdb_estimate_count('so_posts', ''), (SELECT count(*) FROM so_posts), 'estimated count');
  assert 
 --------
  t

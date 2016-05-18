@@ -2,8 +2,10 @@ FROM ubuntu:precise
 
 MAINTAINER ZomboDB, LLC (zombodb@gmail.com)
 
+RUN apt-get install -y wget
+RUN apt-get install -y apt-utils
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
-RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN wget --no-check-certificate --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN apt-get update -y
 RUN apt-get install -y --force-yes postgresql-server-dev-9.5
 RUN apt-get install -y gcc make build-essential

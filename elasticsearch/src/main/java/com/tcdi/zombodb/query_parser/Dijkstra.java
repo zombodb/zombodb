@@ -45,7 +45,7 @@ public class Dijkstra {
 
         @Override
         public boolean equals(Object obj) {
-            return name.equals(((Vertex) obj).name);
+            return obj instanceof Vertex && name.equals(((Vertex) obj).name);
         }
 
         public int compareTo(Vertex other) {
@@ -54,7 +54,7 @@ public class Dijkstra {
 
         @Override
         public Iterator<Edge> iterator() {
-            return new ArrayList<Edge>(adjacencies).iterator();
+            return new ArrayList<>(adjacencies).iterator();
         }
 
         public Vertex add(String name, double weight) {
@@ -125,7 +125,7 @@ public class Dijkstra {
         for (Vertex v : verticies.values())
             v.reset();
 
-        PriorityQueue<Vertex> vertexQueue = new PriorityQueue<Vertex>();
+        PriorityQueue<Vertex> vertexQueue = new PriorityQueue<>();
         vertexQueue.add(source);
 
         source.minDistance = 0;
@@ -157,7 +157,7 @@ public class Dijkstra {
         computePaths(vertex(source));
 
         Vertex dest = vertex(destination);
-        List<Vertex> path = new ArrayList<Vertex>();
+        List<Vertex> path = new ArrayList<>();
         for (Vertex vertex = dest; vertex != null; vertex = vertex.previous)
             path.add(vertex);
         Collections.reverse(path);

@@ -18,11 +18,8 @@ package com.tcdi.zombodb.query_parser;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 10/14/14.
- */
 public class QueryParserNode extends SimpleNode implements Iterable<QueryParserNode>, Cloneable {
-    public static enum Operator {
+    public enum Operator {
         EQ,
         NE,
         LT,
@@ -62,11 +59,6 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    protected Object clone() throws CloneNotSupportedException {
-        return super.clone();
     }
 
     public QueryParserNode(int i) {
@@ -180,6 +172,21 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         return null;
     }
 
+    public <T> Collection<T> getChildrenOfType(Class<T> t) {
+        return getChildrenOfType(this, t, new ArrayList<T>());
+    }
+
+    private <T> List<T> getChildrenOfType(QueryParserNode node, Class t, List<T> list) {
+        for (QueryParserNode child : node) {
+            if (child.getClass().isAssignableFrom(t))
+                list.add((T) child);
+
+            // recurse
+            getChildrenOfType(child, t, list);
+        }
+        return list;
+    }
+
     public int countNodes() {
         int sum = jjtGetNumChildren();
 
@@ -200,6 +207,12 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
             jjtAddChild(child, jjtGetNumChildren());
             child.jjtSetParent(this);
         }
+    }
+
+    protected void removeNode(int idx) {
+        if (children == null)
+            return;
+        children.remove(idx);
     }
 
     protected void removeNode(QueryParserNode node) {

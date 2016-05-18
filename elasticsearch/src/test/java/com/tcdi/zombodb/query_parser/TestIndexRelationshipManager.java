@@ -21,9 +21,6 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Created by e_ridge on 5/31/15.
- */
 public class TestIndexRelationshipManager {
     private static final IndexRelationshipManager irm = new IndexRelationshipManager();
 

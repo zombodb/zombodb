@@ -18,7 +18,7 @@ class ASTTally extends ASTAggregate {
   }
 
   public int getMaxTerms() {
-    return ((Number) getChild(1).getValue()).intValue();
+    return Integer.valueOf(String.valueOf(getChild(1).getValue()));
   }
 
   public String getSortOrder() {

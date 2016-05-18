@@ -49,7 +49,6 @@ ZomboDB's Elasticsearch plugin needs to be installed on all nodes of your Elasti
 There are a few configuration settings that **must** be set in `elasticsearch.yml`:
 
 ```
-script.disable_dynamic: false
 
 threadpool.bulk.queue_size: 1024
 threadpool.bulk.size: 12
@@ -58,7 +57,7 @@ http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 ```
 
-Dynamic scripting must **not** be disabled.  The bulk threadpool must be increased because ZomboDB multiplexes against the `_bulk` endpoint.
+The bulk threadpool must be increased because ZomboDB multiplexes against the `_bulk` endpoint.
 
 The last two settings can be turned up or down (`http.max_content_length` must be be greater than 8192kB), but are good defaults.
 

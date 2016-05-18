@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,16 +22,11 @@ import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.client.Client;
 
-import java.io.StringReader;
 import java.util.*;
 
-/**
- * @author e_ridge
- */
 public class AnalyzedField {
 
     private static class ProximityGroup {
-        boolean keep;
         Stack<Token> tokens = new Stack<>();
         int min_pos;
         int max_pos;
@@ -75,14 +71,17 @@ public class AnalyzedField {
             return fieldName;
         }
 
+        @SuppressWarnings("unused")
         public Object getPrimaryKey() {
             return primaryKey;
         }
 
+        @SuppressWarnings("unused")
         public int getArrayIndex() {
             return arrayIndex;
         }
 
+        @SuppressWarnings("unused")
         public String getClause() {
             return clause;
         }
@@ -273,9 +272,16 @@ public class AnalyzedField {
 
             left.setOperator(proximity.getOperator());
             right.setOperator(proximity.getOperator());
-            if (right instanceof ASTProximity) {
+            if (right instanceof ASTProximity || left instanceof ASTProximity) {
                 int distance = proximity.getDistance();
                 boolean ordered = proximity.isOrdered();
+
+                if (left instanceof ASTProximity) {
+                    // swap left and right
+                    QueryParserNode tmp = right;
+                    right = left;
+                    left = tmp;
+                }
                 List<Token> leftTokens = match(left);
 
                 keep((ASTProximity) right, scratch);

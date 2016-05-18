@@ -102,7 +102,7 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
 
                 curl = state->handles[i] = curl_easy_init();
                 if (!state->handles[i])
-                    elog(IsTransactionState() ? ERROR : WARNING, "Unable to initialize CURL handle");
+                    elog(ERROR, "Unable to initialize CURL handle");
 
                 errorbuff = state->errorbuffs[i] = palloc0(CURL_ERROR_SIZE);
                 state->postDatas[i] = postData;
@@ -180,12 +180,12 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
 
             for (i=0; i<state->nhandles; i++) {
                 if (state->handles[i] == handle) {
-                    long response_code = 0;
+                    int64 response_code;
 
                     curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code);
                     if (msg->data.result != 0 || response_code != 200 || strstr(state->responses[i]->data, "\"errors\":true")) {
                         /* REST endpoint messed up */
-                        elog(ERROR, "%s: %s", state->errorbuffs[i], state->responses[i]->data);
+                        elog(ERROR, "libcurl error:  handle=%p, %s: %s, response_code=%ld, result=%d", handle, state->errorbuffs[i], state->responses[i]->data, response_code, msg->data.result);
                     }
 
                     if (state->errorbuffs[i] != NULL) {
@@ -216,7 +216,7 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
             }
 
             if (!found) {
-                elog(IsTransactionState() ? ERROR : WARNING, "Couldn't find easy_handle for %p", handle);
+                elog(ERROR, "Couldn't find easy_handle for %p", handle);
             }
         }
     }

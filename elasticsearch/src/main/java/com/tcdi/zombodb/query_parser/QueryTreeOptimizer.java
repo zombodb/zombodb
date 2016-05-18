@@ -18,9 +18,6 @@ package com.tcdi.zombodb.query_parser;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 12/23/14.
- */
 public class QueryTreeOptimizer {
     private final ASTQueryTree tree;
 
@@ -85,13 +82,15 @@ public class QueryTreeOptimizer {
         for (QueryParserNode child : root) {
             if (child instanceof ASTProximity) {
                 {
-                    Set<String> fieldnames = new HashSet<String>();
+                    Set<String> fieldnames = new HashSet<>();
                     for (QueryParserNode n : child) {
-                        fieldnames.add(n.getFieldname());
+                        if (n.getFieldname() != null)
+                            fieldnames.add(n.getFieldname());
                     }
                     if (fieldnames.size() > 1)
                         throw new RuntimeException("Cannot mix fieldnames in PROXIMITY expression");
-                    child.setFieldname(fieldnames.iterator().next());
+                    else if (fieldnames.size() == 1)
+                        child.setFieldname(fieldnames.iterator().next());
                 }
             } else {
                 validateAndFixProximityChainFieldnames(child);
@@ -150,7 +149,7 @@ public class QueryTreeOptimizer {
         ASTArray array;
 
         Map<Integer, ASTArray> arraysByField = new TreeMap<>();
-        Set<QueryParserNode> toRemove = new HashSet<>();
+        boolean needsRenumber = false;
         for (int i=0, many=root.children.size(); i<many; i++) {
             QueryParserNode child = (QueryParserNode) root.children.get(i);
             if (child instanceof ASTAggregate)
@@ -159,7 +158,7 @@ public class QueryTreeOptimizer {
             if (child.isNested() && root instanceof ASTAnd)
                 continue;
 
-            if (child instanceof ASTWord || child instanceof ASTNumber || child instanceof ASTBoolean || child instanceof ASTArray) {
+            if (child instanceof ASTWord || child instanceof ASTPhrase || child instanceof ASTNumber || child instanceof ASTBoolean || child instanceof ASTArray) {
                 if (child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ || child.getOperator() == QueryParserNode.Operator.NE) {
                     if (child instanceof ASTArray && isAnd)
                         continue;   // arrays within an ASTAnd cannot be merged
@@ -167,44 +166,38 @@ public class QueryTreeOptimizer {
                     if (child.boost != root.boost)
                         continue;
 
-                    if (child instanceof ASTArray || !Utils.isComplexTerm(child.getValue().toString())) {
-
-                        array = null;
-                        for (ASTArray a : arraysByField.values()) {
-                            if (a.getFieldname().equals(child.getFieldname()) && a.getOperator() == child.getOperator()) {
-                                array = a;
-                                break;
-                            }
+                    array = null;
+                    for (ASTArray a : arraysByField.values()) {
+                        if (a.getFieldname().equals(child.getFieldname()) && a.getOperator() == child.getOperator()) {
+                            array = a;
+                            break;
                         }
-
-                        if (array == null) {
-                            array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
-                            array.setAnd(isAnd);
-                            array.setFieldname(child.getFieldname());
-                            array.setOperator(child.getOperator());
-                            arraysByField.put(i, array);
-                        }
-
-                        if (array.parent == null) {
-                            if (child instanceof ASTArray) {
-                                array.adoptChildren(child);
-                            } else {
-                                array.jjtAddChild(child, array.jjtGetNumChildren());
-                                child.parent = array;
-                            }
-                        }
-
-                        toRemove.add(child);
                     }
+
+                    if (array == null) {
+                        array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
+                        array.setAnd(isAnd);
+                        array.setFieldname(child.getFieldname());
+                        array.setOperator(child.getOperator());
+                        arraysByField.put(i, array);
+                    }
+
+                    if (array.parent == null) {
+                        if (child instanceof ASTArray) {
+                            array.adoptChildren(child);
+                        } else {
+                            array.jjtAddChild(child, array.jjtGetNumChildren());
+                            child.parent = array;
+                        }
+                    }
+
+                    root.removeNode(i);
+                    needsRenumber = true;
                 }
             }
         }
 
-        if (!toRemove.isEmpty()) {
-            for (QueryParserNode node : toRemove) {
-                root.removeNode(node);
-            }
-
+        if (needsRenumber) {
             for (Map.Entry<Integer, ASTArray> entry : arraysByField.entrySet()) {
                 int idx = entry.getKey();
                 ASTArray child = entry.getValue();
@@ -222,7 +215,7 @@ public class QueryTreeOptimizer {
 
         // recursively optimize children the same way
         for (QueryParserNode child : root)
-            if ((child instanceof ASTWith) || (child instanceof ASTAnd) || (child instanceof ASTOr) || (child instanceof ASTNot) || (child instanceof ASTParent) || (child instanceof ASTChild) || (child instanceof ASTExpansion) || (child instanceof ASTFilter))
+            if ((child instanceof ASTWith) || (child instanceof ASTAnd) || (child instanceof ASTOr) || (child instanceof ASTNot) || (child instanceof ASTExpansion) || (child instanceof ASTFilter))
                 mergeLiterals(child);
     }
 

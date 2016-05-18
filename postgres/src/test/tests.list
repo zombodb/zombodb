@@ -4,6 +4,7 @@ TUTORIAL
 configure
 create-indexes
 mappings
+update-mappings
 counts
 words
 updates
@@ -71,3 +72,7 @@ issue-87
 issue-88
 issue-93
 issue-104
+zdb_arbitrary_aggregate
+issue-111
+zdb_dump_query
+270-beta3-bug

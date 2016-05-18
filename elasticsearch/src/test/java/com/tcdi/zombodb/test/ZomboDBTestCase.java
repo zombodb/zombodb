@@ -16,6 +16,7 @@
 package com.tcdi.zombodb.test;
 
 import com.tcdi.zombodb.highlight.AnalyzedField;
+import com.tcdi.zombodb.query_parser.JUnitQueryRewriter;
 import com.tcdi.zombodb.query_parser.QueryRewriter;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -55,8 +56,6 @@ public abstract class ZomboDBTestCase {
 
         for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users", "db.schema.so_comments.idxso_comments"}) {
             createIndex(indexName);
-            client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
-            client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();
         }
     }
 
@@ -87,11 +86,15 @@ public abstract class ZomboDBTestCase {
     }
 
     private static void createIndex(String indexName) throws Exception {
+        String settings = resource(ZomboDBTestCase.class, indexName + "-mapping.json");
+
         CreateIndexRequestBuilder builder = new CreateIndexRequestBuilder(client().admin().indices(), indexName);
-        builder.setSource(resource(ZomboDBTestCase.class, indexName + "-mapping.json"));
+        builder.setSource(settings);
 
         CreateIndexResponse response = client().admin().indices().create(builder.request()).get();
         response.writeTo(new OutputStreamStreamOutput(System.out));
+        client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
+        client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();
     }
 
     protected static Client client() {
@@ -121,24 +124,11 @@ public abstract class ZomboDBTestCase {
 
 
     protected QueryRewriter qr(String query) {
-        return qr(query, true);
-    }
-
-    protected QueryRewriter qr(String query, boolean useParentChild) {
-        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, false, useParentChild, true) {
-            @Override
-            protected boolean isInTestMode() {
-                return true;
-            }
-        };
+        return new JUnitQueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, true);
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
-        assertJson(query, expectedJson, true);
-    }
-
-    protected void assertJson(String query, String expectedJson, boolean useParentChild) throws Exception {
-        assertEquals(expectedJson.trim(), qr(query, useParentChild).rewriteQuery().toString().trim());
+        assertEquals(expectedJson.trim(), qr(query).rewriteQuery().toString().trim());
     }
 
     protected void assertAST(String query, String expectedAST) throws Exception {
