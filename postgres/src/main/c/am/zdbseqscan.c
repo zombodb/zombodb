@@ -20,6 +20,7 @@
 
 #include "miscadmin.h"
 #include "executor/spi.h"
+#include "parser/parsetree.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
@@ -64,6 +65,7 @@ typedef struct SequentialScanTidAndScore {
 
 List *SEQUENTIAL_SCAN_INDEXES = NULL;
 HTAB *SEQUENTIAL_SCANS        = NULL;
+List *CURRENT_QUERY_STACK     = NULL;
 
 static uint32 sequential_scan_key_hash(const void *key, Size keysize) {
     const SequentialScanKey *ssk = (const SequentialScanKey *) key;
@@ -110,33 +112,54 @@ static void initialize_sequential_scan_cache(void) {
 static Oid determine_index_oid(Node *node) {
     MemoryContext          oldContext;
     SequentialScanIndexRef *indexRef;
-    FuncExpr               *funcExpr;
-    Oid                    heapRelOid;
+    FuncExpr               *funcExpr  = NULL;
+    Oid                    funcOid    = InvalidOid;
+    Oid                    heapRelOid = InvalidOid;
     Oid                    zdbIndexRel;
     ListCell               *lc;
 
-    if (!IsA(node, FuncExpr))
-        elog(ERROR, "Cannot determine index. Left side of operator is not compatible with ZomboDB.");
+    if (IsA(node, Var)) {
+        Var *var = (Var *) node;
+        switch (var->varno) {
+            case INNER_VAR:
+            case OUTER_VAR:
+                elog(ERROR, "Cannot determine index.  Left side of operator is a Var type we don't understand");
+                break;
 
-    funcExpr = (FuncExpr *) node;
-    validate_zdb_funcExpr(funcExpr, &heapRelOid);
+            default: {
+                QueryDesc *query = linitial(CURRENT_QUERY_STACK);
+                RangeTblEntry *rentry = rt_fetch(var->varno, query->plannedstmt->rtable);
+                heapRelOid = rentry->relid;
+            }
+        }
+    } else {
+        if (!IsA(node, FuncExpr))
+            elog(ERROR, "Cannot determine index. Left side of operator is not compatible with ZomboDB.");
+
+        funcExpr = (FuncExpr *) node;
+        funcOid = funcExpr->funcid;
+        validate_zdb_funcExpr(funcExpr, &heapRelOid);
+    }
 
     /* look in cache for the index oid */
     foreach(lc, SEQUENTIAL_SCAN_INDEXES) {
         indexRef = (SequentialScanIndexRef *) lfirst(lc);
 
-        if (indexRef->heapRelOid == heapRelOid && indexRef->funcOid == funcExpr->funcid) {
+        if (indexRef->heapRelOid == heapRelOid && indexRef->funcOid == funcOid) {
             return indexRef->indexRelOid;
         }
     }
 
     /* figure out what the index oid should be */
-    zdbIndexRel = zdb_determine_index_oid(funcExpr, heapRelOid);
+    if (funcExpr == NULL)
+        zdbIndexRel = zdb_determine_index_oid_by_heap(heapRelOid);
+    else
+        zdbIndexRel = zdb_determine_index_oid(funcExpr, heapRelOid);
 
     /* and cache it */
     oldContext = MemoryContextSwitchTo(TopTransactionContext);
     indexRef   = palloc(sizeof(SequentialScanIndexRef));
-    indexRef->funcOid     = funcExpr->funcid;
+    indexRef->funcOid     = funcOid;
     indexRef->heapRelOid  = heapRelOid;
     indexRef->indexRelOid = zdbIndexRel;
     SEQUENTIAL_SCAN_INDEXES = lappend(SEQUENTIAL_SCAN_INDEXES, indexRef);
@@ -243,6 +266,8 @@ void zdb_sequential_scan_support_cleanup(void) {
         pfree(SEQUENTIAL_SCAN_INDEXES);
         SEQUENTIAL_SCAN_INDEXES = NULL;
     }
+
+    CURRENT_QUERY_STACK = NULL;
 }
 
 Datum zdbsel(PG_FUNCTION_ARGS) {

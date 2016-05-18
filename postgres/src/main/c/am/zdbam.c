@@ -245,6 +245,7 @@ static void zdb_executor_run_hook(QueryDesc *queryDesc, ScanDirection direction,
 	executorDepth++;
 	PG_TRY();
 	{
+		CURRENT_QUERY_STACK = lcons(queryDesc, CURRENT_QUERY_STACK);
 		if (prev_ExecutorRunHook)
 			prev_ExecutorRunHook(queryDesc, direction, count);
 		else
@@ -264,6 +265,7 @@ static void zdb_executor_finish_hook(QueryDesc *queryDesc)
 	executorDepth++;
 	PG_TRY();
 	{
+		CURRENT_QUERY_STACK = list_delete_first(CURRENT_QUERY_STACK);
 		if (prev_ExecutorFinishHook)
 			prev_ExecutorFinishHook(queryDesc);
 		else
