@@ -136,6 +136,7 @@ static void xact_complete_cleanup(XactEvent event) {
     /* free up our static vars on xact finish */
     usedIndexesList     = NULL;
     indexesInsertedList = NULL;
+	CURRENT_QUERY_STACK = NULL;
 	executorDepth = 0;
 	numHitsFound = -1;
 	ConvertedTopTransactionId = 0;
@@ -245,7 +246,10 @@ static void zdb_executor_run_hook(QueryDesc *queryDesc, ScanDirection direction,
 	executorDepth++;
 	PG_TRY();
 	{
+		MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 		CURRENT_QUERY_STACK = lcons(queryDesc, CURRENT_QUERY_STACK);
+		MemoryContextSwitchTo(oldContext);
+
 		if (prev_ExecutorRunHook)
 			prev_ExecutorRunHook(queryDesc, direction, count);
 		else
@@ -265,7 +269,10 @@ static void zdb_executor_finish_hook(QueryDesc *queryDesc)
 	executorDepth++;
 	PG_TRY();
 	{
+		MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 		CURRENT_QUERY_STACK = list_delete_first(CURRENT_QUERY_STACK);
+		MemoryContextSwitchTo(oldContext);
+
 		if (prev_ExecutorFinishHook)
 			prev_ExecutorFinishHook(queryDesc);
 		else

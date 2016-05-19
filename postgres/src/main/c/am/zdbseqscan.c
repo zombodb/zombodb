@@ -266,8 +266,6 @@ void zdb_sequential_scan_support_cleanup(void) {
         pfree(SEQUENTIAL_SCAN_INDEXES);
         SEQUENTIAL_SCAN_INDEXES = NULL;
     }
-
-    CURRENT_QUERY_STACK = NULL;
 }
 
 Datum zdbsel(PG_FUNCTION_ARGS) {

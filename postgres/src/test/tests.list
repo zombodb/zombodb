@@ -76,3 +76,4 @@ zdb_arbitrary_aggregate
 issue-111
 zdb_dump_query
 270-beta3-bug
+direct-ctid
