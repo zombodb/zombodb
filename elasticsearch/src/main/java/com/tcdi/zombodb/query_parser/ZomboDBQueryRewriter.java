@@ -26,8 +26,8 @@ import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
  */
 public class ZomboDBQueryRewriter extends QueryRewriter {
 
-    public ZomboDBQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup) {
-        super(client, indexName, input, searchPreference, doFullFieldDataLookup);
+    public ZomboDBQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex);
     }
 
     @Override

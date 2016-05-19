@@ -845,7 +845,8 @@ zdboptions(PG_FUNCTION_ARGS)
 			{"ignore_visibility", RELOPT_TYPE_BOOL, offsetof(ZDBIndexOptions, ignoreVisibility)},
 			{"bulk_concurrency", RELOPT_TYPE_INT, offsetof(ZDBIndexOptions, bulk_concurrency)},
 			{"batch_size", RELOPT_TYPE_INT, offsetof(ZDBIndexOptions, batch_size)},
-			{"field_lists", RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, fieldListsValueOffset)}
+			{"field_lists", RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, fieldListsValueOffset)},
+			{"always_resolve_joins", RELOPT_TYPE_BOOL, offsetof(ZDBIndexOptions, alwaysResolveJoins)},
 	};
 
 	options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB,

@@ -42,6 +42,7 @@ class IndexMetadata {
 
     private Map<String, Map<String, Object>> fields;
     private String pkeyFieldName;
+    private boolean alwaysResolveJoins = false;
 
     public IndexMetadata(ASTIndexLink link, MappingMetaData mmd) {
         this.link = link;
@@ -51,6 +52,7 @@ class IndexMetadata {
             fields = (Map) mmd.getSourceAsMap().get("properties");
             fields.put("_all", (Map) mmd.getSourceAsMap().get("_all"));
             pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
+            alwaysResolveJoins = meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins")));
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
         }
@@ -62,6 +64,10 @@ class IndexMetadata {
 
     public String getPrimaryKeyFieldName() {
         return pkeyFieldName;
+    }
+
+    public boolean alwaysResolveJoins() {
+        return alwaysResolveJoins;
     }
 
     public boolean hasField(String fieldname) {

@@ -17,7 +17,7 @@ insert into tas_people_text(fk_ppl, txt_full_text) values (1, 'some text'), (1, 
 --drop index public.es_tas_people_text;
 CREATE INDEX es_tas_people_text ON public.tas_people_text USING zombodb (zdb('public.tas_people_text', ctid), zdb(tas_people_text.*)) WITH (url='http://127.0.0.1:9200/', shards=4, replicas=1);
 --drop index public.es_tas_people;
-CREATE INDEX es_tas_people ON public.tas_people USING zombodb (zdb('public.tas_people', ctid), zdb(tas_people.*)) WITH (url='http://127.0.0.1:9200/', options='pk_ppl = <tas_people_text.es_tas_people_text>fk_ppl', shards=4, replicas=1);
+CREATE INDEX es_tas_people ON public.tas_people USING zombodb (zdb('public.tas_people', ctid), zdb(tas_people.*)) WITH (url='http://127.0.0.1:9200/', options='pk_ppl = <tas_people_text.es_tas_people_text>fk_ppl', shards=4, replicas=1, always_resolve_joins=true);
 --DROP VIEW public.tas_people_view;
 CREATE OR REPLACE VIEW public.tas_people_view AS
   select pk_ppl
@@ -77,6 +77,25 @@ SELECT * from zdb_estimate_count('public.tas_people_view', 'txt_full_text:beer*'
  zdb_estimate_count 
 --------------------
                   2
+(1 row)
+
+SELECT zdb_get_index_mapping('tas_people')->'mappings'->'data'->'_meta'->>'always_resolve_joins' = 'true';
+ ?column? 
+----------
+ t
+(1 row)
+
+ALTER INDEX es_tas_people SET (always_resolve_joins=false);
+SELECT zdb_update_mapping('tas_people');
+ zdb_update_mapping 
+--------------------
+ 
+(1 row)
+
+SELECT zdb_get_index_mapping('tas_people')->'mappings'->'data'->'_meta'->>'always_resolve_joins' = 'false';
+ ?column? 
+----------
+ t
 (1 row)
 
 DROP TABLE tas_people CASCADE;

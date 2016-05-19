@@ -124,7 +124,7 @@ public abstract class ZomboDBTestCase {
 
 
     protected QueryRewriter qr(String query) {
-        return new JUnitQueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, true);
+        return new JUnitQueryRewriter(client(), DEFAULT_INDEX_NAME, null, query, true, false);
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {

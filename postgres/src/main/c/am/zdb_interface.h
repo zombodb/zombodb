@@ -45,6 +45,7 @@ typedef struct
 	int   bulk_concurrency;
 	int   batch_size;
 	int   fieldListsValueOffset;
+	bool  alwaysResolveJoins;
 } ZDBIndexOptions;
 
 #define ZDBIndexOptionsGetUrl(relation) \
@@ -58,6 +59,9 @@ typedef struct
 #define ZDBIndexOptionsGetShadow(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->shadowValueOffset > 0 ? \
       (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->shadowValueOffset : (NULL))
+
+#define ZDBIndexOptionsAlwaysResolveJoins(relation) \
+	(relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->alwaysResolveJoins : false
 
 #define ZDBIndexOptionsGetSearchPreference(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->preferenceValueOffset > 0 ? \
@@ -95,6 +99,7 @@ typedef struct {
 	int64 advisory_mutex;
 	bool  isShadow;
 	bool  logit;
+	bool  alwaysResolveJoins;
 	char  *databaseName;
 	char  *schemaName;
 	char  *tableName;

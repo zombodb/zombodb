@@ -117,6 +117,7 @@ void zdb_index_init(void) {
 	add_int_reloption(RELOPT_KIND_ZDB, "batch_size", "The size in bytes of batch calls to the _bulk API", 1024 * 1024 * 8, 1024, (INT32_MAX/2)-1);
 	add_string_reloption(RELOPT_KIND_ZDB, "field_lists", "field=[field1, field2, field3], other=[field4,field5]", NULL, validate_field_lists);
 	add_bool_reloption(RELOPT_KIND_ZDB, "ignore_visibility", "Should queries that require visibility information actually use it?", false);
+	add_bool_reloption(RELOPT_KIND_ZDB, "always_resolve_joins", "Should queries that link to other indexes always resolve the links", false);
 
 	DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
 	DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
@@ -159,6 +160,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel)
 	desc->batch_size         = ZDBIndexOptionsGetBatchSize(indexRel);
 	desc->ignoreVisibility   = ZDBIndexOptionsGetIgnoreVisibility(indexRel);
 	desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel);
+	desc->alwaysResolveJoins = ZDBIndexOptionsAlwaysResolveJoins(indexRel);
 
 	if (desc->isShadow)
 	{
