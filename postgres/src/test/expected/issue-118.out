@@ -1,0 +1,21 @@
+SELECT term FROM zdb_significant_terms('so_posts', 'owner_display_name', '^.*', 'java', 5000);
+       term       
+------------------
+ user1249
+ user104150
+ user1449
+ striplingwarrior
+ user7197
+ user39685
+ martin
+ cletus
+ konrad rudolph
+ user42242
+ kevin
+ user4051
+ duffymo
+ sergio
+ user29079
+ user8685
+(16 rows)
+
