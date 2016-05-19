@@ -1,1 +1,1 @@
-SELECT term FROM zdb_significant_terms('so_posts', 'owner_display_name', '^.*', 'java', 5000);
+SELECT term FROM zdb_significant_terms('so_posts', 'owner_display_name', '^.*', 'java', 5000) ORDER BY term LIMIT 1;
