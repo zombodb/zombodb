@@ -99,6 +99,18 @@ static int executorDepth = 0;
 
 static int64 numHitsFound = -1;
 
+static void pushCurrentQuery(QueryDesc *queryDesc) {
+	MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+	CURRENT_QUERY_STACK = lcons(queryDesc, CURRENT_QUERY_STACK);
+	MemoryContextSwitchTo(oldContext);
+}
+
+static void popCurrentQuery() {
+	MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+	CURRENT_QUERY_STACK = list_delete_first(CURRENT_QUERY_STACK);
+	MemoryContextSwitchTo(oldContext);
+}
+
 static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forInsert)
 {
 	MemoryContext      oldContext = MemoryContextSwitchTo(TopTransactionContext);
@@ -207,6 +219,8 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags)
 	if (ConvertedTopTransactionId == 0)
 		ConvertedTopTransactionId = convert_xid(GetTopTransactionId());
 
+	pushCurrentQuery(queryDesc);
+
 	if (prev_ExecutorStartHook)
 		prev_ExecutorStartHook(queryDesc, eflags);
 	else
@@ -235,6 +249,8 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc)
 	if (prev_ExecutorEndHook == zdb_executor_end_hook)
 		elog(ERROR, "zdb_executor_end_hook: Somehow prev_ExecutorEndHook was set to zdb_executor_end_hook");
 
+	popCurrentQuery();
+
 	if (prev_ExecutorEndHook)
 		prev_ExecutorEndHook(queryDesc);
 	else
@@ -246,9 +262,7 @@ static void zdb_executor_run_hook(QueryDesc *queryDesc, ScanDirection direction,
 	executorDepth++;
 	PG_TRY();
 	{
-		MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
-		CURRENT_QUERY_STACK = lcons(queryDesc, CURRENT_QUERY_STACK);
-		MemoryContextSwitchTo(oldContext);
+		pushCurrentQuery(queryDesc);
 
 		if (prev_ExecutorRunHook)
 			prev_ExecutorRunHook(queryDesc, direction, count);
@@ -269,9 +283,7 @@ static void zdb_executor_finish_hook(QueryDesc *queryDesc)
 	executorDepth++;
 	PG_TRY();
 	{
-		MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
-		CURRENT_QUERY_STACK = list_delete_first(CURRENT_QUERY_STACK);
-		MemoryContextSwitchTo(oldContext);
+		popCurrentQuery();
 
 		if (prev_ExecutorFinishHook)
 			prev_ExecutorFinishHook(queryDesc);
