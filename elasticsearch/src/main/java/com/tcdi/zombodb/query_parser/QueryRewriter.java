@@ -170,8 +170,7 @@ public abstract class QueryRewriter {
             }
         }
 
-        performCoreOptimizations(client);
-        performCustomOptimizations();
+        performOptimizations(client);
 
         if (!metadataManager.getMetadataForMyIndex().alwaysResolveJoins()) {
             if (canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
@@ -180,14 +179,15 @@ public abstract class QueryRewriter {
         }
     }
 
-    protected void performCoreOptimizations(Client client) {
+    /**
+     * Subclasses can override if additional optimizations are necessary, but
+     * they should definitely call {@link super#performOptimizations()}
+     */
+    protected void performOptimizations(Client client) {
         new ArrayDataOptimizer(tree, metadataManager, arrayData).optimize();
         new IndexLinkOptimizer(client, this, tree, metadataManager).optimize();
         new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
     }
-
-    /* subclasses can override if additional optimizations are necessary */
-    protected abstract void performCustomOptimizations();
 
     public String dumpAsString() {
         return tree.dumpAsString();
@@ -646,7 +646,17 @@ public abstract class QueryRewriter {
 
     private String nested = null;
 
-    protected abstract QueryBuilder build(final ASTExpansion node);
+    protected QueryBuilder build(ASTExpansion node) {
+        QueryBuilder expansionBuilder =  build(node.getQuery());
+        QueryParserNode filterQuery = node.getFilterQuery();
+        if (filterQuery != null) {
+            BoolQueryBuilder bqb = boolQuery();
+            bqb.must(applyExclusion(build(node.getQuery()), node.getIndexLink().getIndexName()));
+            bqb.must(build(filterQuery));
+            expansionBuilder = bqb;
+        }
+        return expansionBuilder;
+    }
 
     private QueryBuilder build(ASTWord node) {
         return buildStandard(node, new QBF() {

@@ -35,11 +35,6 @@ public class SirenQueryRewriter extends QueryRewriter {
     }
 
     @Override
-    protected void performCustomOptimizations() {
-        // none
-    }
-
-    @Override
     protected QueryBuilder build(ASTExpansion node) {
         ASTIndexLink link = node.getIndexLink();
         ASTIndexLink myIndex = metadataManager.getMyIndex();
