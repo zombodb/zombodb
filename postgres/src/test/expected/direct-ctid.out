@@ -12,13 +12,11 @@ SET enable_indexscan to off;
 SET enable_seqscan to off;
 SET enable_bitmapscan to on;
 EXPLAIN (COSTS OFF, TIMING off) SELECT * FROM direct_ctid WHERE ctid ==> 'test,words,things';
-                        QUERY PLAN                        
-----------------------------------------------------------
- Bitmap Heap Scan on direct_ctid
-   Recheck Cond: (ctid ==> 'test,words,things'::text)
-   ->  Bitmap Index Scan on idxdirect_ctid
-         Index Cond: (ctid ==> 'test,words,things'::text)
-(4 rows)
+                     QUERY PLAN                     
+----------------------------------------------------
+ Index Scan using idxdirect_ctid on direct_ctid
+   Index Cond: (ctid ==> 'test,words,things'::text)
+(2 rows)
 
 SELECT * FROM direct_ctid WHERE ctid ==> 'test,words,things' ORDER BY id;
  id |       title       

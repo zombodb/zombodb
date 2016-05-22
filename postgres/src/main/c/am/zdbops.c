@@ -21,6 +21,7 @@
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_type.h"
 #include "parser/parsetree.h"
+#include "rewrite/rewriteHandler.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/rel.h"
