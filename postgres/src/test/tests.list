@@ -4,6 +4,7 @@ TUTORIAL
 configure
 create-indexes
 mappings
+update-mappings
 counts
 words
 updates
@@ -74,3 +75,6 @@ issue-104
 zdb_arbitrary_aggregate
 issue-111
 issue-118
+zdb_dump_query
+270-beta3-bug
+direct-ctid

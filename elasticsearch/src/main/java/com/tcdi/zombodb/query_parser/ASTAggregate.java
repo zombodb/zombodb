@@ -15,9 +15,6 @@
  */
 package com.tcdi.zombodb.query_parser;
 
-/**
- * Created by e_ridge on 11/11/14.
- */
 public class ASTAggregate extends QueryParserNode {
     private boolean isNested;
 

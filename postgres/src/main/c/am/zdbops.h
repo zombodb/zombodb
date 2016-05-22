@@ -23,6 +23,7 @@
 
 extern void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid);
 extern Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid);
+extern Oid zdb_determine_index_oid_by_heap(Oid heapRelOid);
 
 extern Datum zdb_determine_index(PG_FUNCTION_ARGS);
 extern Datum zdb_get_index_name(PG_FUNCTION_ARGS);
@@ -37,6 +38,8 @@ extern Datum zdb_internal_get_index_field_lists(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_highlight(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_multi_search(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_analyze_text(PG_FUNCTION_ARGS);
+extern Datum zdb_internal_update_mapping(PG_FUNCTION_ARGS);
+extern Datum zdb_internal_dump_query(PG_FUNCTION_ARGS);
 
 extern Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous);
 

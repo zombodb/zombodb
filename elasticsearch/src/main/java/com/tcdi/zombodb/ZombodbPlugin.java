@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,9 +26,6 @@ import org.xbib.elasticsearch.action.termlist.TermlistAction;
 import org.xbib.elasticsearch.action.termlist.TransportTermlistAction;
 import org.xbib.elasticsearch.rest.action.termlist.RestTermlistAction;
 
-/**
- * @author e_ridge
- */
 public class ZombodbPlugin extends AbstractPlugin {
 
     @Inject

@@ -50,7 +50,7 @@ Now, when you run the above query, it'll be able to transparently search **both*
 
 The `options` string is a comma-separated list in the form of `local_field=<other_table.other_index>other_field`.
 
-There are no limits on the number of options that can be set (up to an 8K string size imposed by Postgres), and the relationship types (one-to-one, one-to-many, many-to-many) don't matter.
+A maximum of 1024 comma-separated index links can be set (in the `options` property), and the relationship types (one-to-one, one-to-many, many-to-many) don't matter.
 
 This is a powerful feature because it allows you to keep your data as normalized as you want while still providing the ability to perform full text queries across all of it.
 
