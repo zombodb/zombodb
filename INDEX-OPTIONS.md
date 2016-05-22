@@ -112,7 +112,7 @@ SELECT *
 WHERE author ILIKE '%shakespeare%' 
   AND id IN (SELECT book_id 
                FROM checkout_history 
-              WHERE user_id = (SELECT id 
+              WHERE user_id IN (SELECT id 
                                  FROM users 
                                 WHERE full_name = 'John Doe'
                                )
