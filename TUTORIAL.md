@@ -175,9 +175,9 @@ In order to ensure the ZomboDB index is used, we'll be making use of two things:
   - the ```zdb(regclass, tid)``` function mentioned above
   - a custom operator named ```==>```
 
-Again, the ```zdb(regclass, tid)``` function simply transforms a record into json.  The ```==>``` operator is ZomboDB's "full-text query" operator.
+Again, the ```zdb(regclass, tid)``` function is used to determine which index should be used.  The ```==>``` operator is ZomboDB's "full-text query" operator.
 
-```==>``` is defined as taking "json" on the left and "text" on the right:
+```==>``` is defined as taking `::tid` on the left and `::text` on the right:
 
 ```sql
 tutorial=# 
@@ -278,7 +278,7 @@ tutorial=#
 SELECT * FROM zdb_significant_terms('products', 'keywords', '^.*', '', 5000);
 ```
 
-The fourth argument is a fulltext query by which the aggregate will be filtered.  The empty string means "no filter".  If you wanted to limit the keywords to products that are round:
+The fourth argument is a fulltext query by which the aggregate will be filtered.  The empty string means "no filter".
 
 ### Dates/Timestamps
 
@@ -354,7 +354,7 @@ tutorial=#
                                            #tally(keywords, '^.*', 5000, term)
                                   ) 
                          $$, 
-                         ''); 
+                         '');
  zdb_arbitrary_aggregate                                                                                                                                                                                                                                                                                                                                                                             
 -------------------------
 {

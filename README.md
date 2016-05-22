@@ -120,7 +120,7 @@ SELECT * FROM products WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or
 
 Product       | Version 
 ---           | ---      
-Postgres      | 9.5
+Postgres      | 9.3, 9.4, 9.5
 Elasticsearch | 1.7.1+ (not 2.0)
 Java JDK      | 1.7.0_51+
 
