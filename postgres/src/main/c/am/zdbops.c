@@ -20,6 +20,8 @@
 #include "catalog/indexing.h"
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_type.h"
+#include "parser/parsetree.h"
+#include "rewrite/rewriteHandler.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/rel.h"
@@ -27,7 +29,6 @@
 #include "zdb_interface.h"
 #include "zdbops.h"
 #include "zdbseqscan.h"
-#include "util/zdbutils.h"
 
 PG_FUNCTION_INFO_V1(zdb_determine_index);
 PG_FUNCTION_INFO_V1(zdb_get_index_name);
@@ -42,33 +43,8 @@ PG_FUNCTION_INFO_V1(zdb_internal_get_index_field_lists);
 PG_FUNCTION_INFO_V1(zdb_internal_highlight);
 PG_FUNCTION_INFO_V1(zdb_internal_multi_search);
 PG_FUNCTION_INFO_V1(zdb_internal_analyze_text);
-
-
-/*
- * taken from Postgres' rewriteHandler.c
- *
- * NB:  This function is exposed in PG 9.4+
- */
-static Query *get_view_query(Relation view) {
-	int i;
-
-	Assert(view->rd_rel->relkind == RELKIND_VIEW);
-
-	for (i = 0; i < view->rd_rules->numLocks; i++) {
-		RewriteRule *rule = view->rd_rules->rules[i];
-
-		if (rule->event == CMD_SELECT) {
-			/* A _RETURN rule should have only one action */
-			if (list_length(rule->actions) != 1)
-				elog(ERROR, "invalid _RETURN rule action specification");
-
-			return (Query *) linitial(rule->actions);
-		}
-	}
-
-	elog(ERROR, "failed to find _RETURN rule for view");
-	return NULL;                /* keep compiler quiet */
-}
+PG_FUNCTION_INFO_V1(zdb_internal_update_mapping);
+PG_FUNCTION_INFO_V1(zdb_internal_dump_query);
 
 static FuncExpr *extract_zdb_funcExpr_from_view(Relation viewRel, Oid *heapRelOid) {
 	ListCell *lc;
@@ -81,14 +57,30 @@ static FuncExpr *extract_zdb_funcExpr_from_view(Relation viewRel, Oid *heapRelOi
 		TargetEntry *te = (TargetEntry *) lfirst(lc);
 
 		if (te->resname && strcmp("zdb", te->resname) == 0) {
-			if (!IsA(te->expr, FuncExpr))
-				elog(ERROR, "The 'zdb' column in view '%s' is not a function", RelationGetRelationName(viewRel));
+			if (IsA(te->expr, Var)) {
+				Var *var = (Var *) te->expr;
+				switch(var->varno) {
+					case INNER_VAR:
+					case OUTER_VAR:
+						elog(ERROR, "The 'zdb' column in view '%s' is a Var we don't understand", RelationGetRelationName(viewRel));
+						break;
 
-			funcExpr = (FuncExpr *) te->expr;
+					default: {
+						RangeTblEntry *rentry = rt_fetch(var->varno, viewDef->rtable);
+						*heapRelOid = rentry->relid;
+						return NULL;
+					}
+				}
+			} else {
+				if (!IsA(te->expr, FuncExpr))
+					elog(ERROR, "The 'zdb' column in view '%s' is not a function", RelationGetRelationName(viewRel));
 
-			validate_zdb_funcExpr(funcExpr, heapRelOid);
+				funcExpr = (FuncExpr *) te->expr;
 
-			return funcExpr;
+				validate_zdb_funcExpr(funcExpr, heapRelOid);
+
+				return funcExpr;
+			}
 		}
 	}
 
@@ -153,6 +145,40 @@ Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
 	return zdbIndexRelId;
 }
 
+Oid zdb_determine_index_oid_by_heap(Oid heapRelOid) {
+	/**
+     * The index we use here is the index from the table specified by the column named 'zdb'
+     * that has a functional expression that matches the functional expression of the column named 'zdb'
+     */
+	Oid      zdbIndexRelId = InvalidOid;
+	Relation heapRel;
+	List     *indexes;
+	ListCell *lc;
+
+	heapRel = RelationIdGetRelation(heapRelOid);
+	indexes = RelationGetIndexList(heapRel);
+	foreach(lc, indexes) {
+		Oid      indexRelOid = (Oid) lfirst_oid(lc);
+		Relation indexRel    = RelationIdGetRelation(indexRelOid);
+
+		if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
+			zdbIndexRelId = indexRelOid;
+
+		RelationClose(indexRel);
+
+		if (zdbIndexRelId != InvalidOid)
+			break;
+	}
+
+	if (zdbIndexRelId == InvalidOid) {
+		RelationClose(heapRel);
+		elog(ERROR, "Unable to find ZomboDB index for table '%s'", RelationGetRelationName(heapRel));
+	}
+
+	RelationClose(heapRel);
+	return zdbIndexRelId;
+}
+
 Datum zdb_determine_index(PG_FUNCTION_ARGS) {
 	Oid      relid         = PG_GETARG_OID(0);
 	Oid      zdbIndexRelId = InvalidOid;
@@ -166,9 +192,15 @@ Datum zdb_determine_index(PG_FUNCTION_ARGS) {
 			FuncExpr *funcExpr;
 
 			funcExpr = extract_zdb_funcExpr_from_view(table_or_view_rel, &heapRelOid);
-			zdbIndexRelId = zdb_determine_index_oid(funcExpr, heapRelOid);
 
-			break;
+			if (funcExpr != NULL) {
+				zdbIndexRelId = zdb_determine_index_oid(funcExpr, heapRelOid);
+				break;
+			} else {
+				RelationClose(table_or_view_rel);
+				table_or_view_rel = RelationIdGetRelation(heapRelOid);
+				/* notice follow-through here */
+			}
 		}
 
 		case RELKIND_MATVIEW:
@@ -329,7 +361,7 @@ Datum zdb_internal_multi_search(PG_FUNCTION_ARGS)
 	else if (oid_many == 0)
 		PG_RETURN_NULL();
 
-	response = zdb_multi_search(GetCurrentTransactionId(), GetCurrentCommandId(false), oids, queries, oid_many);
+	response = zdb_multi_search(oids, queries, oid_many);
 	if (!response)
 		PG_RETURN_NULL();
 
@@ -348,14 +380,53 @@ Datum zdb_internal_analyze_text(PG_FUNCTION_ARGS)
 	PG_RETURN_TEXT_P(CStringGetTextDatum(desc->implementation->analyzeText(desc, analyzer_name, data)));
 }
 
+Datum zdb_internal_update_mapping(PG_FUNCTION_ARGS)
+{
+	Oid                indexRel = PG_GETARG_OID(0);
+	ZDBIndexDescriptor *desc;
+	Relation           heapRel;
+	TupleDesc          tupdesc;
+
+	desc    = zdb_alloc_index_descriptor_by_index_oid(indexRel);
+	heapRel = RelationIdGetRelation(desc->heapRelid);
+	tupdesc = RelationGetDescr(heapRel);
+
+	desc->implementation->updateMapping(desc, TextDatumGetCString(make_es_mapping(desc->heapRelid, tupdesc, false)));
+	RelationClose(heapRel);
+
+	PG_RETURN_VOID();
+}
+
+Datum zdb_internal_dump_query(PG_FUNCTION_ARGS)
+{
+	Oid                indexRel   = PG_GETARG_OID(0);
+	char               *userQuery = GET_STR(PG_GETARG_TEXT_P(1));
+	ZDBIndexDescriptor *desc;
+	char               *jsonQuery;
+
+	desc = zdb_alloc_index_descriptor_by_index_oid(indexRel);
+
+	jsonQuery = desc->implementation->dumpQuery(desc, userQuery);
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(jsonQuery));
+}
+
 Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 {
 	StringInfo result = makeStringInfo();
 	char       *json;
-	int        i, cnt = 0;
+	int        i;
 
 	appendStringInfo(result, "{\"is_anonymous\": %s,", isAnonymous ? "true" : "false");
 	appendStringInfo(result, "\"properties\": {");
+
+	appendStringInfo(result, "\"_xact\": {"
+			"\"type\":\"long\","
+			"\"fielddata\":{\"format\":\"disabled\"},"
+			"\"include_in_all\":\"false\","
+			"\"norms\": {\"enabled\":false},"
+			"\"index\": \"not_analyzed\""
+			"}");
 
 	for (i = 0; i < tupdesc->natts; i++)
 	{
@@ -368,7 +439,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 
         name = NameStr(tupdesc->attrs[i]->attname);
 
-		if (cnt > 0) appendStringInfoCharMacro(result, ',');
+		appendStringInfoCharMacro(result, ',');
 
 		/* if we have a user-defined mapping for this field in this table, use it */
 		user_mapping = lookup_field_mapping(CurrentMemoryContext, tableRelId, name);
@@ -437,18 +508,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index\": \"not_analyzed\",");
 			appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"fields\": {"
-					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", "
-					                 "               \"format\": \"yyyy-MM-dd HH:mm:ss.SSSSSSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSS||"
-					                                              "yyyy-MM-dd HH:mm:ss.SS||"
-					                                              "yyyy-MM-dd HH:mm:ss.S||"
-					                                              "yyyy-MM-dd HH:mm:ss\"}"
+					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"} "
 					                 "}");
 
 		}
@@ -460,19 +520,8 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index\": \"not_analyzed\",");
 			appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"fields\": {"
-					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", "
-					                 "               \"format\": \"yyyy-MM-dd HH:mm:ss.SSSSSSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SSZ||"
-					                                              "yyyy-MM-dd HH:mm:ss.SZ||"
-					                                              "yyyy-MM-dd HH:mm:ssZ\"}"
-					                 "}");
+					"   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"} "
+					"}");
 
 		}
 		else if (strcmp("time", typename) == 0 || strcmp("time[]", typename) == 0 || strcmp("time without time zone", typename) == 0 || strcmp("time without time zone[]", typename) == 0)
@@ -483,19 +532,8 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index\": \"not_analyzed\",");
 			appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"fields\": {"
-					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", "
-					                 "               \"format\": \"HH:mm:ss.SSSSSSSSSS||"
-					                                              "HH:mm:ss.SSSSSSSSS||"
-					                                              "HH:mm:ss.SSSSSSSS||"
-					                                              "HH:mm:ss.SSSSSSS||"
-					                                              "HH:mm:ss.SSSSSS||"
-					                                              "HH:mm:ss.SSSSS||"
-					                                              "HH:mm:ss.SSSS||"
-					                                              "HH:mm:ss.SSS||"
-					                                              "HH:mm:ss.SS||"
-					                                              "HH:mm:ss.S||"
-					                                              "HH:mm:ss\"}"
-					                 "}");
+					"   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"} "
+					"}");
 
 		}
 		else if (strcmp("time with time zone", typename) == 0 || strcmp("time with time zone[]", typename) == 0)
@@ -506,19 +544,8 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"index\": \"not_analyzed\",");
 			appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"fields\": {"
-					                 "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", "
-					                 "               \"format\": \"HH:mm:ss.SSSSSSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSSZ||"
-					                                              "HH:mm:ss.SSSSSZ||"
-					                                              "HH:mm:ss.SSSSZ||"
-					                                              "HH:mm:ss.SSSZ||"
-					                                              "HH:mm:ss.SSZ||"
-					                                              "HH:mm:ss.SZ||"
-					                                              "HH:mm:ssZ\"}"
-					                 "}");
+					"   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"} "
+					"}");
 
 		}
 		else if (strcmp("smallint", typename) == 0 || strcmp("integer", typename) == 0 ||
@@ -529,6 +556,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"store\": \"true\",");
 			appendStringInfo(result, "\"include_in_all\": \"false\",");
 			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
 		}
@@ -540,6 +568,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"store\": \"true\",");
 			appendStringInfo(result, "\"include_in_all\": \"false\",");
 			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
 		}
@@ -550,6 +579,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"type\": \"float\",");
 			appendStringInfo(result, "\"include_in_all\": \"false\",");
 			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
 		}
@@ -560,6 +590,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"type\": \"double\",");
 			appendStringInfo(result, "\"include_in_all\": \"false\",");
 			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
 		}
@@ -570,6 +601,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"type\": \"boolean\",");
 			appendStringInfo(result, "\"include_in_all\": \"false\",");
 			appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
 			appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
 		}
@@ -585,7 +617,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 			appendStringInfo(result, "\"analyzer\": \"exact\"");
 
 		}
-		else if (strcmp("json", typename) == 0)
+		else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0)
 		{
 			/* json field */
 			appendStringInfo(result, "\"type\": \"nested\",");
@@ -661,7 +693,6 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous)
 		appendStringInfoCharMacro(result, '}');
 
 		pfree(typename);
-		cnt++;
 	}
 	appendStringInfo(result, "}}");
 

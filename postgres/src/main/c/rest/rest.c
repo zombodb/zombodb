@@ -81,6 +81,10 @@ void rest_multi_init(MultiRestState *state, int nhandles) {
 	MULTI_REST_STATES = lappend(MULTI_REST_STATES, state);
 }
 
+void rest_multi_perform(MultiRestState *state) {
+    int still_running;
+    curl_multi_perform(state->multi_handle, &still_running);
+}
 
 int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo postData, bool process) {
     int i;
@@ -98,7 +102,7 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
 
                 curl = state->handles[i] = curl_easy_init();
                 if (!state->handles[i])
-                    elog(IsTransactionState() ? ERROR : WARNING, "Unable to initialize CURL handle");
+                    elog(ERROR, "Unable to initialize CURL handle");
 
                 errorbuff = state->errorbuffs[i] = palloc0(CURL_ERROR_SIZE);
                 state->postDatas[i] = postData;
@@ -106,7 +110,7 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
 
                 curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
                 curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
-                curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
+                curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
                 curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
                 curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
@@ -176,12 +180,12 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
 
             for (i=0; i<state->nhandles; i++) {
                 if (state->handles[i] == handle) {
-                    long response_code = 0;
+                    int64 response_code;
 
                     curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code);
                     if (msg->data.result != 0 || response_code != 200 || strstr(state->responses[i]->data, "\"errors\":true")) {
                         /* REST endpoint messed up */
-                        elog(ERROR, "%s: %s", state->errorbuffs[i], state->responses[i]->data);
+                        elog(ERROR, "libcurl error:  handle=%p, %s: %s, response_code=%ld, result=%d", handle, state->errorbuffs[i], state->responses[i]->data, response_code, msg->data.result);
                     }
 
                     if (state->errorbuffs[i] != NULL) {
@@ -212,7 +216,7 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
             }
 
             if (!found) {
-                elog(IsTransactionState() ? ERROR : WARNING, "Couldn't find easy_handle for %p", handle);
+                elog(ERROR, "Couldn't find easy_handle for %p", handle);
             }
         }
     }
@@ -238,7 +242,7 @@ StringInfo rest_call(char *method, char *url, StringInfo postData)
 		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_SHARE, GLOBAL_CURL_SHARED_STATE);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
 		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
-		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PROGRESSFUNCTION, curl_progress_func);   /* to go here so we can detect a ^C within postgres */
+		curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* to go here so we can detect a ^C within postgres */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_MAXREDIRS, 0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEFUNCTION, curl_write_func);

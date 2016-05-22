@@ -1,0 +1,64 @@
+CREATE TABLE direct_ctid (
+    id serial8 primary key,
+    title phrase
+);
+CREATE INDEX idxdirect_ctid ON direct_ctid USING zombodb(ctid, zdb(direct_ctid)) WITH (url='http://localhost:9200/');
+INSERT INTO direct_ctid (title) VALUES ('this is a test');
+INSERT INTO direct_ctid (title) VALUES ('so is this');
+INSERT INTO direct_ctid (title) VALUES ('words words words');
+INSERT INTO direct_ctid (title) VALUES ('stuff and things');
+SET enable_bitmapscan to off;
+SET enable_indexscan to off;
+SET enable_seqscan to off;
+SET enable_bitmapscan to on;
+EXPLAIN (COSTS OFF, TIMING off) SELECT * FROM direct_ctid WHERE ctid ==> 'test,words,things';
+                     QUERY PLAN                     
+----------------------------------------------------
+ Index Scan using idxdirect_ctid on direct_ctid
+   Index Cond: (ctid ==> 'test,words,things'::text)
+(2 rows)
+
+SELECT * FROM direct_ctid WHERE ctid ==> 'test,words,things' ORDER BY id;
+ id |       title       
+----+-------------------
+  1 | this is a test
+  3 | words words words
+  4 | stuff and things
+(3 rows)
+
+SET enable_bitmapscan to off;
+SET enable_indexscan to on;
+EXPLAIN (COSTS OFF, TIMING off) SELECT * FROM direct_ctid WHERE ctid ==> 'test,words,things';
+                     QUERY PLAN                     
+----------------------------------------------------
+ Index Scan using idxdirect_ctid on direct_ctid
+   Index Cond: (ctid ==> 'test,words,things'::text)
+(2 rows)
+
+SELECT * FROM direct_ctid WHERE ctid ==> 'test,words,things' ORDER BY id;
+ id |       title       
+----+-------------------
+  1 | this is a test
+  3 | words words words
+  4 | stuff and things
+(3 rows)
+
+SET enable_indexscan to off;
+SET enable_seqscan to on;
+EXPLAIN (COSTS OFF, TIMING off) SELECT * FROM direct_ctid WHERE ctid ==> 'test,words,things';
+                   QUERY PLAN                   
+------------------------------------------------
+ Seq Scan on direct_ctid
+   Filter: (ctid ==> 'test,words,things'::text)
+(2 rows)
+
+SELECT * FROM direct_ctid WHERE ctid ==> 'test,words,things' ORDER BY id;
+ id |       title       
+----+-------------------
+  1 | this is a test
+  3 | words words words
+  4 | stuff and things
+(3 rows)
+
+SET enable_seqscan to off;
+DROP TABLE direct_ctid;

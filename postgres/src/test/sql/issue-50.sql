@@ -1,5 +1,4 @@
 BEGIN;
-set datestyle to 'iso, mdy';
 
 CREATE TABLE issue_50 (
    id serial8 NOT NULL PRIMARY KEY,

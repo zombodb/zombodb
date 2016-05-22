@@ -15,14 +15,18 @@
  * limitations under the License.
  */
 #include "postgres.h"
+
 #include "fmgr.h"
+#include "pgstat.h"
 #include "miscadmin.h"
 #include "access/genam.h"
 #include "access/xact.h"
-#include "executor/spi.h"
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
+#include "utils/jsonb.h"
+#include "utils/memutils.h"
+#include "utils/snapmgr.h"
 
 #include "rest/rest.h"
 #include "util/zdbutils.h"
@@ -31,6 +35,7 @@
 #include "zdbseqscan.h"
 #include "zdb_interface.h"
 
+#define MAX_LINKED_INDEXES 1024
 
 typedef struct
 {
@@ -40,6 +45,7 @@ typedef struct
 	int                nprocessed;
 	int				   nrequests;
 } BatchInsertData;
+
 
 static List *batchInsertDataList = NULL;
 
@@ -61,13 +67,15 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
 
 	if (!data && create)
 	{
+		MemoryContext oldcontext = MemoryContextSwitchTo(TopTransactionContext);
 		data = palloc(sizeof(BatchInsertData));
 		data->indexDescriptor = indexDescriptor;
-		data->rest			  = palloc0(sizeof(MultiRestState));
+		data->rest            = palloc0(sizeof(MultiRestState));
 		data->bulk            = makeStringInfo();
 		data->nprocessed      = 0;
-		data->nrequests		  = 0;
+		data->nrequests       = 0;
 		batchInsertDataList = lappend(batchInsertDataList, data);
+		MemoryContextSwitchTo(oldcontext);
 
 		rest_multi_init(data->rest, indexDescriptor->bulk_concurrency);
 	}
@@ -75,9 +83,76 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
 	return data;
 }
 
-static StringInfo buildQuery(ZDBIndexDescriptor *desc, TransactionId xid, CommandId cid, char **queries, int nqueries, bool isParentQuery)
+static char **parse_linked_indices(char *schema, char *options, int *many) {
+    size_t len       = strlen(options);
+    size_t schemalen = strlen(schema);
+    char   **indices = palloc(MAX_LINKED_INDEXES * sizeof(char *));
+    int    i, x      = 0;
+
+    for (i = 0; i < len; i++) {
+        char ch = options[i];
+
+        switch (ch) {
+            case '<': {
+                int j = (int) schemalen;
+
+                if (x == MAX_LINKED_INDEXES)
+                    elog(ERROR, "Too many linked indices.  Max is %d", MAX_LINKED_INDEXES);
+
+
+                /* allocate buffer to store index name, schema qualified */
+                indices[x] = palloc(schemalen + NAMEDATALEN + 2);   /* +2 for '.' and \0 */
+                strcpy(indices[x], schema);
+                indices[x][j++] = '.';
+
+                while (options[++i] != '.');
+                while (options[++i] != '>' && i < len) {
+                    indices[x][j++] = options[i];
+                }
+                indices[x][j]   = '\0';
+
+                x++;
+            }
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    *many = x;
+    return indices;
+}
+
+static char *buildXidExclusionClause() {
+	StringInfo sb = makeStringInfo();
+	Snapshot snap = GetActiveSnapshot();
+	int i;
+
+	/*
+     * exclude records by xid that we know we cannot see, which are
+     *   a) anything greater than or equal to the snapshot's 'xmax'
+     *      (but we can see ourself)
+     */
+	appendStringInfo(sb, "(_xid >= %lu AND _xid<>%lu) OR ", convert_xid(snap->xmax), ConvertedTopTransactionId);
+
+	/*
+     *   b) the xid of any currently running transaction
+     */
+	appendStringInfo(sb, "_xid:[[");
+	for (i = 0; i<snap->xcnt; i++) {
+		if(i>0) appendStringInfoChar(sb, ',');
+		appendStringInfo(sb, "%lu", convert_xid(snap->xip[i]));
+	}
+	appendStringInfo(sb, "]]");
+
+	return sb->data;
+}
+
+static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap, bool invisibilityMapRequired)
 {
 	StringInfo baseQuery = makeStringInfo();
+    StringInfo ids;
 	int i;
 
 	if (desc->options)
@@ -85,55 +160,61 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, TransactionId xid, Comman
 	if (desc->fieldLists)
 		appendStringInfo(baseQuery, "#field_lists(%s) ", desc->fieldLists);
 
-	if (isParentQuery)
-		appendStringInfo(baseQuery, "#parent<xact>(");
-	appendStringInfoCharMacro(baseQuery, '(');
-	/* ... from HeapTupleSatisfiesNow() */
-	appendStringInfo(baseQuery,
-			"((_xmin = %d AND "               /* inserted by the current transaction */
-			"_cmin < %d AND "                 /* before this command, and */
-			"(_xmax = 0 OR "                  /* the row has not been deleted, or */
-			"(_xmax = %d AND "                /* it was deleted by the current transaction */
-			"_cmax >= %d))) "                 /* but not before this command, */
-			"OR "                             /* or */
-			"(_xmin_is_committed = true AND " /* the row was inserted by a committed transaction, and */
-			"(_xmax = 0 OR "                  /* the row has not been deleted, or */
-			"(_xmax = %d AND "                /* the row is being deleted by this transaction */
-			"_cmax >= %d) OR "                /* but it's not deleted \"yet\", or */
-			"(_xmax <> %d AND "               /* the row was deleted by another transaction */
-			"_xmax_is_committed = false))))", /* that has not been committed */
-			xid, cid, xid, cid,
-			xid, cid, xid
-	);
-	appendStringInfoCharMacro(baseQuery, ')');
-	if (isParentQuery)
-		appendStringInfoCharMacro(baseQuery, ')');
+    if (!zdb_ignore_visibility_guc && useInvisibilityMap) {
+		char *xidExclusionClause = buildXidExclusionClause();
 
+        if (desc->options != NULL) {
+            int  index_cnt;
+            char **indices = parse_linked_indices(desc->schemaName, desc->options, &index_cnt);
 
-	appendStringInfo(baseQuery, " AND (");
-	if (!isParentQuery)
-		appendStringInfo(baseQuery, "#child<data>(");
-	for (i = 0; i < nqueries; i++)
-	{
-		if (i > 0) appendStringInfo(baseQuery, " AND ");
-		appendStringInfo(baseQuery, "(%s)", queries[i]);
-	}
-	appendStringInfoCharMacro(baseQuery, ')');	/* close off AND */
-	if (!isParentQuery)
-		appendStringInfoCharMacro(baseQuery, ')');  /* close off #child<data> */
+            for (i = 0; i < index_cnt; i++) {
+                ZDBIndexDescriptor *tmp = zdb_alloc_index_descriptor_by_index_oid(DatumGetObjectId(DirectFunctionCall1(text_regclass, CStringGetTextDatum(indices[i]))));
 
-	return baseQuery;
+                if (!tmp->ignoreVisibility) {
+                    Relation rel;
+
+                    rel = RelationIdGetRelation(tmp->heapRelid);
+                    ids = find_invisible_ctids(rel);
+
+					appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s)) ", tmp->fullyQualifiedName, ids->data, xidExclusionClause);
+
+                    freeStringInfo(ids);
+                    RelationClose(rel);
+                }
+            }
+        }
+
+		if (invisibilityMapRequired) {
+			if (!desc->ignoreVisibility) {
+				Relation heapRel = RelationIdGetRelation(desc->heapRelid);
+
+				ids = find_invisible_ctids(heapRel);
+
+				appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s)) ", desc->fullyQualifiedName, ids->data, xidExclusionClause);
+
+				freeStringInfo(ids);
+				RelationClose(heapRel);
+			}
+		}
+    }
+
+    for (i = 0; i < nqueries; i++) {
+        if (i > 0) appendStringInfo(baseQuery, " AND ");
+        appendStringInfo(baseQuery, "(%s)", queries[i]);
+    }
+
+    return baseQuery;
 }
 
 static void checkForBulkError(StringInfo response, char *type) {
 	text *errorsText = DatumGetTextP(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("errors")));
 	if (errorsText == NULL)
-		elog(IsTransactionState() ? ERROR : WARNING, "Unexpected response from elasticsearch during %s: %s", type, response->data);
+		elog(ERROR, "Unexpected response from elasticsearch during %s: %s", type, response->data);
 	else
 	{
 		char *errors = TextDatumGetCString(errorsText);
 		if (strcmp(errors, "false") != 0)
-			elog(IsTransactionState() ? ERROR : WARNING, "Error updating %s data: %s", type, response->data);
+			elog(ERROR, "Error updating %s data: %s", type, response->data);
 		pfree(errors);
 		pfree(errorsText);
 	}
@@ -143,21 +224,21 @@ static void checkForRefreshError(StringInfo response) {
 	Datum shards = DirectFunctionCall2(json_object_field, CStringGetTextDatum(response->data), CStringGetTextDatum("_shards"));
 	text *failedText = DatumGetTextP(DirectFunctionCall2(json_object_field_text, shards, CStringGetTextDatum("failed")));
 	if (failedText == NULL)
-		elog(IsTransactionState() ? ERROR : WARNING, "Unexpected response from elasticsearch during _refresh: %s", response->data);
+		elog(ERROR, "Unexpected response from elasticsearch during _refresh: %s", response->data);
 	else
 	{
 		char *errors = TextDatumGetCString(failedText);
 		if (strcmp(errors, "0") != 0)
-			elog(IsTransactionState() ? ERROR : WARNING, "Error refresing: %s", response->data);
+			elog(ERROR, "Error refresing: %s", response->data);
 		pfree(errors);
 		pfree(failedText);
 	}
 }
 
 static void es_wait_for_index_availability(ZDBIndexDescriptor *indexDescriptor) {
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response;
-	char *status;
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response;
+    char       *status;
 
 	/* ask ES to wait for the health status of this index to be at least yellow.  Has default timeout of 30s */
 	appendStringInfo(endpoint, "%s/_cluster/health/%s?wait_for_status=yellow", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
@@ -171,184 +252,185 @@ static void es_wait_for_index_availability(ZDBIndexDescriptor *indexDescriptor) 
 	if (status == NULL || (strcmp("green", status) != 0 && strcmp("yellow", status) != 0))
 		elog(ERROR, "Index health indicates index is not available: %s", response->data);
 
-	/* otherwise, it's all good */
+    /* otherwise, it's all good */
+	freeStringInfo(endpoint);
 }
 
-void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, bool noxact, char *fieldProperties)
-{
-	StringInfo endpoint      = makeStringInfo();
-	StringInfo indexSettings = makeStringInfo();
-	StringInfo response;
-	char *pkey = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
+void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties) {
+    StringInfo endpoint      = makeStringInfo();
+    StringInfo indexSettings = makeStringInfo();
+    StringInfo response;
+    char       *pkey         = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
 
-	if (pkey == NULL)
-	{
-		pkey = "__no primary key__";
-		elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
-	}
+    if (pkey == NULL) {
+        pkey = "__no primary key__";
+        elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
+    }
 
-	appendStringInfo(indexSettings,
-			"{"
-					"   \"mappings\": {"
-					"      \"xact\": {"
-					"          \"_source\": { \"enabled\": true },"
-					"          \"_all\": { \"enabled\": false },"
-					"          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-					"          \"_meta\": { \"primary_key\": \"%s\", \"noxact\": %s },"
-					"          \"date_detection\": false,"
-					"          \"properties\" : {"
-					"              \"_xmin\": { \"type\": \"integer\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_xmax\": { \"type\": \"integer\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_cmin\": { \"type\": \"integer\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_cmax\": { \"type\": \"integer\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_xmin_is_committed\": { \"type\": \"boolean\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_xmax_is_committed\": { \"type\": \"boolean\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} },"
-					"              \"_partial\": { \"type\": \"boolean\", \"index\": \"not_analyzed\", \"norms\": {\"enabled\":false}, \"fielddata\": {\"format\": \"disabled\"} }"
-					"          }"
-					"      },"
-					"      \"data\": {"
-					"          \"_source\": { \"enabled\": false },"
-					"          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-					"          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-					"          \"_parent\": { \"type\": \"xact\" },"
-					"          \"_meta\": { \"primary_key\": \"%s\", \"noxact\": %s },"
-					"          \"date_detection\": false,"
-					"          \"properties\" : %s"
-					"      }"
-					"   },"
-					"   \"settings\": {"
-					"      \"refresh_interval\": -1,"
-					"      \"number_of_shards\": %d,"
-					"      \"number_of_replicas\": 0,"
-					"      \"analysis\": {"
-					"         \"filter\": { %s },"
-					"         \"char_filter\" : { %s },"
-					"         \"tokenizer\" : { %s },"
-					"         \"analyzer\": { %s }"
-					"      }"
-					"   }"
-					"}",
-			pkey, noxact ? "true" : "false",
-			pkey, noxact ? "true" : "false",
-			fieldProperties,
-			shards,
-            lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
-            lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
-            lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"),
-            lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers")
-	);
+    appendStringInfo(indexSettings, "{"
+            "   \"mappings\": {"
+            "      \"data\": {"
+            "          \"_source\": { \"enabled\": false },"
+            "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
+            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
+            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
+            "          \"date_detection\": false,"
+            "          \"properties\" : %s"
+            "      }"
+            "   },"
+            "   \"settings\": {"
+            "      \"refresh_interval\": -1,"
+            "      \"number_of_shards\": %d,"
+            "      \"number_of_replicas\": 0,"
+            "      \"analysis\": {"
+            "         \"filter\": { %s },"
+            "         \"char_filter\" : { %s },"
+            "         \"tokenizer\" : { %s },"
+            "         \"analyzer\": { %s }"
+            "      }"
+            "   }"
+            "}", pkey, indexDescriptor->alwaysResolveJoins ? "true" : "false", fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"));
 
 	appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("POST", endpoint->data, indexSettings);
 
-	freeStringInfo(indexSettings);
 	freeStringInfo(response);
-	freeStringInfo(endpoint);
+    freeStringInfo(indexSettings);
+    freeStringInfo(endpoint);
 }
 
-void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor)
-{
-	StringInfo endpoint      = makeStringInfo();
-	StringInfo indexSettings = makeStringInfo();
-	StringInfo response;
-	Relation indexRel;
+void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
+    StringInfo endpoint      = makeStringInfo();
+    StringInfo indexSettings = makeStringInfo();
+    StringInfo response;
+    Relation   indexRel;
 
-	indexRel = index_open(indexDescriptor->indexRelid, RowExclusiveLock);
-	appendStringInfo(indexSettings,
-			"{"
-					"   \"index\": {"
-					    /* NOTE:  We DO NOT turn refresh_interval back on -- we control refreshes ourselves */
-					"      \"number_of_replicas\":%d"
-					"   }"
-					"}",
-			ZDBIndexOptionsGetNumberOfReplicas(indexRel)
-	);
-	index_close(indexRel, RowExclusiveLock);
+    indexRel = RelationIdGetRelation(indexDescriptor->indexRelid);
+    appendStringInfo(indexSettings, "{"
+            "   \"index\": {"
+			"      \"refresh_interval\":\"%s\","
+            "      \"number_of_replicas\":%d"
+            "   }"
+            "}", ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
+    RelationClose(indexRel);
 
 	appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("PUT", endpoint->data, indexSettings);
 
-	es_wait_for_index_availability(indexDescriptor);
-
-	freeStringInfo(indexSettings);
 	freeStringInfo(response);
-	freeStringInfo(endpoint);
+
+    es_wait_for_index_availability(indexDescriptor);
+
+    freeStringInfo(indexSettings);
+    freeStringInfo(endpoint);
 
 }
 
-void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping)
-{
-	char *properties;
-	Datum PROPERTIES = CStringGetTextDatum("properties");
-	StringInfo endpoint = makeStringInfo();
-	StringInfo request = makeStringInfo();
-	StringInfo response;
-	char *pkey = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
-	Relation indexRel;
+void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping) {
+    char       *properties;
+    Datum      PROPERTIES = CStringGetTextDatum("properties");
+    StringInfo endpoint   = makeStringInfo();
+    StringInfo request    = makeStringInfo();
+    StringInfo response;
+    char       *pkey      = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
+    Relation   indexRel;
 
-	if (pkey == NULL)
-	{
-		pkey = "__no primary key__";
-		elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
-	}
+    if (pkey == NULL) {
+        pkey = "__no primary key__";
+        elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
+    }
 
-	properties = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(mapping), PROPERTIES));
+    properties = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(mapping), PROPERTIES));
 
-	indexRel = index_open(indexDescriptor->indexRelid, RowExclusiveLock);
-	appendStringInfo(request,
-			"{"
-  		    "   \"data\": {"
-			"       \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-			"       \"_source\": { \"enabled\": false },"
-			"       \"_field_names\": { \"index\": \"no\", \"store\": false },"
-			"       \"_parent\": { \"type\": \"xact\" },"
-			"       \"_meta\": { \"primary_key\": \"%s\", \"noxact\": %s },"
-			"       \"properties\" : %s"
-			"   },"
+    indexRel = RelationIdGetRelation(indexDescriptor->indexRelid);
+
+	/*
+	 * First, update the mapping.  It's important that we include all the same properties
+	 * as when we created the index, otherwise they'll be un-set by this call
+	 */
+	appendStringInfo(request, "{"\
+			"   \"data\": {"
+			"      \"_source\": { \"enabled\": false },"
+			"      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
+			"      \"_field_names\": { \"index\": \"no\", \"store\": false },"
+			"      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
+			"      \"date_detection\": false,"
+            "      \"properties\" : %s"
+			"    }"
+            "}", pkey, indexDescriptor->alwaysResolveJoins ? "true" : "false", properties);
+
+    appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("PUT", endpoint->data, request);
+	freeStringInfo(response);
+
+	/*
+	 * Second, update the index settings we can change dynamically
+	 */
+	resetStringInfo(request);
+	resetStringInfo(endpoint);
+
+	appendStringInfo(request, "{"
 			"   \"settings\": {"
+			"      \"refresh_interval\": \"%s\","
 			"      \"number_of_replicas\": %d"
 			"   }"
-			"}",
-			pkey,
-			(ZDBIndexOptionsGetNoXact(indexRel) == true) ? "true" : "false",
-			properties,
-			ZDBIndexOptionsGetNumberOfReplicas(indexRel));
-	index_close(indexRel, RowExclusiveLock);
+			"}", ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
 
-	appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("PUT", endpoint->data, request);
-
-	freeStringInfo(request);
-	freeStringInfo(endpoint);
 	freeStringInfo(response);
+
+	RelationClose(indexRel);
+
+    freeStringInfo(request);
+    freeStringInfo(endpoint);
 }
 
-void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor)
+char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery)
 {
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response = NULL;
+	StringInfo        query;
+	StringInfo        endpoint = makeStringInfo();
+	StringInfo        response;
+	bool              useInvisibilityMap = strstr(userQuery, "#expand") != NULL || indexDescriptor->options != NULL;
+
+	appendStringInfo(endpoint, "%s/%s/_zdbquery", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	if (indexDescriptor->searchPreference != NULL)
+		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+
+	query = buildQuery(indexDescriptor, &userQuery, 1, useInvisibilityMap, strstr(userQuery, "#expand") != NULL);
+	response = rest_call("POST", endpoint->data, query);
+
+	freeStringInfo(query);
+	freeStringInfo(endpoint);
+
+	return response->data;
+}
+
+void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response = NULL;
 
 	appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-
 	response = rest_call("DELETE", endpoint->data, NULL);
-	freeStringInfo(endpoint);
 	freeStringInfo(response);
+
+    freeStringInfo(endpoint);
 }
 
-void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor)
-{
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response;
+void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response;
 
+	elog(LOG, "[zombodb]: Refreshing index %s", indexDescriptor->fullyQualifiedName);
 	appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("GET", endpoint->data, NULL);
 	checkForRefreshError(response);
-	
-	freeStringInfo(endpoint);
+
 	freeStringInfo(response);
+    freeStringInfo(endpoint);
 }
 
-char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId xid, CommandId cid, char **user_queries, int nqueries) {
+char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_queries, int nqueries) {
 	StringInfo request = makeStringInfo();
 	StringInfo endpoint = makeStringInfo();
 	StringInfo response;
@@ -364,7 +446,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId
 		indexName  = descriptors[i]->fullyQualifiedName;
 		preference = descriptors[i]->searchPreference;
 		pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, false);
-		query      = buildQuery(descriptors[i], xid, cid, &user_queries[i], 1, true);
+        query      = buildQuery(descriptors[i], &user_queries[i], 1, true, true);
 
 		if (!preference) preference = "null";
 
@@ -393,7 +475,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId
 	}
 	appendStringInfoChar(request, ']');
 
-	appendStringInfo(endpoint, "%s/%s/data/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
 	response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(request);
@@ -403,21 +485,22 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, TransactionId
 }
 
 
-ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries, uint64 *nhits)
+ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits)
 {
 	StringInfo        query;
 	StringInfo        endpoint = makeStringInfo();
 	StringInfo        response;
 	ZDBSearchResponse *hits;
 	ZDBScore		  max_score;
+	bool              useInvisibilityMap = strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
 
-	query = buildQuery(indexDescriptor, xid, cid, queries, nqueries, false);
-
-	appendStringInfo(endpoint, "%s/%s/xact/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	query = buildQuery(indexDescriptor, queries, nqueries, useInvisibilityMap, strstr(queries[0], "#expand") != NULL);
 	response = rest_call("POST", endpoint->data, query);
+
 	if (response->data[0] != '\0')
 		elog(ERROR, "%s", response->data);
 
@@ -471,19 +554,18 @@ uint64 elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor,
 	return nhits;
 }
 
-uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char **queries, int nqueries)
+uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries)
 {
 	StringInfo query;
 	StringInfo endpoint = makeStringInfo();
 	StringInfo response;
 	uint64     nhits;
 
-	query = buildQuery(indexDescriptor, xid, cid, queries, nqueries, true);
-
-	appendStringInfo(endpoint, "%s/%s/xact/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	query = buildQuery(indexDescriptor, queries, nqueries, true, true);
 	response = rest_call("POST", endpoint->data, query);
 	if (response->data[0] == '{')
 		elog(ERROR, "%s", response->data);
@@ -499,16 +581,14 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, Transact
 
 uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *user_query)
 {
-	StringInfo query    = makeStringInfo();
+	StringInfo query;
 	StringInfo endpoint = makeStringInfo();
 	StringInfo response;
 	uint64     nhits;
 
-	if (indexDescriptor->options)
-		appendStringInfo(query, "#options(%s) ", indexDescriptor->options);
-	appendStringInfo(query, "#child<data>((%s))", user_query);
+    query = buildQuery(indexDescriptor, &user_query, 1, false, true);
 
-	appendStringInfo(endpoint, "%s/%s/xact/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
@@ -525,26 +605,19 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
 	return nhits;
 }
 
-char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *user_query, int64 max_terms, char *sort_order)
+char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms, char *sort_order)
 {
 	StringInfo request = makeStringInfo();
 	StringInfo endpoint = makeStringInfo();
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
-
-	appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s",
-			fieldname,
-			stem,
-			max_terms,
-			sort_order,
-			query->data);
-
-	appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+    query = buildQuery(indexDescriptor, &user_query, 1, true, true);
+	appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s", fieldname, stem, max_terms, sort_order, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(request);
@@ -554,24 +627,19 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, TransactionId xid
 	return response->data;
 }
 
-char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *range_spec, char *user_query)
+char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *user_query)
 {
 	StringInfo request = makeStringInfo();
 	StringInfo endpoint = makeStringInfo();
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
-
-	appendStringInfo(request, "#range(%s, '%s') %s",
-			fieldname,
-			range_spec,
-			query->data);
-
-	appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
+	appendStringInfo(request, "#range(%s, '%s') %s", fieldname, range_spec, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(request);
@@ -581,25 +649,19 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, Transact
 	return response->data;
 }
 
-char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *user_query, int64 max_terms)
+char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms)
 {
 	StringInfo request = makeStringInfo();
 	StringInfo endpoint = makeStringInfo();
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
-
-	appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s",
-			fieldname,
-			stem,
-			max_terms,
-			query->data);
-
-	appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
+	appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s", fieldname, stem, max_terms, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(request);
@@ -609,23 +671,19 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, Trans
 	return response->data;
 }
 
-char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *user_query)
+char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query)
 {
 	StringInfo request = makeStringInfo();
 	StringInfo endpoint = makeStringInfo();
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
-
-	appendStringInfo(request, "#extended_stats(%s) %s",
-			fieldname,
-			query->data);
-
-	appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
+	appendStringInfo(request, "#extended_stats(%s) %s", fieldname, query->data);
 	response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(request);
@@ -636,21 +694,19 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, Transact
 }
 
 
-char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *aggregate_query, char *user_query)
+char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query)
 {
 	StringInfo request = makeStringInfo();
 	StringInfo endpoint = makeStringInfo();
 	StringInfo query;
 	StringInfo response;
 
-	query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	if (indexDescriptor->searchPreference != NULL)
+		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
 	appendStringInfo(request, "%s %s", aggregate_query, query->data);
-
-	appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	if (indexDescriptor->searchPreference != NULL)
-		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
-
 	response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(request);
@@ -660,21 +716,19 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, Tra
 	return response->data;
 }
 
-char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, TransactionId xid, CommandId cid, char *fieldname, char *stem, char *user_query, int64 max_terms)
+char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms)
 {
     StringInfo request = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo query;
     StringInfo response;
 
-    query = buildQuery(indexDescriptor, xid, cid, &user_query, 1, true);
-
-    appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
-
-    appendStringInfo(endpoint, "%s/%s/data/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
+	query = buildQuery(indexDescriptor, &user_query, 1, true, true);
+	appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
     response = rest_call("POST", endpoint->data, request);
 
     freeStringInfo(request);
@@ -710,16 +764,17 @@ char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, ch
 }
 
 
-char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor)
-{
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response;
+char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor) {
+    char *indexName = palloc(strlen(indexDescriptor->fullyQualifiedName) + 3);
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response;
 
-	appendStringInfo(endpoint, "%s/%s/_mapping", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	response = rest_call("GET", endpoint->data, NULL);
+    sprintf(indexName, "%s", indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_mapping", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("GET", endpoint->data, NULL);
 
-	freeStringInfo(endpoint);
-	return TextDatumGetCString(DirectFunctionCall2(json_object_field, CStringGetTextDatum(response->data), CStringGetTextDatum(indexDescriptor->fullyQualifiedName)));
+    freeStringInfo(endpoint);
+    return TextDatumGetCString(DirectFunctionCall2(json_object_field, CStringGetTextDatum(response->data), CStringGetTextDatum(indexName)));
 }
 
 char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, char *fieldname)
@@ -731,8 +786,8 @@ char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, ch
 	if (indexDescriptor->options)
 		appendStringInfo(request, "#options(%s) ", indexDescriptor->options);
 
-	appendStringInfo(endpoint, "%s/%s/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
-	response = rest_call("POST", endpoint->data, request);
+    appendStringInfo(endpoint, "%s/%s/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
+    response = rest_call("POST", endpoint->data, request);
 
 	freeStringInfo(endpoint);
 	freeStringInfo(request);
@@ -745,9 +800,9 @@ char *elasticsearch_analyzeText(ZDBIndexDescriptor *indexDescriptor, char *analy
 	StringInfo request = makeStringInfo();
 	StringInfo response;
 
-	appendStringInfo(request, "%s", data);
-	appendStringInfo(endpoint, "%s/%s/_analyze?analyzer=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, analyzerName);
-	response = rest_call("GET", endpoint->data, request);
+    appendStringInfo(request, "%s", data);
+    appendStringInfo(endpoint, "%s/%s/_analyze?analyzer=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, analyzerName);
+    response = rest_call("GET", endpoint->data, request);
 
 	freeStringInfo(endpoint);
 	freeStringInfo(request);
@@ -788,11 +843,10 @@ ZDBSearchResponse *elasticsearch_getPossiblyExpiredItems(ZDBIndexDescriptor *ind
 	StringInfo        response;
 	ZDBSearchResponse *items;
 
-	appendStringInfo(endpoint, "%s/%s/data/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (indexDescriptor->searchPreference != NULL)
 		appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-	appendStringInfo(request, "#parent<xact>(_xmax_is_committed = true OR _xmin_is_committed = false)");
 	response = rest_call("POST", endpoint->data, request);
 	if (response->data[0] != '\0')
 		elog(ERROR, "%s", response->data);
@@ -816,68 +870,73 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
 	ListCell *lc;
+	int cnt=0;
 
-	appendStringInfo(endpoint, "%s/%s/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 	foreach(lc, itemPointers)
 	{
-		ItemPointerData *item = lfirst(lc);
+		ItemPointer item = lfirst(lc);
 
-		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"xact\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
-		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\", \"_type\": \"data\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+		cnt++;
+		appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
 		if (request->len >= indexDescriptor->batch_size)
 		{
+			elog(LOG, "[zombodb] VACUUMing %d records of %d for %s", cnt, nitems, indexDescriptor->fullyQualifiedName);
 			response = rest_call("POST", endpoint->data, request);
 			checkForBulkError(response, "delete");
 
 			resetStringInfo(request);
 			freeStringInfo(response);
+			cnt = 0;
 		}
 	}
 
 	if (request->len > 0)
 	{
+		elog(LOG, "[zombodb] VACUUMing %d records of %d for %s", cnt, nitems, indexDescriptor->fullyQualifiedName);
 		response = rest_call("POST", endpoint->data, request);
 		checkForBulkError(response, "delete");
+	}
+
+	if (!zdb_batch_mode_guc) {
+		if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+			elasticsearch_refreshIndex(indexDescriptor);
+		}
 	}
 
 	freeStringInfo(endpoint);
 	freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_committed, bool xmax_committed, text *value, StringInfo bulk)
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk)
 {
-	/* the xact state */
-	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"xact\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
-	appendStringInfo(bulk, "{"
-					"\"_xmin\":%d,"
-					"\"_xmax\":%d,"
-					"\"_cmin\":%d,"
-					"\"_cmax\":%d,"
-					"\"_xmin_is_committed\":%s,"
-					"\"_xmax_is_committed\":%s"
-					"}\n",
-			xmin,
-			xmax,
-			cmin,
-			cmax,
-			xmin_committed ? "true" : "false",
-			xmax_committed ? "true" : "false"
-	);
-
 	/* the data */
-	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_type\":\"data\",\"_parent\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid), ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
-	appendBinaryStringInfoAndStripLineBreaks(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
-	appendStringInfoCharMacro(bulk, '\n');
+	appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
+	if (indexDescriptor->hasJson)
+		appendBinaryStringInfoAndStripLineBreaks(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
+	else
+		appendBinaryStringInfo(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
+
+	/* backup to remove the last '}' of the value json, so that we can... */
+	while (bulk->data[bulk->len] != '}')
+		bulk->len--;
+
+	/* ...append our transaction id to the json */
+	appendStringInfo(bulk, ",\"_xid\":%lu}\n", ConvertedTopTransactionId);
 }
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, TransactionId xmin, TransactionId xmax, CommandId cmin, CommandId cmax, bool xmin_is_committed, bool xmax_is_committed, text *data)
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data)
 {
 	BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
 
-	appendBatchInsertData(indexDescriptor, ctid, xmin, xmax, cmin, cmax, xmin_is_committed, xmax_is_committed, data, batch->bulk);
+	appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk);
 	batch->nprocessed++;
+
+	if (batch->nprocessed % 1000) {
+		rest_multi_perform(batch->rest);
+	}
 
 	if (batch->bulk->len > indexDescriptor->batch_size)
 	{
@@ -885,7 +944,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 		int idx;
 
 		/* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-		appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+		appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 		if (batch->rest->available == 0)
 			rest_multi_partial_cleanup(batch->rest, false, true);
@@ -907,7 +966,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
 		batch->nrequests++;
 
-		elog(LOG, "Indexed %d rows for %s", batch->nprocessed, indexDescriptor->fullyQualifiedName);
+		elog(LOG, "[zombodb] Indexed %d rows for %s", batch->nprocessed, indexDescriptor->fullyQualifiedName);
 	}
 }
 
@@ -932,15 +991,21 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 			StringInfo endpoint = makeStringInfo();
 			StringInfo response;
 
-			appendStringInfo(endpoint, "%s/%s/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+			appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 			if (batch->nrequests == 0)
 			{
 				/*
 				 * if this is the only request being made in this batch, then we'll ?refresh=true
-				 * to avoid an additional round-trip to ES
+				 * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
+				 * and b) if the index refresh interval is -1
 				 */
-				appendStringInfo(endpoint, "?refresh=true");
+				if (!zdb_batch_mode_guc) {
+					if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+						appendStringInfo(endpoint, "?refresh=true");
+					}
+				}
+
 				response = rest_call("POST", endpoint->data, batch->bulk);
 			}
 			else
@@ -954,103 +1019,28 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor)
 			freeStringInfo(response);
 		}
 
-		/*
-		 * If this wasn't the only request being made in this batch
-		 * then ask ES to refresh the index
-		 */
-		if (batch->nrequests > 0)
-			elasticsearch_refreshIndex(indexDescriptor);
-
 		freeStringInfo(batch->bulk);
 
-		if (batch->nrequests > 0)
-			elog(LOG, "Indexed %d rows in %d requests for %s", batch->nprocessed, batch->nrequests+1, indexDescriptor->fullyQualifiedName);
+		if (batch->nrequests > 0) {
+			elog(LOG, "[zombodb] Indexed %d rows in %d requests for %s", batch->nprocessed, batch->nrequests + 1, indexDescriptor->fullyQualifiedName);
+
+			/*
+             * If this wasn't the only request being made in this batch
+             * then ask ES to refresh the index, but only if a) we're not in batch mode
+             * and b) if the index refresh interval is -1
+             */
+			if (!zdb_batch_mode_guc) {
+				if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+					elasticsearch_refreshIndex(indexDescriptor);
+				}
+			}
+		}
 
 		batchInsertDataList = list_delete(batchInsertDataList, batch);
 		pfree(batch);
 	}
 }
 
-void elasticsearch_commitXactData(ZDBIndexDescriptor *indexDescriptor, List *xactData)
-{
-	ListCell   *lc;
-	StringInfo endpoint = makeStringInfo();
-	StringInfo bulk     = makeStringInfo();
-	StringInfo response;
-	int batchno = 1;
-
-	foreach(lc, xactData)
-	{
-		ZDBCommitXactData *data = lfirst(lc);
-
-		switch (data->type)
-		{
-			case ZDB_COMMIT_TYPE_NEW:
-			{
-				ZDBCommitNewXactData *new = (ZDBCommitNewXactData *) data;
-
-				appendStringInfo(bulk,
-						"{\"update\":{\"_id\":\"%d-%d\"}}\n"
-								"{\"doc\":{\"_xmin_is_committed\":true}}\n",
-						ItemPointerGetBlockNumber(new->header.ctid),
-						ItemPointerGetOffsetNumber(new->header.ctid)
-				);
-			}
-            break;
-
-			case ZDB_COMMIT_TYPE_EXPIRED:
-			{
-				ZDBCommitExpiredXactData *expired = (ZDBCommitExpiredXactData *) data;
-
-				appendStringInfo(bulk,
-						"{\"update\":{\"_id\":\"%d-%d\"}}\n"
-								"{\"doc\":{\"_xmax\":%d,\"_cmax\":%d,\"_xmax_is_committed\":true}}\n",
-						ItemPointerGetBlockNumber(expired->header.ctid),
-						ItemPointerGetOffsetNumber(expired->header.ctid),
-						expired->xmax,
-						expired->cmax
-				);
-			}
-            break;
-
-			case ZDB_COMMIT_TYPE_ALL:
-				elog(ERROR, "Unexpected CommitXactDataType: ZDB_COMMIT_TYPE_ALL");
-				break;
-		}
-
-		if (bulk->len > indexDescriptor->batch_size)
-		{
-			elog(LOG, "POSTING %d bytes for xact data during COMMIT, batch #%d", bulk->len, batchno);
-			appendStringInfo(endpoint, "%s/%s/xact/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-			response = rest_call("POST", endpoint->data, bulk);
-			checkForBulkError(response, "xact");
-
-			resetStringInfo(bulk);
-			resetStringInfo(endpoint);
-			freeStringInfo(response);
-			batchno++;
-		}
-	}
-
-	if (batchno > 0)
-	{
-		if (batchno > 1)
-			elog(LOG, "POSTING final %d bytes for xact data during COMMIT, batch #%d", bulk->len, batchno);
-
-		appendStringInfo(endpoint, "%s/%s/xact/_bulk?refresh=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batchno ==1 ? "true" : "false");
-		response = rest_call("POST", endpoint->data, bulk);
-		checkForBulkError(response, "xact");
-		freeStringInfo(response);
-	}
-
-	if (batchno > 1)
-		elasticsearch_refreshIndex(indexDescriptor);
-
-	freeStringInfo(bulk);
-	freeStringInfo(endpoint);
-}
-
-void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType)
-{
-	batchInsertDataList = NULL;
+void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {
+    batchInsertDataList = NULL;
 }

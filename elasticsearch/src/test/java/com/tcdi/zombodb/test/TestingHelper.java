@@ -1,5 +1,5 @@
 /*
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,15 +12,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */package com.tcdi.zombodb.test;
+ */
+package com.tcdi.zombodb.test;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 
-/**
- * Created by e_ridge on 11/11/15.
- */
 public class TestingHelper {
 
     public static void copyFile(InputStream in, File destination) throws Exception {

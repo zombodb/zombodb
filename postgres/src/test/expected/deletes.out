@@ -1,4 +1,3 @@
-SET datestyle TO 'iso, mdy';
 -- vacuum the so_posts table to make sure there are no dead rows in our ES index
 VACUUM so_posts;
 --
@@ -20,22 +19,14 @@ SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM 
  t
 (1 row)
 
--- elasticsearch will think we still have access to 10k records because we don't
--- push xact information until the transaction commits;
-SELECT assert(zdb_estimate_count('so_posts', 'id:*'), 165240, 'make sure ES still sees deleted rows');
+SELECT assert(zdb_estimate_count('so_posts', 'id:*'), 162240, 'make sure ES does not still sees deleted rows');
  assert 
 --------
  t
 (1 row)
 
--- the *actual* number of records elasticsearch has in both the 'xact' and 'data' types
+-- the *actual* number of records elasticsearch has in the and 'data' type
 -- should actually be 10k as well
-SELECT assert (zdb_actual_index_record_count('so_posts', 'xact'), 165240, 'actual xact after delete');
- assert 
---------
- t
-(1 row)
-
 SELECT assert (zdb_actual_index_record_count('so_posts', 'data'), 165240, 'actual data after delete');
  assert 
 --------
@@ -70,14 +61,8 @@ SELECT assert(count(*), 165240, 'restored deleted 3k records to so_posts (id:*)'
  t
 (1 row)
 
--- now the *actual* number of records elasticsearch has in both the 'xact' and 'data' types
+-- now the *actual* number of records elasticsearch has in the 'data' type
 -- should be 13k:  the initial 10k plus the 3k we just added
-SELECT assert (zdb_actual_index_record_count('so_posts', 'xact'), 168240, 'actual xact after inserting 3k');
- assert 
---------
- t
-(1 row)
-
 SELECT assert (zdb_actual_index_record_count('so_posts', 'data'), 168240, 'actual data after inserting 3k');
  assert 
 --------
@@ -87,12 +72,6 @@ SELECT assert (zdb_actual_index_record_count('so_posts', 'data'), 168240, 'actua
 -- vacuum the so_posts table to remove dead rows (3k of them)
 VACUUM so_posts;
 -- and now the *actual* number of records elasticsearch has should be 10k
-SELECT assert (zdb_actual_index_record_count('so_posts', 'xact'), 165240, 'actual xact after vacuum');
- assert 
---------
- t
-(1 row)
-
 SELECT assert (zdb_actual_index_record_count('so_posts', 'data'), 165240, 'actual data after vacuum');
  assert 
 --------
@@ -132,12 +111,6 @@ SELECT assert(count(*), 165240, 'aborted deleted 3k records to so_posts (id:*)')
 -- vacuum the so_posts table to remove dead rows (3k of them)
 VACUUM so_posts;
 -- and now the *actual* number of records elasticsearch has should still be 10k
-SELECT assert (zdb_actual_index_record_count('so_posts', 'xact'), 165240, 'actual xact after aborting delete and vacuum');
- assert 
---------
- t
-(1 row)
-
 SELECT assert (zdb_actual_index_record_count('so_posts', 'data'), 165240, 'actual data after aborting delete and vacuum');
  assert 
 --------

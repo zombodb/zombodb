@@ -3,7 +3,7 @@
 VERSION=$1
 BASE=`pwd`
 DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise"
-POSTGRES_VERSION="9.3"
+POSTGRES_VERSION="9.5"
 
 ##
 # compile ZomboDB for target distros
@@ -38,4 +38,4 @@ mkdir -p tarball/lib tarball/share
 cp -Rp ubuntu_precise/usr/lib/postgresql/${POSTGRES_VERSION}/lib/* tarball/lib
 cp -Rp ubuntu_precise/usr/share/postgresql/${POSTGRES_VERSION}/* tarball/share
 cd tarball/
-tar czf ../zombodb-precise-pg93-$VERSION.tgz .
+tar czf ../zombodb-precise-pg95-$VERSION.tgz .

@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.tcdi.elasticsearch</groupId>
         <artifactId>zombodb-parent</artifactId>
-        <version>2.6.14</version>
+        <version>3.0.0</version>
     </parent>
 
     <artifactId>zombodb</artifactId>
@@ -52,7 +52,7 @@
                                     <goal>rpm</goal>
                                 </goals>
                                 <configuration>
-                                    <name>${project.artifactId}_centos6_pg93</name>
+                                    <name>${project.artifactId}_centos6_pg95</name>
                                     <group>Applications/Programming</group>
                                     <license>(c) 2015 ZomboDB, LLC under the Apache v2 license</license>
                                     <needarch>x86_64</needarch>
@@ -79,7 +79,7 @@
                                     <goal>attached-rpm</goal>
                                 </goals>
                                 <configuration>
-                                    <name>${project.artifactId}_centos7_pg93</name>
+                                    <name>${project.artifactId}_centos7_pg95</name>
                                     <group>Applications/Programming</group>
                                     <license>(c) 2015 ZomboDB, LLC under the Apache v2 license</license>
                                     <needarch>x86_64</needarch>
@@ -113,7 +113,7 @@
                                     <goal>jdeb</goal>
                                 </goals>
                                 <configuration>
-                                    <deb>${project.build.directory}/${project.artifactId}_precise_pg93-${project.version}_amd64.deb
+                                    <deb>${project.build.directory}/${project.artifactId}_precise_pg95-${project.version}_amd64.deb
                                     </deb>
                                     <dataSet>
                                         <data>
@@ -134,7 +134,7 @@
                                     <goal>jdeb</goal>
                                 </goals>
                                 <configuration>
-                                    <deb>${project.build.directory}/${project.artifactId}_trusty_pg93-${project.version}_amd64.deb
+                                    <deb>${project.build.directory}/${project.artifactId}_trusty_pg95-${project.version}_amd64.deb
                                     </deb>
                                     <dataSet>
                                         <data>
