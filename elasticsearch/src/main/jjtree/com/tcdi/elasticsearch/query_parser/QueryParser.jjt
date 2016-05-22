@@ -307,7 +307,7 @@ void LeftField() #LeftField :
     Token t;
 }
 {
-    t = <IDENTIFIER>
+    ( t = <IDENTIFIER> | t = <DOTTED_IDENTIFIER> )
     { jjtThis.value = t.image; }
 }
 
@@ -328,7 +328,7 @@ void RightField() #RightField :
     Token t;
 }
 {
-    t = <IDENTIFIER>
+    ( t = <IDENTIFIER> | t = <DOTTED_IDENTIFIER> )
     { jjtThis.value = t.image; }
 }
 

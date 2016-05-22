@@ -20,7 +20,7 @@
 #include "catalog/indexing.h"
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_type.h"
-#include "rewrite/rewriteHandler.h"
+#include "parser/parsetree.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/rel.h"
@@ -56,14 +56,30 @@ static FuncExpr *extract_zdb_funcExpr_from_view(Relation viewRel, Oid *heapRelOi
 		TargetEntry *te = (TargetEntry *) lfirst(lc);
 
 		if (te->resname && strcmp("zdb", te->resname) == 0) {
-			if (!IsA(te->expr, FuncExpr))
-				elog(ERROR, "The 'zdb' column in view '%s' is not a function", RelationGetRelationName(viewRel));
+			if (IsA(te->expr, Var)) {
+				Var *var = (Var *) te->expr;
+				switch(var->varno) {
+					case INNER_VAR:
+					case OUTER_VAR:
+						elog(ERROR, "The 'zdb' column in view '%s' is a Var we don't understand", RelationGetRelationName(viewRel));
+						break;
 
-			funcExpr = (FuncExpr *) te->expr;
+					default: {
+						RangeTblEntry *rentry = rt_fetch(var->varno, viewDef->rtable);
+						*heapRelOid = rentry->relid;
+						return NULL;
+					}
+				}
+			} else {
+				if (!IsA(te->expr, FuncExpr))
+					elog(ERROR, "The 'zdb' column in view '%s' is not a function", RelationGetRelationName(viewRel));
 
-			validate_zdb_funcExpr(funcExpr, heapRelOid);
+				funcExpr = (FuncExpr *) te->expr;
 
-			return funcExpr;
+				validate_zdb_funcExpr(funcExpr, heapRelOid);
+
+				return funcExpr;
+			}
 		}
 	}
 
@@ -128,6 +144,40 @@ Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
 	return zdbIndexRelId;
 }
 
+Oid zdb_determine_index_oid_by_heap(Oid heapRelOid) {
+	/**
+     * The index we use here is the index from the table specified by the column named 'zdb'
+     * that has a functional expression that matches the functional expression of the column named 'zdb'
+     */
+	Oid      zdbIndexRelId = InvalidOid;
+	Relation heapRel;
+	List     *indexes;
+	ListCell *lc;
+
+	heapRel = RelationIdGetRelation(heapRelOid);
+	indexes = RelationGetIndexList(heapRel);
+	foreach(lc, indexes) {
+		Oid      indexRelOid = (Oid) lfirst_oid(lc);
+		Relation indexRel    = RelationIdGetRelation(indexRelOid);
+
+		if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
+			zdbIndexRelId = indexRelOid;
+
+		RelationClose(indexRel);
+
+		if (zdbIndexRelId != InvalidOid)
+			break;
+	}
+
+	if (zdbIndexRelId == InvalidOid) {
+		RelationClose(heapRel);
+		elog(ERROR, "Unable to find ZomboDB index for table '%s'", RelationGetRelationName(heapRel));
+	}
+
+	RelationClose(heapRel);
+	return zdbIndexRelId;
+}
+
 Datum zdb_determine_index(PG_FUNCTION_ARGS) {
 	Oid      relid         = PG_GETARG_OID(0);
 	Oid      zdbIndexRelId = InvalidOid;
@@ -141,9 +191,15 @@ Datum zdb_determine_index(PG_FUNCTION_ARGS) {
 			FuncExpr *funcExpr;
 
 			funcExpr = extract_zdb_funcExpr_from_view(table_or_view_rel, &heapRelOid);
-			zdbIndexRelId = zdb_determine_index_oid(funcExpr, heapRelOid);
 
-			break;
+			if (funcExpr != NULL) {
+				zdbIndexRelId = zdb_determine_index_oid(funcExpr, heapRelOid);
+				break;
+			} else {
+				RelationClose(table_or_view_rel);
+				table_or_view_rel = RelationIdGetRelation(heapRelOid);
+				/* notice follow-through here */
+			}
 		}
 
 		case RELKIND_MATVIEW:

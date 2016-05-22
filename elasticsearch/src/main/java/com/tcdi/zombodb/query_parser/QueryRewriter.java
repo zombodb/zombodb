@@ -59,17 +59,17 @@ public abstract class QueryRewriter {
             }
         }
 
-        public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup) {
+        public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
             if (IS_SIREN_AVAILABLE) {
                 try {
                     Class clazz = Class.forName("com.tcdi.zombodb.query_parser.SirenQueryRewriter");
-                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class);
-                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup);
+                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class);
+                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
                 } catch (Exception e) {
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
             } else {
-                return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup);
+                return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
             }
         }
     }
@@ -136,7 +136,7 @@ public abstract class QueryRewriter {
 
     protected final IndexMetadataManager metadataManager;
 
-    public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup) {
+    public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
         this.client = client;
         this.searchPreference = searchPreference;
         this.doFullFieldDataLookup = doFullFieldDataLookup;
@@ -159,7 +159,8 @@ public abstract class QueryRewriter {
 
         ASTAggregate aggregate = tree.getAggregate();
         ASTSuggest suggest = tree.getSuggest();
-        if (aggregate != null || suggest != null) {
+        boolean hasAgg = aggregate != null || suggest != null;
+        if (hasAgg) {
             String fieldname = aggregate != null ? aggregate.getFieldname() : suggest.getFieldname();
             final ASTIndexLink indexLink = metadataManager.findField(fieldname);
             if (indexLink != metadataManager.getMyIndex()) {
@@ -169,18 +170,24 @@ public abstract class QueryRewriter {
             }
         }
 
-        performCoreOptimizations(client);
-        performCustomOptimizations();
+        performOptimizations(client);
+
+        if (!metadataManager.getMetadataForMyIndex().alwaysResolveJoins()) {
+            if (canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
+                metadataManager.setMyIndex(metadataManager.getUsedIndexes().iterator().next());
+            }
+        }
     }
 
-    protected void performCoreOptimizations(Client client) {
+    /**
+     * Subclasses can override if additional optimizations are necessary, but
+     * they should definitely call {@link super#performOptimizations()}
+     */
+    protected void performOptimizations(Client client) {
         new ArrayDataOptimizer(tree, metadataManager, arrayData).optimize();
         new IndexLinkOptimizer(client, this, tree, metadataManager).optimize();
         new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
     }
-
-    /* subclasses can override if additional optimizations are necessary */
-    protected abstract void performCustomOptimizations();
 
     public String dumpAsString() {
         return tree.dumpAsString();
@@ -639,7 +646,17 @@ public abstract class QueryRewriter {
 
     private String nested = null;
 
-    protected abstract QueryBuilder build(final ASTExpansion node);
+    protected QueryBuilder build(ASTExpansion node) {
+        QueryBuilder expansionBuilder =  build(node.getQuery());
+        QueryParserNode filterQuery = node.getFilterQuery();
+        if (filterQuery != null) {
+            BoolQueryBuilder bqb = boolQuery();
+            bqb.must(applyExclusion(build(node.getQuery()), node.getIndexLink().getIndexName()));
+            bqb.must(build(filterQuery));
+            expansionBuilder = bqb;
+        }
+        return expansionBuilder;
+    }
 
     private QueryBuilder build(ASTWord node) {
         return buildStandard(node, new QBF() {

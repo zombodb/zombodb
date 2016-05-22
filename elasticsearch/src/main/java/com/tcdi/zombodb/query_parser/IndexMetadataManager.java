@@ -192,6 +192,28 @@ public class IndexMetadataManager {
         return myIndex;
     }
 
+    private ASTIndexLink findFieldForLink(String fieldname) {
+        if (fieldname.contains(".")) {
+            String prefix = fieldname.substring(0, fieldname.indexOf('.'));
+            ASTIndexLink link = getExternalIndexLink(prefix);
+            fieldname = fieldname.substring(fieldname.indexOf('.')+1);
+            IndexMetadata md = getMetadata(link);
+            return (md != null && md.hasField(fieldname)) ? link : myIndex;
+        }
+
+        for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings) {
+            ASTIndexLink link = ilam.link;
+
+            if (fieldname.equals(link.getFieldname()))
+                return link;
+
+            IndexMetadata md = getMetadata(link);
+            if (md != null && md.hasField(fieldname))
+                return link;
+        }
+        return myIndex;
+    }
+
     public List<FieldAndIndexPair> resolveAllField() {
         if (allFields != null)
             return allFields;
@@ -254,7 +276,10 @@ public class IndexMetadataManager {
         if (!relationshipManager.relationshipsDefined()) {
             for (IndexLinkAndMapping ilm : mappings) {
                 ASTIndexLink link = ilm.link;
-                relationshipManager.addRelationship(findField(link.getLeftFieldname()).getIndexName(), link.getLeftFieldname(), link.getIndexName(), link.getRightFieldname());
+                String leftFieldname = link.getLeftFieldname();
+                if (leftFieldname.contains("."))
+                    leftFieldname = leftFieldname.substring(leftFieldname.indexOf(".")+1);
+                relationshipManager.addRelationship(findFieldForLink(link.getLeftFieldname()).getIndexName(), leftFieldname, link.getIndexName(), link.getRightFieldname());
             }
         }
 

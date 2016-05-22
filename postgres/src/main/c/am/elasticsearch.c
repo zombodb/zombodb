@@ -273,7 +273,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_source\": { \"enabled\": false },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
             "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-            "          \"_meta\": { \"primary_key\": \"%s\" },"
+            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
             "      }"
@@ -289,7 +289,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "         \"analyzer\": { %s }"
             "      }"
             "   }"
-            "}", pkey, fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"));
+            "}", pkey, indexDescriptor->alwaysResolveJoins ? "true" : "false", fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"));
 
 	appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("POST", endpoint->data, indexSettings);
@@ -353,11 +353,11 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
 			"      \"_source\": { \"enabled\": false },"
 			"      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
 			"      \"_field_names\": { \"index\": \"no\", \"store\": false },"
-			"      \"_meta\": { \"primary_key\": \"%s\" },"
+			"      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
 			"      \"date_detection\": false,"
             "      \"properties\" : %s"
 			"    }"
-            "}", pkey, properties);
+            "}", pkey, indexDescriptor->alwaysResolveJoins ? "true" : "false", properties);
 
     appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("PUT", endpoint->data, request);

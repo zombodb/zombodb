@@ -26,6 +26,7 @@ The `WITH` settings are:
 - `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).
 - `shards` **optional**:  The number of Elasticsearch shards to use.  The default is `5`.  Changing this value requires a `REINDEX` before the new value becomes live.
 - `replicas` **optional**:  The number of Elasticsearch replicas to use.  The default is `1` and allowed values are `[0..64]`.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.
+- `always_resolve_joins` **optional**:  The default is `false` which allows ZomboDB to directly query a linked index for aggregates and `zdb_estimate_count()` when the query only queries fields from one linked index (see `options` under Advanced Settings below along with the [INDEX-OPTIONS](INDEX-OPTIONS.md) documentation).  If your links/joins are always 1-to-1, this is perfectly safe and quite a performance improvement.  If your links/joins are 1-to-many (or many-to-1) this is not safe and you should set the value to `true`.
 
 ### Advanced Settings
 - `options` **optional**:  `options` is a ZomboDB-specific string that allows you to define how this index relates to other indexes.  This is an advanced-use feature and is documented [here](INDEX-OPTIONS.md).

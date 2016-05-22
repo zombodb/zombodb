@@ -40,6 +40,7 @@ STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, It
 
 extern List *SEQUENTIAL_SCAN_INDEXES;
 extern HTAB *SEQUENTIAL_SCANS;
+extern List *CURRENT_QUERY_STACK;
 
 extern Datum zdb_seqscan(PG_FUNCTION_ARGS);
 extern void zdb_sequential_scan_support_cleanup(void);

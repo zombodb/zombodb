@@ -43,7 +43,7 @@ Unfortunately, the above query will return zero rows because the index on `book`
 We need to tell the index on `book` how to find corresponding `book_content` using an "index link".  This is done through ZomboDB's index `options`:
 
 ```sql
-ALTER INDEX idxbooks SET (options='id=<book_content.idxcontent>book_id');
+ALTER INDEX idxbook SET (options='id=<book_content.idxcontent>book_id');
 ```
 
 Now, when you run the above query, it'll be able to transparently search **both** indexes and "join" the matching data while searching.
@@ -61,13 +61,13 @@ Index links can also be named, such that the fields behind the link appear to be
 Taking the example from above:
 
 ```sql
-ALTER INDEX idxbooks SET (options='id=<book_content.idxcontent>book_id');
+ALTER INDEX idxbook SET (options='id=<book_content.idxcontent>book_id');
 ```
 
 We could have, for example, named the index link `book_content`:
 
 ```sql
-ALTER INDEX idxbooks SET (options='book_content:(id=<book_content.idxcontent>book_id)');
+ALTER INDEX idxbook SET (options='book_content:(id=<book_content.idxcontent>book_id)');
 ```
 
 And then the query would be:
