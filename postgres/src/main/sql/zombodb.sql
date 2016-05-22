@@ -72,7 +72,6 @@ CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c
 --
 -- trigger support
 --
-CREATE OR REPLACE FUNCTION zdbtupledeletedtrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
@@ -160,6 +159,11 @@ CREATE VIEW zdb_index_stats_fast AS
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas
   FROM stats;
 
+CREATE OR REPLACE FUNCTION zdb_internal_update_mapping(index_oid oid) RETURNS void STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_update_mapping(table_name regclass) RETURNS void STRICT IMMUTABLE LANGUAGE sql AS $$
+    SELECT zdb_internal_update_mapping(zdb_determine_index(table_name));
+$$;
+
 CREATE OR REPLACE FUNCTION zdb_internal_actual_index_record_count(type_oid oid, type_name text) RETURNS bigint STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdb_actual_index_record_count(table_name regclass, type_name text) RETURNS bigint STRICT IMMUTABLE LANGUAGE sql AS $$
     SELECT zdb_internal_actual_index_record_count(zdb_determine_index(table_name), type_name);
@@ -187,6 +191,10 @@ CREATE OR REPLACE FUNCTION zdb_get_index_field_lists(table_name regclass) RETURN
       from regexp_split_to_table(zdb_internal_get_index_field_lists(zdb_determine_index($1)), '\]\s*,') x;
 $$;
 
+CREATE OR REPLACE FUNCTION zdb_internal_dump_query(index_oid oid, user_query text) RETURNS text STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_dump_query(table_name regclass, user_query text) RETURNS text STRICT IMMUTABLE LANGUAGE sql AS $$
+  SELECT zdb_internal_dump_query(zdb_determine_index(table_name), user_query);
+$$;
 
 CREATE TYPE zdb_tally_order AS ENUM ('count', 'term', 'reverse_count', 'reverse_term');
 CREATE TYPE zdb_tally_response AS (term text, count bigint);

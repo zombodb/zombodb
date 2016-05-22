@@ -15,9 +15,6 @@
  */
 package com.tcdi.zombodb.query_parser;
 
-/**
-* Created by e_ridge on 2/11/15.
-*/
 class FieldAndIndexPair {
     ASTIndexLink link;
     String fieldname;

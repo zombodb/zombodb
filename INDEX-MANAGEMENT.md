@@ -25,7 +25,8 @@ The `WITH` settings are:
 ### Basic Settings
 - `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).
 - `shards` **optional**:  The number of Elasticsearch shards to use.  The default is `5`.  Changing this value requires a `REINDEX` before the new value becomes live.
-- `replicas` **optional**:  The number of Elasticsearch replicas to use.  The default is `1`.  Changing this value requires a `REINDEX` before the new value becomes live.  In the case of `replicas`, this is a limition of ZomboDB that may be lifted in the future.
+- `replicas` **optional**:  The number of Elasticsearch replicas to use.  The default is `1` and allowed values are `[0..64]`.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.
+- `always_resolve_joins` **optional**:  The default is `false` which allows ZomboDB to directly query a linked index for aggregates and `zdb_estimate_count()` when the query only queries fields from one linked index (see `options` under Advanced Settings below along with the [INDEX-OPTIONS](INDEX-OPTIONS.md) documentation).  If your links/joins are always 1-to-1, this is perfectly safe and quite a performance improvement.  If your links/joins are 1-to-many (or many-to-1) this is not safe and you should set the value to `true`.
 
 ### Advanced Settings
 - `options` **optional**:  `options` is a ZomboDB-specific string that allows you to define how this index relates to other indexes.  This is an advanced-use feature and is documented [here](INDEX-OPTIONS.md).
@@ -34,8 +35,15 @@ The `WITH` settings are:
 
 ### Operational Settings
 - `preference` **optional**:  The Elasticsearch [search preference](https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-preference.html) to use.  The default is `null`, meaning no search preference is used.
-- `bulk_concurrency` **optional**:  Specifies the maximum number of concurrent HTTP requests, per Postgres backend, to use when making "bulk" changes, which include CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE statements.  The default is `12` and allowed values are in the set `[1..12]`
-- `batch_size` **optional**:  Specifies the size, in bytes, for batch POST data.  Affects CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE, and VACUUM statements.  The default is `8388608` bytes (8MB) and allowed values are `[1k..64MB]`.
+- `bulk_concurrency` **optional**:  Specifies the maximum number of concurrent HTTP requests, per Postgres backend, to use when making "batch" changes, which include CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE statements.  The default is `12` and allowed values are in the set `[1..1024]`
+- `batch_size` **optional**:  Specifies the size, in bytes, for batch POST data.  Affects CREATE INDEX/REINDEX, INSERT, UPDATE, DELETE, and VACUUM statements.  The default is `8388608` bytes (8MB) and allowed values are `[1k..1Gb]`.
+- `refresh_interval` **optional**:  This setting directly relates to Elasticsearch's [`index.refresh_interval`](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/setup-configuration.html#configuration-index-settings).  The default value is `-1`, meaning ZomboDB will control index refreshes such that modified rows are always immediately visible.  If a time delay is okay, change this setting to something like `5s` for five seconds.  This can help improve single-record INSERT/UPDATE performance at the expense of when the rows are actually searchable.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.    
+- `ignore_visibility` **optional**:  Controls, on a per-index level, if queries that require row visibility information to be MVCC-correct should honor it.  The default is `false`, meaning all queries are MVCC-correct.  Set this to `true` if you don't need exact values for aggregates and `zdb_estimate_count()`.
+
+### Per-session Settings
+
+- `zombodb.batch_mode`:  This is a boolean "GUC" that controls how ZomboDB sends index changes to Elasticsearch.  The default is `false` and means that ZomboDB sends index changes to ES on a per-statement level.  Setting this to `true` will cause ZomboDB to batch index changes through the life of the transaction, and the final set of changes won't be available for search until `COMMIT`.  This can be changed interactively by issuing `SET zombodb.batch_mode = true;`
+- `zombodb.ignore_visibility`:  This is a boolean "GUC" that controls if ZomboDB will honor MVCC visibility rules.  The default is `false` meaning it will, but you can `SET zombodb.ignore_visibility = true;` if you don't mind having dead/invisible rows counted in aggregates and `zdb_estimate_count()`.  This is similiar to the index-level setting of the same name, but can be controlled per session.
 
 ## DROP INDEX
 
@@ -67,13 +75,16 @@ ALTER INDEX idxname SET (replicas=3);
 ALTER INDEX idxname RESET (preference);
 ```
 
-Currently, a `REINDEX` is required after changing an index setting that would affect the physical structure of the underlying Elasticsearch index.  This includes changing both `shards` and `replicas`, despite Elasticsearch being able to dynamically add/remove replicas.  This may be resolved in a future version.
+Chagning non-structure settings such as `replicas` and `refresh_interval` do not require a reindex, but do require you call `zdb_update_mapping(tablename)` to push these changes to Elasticsearch.
+
+However, a `REINDEX` is required after changing an index setting that would affect the physical structure of the underlying Elasticsearch index, specifically `shards`.  This is a limitation of Elasticsearch in that shard count is fixed at index creation time.
+
 
 ## ALTER TABLE
 
 The various forms of ALTER TABLE that add/drop columns or change column types are supported.  Note that if added columns have a default value or if the type change isn't directly cast-able, Postgres will automatically rebuild the index, so these operations could take a significant amount of time.
 
->##### WARNING:  Renaming columns is not supported, and doing so will leave the underlying Elasticsearch index in a state that is inconsistent with Postgres.
+>##### WARNING:  Renaming columns is not supported, and doing so will leave the underlying Elasticsearch index in a state that is inconsistent with Postgres.  If you do rename a column, you'll need to issue a `REINDEX`.
 
 
 ## VACUUM
@@ -82,4 +93,5 @@ Running a standard `VACUUM` on a table with a ZomboDB index does the minimum amo
 
 Running a `VACUUM FULL` on a table with a ZomboDB index, on the otherhand, is functionally equilivant to running a `REINDEX` on the table, which means a `VACUUM FULL` could take a long time to complete.
 
-A [`VACUUM FREEZE`](http://www.postgresql.org/docs/9.4/static/routine-vacuuming.html#VACUUM-FOR-WRAPAROUND) (and autovacuum's anti-wrap-around procedure) will leave ZomboDB indexes in an inconsistent state.  After a `VACUUM FREEZE` on a table, any of its ZomboDB indexes must be `REINDEX`ed.  This is because ZomboDB stores transaction visibility information in the remote Elasticsearch index (the same xmin,xmax,etc values stored on every heap tuple) and Postgres doesn't (yet) provide a way to be notified when that data is changed via VACUUM.
+For tables with ZomboDB indexes that are frequently UPDATEd, it's important that autovacuum be configured to be as aggressive as your I/O subsystem can afford.  This is because certain types of ZomboDB queries need to build an "invisibility map", which necessitates looking at every heap page that is not known to be all-visibile.
+

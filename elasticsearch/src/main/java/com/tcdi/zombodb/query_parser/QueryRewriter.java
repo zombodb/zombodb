@@ -17,10 +17,6 @@
 package com.tcdi.zombodb.query_parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.*;
@@ -38,14 +34,45 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.*;
+import java.lang.reflect.Constructor;
+import java.util.AbstractCollection;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static org.elasticsearch.index.query.FilterBuilders.*;
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 
-public class QueryRewriter {
+public abstract class QueryRewriter {
+
+    public static class Factory {
+        private static boolean IS_SIREN_AVAILABLE;
+        static {
+            try {
+                IS_SIREN_AVAILABLE = Class.forName("solutions.siren.join.index.query.FilterJoinBuilder") != null;
+                System.err.println("[zombodb] Using SIREn for join resolution");
+            } catch (Exception e) {
+                IS_SIREN_AVAILABLE = false;
+                System.err.println("[zombodb] Using ZomboDB for join resolution");
+            }
+        }
+
+        public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+            if (IS_SIREN_AVAILABLE) {
+                try {
+                    Class clazz = Class.forName("com.tcdi.zombodb.query_parser.SirenQueryRewriter");
+                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class);
+                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
+                } catch (Exception e) {
+                    throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
+                }
+            } else {
+                return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
+            }
+        }
+    }
 
     private enum DateHistogramIntervals {
         year, quarter, month, week, day, hour, minute, second
@@ -97,124 +124,73 @@ public class QueryRewriter {
 
     private static final String DateSuffix = ".date";
 
-    private final Client client;
-    private final ASTQueryTree tree;
-    private final QueryParserNode rootNode;
-    private final String searchPreference;
+    protected final Client client;
+    protected final String searchPreference;
+    protected final boolean doFullFieldDataLookup;
+    protected final ASTQueryTree tree;
 
-    private final String indexName;
-    private final String input;
-    private boolean allowSingleIndex;
-    private boolean ignoreASTChild;
-    private final boolean useParentChild;
     private boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
-    private final boolean doFullFieldDataLookup;
 
     private Map<String, StringBuilder> arrayData;
 
-    private final IndexMetadataManager metadataManager;
+    protected final IndexMetadataManager metadataManager;
 
-    public QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean useParentChild, boolean doFullFieldDataLookup) {
-        this(client, indexName, searchPreference, input, allowSingleIndex, false, useParentChild, doFullFieldDataLookup);
-    }
-
-    private QueryRewriter(Client client, String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean doFielDataLookup) {
-        this(client, indexName, searchPreference, input, allowSingleIndex, ignoreASTChild, useParentChild, false, doFielDataLookup);
-    }
-
-    public  QueryRewriter(Client client, final String indexName, String searchPreference, String input, boolean allowSingleIndex, boolean ignoreASTChild, boolean useParentChild, boolean extractParentQuery, boolean doFielDataLookup) {
+    public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
         this.client = client;
-        this.indexName = indexName;
-        this.input = input;
-        this.allowSingleIndex = allowSingleIndex;
-        this.ignoreASTChild = ignoreASTChild;
-        this.useParentChild = useParentChild;
         this.searchPreference = searchPreference;
-        this.doFullFieldDataLookup = doFielDataLookup;
+        this.doFullFieldDataLookup = doFullFieldDataLookup;
 
-        metadataManager = new IndexMetadataManager(
-                client,
-                new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
-                    @Override
-                    public String getLeftFieldname() {
-                        return metadataManager == null || metadataManager.getMetadataForMyOriginalIndex() == null ? null : metadataManager.getMetadataForMyOriginalIndex().getPrimaryKeyFieldName();
-                    }
+        metadataManager = new IndexMetadataManager(client, indexName);
 
-                    @Override
-                    public String getIndexName() {
-                        return indexName;
-                    }
-
-                    @Override
-                    public String getRightFieldname() {
-                        return metadataManager == null ||  metadataManager.getMetadataForMyOriginalIndex() == null ? null : metadataManager.getMetadataForMyOriginalIndex().getPrimaryKeyFieldName();
-                    }
-                });
+        final StringBuilder newQuery = new StringBuilder(input.length());
+        QueryParser parser;
+        arrayData = Utils.extractArrayData(input, newQuery);
 
         try {
-            final StringBuilder newQuery = new StringBuilder(input.length());
-            QueryParser parser;
-            arrayData = Utils.extractArrayData(input, newQuery);
-
             parser = new QueryParser(new StringReader(newQuery.toString()));
             tree = parser.parse(true);
-
-            if (extractParentQuery) {
-                ASTParent parentQuery = (ASTParent) tree.getChild(ASTParent.class);
-                tree.removeNode(parentQuery);
-                tree.renumber();
-                if (tree.getQueryNode() != null) {
-                    tree.getQueryNode().removeNode(parentQuery);
-                    tree.getQueryNode().renumber();
-                }
-            }
-
-            // load index mappings for any index defined in #options()
-            metadataManager.loadReferencedMappings(tree.getOptions());
-
-            new ArrayDataOptimizer(tree, metadataManager, arrayData).optimize();
-
-            ASTAggregate aggregate = tree.getAggregate();
-            ASTSuggest suggest = tree.getSuggest();
-            if (aggregate != null || suggest != null) {
-                String fieldname = aggregate != null ? aggregate.getFieldname() : suggest.getFieldname();
-                final ASTIndexLink indexLink = metadataManager.findField(fieldname);
-                if (indexLink != metadataManager.getMyIndex()) {
-                    // change "myIndex" to that of the aggregate/suggest index
-                    // so that we properly expand() the queries to do the right things
-                    metadataManager.setMyIndex(indexLink);
-                }
-            }
-
-            // now optimize the _all field into #expand()s, if any are in other indexes
-            new IndexLinkOptimizer(tree, metadataManager).optimize();
-            new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
-
-            rootNode = useParentChild ? tree : tree.getChild(ASTChild.class);
-            if (ignoreASTChild) {
-                ASTChild child = (ASTChild) tree.getChild(ASTChild.class);
-                if (child != null) {
-                    ((QueryParserNode) child.parent).removeNode(child);
-                    ((QueryParserNode) child.parent).renumber();
-                }
-            }
-
         } catch (ParseException pe) {
             throw new QueryRewriteException(pe);
         }
+
+        // load index mappings for any index defined in #options()
+        metadataManager.loadReferencedMappings(tree.getOptions());
+
+        ASTAggregate aggregate = tree.getAggregate();
+        ASTSuggest suggest = tree.getSuggest();
+        boolean hasAgg = aggregate != null || suggest != null;
+        if (hasAgg) {
+            String fieldname = aggregate != null ? aggregate.getFieldname() : suggest.getFieldname();
+            final ASTIndexLink indexLink = metadataManager.findField(fieldname);
+            if (indexLink != metadataManager.getMyIndex()) {
+                // change "myIndex" to that of the aggregate/suggest index
+                // so that we properly expand() the queries to do the right things
+                metadataManager.setMyIndex(indexLink);
+            }
+        }
+
+        performOptimizations(client);
+
+        if (!metadataManager.getMetadataForMyIndex().alwaysResolveJoins()) {
+            if (canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
+                metadataManager.setMyIndex(metadataManager.getUsedIndexes().iterator().next());
+            }
+        }
+    }
+
+    /**
+     * Subclasses can override if additional optimizations are necessary, but
+     * they should definitely call {@link super#performOptimizations()}
+     */
+    protected void performOptimizations(Client client) {
+        new ArrayDataOptimizer(tree, metadataManager, arrayData).optimize();
+        new IndexLinkOptimizer(client, this, tree, metadataManager).optimize();
+        new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
     }
 
     public String dumpAsString() {
         return tree.dumpAsString();
-    }
-
-    public IndexMetadataManager getMetadataManager() {
-        return metadataManager;
-    }
-
-    public QueryParserNode getQueryNode() {
-        return tree.getQueryNode();
     }
 
     public Map<String, ?> describedNestedObject(String fieldname) throws Exception {
@@ -222,10 +198,13 @@ public class QueryRewriter {
     }
 
     public QueryBuilder rewriteQuery() {
+        QueryBuilder qb = build(tree);
+        queryRewritten = true;
+
         try {
-            return build(rootNode);
-        } finally {
-            queryRewritten = true;
+            return applyExclusion(qb, getAggregateIndexName());
+        } catch (Exception e) {
+            return applyExclusion(qb, getSearchIndexName());
         }
     }
 
@@ -291,10 +270,7 @@ public class QueryRewriter {
         if (!queryRewritten)
             throw new IllegalStateException("Must call .rewriteQuery() before calling .getSearchIndexName()");
 
-        if (metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex)
-            return metadataManager.getUsedIndexes().iterator().next().getIndexName();
-        else
-            return metadataManager.getMyIndex().getIndexName();
+        return metadataManager.getMyIndex().getIndexName();
     }
 
     private AbstractAggregationBuilder build(ASTAggregate agg) {
@@ -537,13 +513,9 @@ public class QueryRewriter {
         }
     }
 
-    private QueryBuilder build(QueryParserNode node) {
+    QueryBuilder build(QueryParserNode node) {
         if (node == null)
             return null;
-        else if (node instanceof ASTChild)
-            return build((ASTChild) node);
-        else if (node instanceof ASTParent)
-            return build((ASTParent) node);
         else if (node instanceof ASTAnd)
             return build((ASTAnd) node);
         else if (node instanceof ASTWith)
@@ -672,52 +644,17 @@ public class QueryRewriter {
         return qb;
     }
 
-    private QueryBuilder build(ASTChild node) {
-        if (node.hasChildren() && !ignoreASTChild) {
-            if (useParentChild) {
-                return hasChildQuery(node.getTypename(), build(node.getChild(0)));
-            } else {
-                return build(node.getChild(0));
-            }
-        } else {
-            return matchAllQuery();
-        }
-    }
-
-    private QueryBuilder build(ASTParent node) {
-        if (_isBuildingAggregate)
-            return matchAllQuery();
-        else if (node.hasChildren())
-            return hasParentQuery(node.getTypename(), build(node.getChild(0)));
-        else
-            return matchAllQuery();
-    }
-
     private String nested = null;
 
-    private Stack<ASTExpansion> generatedExpansionsStack = new Stack<>();
-
-    private QueryBuilder build(final ASTExpansion node) {
-        final ASTIndexLink link = node.getIndexLink();
-        QueryBuilder expansionBuilder;
-        try {
-            if (node.isGenerated())
-                generatedExpansionsStack.push(node);
-
-            expansionBuilder = expand(node, link);
-        } finally {
-            if (node.isGenerated())
-                generatedExpansionsStack.pop();
-        }
-
+    protected QueryBuilder build(ASTExpansion node) {
+        QueryBuilder expansionBuilder =  build(node.getQuery());
         QueryParserNode filterQuery = node.getFilterQuery();
         if (filterQuery != null) {
             BoolQueryBuilder bqb = boolQuery();
-            bqb.must(expansionBuilder);
+            bqb.must(applyExclusion(build(node.getQuery()), node.getIndexLink().getIndexName()));
             bqb.must(build(filterQuery));
             expansionBuilder = bqb;
         }
-
         return expansionBuilder;
     }
 
@@ -828,8 +765,15 @@ public class QueryRewriter {
 
     private QueryBuilder build(ASTNotNull node) {
         IndexMetadata md = metadataManager.getMetadataForField(node.getFieldname());
-        if (md != null && node.getFieldname().equalsIgnoreCase(md.getPrimaryKeyFieldName()))
-            return matchAllQuery();    // optimization when we know every document has a value for the specified field
+        if (md != null && node.getFieldname().equalsIgnoreCase(md.getPrimaryKeyFieldName())) {
+            // optimization when we know every document has a value for the specified field
+            switch (node.getOperator()) {
+                case NE:
+                    return boolQuery().mustNot(matchAllQuery());
+                default:
+                    return matchAllQuery();
+            }
+        }
 
         validateOperator(node);
         return buildStandard(node, new QBF() {
@@ -861,6 +805,9 @@ public class QueryRewriter {
     }
 
     private QueryBuilder build(final ASTPrefix node) {
+        if (node.operator == QueryParserNode.Operator.REGEX)
+            return regexpQuery(node.getFieldname(), String.valueOf(node.getValue()));
+
         validateOperator(node);
         return buildStandard(node, new QBF() {
             @Override
@@ -871,6 +818,9 @@ public class QueryRewriter {
     }
 
     private QueryBuilder build(final ASTWildcard node) {
+        if (node.operator == QueryParserNode.Operator.REGEX)
+            return regexpQuery(node.getFieldname(), String.valueOf(node.getValue()));
+
         validateOperator(node);
         return buildStandard(node, new QBF() {
             @Override
@@ -896,13 +846,12 @@ public class QueryRewriter {
                     case "long":
                     case "double":
                     case "float":
-                    case "unknown":
+                    case "unknown": {
                         final Iterable<Object> finalItr = itr;
                         itr = new Iterable<Object>() {
-                            private final Iterator<Object> iterator = finalItr.iterator();
-
                             @Override
                             public Iterator<Object> iterator() {
+                                final Iterator<Object> iterator = finalItr.iterator();
                                 return new Iterator<Object>() {
                                     @Override
                                     public boolean hasNext() {
@@ -922,16 +871,17 @@ public class QueryRewriter {
                                 };
                             }
                         };
+                    }
                 }
-                if (node.hasExternalValues() && minShouldMatch == 1) {
+                if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
                     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
                     return filteredQuery(matchAllQuery(), builder);
                 } else {
-                    final Iterable<Object> finalItr1 = itr;
+                    final Iterable<Object> finalItr = itr;
                     TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
                         @Override
                         public Iterator<Object> iterator() {
-                            return finalItr1.iterator();
+                            return finalItr.iterator();
                         }
 
                         @Override
@@ -954,7 +904,12 @@ public class QueryRewriter {
             @Override
             public QueryBuilder b(QueryParserNode n) {
                 final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
-                return termsQuery(n.getFieldname(), st.getAllTokens());
+                if ("_id".equals(node.getFieldname())) {
+                    Collection<String> terms = st.getAllTokens();
+                    return idsQuery().addIds(terms.toArray(new String[terms.size()]));
+                } else {
+                    return termsQuery(n.getFieldname(), st.getAllTokens());
+                }
             }
         });
     }
@@ -1037,7 +992,7 @@ public class QueryRewriter {
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTWord node) {
-        if (prox.getOperator() == QueryParserNode.Operator.REGEX)
+        if (node.getOperator() == QueryParserNode.Operator.REGEX)
             return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
 
         return spanTermQuery(node.getFieldname(), String.valueOf(node.getValue()));
@@ -1065,15 +1020,21 @@ public class QueryRewriter {
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTPrefix node) {
+        if (node.getOperator() == QueryParserNode.Operator.REGEX)
+            return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
+
         return spanMultiTermQueryBuilder(prefixQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTWildcard node) {
+        if (node.getOperator() == QueryParserNode.Operator.REGEX)
+            return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
+
         return spanMultiTermQueryBuilder(wildcardQuery(node.getFieldname(), String.valueOf(node.getValue())));
     }
 
     private SpanQueryBuilder buildSpan(ASTProximity prox, ASTPhrase node) {
-        if (prox.getOperator() == QueryParserNode.Operator.REGEX)
+        if (node.getOperator() == QueryParserNode.Operator.REGEX)
             return spanMultiTermQueryBuilder(regexpQuery(node.getFieldname(), node.getEscapedValue()));
 
         return buildSpan(prox, Utils.convertToProximity(node.getFieldname(), Utils.analyzeForSearch(client, metadataManager, node.getFieldname(), node.getEscapedValue())));
@@ -1112,8 +1073,7 @@ public class QueryRewriter {
                 return qbf.b(node);
 
             case NE:
-                return filteredQuery(matchAllQuery(), notFilter(queryFilter(qbf.b(node))));
-
+                return boolQuery().mustNot(qbf.b(node));
             case LT:
                 return rangeQuery(node.getFieldname()).lt(coerceNumber(node.getValue(), "unknown"));
             case GT:
@@ -1176,251 +1136,15 @@ public class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    private FilterBuilder makeParentFilter(ASTExpansion node) {
-        if (ignoreASTChild)
-            return null;
+    protected QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
+        QueryParserNode exclusion = tree.getExclusion(indexName);
 
-        ASTIndexLink link = node.getIndexLink();
-        IndexMetadata md = metadataManager.getMetadata(link);
-        if (md != null && md.getNoXact())
-            return null;
-
-        QueryRewriter qr = new QueryRewriter(client, indexName, searchPreference, input, allowSingleIndex, true, true);
-        QueryParserNode parentQuery = qr.tree.getChild(ASTParent.class);
-        if (parentQuery != null) {
-            return queryFilter(build(parentQuery));
-        } else {
-            // the parent query is on the top-level of the tree
-            // ie, it's not in a #parent() node, so if there's
-            // a #child() node, we want to remove it so the
-            // tree is just the parent query
-            QueryParserNode child = qr.tree.getChild(ASTChild.class);
-            if (child != null)
-                ((QueryParserNode) child.parent).removeNode(child);
-            return hasParentFilter("xact", qr.rewriteQuery());
+        if (exclusion != null) {
+            BoolQueryBuilder bqb = boolQuery();
+            bqb.must(query);
+            bqb.mustNot(build(exclusion));
+            query = bqb;
         }
-    }
-
-    private Stack<ASTExpansion> buildExpansionStack(QueryParserNode root, Stack<ASTExpansion> stack) {
-
-        if (root != null) {
-            if (root instanceof ASTExpansion) {
-                stack.push((ASTExpansion) root);
-                buildExpansionStack(((ASTExpansion) root).getQuery(), stack);
-            } else {
-                for (QueryParserNode child : root)
-                    buildExpansionStack(child, stack);
-            }
-        }
-        return stack;
-    }
-
-    private QueryParserNode loadFielddata(ASTExpansion node, String leftFieldname, String rightFieldname) {
-        ASTIndexLink link = node.getIndexLink();
-        QueryParserNode nodeQuery = node.getQuery();
-        IndexMetadata nodeMetadata = metadataManager.getMetadata(link);
-        IndexMetadata leftMetadata = metadataManager.getMetadataForField(leftFieldname);
-        IndexMetadata rightMetadata = metadataManager.getMetadataForField(rightFieldname);
-        boolean isPkey = nodeMetadata != null && leftMetadata != null && rightMetadata != null &&
-                nodeMetadata.getPrimaryKeyFieldName().equals(nodeQuery.getFieldname()) && leftMetadata.getPrimaryKeyFieldName().equals(leftFieldname) && rightMetadata.getPrimaryKeyFieldName().equals(rightFieldname);
-
-        if (nodeQuery instanceof ASTNotNull && isPkey) {
-            // if the query is a "not null" query against a primary key field and is targeting a primary key field
-            // we can just rewrite the query as a "not null" query against the leftFieldname
-            // and avoid doing a search at all
-            ASTNotNull notNull = new ASTNotNull(QueryParserTreeConstants.JJTNOTNULL);
-            notNull.setFieldname(leftFieldname);
-            return notNull;
-        }
-
-        TermsBuilder termsBuilder = new TermsBuilder(rightFieldname)
-                .field(rightFieldname)
-                .shardSize(0)
-                .size(!doFullFieldDataLookup ? 1024 : 0);
-
-        QueryBuilder query = constantScoreQuery(build(nodeQuery));
-        if (doFullFieldDataLookup) {
-            query = filteredQuery(query, makeParentFilter(node));
-        }
-
-        SearchRequestBuilder builder = new SearchRequestBuilder(client)
-                .setSize(0)
-                .setSearchType(SearchType.COUNT)
-                .setQuery(query)
-                .setQueryCache(true)
-                .setIndices(link.getIndexName())
-                .setTypes("data")
-                .setTrackScores(false)
-                .setPreference(searchPreference)
-                .addAggregation(termsBuilder);
-        ActionFuture<SearchResponse> future = client.search(builder.request());
-
-        try {
-            SearchResponse response = future.get();
-            final Terms agg = (Terms) response.getAggregations().iterator().next();
-
-            ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
-            array.setFieldname(leftFieldname);
-            array.setOperator(QueryParserNode.Operator.EQ);
-            array.setExternalValues(new Iterable<Object>() {
-                @Override
-                public Iterator<Object> iterator() {
-                    final Iterator<Terms.Bucket> buckets = agg.getBuckets().iterator();
-                    return new Iterator<Object>() {
-                        @Override
-                        public boolean hasNext() {
-                            return buckets.hasNext();
-                        }
-
-                        @Override
-                        public Object next() {
-                            return buckets.next().getKey();
-                        }
-
-                        @Override
-                        public void remove() {
-                            buckets.remove();
-                        }
-                    };
-                }
-            }, agg.getBuckets().size());
-
-            return array;
-        } catch (Exception e) {
-            throw new QueryRewriteException(e);
-        }
-    }
-
-    private QueryBuilder expand(final ASTExpansion root, final ASTIndexLink link) {
-        if (isInTestMode())
-            return build(root.getQuery());
-
-        Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
-
-        ASTIndexLink myIndex = metadataManager.getMyIndex();
-        ASTIndexLink targetIndex = !generatedExpansionsStack.isEmpty() ? root.getIndexLink() : myIndex;
-        QueryParserNode last = null;
-
-        if (link.getFieldname() != null)
-            IndexLinkOptimizer.stripPath(root, link.getFieldname());
-
-        try {
-            while (!stack.isEmpty()) {
-                ASTExpansion expansion = stack.pop();
-                String expansionFieldname = expansion.getFieldname();
-
-                if (expansionFieldname == null)
-                    expansionFieldname = expansion.getIndexLink().getRightFieldname();
-
-                if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
-                    last = expansion.getQuery();
-                } else {
-                    String leftFieldname = null;
-                    String rightFieldname = null;
-
-                    if (expansion.isGenerated()) {
-
-                        if (last == null) {
-                            last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
-                        }
-
-                        // at this point 'expansion' represents the set of records that match the #expand<>(...)'s subquery
-                        // all of which are targeted towards the index that contains the #expand's <fieldname>
-
-                        // the next step is to turn them into a set of 'expansionField' values
-                        // then turn that around into a set of ids against myIndex, if the expansionField is not in myIndex
-                        last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
-
-                        ASTIndexLink expansionSourceIndex = metadataManager.findField(expansionFieldname);
-                        if (expansionSourceIndex != myIndex) {
-                            // replace the ASTExpansion in the tree with the fieldData version
-                            expansion.jjtAddChild(last, 1);
-
-                            String targetPkey = myIndex.getRightFieldname();
-                            String sourcePkey = metadataManager.getMetadata(expansion.getIndexLink().getIndexName()).getPrimaryKeyFieldName();
-
-                            leftFieldname = targetPkey;
-                            rightFieldname = sourcePkey;
-
-                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
-                        }
-                    } else {
-
-                        List<String> path = metadataManager.calculatePath(targetIndex, expansion.getIndexLink());
-
-                        boolean oneToOne = true;
-                        if (path.size() == 2) {
-                            leftFieldname = path.get(0);
-                            rightFieldname = path.get(1);
-
-                            leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                            rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-
-                        } else if (path.size() == 3) {
-                            oneToOne = false;
-                            String middleFieldname;
-
-                            leftFieldname = path.get(0);
-                            middleFieldname = path.get(1);
-                            rightFieldname = path.get(2);
-
-                            if (metadataManager.areFieldPathsEquivalent(leftFieldname, middleFieldname) && metadataManager.areFieldPathsEquivalent(middleFieldname, rightFieldname)) {
-                                leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                                rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-                            } else {
-                                throw new QueryRewriteException("Field equivalency cannot be determined");
-                            }
-                        } else {
-                            oneToOne = false;
-                            int i = path.size()-1;
-                            while(i >= 0) {
-                                final String rightIndex;
-
-                                rightFieldname = path.get(i);
-                                leftFieldname = path.get(--i);
-
-                                if (!rightFieldname.contains(":")) {
-                                    // the right fieldname is a reference to a table not a specific field, so
-                                    // skip the path entry
-                                    continue;
-                                }
-
-                                rightIndex = rightFieldname.substring(0, rightFieldname.indexOf(':'));
-
-                                leftFieldname = leftFieldname.substring(leftFieldname.indexOf(':') + 1);
-                                rightFieldname = rightFieldname.substring(rightFieldname.indexOf(':') + 1);
-
-                                if (last != null) {
-                                    ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, rightIndex, rightFieldname);
-                                    expansion.jjtAddChild(newLink, 0);
-                                    expansion.jjtAddChild(last, 1);
-                                }
-
-                                last = loadFielddata(expansion, leftFieldname, rightFieldname);
-
-                                i--;
-                            }
-                        }
-
-                        if (oneToOne && metadataManager.getUsedIndexes().size() == 1 && allowSingleIndex) {
-                            last = expansion.getQuery();
-                        } else {
-                            last = loadFielddata(expansion, leftFieldname, rightFieldname);
-                        }
-                    }
-                }
-
-                // replace the ASTExpansion in the tree with the fieldData version
-                ((QueryParserNode) expansion.parent).replaceChild(expansion, last);
-            }
-        } finally {
-            metadataManager.setMyIndex(myIndex);
-        }
-
-        return build(last);
-    }
-
-    protected boolean isInTestMode() {
-        return false;
+        return query;
     }
 }

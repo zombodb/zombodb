@@ -1,0 +1,37 @@
+SELECT zdb_update_mapping('so_posts');
+ zdb_update_mapping 
+--------------------
+ 
+(1 row)
+
+/* now make sure the things that are important haven't changed */
+SELECT zdb_get_index_mapping('so_posts')->'mappings'->'data'->'_meta'->>'primary_key' = 'id';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT zdb_get_index_mapping('so_posts')->'mappings'->'data'->'_all'->>'analyzer' = 'phrase';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT zdb_get_index_mapping('so_posts')->'mappings'->'data'->'_field_names'->>'type' = '_field_names';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT zdb_get_index_mapping('so_posts')->'mappings'->'data'->'_field_names'->>'index' = 'no';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT zdb_get_index_mapping('so_posts')->'mappings'->'data'->'_source'->>'enabled' = 'false';
+ ?column? 
+----------
+ t
+(1 row)
+

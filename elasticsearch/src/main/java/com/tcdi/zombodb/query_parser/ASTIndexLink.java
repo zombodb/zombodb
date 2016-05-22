@@ -5,22 +5,44 @@ package com.tcdi.zombodb.query_parser;
 public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode {
 
     public static ASTIndexLink create(final String leftFieldname, final String indexName, final String rightFieldname) {
-        return new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
-            @Override
-            public String getLeftFieldname() {
-                return leftFieldname;
-            }
+        return create(leftFieldname, indexName, rightFieldname, false);
+    }
 
-            @Override
-            public String getIndexName() {
-                return indexName;
-            }
+    public static ASTIndexLink create(final String leftFieldname, final String indexName, final String rightFieldname, boolean anonymous) {
+        if (anonymous) {
+            return new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
+                @Override
+                public String getLeftFieldname() {
+                    return leftFieldname;
+                }
 
-            @Override
-            public String getRightFieldname() {
-                return rightFieldname;
-            }
-        };
+                @Override
+                public String getIndexName() {
+                    return indexName;
+                }
+
+                @Override
+                public String getRightFieldname() {
+                    return rightFieldname;
+                }
+            };
+        } else {
+            ASTIndexLink link = new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK);
+
+            ASTLeftField left = new ASTLeftField(QueryParserTreeConstants.JJTLEFTFIELD);
+            left.setValue(leftFieldname);
+            link.jjtAddChild(left, 0);
+
+            ASTIndexName index = new ASTIndexName(QueryParserTreeConstants.JJTINDEXNAME);
+            index.setValue(indexName);
+            link.jjtAddChild(index, 1);
+
+            ASTRightField right = new ASTRightField(QueryParserTreeConstants.JJTRIGHTFIELD);
+            right.setValue(rightFieldname);
+            link.jjtAddChild(right, 2);
+
+            return link;
+        }
     }
 
     public ASTIndexLink(int id) {
@@ -56,6 +78,16 @@ public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode 
 
     public void qualifyIndexName(String prefix) {
         getChild(1).value = prefix + "." + getChild(1).value;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof ASTIndexLink && this.toString().equals(obj.toString());
+    }
+
+    @Override
+    public int hashCode() {
+        return toString().hashCode();
     }
 
     @Override

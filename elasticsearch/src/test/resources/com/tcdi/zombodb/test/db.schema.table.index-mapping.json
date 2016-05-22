@@ -12,8 +12,7 @@
         "store": false
       },
       "_meta": {
-        "primary_key": "id",
-        "noxact": false
+        "primary_key": "id"
       },
       "date_detection": false,
       "properties": {
@@ -105,8 +104,7 @@
         "type": "xact"
       },
       "_meta": {
-        "primary_key": "id",
-        "noxact": false
+        "primary_key": "id"
       },
       "date_detection": false,
       "properties": {
@@ -159,6 +157,20 @@
           "index_options": "positions",
           "include_in_all": "false",
           "analyzer": "fulltext",
+          "fielddata": {
+            "format": "disabled"
+          },
+          "norms": {
+            "enabled": false
+          }
+        },
+        "shingle_field": {
+          "store": false,
+          "type": "string",
+          "index_options": "positions",
+          "include_in_all": "true",
+          "search_analyzer": "fulltext_with_shingles_search",
+          "index_analyzer": "fulltext_with_shingles",
           "fielddata": {
             "format": "disabled"
           },
