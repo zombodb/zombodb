@@ -58,11 +58,22 @@ public class ASTQueryTree extends com.tcdi.zombodb.query_parser.QueryParserNode 
 
     public QueryParserNode getQueryNode() {
         for (QueryParserNode node : this)
-            if (!(node instanceof ASTAggregate) && !(node instanceof ASTOptions) && !(node instanceof ASTFieldLists) && !(node instanceof ASTSuggest))
+            if (!(node instanceof ASTAggregate) && !(node instanceof ASTOptions) && !(node instanceof ASTFieldLists) && !(node instanceof ASTSuggest) && !(node instanceof ASTExclude))
                 return node;
 
         return null;
     }
+
+    public QueryParserNode getExclusion(String indexName) {
+        for (QueryParserNode node : this) {
+            if (node instanceof ASTExclude) {
+                if (((ASTExclude) node).getIndexName().equals(indexName))
+                    return ((ASTExclude) node).getQuery();
+            }
+        }
+        return null;
+    }
+
     /**
      * Accept the visitor. *
      */

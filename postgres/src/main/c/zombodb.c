@@ -18,14 +18,11 @@
 
 #include "postgres.h"
 #include "fmgr.h"
-#include "access/xact.h"
-#include "catalog/pg_type.h"
 #include "utils/builtins.h"
 
 #include "am/zdbam.h"
 #include "util/curl_support.h"
 #include "rest/rest.h"
-#include "util/zdbutils.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;

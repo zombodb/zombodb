@@ -1,7 +1,7 @@
 # ZomboDB [![[Build Status](https://travis-ci.org/zombodb/zombodb/branches)](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
 
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
-backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.3/static/indexam.html).
+backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.5/static/indexam.html).
 
 In practical terms, a ZomboDB index is no different than a standard btree index.  As such, standard SQL commands are fully supported, including `SELECT`, `BEGIN`, `COMMIT`, `ABORT`, `INSERT`, `UPDATE`, `DELETE`, `COPY`, and `VACUUM`.
 
@@ -59,8 +59,6 @@ Not to suggest that these things are impossible, but there's a small set of non-
 
 - ZomboDB indexes are not WAL-logged by Postgres.  As such, are not recoverable in the event of a Postgres server crash
 - interoperability with various Postgres replication schemes is unknown
-- Postgres [HOT](http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT;hb=HEAD) updates not supported
-- `VACUUM FREEZE` (and wrap-around avoidance vacuums via autovacuum) will leave ZomboDB indexes in an inconsistent state
 
 ## History
 
@@ -122,7 +120,7 @@ SELECT * FROM products WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or
 
 Product       | Version 
 ---           | ---      
-Postgres      | 9.3
+Postgres      | 9.3, 9.4, 9.5
 Elasticsearch | 1.7.1+ (not 2.0)
 Java JDK      | 1.7.0_51+
 

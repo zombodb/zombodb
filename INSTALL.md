@@ -2,7 +2,7 @@
 
 ZomboDB consists of two pieces.  One is a Postgres Extension (written in C and SQL/PLPGSQL), and the other is an Elasticsearch plugin (written in Java).
 
-Currently ZomboDB only supports Postgres `v9.3` (on Linux) and Elasticsearch `v1.7+` (not `v2.x`)
+Currently ZomboDB supports Postgres `v9.3`, `v9.4`, or `v9.5` (on x86_64 Linux) and Elasticsearch `v1.7+` (not `v2.x`)
 
 
 ## Postgres Extension
@@ -49,7 +49,6 @@ ZomboDB's Elasticsearch plugin needs to be installed on all nodes of your Elasti
 There are a few configuration settings that **must** be set in `elasticsearch.yml`:
 
 ```
-script.disable_dynamic: false
 
 threadpool.bulk.queue_size: 1024
 threadpool.bulk.size: 12
@@ -58,7 +57,7 @@ http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 ```
 
-Dynamic scripting must **not** be disabled.  The bulk threadpool must be increased because ZomboDB multiplexes against the `_bulk` endpoint.
+The bulk threadpool must be increased because ZomboDB multiplexes against the `_bulk` endpoint.
 
 The last two settings can be turned up or down (`http.max_content_length` must be be greater than 8192kB), but are good defaults.
 
@@ -69,6 +68,8 @@ Finally, restart the node.  Repeat for every "client" node in your cluster.
 
 Upgrading to a new version of ZomboDB basically involves repeating the installation steps above, possibly first removing the existing `zombodb` Linux package.
 
+The existing Elasticsearch plugin will need to be removed (`bin/plugin -r zombodb`) before an updated version can be installed.
+
 When upgrading the Postgres extension (`zombodb.so`) it's a good idea to make sure the database has no active connections and that you immediately run:
 
 ```sql
@@ -77,5 +78,7 @@ ALTER EXTENSION zombodb UPDATE;
 
 in every database that contains the extension.
 
-The existing Elasticsearch plugin will need to be removed (`bin/plugin -r zombodb`) before an updated version can be installed.
+> ### NOTE
+Make sure to check the Release Notes of the version you're installing to see if a `REINDEX DATABASE` is required.  Generally, this is necessary only when either of the first two version numbers change.  For example, an upgrade from v2.5.4 to v2.6.14 would require a `REINDEX DATABASE` as well as an upgrade from v2.6.14 to v3.0.0.
+
 

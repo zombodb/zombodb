@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,9 +28,6 @@ import java.util.Map;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
-/**
- * @author e_ridge
- */
 public class PostgresMappingAction extends BaseRestHandler {
 
     @Inject
@@ -43,7 +41,7 @@ public class PostgresMappingAction extends BaseRestHandler {
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         BytesRestResponse response;
 
-        QueryRewriter rewriter = new QueryRewriter(client, request.param("index"), request.param("preference"), request.content().toUtf8(), false, true, true);
+        QueryRewriter rewriter = QueryRewriter.Factory.create(client, request.param("index"), request.param("preference"), request.content().toUtf8(), true, false);
         rewriter.rewriteQuery();
         Map<String, ?> properties = rewriter.describedNestedObject(request.param("fieldname"));
 

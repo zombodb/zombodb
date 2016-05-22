@@ -28,7 +28,6 @@ extern Datum zdbbuildempty(PG_FUNCTION_ARGS);
 extern Datum zdbinsert(PG_FUNCTION_ARGS);
 extern Datum zdbbeginscan(PG_FUNCTION_ARGS);
 extern Datum zdbgettuple(PG_FUNCTION_ARGS);
-extern Datum zdbgetbitmap(PG_FUNCTION_ARGS);
 extern Datum zdbrescan(PG_FUNCTION_ARGS);
 extern Datum zdbendscan(PG_FUNCTION_ARGS);
 extern Datum zdbmarkpos(PG_FUNCTION_ARGS);

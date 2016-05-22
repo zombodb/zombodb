@@ -9,7 +9,7 @@ ZomboDB + ES uses much of the outdated [ElasticSearch Dockerfile](https://github
 
 ZomboDB + Postgres
 ----------------
-ZomboDB + PG builds on the [Postgres Dockerfile](https://github.com/docker-library/postgres/blob/master/9.3/Dockerfile) and largely copies the [docker-entrypoint.sh](https://github.com/docker-library/postgres/blob/master/9.3/docker-entrypoint.sh) script with one addition to add `local_preload_libraries` to `postgresql.conf`
+ZomboDB + PG builds on the [Postgres Dockerfile](https://github.com/docker-library/postgres/blob/master/9.5/Dockerfile) and largely copies the [docker-entrypoint.sh](https://github.com/docker-library/postgres/blob/master/9.3/docker-entrypoint.sh) script with one addition to add `local_preload_libraries` to `postgresql.conf`
 
 
 Building/Running

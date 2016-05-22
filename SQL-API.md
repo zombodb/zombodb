@@ -302,6 +302,33 @@ thai
 > idx_zdb_products
 >```
 
+#### `FUNCTION zdb_dump_query(table_name regclass, query text) RETURNS text`
+
+> `table_name`:  The name of a table with a ZomboDB index  
+> `query`: a full text query
+> 
+> returns the Elasticsearch QueryDSL that would be executed, fully resolved with index links
+> 
+> Example:
+> 
+```
+SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
+                   zdb_dump_query                   
+----------------------------------------------------
+ {                                                 +
+   "bool" : {                                      +
+     "must" : {                                    +
+       "terms" : {                                 +
+         "subject" : [ "this", "is", "a", "test" ],+
+         "minimum_should_match" : "4"              +
+       }                                           +
+     }                                             +
+   }                                               +
+ }
+(1 row)
+```
+
+
 #### ```FUNCTION zdb_estimate_count(table_name regclass, query text) RETURNS bigint```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
@@ -366,7 +393,7 @@ thai
 > Result:
 > 
 > ```
-> {"mappings":{"xact":{"_meta":{"primary_key":"id","noxact":false},"date_detection":false,"_all":{"enabled":false},"_field_names":{"enabled":false,"type":"_field_names","index":"no"},"properties":{"_cmax":{"type":"integer","fielddata":{"format":"disabled"}},"_cmin":{"type":"integer","fielddata":{"format":"disabled"}},"_partial":{"type":"boolean","fielddata":{"format":"disabled"}},"_xmax":{"type":"integer","fielddata":{"format":"disabled"}},"_xmax_is_committed":{"type":"boolean","fielddata":{"format":"disabled"}},"_xmin":{"type":"integer","fielddata":{"format":"disabled"}},"_xmin_is_committed":{"type":"boolean","fielddata":{"format":"disabled"}}}},"data":{"_meta":{"primary_key":"id","noxact":false},"date_detection":false,"_all":{"enabled":true,"analyzer":"phrase"},"_parent":{"type":"xact"},"_routing":{"required":true},"_field_names":{"enabled":false,"type":"_field_names","index":"no"},"_source":{"enabled":false},"properties":{"discontinued":{"type":"boolean"},"id":{"type":"long","store":true,"include_in_all":false},"inventory_count":{"type":"integer","store":true,"include_in_all":false},"keywords":{"type":"string","norms":{"enabled":false},"index_options":"docs","analyzer":"exact"},"long_description":{"type":"string","norms":{"enabled":false},"analyzer":"fulltext","fielddata":{"format":"disabled"},"include_in_all":false},"name":{"type":"string","norms":{"enabled":false},"index_options":"docs","analyzer":"exact"},"price":{"type":"long","store":true,"include_in_all":false},"short_summary":{"type":"string","norms":{"enabled":false},"analyzer":"phrase","fielddata":{"format":"disabled"}}}}}}
+> {"mappings":{"xact":{"_meta":{"primary_key":"id"},"date_detection":false,"_all":{"enabled":false},"_field_names":{"enabled":false,"type":"_field_names","index":"no"},"properties":{"_cmax":{"type":"integer","fielddata":{"format":"disabled"}},"_cmin":{"type":"integer","fielddata":{"format":"disabled"}},"_partial":{"type":"boolean","fielddata":{"format":"disabled"}},"_xmax":{"type":"integer","fielddata":{"format":"disabled"}},"_xmax_is_committed":{"type":"boolean","fielddata":{"format":"disabled"}},"_xmin":{"type":"integer","fielddata":{"format":"disabled"}},"_xmin_is_committed":{"type":"boolean","fielddata":{"format":"disabled"}}}},"data":{"_meta":{"primary_key":"id"},"date_detection":false,"_all":{"enabled":true,"analyzer":"phrase"},"_parent":{"type":"xact"},"_routing":{"required":true},"_field_names":{"enabled":false,"type":"_field_names","index":"no"},"_source":{"enabled":false},"properties":{"discontinued":{"type":"boolean"},"id":{"type":"long","store":true,"include_in_all":false},"inventory_count":{"type":"integer","store":true,"include_in_all":false},"keywords":{"type":"string","norms":{"enabled":false},"index_options":"docs","analyzer":"exact"},"long_description":{"type":"string","norms":{"enabled":false},"analyzer":"fulltext","fielddata":{"format":"disabled"},"include_in_all":false},"name":{"type":"string","norms":{"enabled":false},"index_options":"docs","analyzer":"exact"},"price":{"type":"long","store":true,"include_in_all":false},"short_summary":{"type":"string","norms":{"enabled":false},"analyzer":"phrase","fielddata":{"format":"disabled"}}}}}}
 > ```
 
 
@@ -767,6 +794,17 @@ thai
  to            |         1 |       1
 (8 rows)
 
+> ```
+
+#### `FUNCTION zdb_update_mapping(table_name regclass) RETURNS void`
+> `table_name`:  The name of a table with a ZomboDB index
+> 
+> This function updates the backing Elasticsearch index's mapping and settings.  Useful to call after you `ALTER INDEX` to change the number of replicas or the refresh_interval.  Also can be called when certain field data type changes have been made or when new columns (with no default value) have been added.
+> 
+> Example:
+> 
+> ```sql
+> SELECT * FROM zdb_update_mapping('pdocuts');
 > ```
 
 
