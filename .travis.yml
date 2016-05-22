@@ -27,7 +27,7 @@ script:
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
   - export WHERE=`pwd`
   - mvn clean install
-  - tar xzf postgres/src/main/docker/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
+  - tar xzf postgres/src/main/docker/pg9.5/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
   - cd curl-7.43.0
   - ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
   - make -j2 && sudo make install
