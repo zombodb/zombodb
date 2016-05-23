@@ -252,7 +252,7 @@ public class AnalyzedField {
         public void keep(ASTProximity proximity) {
             List<ProximityGroup> scratch = new ArrayList<>();
             keep(proximity, scratch);
-            int cnt = proximity.countNodes()/2 + 1;
+            int cnt = proximity.countNodes() / 2 + 1;
             for (ProximityGroup pair : scratch) {
                 for (Token token : pair.tokens) {
                     if (token.shouldKeep() || pair.tokens.size() >= cnt)
@@ -323,7 +323,7 @@ public class AnalyzedField {
                 List<Token> rightTokens = match(right);
 
                 for (Token lt : leftTokens) {
-                    for (Token rt: rightTokens) {
+                    for (Token rt : rightTokens) {
                         int min_pos = lt.getPosition();
                         int max_pos = rt.getPosition();
                         int diff = max_pos - min_pos;
@@ -331,7 +331,7 @@ public class AnalyzedField {
                         if (ordered && diff < 0)
                             continue;
 
-                        if (Math.abs(diff)-1 <= distance) {
+                        if (Math.abs(diff) - 1 <= distance) {
                             if (lt.group != null)
                                 scratch.add(lt.group);
                             if (rt.group != null)
@@ -429,9 +429,8 @@ public class AnalyzedField {
             ASTWildcard wildcard = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
             wildcard.setValue("*");
             return match(wildcard);
-        }
-        else
-            throw new RuntimeException ("Don't know how to match node type: " + node.getClass().getSimpleName());
+        } else
+            throw new RuntimeException("Don't know how to match node type: " + node.getClass().getSimpleName());
     }
 
     private List<Token> match(ASTWord word) {
@@ -440,7 +439,7 @@ public class AnalyzedField {
 
         String value = String.valueOf(word.getValue());
         while (value.length() > 0 && value.endsWith("."))
-            value = value.substring(0, value.length()-1);
+            value = value.substring(0, value.length() - 1);
         while (value.length() > 0 && value.startsWith("."))
             value = value.substring(1);
 
@@ -493,7 +492,7 @@ public class AnalyzedField {
     private List<Token> match(ASTWildcard wildcard) {
         StringBuilder sb = new StringBuilder();
         char prevch = 0;
-        for (int i=0; i<wildcard.getEscapedValue().length(); i++) {
+        for (int i = 0; i < wildcard.getEscapedValue().length(); i++) {
             char ch = wildcard.getEscapedValue().charAt(i);
 
             switch (ch) {

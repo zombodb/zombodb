@@ -57,7 +57,7 @@ public class ExpansionOptimizer {
                 generatedExpansionsStack.push(expansion);
             try {
                 expand(expansion);
-            } finally{
+            } finally {
                 if (expansion.isGenerated())
                     generatedExpansionsStack.pop();
             }
@@ -204,7 +204,7 @@ public class ExpansionOptimizer {
 
                 buildNodeSets(root, terms);
 
-                for(Map<QueryParserNode, Set<Object>> map : terms.values()) {
+                for (Map<QueryParserNode, Set<Object>> map : terms.values()) {
                     if (map.size() > 1) {
                         Set<Object> merged = null;
                         QueryParserNode first = null;
@@ -220,7 +220,7 @@ public class ExpansionOptimizer {
                             }
                             root.removeNode(node);
                         }
-                        assert(first != null);
+                        assert (first != null);
 
                         ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
                         array.setFieldname(first.getFieldname());
@@ -247,7 +247,7 @@ public class ExpansionOptimizer {
 
                 buildNodeSets(root, terms);
 
-                for(Map<QueryParserNode, Set<Object>> map : terms.values()) {
+                for (Map<QueryParserNode, Set<Object>> map : terms.values()) {
                     if (map.size() > 1) {
                         Set<Object> merged = null;
                         QueryParserNode first = null;
@@ -263,7 +263,7 @@ public class ExpansionOptimizer {
                             }
                             root.removeNode(node);
                         }
-                        assert(first != null);
+                        assert (first != null);
 
                         ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
                         array.setFieldname(first.getFieldname());

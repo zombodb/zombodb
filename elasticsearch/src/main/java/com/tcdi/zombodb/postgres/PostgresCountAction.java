@@ -74,7 +74,7 @@ public class PostgresCountAction extends BaseRestHandler {
             throw new RuntimeException(e);
         } finally {
             long end = System.currentTimeMillis();
-            logger.info("Estimated " + count + " records in " + ((end-start)/1000D) + " seconds.");
+            logger.info("Estimated " + count + " records in " + ((end - start) / 1000D) + " seconds.");
         }
     }
 }

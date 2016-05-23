@@ -24,12 +24,14 @@ import static org.elasticsearch.index.query.QueryBuilders.*;
 
 /**
  * A {@link QueryRewriter} that resolves joins using SIREn:
- *      http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/
+ * http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/
  */
-@SuppressWarnings("unused") /** used via reflection */
+@SuppressWarnings("unused")
+/** used via reflection */
 public class SirenQueryRewriter extends QueryRewriter {
 
-    @SuppressWarnings("unused") /** used via reflection */
+    @SuppressWarnings("unused")
+    /** used via reflection */
     public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
         super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex);
     }

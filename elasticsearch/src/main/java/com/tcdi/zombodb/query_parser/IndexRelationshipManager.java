@@ -36,8 +36,8 @@ public class IndexRelationshipManager {
         Dijkstra.Vertex source = d.vertex(sourceIndex);
         Dijkstra.Vertex dest = d.vertex(destinationIndex);
 
-        Dijkstra.Vertex srcField = d.vertex(sourceIndex+":"+sourceField);
-        Dijkstra.Vertex destField = d.vertex(destinationIndex+":"+destinationField);
+        Dijkstra.Vertex srcField = d.vertex(sourceIndex + ":" + sourceField);
+        Dijkstra.Vertex destField = d.vertex(destinationIndex + ":" + destinationField);
 
         // source links to dest via the source and dest fields
         source.add(srcField, 1).add(destField, 1).add(dest, 2);

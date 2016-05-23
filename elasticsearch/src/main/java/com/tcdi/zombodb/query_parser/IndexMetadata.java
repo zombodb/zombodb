@@ -24,17 +24,17 @@ import java.util.Set;
 
 class IndexMetadata {
 
-    static final String[] MLT_STOP_WORDS = new String[] {
+    static final String[] MLT_STOP_WORDS = new String[]{
             "http", "span", "class", "flashtext", "let", "its",
             "may", "well", "got", "too", "them", "really", "new", "set", "please",
             "how", "our", "from", "sent", "subject", "sincerely", "thank", "thanks",
-            "just", "get", "going", "were", "much", "can", "also", "she", "her" ,
+            "just", "get", "going", "were", "much", "can", "also", "she", "her",
             "him", "his", "has", "been", "ok", "still", "okay", "does", "did",
             "about", "yes", "you", "your", "when", "know", "have", "who", "what",
             "where", "sir", "page", "a", "an", "and", "are", "as", "at", "be",
-            "but", "by","for", "if", "in", "into", "is", "it","no", "not", "of",
-            "on", "or", "such","that", "the", "their", "than", "then", "there",
-            "these","they", "this", "to", "was", "will", "with"
+            "but", "by", "for", "if", "in", "into", "is", "it", "no", "not", "of",
+            "on", "or", "such", "that", "the", "their", "than", "then", "there",
+            "these", "they", "this", "to", "was", "will", "with"
     };
 
     private final ASTIndexLink link;
@@ -77,7 +77,7 @@ class IndexMetadata {
         Map fields = this.fields;
         while (fieldname.contains(".")) {
             String base = fieldname.substring(0, fieldname.indexOf('.'));
-            fieldname = fieldname.substring(fieldname.indexOf('.')+1);
+            fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
 
             Object value = fields.get(base);
             if (value == null)
@@ -106,9 +106,9 @@ class IndexMetadata {
         }
 
         Map properties = fields;
-        for (int i=0; properties != null && i<parts.length; i++) {
+        for (int i = 0; properties != null && i < parts.length; i++) {
             properties = ((Map) properties.get(parts[i]));
-            if (properties != null && i<parts.length-1)
+            if (properties != null && i < parts.length - 1)
                 properties = (Map) properties.get("properties");
         }
 

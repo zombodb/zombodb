@@ -322,8 +322,8 @@ public class IndexLinkOptimizer {
     }
 
     private void stripPath(QueryParserNode root, String path) {
-        if (root.getFieldname() != null && root.getFieldname().startsWith(path+"."))
-            root.setFieldname(root.getFieldname().substring(path.length()+1));
+        if (root.getFieldname() != null && root.getFieldname().startsWith(path + "."))
+            root.setFieldname(root.getFieldname().substring(path.length() + 1));
 
         for (QueryParserNode child : root) {
             stripPath(child, path);
@@ -344,7 +344,7 @@ public class IndexLinkOptimizer {
         //
         queryCnt = estimateCount(expansion, true);
 
-        if (queryCnt > totalCnt/2) {
+        if (queryCnt > totalCnt / 2) {
             //
             // and if the expansion is going to return more than 1/2 the database
             // invert it on the inner side of the expansion

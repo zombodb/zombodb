@@ -26,8 +26,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Utils {
-    private static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', 'W', 'w', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
+    private static final char[] NEEDS_ESCAPES = new char[]{'A', 'a', 'O', 'o', 'W', 'w', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']'};
     private static final String NEEDS_ESCAPES_AS_STRING;
+
     static {
         Arrays.sort(NEEDS_ESCAPES);
 
@@ -50,11 +51,11 @@ public class Utils {
         if (s == null || s.length() <= 1)
             return s;
 
-        StringBuilder sb  = new StringBuilder();
-        for (int i=0, len=s.length(); i<len; i++) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0, len = s.length(); i < len; i++) {
             char ch = s.charAt(i);
             if (ch == '\\') {
-                char next = i<len-1 ? s.charAt(++i) : 0;
+                char next = i < len - 1 ? s.charAt(++i) : 0;
                 if (next == 0)
                     throw new RuntimeException("Invalid escape sequence at end of string");
 
@@ -130,7 +131,7 @@ public class Utils {
             node.setValue(value);
         } else if (value.endsWith("*") && (!value.endsWith("\\*") || value.endsWith("\\\\*"))) {
             node = new ASTPrefix(QueryParserTreeConstants.JJTPREFIX);
-            node.setValue(value.substring(0, value.length()-1));
+            node.setValue(value.substring(0, value.length() - 1));
         } else if (value.endsWith("?") && (!value.endsWith("\\?") || value.endsWith("\\\\?"))) {
             node = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
             node.setValue(value);
@@ -189,7 +190,7 @@ public class Utils {
 
         StringBuilder sb = new StringBuilder();
         char prevch = 0;
-        for (int i=0, len=value.length(); i<len; i++) {
+        for (int i = 0, len = value.length(); i < len; i++) {
             char ch = value.charAt(i);
 
             if (!Character.isLetterOrDigit(ch) && ch != '_' && prevch != '\\' && ch != '*' && ch != '?' && ch != '~' && ch != '\'' && ch != '.' && ch != ':') {
@@ -323,6 +324,7 @@ public class Utils {
             }
         });
     }
+
     static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens) {
         return convertToProximity(fieldname, tokens, 0);
     }
@@ -385,6 +387,7 @@ public class Utils {
     static String validateSameNestedPath(ASTWith node) {
         return validateSameNestedPath(node, null);
     }
+
     private static String validateSameNestedPath(QueryParserNode node, String nestedPath) {
         if (!node.hasChildren())
             return nestedPath;
@@ -396,11 +399,11 @@ public class Utils {
             if (child.hasChildren())
                 nestedPath = validateSameNestedPath(child, nestedPath);
             else if (nestedPath != null && !nestedPath.equals(child.getNestedPath()))
-                throw new RuntimeException ("WITH chain must all belong to the same nested object");
+                throw new RuntimeException("WITH chain must all belong to the same nested object");
         }
 
         if (nestedPath == null)
-            throw new RuntimeException ("WITH chain must all belong to a nested object");
+            throw new RuntimeException("WITH chain must all belong to a nested object");
 
         return nestedPath;
     }
@@ -521,7 +524,7 @@ public class Utils {
         if (rc instanceof ASTPrefix) {
             String value = String.valueOf(rc.value);
             if (value.endsWith("*"))
-                rc.value = value.substring(0, value.length()-1);
+                rc.value = value.substring(0, value.length() - 1);
         }
 
         return rc;

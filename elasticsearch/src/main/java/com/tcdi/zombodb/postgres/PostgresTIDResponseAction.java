@@ -209,7 +209,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         encodeFloat(maxscore, results, maxscore_offset);
 
         long end = System.currentTimeMillis();
-        return new BinaryTIDResponse(results, many, (end-start)/1000D);
+        return new BinaryTIDResponse(results, many, (end - start) / 1000D);
     }
 
     private static int encodeLong(long value, byte[] buffer, int offset) {

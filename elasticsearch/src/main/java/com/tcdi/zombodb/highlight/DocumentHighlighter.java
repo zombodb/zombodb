@@ -66,6 +66,7 @@ public class DocumentHighlighter {
     }
 
     private Highlighter _highlighter = new Highlighter();
+
     private class Highlighter {
         public void perform(QueryParserNode node) {
             if (node == null)
@@ -99,8 +100,7 @@ public class DocumentHighlighter {
                 highlightChildren(boolQuery.getMust());
             if (boolQuery.getShould() != null)
                 highlightChildren(boolQuery.getShould());
-        }
-        else if (node instanceof ASTNot)
+        } else if (node instanceof ASTNot)
             ;   // do nothing for ASTNot nodes
         else
             _highlighter.perform(node);
@@ -132,13 +132,13 @@ public class DocumentHighlighter {
 
             value = findValue(fieldName, data);
             if (value != null) {
-                List<AnalyzedField> fields = analyzedFields.get(baseFn == null ? fieldName : baseFn+"."+fieldName);
+                List<AnalyzedField> fields = analyzedFields.get(baseFn == null ? fieldName : baseFn + "." + fieldName);
                 if (fields.isEmpty())
-                    analyzedFields.put(baseFn == null ? fieldName : baseFn+"."+fieldName, fields = new ArrayList<>());
+                    analyzedFields.put(baseFn == null ? fieldName : baseFn + "." + fieldName, fields = new ArrayList<>());
 
-                int idx=0;
+                int idx = 0;
                 for (AnalyzedField af : fields) {
-                    if (af.get().getFieldName().equals(baseFn+"."+fieldName))
+                    if (af.get().getFieldName().equals(baseFn + "." + fieldName))
                         idx++;
                 }
 
@@ -154,7 +154,7 @@ public class DocumentHighlighter {
                             rb.setAnalyzer("phrase");
 
                             try {
-                                fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn+"."+fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
+                                fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
                             } catch (InterruptedException | ExecutionException e) {
                                 // ignore
                             }
@@ -165,7 +165,7 @@ public class DocumentHighlighter {
                     rb.setAnalyzer("phrase");
 
                     try {
-                        fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn+"."+fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
+                        fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
                     } catch (InterruptedException | ExecutionException e) {
                         // ignore
                     }

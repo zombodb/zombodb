@@ -5,89 +5,100 @@ package com.tcdi.zombodb.query_parser;
 import java.util.Map;
 import java.util.TreeMap;
 
-public
-class SimpleNode implements Node {
+public class SimpleNode implements Node {
 
-  protected Node parent;
-  protected Map<Number, Node> children;
-  protected int id;
-  protected Object value;
-  protected QueryParser parser;
+    protected Node parent;
+    protected Map<Number, Node> children;
+    protected int id;
+    protected Object value;
+    protected QueryParser parser;
 
-  public SimpleNode(int i) {
-    id = i;
-  }
-
-  public SimpleNode(QueryParser p, int i) {
-    this(i);
-    parser = p;
-  }
-
-  public void jjtOpen() {
-  }
-
-  public void jjtClose() {
-  }
-
-  public void jjtSetParent(Node n) { parent = n; }
-  public Node jjtGetParent() { return parent; }
-
-  public void renumber() {
-    Map<Number, Node> tmp = new TreeMap<>();
-    int i=0;
-    for (Node value : children.values()) {
-      tmp.put(i++, value);
+    public SimpleNode(int i) {
+        id = i;
     }
-    children=tmp;
-  }
 
-  public void jjtAddChild(Node n, int i) {
-    if (children == null) {
-      children = new TreeMap<>();
+    public SimpleNode(QueryParser p, int i) {
+        this(i);
+        parser = p;
     }
-    children.put(i, n);
-    n.jjtSetParent(this);
-  }
 
-  public void replaceChild(Node oldNode, Node newNode) {
-    if (children == null)
-      return;
-    for (Map.Entry<Number, Node> child : children.entrySet()) {
-      if (child.getValue() == oldNode) {
-        children.put(child.getKey(), newNode);
-        newNode.jjtSetParent(this);
-        break;
-      }
+    public void jjtOpen() {
     }
-  }
 
-  public Node jjtGetChild(int i) {
-    return children == null ? null : children.get(i);
-  }
-
-  public int jjtGetNumChildren() {
-    return (children == null) ? 0 : children.size();
-  }
-
-  public void jjtSetValue(Object value) { this.value = value; }
-  public Object jjtGetValue() { return value; }
-
-  /** Accept the visitor. **/
-  public Object jjtAccept(QueryParserVisitor visitor, Object data)
-{
-    return visitor.visit(this, data);
-  }
-
-  /** Accept the visitor. **/
-  public Object childrenAccept(QueryParserVisitor visitor, Object data)
-{
-    if (children != null) {
-      for (Node n : children.values()) {
-        n.jjtAccept(visitor, data);
-      }
+    public void jjtClose() {
     }
-    return data;
-  }
+
+    public void jjtSetParent(Node n) {
+        parent = n;
+    }
+
+    public Node jjtGetParent() {
+        return parent;
+    }
+
+    public void renumber() {
+        Map<Number, Node> tmp = new TreeMap<>();
+        int i = 0;
+        for (Node value : children.values()) {
+            tmp.put(i++, value);
+        }
+        children = tmp;
+    }
+
+    public void jjtAddChild(Node n, int i) {
+        if (children == null) {
+            children = new TreeMap<>();
+        }
+        children.put(i, n);
+        n.jjtSetParent(this);
+    }
+
+    public void replaceChild(Node oldNode, Node newNode) {
+        if (children == null)
+            return;
+        for (Map.Entry<Number, Node> child : children.entrySet()) {
+            if (child.getValue() == oldNode) {
+                children.put(child.getKey(), newNode);
+                newNode.jjtSetParent(this);
+                break;
+            }
+        }
+    }
+
+    public Node jjtGetChild(int i) {
+        return children == null ? null : children.get(i);
+    }
+
+    public int jjtGetNumChildren() {
+        return (children == null) ? 0 : children.size();
+    }
+
+    public void jjtSetValue(Object value) {
+        this.value = value;
+    }
+
+    public Object jjtGetValue() {
+        return value;
+    }
+
+    /**
+     * Accept the visitor.
+     **/
+    public Object jjtAccept(QueryParserVisitor visitor, Object data) {
+        return visitor.visit(this, data);
+    }
+
+    /**
+     * Accept the visitor.
+     **/
+    public Object childrenAccept(QueryParserVisitor visitor, Object data) {
+        if (children != null) {
+            for (Node n : children.values()) {
+                n.jjtAccept(visitor, data);
+            }
+        }
+        return data;
+    }
 
   /* You can override these two methods in subclasses of SimpleNode to
      customize the way the node appears when the tree is dumped.  If
@@ -95,48 +106,52 @@ class SimpleNode implements Node {
      toString(String), otherwise overriding toString() is probably all
      you need to do. */
 
-  public String toString() {
-    return QueryParserTreeConstants.jjtNodeName[id];
-  }
-  public String toString(String prefix) { return prefix + toString(); }
+    public String toString() {
+        return QueryParserTreeConstants.jjtNodeName[id];
+    }
+
+    public String toString(String prefix) {
+        return prefix + toString();
+    }
 
   /* Override this method if you want to customize how the node dumps
      out its children. */
 
-  public void dump(String prefix) {
-    System.out.println(toString(prefix));
-    if (children != null) {
-      for(Node n : children.values()) {
-        if (n != null) {
-          ((SimpleNode)n).dump(prefix + " ");
+    public void dump(String prefix) {
+        System.out.println(toString(prefix));
+        if (children != null) {
+            for (Node n : children.values()) {
+                if (n != null) {
+                    ((SimpleNode) n).dump(prefix + " ");
+                }
+            }
         }
-      }
-    }
-  }
-
-  public String dumpAsString() {
-      return dumpAsString(0);
-  }
-  private String dumpAsString(int depth) {
-      StringBuilder sb = new StringBuilder();
-      for(int i=0; i<depth; i++)
-          sb.append("   ");
-    sb.append(toString()).append("\n");
-    if (children != null) {
-      for(Node n : children.values()) {
-        if (n != null) {
-          sb.append(((SimpleNode)n).dumpAsString(depth+1));
-        }
-      }
     }
 
-      return sb.toString();
-  }
+    public String dumpAsString() {
+        return dumpAsString(0);
+    }
+
+    private String dumpAsString(int depth) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < depth; i++)
+            sb.append("   ");
+        sb.append(toString()).append("\n");
+        if (children != null) {
+            for (Node n : children.values()) {
+                if (n != null) {
+                    sb.append(((SimpleNode) n).dumpAsString(depth + 1));
+                }
+            }
+        }
+
+        return sb.toString();
+    }
 
 
-  public int getId() {
-    return id;
-  }
+    public int getId() {
+        return id;
+    }
 }
 
 /* JavaCC - OriginalChecksum=5c8c41863f69444284e7512f84e946a8 (do not edit this line) */

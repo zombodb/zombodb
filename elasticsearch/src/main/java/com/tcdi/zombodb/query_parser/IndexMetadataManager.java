@@ -196,7 +196,7 @@ public class IndexMetadataManager {
         if (fieldname.contains(".")) {
             String prefix = fieldname.substring(0, fieldname.indexOf('.'));
             ASTIndexLink link = getExternalIndexLink(prefix);
-            fieldname = fieldname.substring(fieldname.indexOf('.')+1);
+            fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
             IndexMetadata md = getMetadata(link);
             return (md != null && md.hasField(fieldname)) ? link : myIndex;
         }
@@ -278,7 +278,7 @@ public class IndexMetadataManager {
                 ASTIndexLink link = ilm.link;
                 String leftFieldname = link.getLeftFieldname();
                 if (leftFieldname.contains("."))
-                    leftFieldname = leftFieldname.substring(leftFieldname.indexOf(".")+1);
+                    leftFieldname = leftFieldname.substring(leftFieldname.indexOf(".") + 1);
                 relationshipManager.addRelationship(findFieldForLink(link.getLeftFieldname()).getIndexName(), leftFieldname, link.getIndexName(), link.getRightFieldname());
             }
         }

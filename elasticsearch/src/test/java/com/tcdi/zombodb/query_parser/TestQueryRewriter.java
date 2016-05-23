@@ -1389,7 +1389,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    \"min_word_length\" : 3\n" +
                         "  }\n" +
                         "}"
-                );
+        );
     }
 
     @Test
@@ -3407,16 +3407,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testParsePrefixAST_exactField() throws Exception {
         assertAST("exact_field:VALUE*",
                 "QueryTree\n" +
-                "   Expansion\n" +
-                "      id=<db.schema.table.index>id\n" +
-                "      Prefix (fieldname=exact_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Prefix (fieldname=exact_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
         );
 
         assertAST("exact_field:'VALUE*'",
                 "QueryTree\n" +
-                "   Expansion\n" +
-                "      id=<db.schema.table.index>id\n" +
-                "      Prefix (fieldname=exact_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Prefix (fieldname=exact_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
         );
     }
 
@@ -3438,21 +3438,21 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
-    
+
     @Test
     public void testParsePrefixAST_phraseField() throws Exception {
         assertAST("phrase_field:VALUE*",
                 "QueryTree\n" +
-                "   Expansion\n" +
-                "      id=<db.schema.table.index>id\n" +
-                "      Prefix (fieldname=phrase_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Prefix (fieldname=phrase_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
         );
 
         assertAST("phrase_field:'VALUE*'",
                 "QueryTree\n" +
-                "   Expansion\n" +
-                "      id=<db.schema.table.index>id\n" +
-                "      Prefix (fieldname=phrase_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Prefix (fieldname=phrase_field, operator=CONTAINS, value=value, index=db.schema.table.index)"
         );
     }
 
@@ -3466,7 +3466,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
 
-        assertJson("phrase_field:'value*'", 
+        assertJson("phrase_field:'value*'",
                 "{\n" +
                         "  \"prefix\" : {\n" +
                         "    \"phrase_field\" : \"value\"\n" +
@@ -3592,9 +3592,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
         data.put("phrase_field", "getting non-programmers to understand the development process");
 
-        for (String s : new String[] { "~", ":",  "*",  "?",
-                "!",  "%",  "&",  "(",  ")", ",",
-                "<",  "=",  ">",  "[",  "]", "^", "@", "#" }) {
+        for (String s : new String[]{"~", ":", "*", "?",
+                "!", "%", "&", "(", ")", ",",
+                "<", "=", ">", "[", "]", "^", "@", "#"}) {
             DocumentHighlighter highlighter;
             List<AnalyzedField.Token> highlights;
 
@@ -4288,11 +4288,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     @Test
     public void testExactPhrasesGetMerged() throws Exception {
         assertJson("( (( AND ( data_client_name = WELLMARK AND (exact_field = \"asdf, CATHI (sdfg)\" OR " +
-                "exact_field = \"sdfg, qwer\" OR exact_field = \"swergs, ersd\" OR exact_field = \"wergf, fsd\" OR " +
-                "exact_field = \"DHJ, hsdgf\" OR exact_field = \"dfbg, werfdvc\" OR exact_field = \"sdfg, wwwert\" OR " +
-                "exact_field = \"ersfd, KJHSA\" OR exact_field = \"AIUKSJD, kasdf\" OR exact_field = \"sdfg, werww\") AND " +
-                "data_date_combined_family <= \"2013-12-31\" AND data_duplicate_resource = NO AND " +
-                "(data_record_type = EMAIL OR data_record_type = \"EMAIL ATTACHMENT\" OR data_record_type = \"EMAIL ATTACHMENT OLE\") AND data_filter_universal = \"*\" AND data_moved_to: null ) ) ) )",
+                        "exact_field = \"sdfg, qwer\" OR exact_field = \"swergs, ersd\" OR exact_field = \"wergf, fsd\" OR " +
+                        "exact_field = \"DHJ, hsdgf\" OR exact_field = \"dfbg, werfdvc\" OR exact_field = \"sdfg, wwwert\" OR " +
+                        "exact_field = \"ersfd, KJHSA\" OR exact_field = \"AIUKSJD, kasdf\" OR exact_field = \"sdfg, werww\") AND " +
+                        "data_date_combined_family <= \"2013-12-31\" AND data_duplicate_resource = NO AND " +
+                        "(data_record_type = EMAIL OR data_record_type = \"EMAIL ATTACHMENT\" OR data_record_type = \"EMAIL ATTACHMENT OLE\") AND data_filter_universal = \"*\" AND data_moved_to: null ) ) ) )",
                 "{\n" +
                         "  \"bool\" : {\n" +
                         "    \"must\" : [ {\n" +

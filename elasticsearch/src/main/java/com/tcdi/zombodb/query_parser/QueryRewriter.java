@@ -49,6 +49,7 @@ public abstract class QueryRewriter {
 
     public static class Factory {
         private static boolean IS_SIREN_AVAILABLE;
+
         static {
             try {
                 IS_SIREN_AVAILABLE = Class.forName("solutions.siren.join.index.query.FilterJoinBuilder") != null;
@@ -243,6 +244,7 @@ public abstract class QueryRewriter {
         return getAggregateFieldName(tree.getAggregate());
 
     }
+
     public String getAggregateFieldName(ASTAggregate agg) {
         String fieldname = agg.getFieldname();
         IndexMetadata md = metadataManager.getMetadataForField(fieldname);
@@ -261,7 +263,7 @@ public abstract class QueryRewriter {
         if (fieldname.contains(".")) {
             String base = fieldname.substring(0, fieldname.indexOf('.'));
             if (base.equals(md.getLink().getFieldname()))   // strip base fieldname becase it's in a named index, not a json field
-                fieldname = fieldname.substring(fieldname.indexOf('.')+1);
+                fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
         }
         return fieldname;
     }
@@ -338,7 +340,7 @@ public abstract class QueryRewriter {
                 int colon_idx = stem.indexOf(':');
 
                 if (colon_idx >= 0) {
-                    intervalOffset = stem.substring(colon_idx+1);
+                    intervalOffset = stem.substring(colon_idx + 1);
                     stem = stem.substring(0, colon_idx);
                 }
 
@@ -406,7 +408,7 @@ public abstract class QueryRewriter {
     /**
      * Determine if a particular field name is present in the index
      *
-     * @param md index metadata
+     * @param md        index metadata
      * @param fieldname field name to check for
      * @return true if this field exists, false otherwise
      */
@@ -598,6 +600,7 @@ public abstract class QueryRewriter {
 
     private int withDepth = 0;
     private String withNestedPath;
+
     private QueryBuilder build(ASTWith node) {
         if (withDepth == 0)
             withNestedPath = Utils.validateSameNestedPath(node);
@@ -647,7 +650,7 @@ public abstract class QueryRewriter {
     private String nested = null;
 
     protected QueryBuilder build(ASTExpansion node) {
-        QueryBuilder expansionBuilder =  build(node.getQuery());
+        QueryBuilder expansionBuilder = build(node.getQuery());
         QueryParserNode filterQuery = node.getFilterQuery();
         if (filterQuery != null) {
             BoolQueryBuilder bqb = boolQuery();

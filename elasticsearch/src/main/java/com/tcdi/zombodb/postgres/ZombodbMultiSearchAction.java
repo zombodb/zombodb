@@ -102,7 +102,7 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
             @Override
             public void onResponse(MultiSearchResponse items) {
                 long end = System.currentTimeMillis();
-                logger.info("Searched " + descriptors.length + " indexes in " + ((end-start)/1000D) + " seconds");
+                logger.info("Searched " + descriptors.length + " indexes in " + ((end - start) / 1000D) + " seconds");
                 defaultListener.onResponse(items);
             }
 
