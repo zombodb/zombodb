@@ -3,11 +3,11 @@
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
 backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.5/static/indexam.html).
 
-In practical terms, a ZomboDB index is no different than a standard btree index.  As such, standard SQL commands are fully supported, including `SELECT`, `BEGIN`, `COMMIT`, `ABORT`, `INSERT`, `UPDATE`, `DELETE`, `COPY`, and `VACUUM`.
+In practical terms, a ZomboDB index appears to Postgres as no different than a standard btree index.  As such, standard SQL commands are fully supported, including `SELECT`, `BEGIN`, `COMMIT`, `ABORT`, `INSERT`, `UPDATE`, `DELETE`, `COPY`, and `VACUUM`.
 
-Because ZomboDB implements Postgres' Access Method API, ZomboDB indexes are MVCC-safe, even as concurrent sessions mutate underlying tables.  Following Postgres' MVCC rules means that every transaction sees, at all times, a view of the backing Elasticsearch index that is always consistent with its current snapshot.
+Because ZomboDB implements Postgres' Access Method API, ZomboDB indexes are MVCC-safe, even as concurrent sessions mutate underlying tables.  Following Postgres' MVCC rules means that every transaction sees, at all times, a view of the backing Elasticsearch index that is always consistent with the current transaction's snapshot.
 
-Behind the scenes, ZomboDB indexes communicate with Elasticsearch via HTTP and are automatically synchronized, in batch, when data changes.
+Behind the scenes, ZomboDB indexes communicate with Elasticsearch via HTTP and are automatically synchronized, in a high-performance manner, as data changes.
 
 Index management happens using standard Postgres SQL commands such as `CREATE INDEX`, `REINDEX`, and `ALTER INDEX`.  Searching uses standard SQL `SELECT` statements with a custom operator that exposes a [full-text query language](SYNTAX.md) supporting most of Elasticsearch's query constructs.
 
@@ -45,8 +45,8 @@ Elasticsearch-calculated aggregations are also provided through custom functions
   - range queries
   - "more like this"
 - [query expansion](SYNTAX.md#query-expansion) and [index linking](INDEX-OPTIONS.md)
-- Optional support for [SIREn](http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/) to resolve index links
-- [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-query-text-returns-setof-zdb_multi_search_response)
+- [support](SIREn-SUPPORT.md) for [SIREn](http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/) to resolve index links
+- [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-field_names-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
 - access to many of Elasticsearch's aggregations, including ability to nest aggregations
 - extensive test suite
@@ -62,24 +62,8 @@ Product       | Version
 ---           | ---      
 Postgres      | 9.3, 9.4, 9.5
 Elasticsearch | 1.7.1+ (not 2.0)
-Java JDK      | 1.7.0_51+
 
 For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
-
-
-
-## History
-
-The name is an homage to [zombo.com](http://zombo.com/) and its long history of continuous self-affirmation. 
-
-Development began in 2013 by [Technology Concepts & Design, Inc](http://www.tcdi.com) as a closed-source effort to provide transaction safe full-text searching on top of Postgres tables.  While Postgres' "tsearch" features are useful, they're not necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
-
-Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type (Access Method) so that queries are MVCC-safe and standard SQL can be used to query and manage indexes.
-
-Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and general ease of use.
-
-Two years later, it's been used in production systems for quite some time and is now open-source.
-
 
 ## How to Use It
 
@@ -120,14 +104,10 @@ CREATE INDEX idx_zdb_products
 Query it:
 
 ```sql
-SELECT * FROM products WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
+SELECT * 
+  FROM products 
+ WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
 ```
-
-
-## Credit and Thanks
-
-Credit goes to Technology Concepts & Design, Inc, its management, and its development and quality assurance teams not only for their work during the early development days but also for their on-going support now that ZomboDB is open-source.
-
 
 ## Contact Information
 
@@ -135,6 +115,24 @@ Credit goes to Technology Concepts & Design, Inc, its management, and its develo
 - Google Group: [zombodb@googlegroups.com](mailto:zombodb@googlegroups.com)
 - Twitter:  [@zombodb](https://twitter.com/zombodb) or [@eeeebbbbrrrr](https://twitter.com/eeeebbbbrrrr)
 - via github Issues and Pull Requests ;)
+
+
+## History
+
+The name is an homage to [zombo.com](http://zombo.com/) and its long history of continuous self-affirmation. 
+
+Development began in 2013 by [Technology Concepts & Design, Inc](http://www.tcdi.com) as a closed-source effort to provide transaction safe full-text searching on top of Postgres tables.  While Postgres' "tsearch" features are useful, they're not necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
+
+Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type (Access Method) so that queries are MVCC-safe and standard SQL can be used to query and manage indexes.
+
+Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and general ease of use.
+
+Two years later, it's been used in production systems for quite some time and is now open-source.
+
+
+## Credit and Thanks
+
+Credit goes to Technology Concepts & Design, Inc, its management, and its development and quality assurance teams not only for their work during the early development days but also for their on-going support now that ZomboDB is open-source.
 
 
 ## License

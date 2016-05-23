@@ -10,7 +10,7 @@ An example query might look like:
 
 Which would find all documents that contain the words ```beer``` __and__ ```wine``` __and__ occurrences of ```cheese``` within 3 words of ```food```, regardless of the field (or fields) that contain each word.
 
-The ```zombodb``` query syntax provides support for searching (in no particular order):
+The ZomboDB query syntax provides support for searching (in no particular order):
 
 * full boolean operators (WITH, AND, OR, NOT),
 * words,
@@ -22,6 +22,7 @@ The ```zombodb``` query syntax provides support for searching (in no particular 
 * term boosting
 * proximity (of word or phrase or combinations),
 * scripted searching,
+* Elasticsearch "bool" queries
 * query expansion,
 * "more like this", and
 * more!
@@ -238,6 +239,10 @@ Proximity operators take the highest precedence, so when combined with other boo
 
 Proximity clauses can be limited to specific fields as well:  ``title:catcher w/2 title:rye``.  Note that mixed fieldnames in a proximity chain is non-sensical and will produce a parse error.
 
+It's also possible to search for groups within some distance of another group.  This feature relates to Elasticsearch's [span_or](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/query-dsl-span-or-query.html) clause. For example:
+
+`description:((cat OR dog) w/5 (pet wo/3 (sale OR "free to good home" OR free*)))`
+
 
 ## Query Expansion
 
@@ -276,13 +281,41 @@ The left and right field names can be whatever "join condition" makes sense for 
 
 This says "find all emails with 'beer' in the subject, expand to their parent emails, by `thread_id`, and return the combined set of records".
 
-Note that `#expand<>()` is truly an expansion, so the results in the above example will be every email whose subject contains beer plus the parent email in their respective thread.
+Note that `#expand<>()` always add records to the results (it never removes records), so the results in the above example will be every email whose subject contains beer plus the parent email from their respective thread.
 
-If you only wanted parent emails returned you'd simply add a boolean clause outside of the expansion:
+If you only want parent emails returned you'd add a boolean clause outside of the expansion:
 
 `#expand<thread_id=<this.index>thread_id>(subject:beer) and is_parent:true`
 
-In terms of ZomboDB's query parser, `#expand<>()` is an unary operator and as such can be intermixed with boolean expressions (shown above) and infinitely nested as well.  ZomboDB solves nested expansions from the bottom-up so you're always guaranteed to get the correct results.
+In terms of ZomboDB's query parser, `#expand<>()` is an unary operator and as such can be intermixed with boolean expressions (shown above) and infinitely nested as well.  An implementation note is that ZomboDB solves nested expansions from the bottom-up.
+
+## Elasticsearch Bool Query Support
+
+ZomboDB provides syntax support for Elasticsearch's "bool" query.  It looks like this:
+
+```
+#bool(
+    #must(...)
+    #should(...)
+    #must_not(...)
+)
+```
+
+At least one of the `#must`, `#should`, and `#must_not` blocks must be provided, but the order is not important.
+
+Within each of the blocks can be a whitespace-separated list of words, phrases, or proximity chains, where any of those can be field-qualified or not.  Should any of the blocks contain boolean operators (WITH, AND, OR, NOT, parenthetical groupings) as bare words, they'll be ignored.  If they're quoted, they'll be treated as terms. 
+
+An example might be:
+
+```
+#bool(
+    #must(beer wine description:cheese)
+    #should(price:free)
+    #must_not(expensive usage:illegal)
+)
+```
+
+Similar to `#expand<>()` above, `#bool()` is considered a unary operator, so it can be combined with boolean expressions, included inside `#expand<>()`, etc.
 
 ## Nested Object Searching using WITH
 
