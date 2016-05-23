@@ -96,9 +96,9 @@ Index it:
 
 ```sql
 CREATE INDEX idx_zdb_products 
-                     ON products 
-                  USING zombodb(zdb('products', products.ctid), zdb(products))
-                   WITH (url='http://localhost:9200/', shards=5, replicas=1);
+          ON products 
+       USING zombodb(zdb('products', products.ctid), zdb(products))
+        WITH (url='http://localhost:9200/', shards=5, replicas=1);
 ```
 
 Query it:
