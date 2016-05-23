@@ -53,7 +53,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
 
 Not to suggest that these things are impossible, but there's a small set of non-features too:
 
-- ZomboDB indexes are not WAL-logged by Postgres.  As such, ZomboDB are not recoverable in the event of a Postgres server crash and will require a `REINDEX`
+- ZomboDB indexes are not WAL-logged by Postgres.  As such, ZomboDB indexes are not recoverable in the event of a Postgres server crash and will require a `REINDEX`
 - interoperability with various Postgres replication schemes is unknown
 
 ## What you need
