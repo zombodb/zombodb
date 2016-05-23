@@ -80,7 +80,7 @@ In general, this is a convenience feature for logically separating linked indexe
 
 ## Further Discussion
 
-What you're doing in the `options='...'` string is telling ZomboDB how to get from one index to another.  You're not technically describing "join conditions".  You're describing how to lookup data in a different index and relate it to the main index.
+What you're doing in the `options='...'` string is telling ZomboDB how to get from one index to another.  You're not technically describing "join conditions".  You're describing how to lookup data in a different index and relate it to another index.
 
 A more complex example might be:  
 
