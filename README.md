@@ -44,7 +44,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
   - regular expressions, inline scripts
   - range queries
   - "more like this"
-- query results expansion and [index linking](INDEX-OPTIONS.md)
+- [query expansion](SYNTAX.md#query-expansion) and [index linking](INDEX-OPTIONS.md)
 - Optional support for [SIREn](http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/) to resolve index links
 - [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
