@@ -40,15 +40,7 @@ public class SirenQueryRewriter extends QueryRewriter {
         ASTIndexLink myIndex = metadataManager.getMyIndex();
 
         if (link.toString().equals(myIndex.toString()) && !node.isGenerated()) {
-            QueryBuilder expansionBuilder =  build(node.getQuery());
-            QueryParserNode filterQuery = node.getFilterQuery();
-            if (filterQuery != null) {
-                BoolQueryBuilder bqb = boolQuery();
-                bqb.must(applyExclusion(build(node.getQuery()), link.getIndexName()));
-                bqb.must(build(filterQuery));
-                expansionBuilder = bqb;
-            }
-            return expansionBuilder;
+            return super.build(node);
         } else {
             FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname()).path(link.getRightFieldname()).indices(link.getIndexName());
             if (node.getFilterQuery() != null) {
