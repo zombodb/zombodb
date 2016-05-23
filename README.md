@@ -5,7 +5,7 @@ backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres'
 
 In practical terms, a ZomboDB index is no different than a standard btree index.  As such, standard SQL commands are fully supported, including `SELECT`, `BEGIN`, `COMMIT`, `ABORT`, `INSERT`, `UPDATE`, `DELETE`, `COPY`, and `VACUUM`.
 
-Because ZomboDB implements Postgres' Access Method API, ZomboDB indexes are MVCC-safe, even as concurrent sessions mutate underlying tables.  Following Postgres' MVCC rules means that every transaction sees, at all times, a view of the backing Elasticsearch index that is always consistent with its view of Postgres' tables.
+Because ZomboDB implements Postgres' Access Method API, ZomboDB indexes are MVCC-safe, even as concurrent sessions mutate underlying tables.  Following Postgres' MVCC rules means that every transaction sees, at all times, a view of the backing Elasticsearch index that is always consistent with its current snapshot.
 
 Behind the scenes, ZomboDB indexes communicate with Elasticsearch via HTTP and are automatically synchronized, in batch, when data changes.
 
@@ -21,44 +21,52 @@ Elasticsearch-calculated aggregations are also provided through custom functions
    - [Index Management](INDEX-MANAGEMENT.md), [Index Options](INDEX-OPTIONS.md), and [Type Mapping](TYPE-MAPPING.md)
    - [Query Syntax](SYNTAX.md)  
    - [SQL-level API](SQL-API.md)  
-   - [Upgrading to v2.5](UPGRADING-TO-v2.5.md)
 
 ## Features
 
-- transaction-safe full text queries
+- transaction-safe, MVCC-correct full text queries
 - managed & queried via standard Postgres SQL
 - works with tables of any structure
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
    - supports full set of Elasticsearch [language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/analysis-lang-analyzer.html)
    - support for [custom analyzer chains](TYPE-MAPPING.md)
    - custom [per-field mappings](TYPE-MAPPING.md)
-   - json columns as nested objects for flexible schemaless sub-documents
+   - json/jsonb columns as nested objects for flexible schemaless sub-documents
 - works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCAN-SUPPORT.md) 
-- [per-row scoring](SQL-API.md#function-zdb_scoretable_name-regclass-ctid-tid-returns-float4)
+- use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
 - extremely fast indexing
+- [per-row scoring](SQL-API.md#function-zdb_scoretable_name-regclass-ctid-tid-returns-float4) with term/phrase boosting
 - [record count estimation](SQL-API.md#function-zdb_estimate_counttable_name-regclass-query-text-returns-bigint)
-- custom full-text query language supporting nearly all of Elasticsearch's search features, including
+- custom full-text query language supporting nearly all of Elasticsearch's search features, such as
   - boolean operations
   - proximity (in and out of order)
-  - phrases
-  - wildcards
-  - fuzzy terms/phrases
-  - "more like this"
-  - regular expressions
-  - inline scripts
+  - phrases, wildcards, fuzzy terms/phrases
+  - regular expressions, inline scripts
   - range queries
-  - term/phrase boosting
+  - "more like this"
 - query results expansion and [index linking](INDEX-OPTIONS.md)
+- Optional support for [SIREn](http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/) to resolve index links
 - [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
 - access to many of Elasticsearch's aggregations, including ability to nest aggregations
-- use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
 - extensive test suite
 
 Not to suggest that these things are impossible, but there's a small set of non-features too:
 
-- ZomboDB indexes are not WAL-logged by Postgres.  As such, are not recoverable in the event of a Postgres server crash
+- ZomboDB indexes are not WAL-logged by Postgres.  As such, ZomboDB are not recoverable in the event of a Postgres server crash and will require a `REINDEX`
 - interoperability with various Postgres replication schemes is unknown
+
+## What you need
+
+Product       | Version 
+---           | ---      
+Postgres      | 9.3, 9.4, 9.5
+Elasticsearch | 1.7.1+ (not 2.0)
+Java JDK      | 1.7.0_51+
+
+For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
+
+
 
 ## History
 
@@ -115,16 +123,6 @@ Query it:
 SELECT * FROM products WHERE zdb('products', ctid) ==> 'keywords:(sports,box) or long_description:(wooden w/5 away) and price < 100000';
 ```
 
-
-## What you need
-
-Product       | Version 
----           | ---      
-Postgres      | 9.3, 9.4, 9.5
-Elasticsearch | 1.7.1+ (not 2.0)
-Java JDK      | 1.7.0_51+
-
-For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
 
 ## Credit and Thanks
 
