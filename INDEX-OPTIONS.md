@@ -194,4 +194,4 @@ SELECT * FROM test WHERE zdb ==> 'shakespeare';
 
 And of course, the view can be as complex as you need and can include whatever other tables you might want.
 
-It's important to remember that ZomboDB is only going to return matching rows from the base table (the table specified in the first argument to `my_custom_zdb_func()`, so you'll need to structure your view accordingly.
+It's important to remember that ZomboDB is only going to return matching rows from the base table (the table specified in the first argument to `my_custom_zdb_func()`), so you'll need to structure your view accordingly.
