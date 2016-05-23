@@ -45,14 +45,13 @@ uint64 ConvertedTopTransactionId;
 
 static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer);
 
-typedef struct
-{
+typedef struct {
     TransactionId last_xid;
-    uint32		epoch;
-} TxidEpoch;
+    uint32        epoch;
+}                     TxidEpoch;
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
-    char *definition = "";
+    char       *definition = "";
     StringInfo query;
 
     SPI_connect();
@@ -65,10 +64,10 @@ char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
 
     if (SPI_processed > 0) {
         StringInfo json = makeStringInfo();
-        int i;
+        int        i;
 
-        for (i=0; i<SPI_processed; i++) {
-            if (i>0) appendStringInfoCharMacro(json, ',');
+        for (i = 0; i < SPI_processed; i++) {
+            if (i > 0) appendStringInfoCharMacro(json, ',');
             appendStringInfo(json, "%s", SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
         }
         definition = (char *) MemoryContextAllocZero(cxt, (Size) json->len + 1);
@@ -81,7 +80,7 @@ char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
 }
 
 char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname) {
-    char *definition = NULL;
+    char       *definition = NULL;
     StringInfo query;
 
     SPI_connect();
@@ -96,7 +95,7 @@ char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname) {
         elog(ERROR, "Too many mappings found");
     } else if (SPI_processed == 1) {
         char *json = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
-        Size len = strlen(json);
+        Size len   = strlen(json);
 
         definition = (char *) MemoryContextAllocZero(cxt, (Size) len + 1);
         memcpy(definition, json, len);
@@ -108,7 +107,7 @@ char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname) {
 }
 
 bool type_is_domain(char *type_name, Oid *base_type) {
-    bool rc;
+    bool       rc;
     StringInfo query;
 
     SPI_connect();
@@ -121,10 +120,10 @@ bool type_is_domain(char *type_name, Oid *base_type) {
     if (SPI_processed == 0) {
         rc = false;
     } else {
-        bool isnull;
+        bool  isnull;
         Datum d;
 
-        d = SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1, &isnull);
+        d  = SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1, &isnull);
         rc = isnull || DatumGetBool(d);
 
         d = SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 2, &isnull);
@@ -137,8 +136,7 @@ bool type_is_domain(char *type_name, Oid *base_type) {
 }
 
 
-void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen)
-{
+void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen) {
     int i;
     Assert(str != NULL);
 
@@ -147,7 +145,7 @@ void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, 
 
     /* OK, append the data */
     memcpy(str->data + str->len, data, datalen);
-    for (i=str->len; i<str->len+datalen; i++) {
+    for (i = str->len; i < str->len + datalen; i++) {
         switch (str->data[i]) {
             case '\r':
             case '\n':
@@ -172,21 +170,18 @@ void freeStringInfo(StringInfo si) {
     }
 }
 
-char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing)
-{
+char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing) {
     StringInfo sql = makeStringInfo();
-    char *keyname;
+    char       *keyname;
 
     SPI_connect();
     appendStringInfo(sql, "SELECT column_name FROM information_schema.key_column_usage WHERE table_schema = '%s' AND table_name = '%s'", schemaName, tableName);
     SPI_execute(sql->data, true, 1);
 
-    if (SPI_processed == 0)
-    {
+    if (SPI_processed == 0) {
         if (failOnMissing)
             elog(ERROR, "Cannot find primary key column for: %s.%s", schemaName, tableName);
-        else
-        {
+        else {
             SPI_finish();
             return NULL;
         }
@@ -220,7 +215,7 @@ Oid *findZDBIndexes(Oid relid, int *many) {
     *many = SPI_processed;
     if (SPI_processed > 0) {
         indexes = (Oid *) MemoryContextAlloc(TopTransactionContext, sizeof(Oid) * SPI_processed);
-        for (i = 0; i < SPI_processed; i++)
+        for (i  = 0; i < SPI_processed; i++)
             indexes[i] = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
     }
     SPI_finish();
@@ -228,18 +223,14 @@ Oid *findZDBIndexes(Oid relid, int *many) {
     return indexes;
 }
 
-Oid *oid_array_to_oids(ArrayType *arr, int *many)
-{
-    if (ARR_NDIM(arr) != 1 ||
-        ARR_HASNULL(arr) ||
-        ARR_ELEMTYPE(arr) != OIDOID)
+Oid *oid_array_to_oids(ArrayType *arr, int *many) {
+    if (ARR_NDIM(arr) != 1 || ARR_HASNULL(arr) || ARR_ELEMTYPE(arr) != OIDOID)
         elog(ERROR, "expected oid[] of non-null values");
     *many = ARR_DIMS(arr)[0];
     return (Oid *) ARR_DATA_PTR(arr);
 }
 
-char **text_array_to_strings(ArrayType *array, int *many)
-{
+char **text_array_to_strings(ArrayType *array, int *many) {
     char  **result;
     Datum *elements;
     int   nelements;
@@ -247,12 +238,10 @@ char **text_array_to_strings(ArrayType *array, int *many)
 
     Assert(ARR_ELEMTYPE(array) == TEXTOID);
 
-    deconstruct_array(array, TEXTOID, -1, false, 'i',
-                      &elements, NULL, &nelements);
+    deconstruct_array(array, TEXTOID, -1, false, 'i', &elements, NULL, &nelements);
 
-    result = (char **) palloc(nelements * (sizeof (char *)));
-    for (i = 0; i < nelements; i++)
-    {
+    result = (char **) palloc(nelements * (sizeof(char *)));
+    for (i = 0; i < nelements; i++) {
         result[i] = TextDatumGetCString(elements[i]);
         if (result[i] == NULL)
             elog(ERROR, "expected text[] of non-null values");
@@ -279,7 +268,7 @@ StringInfo find_invisible_ctids(Relation rel) {
 int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data) {
     BlockNumber cnt            = visibilitymap_count(heapRel);
     BlockNumber numberOfBlocks = RelationGetNumberOfBlocks(heapRel);
-    int many = 0, skipped = 0, pages = 0;
+    int         many           = 0, skipped = 0, pages = 0;
 
     if (cnt == 0 || cnt != numberOfBlocks) {
         Snapshot      snapshot  = GetActiveSnapshot();
@@ -332,11 +321,11 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
  * Adapted from heapam.c#heap_fetch()
  */
 static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer) {
-    ItemPointer tid = &(tuple->t_self);
-    ItemId		lp;
-    Page		page;
+    ItemPointer  tid = &(tuple->t_self);
+    ItemId       lp;
+    Page         page;
     OffsetNumber offnum;
-    bool		valid;
+    bool         valid;
 
     if (BufferIsInvalid(*buffer)) {
         /*
@@ -356,8 +345,7 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
      * TID was obtained.
      */
     offnum = ItemPointerGetOffsetNumber(tid);
-    if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page))
-    {
+    if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page)) {
         return VT_OUT_OF_RANGE;
     }
 
@@ -369,10 +357,8 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
     /*
      * Must check for deleted tuple.
      */
-    if (!ItemIdIsNormal(lp))
-    {
-        if (!ItemIdIsUsed(lp))
-        {
+    if (!ItemIdIsNormal(lp)) {
+        if (!ItemIdIsUsed(lp)) {
             /*
              * Technically this item is free, which means it's also *not* in our index
              * so we don't need to actively exclude it.
@@ -381,9 +367,7 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
              * because it'll have an xmin that's outside our visible range and we filter those on the query
              */
             return VT_VISIBLE;
-        }
-        else
-        {
+        } else {
             return VT_INVISIBLE;
         }
     }
@@ -391,8 +375,8 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
     /*
      * fill in *tuple fields
      */
-    tuple->t_data = (HeapTupleHeader) PageGetItem(page, lp);
-    tuple->t_len = ItemIdGetLength(lp);
+    tuple->t_data     = (HeapTupleHeader) PageGetItem(page, lp);
+    tuple->t_len      = ItemIdGetLength(lp);
     tuple->t_tableOid = RelationGetRelid(relation);
 
     /*
@@ -401,12 +385,11 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
     valid = HeapTupleSatisfiesVisibility(tuple, snapshot, *buffer);
 
     if (!valid) {
-        int i;
+        int           i;
         TransactionId xmin = HeapTupleHeaderGetXmin(tuple->t_data);
         TransactionId xmax;
 
-        if (xmin >= snapshot->xmax)
-        {
+        if (xmin >= snapshot->xmax) {
             /*
              * The tuple's xmin is >= to the snapshot's xmax, so we can skip this entirely
              * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
@@ -418,11 +401,9 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
 
         // NB:  Is this really a good idea, from a performance perspective, to
         // examine xmin/xmax once for every concurrent session?
-        xmax = HeapTupleHeaderGetUpdateXid(tuple->t_data);
-        for (i = 0; i < snapshot->xcnt; i++)
-        {
-            if (xmin == snapshot->xip[i] || xmax == snapshot->xip[i])
-            {
+        xmax   = HeapTupleHeaderGetUpdateXid(tuple->t_data);
+        for (i = 0; i < snapshot->xcnt; i++) {
+            if (xmin == snapshot->xip[i] || xmax == snapshot->xip[i]) {
                 /*
                  * Similar to above, if the tuple's xmin or xmax are part of an active
                  * transaction, we can skip it because those transaction ids will be
@@ -433,8 +414,7 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
         }
     }
 
-    if (valid)
-    {
+    if (valid) {
         /*
          * All checks passed, so the tuple is visible to us
          */
@@ -448,7 +428,7 @@ static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapsh
 /* adapted from Postgres' txid.c#convert_xid function */
 uint64 convert_xid(TransactionId xid) {
     TxidEpoch state;
-    uint64 epoch;
+    uint64    epoch;
 
     GetNextXidAndEpoch(&state.last_xid, &state.epoch);
 

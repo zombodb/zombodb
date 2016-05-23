@@ -25,8 +25,7 @@ extern void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer 
 #endif   /* !PG_USE_INLINE */
 #if defined(PG_USE_INLINE) || defined(ZDBSEQSCAN_INCLUDE_DEFINITIONS)
 
-STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score)
-{
+STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score) {
     BlockNumber  blkno;
     OffsetNumber offno;
 
@@ -36,6 +35,7 @@ STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, It
 
     ItemPointerSet(target, blkno, offno);
 }
+
 #endif /* PG_USE_INLINE || ZDBSEQSCAN_INCLUDE_DEFINITIONS */
 
 extern List *SEQUENTIAL_SCAN_INDEXES;
@@ -43,7 +43,7 @@ extern HTAB *SEQUENTIAL_SCANS;
 extern List *CURRENT_QUERY_STACK;
 
 extern Datum zdb_seqscan(PG_FUNCTION_ARGS);
-extern void zdb_sequential_scan_support_cleanup(void);
+extern void  zdb_sequential_scan_support_cleanup(void);
 extern Datum zdbsel(PG_FUNCTION_ARGS);
 
 #endif

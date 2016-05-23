@@ -42,13 +42,13 @@ typedef struct SequentialScanIndexRef {
     Oid funcOid;
     Oid heapRelOid;
     Oid indexRelOid;
-} SequentialScanIndexRef;
+}           SequentialScanIndexRef;
 
 typedef struct SequentialScanKey {
     Oid    indexRelOid;
     char   *query;
     size_t query_len;
-} SequentialScanKey;
+}           SequentialScanKey;
 
 typedef struct SequentialScanEntry {
     SequentialScanKey key;
@@ -56,12 +56,12 @@ typedef struct SequentialScanEntry {
     ItemPointer       one_hit;
     bool              empty;
     ZDBScore          score;
-} SequentialScanEntry;
+}           SequentialScanEntry;
 
 typedef struct SequentialScanTidAndScore {
     ItemPointerData tid;
     ZDBScore        score;
-} SequentialScanTidAndScoreEntry;
+}           SequentialScanTidAndScoreEntry;
 
 List *SEQUENTIAL_SCAN_INDEXES = NULL;
 HTAB *SEQUENTIAL_SCANS        = NULL;
@@ -76,7 +76,7 @@ static uint32 sequential_scan_key_hash(const void *key, Size keysize) {
 static int sequential_scan_key_match(const void *key1, const void *key2, Size keysize) {
     const SequentialScanKey *a = (const SequentialScanKey *) key1;
     const SequentialScanKey *b = (const SequentialScanKey *) key2;
-    bool match;
+    bool                    match;
 
     match = a->indexRelOid == b->indexRelOid && a->query_len == b->query_len && strcmp(a->query, b->query) == 0;
     return match ? 0 : 1;
@@ -84,11 +84,11 @@ static int sequential_scan_key_match(const void *key1, const void *key2, Size ke
 
 static void *sequential_scan_key_copy(void *d, const void *s, Size keysize) {
     const SequentialScanKey *src  = (const SequentialScanKey *) s;
-    SequentialScanKey *dest = (SequentialScanKey *) d;
+    SequentialScanKey       *dest = (SequentialScanKey *) d;
 
     dest->indexRelOid = src->indexRelOid;
     dest->query_len   = src->query_len;
-    dest->query       = MemoryContextAlloc(TopTransactionContext, src->query_len+1);
+    dest->query       = MemoryContextAlloc(TopTransactionContext, src->query_len + 1);
     memcpy(dest->query, src->query, src->query_len + 1);
 
     return dest;
@@ -127,7 +127,7 @@ static Oid determine_index_oid(Node *node) {
                 break;
 
             default: {
-                QueryDesc *query = linitial(CURRENT_QUERY_STACK);
+                QueryDesc     *query  = linitial(CURRENT_QUERY_STACK);
                 RangeTblEntry *rentry = rt_fetch(var->varno, query->plannedstmt->rtable);
                 heapRelOid = rentry->relid;
             }
@@ -137,7 +137,7 @@ static Oid determine_index_oid(Node *node) {
             elog(ERROR, "Cannot determine index. Left side of operator is not compatible with ZomboDB.");
 
         funcExpr = (FuncExpr *) node;
-        funcOid = funcExpr->funcid;
+        funcOid  = funcExpr->funcid;
         validate_zdb_funcExpr(funcExpr, &heapRelOid);
     }
 
@@ -169,10 +169,10 @@ static Oid determine_index_oid(Node *node) {
 }
 
 Datum zdb_seqscan(PG_FUNCTION_ARGS) {
-    ItemPointer         tid        = (ItemPointer) PG_GETARG_POINTER(0);
-    char                *query     = TextDatumGetCString(PG_GETARG_TEXT_P(1));
-    OpExpr              *opexpr    = (OpExpr *) fcinfo->flinfo->fn_expr;
-    Node                *funcExpr  = (Node *) linitial(opexpr->args);
+    ItemPointer         tid       = (ItemPointer) PG_GETARG_POINTER(0);
+    char                *query    = TextDatumGetCString(PG_GETARG_TEXT_P(1));
+    OpExpr              *opexpr   = (OpExpr *) fcinfo->flinfo->fn_expr;
+    Node                *funcExpr = (Node *) linitial(opexpr->args);
     SequentialScanEntry *entry;
     SequentialScanKey   key;
     bool                found;
@@ -275,9 +275,9 @@ Datum zdbsel(PG_FUNCTION_ARGS) {
     float8 selectivity = 0.0001f;
 
     if (IsA(funcArg, FuncExpr) && IsA(queryNode, Const)) {
-        FuncExpr           *funcExpr     = (FuncExpr *) funcArg;
-        Const              *queryConst   = (Const *) queryNode;
-        Node               *regclassNode = (Node *) linitial(funcExpr->args);
+        FuncExpr *funcExpr     = (FuncExpr *) funcArg;
+        Const    *queryConst   = (Const *) queryNode;
+        Node     *regclassNode = (Node *) linitial(funcExpr->args);
 
         if (IsA(regclassNode, Const)) {
             Const              *tableRegclass = (Const *) regclassNode;

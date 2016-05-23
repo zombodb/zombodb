@@ -22,73 +22,64 @@
 
 CURLSH *GLOBAL_CURL_SHARED_STATE = NULL;
 CURL   *GLOBAL_CURL_INSTANCE     = NULL;
-List   *MULTI_REST_STATES = NULL;
+List   *MULTI_REST_STATES        = NULL;
 
-static void curl_shared_state_xact_cleanup(XactEvent event, void *arg)
-{
-	switch(event)
-	{
-		case XACT_EVENT_COMMIT:
-		case XACT_EVENT_ABORT:
-			/* cleanup our global curl instance */
-			if (GLOBAL_CURL_INSTANCE)
-			{
-				curl_easy_cleanup(GLOBAL_CURL_INSTANCE);
-				GLOBAL_CURL_INSTANCE = NULL;
-			}
+static void curl_shared_state_xact_cleanup(XactEvent event, void *arg) {
+    switch (event) {
+        case XACT_EVENT_COMMIT:
+        case XACT_EVENT_ABORT:
+            /* cleanup our global curl instance */
+            if (GLOBAL_CURL_INSTANCE) {
+                curl_easy_cleanup(GLOBAL_CURL_INSTANCE);
+                GLOBAL_CURL_INSTANCE = NULL;
+            }
 
-			/* cleanup each multi rest state (and contained curl instances) */
-			if (MULTI_REST_STATES != NULL)
-			{
-				ListCell *lc;
-				int cnt = 0;
+            /* cleanup each multi rest state (and contained curl instances) */
+            if (MULTI_REST_STATES != NULL) {
+                ListCell *lc;
+                int      cnt = 0;
 
-				foreach(lc, MULTI_REST_STATES)
-				{
-					MultiRestState *state = (MultiRestState *) lfirst(lc);
-					CURLM *multi = state->multi_handle;
+                foreach(lc, MULTI_REST_STATES) {
+                    MultiRestState *state = (MultiRestState *) lfirst(lc);
+                    CURLM          *multi = state->multi_handle;
 
-					if (multi)
-					{
-						int i;
+                    if (multi) {
+                        int i;
 
-						for (i = 0; i < MAX_CURL_HANDLES; i++)
-						{
-							CURL *curl = state->handles[i];
+                        for (i = 0; i < MAX_CURL_HANDLES; i++) {
+                            CURL *curl = state->handles[i];
 
-							if (curl)
-							{
-								curl_multi_remove_handle(multi, curl);
-								curl_easy_cleanup(curl);
-							}
-						}
+                            if (curl) {
+                                curl_multi_remove_handle(multi, curl);
+                                curl_easy_cleanup(curl);
+                            }
+                        }
 
-						curl_multi_cleanup(multi);
-						cnt++;
-					}
-				}
+                        curl_multi_cleanup(multi);
+                        cnt++;
+                    }
+                }
 
-				MULTI_REST_STATES = NULL;
-			}
+                MULTI_REST_STATES = NULL;
+            }
 
-			break;
+            break;
 
-		default:
-			break;
-	}
+        default:
+            break;
+    }
 }
 
-void curl_support_init(void)
-{
-	int rc;
+void curl_support_init(void) {
+    int rc;
 
-	rc = curl_global_init(CURL_GLOBAL_ALL);
-	if (rc != 0)
-		elog(ERROR, "Problem initializing libcurl:  rc=%d", rc);
+    rc = curl_global_init(CURL_GLOBAL_ALL);
+    if (rc != 0)
+        elog(ERROR, "Problem initializing libcurl:  rc=%d", rc);
 
-	if ( (GLOBAL_CURL_SHARED_STATE = curl_share_init()) == NULL)
-		elog(ERROR, "Could not initialize libcurl shared state via curl_share_init()");
+    if ((GLOBAL_CURL_SHARED_STATE = curl_share_init()) == NULL)
+        elog(ERROR, "Could not initialize libcurl shared state via curl_share_init()");
 
-	RegisterXactCallback(curl_shared_state_xact_cleanup, NULL);
+    RegisterXactCallback(curl_shared_state_xact_cleanup, NULL);
 }
 
