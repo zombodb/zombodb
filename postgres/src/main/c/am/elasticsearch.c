@@ -227,7 +227,7 @@ static void checkForRefreshError(StringInfo response) {
 	{
 		char *errors = TextDatumGetCString(failedText);
 		if (strcmp(errors, "0") != 0)
-			elog(ERROR, "Error refresing: %s", response->data);
+			elog(ERROR, "Error refreshing: %s", response->data);
 		pfree(errors);
 		pfree(failedText);
 	}
