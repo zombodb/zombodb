@@ -92,7 +92,7 @@ options='content:(id=<book_content.idxcontent>book_id),
 
 So imagine two more tables named `checkout_history` and `users` with schemas as you might expect, both of which have ZomboDB indexes.
 
-Behind the scenes, ZomboDB builds a graph of the relationships you define, and dynamically solves how to answer your query.  It's able to see through even multiple-levels of indirection.  
+Behind the scenes, ZomboDB builds a graph of the relationships you define, and dynamically solves how to answer your query.  It's even able to see through multiple-levels of indirection.  
 
 With the above definition, you'd be able to find all the books checked out by a particular user:  
 
