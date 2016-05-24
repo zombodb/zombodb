@@ -25,13 +25,21 @@
 
 #define zdb_json char *
 
+extern PGDLLEXPORT uint64 ConvertedTopTransactionId;
+
 char *lookup_analysis_thing(MemoryContext cxt, char *thing);
 char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname);
 bool type_is_domain(char *type_name, Oid *base_type);
 void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen);
 void freeStringInfo(StringInfo si);
 char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing);
-Oid *oid_array_to_oids(ArrayType *arr, int *many);
+Oid  *findZDBIndexes(Oid relid, int *many);
+Oid  *oid_array_to_oids(ArrayType *arr, int *many);
 char **text_array_to_strings(ArrayType *array, int *many);
+
+typedef void (*invisibility_callback)(ItemPointer ctid, void *data);
+int        find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data);
+StringInfo find_invisible_ctids(Relation rel);
+uint64     convert_xid(TransactionId xid);
 
 #endif

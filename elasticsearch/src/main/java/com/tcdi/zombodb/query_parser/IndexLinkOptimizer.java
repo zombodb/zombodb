@@ -16,63 +16,66 @@
  */
 package com.tcdi.zombodb.query_parser;
 
-import java.util.*;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchType;
+import org.elasticsearch.client.Client;
 
-/**
- * Created by e_ridge on 4/21/15.
- */
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class IndexLinkOptimizer {
+    private static final Map<String, Long> COUNT_ESTIMATE_CACHE = new ConcurrentHashMap<>(1000);
+
+    private final Client client;
+    private final QueryRewriter rewriter;
     private final ASTQueryTree tree;
     private final IndexMetadataManager metadataManager;
 
     private Set<ASTIndexLink> usedIndexes = new HashSet<>();
 
-    public IndexLinkOptimizer(ASTQueryTree tree, IndexMetadataManager metadataManager) {
+    public IndexLinkOptimizer(Client client, QueryRewriter rewriter, ASTQueryTree tree, IndexMetadataManager metadataManager) {
+        this.client = client;
+        this.rewriter = rewriter;
         this.tree = tree;
         this.metadataManager = metadataManager;
     }
 
     public void optimize() {
-        try {
-            expand_allFieldAndAssignIndexLinks(tree, metadataManager.getMyIndex());
+        expand_allFieldAndAssignIndexLinks(tree, metadataManager.getMyIndex());
+
+        QueryTreeOptimizer.rollupParentheticalGroups(tree);
+
+        injectASTExpansionNodes(tree);
+
+        int before;
+        do {
+            before = tree.countNodes();
+            while (mergeAdjacentExpansions(tree) > 0) ;
 
             QueryTreeOptimizer.rollupParentheticalGroups(tree);
-
-            injectASTExpansionNodes(tree);
-
-            int before;
-            do {
-                before = tree.countNodes();
-                while (mergeAdjacentExpansions(tree) > 0) ;
-
-                QueryTreeOptimizer.rollupParentheticalGroups(tree);
-            } while (tree.countNodes() != before);
+        } while (tree.countNodes() != before);
 
 
-            rewriteIndirectReferenceIndexLinks(tree);
+        rewriteIndirectReferenceIndexLinks(tree);
 
-            ASTAggregate agg = tree.getAggregate();
-            while (agg != null) {
-                usedIndexes.add(metadataManager.findField(agg.getFieldname()));
-                agg = agg.getSubAggregate();
-            }
-
-            metadataManager.setUsedIndexes(usedIndexes);
-        } catch (CloneNotSupportedException e) {
-            // should never happen
-            throw new RuntimeException(e);
+        ASTAggregate agg = tree.getAggregate();
+        while (agg != null) {
+            usedIndexes.add(metadataManager.findField(agg.getFieldname()));
+            agg = agg.getSubAggregate();
         }
+
+        metadataManager.setUsedIndexes(usedIndexes);
     }
 
 
-    private void expand_allFieldAndAssignIndexLinks(QueryParserNode root, ASTIndexLink currentIndex) throws CloneNotSupportedException {
+    private void expand_allFieldAndAssignIndexLinks(QueryParserNode root, ASTIndexLink currentIndex) {
         if (root == null || root.children == null || root.children.isEmpty() || (root instanceof ASTExpansion && !((ASTExpansion) root).isGenerated())) {
             if (root instanceof ASTExpansion)
                 usedIndexes.add(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()));
             return;
         }
 
-        if (root instanceof  ASTExpansion && ((ASTExpansion) root).isGenerated()) {
+        if (root instanceof ASTExpansion && ((ASTExpansion) root).isGenerated()) {
             ASTIndexLink left = metadataManager.findField(root.getIndexLink().getLeftFieldname());
             ASTIndexLink right = metadataManager.findField(root.getIndexLink().getRightFieldname());
             usedIndexes.add(left);
@@ -83,7 +86,7 @@ public class IndexLinkOptimizer {
             QueryParserNode child = (QueryParserNode) root.children.get(i);
             String fieldname = child.getFieldname();
 
-            if (child instanceof ASTIndexLink || child instanceof ASTParent || child instanceof ASTAggregate || child instanceof ASTSuggest)
+            if (child instanceof ASTIndexLink || child instanceof ASTAggregate || child instanceof ASTSuggest)
                 continue;
 
             if (fieldname != null && !(child instanceof ASTExpansion)) {
@@ -121,24 +124,14 @@ public class IndexLinkOptimizer {
     }
 
     private void injectASTExpansionNodes(ASTQueryTree tree) {
-        ASTChild childQuery = (ASTChild) tree.getChild(ASTChild.class);
-        if (childQuery != null) {
-            injectASTExpansionNodes(childQuery);
-        } else {
-            for (QueryParserNode child : tree) {
-                if (child instanceof ASTOptions || child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
-                    continue;
-                injectASTExpansionNodes(child);
-            }
+        for (QueryParserNode child : tree) {
+            if (child instanceof ASTOptions || child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
+                continue;
+            injectASTExpansionNodes(child);
         }
     }
 
     private void injectASTExpansionNodes(QueryParserNode root) {
-        if (root instanceof ASTParent)
-            return;
-
-        while (root instanceof ASTChild)
-            root = root.getChild(0);
         while (root instanceof ASTExpansion)
             root = ((ASTExpansion) root).getQuery();
 
@@ -151,12 +144,73 @@ public class IndexLinkOptimizer {
             if (link == null)
                 return;
 
-            ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
-            expansion.jjtAddChild(link, 0);
+            QueryParserNode parent = (QueryParserNode) root.parent;
+            QueryParserNode last = null;
+            QueryParserNode lastExpansion = null;
+            String leftFieldname = null;
+            String rightFieldname;
+            Stack<String> paths = metadataManager.calculatePath(link, metadataManager.getMyIndex());
 
-            ((QueryParserNode)root.parent).replaceChild(root, expansion);
-            expansion.jjtAddChild(root, 1);
+            if (link.hasFieldname())
+                stripPath(root, link.getFieldname());
 
+            while (!paths.empty()) {
+                String current = paths.pop();
+                String next = paths.empty() ? null : paths.peek();
+
+                if (next != null && !next.contains(":")) {
+                    // consume entries that are simply index names
+                    paths.pop();
+
+                    do {
+                        if (paths.empty())
+                            throw new RuntimeException("Invalid path from " + link + " to " + metadataManager.getMyIndex());
+
+                        current = paths.pop();
+                        next = paths.empty() ? null : paths.peek();
+                    } while (next != null && !next.contains(":"));
+                }
+
+                ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
+                String indexName;
+
+                indexName = current.substring(0, current.indexOf(':'));
+                if (next != null) {
+                    leftFieldname = next.substring(next.indexOf(':') + 1);
+                    rightFieldname = current.substring(current.indexOf(':') + 1);
+                } else {
+                    if (last == null)
+                        throw new IllegalStateException("Failed to build a proper expansion tree");
+
+                    rightFieldname = leftFieldname;
+                    leftFieldname = current.substring(current.indexOf(':') + 1);
+                    indexName = lastExpansion.getIndexLink().getIndexName();
+                }
+
+                if (leftFieldname.equals(rightFieldname))
+                    break;
+
+                ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, rightFieldname);
+                expansion.jjtAddChild(newLink, 0);
+                expansion.jjtAddChild(last == null ? root : last, 1);
+                newLink.setFieldname(link.getFieldname());
+
+                lastExpansion = expansion;
+                if (last == null && !newLink.getIndexName().equals(metadataManager.getMyIndex().getIndexName())) {
+                    last = maybeInvertExpansion(expansion);
+                } else {
+                    last = expansion;
+                }
+            }
+
+            if (last != null) {
+                parent.replaceChild(root, last);
+            } else {
+                ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
+                expansion.jjtAddChild(link, 0);
+                expansion.jjtAddChild(root, 1);
+                parent.replaceChild(root, expansion);
+            }
         } else {
             for (QueryParserNode child : root)
                 injectASTExpansionNodes(child);
@@ -167,12 +221,6 @@ public class IndexLinkOptimizer {
     private Set<ASTIndexLink> collectIndexLinks(QueryParserNode root, Set<ASTIndexLink> links) {
         if (root == null)
             return links;
-
-        if (root instanceof ASTParent) {
-            // so that ASTParent nodes never get grouped in an ASTExpansion node
-            links.add(null);
-            return links;
-        }
 
         for (QueryParserNode child : root)
             collectIndexLinks(child, links);
@@ -189,7 +237,7 @@ public class IndexLinkOptimizer {
             total += mergeAdjacentExpansions(child);
         }
 
-        Map<ASTIndexLink, List<ASTExpansion>> sameExpansions = new IdentityHashMap<>();
+        Map<ASTIndexLink, List<ASTExpansion>> sameExpansions = new HashMap<>();
         int cnt = 0;
         for (QueryParserNode child : root) {
             if (child instanceof ASTExpansion) {
@@ -273,14 +321,79 @@ public class IndexLinkOptimizer {
             rewriteIndirectReferenceIndexLinks(child);
     }
 
-    static void stripPath(QueryParserNode root, String path) {
-        if (root.getFieldname() != null && root.getFieldname().startsWith(path+"."))
-            root.setFieldname(root.getFieldname().substring(path.length()+1));
+    private void stripPath(QueryParserNode root, String path) {
+        if (root.getFieldname() != null && root.getFieldname().startsWith(path + "."))
+            root.setFieldname(root.getFieldname().substring(path.length() + 1));
 
         for (QueryParserNode child : root) {
             stripPath(child, path);
         }
 
+    }
+
+    private QueryParserNode maybeInvertExpansion(ASTExpansion expansion) {
+        long totalCnt, queryCnt;
+
+        //
+        // figure out how many records are in the index
+        //
+        totalCnt = estimateCount(expansion, false);
+
+        //
+        // then how many records this expansion is likely to return
+        //
+        queryCnt = estimateCount(expansion, true);
+
+        if (queryCnt > totalCnt / 2) {
+            //
+            // and if the expansion is going to return more than 1/2 the database
+            // invert it on the inner side of the expansion
+            //
+            ASTNot innerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
+            innerNot.jjtAddChild(expansion.getQuery(), 0);
+            expansion.jjtAddChild(innerNot, 1);
+
+            //
+            // and on the outer side.
+            //
+            // This way we're only shipping around the minimal number of rows
+            // through the rest of the query
+            //
+            ASTNot outerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
+            outerNot.jjtAddChild(expansion, 0);
+            return outerNot;
+        }
+
+        return expansion;
+    }
+
+    private long estimateCount(ASTExpansion expansion, boolean useQuery) {
+        SearchRequestBuilder builder = new SearchRequestBuilder(client);
+        builder.setIndices(expansion.getIndexLink().getIndexName());
+        builder.setSize(0);
+        builder.setSearchType(SearchType.COUNT);
+        builder.setQueryCache(true);
+        builder.setFetchSource(false);
+        builder.setTrackScores(false);
+        builder.setNoFields();
+        if (useQuery)
+            builder.setQuery(rewriter.build(expansion.getQuery()));
+
+        String key = builder.toString();
+        Long count = COUNT_ESTIMATE_CACHE.get(key);
+        if (count != null)
+            return count;
+
+        try {
+            count = client.search(builder.request()).get().getHits().getTotalHits();
+            if (COUNT_ESTIMATE_CACHE.size() >= 1000)
+                COUNT_ESTIMATE_CACHE.clear();
+
+            COUNT_ESTIMATE_CACHE.put(key, count);
+            return count;
+        } catch (Exception e) {
+            throw new RuntimeException("Problem estimating count", e);
+        }
     }
 
 }

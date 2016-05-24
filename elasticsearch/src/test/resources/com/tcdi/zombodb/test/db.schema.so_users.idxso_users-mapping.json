@@ -2,8 +2,7 @@
   "mappings": {
     "xact": {
       "_meta": {
-        "primary_key": "id",
-        "noxact": false
+        "primary_key": "id"
       },
       "date_detection": false,
       "_all": {
@@ -61,8 +60,7 @@
     },
     "data": {
       "_meta": {
-        "primary_key": "id",
-        "noxact": false
+        "primary_key": "id"
       },
       "date_detection": false,
       "_all": {

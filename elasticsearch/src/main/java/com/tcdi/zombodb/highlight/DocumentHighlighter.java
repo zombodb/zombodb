@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,28 +24,7 @@ import java.io.StringReader;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
-/**
- * @author e_ridge
- */
 public class DocumentHighlighter {
-
-    public static class HighlightException extends RuntimeException {
-        public HighlightException() {
-            super();
-        }
-
-        public HighlightException(String message) {
-            super(message);
-        }
-
-        public HighlightException(String message, Throwable cause) {
-            super(message, cause);
-        }
-
-        public HighlightException(Throwable cause) {
-            super(cause);
-        }
-    }
 
     private final Client client;
     private final ASTQueryTree query;
@@ -86,6 +66,7 @@ public class DocumentHighlighter {
     }
 
     private Highlighter _highlighter = new Highlighter();
+
     private class Highlighter {
         public void perform(QueryParserNode node) {
             if (node == null)
@@ -104,11 +85,7 @@ public class DocumentHighlighter {
     }
 
     private void highlight(QueryParserNode node) {
-        if (node instanceof ASTChild)
-            highlightChildren(node);
-        else if (node instanceof ASTParent)
-            highlightChildren(node);
-        else if (node instanceof ASTWith)
+        if (node instanceof ASTWith)
             highlightChildren(node);
         else if (node instanceof ASTAnd)
             highlightChildren(node);
@@ -123,8 +100,7 @@ public class DocumentHighlighter {
                 highlightChildren(boolQuery.getMust());
             if (boolQuery.getShould() != null)
                 highlightChildren(boolQuery.getShould());
-        }
-        else if (node instanceof ASTNot)
+        } else if (node instanceof ASTNot)
             ;   // do nothing for ASTNot nodes
         else
             _highlighter.perform(node);
@@ -156,13 +132,13 @@ public class DocumentHighlighter {
 
             value = findValue(fieldName, data);
             if (value != null) {
-                List<AnalyzedField> fields = analyzedFields.get(baseFn == null ? fieldName : baseFn+"."+fieldName);
+                List<AnalyzedField> fields = analyzedFields.get(baseFn == null ? fieldName : baseFn + "." + fieldName);
                 if (fields.isEmpty())
-                    analyzedFields.put(baseFn == null ? fieldName : baseFn+"."+fieldName, fields = new ArrayList<>());
+                    analyzedFields.put(baseFn == null ? fieldName : baseFn + "." + fieldName, fields = new ArrayList<>());
 
-                int idx=0;
+                int idx = 0;
                 for (AnalyzedField af : fields) {
-                    if (af.get().getFieldName().equals(baseFn+"."+fieldName))
+                    if (af.get().getFieldName().equals(baseFn + "." + fieldName))
                         idx++;
                 }
 
@@ -178,10 +154,8 @@ public class DocumentHighlighter {
                             rb.setAnalyzer("phrase");
 
                             try {
-                                fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn+"."+fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
-                            } catch (InterruptedException e) {
-                                // ignore
-                            } catch (ExecutionException e) {
+                                fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
+                            } catch (InterruptedException | ExecutionException e) {
                                 // ignore
                             }
                         }
@@ -191,10 +165,8 @@ public class DocumentHighlighter {
                     rb.setAnalyzer("phrase");
 
                     try {
-                        fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn+"."+fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
-                    } catch (InterruptedException e) {
-                        // ignore
-                    } catch (ExecutionException e) {
+                        fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
+                    } catch (InterruptedException | ExecutionException e) {
                         // ignore
                     }
                 }

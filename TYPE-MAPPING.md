@@ -22,7 +22,7 @@ text          | string, analyzed using ZomboDB's `exact` analyzer
 varchar       | string, analyzed using ZomboDB's `exact` analyzer
 character     | string, analyzed using ZomboDB's `exact` analyzer
 uuid          | string, analyzed using ZomboDB's `exact` analyzer
-json          | nested_object, where each property analyzed using ZomboDB's `exact` analyzer
+json/jsonb    | nested_object, where each property is analyzed using ZomboDB's `exact` analyzer
 unlisted type | string, analyzed using ZomboDB's `exact` analyzer
 
 (for all types above, arrays of the Postgres type are fully supported)
@@ -128,7 +128,7 @@ Note that if your custom DOMAIN is defined `AS text`, fields of that type are **
 
 ZomboDB enables Elasticsearch's `_all` field and it is configured to use ZomboDB's `phrase` analyzer.
 
-The `_all` field only includes "text" and date/timestamp fields (fields of type `text`, `varchar`, `character`, `date`, `time`, `timestamp`, `json`), unless the field is of type `fulltext` or a custom DOMAIN defined `AS text`.  
+The `_all` field only includes "text" and date/timestamp fields (fields of type `text`, `varchar`, `character`, `date`, `time`, `timestamp`, `json`, `jsonb`), unless the field is of type `fulltext` or a custom DOMAIN defined `AS text`.  
 
 If the custom DOMAIN type is defined `AS varchar(<length>)` then it **is** included in the `_all` field.
 

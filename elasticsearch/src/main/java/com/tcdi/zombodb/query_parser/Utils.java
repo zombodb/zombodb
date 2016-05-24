@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +25,10 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * @author e_ridge
- */
 public class Utils {
-    private static final char[] NEEDS_ESCAPES = new char[] { 'A', 'a', 'O', 'o', 'W', 'w', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']' };
+    private static final char[] NEEDS_ESCAPES = new char[]{'A', 'a', 'O', 'o', 'W', 'w', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']'};
     private static final String NEEDS_ESCAPES_AS_STRING;
+
     static {
         Arrays.sort(NEEDS_ESCAPES);
 
@@ -52,11 +51,11 @@ public class Utils {
         if (s == null || s.length() <= 1)
             return s;
 
-        StringBuilder sb  = new StringBuilder();
-        for (int i=0, len=s.length(); i<len; i++) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0, len = s.length(); i < len; i++) {
             char ch = s.charAt(i);
             if (ch == '\\') {
-                char next = i<len-1 ? s.charAt(++i) : 0;
+                char next = i < len - 1 ? s.charAt(++i) : 0;
                 if (next == 0)
                     throw new RuntimeException("Invalid escape sequence at end of string");
 
@@ -132,7 +131,7 @@ public class Utils {
             node.setValue(value);
         } else if (value.endsWith("*") && (!value.endsWith("\\*") || value.endsWith("\\\\*"))) {
             node = new ASTPrefix(QueryParserTreeConstants.JJTPREFIX);
-            node.setValue(value.substring(0, value.length()-1));
+            node.setValue(value.substring(0, value.length() - 1));
         } else if (value.endsWith("?") && (!value.endsWith("\\?") || value.endsWith("\\\\?"))) {
             node = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
             node.setValue(value);
@@ -191,7 +190,7 @@ public class Utils {
 
         StringBuilder sb = new StringBuilder();
         char prevch = 0;
-        for (int i=0, len=value.length(); i<len; i++) {
+        for (int i = 0, len = value.length(); i < len; i++) {
             char ch = value.charAt(i);
 
             if (!Character.isLetterOrDigit(ch) && ch != '_' && prevch != '\\' && ch != '*' && ch != '?' && ch != '~' && ch != '\'' && ch != '.' && ch != ':') {
@@ -325,6 +324,7 @@ public class Utils {
             }
         });
     }
+
     static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens) {
         return convertToProximity(fieldname, tokens, 0);
     }
@@ -387,6 +387,7 @@ public class Utils {
     static String validateSameNestedPath(ASTWith node) {
         return validateSameNestedPath(node, null);
     }
+
     private static String validateSameNestedPath(QueryParserNode node, String nestedPath) {
         if (!node.hasChildren())
             return nestedPath;
@@ -398,11 +399,11 @@ public class Utils {
             if (child.hasChildren())
                 nestedPath = validateSameNestedPath(child, nestedPath);
             else if (nestedPath != null && !nestedPath.equals(child.getNestedPath()))
-                throw new RuntimeException ("WITH chain must all belong to the same nested object");
+                throw new RuntimeException("WITH chain must all belong to the same nested object");
         }
 
         if (nestedPath == null)
-            throw new RuntimeException ("WITH chain must all belong to a nested object");
+            throw new RuntimeException("WITH chain must all belong to a nested object");
 
         return nestedPath;
     }
@@ -412,10 +413,12 @@ public class Utils {
         boolean hasWildcards = node instanceof ASTFuzzy;
         String input = node.getEscapedValue();
         String newToken;
+        boolean isComplex;
 
         if (node instanceof ASTPrefix)
             input += "*";
 
+        isComplex = Utils.isComplexTerm(input);
         input = input.replaceAll("[*]", "zdb_star_zdb");
         input = input.replaceAll("[?]", "zdb_question_zdb");
         input = input.replaceAll("[~]", "zdb_tilde_zdb");
@@ -426,7 +429,7 @@ public class Utils {
             // and it uses a build-in analyzer...
             String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
             if ((analyzer == null || "exact".equals(analyzer) || "phrase".equals(analyzer) || "fulltext".equals(analyzer) || "fulltext_with_shingles".equals(analyzer))
-                    && !Utils.isComplexTerm(input)) { // ... and is a single term
+                    && !isComplex) { // ... and is a single term
 
                 // then we'll just convert it to lowercase
                 node.setValue(input.toLowerCase());
@@ -448,8 +451,32 @@ public class Utils {
         newToken = newToken.replaceAll("zdb_escape_zdb", "\\\\");
 
         hasWildcards |= Utils.countValidWildcards(newToken) > 0;
-        QueryParserNode rc;
 
+        if (hasWildcards && !isComplex) {
+            String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
+            if (analyzer != null && analyzer.contains("_with_shingles")) {
+                QueryParserNode tmp = Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), newToken);
+                if (tmp instanceof ASTNotNull)
+                    return tmp;
+                boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
+
+                node.setOperator(QueryParserNode.Operator.REGEX);
+                newToken = newToken.replaceAll("[*]", "\\[\\^\\$\\]\\*");
+                newToken = newToken.replaceAll("[?]", "\\[\\^\\$\\]\\?");
+                node.setValue(newToken);
+
+                if (isNE) {
+                    ASTNot not = new ASTNot(QueryParserTreeConstants.JJTNOT);
+                    not.jjtAddChild(node, 0);
+                    return not;
+                }
+
+                return node;
+            }
+        }
+
+
+        QueryParserNode rc;
         if (!hasWildcards) {
             if (initialAnalyze.size() <= 1) {
                 if (node instanceof ASTPrefix) {
@@ -497,7 +524,7 @@ public class Utils {
         if (rc instanceof ASTPrefix) {
             String value = String.valueOf(rc.value);
             if (value.endsWith("*"))
-                rc.value = value.substring(0, value.length()-1);
+                rc.value = value.substring(0, value.length() - 1);
         }
 
         return rc;

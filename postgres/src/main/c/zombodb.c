@@ -18,14 +18,11 @@
 
 #include "postgres.h"
 #include "fmgr.h"
-#include "access/xact.h"
-#include "catalog/pg_type.h"
 #include "utils/builtins.h"
 
 #include "am/zdbam.h"
 #include "util/curl_support.h"
 #include "rest/rest.h"
-#include "util/zdbutils.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -42,7 +39,7 @@ void _PG_init(void);
 void _PG_fini(void);
 
 void _PG_init(void) {
-	curl_support_init();
+    curl_support_init();
 
     zdbam_init();
 }
@@ -51,12 +48,11 @@ void _PG_fini(void) {
     zdbam_fini();
 }
 
-Datum rest_get(PG_FUNCTION_ARGS)
-{
-	char *url = PG_ARGISNULL(0) ? NULL : GET_STR(PG_GETARG_TEXT_P(0));
+Datum rest_get(PG_FUNCTION_ARGS) {
+    char *url = PG_ARGISNULL(0) ? NULL : GET_STR(PG_GETARG_TEXT_P(0));
 
-	if (url == NULL)
-		PG_RETURN_NULL();
+    if (url == NULL)
+        PG_RETURN_NULL();
 
-	PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL)->data));
+    PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL)->data));
 }

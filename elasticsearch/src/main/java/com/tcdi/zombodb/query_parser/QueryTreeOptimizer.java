@@ -18,9 +18,6 @@ package com.tcdi.zombodb.query_parser;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 12/23/14.
- */
 public class QueryTreeOptimizer {
     private final ASTQueryTree tree;
 
@@ -85,7 +82,7 @@ public class QueryTreeOptimizer {
         for (QueryParserNode child : root) {
             if (child instanceof ASTProximity) {
                 {
-                    Set<String> fieldnames = new HashSet<String>();
+                    Set<String> fieldnames = new HashSet<>();
                     for (QueryParserNode n : child) {
                         if (n.getFieldname() != null)
                             fieldnames.add(n.getFieldname());
@@ -135,7 +132,7 @@ public class QueryTreeOptimizer {
             return;
 
         QueryParserNode parent = (QueryParserNode) root.parent;
-        for (int i=0, many=root.children.size(); i<many; i++) {
+        for (int i = 0, many = root.children.size(); i < many; i++) {
             if (parent.children.get(i) == root) {
                 QueryParserNode child = (QueryParserNode) root.children.get(0);
                 parent.children.put(i, child);
@@ -153,7 +150,7 @@ public class QueryTreeOptimizer {
 
         Map<Integer, ASTArray> arraysByField = new TreeMap<>();
         boolean needsRenumber = false;
-        for (int i=0, many=root.children.size(); i<many; i++) {
+        for (int i = 0, many = root.children.size(); i < many; i++) {
             QueryParserNode child = (QueryParserNode) root.children.get(i);
             if (child instanceof ASTAggregate)
                 continue;
@@ -218,7 +215,7 @@ public class QueryTreeOptimizer {
 
         // recursively optimize children the same way
         for (QueryParserNode child : root)
-            if ((child instanceof ASTWith) || (child instanceof ASTAnd) || (child instanceof ASTOr) || (child instanceof ASTNot) || (child instanceof ASTParent) || (child instanceof ASTChild) || (child instanceof ASTExpansion) || (child instanceof ASTFilter))
+            if ((child instanceof ASTWith) || (child instanceof ASTAnd) || (child instanceof ASTOr) || (child instanceof ASTNot) || (child instanceof ASTExpansion) || (child instanceof ASTFilter))
                 mergeLiterals(child);
     }
 
@@ -228,7 +225,7 @@ public class QueryTreeOptimizer {
 
         Map<String, ASTArray> arraysByField = new TreeMap<>();
         Set<QueryParserNode> toRemove = new HashSet<>();
-        for (int i=0, many=root.children.size(); i<many; i++) {
+        for (int i = 0, many = root.children.size(); i < many; i++) {
             QueryParserNode child = (QueryParserNode) root.children.get(i);
             if (child instanceof ASTAggregate)
                 continue;

@@ -1,5 +1,6 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Portions Copyright 2015-2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +21,9 @@ import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.collect.IdentityHashSet;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 2/11/15.
- */
 public class IndexMetadataManager {
 
     public static class IndexLinkAndMapping {
@@ -42,22 +39,16 @@ public class IndexMetadataManager {
     private final List<IndexLinkAndMapping> mappings = new ArrayList<>();
     private final Map<String, ASTIndexLink> indexLinksByIndexName = new HashMap<>();
     private List<FieldAndIndexPair> allFields;
-    private Set<ASTIndexLink> usedIndexes = new IdentityHashSet<>();
+    private Set<ASTIndexLink> usedIndexes = new HashSet<>();
     private final IndexRelationshipManager relationshipManager = new IndexRelationshipManager();
     private Map<ASTIndexLink, IndexMetadata> metadataCache = new HashMap<>();
 
     private final Client client;
-    private final ASTIndexLink originalMyIndex;
     private ASTIndexLink myIndex;
 
-    public IndexMetadataManager(Client client, ASTIndexLink myIndex) {
+    public IndexMetadataManager(Client client, String indexName) {
         this.client = client;
-        this.myIndex = originalMyIndex = myIndex;
-        loadMapping(myIndex);
-    }
-
-    public ASTIndexLink getOriginalMyIndex() {
-        return originalMyIndex;
+        myIndex = loadMapping(indexName, null);
     }
 
     public ASTIndexLink getMyIndex() {
@@ -68,10 +59,6 @@ public class IndexMetadataManager {
         this.myIndex = myIndex;
     }
 
-    public boolean isMyIndexSwapped() {
-        return myIndex != originalMyIndex;
-    }
-
     public Set<ASTIndexLink> getUsedIndexes() {
         return usedIndexes;
     }
@@ -80,25 +67,12 @@ public class IndexMetadataManager {
         this.usedIndexes = usedIndexes;
     }
 
-    public Collection<IndexLinkAndMapping> getAllMappings() {
-        return mappings;
-    }
-
     private boolean isNestedObjectFieldExternal(String fieldname) {
         for (IndexLinkAndMapping ilap : mappings) {
             if (fieldname.equals(ilap.link.getFieldname()))
                 return true;
         }
         return false;
-    }
-
-    public boolean isFieldNested(String fieldname) {
-        if (!fieldname.contains("."))
-            return false;
-
-        IndexMetadata md = getMetadataForField(fieldname);
-        String base = fieldname.substring(0, fieldname.indexOf("."));
-        return !base.equals(md.getLink().getFieldname()) || (base.equals(md.getLink().getFieldname()) && fieldname.substring(fieldname.indexOf(".")+1).contains("."));
     }
 
     public ASTIndexLink getExternalIndexLink(String fieldname) {
@@ -118,10 +92,6 @@ public class IndexMetadataManager {
             if (link == ilam.link)
                 return ilam;
         return null;
-    }
-
-    public IndexMetadata getMetadataForMyOriginalIndex() {
-        return getMetadata(originalMyIndex);
     }
 
     public IndexMetadata getMetadataForMyIndex() {
@@ -149,41 +119,44 @@ public class IndexMetadataManager {
         }
     }
 
-    public IndexMetadata getMetadata(String indexName) {
-        for (IndexLinkAndMapping ilam : mappings) {
-            if (ilam.link.getIndexName().equals(indexName))
-                return getMetadata(ilam.link);
-        }
-        return null;
-    }
-
-    private void loadMapping(ASTIndexLink link) {
+    private ASTIndexLink loadMapping(String indexName, ASTIndexLink link) {
         if (client == null)
-            return; // nothing we can do
+            return link; // nothing we can do
 
         GetMappingsRequest getMappingsRequest = new GetMappingsRequest();
-        getMappingsRequest.indices(link.getIndexName()).types("data");
+        getMappingsRequest.indices(indexName).types("data");
         getMappingsRequest.indicesOptions(IndicesOptions.fromOptions(false, false, true, true));
         getMappingsRequest.local(false);
-        mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, client.admin().indices().getMappings(getMappingsRequest)));
-        indexLinksByIndexName.put(link.getIndexName(), link);
+
+        ActionFuture<GetMappingsResponse> future = client.admin().indices().getMappings(getMappingsRequest);
+        if (link == null) {
+            try {
+                GetMappingsResponse response = future.get();
+                String pkey = (String) ((Map) response.getMappings().get(indexName).get("data").getSourceAsMap().get("_meta")).get("primary_key");
+                link = ASTIndexLink.create(pkey, indexName, pkey, true);
+            } catch (Exception e) {
+                throw new RuntimeException("Problem creating anonymous ASTIndexLink for " + indexName, e);
+            }
+        }
+
+        mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, future));
+        indexLinksByIndexName.put(indexName, link);
+        return link;
     }
 
     public Map<String, ?> describedNestedObject(String fieldname) throws Exception {
         ASTIndexLink link = findField(fieldname);
         if (link == null)
             return null;
-        Map<String, ?> properties = getFieldProperties(link, fieldname);
 
-        return properties;
+        return getFieldProperties(link, fieldname);
     }
 
     private Map<String, ?> getFieldProperties(ASTIndexLink link, String fieldname) {
         try {
             if (isNestedObjectFieldExternal(fieldname)) {
                 link = getExternalIndexLink(fieldname);
-                Map properties = (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap();
-                return properties;
+                return (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap();
             } else {
                 Map properties = (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap().get("properties");
                 return (Map<String, ?>) properties.get(fieldname);
@@ -193,21 +166,6 @@ public class IndexMetadataManager {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public boolean isFieldElsewhere(String fieldname) {
-        if (fieldname == null || Arrays.binarySearch(IndexMetadata.IGNORED_FIELDS, fieldname) > -1)
-            return false;
-
-        for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings) {
-            ASTIndexLink link = ilam.link;
-
-            IndexMetadata md = getMetadata(link);
-            if (md != null && md.hasField(fieldname)) {
-                return link != myIndex;
-            }
-        }
-        return false;
     }
 
     public ASTIndexLink findField(String fieldname) {
@@ -221,8 +179,27 @@ public class IndexMetadataManager {
         if (fieldname.contains("."))
             fieldname = fieldname.substring(0, fieldname.indexOf('.'));
 
-        if (Arrays.binarySearch(IndexMetadata.IGNORED_FIELDS, fieldname) > -1)
-            return myIndex;
+        for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings) {
+            ASTIndexLink link = ilam.link;
+
+            if (fieldname.equals(link.getFieldname()))
+                return link;
+
+            IndexMetadata md = getMetadata(link);
+            if (md != null && md.hasField(fieldname))
+                return link;
+        }
+        return myIndex;
+    }
+
+    private ASTIndexLink findFieldForLink(String fieldname) {
+        if (fieldname.contains(".")) {
+            String prefix = fieldname.substring(0, fieldname.indexOf('.'));
+            ASTIndexLink link = getExternalIndexLink(prefix);
+            fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
+            IndexMetadata md = getMetadata(link);
+            return (md != null && md.hasField(fieldname)) ? link : myIndex;
+        }
 
         for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings) {
             ASTIndexLink link = ilam.link;
@@ -280,7 +257,7 @@ public class IndexMetadataManager {
 
                 if (indexName.split("[.]").length > 2) {
                     // (hopefully) already fully qualified
-                    loadMapping(link);
+                    loadMapping(link.getIndexName(), link);
                 } else if (myIndex != null) {
                     // not fully qualified, so we need to do that (if we know our index)
                     String prefix = myIndex.getIndexName();
@@ -289,28 +266,39 @@ public class IndexMetadataManager {
 
                     // fully qualify the index name
                     link.qualifyIndexName(prefix);
-                    loadMapping(link);
+                    loadMapping(link.getIndexName(), link);
                 }
             }
         }
     }
 
-    public List<String> calculatePath(ASTIndexLink source, ASTIndexLink dest) {
-        if (source.getIndexName().equals(dest.getIndexName())) {
-            // short cut if the source and destination indexes are the same
-            // the path is just the left and right fields of the source
-            return Arrays.asList(source.getIndexName()+":"+source.getLeftFieldname(), source.getIndexName()+":"+source.getRightFieldname());
-        }
-
+    public Stack<String> calculatePath(ASTIndexLink source, ASTIndexLink dest) {
         if (!relationshipManager.relationshipsDefined()) {
             for (IndexLinkAndMapping ilm : mappings) {
                 ASTIndexLink link = ilm.link;
-                relationshipManager.addRelationship(findField(link.getLeftFieldname()).getIndexName(), link.getLeftFieldname(), link.getIndexName(), link.getRightFieldname());
+                String leftFieldname = link.getLeftFieldname();
+                if (leftFieldname.contains("."))
+                    leftFieldname = leftFieldname.substring(leftFieldname.indexOf(".") + 1);
+                relationshipManager.addRelationship(findFieldForLink(link.getLeftFieldname()).getIndexName(), leftFieldname, link.getIndexName(), link.getRightFieldname());
             }
         }
 
+        Stack<String> stack = new Stack<>();
         List<String> path = relationshipManager.calcPath(source.getIndexName(), dest.getIndexName());
-        return path.subList(1, path.size()-1);
+
+        if (path.size() > 1) {
+            // trim the top off the path list
+            path = path.subList(1, path.size() - 1);
+
+            // reverse it
+            Collections.reverse(path);
+
+            // and turn into a stack for use by the caller
+            for (String p : path)
+                stack.push(p);
+        }
+
+        return stack;
     }
 
     public boolean areFieldPathsEquivalent(String a, String b) {

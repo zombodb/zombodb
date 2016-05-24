@@ -18,11 +18,8 @@ package com.tcdi.zombodb.query_parser;
 
 import java.util.*;
 
-/**
- * Created by e_ridge on 10/14/14.
- */
 public class QueryParserNode extends SimpleNode implements Iterable<QueryParserNode>, Cloneable {
-    public static enum Operator {
+    public enum Operator {
         EQ,
         NE,
         LT,
@@ -62,11 +59,6 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    protected Object clone() throws CloneNotSupportedException {
-        return super.clone();
     }
 
     public QueryParserNode(int i) {
@@ -154,7 +146,7 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         this.indexLink = indexLink;
         if (children != null)
             for (Node child : children.values())
-                ((QueryParserNode)child).setIndexLink(indexLink);
+                ((QueryParserNode) child).setIndexLink(indexLink);
     }
 
     public QueryParserNode getChild(int idx) {
@@ -178,6 +170,21 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
             }
         }
         return null;
+    }
+
+    public <T> Collection<T> getChildrenOfType(Class<T> t) {
+        return getChildrenOfType(this, t, new ArrayList<T>());
+    }
+
+    private <T> List<T> getChildrenOfType(QueryParserNode node, Class t, List<T> list) {
+        for (QueryParserNode child : node) {
+            if (child.getClass().isAssignableFrom(t))
+                list.add((T) child);
+
+            // recurse
+            getChildrenOfType(child, t, list);
+        }
+        return list;
     }
 
     public int countNodes() {
@@ -212,7 +219,7 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         if (children == null)
             return;
 
-        for (Iterator<Node> itr = children.values().iterator(); itr.hasNext();)
+        for (Iterator<Node> itr = children.values().iterator(); itr.hasNext(); )
             if (itr.next() == node)
                 itr.remove();
     }
@@ -228,12 +235,12 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
 
                     @Override
                     public boolean hasNext() {
-                        return cur<many;
+                        return cur < many;
                     }
 
                     @Override
                     public Object next() {
-                        return ((QueryParserNode)jjtGetChild(cur++)).getValue();
+                        return ((QueryParserNode) jjtGetChild(cur++)).getValue();
                     }
 
                     @Override

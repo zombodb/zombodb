@@ -21,21 +21,23 @@
 
 #include <curl/curl.h>
 
-#define MAX_CURL_HANDLES 12
-typedef struct MultiRestState {
-	int nhandles;
-	CURL *handles[MAX_CURL_HANDLES];
-	char *errorbuffs[MAX_CURL_HANDLES];
-	StringInfo postDatas[MAX_CURL_HANDLES];
-	StringInfo responses[MAX_CURL_HANDLES];
+/* this needs to match zdb_interface.h:MAX_BULK_CONCURRENCY */
+#define MAX_CURL_HANDLES 1024
 
-	CURLM *multi_handle;
-	int available;
+typedef struct MultiRestState {
+    int        nhandles;
+    CURL       *handles[MAX_CURL_HANDLES];
+    char       *errorbuffs[MAX_CURL_HANDLES];
+    StringInfo postDatas[MAX_CURL_HANDLES];
+    StringInfo responses[MAX_CURL_HANDLES];
+
+    CURLM *multi_handle;
+    int   available;
 } MultiRestState;
 
 extern CURLSH *GLOBAL_CURL_SHARED_STATE;
-extern CURL *GLOBAL_CURL_INSTANCE;
-extern List *MULTI_REST_STATES;
+extern CURL   *GLOBAL_CURL_INSTANCE;
+extern List   *MULTI_REST_STATES;
 
 void curl_support_init(void);
 

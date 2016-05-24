@@ -1,6 +1,6 @@
 SELECT term
 FROM zdb_suggest_terms('so_posts', 'body', 'beer', '', 5000)
-LIMIT 10;
+LIMIT 9;
  term  
 -------
  beer
@@ -12,6 +12,5 @@ LIMIT 10;
  bees
  beter
  beed
- bemer
-(10 rows)
+(9 rows)
 

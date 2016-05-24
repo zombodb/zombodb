@@ -10,7 +10,7 @@ An example query might look like:
 
 Which would find all documents that contain the words ```beer``` __and__ ```wine``` __and__ occurrences of ```cheese``` within 3 words of ```food```, regardless of the field (or fields) that contain each word.
 
-The ```zombodb``` query syntax provides support for searching (in no particular order):
+The ZomboDB query syntax provides support for searching (in no particular order):
 
 * full boolean operators (WITH, AND, OR, NOT),
 * words,
@@ -22,11 +22,12 @@ The ```zombodb``` query syntax provides support for searching (in no particular 
 * term boosting
 * proximity (of word or phrase or combinations),
 * scripted searching,
+* Elasticsearch "bool" queries
 * query expansion,
 * "more like this", and
 * more!
 
-## Boolean expressions and operator precedence
+## Boolean Expressions and Operator Precedence
 
 The supported set of boolean operators are the standard __NOT__, __WITH__ (for searching nested objects), __AND__, and __OR__ operators along with proximity (__W/n__ or __WO/n__).  
 
@@ -123,7 +124,7 @@ name:"John Doe" and location:unknown
   and crime:(shoplifting, "grand-theft auto", jaywalking)
 ```
 
-Without a field name, the Elasticsearch [___all__](https://www.elastic.co/guide/en/elasticsearch/reference/1.6/mapping-all-field.html) field is searched.
+Without a field name, the Elasticsearch [_all](https://www.elastic.co/guide/en/elasticsearch/reference/1.6/mapping-all-field.html) field is searched.
 
 Most of the examples that follow elide field names for (my) convienence, but know that they can be used in almost any situation a bare term or phrase is used.
 
@@ -218,7 +219,8 @@ The operators are __W/n__ and __WO/n__, where "n" indicates the distance.  __W/n
 Given the phrase:  ```The quick brown fox jumped over the lazy dog's back```
 
 A proximity search in the form of: ```jumped w/2 quick``` would match the above because 
- - there are no more than two tokens between
+
+ - there are no more than two tokens between quick and jumped; and
  - order was not required
 
 Whereas ```jumped wo/2 quick``` would *not* match because order was required.
@@ -237,6 +239,83 @@ Proximity operators take the highest precedence, so when combined with other boo
 
 Proximity clauses can be limited to specific fields as well:  ``title:catcher w/2 title:rye``.  Note that mixed fieldnames in a proximity chain is non-sensical and will produce a parse error.
 
+It's also possible to search for groups within some distance of another group.  This feature relates to Elasticsearch's [span_or](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/query-dsl-span-or-query.html) clause. For example:
+
+`description:((cat OR dog) w/5 (pet wo/3 (sale OR "free to good home" OR free*)))`
+
+
+## Query Expansion
+
+Query expansion is a way for a single query to "pull in" additional records from the same index that are related to the records that match your fulltext query.
+
+Say you have a table that holds emails:
+
+```sql
+CREATE TABLE emails (
+   id serial8 not null primary key,
+   subject phrase,
+   body fulltext,
+   from text,
+   to text[],
+   cc text[],
+   thread_id text,
+   is_parent boolean
+);
+```
+
+Now say you want to find all the emails that mention `beer` in the subject, but want to return the entire thread for each matching email.  Your query would be:
+
+`#expand<thread_id=<this.index>thread_id>(subject:beer)`
+
+`this.index` is a literal (ie, not to be substituted with your actual index name).
+
+What happens is that ZomboDB first finds all the emails that match `subject:beer` and internally "joins" back to the index on `thread_id = thread_id`.
+
+What's returned are all original matching records plus their thread members.  If an original record doesn't have a `thread_id` (ie, `thread_id` is null), the record is still returned.
+
+The left and right field names can be whatever "join condition" makes sense for the type of expansion you're trying to perform -- the fields need not be the same.
+
+`#expand<>()` also supports an optional `#filter()` clause, that filters the expanded results before the final set is applied.  Using the same example, lets say we only want to expand to the "parent" email in all threads that discuss beer:
+
+`#expand<thread_id=<this.index>thread_id>(subject:beer #filter(is_parent:true))`
+
+This says "find all emails with 'beer' in the subject, expand to their parent emails, by `thread_id`, and return the combined set of records".
+
+Note that `#expand<>()` always add records to the results (it never removes records), so the results in the above example will be every email whose subject contains beer plus the parent email from their respective thread.
+
+If you only want parent emails returned you'd add a boolean clause outside of the expansion:
+
+`#expand<thread_id=<this.index>thread_id>(subject:beer) and is_parent:true`
+
+In terms of ZomboDB's query parser, `#expand<>()` is an unary operator and as such can be intermixed with boolean expressions (shown above) and infinitely nested as well.  An implementation note is that ZomboDB solves nested expansions from the bottom-up.
+
+## Elasticsearch Bool Query Support
+
+ZomboDB provides syntax support for Elasticsearch's "bool" query.  It looks like this:
+
+```
+#bool(
+    #must(...)
+    #should(...)
+    #must_not(...)
+)
+```
+
+At least one of the `#must`, `#should`, and `#must_not` blocks must be provided, but the order is not important.
+
+Within each of the blocks can be a whitespace-separated list of words, phrases, or proximity chains, where any of those can be field-qualified or not.  Should any of the blocks contain boolean operators (WITH, AND, OR, NOT, parenthetical groupings) as bare words, they'll be ignored.  If they're quoted, they'll be treated as terms. 
+
+An example might be:
+
+```
+#bool(
+    #must(beer wine description:cheese)
+    #should(price:free)
+    #must_not(expensive usage:illegal)
+)
+```
+
+Similar to `#expand<>()` above, `#bool()` is considered a unary operator, so it can be combined with boolean expressions, included inside `#expand<>()`, etc.
 
 ## Nested Object Searching using WITH
 

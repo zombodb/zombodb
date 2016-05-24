@@ -20,17 +20,14 @@
 
 #include "miscadmin.h"
 #include "executor/spi.h"
-#include "access/xact.h"
-#include "nodes/relation.h"
+#include "parser/parsetree.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "util/zdbutils.h"
 #include "zdb_interface.h"
 #include "zdbseqscan.h"
 #include "zdbops.h"
-#include "zdbscore.h"
 
 PG_FUNCTION_INFO_V1(zdbsel);
 
@@ -45,13 +42,13 @@ typedef struct SequentialScanIndexRef {
     Oid funcOid;
     Oid heapRelOid;
     Oid indexRelOid;
-} SequentialScanIndexRef;
+}           SequentialScanIndexRef;
 
 typedef struct SequentialScanKey {
     Oid    indexRelOid;
     char   *query;
     size_t query_len;
-} SequentialScanKey;
+}           SequentialScanKey;
 
 typedef struct SequentialScanEntry {
     SequentialScanKey key;
@@ -59,15 +56,16 @@ typedef struct SequentialScanEntry {
     ItemPointer       one_hit;
     bool              empty;
     ZDBScore          score;
-} SequentialScanEntry;
+}           SequentialScanEntry;
 
 typedef struct SequentialScanTidAndScore {
     ItemPointerData tid;
     ZDBScore        score;
-} SequentialScanTidAndScoreEntry;
+}           SequentialScanTidAndScoreEntry;
 
 List *SEQUENTIAL_SCAN_INDEXES = NULL;
 HTAB *SEQUENTIAL_SCANS        = NULL;
+List *CURRENT_QUERY_STACK     = NULL;
 
 static uint32 sequential_scan_key_hash(const void *key, Size keysize) {
     const SequentialScanKey *ssk = (const SequentialScanKey *) key;
@@ -78,7 +76,7 @@ static uint32 sequential_scan_key_hash(const void *key, Size keysize) {
 static int sequential_scan_key_match(const void *key1, const void *key2, Size keysize) {
     const SequentialScanKey *a = (const SequentialScanKey *) key1;
     const SequentialScanKey *b = (const SequentialScanKey *) key2;
-    bool match;
+    bool                    match;
 
     match = a->indexRelOid == b->indexRelOid && a->query_len == b->query_len && strcmp(a->query, b->query) == 0;
     return match ? 0 : 1;
@@ -86,11 +84,11 @@ static int sequential_scan_key_match(const void *key1, const void *key2, Size ke
 
 static void *sequential_scan_key_copy(void *d, const void *s, Size keysize) {
     const SequentialScanKey *src  = (const SequentialScanKey *) s;
-    SequentialScanKey *dest = (SequentialScanKey *) d;
+    SequentialScanKey       *dest = (SequentialScanKey *) d;
 
     dest->indexRelOid = src->indexRelOid;
     dest->query_len   = src->query_len;
-    dest->query       = MemoryContextAlloc(TopTransactionContext, src->query_len+1);
+    dest->query       = MemoryContextAlloc(TopTransactionContext, src->query_len + 1);
     memcpy(dest->query, src->query, src->query_len + 1);
 
     return dest;
@@ -114,33 +112,54 @@ static void initialize_sequential_scan_cache(void) {
 static Oid determine_index_oid(Node *node) {
     MemoryContext          oldContext;
     SequentialScanIndexRef *indexRef;
-    FuncExpr               *funcExpr;
-    Oid                    heapRelOid;
+    FuncExpr               *funcExpr  = NULL;
+    Oid                    funcOid    = InvalidOid;
+    Oid                    heapRelOid = InvalidOid;
     Oid                    zdbIndexRel;
     ListCell               *lc;
 
-    if (!IsA(node, FuncExpr))
-        elog(ERROR, "Cannot determine index. Left side of operator is not compatible with ZomboDB.");
+    if (IsA(node, Var)) {
+        Var *var = (Var *) node;
+        switch (var->varno) {
+            case INNER_VAR:
+            case OUTER_VAR:
+                elog(ERROR, "Cannot determine index.  Left side of operator is a Var type we don't understand");
+                break;
 
-    funcExpr = (FuncExpr *) node;
-    validate_zdb_funcExpr(funcExpr, &heapRelOid);
+            default: {
+                QueryDesc     *query  = linitial(CURRENT_QUERY_STACK);
+                RangeTblEntry *rentry = rt_fetch(var->varno, query->plannedstmt->rtable);
+                heapRelOid = rentry->relid;
+            }
+        }
+    } else {
+        if (!IsA(node, FuncExpr))
+            elog(ERROR, "Cannot determine index. Left side of operator is not compatible with ZomboDB.");
+
+        funcExpr = (FuncExpr *) node;
+        funcOid  = funcExpr->funcid;
+        validate_zdb_funcExpr(funcExpr, &heapRelOid);
+    }
 
     /* look in cache for the index oid */
     foreach(lc, SEQUENTIAL_SCAN_INDEXES) {
         indexRef = (SequentialScanIndexRef *) lfirst(lc);
 
-        if (indexRef->heapRelOid == heapRelOid && indexRef->funcOid == funcExpr->funcid) {
+        if (indexRef->heapRelOid == heapRelOid && indexRef->funcOid == funcOid) {
             return indexRef->indexRelOid;
         }
     }
 
     /* figure out what the index oid should be */
-    zdbIndexRel = zdb_determine_index_oid(funcExpr, heapRelOid);
+    if (funcExpr == NULL)
+        zdbIndexRel = zdb_determine_index_oid_by_heap(heapRelOid);
+    else
+        zdbIndexRel = zdb_determine_index_oid(funcExpr, heapRelOid);
 
     /* and cache it */
     oldContext = MemoryContextSwitchTo(TopTransactionContext);
     indexRef   = palloc(sizeof(SequentialScanIndexRef));
-    indexRef->funcOid     = funcExpr->funcid;
+    indexRef->funcOid     = funcOid;
     indexRef->heapRelOid  = heapRelOid;
     indexRef->indexRelOid = zdbIndexRel;
     SEQUENTIAL_SCAN_INDEXES = lappend(SEQUENTIAL_SCAN_INDEXES, indexRef);
@@ -150,10 +169,10 @@ static Oid determine_index_oid(Node *node) {
 }
 
 Datum zdb_seqscan(PG_FUNCTION_ARGS) {
-    ItemPointer         tid        = (ItemPointer) PG_GETARG_POINTER(0);
-    char                *query     = TextDatumGetCString(PG_GETARG_TEXT_P(1));
-    OpExpr              *opexpr    = (OpExpr *) fcinfo->flinfo->fn_expr;
-    Node                *funcExpr  = (Node *) linitial(opexpr->args);
+    ItemPointer         tid       = (ItemPointer) PG_GETARG_POINTER(0);
+    char                *query    = TextDatumGetCString(PG_GETARG_TEXT_P(1));
+    OpExpr              *opexpr   = (OpExpr *) fcinfo->flinfo->fn_expr;
+    Node                *funcExpr = (Node *) linitial(opexpr->args);
     SequentialScanEntry *entry;
     SequentialScanKey   key;
     bool                found;
@@ -174,7 +193,7 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
         uint64             nhits, i;
 
         desc     = zdb_alloc_index_descriptor_by_index_oid(key.indexRelOid);
-        response = desc->implementation->searchIndex(desc, GetCurrentTransactionId(), GetCurrentCommandId(false), &query, 1, &nhits);
+        response = desc->implementation->searchIndex(desc, &query, 1, &nhits);
 
         entry = hash_search(SEQUENTIAL_SCANS, &key, HASH_ENTER, &found);
         entry->one_hit = NULL;
@@ -256,9 +275,9 @@ Datum zdbsel(PG_FUNCTION_ARGS) {
     float8 selectivity = 0.0001f;
 
     if (IsA(funcArg, FuncExpr) && IsA(queryNode, Const)) {
-        FuncExpr           *funcExpr     = (FuncExpr *) funcArg;
-        Const              *queryConst   = (Const *) queryNode;
-        Node               *regclassNode = (Node *) linitial(funcExpr->args);
+        FuncExpr *funcExpr     = (FuncExpr *) funcArg;
+        Const    *queryConst   = (Const *) queryNode;
+        Node     *regclassNode = (Node *) linitial(funcExpr->args);
 
         if (IsA(regclassNode, Const)) {
             Const              *tableRegclass = (Const *) regclassNode;

@@ -6,7 +6,7 @@ Since ZomboDB is an actual Postgres index type, creating and querying full-text 
 
 This guide intends to demonstrate the basics using ```psql```.  A few assumptions I'm making about you are:
 
- - You have a functional Postgres v9.3 Server
+ - You have a functional Postgres v9.5 Server
  - You have a functional Elasticsearch v1.7+ cluster (even if just one node, but not Elasticsearch 2.x)
  - You're familiar with Postgres and ```psql```
  - You're familiar with Elasticsearch on at least a high-level
@@ -21,7 +21,7 @@ Lets begin with a new database named ``tutorial``.
 ```
 $ createdb tutorial
 $ psql tutorial
-psql (9.3.5)
+psql (9.5.x)
 Type "help" for help.
 
 tutorial=# 
@@ -29,7 +29,7 @@ tutorial=#
 
 The first thing you need to do is create the ZomboDB extension in the database.  If you recall from the [installation guide](INSTALL.md), the shared library must be configured to be loaded whenever a new session starts, however, it's not actually usable by a database until the extension is created.
 
-If you're unfamiliar with Postgres extensions, spend a few minutes reading [up on them](http://www.postgresql.org/docs/9.3/static/sql-createextension.html).
+If you're unfamiliar with Postgres extensions, spend a few minutes reading [up on them](http://www.postgresql.org/docs/9.5/static/sql-createextension.html).
 
 Now, lets create the extension:
 
@@ -79,7 +79,7 @@ tutorial=#
 
 Before we populate the table with some data, notice that the ```short_summary``` and ```long_description``` fields have datatypes of ```phrase``` and ```fulltext``` respectively.
 
-```phrase``` and ```fulltext``` are [DOMAIN](http://www.postgresql.org/docs/9.3/static/sql-createdomain.html)s that sit on top of the standard ```text``` datatype.  As far as Postgres is concerned, they're functionally no different than the ```text``` datatype, however they have special meaning to ZomboDB when indexing and searching (which we'll discuss in a bit).  In brief, they indicate that such fields should be analyzed.
+```phrase``` and ```fulltext``` are [DOMAIN](http://www.postgresql.org/docs/9.5/static/sql-createdomain.html)s that sit on top of the standard ```text``` datatype.  As far as Postgres is concerned, they're functionally no different than the ```text``` datatype, however they have special meaning to ZomboDB when indexing and searching (which we'll discuss in a bit).  In brief, they indicate that such fields should be analyzed.
 
 Lets COPY some data into this table before we move on to creating a ZomboDB index and querying.  Rather than fill this document with boring data, just COPY it using curl:
 
@@ -175,9 +175,9 @@ In order to ensure the ZomboDB index is used, we'll be making use of two things:
   - the ```zdb(regclass, tid)``` function mentioned above
   - a custom operator named ```==>```
 
-Again, the ```zdb(regclass, tid)``` function simply transforms a record into json.  The ```==>``` operator is ZomboDB's "full-text query" operator.
+Again, the ```zdb(regclass, tid)``` function is used to determine which index should be used.  The ```==>``` operator is ZomboDB's "full-text query" operator.
 
-```==>``` is defined as taking "json" on the left and "text" on the right:
+```==>``` is defined as taking `::tid` on the left and `::text` on the right:
 
 ```sql
 tutorial=# 
@@ -278,7 +278,7 @@ tutorial=#
 SELECT * FROM zdb_significant_terms('products', 'keywords', '^.*', '', 5000);
 ```
 
-The fourth argument is a fulltext query by which the aggregate will be filtered.  The empty string means "no filter".  If you wanted to limit the keywords to products that are round:
+The fourth argument is a fulltext query by which the aggregate will be filtered.  The empty string means "no filter".
 
 ### Dates/Timestamps
 
@@ -354,7 +354,7 @@ tutorial=#
                                            #tally(keywords, '^.*', 5000, term)
                                   ) 
                          $$, 
-                         ''); 
+                         '');
  zdb_arbitrary_aggregate                                                                                                                                                                                                                                                                                                                                                                             
 -------------------------
 {

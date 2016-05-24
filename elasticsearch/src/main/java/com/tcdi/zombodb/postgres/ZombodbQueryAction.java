@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2015 Technology Concepts & Design, Inc
+ * Copyright 2016 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.QueryRewriter;
+import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -25,15 +26,12 @@ import org.elasticsearch.rest.*;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
-/**
- * Created by e_ridge on 10/16/14.
- */
 public class ZombodbQueryAction extends BaseRestHandler {
     @Inject
     public ZombodbQueryAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
-        controller.registerHandler(GET, "/{index}/{type}/_zdbquery", this);
-        controller.registerHandler(POST, "/{index}/{type}/_zdbquery", this);
+        controller.registerHandler(GET, "/{index}/_zdbquery", this);
+        controller.registerHandler(POST, "/{index}/_zdbquery", this);
     }
 
     @Override
@@ -49,14 +47,15 @@ public class ZombodbQueryAction extends BaseRestHandler {
                 QueryRewriter qr;
                 String json;
 
-                qr = new QueryRewriter(client, request.param("index"), request.param("preference"), query, false, true, true);
+                qr = QueryRewriter.Factory.create(client, request.param("index"), request.param("preference"), query, true, false);
                 json = qr.rewriteQuery().toString();
 
                 response = new BytesRestResponse(RestStatus.OK, "application/json", json);
             } catch (Exception e) {
+                logger.error("Error building query", e);
                 XContentBuilder builder = channel.newBuilder();
                 builder.startObject();
-                builder.field("error", e.toString());
+                builder.field("error", ExceptionsHelper.stackTrace(e));
                 builder.endObject();
                 response = new BytesRestResponse(RestStatus.INTERNAL_SERVER_ERROR, builder);
             }
