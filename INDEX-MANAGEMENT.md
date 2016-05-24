@@ -84,7 +84,13 @@ However, a `REINDEX` is required after changing an index setting that would affe
 
 The various forms of ALTER TABLE that add/drop columns or change column types are supported.  Note that if added columns have a default value or if the type change isn't directly cast-able, Postgres will automatically rebuild the index, so these operations could take a significant amount of time.
 
->##### WARNING:  Renaming columns is not supported, and doing so will leave the underlying Elasticsearch index in a state that is inconsistent with Postgres.  If you do rename a column, you'll need to issue a `REINDEX`.
+####WARNING:  
+
+Renaming columns is not supported. What will happen is that newly INSERTed/UPDATEd rows will use the new column name but existing rows will use the old name, making searching difficult.  
+
+If you need rename a column, you'll need to manually issue a `REINDEX`.
+
+Perhaps in the future, ZomboDB can transparently alias fields to avoid this situation, but at present, it's not the case.
 
 
 ## VACUUM
