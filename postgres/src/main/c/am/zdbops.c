@@ -439,9 +439,9 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
     appendStringInfo(result, "{\"is_anonymous\": %s,", isAnonymous ? "true" : "false");
     appendStringInfo(result, "\"properties\": {");
 
-    appendStringInfo(result, "\"_xact\": {"
+    appendStringInfo(result, "\"_xid\": {"
             "\"type\":\"long\","
-            "\"fielddata\":{\"format\":\"disabled\"},"
+            "\"fielddata\": {\"format\": \"doc_values\"},"
             "\"include_in_all\":\"false\","
             "\"norms\": {\"enabled\":false},"
             "\"index\": \"not_analyzed\""
