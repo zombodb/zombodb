@@ -141,25 +141,21 @@ void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, 
     Assert(str != NULL);
 
     /* Make more room if needed */
-    enlargeStringInfo(str, datalen);
+    enlargeStringInfo(str, datalen+1);
 
     /* OK, append the data */
-    memcpy(str->data + str->len, data, datalen);
-    for (i = str->len; i < str->len + datalen; i++) {
-        switch (str->data[i]) {
+    for (i=0; i<datalen; i++) {
+        char ch = data[i];
+        switch (ch) {
             case '\r':
             case '\n':
-                str->data[i] = ' ';
+                appendStringInfoCharMacro(str, ' ');
+                break;
+            default:
+                appendStringInfoCharMacro(str, ch);
+                break;
         }
     }
-    str->len += datalen;
-
-    /*
-     * Keep a trailing null in place, even though it's probably useless for
-     * binary data.  (Some callers are dealing with text but call this because
-     * their input isn't null-terminated.)
-     */
-    str->data[str->len] = '\0';
 }
 
 
