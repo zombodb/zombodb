@@ -202,13 +202,11 @@ struct ZDBIndexImplementation {
     ZDBDumpQuery_function        dumpQuery;
 
     ZDBDropIndex_function    dropIndex;
-    ZDBRefreshIndex_function refreshIndex;
 
     ZDBActualIndexRecordCount_function actualIndexRecordCount;
     ZDBEstimateCount_function          estimateCount;
     ZDBEstimateSelectivity_function    estimateSelectivity;
     ZDBSearchIndex_function            searchIndex;
-    ZDBGetPossiblyExpiredItems         getPossiblyExpiredItems;
 
     ZDBTally_function              tally;
     ZDBRangeAggregate_function     rangeAggregate;

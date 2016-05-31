@@ -33,7 +33,6 @@ uint64            elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *index
 uint64            elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 uint64            elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
 ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
-ZDBSearchResponse *elasticsearch_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
 char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
 char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);

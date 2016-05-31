@@ -408,16 +408,20 @@ void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
 }
 
 void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
-    StringInfo endpoint = makeStringInfo();
-    StringInfo response;
+    if (!zdb_batch_mode_guc) {
+        if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+            StringInfo endpoint = makeStringInfo();
+            StringInfo response;
 
-    elog(LOG, "[zombodb] Refreshing index %s", indexDescriptor->fullyQualifiedName);
-    appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("GET", endpoint->data, NULL);
-    checkForRefreshError(response);
+            elog(LOG, "[zombodb] Refreshing index %s", indexDescriptor->fullyQualifiedName);
+            appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+            response = rest_call("GET", endpoint->data, NULL);
+            checkForRefreshError(response);
 
-    freeStringInfo(response);
-    freeStringInfo(endpoint);
+            freeStringInfo(response);
+            freeStringInfo(endpoint);
+        }
+    }
 }
 
 char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_queries, int nqueries) {
@@ -813,33 +817,6 @@ void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse) {
     pfree(searchResponse);
 }
 
-ZDBSearchResponse *elasticsearch_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems) {
-    StringInfo        endpoint = makeStringInfo();
-    StringInfo        request  = makeStringInfo();
-    StringInfo        response;
-    ZDBSearchResponse *items;
-
-    appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
-
-    response = rest_call("POST", endpoint->data, request);
-    if (response->data[0] != '\0')
-        elog(ERROR, "%s", response->data);
-
-    memcpy(nitems, response->data + 1, sizeof(uint64));
-
-    items = palloc(sizeof(ZDBSearchResponse));
-    items->httpResponse = response;
-    items->hits         = (response->data + 1 + sizeof(uint64) + sizeof(float4));
-
-    freeStringInfo(endpoint);
-    freeStringInfo(request);
-
-    return items;
-}
-
-
 void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems) {
     StringInfo endpoint = makeStringInfo();
     StringInfo request  = makeStringInfo();
@@ -872,11 +849,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
         checkForBulkError(response, "delete");
     }
 
-    if (!zdb_batch_mode_guc) {
-        if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-            elasticsearch_refreshIndex(indexDescriptor);
-        }
-    }
+    elasticsearch_refreshIndex(indexDescriptor);
 
     freeStringInfo(endpoint);
     freeStringInfo(request);
@@ -991,11 +964,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
              * then ask ES to refresh the index, but only if a) we're not in batch mode
              * and b) if the index refresh interval is -1
              */
-            if (!zdb_batch_mode_guc) {
-                if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-                    elasticsearch_refreshIndex(indexDescriptor);
-                }
-            }
+            elasticsearch_refreshIndex(indexDescriptor);
         }
 
         batchInsertDataList = list_delete(batchInsertDataList, batch);

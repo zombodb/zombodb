@@ -41,13 +41,11 @@ static void wrapper_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *map
 static char *wrapper_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
 static void wrapper_dropIndex(ZDBIndexDescriptor *indexDescriptor);
-static void wrapper_refreshIndex(ZDBIndexDescriptor *indexDescriptor);
 
 static uint64            wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 static uint64            wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 static uint64            wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
 static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
-static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
 static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
 static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);
@@ -206,12 +204,10 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->updateMapping           = wrapper_updateMapping;
     desc->implementation->dumpQuery               = wrapper_dumpQuery;
     desc->implementation->dropIndex               = wrapper_dropIndex;
-    desc->implementation->refreshIndex            = wrapper_refreshIndex;
     desc->implementation->actualIndexRecordCount  = wrapper_actualIndexRecordCount;
     desc->implementation->estimateCount           = wrapper_estimateCount;
     desc->implementation->estimateSelectivity     = wrapper_estimateSelectivity;
     desc->implementation->searchIndex             = wrapper_searchIndex;
-    desc->implementation->getPossiblyExpiredItems = wrapper_getPossiblyExpiredItems;
     desc->implementation->tally                   = wrapper_tally;
     desc->implementation->rangeAggregate          = wrapper_rangeAggregate;
     desc->implementation->significant_terms       = wrapper_significant_terms;
@@ -339,18 +335,6 @@ static void wrapper_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
     MemoryContextDelete(me);
 }
 
-static void wrapper_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
-    MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_refreshIndex", 512, 64, 64);
-    MemoryContext oldContext = MemoryContextSwitchTo(me);
-
-    Assert(!indexDescriptor->isShadow);
-
-    elasticsearch_refreshIndex(indexDescriptor);
-
-    MemoryContextSwitchTo(oldContext);
-    MemoryContextDelete(me);
-}
-
 static uint64 wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_estimateCount", 512, 64, 64);
     MemoryContext oldContext = MemoryContextSwitchTo(me);
@@ -404,18 +388,6 @@ static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescripto
     ZDBSearchResponse *results;
 
     results = elasticsearch_searchIndex(indexDescriptor, queries, nqueries, nhits);
-
-    MemoryContextSwitchTo(oldContext);
-    return results;
-}
-
-static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems) {
-    MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
-    ZDBSearchResponse *results;
-
-    Assert(!indexDescriptor->isShadow);
-
-    results = elasticsearch_getPossiblyExpiredItems(indexDescriptor, nitems);
 
     MemoryContextSwitchTo(oldContext);
     return results;
