@@ -32,8 +32,10 @@ PG_MODULE_MAGIC;
 #endif
 
 PG_FUNCTION_INFO_V1(rest_get);
+PG_FUNCTION_INFO_V1(rest_post);
 
 Datum rest_get(PG_FUNCTION_ARGS);
+Datum rest_post(PG_FUNCTION_ARGS);
 
 /*
  * Library initialization functions
@@ -59,4 +61,18 @@ Datum rest_get(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 
 	PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL)->data));
+}
+
+Datum rest_post(PG_FUNCTION_ARGS)
+{
+	char *url = PG_ARGISNULL(0) ? NULL : GET_STR(PG_GETARG_TEXT_P(0));
+	char *postData = GET_STR(PG_GETARG_TEXT_P(1));
+	StringInfo si = makeStringInfo();
+
+	if (url == NULL)
+		PG_RETURN_NULL();
+
+	appendStringInfo(si, "%s", postData);
+
+	PG_RETURN_TEXT_P(cstring_to_text(rest_call("POST", url, si)->data));
 }
