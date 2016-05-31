@@ -162,9 +162,9 @@ When we ran CREATE INDEX not only did we create an index within Postgres, we als
 
 The naming convention for Elasticsearch indexes is ```<db>.<schema>.<table>.<index>```, so in our case, the resulting Elasticsearch index is named ```tutorial.public.products.idx_zdb_products```.
 
-Within the Elasticsearch index are two types:  ```xact``` and ```data```.  The former stores transaction visibility information as records are UPDATEd and DELETEd and the latter stores the actual table data for the index.  
+Within the Elasticsearch index there is one type named ```data```.  It represents the actual data for the index.  
 
-An Elasticsearch type mapping was automatically generated for the ```data``` type based on the structure of the ```products``` table, and it looks like [this](TUTORIAL-mapping.json).
+An Elasticsearch type mapping was automatically generated based on the structure of the ```products``` table, and it looks like [this](TUTORIAL-mapping.json).
 
 Lets move on to querying...
 
