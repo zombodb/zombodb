@@ -175,7 +175,6 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
                     ZDBIndexDescriptor *desc = lfirst(lc);
 
                     desc->implementation->batchInsertFinish(desc);
-                    desc->implementation->refreshIndex(desc);
                 }
             }
 
@@ -359,9 +358,6 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 
         /* signal that the batch inserts have stopped */
         buildstate.desc->implementation->batchInsertFinish(buildstate.desc);
-
-        /* force the index to refresh so the rows are immediately available */
-        buildstate.desc->implementation->refreshIndex(buildstate.desc);
 
         /* reset the settings to reasonable values for production use */
         buildstate.desc->implementation->finalizeNewIndex(buildstate.desc);
