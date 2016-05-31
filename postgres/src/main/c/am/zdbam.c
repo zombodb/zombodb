@@ -143,7 +143,6 @@ static void xact_complete_cleanup(XactEvent event) {
     CURRENT_QUERY_STACK       = NULL;
     executorDepth             = 0;
     numHitsFound              = -1;
-    ConvertedTopTransactionId = 0;
 
     zdb_reset_scores();
     zdb_sequential_scan_support_cleanup();
@@ -201,9 +200,6 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
 static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags) {
     if (prev_ExecutorStartHook == zdb_executor_start_hook)
         elog(ERROR, "zdb_executor_start_hook: Somehow prev_ExecutorStartHook was set to zdb_executor_start_hook");
-
-    if (ConvertedTopTransactionId == 0)
-        ConvertedTopTransactionId = convert_xid(GetTopTransactionId());
 
     pushCurrentQuery(queryDesc);
 
@@ -408,7 +404,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
             return;
     }
 
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(value));
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(value), HeapTupleHeaderGetXmin(htup->t_data));
 
     buildstate->indtuples += 1;
 }
@@ -443,7 +439,7 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
             PG_RETURN_BOOL(false);
     }
 
-    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(value));
+    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(value), GetCurrentTransactionId());
 
     PG_RETURN_BOOL(true);
 }

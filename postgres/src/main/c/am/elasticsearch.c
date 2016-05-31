@@ -127,7 +127,7 @@ static char *buildXidExclusionClause() {
      *   a) anything greater than or equal to the snapshot's 'xmax'
      *      (but we can see ourself)
      */
-    appendStringInfo(sb, "(_xid >= %lu AND _xid<>%lu) OR ", convert_xid(snap->xmax), ConvertedTopTransactionId);
+    appendStringInfo(sb, "(_xid >= %lu AND _xid<>%lu) OR ", convert_xid(snap->xmax), convert_xid(GetCurrentTransactionId()));
 
     /*
      *   b) the xid of any currently running transaction
@@ -855,7 +855,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
     freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk) {
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, TransactionId xmin) {
     /* the data */
     appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
     if (indexDescriptor->hasJson)
@@ -868,13 +868,13 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
         bulk->len--;
 
     /* ...append our transaction id to the json */
-    appendStringInfo(bulk, ",\"_xid\":%lu}\n", ConvertedTopTransactionId);
+    appendStringInfo(bulk, ",\"_xid\":%lu}\n", convert_xid(xmin));
 }
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data) {
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xid) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
 
-    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk);
+    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk, xid);
     batch->nprocessed++;
 
     if (batch->nprocessed % 1000) {

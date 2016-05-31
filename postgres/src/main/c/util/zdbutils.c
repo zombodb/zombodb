@@ -41,8 +41,6 @@ typedef enum VisibilityType {
     VT_OUT_OF_RANGE
 } VisibilityType;
 
-uint64 ConvertedTopTransactionId;
-
 static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer);
 
 typedef struct {

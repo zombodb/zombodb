@@ -25,8 +25,6 @@
 
 #define zdb_json char *
 
-extern PGDLLEXPORT uint64 ConvertedTopTransactionId;
-
 char *lookup_analysis_thing(MemoryContext cxt, char *thing);
 char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname);
 bool type_is_domain(char *type_name, Oid *base_type);
