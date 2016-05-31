@@ -411,7 +411,7 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
 
-    elog(LOG, "[zombodb]: Refreshing index %s", indexDescriptor->fullyQualifiedName);
+    elog(LOG, "[zombodb] Refreshing index %s", indexDescriptor->fullyQualifiedName);
     appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("GET", endpoint->data, NULL);
     checkForRefreshError(response);
