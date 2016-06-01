@@ -787,7 +787,7 @@ DECLARE
   indexOid      OID := zdb_determine_index(table_name);
   es_index_name TEXT := zdb_get_index_name(indexOid :: REGCLASS);
   url           TEXT := zdb_get_url(indexOid::regclass);
-  pages         int;
+  tuples         int;
   i             int := 0;
   pct           NUMERIC;
   r             RECORD;
@@ -801,22 +801,23 @@ BEGIN
   EXECUTE format('LOCK TABLE %s IN ACCESS EXCLUSIVE MODE', table_name);
   RAISE NOTICE '% locked in exclusive mode', table_name;
   RAISE NOTICE 'Querying xact data from Postgres table %', table_name;
-  EXECUTE format('SELECT relpages FROM pg_class WHERE oid = ''%s''::regclass', table_name) INTO pages;
+  EXECUTE format('SELECT reltuples FROM pg_class WHERE oid = ''%s''::regclass', table_name) INTO tuples;
   FOR r IN EXECUTE format($s$
-            SELECT array_agg(ROW(ctid, xmin, xmax, cmin, cmax)::xact) xact, substring(ctid::text, 2, strpos(ctid::text, ',') - 2) pageno FROM %s GROUP BY 2
+            select array_agg(ROW(ctid, xmin, xmax, cmin, cmax)::xact) xact from (select (row_number() over()) / 1000 row_number, ctid, xmin, xmax, cmin, cmax from %s) x group by row_number;
         $s$, table_name) LOOP
 
-    q := ''; -- used in query string, so spaces are encoded as plus signs
+    q := '';
     FOREACH xelem IN ARRAY r.xact LOOP
-      IF length(q) > 0 THEN q := format('%s+or', q); END IF;
-      q := format('%s+_id:%s', q, zdb_tid_to_zdb_id(xelem.ctid));
+      IF length(q) > 0 THEN q := format('%s,', q); END IF;
+      q := format('%s"%s"', q, zdb_tid_to_zdb_id(xelem.ctid));
+      i := i+1;
     END LOOP;
+    q := format('{"query":{"ids": { "values": [%s]}}}', q);
 
-    pct := round(i/pages::NUMERIC*100, 4);
-    IF i % 1000 = 0 THEN
-      RAISE NOTICE 'Querying ES for page #% (% of %): %%% complete', r.pageno, i, pages, pct;
-    END IF;
-    results := rest_get(format('%s%s/xact/_search?q=%s', url, es_index_name, q));
+    pct := round(i/tuples::NUMERIC*100, 4);
+    RAISE NOTICE 'Querying ES: % of % tuples (%%% complete)', i, tuples, pct;
+
+    results := rest_post(format('%s%s/xact/_search?size=1000', url, es_index_name), q);
 
     total := (results->'hits'->>'total')::int;
     hits := results->'hits'->'hits';
@@ -836,7 +837,6 @@ BEGIN
       END LOOP;
     END IF;
 
-    i := i+1;
   END LOOP;
 
   RETURN repaired;
