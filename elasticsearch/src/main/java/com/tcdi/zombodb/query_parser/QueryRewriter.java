@@ -911,7 +911,27 @@ public abstract class QueryRewriter {
                     Collection<String> terms = st.getAllTokens();
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
-                    return termsQuery(n.getFieldname(), st.getAllTokens());
+                    return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), new Iterable<Object>() {
+                        @Override
+                        public Iterator<Object> iterator() {
+                            return new Iterator<Object>() {
+                                @Override
+                                public boolean hasNext() {
+                                    return st.hasMoreTokens();
+                                }
+
+                                @Override
+                                public Object next() {
+                                    return st.nextToken();
+                                }
+
+                                @Override
+                                public void remove() {
+
+                                }
+                            };
+                        }
+                    }));
                 }
             }
         });

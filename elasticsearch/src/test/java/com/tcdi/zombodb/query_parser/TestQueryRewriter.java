@@ -3489,8 +3489,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testDoubleBrackets() throws Exception {
         assertJson("exact_field:[[a,b,c,d]]",
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ]\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -3917,8 +3924,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
         assertJson(q,
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ]\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -3936,8 +3950,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
         assertJson(q,
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ]\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -3998,8 +4019,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
         assertJson(q,
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ]\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
