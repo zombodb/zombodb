@@ -22,6 +22,7 @@
 #include "utils/array.h"
 
 #define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
+#define ItemPointerToUint64(ht_ctid) (((uint64)ItemPointerGetBlockNumber(ht_ctid)) << 32) | ((uint32)ItemPointerGetOffsetNumber(ht_ctid))
 
 #define zdb_json char *
 
@@ -37,7 +38,7 @@ char **text_array_to_strings(ArrayType *array, int *many);
 
 typedef void (*invisibility_callback)(ItemPointer ctid, void *data);
 int        find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data);
-StringInfo find_invisible_ctids(Relation rel);
+StringInfo find_invisible_ctids(Relation rel, StringInfo sb);
 uint64     convert_xid(TransactionId xid);
 
 #endif

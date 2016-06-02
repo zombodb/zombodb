@@ -248,13 +248,11 @@ char **text_array_to_strings(ArrayType *array, int *many) {
 static void string_invisibility_callback(ItemPointer ctid, void *stringInfo) {
     StringInfo sb = (StringInfo) stringInfo;
     if (sb->len > 0)
-        appendStringInfoChar(sb, ',');
-    appendStringInfo(sb, "%d-%d", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
+        appendStringInfoCharMacro(sb, ',');
+    appendStringInfo(sb, "%lu", ItemPointerToUint64(ctid));
 }
 
-StringInfo find_invisible_ctids(Relation rel) {
-    StringInfo sb = makeStringInfo();
-
+StringInfo find_invisible_ctids(Relation rel, StringInfo sb) {
     find_invisible_ctids_with_callback(rel, false, string_invisibility_callback, sb);
     return sb;
 }
@@ -307,7 +305,7 @@ int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibi
             ReleaseBuffer(vmap_buff);
     }
 
-    elog(DEBUG1, "[ZomboDB invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d, total_blocks=%d", RelationGetRelationName(heapRel), many, skipped, pages, numberOfBlocks);
+    elog(DEBUG1, "[zombodb invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d, total_blocks=%d", RelationGetRelationName(heapRel), many, skipped, pages, numberOfBlocks);
     return many;
 }
 

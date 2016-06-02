@@ -144,7 +144,6 @@ static char *buildXidExclusionClause() {
 
 static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap, bool invisibilityMapRequired) {
     StringInfo baseQuery = makeStringInfo();
-    StringInfo ids;
     int        i;
 
     if (desc->options)
@@ -166,11 +165,11 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
                     Relation rel;
 
                     rel = RelationIdGetRelation(tmp->heapRelid);
-                    ids = find_invisible_ctids(rel);
 
-                    appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s)) ", tmp->fullyQualifiedName, ids->data, xidExclusionClause);
+                    appendStringInfo(baseQuery, "#exclude<%s>(_zdb_id:[[", tmp->fullyQualifiedName);
+                    find_invisible_ctids(rel, baseQuery);
+                    appendStringInfo(baseQuery, "]] OR (%s)) ", xidExclusionClause);
 
-                    freeStringInfo(ids);
                     RelationClose(rel);
                 }
             }
@@ -180,11 +179,10 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
             if (!desc->ignoreVisibility) {
                 Relation heapRel = RelationIdGetRelation(desc->heapRelid);
 
-                ids = find_invisible_ctids(heapRel);
+                appendStringInfo(baseQuery, "#exclude<%s>(_zdb_id:[[", desc->fullyQualifiedName);
+                find_invisible_ctids(heapRel, baseQuery);
+                appendStringInfo(baseQuery, "]] OR (%s)) ", xidExclusionClause);
 
-                appendStringInfo(baseQuery, "#exclude<%s>(_id:[[%s]] OR (%s)) ", desc->fullyQualifiedName, ids->data, xidExclusionClause);
-
-                freeStringInfo(ids);
                 RelationClose(heapRel);
             }
         }
@@ -868,7 +866,7 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
         bulk->len--;
 
     /* ...append our transaction id to the json */
-    appendStringInfo(bulk, ",\"_xid\":%lu}\n", convert_xid(xmin));
+    appendStringInfo(bulk, ",\"_xid\":%lu,\"_zdb_id\":\"%lu\"}\n", convert_xid(xmin), ItemPointerToUint64(ht_ctid));
 }
 
 void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xid) {
