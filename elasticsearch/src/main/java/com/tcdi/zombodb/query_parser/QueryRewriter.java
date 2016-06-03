@@ -906,14 +906,15 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
                 if ("_id".equals(node.getFieldname())) {
+                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
                     Collection<String> terms = st.getAllTokens();
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
                     return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), new Iterable<Object>() {
                         @Override
                         public Iterator<Object> iterator() {
+                            final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
                             return new Iterator<Object>() {
                                 @Override
                                 public boolean hasNext() {
