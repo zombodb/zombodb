@@ -105,6 +105,8 @@ typedef struct {
     char  *tableName;
     char  *indexName;
     char  *fullyQualifiedName;
+    char  *xactRelName;
+    Oid   xactRelId;
     int   shards;
     bool  hasJson;
 
@@ -185,10 +187,12 @@ typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char
 
 typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse);
 
-typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
+typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
 typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xmin);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
+
+typedef uint64 *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
 
 typedef void (*ZDBTransactionFinish_function)(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
@@ -229,6 +233,8 @@ struct ZDBIndexImplementation {
 
     ZDBIndexBatchInsertRow_function    batchInsertRow;
     ZDBIndexBatchInsertFinish_function batchInsertFinish;
+
+    ZDBVacuumSupport_function vacuumSupport;
 
     ZDBTransactionFinish_function transactionFinish;
 };

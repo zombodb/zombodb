@@ -20,6 +20,7 @@
 #include "pgstat.h"
 #include "miscadmin.h"
 #include "access/genam.h"
+#include "access/heapam.h"
 #include "access/xact.h"
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
@@ -142,6 +143,25 @@ static char *buildXidExclusionClause() {
     return sb->data;
 }
 
+static void buildTidExclusionClause(const ZDBIndexDescriptor *desc, const StringInfo baseQuery, const char *xidExclusionClause) {
+    Relation   heapRel;
+    Relation   xactRel;
+    StringInfo ctids = makeStringInfo();
+    StringInfo xids = makeStringInfo();
+
+    heapRel = RelationIdGetRelation(desc->heapRelid);
+
+    xactRel = relation_open(desc->xactRelId, AccessShareLock);
+    find_invisible_ctids(heapRel, xactRel, ctids, xids);
+    relation_close(xactRel, AccessShareLock);
+
+    appendStringInfo(baseQuery, "#exclude<%s>(_zdb_id:[[%s]] OR _xid:[[%s]] OR (%s)) ", desc->fullyQualifiedName, ctids->data, xids->data, xidExclusionClause);
+
+    RelationClose(heapRel);
+    freeStringInfo(ctids);
+    freeStringInfo(xids);
+}
+
 static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap, bool invisibilityMapRequired) {
     StringInfo baseQuery = makeStringInfo();
     int        i;
@@ -162,28 +182,14 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
                 ZDBIndexDescriptor *tmp = zdb_alloc_index_descriptor_by_index_oid(DatumGetObjectId(DirectFunctionCall1(text_regclass, CStringGetTextDatum(indices[i]))));
 
                 if (!tmp->ignoreVisibility) {
-                    Relation rel;
-
-                    rel = RelationIdGetRelation(tmp->heapRelid);
-
-                    appendStringInfo(baseQuery, "#exclude<%s>(_zdb_id:[[", tmp->fullyQualifiedName);
-                    find_invisible_ctids(rel, baseQuery);
-                    appendStringInfo(baseQuery, "]] OR (%s)) ", xidExclusionClause);
-
-                    RelationClose(rel);
+                    buildTidExclusionClause(tmp, baseQuery, xidExclusionClause);
                 }
             }
         }
 
         if (invisibilityMapRequired) {
             if (!desc->ignoreVisibility) {
-                Relation heapRel = RelationIdGetRelation(desc->heapRelid);
-
-                appendStringInfo(baseQuery, "#exclude<%s>(_zdb_id:[[", desc->fullyQualifiedName);
-                find_invisible_ctids(heapRel, baseQuery);
-                appendStringInfo(baseQuery, "]] OR (%s)) ", xidExclusionClause);
-
-                RelationClose(heapRel);
+                buildTidExclusionClause(desc, baseQuery, xidExclusionClause);
             }
         }
     }
@@ -815,34 +821,29 @@ void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse) {
     pfree(searchResponse);
 }
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems) {
+void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
     StringInfo endpoint = makeStringInfo();
     StringInfo request  = makeStringInfo();
     StringInfo response;
-    ListCell   *lc;
-    int        cnt      = 0;
+    int i;
 
     appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
-    foreach(lc, itemPointers) {
-        ItemPointer item = lfirst(lc);
+    for (i=0; i<nitems; i++) {
+        ItemPointer item = &itemPointers[i];
 
-        cnt++;
         appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
         if (request->len >= indexDescriptor->batch_size) {
-            elog(LOG, "[zombodb] VACUUMing %d records of %d for %s", cnt, nitems, indexDescriptor->fullyQualifiedName);
             response = rest_call("POST", endpoint->data, request);
             checkForBulkError(response, "delete");
 
             resetStringInfo(request);
             freeStringInfo(response);
-            cnt = 0;
         }
     }
 
     if (request->len > 0) {
-        elog(LOG, "[zombodb] VACUUMing %d records of %d for %s", cnt, nitems, indexDescriptor->fullyQualifiedName);
         response = rest_call("POST", endpoint->data, request);
         checkForBulkError(response, "delete");
     }
@@ -968,6 +969,23 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
         batchInsertDataList = list_delete(batchInsertDataList, batch);
         pfree(batch);
     }
+}
+
+uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {
+    StringInfo endpoint = makeStringInfo();
+    StringInfo request  = makeStringInfo();
+    StringInfo response;
+
+    appendStringInfo(request, "%s", jsonXids);
+    appendStringInfo(endpoint, "%s/%s/_zdbvacsup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("POST", endpoint->data, request);
+
+    freeStringInfo(endpoint);
+    freeStringInfo(request);
+
+    memcpy(nxids, response->data, sizeof(uint32));
+    response->data += sizeof(uint32);
+    return (uint64 *) response->data;
 }
 
 void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {

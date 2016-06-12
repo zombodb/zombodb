@@ -22,18 +22,25 @@
 #include "access/nbtree.h"
 #include "access/reloptions.h"
 #include "access/relscan.h"
+#include "access/transam.h"
 #include "access/xact.h"
 #include "catalog/dependency.h"
 #include "catalog/index.h"
+#include "catalog/pg_trigger.h"
+#include "commands/trigger.h"
 #include "commands/event_trigger.h"
 #include "commands/vacuum.h"
 #include "executor/executor.h"
+#include "executor/spi.h"
 #include "nodes/relation.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
-#include "utils/json.h"
-#include "utils/memutils.h"
+#include "storage/procarray.h"
 #include "utils/builtins.h"
+#include "utils/json.h"
+#include "utils/lsyscache.h"
+#include "utils/memutils.h"
+#include "utils/tqual.h"
 
 #include "zdb_interface.h"
 #include "zdbops.h"
@@ -79,7 +86,16 @@ typedef struct {
     int                nqueries;
 } ZDBScanState;
 
+typedef struct {
+    IndexBulkDeleteCallback callback;
+    void                    *callback_state;
+    List                    *bulkDeleteList;
+    int                     many;
+} ZDBBulkDeleteState;
+
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state);
+
+static TransactionId lastxid = 0;
 
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
@@ -124,6 +140,10 @@ static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forIns
     if (desc == NULL) {
         desc            = zdb_alloc_index_descriptor(indexRel);
         usedIndexesList = lappend(usedIndexesList, desc);
+    }
+
+    if (desc->xactRelId == InvalidOid) {
+        desc->xactRelId = get_relation_oid(desc->xactRelName);
     }
 
     if (forInsert && !desc->isShadow)
@@ -317,6 +337,7 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
     Relation         heapRel    = (Relation) PG_GETARG_POINTER(0);
     Relation         indexRel   = (Relation) PG_GETARG_POINTER(1);
     IndexInfo        *indexInfo = (IndexInfo *) PG_GETARG_POINTER(2);
+    TupleDesc        tupdesc    = RelationGetDescr(indexRel);
     IndexBuildResult *result;
     double           reltuples  = 0.0;
     ZDBBuildState    buildstate;
@@ -330,6 +351,18 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 
     if (!ZDBIndexOptionsGetUrl(indexRel) && !ZDBIndexOptionsGetShadow(indexRel))
         elog(ERROR, "Must set the 'url' or 'shadow' index option");
+
+    if (tupdesc->natts != 2)
+        elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+
+    switch (tupdesc->attrs[1]->atttypid) {
+        case JSONOID:
+            break;
+
+        default:
+            elog(ERROR, "Unsupported second index column type: %d", tupdesc->attrs[1]->atttypid);
+            break;
+    }
 
     buildstate.isUnique    = indexInfo->ii_Unique;
     buildstate.haveDead    = false;
@@ -357,6 +390,69 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 
         /* reset the settings to reasonable values for production use */
         buildstate.desc->implementation->finalizeNewIndex(buildstate.desc);
+
+		if (heapRel->rd_rel->relkind != 'm')
+		{
+            StringInfo triggerSQL;
+
+			/* put a trigger on the table to forward UPDATEs and DELETEs into our code for ES xact synchronization */
+			SPI_connect();
+
+			triggerSQL = makeStringInfo();
+			appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", RelationGetRelid(heapRel), RelationGetRelid(indexRel));
+			if (SPI_execute(triggerSQL->data, true, 0) == SPI_OK_SELECT && SPI_processed == 0)
+			{
+				resetStringInfo(triggerSQL);
+				appendStringInfo(triggerSQL,
+						"CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
+								"       BEFORE UPDATE OR DELETE ON \"%s\".\"%s\" "
+								"       FOR EACH ROW EXECUTE PROCEDURE zdbtupledeletedtrigger('%d');"
+								"UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d';"
+								"SELECT oid "
+								"       FROM pg_trigger "
+								"       WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'",
+						RelationGetRelid(heapRel), RelationGetRelid(indexRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid(indexRel),  /* CREATE TRIGGER args */
+						RelationGetRelid(heapRel), RelationGetRelid(indexRel), /* UPDATE pg_trigger args */
+						RelationGetRelid(heapRel), RelationGetRelid(indexRel) /* SELECT FROM pg_trigger args */
+				);
+
+				if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1)
+				{
+					ObjectAddress indexAddress;
+					ObjectAddress triggerAddress;
+
+					indexAddress.classId     = RelationRelationId;
+					indexAddress.objectId    = RelationGetRelid(indexRel);
+					indexAddress.objectSubId = 0;
+
+					triggerAddress.classId     = TriggerRelationId;
+					triggerAddress.objectId    = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
+					triggerAddress.objectSubId = 0;
+
+					recordDependencyOn(&triggerAddress, &indexAddress, DEPENDENCY_INTERNAL);
+				}
+				else
+				{
+					elog(ERROR, "Cannot create trigger");
+				}
+			}
+
+			pfree(triggerSQL->data);
+			pfree(triggerSQL);
+
+			SPI_finish();
+		}
+
+        if (buildstate.desc->xactRelId == InvalidOid) {
+            StringInfo sb = makeStringInfo();
+            SPI_connect();
+            appendStringInfo(sb, "CREATE INDEX %s ON %s.%s ((null::int8), (null::boolean)) WHERE false;", buildstate.desc->xactRelName, get_namespace_name(RelationGetNamespace(heapRel)), RelationGetRelationName(heapRel));
+
+            elog(LOG, "[zombodb] Creating xact index for %s: %s", RelationGetRelationName(indexRel), sb->data);
+            if (SPI_exec(sb->data, 0) != SPI_OK_UTILITY)
+                elog(ERROR, "Problem creating zombodb xact index");
+            SPI_finish();
+        }
 
         pfree(DatumGetPointer(mappingDatum));
         pfree(DatumGetPointer(propertiesDatum));
@@ -387,59 +483,52 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
  * Per-tuple callback from IndexBuildHeapScan
  */
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state) {
-    TupleDesc          tupdesc     = RelationGetDescr(indexRel);
     ZDBBuildState      *buildstate = (ZDBBuildState *) state;
     ZDBIndexDescriptor *desc       = buildstate->desc;
-    Datum              value;
 
-    if (tupdesc->natts != 2)
-        elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), HeapTupleHeaderGetXmin(htup->t_data));
 
-    switch (tupdesc->attrs[1]->atttypid) {
-        case JSONOID:
-            value = values[1];
-            break;
-        default:
-            elog(ERROR, "Unsupported second index column type: %d", tupdesc->attrs[1]->atttypid);
-            return;
-    }
-
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(value), HeapTupleHeaderGetXmin(htup->t_data));
-
-    buildstate->indtuples += 1;
+    buildstate->indtuples++;
 }
 
 /*
  *  zdbinsert() -- insert an index tuple into a zombodb.
  */
 Datum zdbinsert(PG_FUNCTION_ARGS) {
-    Relation           indexRel = (Relation) PG_GETARG_POINTER(0);
-    Datum              *values  = (Datum *) PG_GETARG_POINTER(1);
+    Relation           indexRel             = (Relation) PG_GETARG_POINTER(0);
+    Datum              *values              = (Datum *) PG_GETARG_POINTER(1);
 //    bool	   *isnull = (bool *) PG_GETARG_POINTER(2);
-    ItemPointer        ht_ctid  = (ItemPointer) PG_GETARG_POINTER(3);
-//    Relation	heapRel = (Relation) PG_GETARG_POINTER(4);
+    ItemPointer        ht_ctid              = (ItemPointer) PG_GETARG_POINTER(3);
+    Relation           heapRel              = (Relation) PG_GETARG_POINTER(4);
 //    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
-    TupleDesc          tupdesc  = RelationGetDescr(indexRel);
+    TransactionId      currentTransactionId = GetCurrentTransactionId();
     ZDBIndexDescriptor *desc;
-    Datum              value;
 
     desc = alloc_index_descriptor(indexRel, true);
     if (desc->isShadow)
         PG_RETURN_BOOL(false);
 
-    if (tupdesc->natts != 2)
-        elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+    if (lastxid != currentTransactionId) {
+        Relation xactRel;
+        Datum datum[2];
+        static bool isnull[2] = {false, false};
 
-    switch (tupdesc->attrs[1]->atttypid) {
-        case JSONOID:
-            value = values[1];
-            break;
-        default:
-            elog(ERROR, "Unsupported second index column type: %d", tupdesc->attrs[1]->atttypid);
-            PG_RETURN_BOOL(false);
+        datum[0] = Int64GetDatum(convert_xid(currentTransactionId));
+        datum[1] = true;
+
+        /*
+         * If we haven't already done so for this transaction, insert a single
+         * tuple into our xact index to record this transaction id so concurrent/future
+         * scans will exclude it.
+         */
+        xactRel = relation_open(desc->xactRelId, AccessShareLock);
+        index_insert(xactRel, datum, isnull, ht_ctid, heapRel, UNIQUE_CHECK_NO);
+        relation_close(xactRel, AccessShareLock);
+
+        lastxid = currentTransactionId;
     }
 
-    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(value), GetCurrentTransactionId());
+    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), currentTransactionId);
 
     PG_RETURN_BOOL(true);
 }
@@ -642,23 +731,173 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
     PG_RETURN_VOID();
 }
 
-typedef struct {
-    IndexBulkDeleteCallback callback;
-    void                    *callback_state;
-    List                    *bulkDeleteList;
-    int                     many;
-}            ZDBBulkDeleteState;
+static void delete_xids_from_xact_index(Relation heapRel, Relation xactRel, TransactionId oldestXmin, ZDBIndexDescriptor *desc) {
+    IndexScanDesc scanDesc;
+    ItemPointer   tid;
+    StringInfo    xids      = makeStringInfo();
+    uint64        lastxid = InvalidTransactionId;
 
-static void bulkdelete_callback(ItemPointer ctid, void *data) {
-    ZDBBulkDeleteState *state = (ZDBBulkDeleteState *) data;
+    /*
+     * scan our xact index and build a unique list (a json-formatted string of xids) of xids it contains
+     * that are at least before the GetOldestXmin.  These should be completed xids, either committed or aborted
+     */
+    scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
+    scanDesc->xs_want_itup = true;
 
-    if (state->callback(ctid, state->callback_state)) {
-        ItemPointer copy = palloc(sizeof(ItemPointerData));
-        ItemPointerCopy(ctid, copy);
-        state->bulkDeleteList = lappend(state->bulkDeleteList, copy);
-        state->many++;
+    index_rescan(scanDesc, NULL, 0, NULL, 0);
+    while ((tid = index_getnext_tid(scanDesc, ForwardScanDirection)) != NULL) {
+        uint64        convertedxid;
+        TransactionId xid;
+        bool          isnull;
+
+        convertedxid = (uint64) DatumGetInt64(index_getattr(scanDesc->xs_itup, 1, scanDesc->xs_itupdesc, &isnull));
+        xid          = (TransactionId) (convertedxid);
+
+        if (lastxid != convertedxid && TransactionIdPrecedesOrEquals(xid, oldestXmin)) {
+            if (TransactionIdDidAbort(xid)) {
+                if (xids->len == 0)
+                    appendStringInfoChar(xids, '[');
+                else if (xids->len > 1)
+                    appendStringInfoChar(xids, ',');
+                appendStringInfo(xids, "%lu", convertedxid);
+                lastxid = convertedxid;
+            }
+        }
     }
+
+    /* if we have some xids from above... */
+    if (xids->len > 0) {
+        uint32 nxids;
+        uint64* dead_xids;
+
+        /*
+         * ... then find the ones that no longer exist in Elasticsearch.  This means
+         * previous vacuum runs managed to fully clean up the individual rows
+         */
+        appendStringInfoChar(xids, ']');
+        dead_xids = desc->implementation->vacuumSupport(desc, xids->data, &nxids);
+
+        if (nxids > 0) {
+            HASHCTL ctl;
+            HTAB *htab;
+            uint32 i;
+            bool found;
+
+            /* convert our list of dead xids into a hashtable for fast lookup */
+            MemSet(&ctl, 0, sizeof(HASHCTL));
+            ctl.keysize   = sizeof(uint64);
+            ctl.entrysize = sizeof(uint64);
+            htab = hash_create("dead xids", nxids, &ctl, HASH_ELEM);
+            for (i = 0; i < nxids; i++)
+                hash_search(htab, &dead_xids[i], HASH_ENTER, &found);
+
+            /*
+             * and for any that are no longer in ES, we'll 'kill_prior_tuple' on them
+             * to get them out of our xact index so future "invisibility map" scans
+             * won't try to exclude things that no longer exist
+             */
+            index_rescan(scanDesc, NULL, 0, NULL, 0);
+            while (index_getnext_tid(scanDesc, ForwardScanDirection) != NULL) {
+                uint64 convertedxid;
+                bool   isnull;
+
+                convertedxid = (uint64) DatumGetInt64(index_getattr(scanDesc->xs_itup, 1, scanDesc->xs_itupdesc, &isnull));
+
+                hash_search(htab, &convertedxid, HASH_FIND, &found);
+                if (found) {
+                    scanDesc->kill_prior_tuple = true;
+                }
+            }
+        }
+    }
+
+    index_endscan(scanDesc);
 }
+
+
+/*
+ * lifted from various Postgres versions of vacuumlazy.c
+ *
+ * We do this so that vacuuming our remote Elasticsearch index can
+ * look directly at LVRelStats.dead_tuples instead of walking through
+ * the index and asking about each and every tuple.
+ */
+#if (PG_VERSION_NUM < 90400)
+typedef struct LVRelStats
+{
+    /* hasindex = true means two-pass strategy; false means one-pass */
+    bool		hasindex;
+    /* Overall statistics about rel */
+    BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
+    BlockNumber rel_pages;		/* total number of pages */
+    BlockNumber scanned_pages;	/* number of pages we examined */
+    double		scanned_tuples; /* counts only tuples on scanned pages */
+    double		old_rel_tuples; /* previous value of pg_class.reltuples */
+    double		new_rel_tuples; /* new estimated total # of tuples */
+    BlockNumber pages_removed;
+    double		tuples_deleted;
+    BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+    /* List of TIDs of tuples we intend to delete */
+    /* NB: this list is ordered by TID address */
+    int			num_dead_tuples;	/* current # of entries */
+    int			max_dead_tuples;	/* # slots allocated in array */
+    ItemPointer dead_tuples;	/* array of ItemPointerData */
+    int			num_index_scans;
+    TransactionId latestRemovedXid;
+    bool		lock_waiter_detected;
+} LVRelStats;
+#elif (PG_VERSION_NUM < 90500)
+typedef struct LVRelStats
+{
+    /* hasindex = true means two-pass strategy; false means one-pass */
+    bool		hasindex;
+    /* Overall statistics about rel */
+    BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
+    BlockNumber rel_pages;		/* total number of pages */
+    BlockNumber scanned_pages;	/* number of pages we examined */
+    double		scanned_tuples; /* counts only tuples on scanned pages */
+    double		old_rel_tuples; /* previous value of pg_class.reltuples */
+    double		new_rel_tuples; /* new estimated total # of tuples */
+    double		new_dead_tuples;	/* new estimated total # of dead tuples */
+    BlockNumber pages_removed;
+    double		tuples_deleted;
+    BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+    /* List of TIDs of tuples we intend to delete */
+    /* NB: this list is ordered by TID address */
+    int			num_dead_tuples;	/* current # of entries */
+    int			max_dead_tuples;	/* # slots allocated in array */
+    ItemPointer dead_tuples;	/* array of ItemPointerData */
+    int			num_index_scans;
+    TransactionId latestRemovedXid;
+    bool		lock_waiter_detected;
+} LVRelStats;
+#elif (PG_VERSION_NUM < 90600)
+typedef struct LVRelStats
+{
+	/* hasindex = true means two-pass strategy; false means one-pass */
+	bool		hasindex;
+	/* Overall statistics about rel */
+	BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
+	BlockNumber rel_pages;		/* total number of pages */
+	BlockNumber scanned_pages;	/* number of pages we examined */
+	BlockNumber pinskipped_pages;		/* # of pages we skipped due to a pin */
+	double		scanned_tuples; /* counts only tuples on scanned pages */
+	double		old_rel_tuples; /* previous value of pg_class.reltuples */
+	double		new_rel_tuples; /* new estimated total # of tuples */
+	double		new_dead_tuples;	/* new estimated total # of dead tuples */
+	BlockNumber pages_removed;
+	double		tuples_deleted;
+	BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+	/* List of TIDs of tuples we intend to delete */
+	/* NB: this list is ordered by TID address */
+	int			num_dead_tuples;	/* current # of entries */
+	int			max_dead_tuples;	/* # slots allocated in array */
+	ItemPointer dead_tuples;	/* array of ItemPointerData */
+	int			num_index_scans;
+	TransactionId latestRemovedXid;
+	bool		lock_waiter_detected;
+} LVRelStats;
+#endif
 
 /*
  * Bulk deletion of all index entries pointing to a set of heap tuples.
@@ -670,12 +909,17 @@ static void bulkdelete_callback(ItemPointer ctid, void *data) {
 Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     IndexVacuumInfo *info = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
     IndexBulkDeleteResult *volatile stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
-    IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
+//    IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
     void                    *callback_state = (void *) PG_GETARG_POINTER(3);
     Relation                indexRel        = info->index;
     Relation                heapRel;
+    Relation                xactRel;
     ZDBIndexDescriptor      *desc;
-    ZDBBulkDeleteState      *deleteState    = palloc0(sizeof(ZDBBulkDeleteState));
+    TransactionId oldestXmin = GetOldestXmin(false, false);
+    LVRelStats *relstats;
+    struct timeval tv1, tv2;
+
+    gettimeofday(&tv1, NULL);
 
     /* allocate stats if first time through, else re-use existing struct */
     if (stats == NULL)
@@ -685,15 +929,22 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     if (desc->isShadow)
         PG_RETURN_POINTER(stats);
 
-    deleteState->callback       = callback;
-    deleteState->callback_state = callback_state;
-    heapRel = RelationIdGetRelation(desc->heapRelid);
-    find_invisible_ctids_with_callback(heapRel, true, bulkdelete_callback, deleteState);
+    relstats = (LVRelStats *) callback_state; /* XXX:  cast to our copy/paste of LVRelStats! */
+    heapRel  = RelationIdGetRelation(desc->heapRelid);
+
+    if (relstats->num_dead_tuples > 0) {
+        desc->implementation->bulkDelete(desc, relstats->dead_tuples, relstats->num_dead_tuples);
+
+        xactRel = relation_open(desc->xactRelId, AccessShareLock);
+        delete_xids_from_xact_index(heapRel, xactRel, oldestXmin, desc);
+        relation_close(xactRel, AccessShareLock);
+    }
+
+    gettimeofday(&tv2, NULL);
+    elog(LOG, "[zombodb vacuum status] heap=%s, total=%d, ttl=%fs", RelationGetRelationName(heapRel), relstats->num_dead_tuples, TO_SECONDS(tv1, tv2));
     RelationClose(heapRel);
 
-    if (deleteState->many > 0)
-        desc->implementation->bulkDelete(desc, deleteState->bulkDeleteList, deleteState->many);
-
+    stats->tuples_removed = relstats->num_dead_tuples;
     PG_RETURN_POINTER(stats);
 }
 
@@ -861,4 +1112,56 @@ Datum zdbcostestimate(PG_FUNCTION_ARGS) {
 
     freeStringInfo(query);
     PG_RETURN_VOID();
+}
+
+Datum
+zdbtupledeletedtrigger(PG_FUNCTION_ARGS)
+{
+    TriggerData        *trigdata = (TriggerData *) fcinfo->context;
+    TransactionId      currentTransactionId       = GetCurrentTransactionId();
+    Oid                indexRelOid;
+    ZDBIndexDescriptor *desc;
+    Relation           xactRel;
+    Datum              datum[2];
+    static bool        isnull[2] = {false, false};
+
+    /* make sure it's called as a trigger at all */
+    if (!CALLED_AS_TRIGGER(fcinfo))
+        elog(ERROR, "zdbtupledeletedtrigger: not called by trigger manager");
+
+    if (!(TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event) ||
+          TRIGGER_FIRED_BY_DELETE(trigdata->tg_event)))
+        elog(ERROR, "zdbtupledeletedtrigger: can only be fired for UPDATE and DELETE");
+
+    if (TRIGGER_FIRED_AFTER(trigdata->tg_event))
+        elog(ERROR, "zdbtupledeletedtrigger: can only be fired as a BEFORE trigger");
+
+    if (trigdata->tg_trigger->tgnargs != 1)
+        elog(ERROR, "zdbtupledeletedtrigger: must specify the index oid as the only argument");
+
+    indexRelOid = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
+    desc        = zdb_alloc_index_descriptor_by_index_oid(indexRelOid);
+    datum[0]    = Int64GetDatum(convert_xid(currentTransactionId));
+    datum[1]    = BoolGetDatum(TRIGGER_FIRED_BY_INSERT(trigdata->tg_event));
+
+    /*
+     * add a row into our xact index to record the item pointer of the tuple being updated
+     * this is its existing tid, not the new one
+     */
+    xactRel = relation_open(desc->xactRelId, AccessShareLock);
+    index_insert(xactRel, datum, isnull, &trigdata->tg_trigtuple->t_self, trigdata->tg_relation, UNIQUE_CHECK_NO);
+    relation_close(xactRel, AccessShareLock);
+
+    /* remember this transaction id so we don't add an 'is_insert' pointer into
+     * the xact index for any of the new tuples
+     */
+    lastxid = currentTransactionId;
+
+    /* return the right thing */
+    if (TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event))
+        return PointerGetDatum(trigdata->tg_newtuple);
+    else if (TRIGGER_FIRED_BY_DELETE(trigdata->tg_event))
+        return PointerGetDatum(trigdata->tg_trigtuple);
+    else
+        elog(ERROR, "trigger called in wrong context");
 }

@@ -932,7 +932,7 @@ public abstract class QueryRewriter {
                                 }
                             };
                         }
-                    }));
+                    }).cache(true));
                 }
             }
         });

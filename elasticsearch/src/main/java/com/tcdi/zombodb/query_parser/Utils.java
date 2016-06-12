@@ -530,4 +530,35 @@ public class Utils {
         return rc;
     }
 
+    public static int encodeLong(long value, byte[] buffer, int offset) {
+        buffer[offset + 7] = (byte) (value >>> 56);
+        buffer[offset + 6] = (byte) (value >>> 48);
+        buffer[offset + 5] = (byte) (value >>> 40);
+        buffer[offset + 4] = (byte) (value >>> 32);
+        buffer[offset + 3] = (byte) (value >>> 24);
+        buffer[offset + 2] = (byte) (value >>> 16);
+        buffer[offset + 1] = (byte) (value >>> 8);
+        buffer[offset + 0] = (byte) (value >>> 0);
+
+        return 8;
+    }
+
+    public static int encodeFloat(float value, byte[] buffer, int offset) {
+        return encodeInteger(Float.floatToRawIntBits(value), buffer, offset);
+    }
+
+    public static int encodeInteger(int value, byte[] buffer, int offset) {
+        buffer[offset + 3] = (byte) ((value >>> 24) & 0xFF);
+        buffer[offset + 2] = (byte) ((value >>> 16) & 0xFF);
+        buffer[offset + 1] = (byte) ((value >>> 8) & 0xFF);
+        buffer[offset + 0] = (byte) ((value >>> 0) & 0xFF);
+        return 4;
+    }
+
+    public static int encodeCharacter(char value, byte[] buffer, int offset) {
+        buffer[offset + 1] = (byte) ((value >>> 8) & 0xFF);
+        buffer[offset + 0] = (byte) ((value >>> 0) & 0xFF);
+        return 2;
+    }
+
 }

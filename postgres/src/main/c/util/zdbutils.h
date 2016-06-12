@@ -19,10 +19,13 @@
 
 #include "postgres.h"
 #include "lib/stringinfo.h"
+#include "storage/lwlock.h"
 #include "utils/array.h"
+#include "utils/snapshot.h"
 
 #define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 #define ItemPointerToUint64(ht_ctid) (((uint64)ItemPointerGetBlockNumber(ht_ctid)) << 32) | ((uint32)ItemPointerGetOffsetNumber(ht_ctid))
+#define TO_SECONDS(tv1, tv2) ((double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec))
 
 #define zdb_json char *
 
@@ -35,10 +38,11 @@ char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing);
 Oid  *findZDBIndexes(Oid relid, int *many);
 Oid  *oid_array_to_oids(ArrayType *arr, int *many);
 char **text_array_to_strings(ArrayType *array, int *many);
+Oid get_relation_oid(char *relname);
 
-typedef void (*invisibility_callback)(ItemPointer ctid, void *data);
-int        find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data);
-StringInfo find_invisible_ctids(Relation rel, StringInfo sb);
+typedef void (*invisibility_callback)(ItemPointer ctid, uint64 xid, void *ctids, void *xids);
+StringInfo find_invisible_ctids(Relation heapRel, Relation xactRel, StringInfo ctids, StringInfo xids);
 uint64     convert_xid(TransactionId xid);
+bool       is_active_xid(Snapshot snapshot, TransactionId xid);
 
 #endif

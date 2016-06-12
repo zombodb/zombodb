@@ -17,6 +17,7 @@
 package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.QueryRewriter;
+import com.tcdi.zombodb.query_parser.Utils;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
@@ -142,11 +143,11 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         results[0] = 0;
         offset++;
-        offset += encodeLong(many, results, offset);
+        offset += Utils.encodeLong(many, results, offset);
 
         /* once we know the max score, it goes here */
         maxscore_offset = offset;
-        offset += encodeFloat(0, results, offset);
+        offset += Utils.encodeFloat(0, results, offset);
 
         // kick off the first scroll request
         ActionFuture<SearchResponse> future = client.searchScroll(new SearchScrollRequestBuilder(client)
@@ -199,47 +200,16 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
                 if (score > maxscore)
                     maxscore = score;
 
-                offset += encodeInteger(blockno, results, offset);
-                offset += encodeCharacter(rowno, results, offset);
-                offset += encodeFloat(score, results, offset);
+                offset += Utils.encodeInteger(blockno, results, offset);
+                offset += Utils.encodeCharacter(rowno, results, offset);
+                offset += Utils.encodeFloat(score, results, offset);
                 cnt++;
             }
         }
 
-        encodeFloat(maxscore, results, maxscore_offset);
+        Utils.encodeFloat(maxscore, results, maxscore_offset);
 
         long end = System.currentTimeMillis();
         return new BinaryTIDResponse(results, many, (end - start) / 1000D);
-    }
-
-    private static int encodeLong(long value, byte[] buffer, int offset) {
-        buffer[offset + 7] = (byte) (value >>> 56);
-        buffer[offset + 6] = (byte) (value >>> 48);
-        buffer[offset + 5] = (byte) (value >>> 40);
-        buffer[offset + 4] = (byte) (value >>> 32);
-        buffer[offset + 3] = (byte) (value >>> 24);
-        buffer[offset + 2] = (byte) (value >>> 16);
-        buffer[offset + 1] = (byte) (value >>> 8);
-        buffer[offset + 0] = (byte) (value >>> 0);
-
-        return 8;
-    }
-
-    private static int encodeFloat(float value, byte[] buffer, int offset) {
-        return encodeInteger(Float.floatToRawIntBits(value), buffer, offset);
-    }
-
-    private static int encodeInteger(int value, byte[] buffer, int offset) {
-        buffer[offset + 3] = (byte) ((value >>> 24) & 0xFF);
-        buffer[offset + 2] = (byte) ((value >>> 16) & 0xFF);
-        buffer[offset + 1] = (byte) ((value >>> 8) & 0xFF);
-        buffer[offset + 0] = (byte) ((value >>> 0) & 0xFF);
-        return 4;
-    }
-
-    private static int encodeCharacter(char value, byte[] buffer, int offset) {
-        buffer[offset + 1] = (byte) ((value >>> 8) & 0xFF);
-        buffer[offset + 0] = (byte) ((value >>> 0) & 0xFF);
-        return 2;
     }
 }

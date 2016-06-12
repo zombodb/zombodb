@@ -21,7 +21,8 @@
 #include "access/relscan.h"
 #include "access/transam.h"
 #include "access/visibilitymap.h"
-#include "access/xlog.h"
+#include "access/xact.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
 #include "storage/bufmgr.h"
@@ -34,19 +35,12 @@
 
 #include "zdbutils.h"
 
-typedef enum VisibilityType {
-    VT_SKIPPABLE,
-    VT_VISIBLE,
-    VT_INVISIBLE,
-    VT_OUT_OF_RANGE
-} VisibilityType;
-
-static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer);
+static int find_invisible_ctids_with_callback(Relation heapRel, Relation xactRel, invisibility_callback cb, void *ctids, void *xids);
 
 typedef struct {
     TransactionId last_xid;
     uint32        epoch;
-}                     TxidEpoch;
+} TxidEpoch;
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
     char       *definition = "";
@@ -245,176 +239,120 @@ char **text_array_to_strings(ArrayType *array, int *many) {
     return result;
 }
 
-static void string_invisibility_callback(ItemPointer ctid, void *stringInfo) {
-    StringInfo sb = (StringInfo) stringInfo;
-    if (sb->len > 0)
-        appendStringInfoCharMacro(sb, ',');
-    appendStringInfo(sb, "%lu", ItemPointerToUint64(ctid));
+Oid get_relation_oid(char *relname) {
+    RangeVar   *rv;
+
+    rv = makeRangeVarFromNameList(textToQualifiedNameList(cstring_to_text(relname)));
+
+    /* We might not even have permissions on this relation; don't lock it. */
+    return RangeVarGetRelid(rv, NoLock, true);
 }
 
-StringInfo find_invisible_ctids(Relation rel, StringInfo sb) {
-    find_invisible_ctids_with_callback(rel, false, string_invisibility_callback, sb);
-    return sb;
+static void string_invisibility_callback(ItemPointer ctid, uint64 xid, void *ctids, void *xids) {
+
+    if (ctid != NULL) {
+        StringInfo sb = (StringInfo) ctids;
+        if (sb->len > 0)
+            appendStringInfoCharMacro(sb, ',');
+        appendStringInfo(sb, "%lu", ItemPointerToUint64(ctid));
+    }
+
+    if (xid != InvalidTransactionId) {
+        StringInfo sb = (StringInfo) xids;
+        if (sb->len > 0)
+            appendStringInfoCharMacro(sb, ',');
+        appendStringInfo(sb, "%lu", xid);
+    }
+
 }
 
-int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data) {
-    BlockNumber cnt            = visibilitymap_count(heapRel);
-    BlockNumber numberOfBlocks = RelationGetNumberOfBlocks(heapRel);
-    int         many           = 0, skipped = 0, pages = 0;
+StringInfo find_invisible_ctids(Relation heapRel, Relation xactRel, StringInfo ctids, StringInfo xids) {
+    find_invisible_ctids_with_callback(heapRel, xactRel, string_invisibility_callback, ctids, xids);
+    return ctids;
+}
 
-    if (cnt == 0 || cnt != numberOfBlocks) {
-        Snapshot      snapshot  = GetActiveSnapshot();
-        Buffer        vmap_buff = InvalidBuffer;
-        HeapTupleData heapTuple;
-        BlockNumber   blockno;
-        OffsetNumber  offno;
+bool is_active_xid(Snapshot snapshot, TransactionId xid) {
+    int i;
 
-        for (blockno = 0; blockno < numberOfBlocks; blockno++) {
-            CHECK_FOR_INTERRUPTS();
+    if (xid >= snapshot->xmax)
+        return true;
 
-            if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
-                Buffer buffer = InvalidBuffer;
-                pages++;
-                for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
-                    VisibilityType rc;
+    for (i=0; i<snapshot->xcnt; i++) {
+        if (snapshot->xip[i] == xid)
+            return true;
+    }
+    return false;
+}
 
-                    ItemPointerSet(&(heapTuple.t_self), blockno, offno);
+static int find_invisible_ctids_with_callback(Relation heapRel, Relation xactRel, invisibility_callback cb, void *ctids, void *xids) {
+    Snapshot       snapshot   = GetActiveSnapshot();
+    TransactionId  currentxid = GetCurrentTransactionId();
+    TransactionId  lastxid    = InvalidTransactionId;
+    IndexScanDesc  scanDesc;
+    ItemPointer    tid;
+    int            invs       = 0, current = 0, skipped = 0, aborted = 0, tuples = 0;
+    struct timeval tv1, tv2;
 
-                    rc = tuple_is_visible(heapRel, snapshot, &heapTuple, &buffer);
+    gettimeofday(&tv1, NULL);
 
-                    if (rc == VT_OUT_OF_RANGE)
-                        break; /* we're done with this page */
+    if (visibilitymap_count(heapRel) != RelationGetNumberOfBlocks(heapRel)) {
+        scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
+        scanDesc->xs_want_itup = true;
+        index_rescan(scanDesc, NULL, 0, NULL, 0);
 
-                    if (isVacuum || rc == VT_INVISIBLE) {
-                        /* tuple is invisible to us */
-                        cb(&(heapTuple.t_self), user_data);
-                        many++;
-                    } else if (rc == VT_SKIPPABLE) {
-                        skipped++;
-                    }
+        while ((tid = index_getnext_tid(scanDesc, ForwardScanDirection)) != NULL) {
+            uint64        convertedxid;
+            TransactionId xid;
+            bool          is_insert;
+            bool          isnull;
+
+            convertedxid = (uint64) DatumGetInt64(index_getattr(scanDesc->xs_itup, 1, scanDesc->xs_itupdesc, &isnull));
+            is_insert    = DatumGetBool(index_getattr(scanDesc->xs_itup, 2, scanDesc->xs_itupdesc, &isnull));
+            xid          = (TransactionId) (convertedxid);
+
+            //
+            // if xid is current
+            //      then add tid to list of ctids we should exclude
+            // else if xid is currently active
+            //      then skip it entirely
+            // else if xid aborted
+            //      then add xid to list of xids we should exclude
+            // else if not is_insert and xid committed
+            //      then add tid to list of ctids we should exclude
+            //
+
+            if (currentxid == xid) {
+                if (!is_insert) {
+                    cb(tid, InvalidTransactionId, ctids, xids);
                 }
-
-                if (BufferIsValid(buffer)) {
-                    LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-                    ReleaseBuffer(buffer);
+                current++;
+            } else if (is_active_xid(snapshot, xid)) {
+                /* xact is still active, so skip because these are wholesale excluded in our query */
+                skipped++;
+            } else if (TransactionIdDidAbort(xid)) {
+                if (lastxid != xid) {
+                    cb(NULL, convertedxid, ctids, xids);
+                    aborted++;
+                    lastxid = xid;
+                }
+            } else if (TransactionIdDidCommit(xid)) {
+                /* ignore ctid of committed update/delete */
+                if (!is_insert) {
+                    cb(tid, InvalidTransactionId, ctids, xids);
+                    invs++;
                 }
             }
+
+            tuples++;
         }
 
-        if (BufferIsValid(vmap_buff))
-            ReleaseBuffer(vmap_buff);
+        index_endscan(scanDesc);
     }
 
-    elog(DEBUG1, "[zombodb invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d, total_blocks=%d", RelationGetRelationName(heapRel), many, skipped, pages, numberOfBlocks);
-    return many;
-}
+    gettimeofday(&tv2, NULL);
+    elog(LOG, "[zombodb invisibility stats] heap=%s, invisible=%d, skipped=%d, current=%d, aborted=%d, tuples=%d, ttl=%fs", RelationGetRelationName(heapRel), invs, skipped, current, aborted, tuples, TO_SECONDS(tv1, tv2));
 
-/**
- * Adapted from heapam.c#heap_fetch()
- */
-static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer) {
-    ItemPointer  tid = &(tuple->t_self);
-    ItemId       lp;
-    Page         page;
-    OffsetNumber offnum;
-    bool         valid;
-
-    if (BufferIsInvalid(*buffer)) {
-        /*
-         * Fetch and pin the appropriate page of the relation.
-         */
-        *buffer = ReadBuffer(relation, ItemPointerGetBlockNumber(tid));
-
-        /*
-         * Need share lock on buffer to examine tuple commit status.
-         */
-        LockBuffer(*buffer, BUFFER_LOCK_SHARE);
-    }
-    page = BufferGetPage(*buffer);
-
-    /*
-     * We'd better check for out-of-range offnum in case of VACUUM since the
-     * TID was obtained.
-     */
-    offnum = ItemPointerGetOffsetNumber(tid);
-    if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page)) {
-        return VT_OUT_OF_RANGE;
-    }
-
-    /*
-     * get the item line pointer corresponding to the requested tid
-     */
-    lp = PageGetItemId(page, offnum);
-
-    /*
-     * Must check for deleted tuple.
-     */
-    if (!ItemIdIsNormal(lp)) {
-        if (!ItemIdIsUsed(lp)) {
-            /*
-             * Technically this item is free, which means it's also *not* in our index
-             * so we don't need to actively exclude it.
-             *
-             * Should it become occupied (inserted into index) later on during this process, it's no big deal
-             * because it'll have an xmin that's outside our visible range and we filter those on the query
-             */
-            return VT_VISIBLE;
-        } else {
-            return VT_INVISIBLE;
-        }
-    }
-
-    /*
-     * fill in *tuple fields
-     */
-    tuple->t_data     = (HeapTupleHeader) PageGetItem(page, lp);
-    tuple->t_len      = ItemIdGetLength(lp);
-    tuple->t_tableOid = RelationGetRelid(relation);
-
-    /*
-     * check time qualification of tuple, then release lock
-     */
-    valid = HeapTupleSatisfiesVisibility(tuple, snapshot, *buffer);
-
-    if (!valid) {
-        int           i;
-        TransactionId xmin = HeapTupleHeaderGetXmin(tuple->t_data);
-        TransactionId xmax;
-
-        if (xmin >= snapshot->xmax) {
-            /*
-             * The tuple's xmin is >= to the snapshot's xmax, so we can skip this entirely
-             * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
-             *
-             * In essence, we treat this as "visible", but it just gets filtered out at search time
-             */
-            return VT_SKIPPABLE;
-        }
-
-        // NB:  Is this really a good idea, from a performance perspective, to
-        // examine xmin/xmax once for every concurrent session?
-        xmax   = HeapTupleHeaderGetUpdateXid(tuple->t_data);
-        for (i = 0; i < snapshot->xcnt; i++) {
-            if (xmin == snapshot->xip[i] || xmax == snapshot->xip[i]) {
-                /*
-                 * Similar to above, if the tuple's xmin or xmax are part of an active
-                 * transaction, we can skip it because those transaction ids will be
-                 * filtered out when we query
-                 */
-                return VT_SKIPPABLE;
-            }
-        }
-    }
-
-    if (valid) {
-        /*
-         * All checks passed, so the tuple is visible to us
-         */
-        return VT_VISIBLE;
-    }
-
-    /* Tuple failed time qual */
-    return VT_INVISIBLE;
+    return invs;
 }
 
 /* adapted from Postgres' txid.c#convert_xid function */

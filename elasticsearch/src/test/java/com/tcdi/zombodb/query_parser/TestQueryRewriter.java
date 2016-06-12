@@ -3495,7 +3495,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ]\n" +
+                        "        \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ],\n" +
+                        "        \"_cache\" : true\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -3930,7 +3931,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ]\n" +
+                        "        \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ],\n" +
+                        "        \"_cache\" : true\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -3956,7 +3958,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ]\n" +
+                        "        \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ],\n" +
+                        "        \"_cache\" : true\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -4025,7 +4028,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ]\n" +
+                        "        \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ],\n" +
+                        "        \"_cache\" : true\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +

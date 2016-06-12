@@ -34,7 +34,8 @@
                 },
                 "filter" : {
                   "terms" : {
-                    "subject" : [ "a", "b", "c", "d" ]
+                    "subject" : [ "a", "b", "c", "d" ],
+                    "_cache" : true
                   }
                 }
               }
@@ -1243,7 +1244,8 @@
                 },
                 "filter" : {
                   "terms" : {
-                    "title" : [ "1", "2", "3", "4", "5" ]
+                    "title" : [ "1", "2", "3", "4", "5" ],
+                    "_cache" : true
                   }
                 }
               }

@@ -27,6 +27,9 @@ ENV LANG en_US.UTF-8
 # turn off warnings from debconf
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
+# ask apt to update itself
+RUN apt-get update -y -qq --fix-missing
+
 # must have wget
 RUN apt-get install -y -qq wget
 

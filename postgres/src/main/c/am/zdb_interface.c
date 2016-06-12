@@ -31,6 +31,8 @@
 #include "zdb_interface.h"
 #include "elasticsearch.h"
 
+#define XACT_INDEX_SUFFIX "_zdb_xact"
+
 relopt_kind RELOPT_KIND_ZDB;
 bool        zdb_batch_mode_guc;
 bool        zdb_ignore_visibility_guc;
@@ -64,10 +66,12 @@ static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query,
 
 static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
 static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xmin);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
+
+static uint64 *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
 
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
@@ -126,6 +130,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     Relation           heapRel;
     ZDBIndexDescriptor *desc;
     ListCell           *lc;
+    char               *xactIndexName;
     int                i;
 
     if (indexRel->rd_index == NULL)
@@ -133,8 +138,12 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 
     foreach(lc, allocated_descriptors) {
         desc = lfirst(lc);
-        if (desc->indexRelid == indexRel->rd_id)
+        if (desc->indexRelid == indexRel->rd_id) {
+            if (desc->xactRelId == InvalidOid) {
+                desc->xactRelId = get_relation_oid(desc->xactRelName);
+            }
             return desc;
+        }
     }
 
     heapRel = relation_open(indexRel->rd_index->indrelid, AccessShareLock);
@@ -187,6 +196,11 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         desc->url       = ZDBIndexOptionsGetUrl(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(indexRel));
     }
 
+    xactIndexName = palloc(strlen(RelationGetRelationName(heapRel)) + strlen(XACT_INDEX_SUFFIX) + 1);
+    sprintf(xactIndexName, "%s"XACT_INDEX_SUFFIX, RelationGetRelationName(heapRel));
+    desc->xactRelName  = xactIndexName;
+    desc->xactRelId = get_relation_oid(desc->xactRelName);
+
     desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
 
     appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
@@ -223,6 +237,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->bulkDelete              = wrapper_bulkDelete;
     desc->implementation->batchInsertRow          = wrapper_batchInsertRow;
     desc->implementation->batchInsertFinish       = wrapper_batchInsertFinish;
+    desc->implementation->vacuumSupport           = wrapper_vacuumSupport;
     desc->implementation->transactionFinish       = wrapper_transactionFinish;
 
     allocated_descriptors = lappend(allocated_descriptors, desc);
@@ -511,7 +526,7 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse) {
     MemoryContextSwitchTo(oldContext);
 }
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems) {
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_bulkDelete", 512, 64, 64);
     MemoryContext oldContext = MemoryContextSwitchTo(me);
 
@@ -541,6 +556,19 @@ static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
     elasticsearch_batchInsertFinish(indexDescriptor);
 
     MemoryContextSwitchTo(oldContext);
+}
+
+static uint64 *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    uint64 *xids;
+
+    Assert(!indexDescriptor->isShadow);
+
+    xids = elasticsearch_vacuumSupport(indexDescriptor, jsonXids, nxids);
+
+    MemoryContextSwitchTo(oldContext);
+
+    return xids;
 }
 
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {

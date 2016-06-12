@@ -52,10 +52,12 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, 
 
 void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
+void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
 void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xid);
 void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
+
+uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
 
 void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
