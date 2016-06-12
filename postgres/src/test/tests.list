@@ -79,3 +79,4 @@ zdb_dump_query
 270-beta3-bug
 direct-ctid
 xact_visibility
+matview
