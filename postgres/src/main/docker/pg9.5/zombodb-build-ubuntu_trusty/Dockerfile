@@ -2,6 +2,7 @@ FROM ubuntu:trusty
 
 MAINTAINER ZomboDB, LLC (zombodb@gmail.com)
 
+RUN apt-get update -y -qq --fix-missing
 RUN apt-get install -y wget
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
