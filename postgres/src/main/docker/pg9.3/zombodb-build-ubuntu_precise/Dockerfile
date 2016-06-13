@@ -2,6 +2,7 @@ FROM ubuntu:precise
 
 MAINTAINER ZomboDB, LLC (zombodb@gmail.com)
 
+RUN apt-get update -y -qq --fix-missing
 RUN apt-get install -y wget
 RUN apt-get install -y apt-utils
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
