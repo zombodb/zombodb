@@ -239,11 +239,18 @@ char **text_array_to_strings(ArrayType *array, int *many) {
     return result;
 }
 
-Oid get_relation_oid(char *relname) {
+Oid get_relation_oid(char *namespace, char *relname) {
+    StringInfo sb = makeStringInfo();
     RangeVar   *rv;
 
-    rv = makeRangeVarFromNameList(textToQualifiedNameList(cstring_to_text(relname)));
+    if (namespace != NULL)
+        appendStringInfo(sb, "%s.%s", namespace, relname);
+    else
+        appendStringInfo(sb, "%s", relname);
 
+    rv = makeRangeVarFromNameList(textToQualifiedNameList(cstring_to_text(sb->data)));
+
+    freeStringInfo(sb);
     /* We might not even have permissions on this relation; don't lock it. */
     return RangeVarGetRelid(rv, NoLock, true);
 }

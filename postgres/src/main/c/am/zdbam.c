@@ -143,7 +143,7 @@ static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forIns
     }
 
     if (desc->xactRelId == InvalidOid) {
-        desc->xactRelId = get_relation_oid(desc->xactRelName);
+        desc->xactRelId = get_relation_oid(desc->schemaName, desc->xactRelName);
     }
 
     if (forInsert && !desc->isShadow)

@@ -140,7 +140,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         desc = lfirst(lc);
         if (desc->indexRelid == indexRel->rd_id) {
             if (desc->xactRelId == InvalidOid) {
-                desc->xactRelId = get_relation_oid(desc->xactRelName);
+                desc->xactRelId = get_relation_oid(desc->schemaName, desc->xactRelName);
             }
             return desc;
         }
@@ -199,7 +199,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     xactIndexName = palloc(strlen(RelationGetRelationName(heapRel)) + strlen(XACT_INDEX_SUFFIX) + 1);
     sprintf(xactIndexName, "%s"XACT_INDEX_SUFFIX, RelationGetRelationName(heapRel));
     desc->xactRelName  = xactIndexName;
-    desc->xactRelId = get_relation_oid(desc->xactRelName);
+    desc->xactRelId = get_relation_oid(desc->schemaName, desc->xactRelName);
 
     desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
 
