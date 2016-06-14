@@ -22,7 +22,9 @@
 #include "access/transam.h"
 #include "access/visibilitymap.h"
 #include "access/xact.h"
+#include "catalog/dependency.h"
 #include "catalog/namespace.h"
+#include "catalog/objectaddress.h"
 #include "catalog/pg_type.h"
 #include "executor/spi.h"
 #include "storage/bufmgr.h"
@@ -381,4 +383,20 @@ uint64 convert_xid(TransactionId xid) {
         epoch++;
 
     return (epoch << 32) | xid;
+}
+
+void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toObjectId, DependencyType dependencyType) {
+    ObjectAddress indexAddress;
+    ObjectAddress triggerAddress;
+
+    indexAddress.classId     = fromClassId;
+    indexAddress.objectId    = fromObjectId;
+    indexAddress.objectSubId = 0;
+
+    triggerAddress.classId     = toClassId;
+    triggerAddress.objectId    = toObjectId;
+    triggerAddress.objectSubId = 0;
+
+    recordDependencyOn(&triggerAddress, &indexAddress, dependencyType);
+
 }

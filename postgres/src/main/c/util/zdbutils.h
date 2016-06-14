@@ -18,6 +18,7 @@
 #define ZDBUTILS_H
 
 #include "postgres.h"
+#include "catalog/dependency.h"
 #include "lib/stringinfo.h"
 #include "storage/lwlock.h"
 #include "utils/array.h"
@@ -45,5 +46,7 @@ typedef void (*invisibility_callback)(ItemPointer ctid, uint64 xid, void *ctids,
 StringInfo find_invisible_ctids(Relation heapRel, Relation xactRel, StringInfo ctids, StringInfo xids);
 uint64     convert_xid(TransactionId xid);
 bool       is_active_xid(Snapshot snapshot, TransactionId xid);
+
+void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toObjectId, DependencyType dependencyType);
 
 #endif

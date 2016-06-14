@@ -416,23 +416,10 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 						RelationGetRelid(heapRel), RelationGetRelid(indexRel) /* SELECT FROM pg_trigger args */
 				);
 
-				if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1)
-				{
-					ObjectAddress indexAddress;
-					ObjectAddress triggerAddress;
-
-					indexAddress.classId     = RelationRelationId;
-					indexAddress.objectId    = RelationGetRelid(indexRel);
-					indexAddress.objectSubId = 0;
-
-					triggerAddress.classId     = TriggerRelationId;
-					triggerAddress.objectId    = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
-					triggerAddress.objectSubId = 0;
-
-					recordDependencyOn(&triggerAddress, &indexAddress, DEPENDENCY_INTERNAL);
+				if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1) {
+                    define_dependency(RelationRelationId, RelationGetRelid(indexRel), TriggerRelationId, (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1)), DEPENDENCY_INTERNAL);
 				}
-				else
-				{
+				else {
 					elog(ERROR, "Cannot create trigger");
 				}
 			}
@@ -445,12 +432,19 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 
         if (buildstate.desc->xactRelId == InvalidOid) {
             StringInfo sb = makeStringInfo();
+
             SPI_connect();
+
             appendStringInfo(sb, "CREATE INDEX %s ON %s.%s ((null::int8), (null::boolean)) WHERE false;", buildstate.desc->xactRelName, get_namespace_name(RelationGetNamespace(heapRel)), RelationGetRelationName(heapRel));
 
             elog(LOG, "[zombodb] Creating xact index for %s: %s", RelationGetRelationName(indexRel), sb->data);
             if (SPI_exec(sb->data, 0) != SPI_OK_UTILITY)
                 elog(ERROR, "Problem creating zombodb xact index");
+
+            buildstate.desc->xactRelId = get_relation_oid(buildstate.desc->schemaName, buildstate.desc->xactRelName);
+            define_dependency(RelationRelationId, RelationGetRelid(indexRel), RelationRelationId, buildstate.desc->xactRelId, DEPENDENCY_INTERNAL);
+            define_dependency(RelationRelationId, buildstate.desc->xactRelId, RelationRelationId, RelationGetRelid(indexRel), DEPENDENCY_NORMAL);
+
             SPI_finish();
         }
 
