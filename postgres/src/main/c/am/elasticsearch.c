@@ -39,9 +39,11 @@
 typedef struct {
     ZDBIndexDescriptor *indexDescriptor;
     MultiRestState     *rest;
-    StringInfo         bulk;
+    PostDataEntry      *bulk;
     int                nprocessed;
     int                nrequests;
+
+    StringInfo         pool[MAX_CURL_HANDLES];
 } BatchInsertData;
 
 
@@ -61,17 +63,24 @@ static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescri
     }
 
     if (!data && create) {
+        int i;
         MemoryContext oldcontext = MemoryContextSwitchTo(TopTransactionContext);
-        data = palloc(sizeof(BatchInsertData));
+
+        data = palloc0(sizeof(BatchInsertData));
         data->indexDescriptor = indexDescriptor;
         data->rest            = palloc0(sizeof(MultiRestState));
-        data->bulk            = makeStringInfo();
+        data->bulk            = NULL;
         data->nprocessed      = 0;
         data->nrequests       = 0;
+
+        for (i=0; i<indexDescriptor->bulk_concurrency+1; i++)
+            data->pool[i] = makeStringInfo();
+
         batchInsertDataList = lappend(batchInsertDataList, data);
         MemoryContextSwitchTo(oldcontext);
 
         rest_multi_init(data->rest, indexDescriptor->bulk_concurrency);
+        data->rest->pool = data->pool;
     }
 
     return data;
@@ -870,17 +879,38 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
     appendStringInfo(bulk, ",\"_xid\":%lu,\"_zdb_id\":\"%lu\"}\n", convert_xid(xmin), ItemPointerToUint64(ht_ctid));
 }
 
+static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
+    int i;
+
+    for (i=0; i<batch->rest->nhandles+1; i++) {
+        if (batch->pool[i] != NULL) {
+            PostDataEntry *entry = palloc(sizeof(PostDataEntry));
+
+            entry->buff     = batch->pool[i];
+            entry->pool_idx = i;
+
+            batch->pool[i] = NULL;
+            return entry;
+        }
+    }
+
+    elog(ERROR, "Unable to checkout from batch pool");
+}
+
 void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xid) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
 
-    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk, xid);
+    if (batch->bulk == NULL)
+        batch->bulk = checkout_batch_pool(batch);
+
+    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, xid);
     batch->nprocessed++;
 
     if (batch->nprocessed % 1000) {
         rest_multi_perform(batch->rest);
     }
 
-    if (batch->bulk->len > indexDescriptor->batch_size) {
+    if (batch->bulk->buff->len > indexDescriptor->batch_size) {
         StringInfo endpoint = makeStringInfo();
         int        idx;
 
@@ -899,7 +929,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
         }
 
         /* reset the bulk StringInfo for the next batch of records */
-        batch->bulk = makeStringInfo();
+        batch->bulk = checkout_batch_pool(batch);
 
         batch->nrequests++;
 
@@ -920,7 +950,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             rest_multi_partial_cleanup(batch->rest, true, false);
         }
 
-        if (batch->bulk->len > 0) {
+        if (batch->bulk->buff->len > 0) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
@@ -938,18 +968,16 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
                     }
                 }
 
-                response = rest_call("POST", endpoint->data, batch->bulk);
+                response = rest_call("POST", endpoint->data, batch->bulk->buff);
             } else {
                 /*
                  * otherwise we'll do a full refresh below, so there's no need to do it here
                  */
-                response = rest_call("POST", endpoint->data, batch->bulk);
+                response = rest_call("POST", endpoint->data, batch->bulk->buff);
             }
             checkForBulkError(response, "batch finish");
             freeStringInfo(response);
         }
-
-        freeStringInfo(batch->bulk);
 
         if (batch->nrequests > 0) {
             elog(LOG, "[zombodb] Indexed %d rows in %d requests for %s", batch->nprocessed,

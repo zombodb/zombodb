@@ -92,7 +92,7 @@ int rest_multi_perform(MultiRestState *state) {
     return still_running;
 }
 
-int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo postData, bool process) {
+int rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData, bool process) {
     int i;
 
     if (state->available == 0)
@@ -127,9 +127,9 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
-                curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->data ? 1 : 0);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
+                curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
                 curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
                 curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
 
@@ -202,9 +202,9 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
                         state->errorbuffs[i] = NULL;
                     }
                     if (state->postDatas[i] != NULL) {
-                        pfree(state->postDatas[i]->data);
-                        pfree(state->postDatas[i]);
-                        state->postDatas[i] = NULL;
+                        PostDataEntry *entry = state->postDatas[i];
+                        resetStringInfo(entry->buff);
+                        state->pool[entry->pool_idx] = entry->buff;
                     }
                     if (state->responses[i] != NULL) {
                         pfree(state->responses[i]->data);
