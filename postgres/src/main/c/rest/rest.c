@@ -28,6 +28,7 @@
 #include "postgres.h"
 #include "miscadmin.h"
 #include "access/xact.h"
+#include "utils/memutils.h"
 
 #include "rest.h"
 
@@ -35,8 +36,10 @@ static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userda
 static int    curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
 static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userdata) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
     StringInfo response = (StringInfo) userdata;
     appendBinaryStringInfo(response, ptr, size * nmemb);
+    MemoryContextSwitchTo(oldContext);
     return size * nmemb;
 }
 
@@ -78,9 +81,15 @@ void rest_multi_init(MultiRestState *state, int nhandles) {
     MULTI_REST_STATES = lappend(MULTI_REST_STATES, state);
 }
 
-void rest_multi_perform(MultiRestState *state) {
+int rest_multi_perform(MultiRestState *state) {
     int still_running;
-    curl_multi_perform(state->multi_handle, &still_running);
+    CURLMcode rc;
+
+    do {
+        rc = curl_multi_perform(state->multi_handle, &still_running);
+    } while (rc == CURLM_CALL_MULTI_PERFORM);
+
+    return still_running;
 }
 
 int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo postData, bool process) {
@@ -95,7 +104,6 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
                 CURL       *curl;
                 char       *errorbuff;
                 StringInfo response;
-                int        still_running;
 
                 curl = state->handles[i] = curl_easy_init();
                 if (!state->handles[i])
@@ -122,12 +130,14 @@ int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo p
                 curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
                 curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
                 curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->data ? 1 : 0);
+                curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+                curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
 
                 curl_multi_add_handle(state->multi_handle, curl);
                 state->available--;
 
                 if (process)
-                    curl_multi_perform(state->multi_handle, &still_running);
+                    rest_multi_perform(state);
 
                 return i;
             }
@@ -142,7 +152,7 @@ bool rest_multi_is_available(MultiRestState *state) {
     int   still_running, numfds = 0;
 
     /* Has something finished? */
-    curl_multi_perform(multi_handle, &still_running);
+    still_running = rest_multi_perform(state);
     if (still_running < state->nhandles)
         return true;
 
@@ -152,13 +162,13 @@ bool rest_multi_is_available(MultiRestState *state) {
         return false;
 
     /* see if something has finished */
-    curl_multi_perform(multi_handle, &still_running);
+    still_running = rest_multi_perform(state);
     return still_running < state->nhandles;
 }
 
 bool rest_multi_all_done(MultiRestState *state) {
     int still_running;
-    curl_multi_perform(state->multi_handle, &still_running);
+    still_running = rest_multi_perform(state);
     return still_running == 0;
 }
 
@@ -173,17 +183,18 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
             bool found   = false;
             int  i;
 
-            curl_multi_remove_handle(state->multi_handle, handle);
-
             for (i = 0; i < state->nhandles; i++) {
                 if (state->handles[i] == handle) {
+                    CURLcode rc;
                     int64 response_code;
 
-                    curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code);
+                    if ( (rc = curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code)) != CURLE_OK)
+                        elog(ERROR, "Problem getting response code: rc=%d", rc);
+
                     if (msg->data.result != 0 || response_code != 200 ||
                         strstr(state->responses[i]->data, "\"errors\":true")) {
                         /* REST endpoint messed up */
-                        elog(ERROR, "libcurl error:  handle=%p, %s: %s, response_code=%ld, result=%d", handle, state->errorbuffs[i], state->responses[i]->data, response_code, msg->data.result);
+                        elog(ERROR, "i=%d, libcurl error:  handle=%p, %s: %s, response_code=%ld, result=%d", i, handle, state->errorbuffs[i], state->responses[i]->data, response_code, msg->data.result);
                     }
 
                     if (state->errorbuffs[i] != NULL) {
@@ -201,19 +212,20 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
                         state->responses[i] = NULL;
                     }
 
-                    curl_easy_cleanup(handle);
                     state->handles[i] = NULL;
                     state->available++;
-
-                    if (fast)
-                        return;
 
                     found = true;
                     break;
                 }
             }
 
-            if (!found) {
+            if (found) {
+                curl_multi_remove_handle(state->multi_handle, handle);
+                curl_easy_cleanup(handle);
+                if (fast)
+                    return;
+            } else {
                 elog(ERROR, "Couldn't find easy_handle for %p", handle);
             }
         }
@@ -254,6 +266,8 @@ StringInfo rest_call(char *method, char *url, StringInfo postData) {
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (postData && postData->data) ? 1 : 0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TCP_NODELAY, 1L);
     } else {
         elog(ERROR, "Unable to initialize libcurl");
     }

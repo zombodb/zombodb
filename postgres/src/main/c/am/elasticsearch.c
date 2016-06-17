@@ -887,9 +887,6 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
         /* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
         appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
-        if (batch->rest->available == 0)
-            rest_multi_partial_cleanup(batch->rest, false, true);
-
         idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
         if (idx < 0) {
             while (!rest_multi_is_available(batch->rest))
