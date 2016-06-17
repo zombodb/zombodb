@@ -42,6 +42,7 @@ typedef struct {
     PostDataEntry      *bulk;
     int                nprocessed;
     int                nrequests;
+    int                nrecs;
 
     StringInfo         pool[MAX_CURL_HANDLES];
 } BatchInsertData;
@@ -899,41 +900,36 @@ static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
 
 void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xid) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
+    bool fast_path = false;
 
     if (batch->bulk == NULL)
         batch->bulk = checkout_batch_pool(batch);
 
     appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, xid);
     batch->nprocessed++;
+    batch->nrecs++;
 
-    if (batch->nprocessed % 1000) {
-        rest_multi_perform(batch->rest);
+    if (rest_multi_perform(batch->rest)) {
+        int before = batch->rest->available;
+
+        rest_multi_partial_cleanup(batch->rest, false, true);
+        fast_path = batch->rest->available > before && batch->nrecs >= (batch->nprocessed/batch->nrequests) - 250;
     }
 
-    if (batch->bulk->buff->len > indexDescriptor->batch_size) {
+    if (fast_path || batch->bulk->buff->len >= indexDescriptor->batch_size) {
         StringInfo endpoint = makeStringInfo();
-        int        idx;
 
         /* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
         appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
-        idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
-        if (idx < 0) {
-            while (!rest_multi_is_available(batch->rest))
-                CHECK_FOR_INTERRUPTS();
-
-            rest_multi_partial_cleanup(batch->rest, false, true);
-            idx = rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, true);
-            if (idx < 0)
-                elog(ERROR, "Unable to add multicall after waiting");
-        }
+        /* send the request to index this batch */
+        rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk);
+        elog(LOG, "[zombodb] Indexed %d rows for %s (%d in batch, active=%d)", batch->nprocessed, indexDescriptor->fullyQualifiedName, batch->nrecs, batch->rest->nhandles - batch->rest->available);
 
         /* reset the bulk StringInfo for the next batch of records */
-        batch->bulk = checkout_batch_pool(batch);
-
+        batch->bulk  = checkout_batch_pool(batch);
+        batch->nrecs = 0;
         batch->nrequests++;
-
-        elog(LOG, "[zombodb] Indexed %d rows for %s", batch->nprocessed, indexDescriptor->fullyQualifiedName);
     }
 }
 

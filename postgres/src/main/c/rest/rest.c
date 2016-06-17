@@ -92,59 +92,64 @@ int rest_multi_perform(MultiRestState *state) {
     return still_running;
 }
 
-int rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData, bool process) {
+void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData) {
     int i;
 
-    if (state->available == 0)
-        rest_multi_partial_cleanup(state, false, false);
+    if (state->available == 0) {
+        int still_running;
 
-    if (state->available > 0) {
-        for (i = 0; i < state->nhandles; i++) {
-            if (state->handles[i] == NULL) {
-                CURL       *curl;
-                char       *errorbuff;
-                StringInfo response;
+        do {
+            CHECK_FOR_INTERRUPTS();
 
-                curl = state->handles[i] = curl_easy_init();
-                if (!state->handles[i])
-                    elog(ERROR, "Unable to initialize CURL handle");
+            still_running = rest_multi_perform(state);
+        } while (still_running == state->nhandles);
 
-                errorbuff = state->errorbuffs[i] = palloc0(CURL_ERROR_SIZE);
-                state->postDatas[i] = postData;
-                response = state->responses[i] = makeStringInfo();
-
-                curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
-                curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
-                curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
-                curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
-                curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
-                curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
-                curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorbuff);
-                curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
-                curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
-
-                curl_easy_setopt(curl, CURLOPT_URL, url);
-                curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
-                curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
-                curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-                curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
-
-                curl_multi_add_handle(state->multi_handle, curl);
-                state->available--;
-
-                if (process)
-                    rest_multi_perform(state);
-
-                return i;
-            }
-        }
+        rest_multi_partial_cleanup(state, false, true);
+        if (state->available == 0)
+            elog(ERROR, "unable to cleanup an available rest_multi slot");
     }
 
-    return -1;
+    for (i = 0; i < state->nhandles; i++) {
+        if (state->handles[i] == NULL) {
+            CURL       *curl;
+            char       *errorbuff;
+            StringInfo response;
+
+            curl = state->handles[i] = curl_easy_init();
+            if (!state->handles[i])
+                elog(ERROR, "Unable to initialize CURL handle");
+
+            errorbuff = state->errorbuffs[i] = palloc0(CURL_ERROR_SIZE);
+            state->postDatas[i] = postData;
+            response = state->responses[i] = makeStringInfo();
+
+            curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
+            curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
+            curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
+            curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
+            curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
+            curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
+            curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorbuff);
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+
+            curl_easy_setopt(curl, CURLOPT_URL, url);
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
+            curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
+            curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+            curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+
+            curl_multi_add_handle(state->multi_handle, curl);
+            state->available--;
+
+            rest_multi_perform(state);
+            return;
+        }
+    }
 }
 
 bool rest_multi_is_available(MultiRestState *state) {

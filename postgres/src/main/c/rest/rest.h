@@ -27,8 +27,8 @@
 extern StringInfo rest_call(char *method, char *url, StringInfo postData);
 
 extern void rest_multi_init(MultiRestState *state, int nhandles);
-extern int rest_multi_perform(MultiRestState *state);
-extern int  rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData, bool process);
+extern int  rest_multi_perform(MultiRestState *state);
+extern void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData);
 extern bool rest_multi_is_available(MultiRestState *state);
 extern bool rest_multi_all_done(MultiRestState *state);
 extern void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast);
