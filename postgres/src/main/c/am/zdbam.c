@@ -22,23 +22,23 @@
 #include "access/nbtree.h"
 #include "access/reloptions.h"
 #include "access/relscan.h"
-#include "access/transam.h"
 #include "access/xact.h"
 #include "catalog/dependency.h"
 #include "catalog/index.h"
 #include "catalog/pg_trigger.h"
+#include "commands/defrem.h"
 #include "commands/trigger.h"
 #include "commands/event_trigger.h"
 #include "commands/vacuum.h"
 #include "executor/executor.h"
 #include "executor/spi.h"
+#include "nodes/makefuncs.h"
 #include "nodes/relation.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
-#include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/tqual.h"
 
@@ -431,21 +431,48 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 		}
 
         if (buildstate.desc->xactRelId == InvalidOid) {
-            StringInfo sb = makeStringInfo();
+            IndexInfo *ii = palloc0(sizeof(IndexInfo));
+            Oid colids[] = {InvalidOid, InvalidOid};
+            Oid opclasses[] = {GetDefaultOpClass(INT8OID, BTREE_AM_OID), GetDefaultOpClass(BOOLOID, BTREE_AM_OID)};
+            int16 coloptions[] = {0, 0};
+            Relation xactRel;
+            BTSpool *spool;
 
-            SPI_connect();
+            /* CREATE INDEX xact_index ON table ((null)::int8, (null)::boolean) WHERE false; */
+            ii->ii_NumIndexAttrs = 2;
+            ii->ii_Expressions   = lappend(lappend(NULL, makeNullConst(INT8OID, -1, InvalidOid)), makeNullConst(BOOLOID, -1, InvalidOid));
+            ii->ii_Predicate     = lappend(NULL, makeBoolConst(false, false));
 
-            appendStringInfo(sb, "CREATE INDEX %s ON %s.%s ((null::int8), (null::boolean)) WHERE false;", buildstate.desc->xactRelName, get_namespace_name(RelationGetNamespace(heapRel)), RelationGetRelationName(heapRel));
+            /* create the index, noting that we don't ask it to do a build... */
+            buildstate.desc->xactRelId = index_create(heapRel, buildstate.desc->xactRelName, InvalidOid, InvalidOid,
+                                                      ii, lappend(lappend(NULL, "first"), "second"),
+                                                      BTREE_AM_OID, indexRel->rd_rel->reltablespace,
+                                                      colids, opclasses, coloptions, PointerGetDatum(NULL),
+                                                      false, false, false, false, false, true, false, false
+                                                      #if (PG_VERSION_NUM >= 90500)
+                                                            ,false /* if_not_exists */
+                                                      #endif
+            );
 
-            elog(LOG, "[zombodb] Creating xact index for %s: %s", RelationGetRelationName(indexRel), sb->data);
-            if (SPI_exec(sb->data, 0) != SPI_OK_UTILITY)
-                elog(ERROR, "Problem creating zombodb xact index");
+            /*
+             * ... because we fake building an empty btree index ourselves
+             *
+             * This eliminates the need for Postgres to scan the entire heap
+             * but never actually add anything to the index because
+             * of the "WHERE false" predicate
+             */
+            xactRel = RelationIdGetRelation(buildstate.desc->xactRelId);
+            spool   = _bt_spoolinit(heapRel, xactRel, indexInfo->ii_Unique, false);
+            _bt_leafbuild(spool, NULL);
+            _bt_spooldestroy(spool);
+            RelationClose(xactRel);
 
-            buildstate.desc->xactRelId = get_relation_oid(buildstate.desc->schemaName, buildstate.desc->xactRelName);
+            /*
+             * relate this "xact" index to the primary index such that dropping the primary index
+             * will also drop the "xact" index, but dropping the "xact" index will raise an ERROR
+             */
             define_dependency(RelationRelationId, RelationGetRelid(indexRel), RelationRelationId, buildstate.desc->xactRelId, DEPENDENCY_INTERNAL);
             define_dependency(RelationRelationId, buildstate.desc->xactRelId, RelationRelationId, RelationGetRelid(indexRel), DEPENDENCY_NORMAL);
-
-            SPI_finish();
         }
 
         pfree(DatumGetPointer(mappingDatum));
