@@ -91,7 +91,6 @@ public class TermAnalyzerOptimizer {
                 root.removeNode(child);
             }
             if (!complex.isEmpty()) {
-                root.renumber();
                 QueryParserNode newNode;
 
                 if (((ASTArray) root).isAnd()) {
@@ -106,6 +105,7 @@ public class TermAnalyzerOptimizer {
                     newNode = or;
                 }
 
+                root.renumber();
                 ((QueryParserNode) root.parent).replaceChild(root, newNode);
                 if (root.jjtGetNumChildren() > 0)
                     newNode.jjtAddChild(root, newNode.jjtGetNumChildren());
