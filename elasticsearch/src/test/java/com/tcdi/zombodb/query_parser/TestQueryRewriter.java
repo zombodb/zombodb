@@ -3056,7 +3056,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  \"bool\" : {\n" +
                         "    \"must\" : [ {\n" +
                         "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
+                        "        \"must\" : [ {\n" +
                         "          \"wildcard\" : {\n" +
                         "            \"exact_field\" : \"phrase with *wildcard*\"\n" +
                         "          }\n" +
@@ -3084,7 +3084,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      }\n" +
                         "    }, {\n" +
                         "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
+                        "        \"must\" : [ {\n" +
                         "          \"match\" : {\n" +
                         "            \"phrase_field\" : {\n" +
                         "              \"query\" : \"phrase value\",\n" +
@@ -3378,7 +3378,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("phrase_field:(asdflkj234-132asdfuj asiodfja;sdf #487adqerydfskf0230 &@#$23)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
+                        "    \"must\" : [ {\n" +
                         "      \"match\" : {\n" +
                         "        \"phrase_field\" : {\n" +
                         "          \"query\" : \"asdflkj234-132asdfuj\",\n" +
@@ -4692,5 +4692,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testComplexTokenPulloutWithAND() throws Exception {
+        assertAST("english_field:(\"I''ll see you later\" and darling)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Phrase (fieldname=english_field, operator=CONTAINS, value=I''ll see you later, index=db.schema.table.index)\n" +
+                        "         Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "            Word (fieldname=english_field, operator=CONTAINS, value=darl, index=db.schema.table.index)");
+    }
 }
 

@@ -92,13 +92,23 @@ public class TermAnalyzerOptimizer {
             }
             if (!complex.isEmpty()) {
                 root.renumber();
-                ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
-                for (QueryParserNode node : complex)
-                    or.jjtAddChild(node, or.jjtGetNumChildren());
-                ((QueryParserNode) root.parent).replaceChild(root, or);
+                QueryParserNode newNode;
 
+                if (((ASTArray) root).isAnd()) {
+                    ASTAnd and = new ASTAnd(QueryParserTreeConstants.JJTAND);
+                    for (QueryParserNode node : complex)
+                        and.jjtAddChild(node, and.jjtGetNumChildren());
+                    newNode = and;
+                } else {
+                    ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
+                    for (QueryParserNode node : complex)
+                        or.jjtAddChild(node, or.jjtGetNumChildren());
+                    newNode = or;
+                }
+
+                ((QueryParserNode) root.parent).replaceChild(root, newNode);
                 if (root.jjtGetNumChildren() > 0)
-                    or.jjtAddChild(root, or.jjtGetNumChildren());
+                    newNode.jjtAddChild(root, newNode.jjtGetNumChildren());
             }
         } else {
             for (QueryParserNode child : root)
