@@ -8,6 +8,8 @@ ENV ZOMBODB_VER 3.0.0
 
 # Fetch wget
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y -qq --fix-missing
+RUN apt-get install -y curl
 
 # Install zombo
 RUN \
