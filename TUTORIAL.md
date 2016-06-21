@@ -185,7 +185,7 @@ tutorial=#
                              List of operators
  Schema | Name | Left arg type | Right arg type | Result type | Description 
 --------+------+---------------+----------------+-------------+-------------
- public | ==>  | json          | text           | boolean     | 
+ public | ==>  | tid          | text           | boolean     | 
 (1 row)
 ```
 
