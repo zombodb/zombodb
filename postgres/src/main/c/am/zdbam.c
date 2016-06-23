@@ -937,7 +937,6 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     Relation                heapRel;
     Relation                xactRel;
     ZDBIndexDescriptor      *desc;
-    TransactionId oldestXmin = GetOldestXmin(false, false);
     LVRelStats *relstats;
     struct timeval tv1, tv2;
 
@@ -955,6 +954,14 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     heapRel  = RelationIdGetRelation(desc->heapRelid);
 
     if (relstats->num_dead_tuples > 0) {
+        TransactionId oldestXmin;
+
+#if (PG_VERSION_NUM >= 90400)
+        oldestXmin = GetOldestXmin(heapRel, false);
+#else
+        oldestXmin = GetOldestXmin(false, false);
+#endif
+
         desc->implementation->bulkDelete(desc, relstats->dead_tuples, relstats->num_dead_tuples);
 
         xactRel = relation_open(desc->xactRelId, AccessShareLock);
