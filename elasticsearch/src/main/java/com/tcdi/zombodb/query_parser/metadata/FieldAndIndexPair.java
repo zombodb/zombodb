@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.metadata;
 
-class FieldAndIndexPair {
-    ASTIndexLink link;
-    String fieldname;
-    IndexMetadata md;
+import com.tcdi.zombodb.query_parser.ASTIndexLink;
+
+public class FieldAndIndexPair {
+    public final ASTIndexLink link;
+    public final String fieldname;
+    public final IndexMetadata md;
 
     FieldAndIndexPair(ASTIndexLink link, String fieldname, IndexMetadata md) {
         this.link = link;

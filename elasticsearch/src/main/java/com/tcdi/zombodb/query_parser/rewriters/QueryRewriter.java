@@ -14,9 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.rewriters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
+import com.tcdi.zombodb.query_parser.optimizers.ArrayDataOptimizer;
+import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
+import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
+import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
+import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.*;
@@ -63,7 +71,7 @@ public abstract class QueryRewriter {
         public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
             if (IS_SIREN_AVAILABLE) {
                 try {
-                    Class clazz = Class.forName("com.tcdi.zombodb.query_parser.SirenQueryRewriter");
+                    Class clazz = Class.forName("com.tcdi.zombodb.query_parser.rewriters.SirenQueryRewriter");
                     Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class);
                     return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
                 } catch (Exception e) {
@@ -145,11 +153,11 @@ public abstract class QueryRewriter {
         metadataManager = new IndexMetadataManager(client, indexName);
 
         final StringBuilder newQuery = new StringBuilder(input.length());
-        QueryParser parser;
+        com.tcdi.zombodb.query_parser.QueryParser parser;
         arrayData = Utils.extractArrayData(input, newQuery);
 
         try {
-            parser = new QueryParser(new StringReader(newQuery.toString()));
+            parser = new com.tcdi.zombodb.query_parser.QueryParser(new StringReader(newQuery.toString()));
             tree = parser.parse(true);
         } catch (ParseException pe) {
             throw new QueryRewriteException(pe);
@@ -515,7 +523,7 @@ public abstract class QueryRewriter {
         }
     }
 
-    QueryBuilder build(QueryParserNode node) {
+    public QueryBuilder build(QueryParserNode node) {
         if (node == null)
             return null;
         else if (node instanceof ASTAnd)
@@ -685,7 +693,7 @@ public abstract class QueryRewriter {
             public QueryBuilder b(QueryParserNode n) {
                 MatchQueryBuilder builder = matchPhraseQuery(n.getFieldname(), n.getValue());
                 if (node.getDistance() != 0)
-                    builder.slop(node.distance);
+                    builder.slop(node.getDistance());
                 return builder;
             }
         });
@@ -808,7 +816,7 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder build(final ASTPrefix node) {
-        if (node.operator == QueryParserNode.Operator.REGEX)
+        if (node.getOperator() == QueryParserNode.Operator.REGEX)
             return regexpQuery(node.getFieldname(), String.valueOf(node.getValue()));
 
         validateOperator(node);
@@ -821,7 +829,7 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder build(final ASTWildcard node) {
-        if (node.operator == QueryParserNode.Operator.REGEX)
+        if (node.getOperator() == QueryParserNode.Operator.REGEX)
             return regexpQuery(node.getFieldname(), String.valueOf(node.getValue()));
 
         validateOperator(node);
@@ -908,10 +916,32 @@ public abstract class QueryRewriter {
             public QueryBuilder b(QueryParserNode n) {
                 final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
                 if ("_id".equals(node.getFieldname())) {
+                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()).toString(), ", \r\n\t\f\"'[]");
                     Collection<String> terms = st.getAllTokens();
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
-                    return termsQuery(n.getFieldname(), st.getAllTokens());
+                    return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), new Iterable<Object>() {
+                        @Override
+                        public Iterator<Object> iterator() {
+                            final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()).toString(), ", \r\n\t\f\"'[]");
+                            return new Iterator<Object>() {
+                                @Override
+                                public boolean hasNext() {
+                                    return st.hasMoreTokens();
+                                }
+
+                                @Override
+                                public Object next() {
+                                    return st.nextToken();
+                                }
+
+                                @Override
+                                public void remove() {
+
+                                }
+                            };
+                        }
+                    }).cache(true));
                 }
             }
         });
@@ -1139,7 +1169,7 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    protected QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
+    public QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
         QueryParserNode exclusion = tree.getExclusion(indexName);
 
         if (exclusion != null) {

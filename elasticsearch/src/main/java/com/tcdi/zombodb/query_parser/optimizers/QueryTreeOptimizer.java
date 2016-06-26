@@ -14,7 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.optimizers;
+
+import com.tcdi.zombodb.query_parser.*;
 
 import java.util.*;
 
@@ -76,7 +78,7 @@ public class QueryTreeOptimizer {
     }
 
     void validateAndFixProximityChainFieldnames(QueryParserNode root) {
-        if (root.children == null || root.children.size() == 0)
+        if (root.getChildren() == null || root.getChildren().size() == 0)
             return;
 
         for (QueryParserNode child : root) {
@@ -99,17 +101,17 @@ public class QueryTreeOptimizer {
     }
 
     static void rollupParentheticalGroups(QueryParserNode root) {
-        if (root.children == null || root.children.size() == 0)
+        if (root.getChildren() == null || root.getChildren().size() == 0)
             return;
 
         if (root instanceof ASTAnd || root instanceof ASTOr) {
             boolean isAnd = root instanceof ASTAnd;
             begin: while(true) {
-                for (int i = 0, many = root.children.size(); i < many; i++) {
-                    QueryParserNode child = (QueryParserNode) root.children.get(i);
+                for (int i = 0, many = root.getChildren().size(); i < many; i++) {
+                    QueryParserNode child = (QueryParserNode) root.getChild(i);
 
                     if ((isAnd && child instanceof ASTAnd) || (!isAnd && child instanceof ASTOr)) {
-                        root.children.remove(i);
+                        root.getChildren().remove(i);
                         root.renumber();
                         root.adoptChildren(child);
                         continue begin;
@@ -131,18 +133,18 @@ public class QueryTreeOptimizer {
         if ((!(root instanceof ASTAnd) && !(root instanceof ASTOr)) || root.jjtGetNumChildren() > 1)
             return;
 
-        QueryParserNode parent = (QueryParserNode) root.parent;
-        for (int i = 0, many = root.children.size(); i < many; i++) {
-            if (parent.children.get(i) == root) {
-                QueryParserNode child = (QueryParserNode) root.children.get(0);
-                parent.children.put(i, child);
+        QueryParserNode parent = (QueryParserNode) root.jjtGetParent();
+        for (int i = 0, many = root.getChildren().size(); i < many; i++) {
+            if (parent.getChild(i) == root) {
+                QueryParserNode child = (QueryParserNode) root.getChild(0);
+                parent.jjtAddChild(child, i);
                 child.jjtSetParent(parent);
             }
         }
     }
 
     private void mergeLiterals(QueryParserNode root) {
-        if (root.children == null || root.children.size() == 0)
+        if (root.getChildren() == null || root.getChildren().size() == 0)
             return;
 
         final boolean isAnd = root instanceof ASTAnd || root instanceof ASTWith;
@@ -150,8 +152,8 @@ public class QueryTreeOptimizer {
 
         Map<Integer, ASTArray> arraysByField = new TreeMap<>();
         boolean needsRenumber = false;
-        for (int i = 0, many = root.children.size(); i < many; i++) {
-            QueryParserNode child = (QueryParserNode) root.children.get(i);
+        for (int i = 0, many = root.getChildren().size(); i < many; i++) {
+            QueryParserNode child = (QueryParserNode) root.getChild(i);
             if (child instanceof ASTAggregate)
                 continue;
 
@@ -163,7 +165,7 @@ public class QueryTreeOptimizer {
                     if (child instanceof ASTArray && isAnd)
                         continue;   // arrays within an ASTAnd cannot be merged
 
-                    if (child.boost != root.boost)
+                    if (child.getBoost() != root.getBoost())
                         continue;
 
                     array = null;
@@ -182,12 +184,12 @@ public class QueryTreeOptimizer {
                         arraysByField.put(i, array);
                     }
 
-                    if (array.parent == null) {
+                    if (array.jjtGetParent() == null) {
                         if (child instanceof ASTArray) {
                             array.adoptChildren(child);
                         } else {
                             array.jjtAddChild(child, array.jjtGetNumChildren());
-                            child.parent = array;
+                            child.jjtSetParent(array);
                         }
                     }
 
@@ -204,10 +206,10 @@ public class QueryTreeOptimizer {
 
                 if (child.jjtGetNumChildren() == 1) {
                     root.jjtAddChild(child.getChild(0), idx);
-                    child.getChild(0).parent = root;
+                    child.getChild(0).jjtSetParent(root);
                 } else {
                     root.jjtAddChild(child, idx);
-                    child.parent = root;
+                    child.jjtSetParent(root);
                 }
             }
             root.renumber();
@@ -220,13 +222,13 @@ public class QueryTreeOptimizer {
     }
 
     private void mergeArrays(QueryParserNode root) {
-        if (root.children == null || root.children.size() == 0)
+        if (root.getChildren() == null || root.getChildren().size() == 0)
             return;
 
         Map<String, ASTArray> arraysByField = new TreeMap<>();
         Set<QueryParserNode> toRemove = new HashSet<>();
-        for (int i = 0, many = root.children.size(); i < many; i++) {
-            QueryParserNode child = (QueryParserNode) root.children.get(i);
+        for (int i = 0, many = root.getChildren().size(); i < many; i++) {
+            QueryParserNode child = (QueryParserNode) root.getChild(i);
             if (child instanceof ASTAggregate)
                 continue;
 
@@ -256,7 +258,7 @@ public class QueryTreeOptimizer {
     }
 
     private void convertGeneratedExpansionsToASTOr(QueryParserNode root) {
-        if (root.children == null || root.children.size() == 0)
+        if (root.getChildren() == null || root.getChildren().size() == 0)
             return;
 
         for (QueryParserNode child : root) {

@@ -14,8 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.metadata;
 
+import com.tcdi.zombodb.query_parser.ASTIndexLink;
+import com.tcdi.zombodb.query_parser.ASTOptions;
+import com.tcdi.zombodb.query_parser.QueryParserNode;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;

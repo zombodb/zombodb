@@ -19,6 +19,8 @@ package com.tcdi.zombodb.query_parser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.highlight.DocumentHighlighter;
+import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
+import com.tcdi.zombodb.query_parser.utils.Utils;
 import com.tcdi.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
@@ -3503,10 +3505,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
                         "      Proximity (fieldname=phrase_field, operator=CONTAINS, index=db.schema.table.index)\n" +
-                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*)\n" +
-                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=non)\n" +
-                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*)\n" +
-                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=programmers)"
+                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=non, index=db.schema.table.index)\n" +
+                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=programmers, index=db.schema.table.index)"
         );
     }
 

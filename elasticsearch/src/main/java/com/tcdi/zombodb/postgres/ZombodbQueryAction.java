@@ -15,7 +15,7 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import com.tcdi.zombodb.query_parser.QueryRewriter;
+import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;

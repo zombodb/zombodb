@@ -14,8 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.optimizers;
 
+import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.FieldAndIndexPair;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
+import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
@@ -69,7 +73,7 @@ public class IndexLinkOptimizer {
 
 
     private void expand_allFieldAndAssignIndexLinks(QueryParserNode root, ASTIndexLink currentIndex) {
-        if (root == null || root.children == null || root.children.isEmpty() || (root instanceof ASTExpansion && !((ASTExpansion) root).isGenerated())) {
+        if (root == null || root.getChildren() == null || root.getChildren().isEmpty() || (root instanceof ASTExpansion && !((ASTExpansion) root).isGenerated())) {
             if (root instanceof ASTExpansion)
                 usedIndexes.add(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()));
             return;
@@ -82,8 +86,8 @@ public class IndexLinkOptimizer {
             usedIndexes.add(right);
         }
 
-        for (int i = 0, many = root.children.size(); i < many; i++) {
-            QueryParserNode child = (QueryParserNode) root.children.get(i);
+        for (int i = 0, many = root.getChildren().size(); i < many; i++) {
+            QueryParserNode child = (QueryParserNode) root.getChild(i);
             String fieldname = child.getFieldname();
 
             if (child instanceof ASTIndexLink || child instanceof ASTAggregate || child instanceof ASTSuggest)
@@ -103,7 +107,7 @@ public class IndexLinkOptimizer {
                         usedIndexes.add(link);
                     }
 
-                    group.parent = root;
+                    group.jjtSetParent(root);
                     if (group.jjtGetNumChildren() == 1) {
                         root.jjtAddChild(group.jjtGetChild(0), i);
                         group.jjtGetChild(0).jjtSetParent(root);
@@ -144,7 +148,7 @@ public class IndexLinkOptimizer {
             if (link == null)
                 return;
 
-            QueryParserNode parent = (QueryParserNode) root.parent;
+            QueryParserNode parent = (QueryParserNode) root.jjtGetParent();
             QueryParserNode last = null;
             QueryParserNode lastExpansion = null;
             String leftFieldname = null;

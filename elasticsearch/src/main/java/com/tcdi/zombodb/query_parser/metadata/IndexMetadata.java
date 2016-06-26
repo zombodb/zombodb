@@ -14,17 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.metadata;
 
+import com.tcdi.zombodb.query_parser.ASTIndexLink;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
-class IndexMetadata {
+public class IndexMetadata {
 
-    static final String[] MLT_STOP_WORDS = new String[]{
+    public static final String[] MLT_STOP_WORDS = new String[]{
             "http", "span", "class", "flashtext", "let", "its",
             "may", "well", "got", "too", "them", "really", "new", "set", "please",
             "how", "our", "from", "sent", "subject", "sincerely", "thank", "thanks",

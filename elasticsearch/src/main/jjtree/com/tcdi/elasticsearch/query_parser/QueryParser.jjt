@@ -13,6 +13,7 @@ options {
 PARSER_BEGIN(QueryParser)
 
 package com.tcdi.zombodb.query_parser;
+import com.tcdi.zombodb.query_parser.optimizers.*;
 import java.io.*;
 import java.util.*;
 
