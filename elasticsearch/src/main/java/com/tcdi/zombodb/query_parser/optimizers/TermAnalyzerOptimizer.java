@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.optimizers;
 
+import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
+import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.client.Client;
 
 import java.util.ArrayList;
@@ -67,7 +70,7 @@ public class TermAnalyzerOptimizer {
                 return false;
         }
 
-        QueryParserNode parentNode = (QueryParserNode) node.parent;
+        QueryParserNode parentNode = (QueryParserNode) node.jjtGetParent();
         QueryParserNode newNode = Utils.rewriteToken(client, metadataManager, node);
         if (newNode instanceof ASTWord && "".equals(newNode.getValue())) {
             parentNode.removeNode(node);
@@ -106,7 +109,7 @@ public class TermAnalyzerOptimizer {
                 }
 
                 root.renumber();
-                ((QueryParserNode) root.parent).replaceChild(root, newNode);
+                ((QueryParserNode) root.jjtGetParent()).replaceChild(root, newNode);
                 if (root.jjtGetNumChildren() > 0)
                     newNode.jjtAddChild(root, newNode.jjtGetNumChildren());
             }

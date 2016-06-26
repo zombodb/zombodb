@@ -13,8 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.optimizers;
 
+import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
+import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
@@ -74,7 +78,7 @@ public class ExpansionOptimizer {
         QueryParserNode queryNode = tree.getQueryNode();
         if (queryNode instanceof ASTAnd || queryNode instanceof ASTOr) {
             if (queryNode.jjtGetNumChildren() == 1)
-                ((QueryParserNode) queryNode.parent).replaceChild(queryNode, queryNode.getChild(0));
+                ((QueryParserNode) queryNode.jjtGetParent()).replaceChild(queryNode, queryNode.getChild(0));
         }
     }
 
@@ -95,7 +99,7 @@ public class ExpansionOptimizer {
                 }
 
                 // replace the ASTExpansion in the tree with the fieldData version
-                ((QueryParserNode) expansion.parent).replaceChild(expansion, last);
+                ((QueryParserNode) expansion.jjtGetParent()).replaceChild(expansion, last);
             }
         } finally {
             metadataManager.setMyIndex(myIndex);
@@ -318,8 +322,8 @@ public class ExpansionOptimizer {
                                         }));
 
                                         ((ASTArray) node).setExternalValues(values, values.size());
-                                        ((QueryParserNode) notArray.parent).removeNode(notArray);
-                                        ((QueryParserNode) notArray.parent).renumber();
+                                        ((QueryParserNode) notArray.jjtGetParent()).removeNode(notArray);
+                                        ((QueryParserNode) notArray.jjtGetParent()).renumber();
                                     }
                                 }
                             }
@@ -327,8 +331,8 @@ public class ExpansionOptimizer {
                     }
 
                     if (not.jjtGetNumChildren() == 0) {
-                        ((QueryParserNode) not.parent).removeNode(not);
-                        ((QueryParserNode) not.parent).renumber();
+                        ((QueryParserNode) not.jjtGetParent()).removeNode(not);
+                        ((QueryParserNode) not.jjtGetParent()).renumber();
                     }
                 }
             }

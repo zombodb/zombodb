@@ -17,6 +17,7 @@
 package com.tcdi.zombodb.highlight;
 
 import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequest;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;

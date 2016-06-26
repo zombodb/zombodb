@@ -17,7 +17,7 @@ package com.tcdi.zombodb.postgres;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tcdi.zombodb.query_parser.Utils;
+import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;

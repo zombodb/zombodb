@@ -16,7 +16,7 @@
 package com.tcdi.zombodb.test;
 
 import com.tcdi.zombodb.highlight.AnalyzedField;
-import com.tcdi.zombodb.query_parser.QueryRewriter;
+import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.flush.FlushRequestBuilder;

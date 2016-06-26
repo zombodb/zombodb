@@ -16,6 +16,8 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import com.tcdi.zombodb.query_parser.utils.Utils;
+
 import java.util.*;
 
 public class QueryParserNode extends SimpleNode implements Iterable<QueryParserNode>, Cloneable {
@@ -85,12 +87,24 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         return boost;
     }
 
+    public void setBoost(float boost) {
+        this.boost = boost;
+    }
+
     public int getDistance() {
         return distance;
     }
 
+    public void setDistance(int distance) {
+        this.distance = distance;
+    }
+
     public boolean isOrdered() {
         return ordered;
+    }
+
+    public void setOrdered(boolean ordered) {
+        this.ordered = ordered;
     }
 
     public Object getValue() {
@@ -123,6 +137,10 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
 
     public int getFuzzyness() {
         return fuzzyness;
+    }
+
+    public void setFuzzyness(int fuzzyness) {
+        this.fuzzyness = fuzzyness;
     }
 
     public boolean isNested() {
@@ -202,20 +220,20 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
             child.forceFieldname(fieldname);
     }
 
-    protected void adoptChildren(QueryParserNode node) {
+    public void adoptChildren(QueryParserNode node) {
         for (QueryParserNode child : node) {
             jjtAddChild(child, jjtGetNumChildren());
             child.jjtSetParent(this);
         }
     }
 
-    protected void removeNode(int idx) {
+    public void removeNode(int idx) {
         if (children == null)
             return;
         children.remove(idx);
     }
 
-    protected void removeNode(QueryParserNode node) {
+    public void removeNode(QueryParserNode node) {
         if (children == null)
             return;
 
@@ -257,10 +275,7 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         };
     }
 
-    public Collection<QueryParserNode> getChildren() {
-        List<QueryParserNode> children = new ArrayList<>();
-        for (QueryParserNode node : this)
-            children.add(node);
+    public Map<Number, Node> getChildren() {
         return children;
     }
 

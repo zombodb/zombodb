@@ -14,8 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tcdi.zombodb.query_parser;
+package com.tcdi.zombodb.query_parser.utils;
 
+import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.client.Client;
@@ -47,7 +49,7 @@ public class Utils {
         NEEDS_ESCAPES_AS_STRING = sb.toString();
     }
 
-    static String unescape(String s) {
+    public static String unescape(String s) {
         if (s == null || s.length() <= 1)
             return s;
 
@@ -144,7 +146,7 @@ public class Utils {
 
             if (m.find()) {
                 node = new ASTFuzzy(QueryParserTreeConstants.JJTFUZZY);
-                node.fuzzyness = Integer.valueOf(m.group(2));
+                node.setFuzzyness(Integer.valueOf(m.group(2)));
                 node.setValue(m.group(1));
             } else {
                 throw new RuntimeException("Unable to determine fuzziness");
@@ -209,7 +211,7 @@ public class Utils {
         return l;
     }
 
-    static List<String> analyzeForSearch(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
+    public static List<String> analyzeForSearch(Client client, IndexMetadataManager metadataManager, String fieldname, String phrase) throws RuntimeException {
         String analyzer = metadataManager.getMetadataForField(fieldname).getSearchAnalyzer(fieldname);
         return analyze(client, metadataManager, analyzer, fieldname, phrase);
     }
@@ -300,7 +302,7 @@ public class Utils {
     }
 
 
-    static ASTProximity convertToProximity(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
+    public static ASTProximity convertToProximity(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
         return convertToProximity(fieldname, new Iterable<String>() {
             @Override
             public Iterator<String> iterator() {
@@ -325,15 +327,15 @@ public class Utils {
         });
     }
 
-    static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens) {
+    public static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens) {
         return convertToProximity(fieldname, tokens, 0);
     }
 
     private static ASTProximity convertToProximity(String fieldname, Iterable<String> tokens, int distance) {
         ASTProximity prox = new ASTProximity(QueryParserTreeConstants.JJTPROXIMITY);
 
-        prox.fieldname = fieldname;
-        prox.distance = distance;
+        prox.setFieldname(fieldname);
+        prox.setDistance(distance);
 
         for (String token : tokens) {
             QueryParserNode node = convertToWildcardNode(fieldname, QueryParserNode.Operator.CONTAINS, token);
@@ -384,7 +386,7 @@ public class Utils {
         return arrayData;
     }
 
-    static String validateSameNestedPath(ASTWith node) {
+    public static String validateSameNestedPath(ASTWith node) {
         return validateSameNestedPath(node, null);
     }
 
@@ -408,7 +410,7 @@ public class Utils {
         return nestedPath;
     }
 
-    static QueryParserNode rewriteToken(Client client, IndexMetadataManager metadataManager, QueryParserNode node) throws RuntimeException {
+    public static QueryParserNode rewriteToken(Client client, IndexMetadataManager metadataManager, QueryParserNode node) throws RuntimeException {
         List<String> initialAnalyze;
         boolean hasWildcards = node instanceof ASTFuzzy;
         String input = node.getEscapedValue();
@@ -492,17 +494,17 @@ public class Utils {
                 newToken = node.getEscapedValue();
             }
 
-            rc.indexLink = node.indexLink;
-            rc.fieldname = node.fieldname;
-            rc.operator = node.operator;
-            rc.value = newToken;
-            rc.fuzzyness = node.fuzzyness;
-            rc.ordered = node.ordered;
-            rc.distance = node.distance;
-            rc.boost = node.boost;
+            rc.setIndexLink(node.getIndexLink());
+            rc.setFieldname(node.getFieldname());
+            rc.setOperator(node.getOperator());
+            rc.setValue(newToken);
+            rc.setFuzzyness(node.getFuzzyness());
+            rc.setOrdered(node.isOrdered());
+            rc.setDistance(node.getDistance());
+            rc.setBoost(node.getBoost());
         } else {
             if (node instanceof ASTFuzzy)
-                newToken += "~" + (node.ordered ? "" : "!") + node.fuzzyness;
+                newToken += "~" + (node.isOrdered() ? "" : "!") + node.getFuzzyness();
 
             if (initialAnalyze.size() <= 1) {
                 rc = Utils.convertToWildcardNode(node.getFieldname(), node.getOperator(), newToken);
@@ -512,19 +514,19 @@ public class Utils {
                     rc = (QueryParserNode) rc.jjtGetChild(0);
             }
 
-            rc.indexLink = node.indexLink;
-            rc.fieldname = node.fieldname;
-            rc.operator = node.operator;
-            rc.fuzzyness = node.fuzzyness;
-            rc.ordered = node.ordered;
-            rc.distance = node.distance;
-            rc.boost = node.boost;
+            rc.setIndexLink(node.getIndexLink());
+            rc.setFieldname(node.getFieldname());
+            rc.setOperator(node.getOperator());
+            rc.setFuzzyness(node.getFuzzyness());
+            rc.setOrdered(node.isOrdered());
+            rc.setDistance(node.getDistance());
+            rc.setBoost(node.getBoost());
         }
 
         if (rc instanceof ASTPrefix) {
-            String value = String.valueOf(rc.value);
+            String value = String.valueOf(rc.getValue());
             if (value.endsWith("*"))
-                rc.value = value.substring(0, value.length() - 1);
+                rc.setValue(value.substring(0, value.length() - 1));
         }
 
         return rc;

@@ -16,8 +16,8 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import com.tcdi.zombodb.query_parser.QueryRewriter;
-import com.tcdi.zombodb.query_parser.Utils;
+import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
+import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
