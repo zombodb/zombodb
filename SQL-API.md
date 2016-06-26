@@ -142,7 +142,7 @@ thai
 > The syntax for the `aggregate_query` argument follows the form:
 > 
 > ```
-> #tally(fieldname, stem, max_terms, term_order [, another aggregate])
+> #tally(fieldname, stem, max_terms, term_order [, shard_size] [, another aggregate])
 > ```
 > 
 > or
@@ -666,7 +666,7 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 ```
 
 
-#### ```FUNCTION zdb_tally(table_name regclass, fieldname text [, is_nested boolean], stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SET OF zdb_tally_response```
+#### ```FUNCTION zdb_tally(table_name regclass, fieldname text [, is_nested boolean], stem text, query text, max_terms bigint, sort_order zdb_tally_order [, shard_size int DEFAULT 0]) RETURNS SET OF zdb_tally_response```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```fieldname```: The name of a field from which to derive terms  
@@ -674,7 +674,8 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 > ```stem```:  a Regular expression by which to filter returned terms, or a date interval if the specified `fieldname` is a date or timestamp    
 > ```query```: a full text query  
 > ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
-> ```sort_order```: how to sort the terms.  one of ```'count'```, ```'term'```, ```'reverse_count'```, ```'reverse_term'```
+> ```sort_order```: how to sort the terms.  one of ```'count'```, ```'term'```, ```'reverse_count'```, ```'reverse_term'```  
+> `shard_size`: optional parameter that tells Elasticsearch how many terms to return from each shard.  Default is zero, which means all terms  
 > 
 > This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot be used with fields of type `fulltext`.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 > 

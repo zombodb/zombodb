@@ -25,6 +25,13 @@ class ASTTally extends ASTAggregate {
     return String.valueOf(getChild(2).getValue());
   }
 
+  public int getShardSize() {
+    Object child = getChild(3);
+    if (child instanceof ASTNumber)
+      return Integer.valueOf(String.valueOf(((ASTNumber) child).getValue()));
+    else
+      return 0;
+  }
   /** Accept the visitor. **/
   public Object jjtAccept(QueryParserVisitor visitor, Object data) {
 

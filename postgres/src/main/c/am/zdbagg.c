@@ -59,12 +59,13 @@ Datum zdb_internal_tally(PG_FUNCTION_ARGS) {
     char  *query      = GET_STR(PG_GETARG_TEXT_P(3));
     int64 max_terms   = PG_GETARG_INT64(4);
     char  *sort_order = GET_STR(PG_GETARG_TEXT_P(5));
+    int   shard_size  = PG_GETARG_INT32(6);
 
     ZDBIndexDescriptor *desc;
     char               *json;
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
-    json = desc->implementation->tally(desc, fieldname, stem, query, max_terms, sort_order);
+    json = desc->implementation->tally(desc, fieldname, stem, query, max_terms, sort_order, shard_size);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }

@@ -198,8 +198,8 @@ $$;
 
 CREATE TYPE zdb_tally_order AS ENUM ('count', 'term', 'reverse_count', 'reverse_term');
 CREATE TYPE zdb_tally_response AS (term text, count bigint);
-CREATE OR REPLACE FUNCTION zdb_internal_tally(type_oid oid, fieldname text, stem text, query text, max_terms bigint, sort_order text) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdb_tally(table_name regclass, fieldname text, is_nested boolean, stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SETOF zdb_tally_response STRICT IMMUTABLE LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION zdb_internal_tally(type_oid oid, fieldname text, stem text, query text, max_terms bigint, sort_order text, shard_size int) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_tally(table_name regclass, fieldname text, is_nested boolean, stem text, query text, max_terms bigint, sort_order zdb_tally_order, shard_size int DEFAULT 0) RETURNS SETOF zdb_tally_response STRICT IMMUTABLE LANGUAGE plpgsql AS $$
 DECLARE
   json_data json;
   type_oid oid;
@@ -212,7 +212,7 @@ BEGIN
 
   SELECT typname FROM pg_type WHERE oid = (SELECT atttypid FROM pg_attribute WHERE attrelid = table_name AND attname = fieldname) INTO data_type;
 
-  json_data := zdb_internal_tally(type_oid, CASE WHEN is_nested THEN format('#nested(%s)', fieldname) ELSE fieldname END, stem, query, max_terms, sort_order::text);
+  json_data := zdb_internal_tally(type_oid, CASE WHEN is_nested THEN format('#nested(%s)', fieldname) ELSE fieldname END, stem, query, max_terms, sort_order::text, shard_size);
   nested := (json_data->'aggregations'->'nested'->'filter'->fieldname->'buckets') IS NOT NULL;
 
   IF nested THEN
@@ -242,8 +242,8 @@ BEGIN
   END IF;
 END;
 $$;
-CREATE OR REPLACE FUNCTION zdb_tally(table_name regclass, fieldname text, stem text, query text, max_terms bigint, sort_order zdb_tally_order) RETURNS SETOF zdb_tally_response STRICT IMMUTABLE LANGUAGE sql AS $$
-  SELECT zdb_tally($1, $2, false, $3, $4, $5, $6);
+CREATE OR REPLACE FUNCTION zdb_tally(table_name regclass, fieldname text, stem text, query text, max_terms bigint, sort_order zdb_tally_order, shard_size int DEFAULT 0) RETURNS SETOF zdb_tally_response STRICT IMMUTABLE LANGUAGE sql AS $$
+  SELECT zdb_tally($1, $2, false, $3, $4, $5, $6, $7);
 $$;
 
 CREATE TYPE zdb_range_agg_response AS (key TEXT, low DOUBLE PRECISION, high DOUBLE PRECISION, doc_count INT8);

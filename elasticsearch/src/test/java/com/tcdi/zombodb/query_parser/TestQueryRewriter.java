@@ -4735,5 +4735,22 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "         Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
                         "            Word (fieldname=english_field, operator=CONTAINS, value=darl, index=db.schema.table.index)");
     }
+
+    @Test
+    public void testIssue35() throws Exception {
+        QueryRewriter qr;
+
+        qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50)");
+        assertEquals(
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}}}",
+                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
+        );
+
+        qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50, #tally(field, \"^.*\", 5000, \"term\"))");
+        assertEquals(
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}},\"aggregations\":{\"field\":{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":0,\"order\":{\"_term\":\"asc\"}}}}}",
+                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
+        );
+    }
 }
 

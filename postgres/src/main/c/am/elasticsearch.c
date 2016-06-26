@@ -611,7 +611,7 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
     return nhits;
 }
 
-char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms, char *sort_order) {
+char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms, char *sort_order, int shard_size) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
     StringInfo query;
@@ -622,7 +622,7 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, 
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
-    appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\") %s", fieldname, stem, max_terms, sort_order, query->data);
+    appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\", %d) %s", fieldname, stem, max_terms, sort_order, shard_size, query->data);
     response = rest_call("POST", endpoint->data, request);
 
     freeStringInfo(request);
