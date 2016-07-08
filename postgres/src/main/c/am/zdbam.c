@@ -543,9 +543,9 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
          * tuple into our xact index to record this transaction id so concurrent/future
          * scans will exclude it.
          */
-        xactRel = relation_open(desc->xactRelId, AccessShareLock);
+        xactRel = index_open(desc->xactRelId, RowExclusiveLock);
         index_insert(xactRel, datum, isnull, ht_ctid, heapRel, UNIQUE_CHECK_NO);
-        relation_close(xactRel, AccessShareLock);
+        index_close(xactRel, RowExclusiveLock);
 
         lastxid = currentTransactionId;
     }
@@ -753,11 +753,19 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
     PG_RETURN_VOID();
 }
 
-static void delete_xids_from_xact_index(Relation heapRel, Relation xactRel, TransactionId oldestXmin, ZDBIndexDescriptor *desc) {
+static int delete_xids_from_xact_index(Relation heapRel, Relation xactRel, ZDBIndexDescriptor *desc) {
     IndexScanDesc scanDesc;
     ItemPointer   tid;
-    StringInfo    xids      = makeStringInfo();
+    StringInfo    xids    = makeStringInfo();
     uint64        lastxid = InvalidTransactionId;
+    TransactionId oldestXmin;
+    int           killed  = 0;
+
+#if (PG_VERSION_NUM >= 90400)
+    oldestXmin = GetOldestXmin(heapRel, false);
+#else
+    oldestXmin = GetOldestXmin(false, false);
+#endif
 
     /*
      * scan our xact index and build a unique list (a json-formatted string of xids) of xids it contains
@@ -809,7 +817,8 @@ static void delete_xids_from_xact_index(Relation heapRel, Relation xactRel, Tran
             MemSet(&ctl, 0, sizeof(HASHCTL));
             ctl.keysize   = sizeof(uint64);
             ctl.entrysize = sizeof(uint64);
-            htab = hash_create("dead xids", nxids, &ctl, HASH_ELEM);
+            ctl.hash      = tag_hash;
+            htab = hash_create("dead xids", nxids, &ctl, HASH_ELEM | HASH_FUNCTION);
             for (i = 0; i < nxids; i++)
                 hash_search(htab, &dead_xids[i], HASH_ENTER, &found);
 
@@ -828,12 +837,15 @@ static void delete_xids_from_xact_index(Relation heapRel, Relation xactRel, Tran
                 hash_search(htab, &convertedxid, HASH_FIND, &found);
                 if (found) {
                     scanDesc->kill_prior_tuple = true;
+                    killed++;
                 }
             }
         }
     }
 
     index_endscan(scanDesc);
+
+    return killed;
 }
 
 
@@ -937,8 +949,9 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     Relation                heapRel;
     Relation                xactRel;
     ZDBIndexDescriptor      *desc;
-    LVRelStats *relstats;
-    struct timeval tv1, tv2;
+    LVRelStats              *relstats;
+    int                     xids_killed;
+    struct timeval          tv1, tv2;
 
     gettimeofday(&tv1, NULL);
 
@@ -951,29 +964,22 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
         PG_RETURN_POINTER(stats);
 
     relstats = (LVRelStats *) callback_state; /* XXX:  cast to our copy/paste of LVRelStats! */
-    heapRel  = RelationIdGetRelation(desc->heapRelid);
 
-    if (relstats->num_dead_tuples > 0) {
-        TransactionId oldestXmin;
+    desc->implementation->bulkDelete(desc, relstats->dead_tuples, relstats->num_dead_tuples);
+    heapRel     = RelationIdGetRelation(desc->heapRelid);
+    xactRel     = relation_open(desc->xactRelId, AccessShareLock);
+    xids_killed = delete_xids_from_xact_index(heapRel, xactRel, desc);
+    relation_close(xactRel, AccessShareLock);
 
-#if (PG_VERSION_NUM >= 90400)
-        oldestXmin = GetOldestXmin(heapRel, false);
-#else
-        oldestXmin = GetOldestXmin(false, false);
-#endif
-
-        desc->implementation->bulkDelete(desc, relstats->dead_tuples, relstats->num_dead_tuples);
-
-        xactRel = relation_open(desc->xactRelId, AccessShareLock);
-        delete_xids_from_xact_index(heapRel, xactRel, oldestXmin, desc);
-        relation_close(xactRel, AccessShareLock);
-    }
+    stats->num_pages        = 1;
+    stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
+    stats->tuples_removed   = relstats->num_dead_tuples;
 
     gettimeofday(&tv2, NULL);
-    elog(LOG, "[zombodb vacuum status] heap=%s, total=%d, ttl=%fs", RelationGetRelationName(heapRel), relstats->num_dead_tuples, TO_SECONDS(tv1, tv2));
+
+    elog(LOG, "[zombodb vacuum status] heap=%s, num_removed=%d, num_index_tuples=%lu, xids_killed=%d, ttl=%fs", RelationGetRelationName(heapRel), relstats->num_dead_tuples, (uint64) stats->num_index_tuples, xids_killed, TO_SECONDS(tv1, tv2));
     RelationClose(heapRel);
 
-    stats->tuples_removed = relstats->num_dead_tuples;
     PG_RETURN_POINTER(stats);
 }
 
@@ -983,24 +989,24 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
  * Result: a palloc'd struct containing statistical info for VACUUM displays.
  */
 Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
-    IndexVacuumInfo       *info  = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
-    IndexBulkDeleteResult *stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
+    IndexVacuumInfo       *info    = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
+    IndexBulkDeleteResult *stats   = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
+    Relation              indexRel = info->index;
+    ZDBIndexDescriptor    *desc;
 
     /* No-op in ANALYZE ONLY mode */
     if (info->analyze_only)
         PG_RETURN_POINTER(stats);
 
-    /*
-     * If zdbbulkdelete was called, we need not do anything, just return the
-     * stats from the latest zdbbulkdelete call.  If it wasn't called, we must
-     * still do a pass over the index, to recycle any newly-recyclable pages
-     * and to obtain index statistics.
-     *
-     * Since we aren't going to actually delete any leaf items, there's no
-     * need to go through all the vacuum-cycle-ID pushups.
-     */
-    if (stats == NULL)
+    desc = alloc_index_descriptor(indexRel, false);
+
+    if (stats == NULL) {
         stats = (IndexBulkDeleteResult *) palloc0(sizeof(IndexBulkDeleteResult));
+        stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
+    }
+
+    if (desc->isShadow)
+        PG_RETURN_POINTER(stats);
 
     /* Finally, vacuum the FSM */
     IndexFreeSpaceMapVacuum(info->index);
@@ -1177,14 +1183,9 @@ zdbtupledeletedtrigger(PG_FUNCTION_ARGS)
      * add a row into our xact index to record the item pointer of the tuple being updated
      * this is its existing tid, not the new one
      */
-    xactRel = relation_open(desc->xactRelId, AccessShareLock);
+    xactRel = index_open(desc->xactRelId, RowExclusiveLock);
     index_insert(xactRel, datum, isnull, &trigdata->tg_trigtuple->t_self, trigdata->tg_relation, UNIQUE_CHECK_NO);
-    relation_close(xactRel, AccessShareLock);
-
-    /* remember this transaction id so we don't add an 'is_insert' pointer into
-     * the xact index for any of the new tuples
-     */
-    lastxid = currentTransactionId;
+    index_close(xactRel, RowExclusiveLock);
 
     /* return the right thing */
     if (TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event))

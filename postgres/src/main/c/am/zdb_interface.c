@@ -160,12 +160,12 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->tableName    = pstrdup(RelationGetRelationName(heapRel));
 	desc->options		 = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
 
-    desc->searchPreference   = ZDBIndexOptionsGetSearchPreference(indexRel);
-    desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel);
+    desc->searchPreference   = ZDBIndexOptionsGetSearchPreference(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetSearchPreference(indexRel));
+    desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel) ? pstrdup("-1") : pstrdup(ZDBIndexOptionsGetRefreshInterval(indexRel));
     desc->bulk_concurrency   = ZDBIndexOptionsGetBulkConcurrency(indexRel);
     desc->batch_size         = ZDBIndexOptionsGetBatchSize(indexRel);
     desc->ignoreVisibility   = ZDBIndexOptionsGetIgnoreVisibility(indexRel);
-    desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel);
+    desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetFieldLists(indexRel));
     desc->alwaysResolveJoins = ZDBIndexOptionsAlwaysResolveJoins(indexRel);
 
     heapTupDesc = RelationGetDescr(heapRel);
