@@ -42,8 +42,8 @@ char **text_array_to_strings(ArrayType *array, int *many);
 
 Oid get_relation_oid(char *namespace, char *relname);
 
-typedef void (*invisibility_callback)(ItemPointer ctid, uint64 xid, void *ctids, void *xids);
-StringInfo find_invisible_ctids(Relation heapRel, Relation xactRel, StringInfo ctids, StringInfo xids);
+typedef void (*invisibility_callback)(ItemPointer ctid, uint64 xid, void *ctids, void *xids, int *nctids);
+StringInfo find_invisible_ctids(const void *desc, Relation heapRel, Oid xactRelOid, StringInfo ctids, StringInfo xids);
 uint64     convert_xid(TransactionId xid);
 bool       is_active_xid(Snapshot snapshot, TransactionId xid);
 

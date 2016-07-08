@@ -33,6 +33,7 @@
 
 #include "elasticsearch.h"
 #include "zdbseqscan.h"
+#include "zdb_interface.h"
 
 #define MAX_LINKED_INDEXES 1024
 
@@ -155,15 +156,12 @@ static char *buildXidExclusionClause() {
 
 static void buildTidExclusionClause(const ZDBIndexDescriptor *desc, const StringInfo baseQuery, const char *xidExclusionClause) {
     Relation   heapRel;
-    Relation   xactRel;
     StringInfo ctids = makeStringInfo();
     StringInfo xids = makeStringInfo();
 
     heapRel = RelationIdGetRelation(desc->heapRelid);
 
-    xactRel = relation_open(desc->xactRelId, AccessShareLock);
-    find_invisible_ctids(heapRel, xactRel, ctids, xids);
-    relation_close(xactRel, AccessShareLock);
+    find_invisible_ctids(desc, heapRel, desc->xactRelId, ctids, xids);
 
     appendStringInfo(baseQuery, "#exclude<%s>(_zdb_id:[[%s]] OR _xid:[[%s]] OR (%s)) ", desc->fullyQualifiedName, ctids->data, xids->data, xidExclusionClause);
 
