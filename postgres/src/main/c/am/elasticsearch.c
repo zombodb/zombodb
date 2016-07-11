@@ -835,7 +835,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     StringInfo response;
     int i;
 
-    appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=all&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=default&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
     for (i=0; i<nitems; i++) {
         ItemPointer item = &itemPointers[i];
@@ -916,7 +916,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
         StringInfo endpoint = makeStringInfo();
 
         /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-        appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=all", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+        appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
         /* send the request to index this batch */
         rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk);
@@ -946,7 +946,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
-            appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=all", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+            appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
             if (batch->nrequests == 0) {
                 /*
