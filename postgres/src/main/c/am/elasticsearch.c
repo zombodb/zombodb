@@ -835,7 +835,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     StringInfo response;
     int i;
 
-    appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=all&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
     for (i=0; i<nitems; i++) {
         ItemPointer item = &itemPointers[i];
@@ -855,8 +855,6 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
         response = rest_call("POST", endpoint->data, request);
         checkForBulkError(response, "delete");
     }
-
-    elasticsearch_refreshIndex(indexDescriptor);
 
     freeStringInfo(endpoint);
     freeStringInfo(request);
@@ -917,8 +915,8 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
     if (fast_path || batch->bulk->buff->len >= indexDescriptor->batch_size) {
         StringInfo endpoint = makeStringInfo();
 
-        /* don't ?refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-        appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+        /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
+        appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=all", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
         /* send the request to index this batch */
         rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk);
@@ -948,17 +946,17 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
-            appendStringInfo(endpoint, "%s/%s/data/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+            appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=all", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
             if (batch->nrequests == 0) {
                 /*
-                 * if this is the only request being made in this batch, then we'll ?refresh=true
+                 * if this is the only request being made in this batch, then we'll &refresh=true
                  * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
                  * and b) if the index refresh interval is -1
                  */
                 if (!zdb_batch_mode_guc) {
                     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-                        appendStringInfo(endpoint, "?refresh=true");
+                        appendStringInfo(endpoint, "&refresh=true");
                     }
                 }
 
