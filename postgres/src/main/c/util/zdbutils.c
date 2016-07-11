@@ -283,7 +283,7 @@ StringInfo find_invisible_ctids(const void *indexDesc, Relation heapRel, Oid xac
     return ctids;
 }
 
-bool is_active_xid(Snapshot snapshot, TransactionId xid) {
+bool is_invisible_xid(Snapshot snapshot, TransactionId xid) {
     int i;
 
     if (xid >= snapshot->xmax)
@@ -306,27 +306,28 @@ static bool can_vacuum (ItemPointer itemptr, void *state) {
 }
 
 static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heapRelId, Oid xactRelId, invisibility_callback cb, void *ctids, void *xids, int *nctids) {
-    Snapshot       snapshot   = GetActiveSnapshot();
-    TransactionId  currentxid = GetCurrentTransactionId();
-    TransactionId  lastxid    = InvalidTransactionId;
-    TransactionId  oldestXmin;
-    IndexScanDesc  scanDesc;
-    Relation       heapRel;
-    Relation       xactRel;
-    ItemPointer    tid;
-    int            invs = 0, current = 0, skipped = 0, aborted = 0, killed = 0, killed2 = 0, tuples = 0;
-    bool           found;
-    LOCKMODE       heaplock;
-    struct timeval tv1, tv2;
+    Snapshot             snapshot   = GetActiveSnapshot();
+    TransactionId        currentxid = GetCurrentTransactionId();
+    TransactionId        lastxid    = InvalidTransactionId;
+    TransactionId        oldestXmin;
+    BufferAccessStrategy strategy   = GetAccessStrategy(BAS_VACUUM);
+    IndexScanDesc        scanDesc;
+    Relation             heapRel;
+    Relation             xactRel;
+    ItemPointer          tid;
+    int                  invs       = 0, current = 0, skipped = 0, aborted = 0, killed = 0, killed2 = 0, tuples = 0;
+    bool                 found;
+    LOCKMODE             heaplock;
+    struct timeval       tv1, tv2;
 
     gettimeofday(&tv1, NULL);
 
     heapRel = heap_open(heapRelId, heaplock = AccessShareLock);
 
-#if (PG_VERSION_NUM >= 90400)
-    oldestXmin = GetOldestXmin(heapRel, false);
+    #if (PG_VERSION_NUM >= 90400)
+    oldestXmin = GetOldestXmin(heapRel, true);
 #else
-    oldestXmin = GetOldestXmin(false, false);
+    oldestXmin = GetOldestXmin(false, true);
 #endif
 
     if (visibilitymap_count(heapRel) != RelationGetNumberOfBlocks(heapRel)) {
@@ -339,12 +340,17 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
         ctl.hash      = tag_hash;
         htab = hash_create("killable tids", 2048, &ctl, HASH_ELEM | HASH_FUNCTION);
 
-        if (DatumGetBool(DirectFunctionCall1(pg_try_advisory_lock_int8, Int64GetDatum(desc->advisory_mutex)))) {
-            int         maxkilled = 1024;
+        heap_close(heapRel, heaplock);
+        heapRel = NULL;
+        if (ConditionalLockRelationOid(heapRelId, heaplock = ShareUpdateExclusiveLock))
+            heapRel = heap_open(heapRelId, NoLock);
+        if (!heapRel)
+            heapRel = heap_open(heapRelId, heaplock = AccessShareLock);
+
+        if (heaplock == ShareUpdateExclusiveLock) {
+            static int  maxkilled    = 1024;
             ItemPointer killableTids = palloc(maxkilled * sizeof(ItemPointerData)); /* array of killed tids */;
 
-            heap_close(heapRel, heaplock);
-            heapRel = heap_open(heapRelId, heaplock = ShareUpdateExclusiveLock);
             xactRel  = index_open(xactRelId, RowExclusiveLock);
             scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
             scanDesc->xs_want_itup         = true;
@@ -362,14 +368,14 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
                 is_insert    = DatumGetBool(index_getattr(scanDesc->xs_itup, 2, scanDesc->xs_itupdesc, &isnull));
                 xid          = (TransactionId) (convertedxid);
 
-                if (!is_insert && !is_active_xid(snapshot, xid)) {
+                if (!is_insert) {
                     BlockNumber  blockno = ItemPointerGetBlockNumber(tid);
                     OffsetNumber offnum  = ItemPointerGetOffsetNumber(tid);
                     Buffer       buffer;
                     Page         page;
                     ItemId       itemid;
 
-                    buffer = ReadBuffer(heapRel, blockno);
+                    buffer = ReadBufferExtended(heapRel, MAIN_FORKNUM, blockno, RBM_NORMAL, strategy);
                     if (ConditionalLockBufferForCleanup(buffer)) {
                         page   = BufferGetPage(buffer);
                         itemid = PageGetItemId(page, offnum);
@@ -438,15 +444,21 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
                 info->strategy = GetAccessStrategy(BAS_VACUUM);
                 info->message_level = INFO;
 
-                index_bulk_delete(info, NULL, can_vacuum, htab);
+                PG_TRY();
+                {
+                    index_bulk_delete(info, NULL, can_vacuum, htab);
+                }
+                PG_CATCH();
+                {
+                    elog(NOTICE, "caught concurrent vacuum");
+                }
+                PG_END_TRY();
             }
 
             heap_close(heapRel, heaplock);
             heapRel = heap_open(heapRelId, heaplock = AccessShareLock);
 
             pfree(killableTids);
-
-            DirectFunctionCall1(pg_advisory_unlock_int8, Int64GetDatum(desc->advisory_mutex));
         } else {
             xactRel  = index_open(xactRelId, RowExclusiveLock);
             scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
@@ -470,33 +482,27 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
             //      then add tid to list of ctids we should exclude
             // else if xid is currently active
             //      then skip it entirely
-            // else if xid aborted
-            //      then add xid to list of xids we should exclude
             // else if not is_insert and xid committed
             //      then add tid to list of ctids we should exclude
+            // else if xid aborted
+            //      then add xid to list of xids we should exclude
             //
 
-            if (currentxid == xid) {
-                if (!is_insert) {
-                    cb(tid, InvalidTransactionId, ctids, xids, nctids);
-                }
+            if (!is_insert && currentxid == xid) {
+                cb(tid, InvalidTransactionId, ctids, xids, nctids);
                 current++;
-            } else if (is_active_xid(snapshot, xid)) {
+            } else if (is_invisible_xid(snapshot, xid)) {
                 /* xact is still active, so skip because these are wholesale excluded in our query */
                 skipped++;
-            } else if (TransactionIdDidAbort(xid)) {
-                /* ignore tid and xid of aborted transactions */
-                if (lastxid != xid) {
-                    cb(NULL, convertedxid, ctids, xids, NULL);
-                    aborted++;
-                    lastxid = xid;
-                }
-            } else if (TransactionIdDidCommit(xid)) {
+            } else if (!is_insert && TransactionIdDidCommit(xid)) {
                 /* ignore ctid of committed update/delete */
-                if (!is_insert) {
-                    cb(tid, InvalidTransactionId, ctids, xids, nctids);
-                    invs++;
-                }
+                cb(tid, InvalidTransactionId, ctids, xids, nctids);
+                invs++;
+            } else if (lastxid != xid && TransactionIdDidAbort(xid)) {
+                /* ignore xid of aborted transactions */
+                cb(NULL, convertedxid, ctids, xids, NULL);
+                aborted++;
+                lastxid = xid;
             }
 
             tuples++;

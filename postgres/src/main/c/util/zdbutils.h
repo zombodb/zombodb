@@ -45,7 +45,7 @@ Oid get_relation_oid(char *namespace, char *relname);
 typedef void (*invisibility_callback)(ItemPointer ctid, uint64 xid, void *ctids, void *xids, int *nctids);
 StringInfo find_invisible_ctids(const void *desc, Relation heapRel, Oid xactRelOid, StringInfo ctids, StringInfo xids);
 uint64     convert_xid(TransactionId xid);
-bool       is_active_xid(Snapshot snapshot, TransactionId xid);
+bool       is_invisible_xid(Snapshot snapshot, TransactionId xid);
 
 void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toObjectId, DependencyType dependencyType);
 
