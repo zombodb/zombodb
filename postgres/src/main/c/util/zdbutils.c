@@ -324,7 +324,7 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
 
     heapRel = heap_open(heapRelId, heaplock = AccessShareLock);
 
-    #if (PG_VERSION_NUM >= 90400)
+#if (PG_VERSION_NUM >= 90400)
     oldestXmin = GetOldestXmin(heapRel, true);
 #else
     oldestXmin = GetOldestXmin(false, true);
