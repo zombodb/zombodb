@@ -16,7 +16,6 @@
 package com.tcdi.zombodb.query_parser.utils;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -32,9 +31,12 @@ import java.util.NoSuchElementException;
  * @see java.util.StringTokenizer
  */
 public class EscapingStringTokenizer {
-    private String input;
-    private String delimiters;
-    private boolean returnDelims;
+    private final String input;
+    private final int len;
+    private final String delimiters;
+    private final boolean returnDelims;
+    private final StringBuilder token = new StringBuilder();
+
     private int pos = 0;
     private boolean isDelimiter = false;
 
@@ -43,7 +45,8 @@ public class EscapingStringTokenizer {
     }
 
     public EscapingStringTokenizer(String str, String delimiters, boolean returnDelims) {
-        input = str;
+        this.input = str;
+        this.len = input.length();
         this.delimiters = delimiters;
         this.returnDelims = returnDelims;
     }
@@ -61,18 +64,24 @@ public class EscapingStringTokenizer {
     }
 
     public String nextToken() {
-        if (pos >= input.length())
+        final StringBuilder tok = this.token;
+        final String in = this.input;
+        final int l = this.len;
+        final boolean retDelims = this.returnDelims;
+        final String delims = this.delimiters;
+
+        if (pos >= len)
             throw new NoSuchElementException();
 
         isDelimiter = false;
-        StringBuilder token = new StringBuilder();
-        while (pos < input.length()) {
-            char ch = input.charAt(pos++);
+        tok.setLength(0);
+        while (pos < l) {
+            char ch = in.charAt(pos++);
 
-            if (ch != '\\' || pos >= input.length()) {
-                if (isDelimiter(ch)) { // char is a delimiter
-                    if (token.length() == 0) { // and it's the first char we've found
-                        if (returnDelims) { // and we're asked to return them
+            if (ch != '\\' || pos >= l) {
+                if (delims.indexOf(ch) >= 0) { // char is a delimiter
+                    if (tok.length() == 0) { // and it's the first char we've found
+                        if (retDelims) { // and we're asked to return them
                             isDelimiter = true;
                             return String.valueOf(ch);
                         } else {
@@ -80,24 +89,30 @@ public class EscapingStringTokenizer {
                         }
                     } else { // we have a token
                         --pos;
-                        return token.toString();
+                        return tok.toString();
                     }
                 }
-                token.append(ch);
+                tok.append(ch);
             } else {
-                char nextch = input.charAt(pos);
-                token.append(nextch);
+                char nextch = in.charAt(pos);
+                tok.append(nextch);
                 ++pos;
             }
         }
-        return token.toString();
+        return tok.toString();
     }
 
-    public Collection<String> getAllTokens() {
-        List<String> tokens = new ArrayList<>();
-        while (hasMoreTokens())
-            tokens.add(nextToken());
-        return tokens;
+    public List<String> getAllTokens() {
+        try {
+            List<String> tokens = new ArrayList<>();
+            while (hasMoreTokens())
+                tokens.add(nextToken());
+            return tokens;
+        } finally {
+            // reset state
+            isDelimiter = false;
+            pos = 0;
+        }
     }
 
     /**
@@ -106,10 +121,4 @@ public class EscapingStringTokenizer {
     public boolean isDelimiter() {
         return isDelimiter;
     }
-
-
-    private boolean isDelimiter(char ch) {
-        return delimiters.indexOf(ch) >= 0;
-    }
-
 }
