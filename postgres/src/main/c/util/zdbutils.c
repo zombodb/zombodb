@@ -275,12 +275,12 @@ static void string_invisibility_callback(ItemPointer ctid, uint64 xid, void *cti
 
 }
 
-StringInfo find_invisible_ctids(const void *indexDesc, Relation heapRel, Oid xactRelOid, StringInfo ctids, StringInfo xids) {
+int find_invisible_ctids(const void *indexDesc, Relation heapRel, Oid xactRelOid, StringInfo ctids, StringInfo xids) {
     int nctids = 0;
     ZDBIndexDescriptor *desc = (ZDBIndexDescriptor *) indexDesc;
 
     find_invisible_ctids_with_callback(desc, heapRel->rd_id, xactRelOid, string_invisibility_callback, ctids, xids, &nctids);
-    return ctids;
+    return nctids;
 }
 
 bool is_invisible_xid(Snapshot snapshot, TransactionId xid) {
@@ -296,175 +296,34 @@ bool is_invisible_xid(Snapshot snapshot, TransactionId xid) {
     return false;
 }
 
-static bool can_vacuum (ItemPointer itemptr, void *state) {
-    HTAB *htab = (HTAB *) state;
-    uint64 tid_64 = ItemPointerToUint64(itemptr);
-    bool found;
-
-    hash_search(htab, &tid_64, HASH_FIND, &found);
-    return found;
-}
-
 static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heapRelId, Oid xactRelId, invisibility_callback cb, void *ctids, void *xids, int *nctids) {
     Snapshot             snapshot   = GetActiveSnapshot();
     TransactionId        currentxid = GetCurrentTransactionId();
     TransactionId        lastxid    = InvalidTransactionId;
-    TransactionId        oldestXmin;
-    BufferAccessStrategy strategy   = GetAccessStrategy(BAS_VACUUM);
     IndexScanDesc        scanDesc;
     Relation             heapRel;
     Relation             xactRel;
     ItemPointer          tid;
-    int                  invs       = 0, current = 0, skipped = 0, aborted = 0, killed = 0, killed2 = 0, tuples = 0;
-    bool                 found;
-    LOCKMODE             heaplock;
+    int                  invs       = 0, current = 0, skipped = 0, aborted = 0, tuples = 0;
     struct timeval       tv1, tv2;
 
     gettimeofday(&tv1, NULL);
 
-    heapRel = heap_open(heapRelId, heaplock = AccessShareLock);
-
-#if (PG_VERSION_NUM >= 90400)
-    oldestXmin = GetOldestXmin(heapRel, true);
-#else
-    oldestXmin = GetOldestXmin(false, true);
-#endif
-
+    heapRel = heap_open(heapRelId, AccessShareLock);
     if (visibilitymap_count(heapRel) != RelationGetNumberOfBlocks(heapRel)) {
-        HASHCTL     ctl;
-        HTAB        *htab;
+        HASHCTL ctl;
+        HTAB    *htab;
 
         MemSet(&ctl, 0, sizeof(HASHCTL));
         ctl.keysize   = sizeof(uint64);
         ctl.entrysize = sizeof(uint64);
         ctl.hash      = tag_hash;
-        htab = hash_create("killable tids", 2048, &ctl, HASH_ELEM | HASH_FUNCTION);
+        htab = hash_create("killable tids", 32768, &ctl, HASH_ELEM | HASH_FUNCTION);
 
-        heap_close(heapRel, heaplock);
-        heapRel = NULL;
-        if (ConditionalLockRelationOid(heapRelId, heaplock = ShareUpdateExclusiveLock))
-            heapRel = heap_open(heapRelId, NoLock);
-        if (!heapRel)
-            heapRel = heap_open(heapRelId, heaplock = AccessShareLock);
-
-        if (heaplock == ShareUpdateExclusiveLock) {
-            static int  maxkilled    = 1024;
-            ItemPointer killableTids = palloc(maxkilled * sizeof(ItemPointerData)); /* array of killed tids */;
-
-            xactRel  = index_open(xactRelId, RowExclusiveLock);
-            scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
-            scanDesc->xs_want_itup         = true;
-            scanDesc->ignore_killed_tuples = true;
-
-            index_rescan(scanDesc, NULL, 0, NULL, 0);
-            while ((tid = index_getnext_tid(scanDesc, ForwardScanDirection)) != NULL) {
-                uint64        convertedxid;
-                TransactionId xid;
-                bool          is_insert;
-                bool          isnull;
-                bool          canKill = false;
-
-                convertedxid = (uint64) DatumGetInt64(index_getattr(scanDesc->xs_itup, 1, scanDesc->xs_itupdesc, &isnull));
-                is_insert    = DatumGetBool(index_getattr(scanDesc->xs_itup, 2, scanDesc->xs_itupdesc, &isnull));
-                xid          = (TransactionId) (convertedxid);
-
-                if (!is_insert) {
-                    BlockNumber  blockno = ItemPointerGetBlockNumber(tid);
-                    OffsetNumber offnum  = ItemPointerGetOffsetNumber(tid);
-                    Buffer       buffer;
-                    Page         page;
-                    ItemId       itemid;
-
-                    buffer = ReadBufferExtended(heapRel, MAIN_FORKNUM, blockno, RBM_NORMAL, strategy);
-                    if (ConditionalLockBufferForCleanup(buffer)) {
-                        page   = BufferGetPage(buffer);
-                        itemid = PageGetItemId(page, offnum);
-
-                        if (!ItemIdIsUsed(itemid)) {
-                            /* noop */
-                        } else if (ItemIdIsRedirected(itemid)) {
-                            /* noop */
-                        } else if (ItemIdIsDead(itemid)) {
-                            canKill = true;
-                        } else {
-                            HeapTupleData tuple;
-
-                            ItemPointerCopy(tid, &(tuple.t_self));
-                            tuple.t_data = (HeapTupleHeader) PageGetItem(page, itemid);
-                            tuple.t_len  = ItemIdGetLength(itemid);
-
-                            switch (HeapTupleSatisfiesVacuum(tuple.t_data, oldestXmin, buffer)) {
-                                case HEAPTUPLE_DEAD:
-                                    if (TransactionIdDidCommit(xid)) {
-                                        canKill = true;
-                                    }
-                                    break;
-
-                                case HEAPTUPLE_LIVE:
-                                    if (TransactionIdDidAbort(xid)) {
-                                        uint64 tid_64 = ItemPointerToUint64(tid);
-                                        hash_search(htab, &tid_64, HASH_ENTER, &found);
-                                    }
-                                    break;
-
-                                default:
-                                    break;
-                            }
-                        }
-                        LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-                    }
-                    ReleaseBuffer(buffer);
-
-                    if (canKill) {
-                        uint64 tid_64 = ItemPointerToUint64(tid);
-
-                        if (killed >= maxkilled) {
-                            /* grow our killedTids array */
-                            maxkilled *= 2;
-                            killableTids = repalloc(killableTids, maxkilled * sizeof(ItemPointerData));
-                        }
-
-                        ItemPointerCopy(tid, &killableTids[killed]);
-                        hash_search(htab, &tid_64, HASH_ENTER, &found);
-                        killed++;
-                    }
-                }
-            }
-
-            if (hash_get_num_entries(htab) > 0) {
-                IndexVacuumInfo *info;
-
-                desc->implementation->bulkDelete(desc, killableTids, killed);
-
-                info = palloc(sizeof(IndexVacuumInfo));
-                info->analyze_only = false;
-                info->estimated_count = false;
-                info->index = xactRel;
-                info->num_heap_tuples = killed;
-                info->strategy = GetAccessStrategy(BAS_VACUUM);
-                info->message_level = INFO;
-
-                PG_TRY();
-                {
-                    index_bulk_delete(info, NULL, can_vacuum, htab);
-                }
-                PG_CATCH();
-                {
-                    elog(NOTICE, "caught concurrent vacuum");
-                }
-                PG_END_TRY();
-            }
-
-            heap_close(heapRel, heaplock);
-            heapRel = heap_open(heapRelId, heaplock = AccessShareLock);
-
-            pfree(killableTids);
-        } else {
-            xactRel  = index_open(xactRelId, RowExclusiveLock);
-            scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
-            scanDesc->xs_want_itup         = true;
-            scanDesc->ignore_killed_tuples = true;
-        }
+        xactRel  = index_open(xactRelId, AccessShareLock);
+        scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
+        scanDesc->xs_want_itup         = true;
+        scanDesc->ignore_killed_tuples = true;
 
         index_rescan(scanDesc, NULL, 0, NULL, 0);
         while ((tid = index_getnext_tid(scanDesc, ForwardScanDirection)) != NULL) {
@@ -508,14 +367,14 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
             tuples++;
         }
         index_endscan(scanDesc);
-        index_close(xactRel, RowExclusiveLock);
+        index_close(xactRel, AccessShareLock);
         hash_destroy(htab);
     }
 
     gettimeofday(&tv2, NULL);
-    elog(LOG, "[zombodb invisibility stats] heap=%s, invisible=%d, skipped=%d, current=%d, aborted=%d, killed=%d/%d, tuples=%d, ttl=%fs", RelationGetRelationName(heapRel), invs, skipped, current, aborted, killed, killed2, tuples, TO_SECONDS(tv1, tv2));
+    elog(LOG, "[zombodb invisibility stats] heap=%s, invisible=%d, skipped=%d, current=%d, aborted=%d, tuples=%d, ttl=%fs", RelationGetRelationName(heapRel), invs, skipped, current, aborted, tuples, TO_SECONDS(tv1, tv2));
 
-    heap_close(heapRel, heaplock);
+    heap_close(heapRel, AccessShareLock);
     return invs;
 }
 
