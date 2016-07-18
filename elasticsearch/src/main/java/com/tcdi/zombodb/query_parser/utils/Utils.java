@@ -345,43 +345,48 @@ public class Utils {
         return prox;
     }
 
-    public static Map<String, StringBuilder> extractArrayData(String input, StringBuilder output) {
-        Map<String, StringBuilder> arrayData = new HashMap<>();
-        StringBuilder currentArray = null;
-        String currentArrayName = null;
+    public static Map<String, String> extractArrayData(String input, StringBuilder output) {
+        Map<String, String> arrayData = new HashMap<>();
         boolean inArrayData = false;
-        char nextChar;
+        int arrStart = -1;
+        int blockStart = -1;
 
         for (int i = 0, many = input.length(); i < many; i++) {
             char ch = input.charAt(i);
-            nextChar = i < many - 1 ? input.charAt(i + 1) : 0;
+            char nextChar = i < many - 1 ? input.charAt(i + 1) : 0;
 
             switch (ch) {
                 case '[':
                     if (nextChar == '[' && !inArrayData) {
+                        output.append(input.substring(blockStart, i));
+                        blockStart=-1;
                         inArrayData = true;
-                        currentArrayName = "$" + arrayData.size();
-                        currentArray = new StringBuilder();
                         i++;
+                        arrStart = i+1;  // plus one to skip the double brackets at start of array: [[
                     }
                     break;
                 case ']':
                     if (nextChar == ']' && inArrayData) {
-                        arrayData.put(currentArrayName, currentArray);
-                        output.append("[[").append(currentArrayName).append("]");
+                        String arrayName = "$" + arrayData.size();
+                        arrayData.put(arrayName, input.substring(arrStart, i));
+                        if (blockStart != -1) {
+                            output.append(input.substring(blockStart, i));
+                            blockStart = -1;
+                        }
+                        output.append("[[").append(arrayName).append("]]");
                         inArrayData = false;
                         i++;
                     }
                     break;
-            }
-
-            if (inArrayData) {
-                if (ch != '[')
-                    currentArray.append(ch);
-            } else {
-                output.append(ch);
+                default:
+                    if (!inArrayData && blockStart == -1)
+                        blockStart = i;
+                    break;
             }
         }
+
+        if (blockStart != -1)
+            output.append(input.substring(blockStart, input.length()));
 
         return arrayData;
     }

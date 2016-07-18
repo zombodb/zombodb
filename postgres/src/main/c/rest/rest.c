@@ -33,6 +33,8 @@
 
 #include "rest.h"
 
+#include <zlib.h>
+
 static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userdata);
 static int    curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
@@ -127,19 +129,43 @@ void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEnt
             curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
             curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
             curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
-            curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
+            curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb");
             curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
             curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
             curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorbuff);
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
             curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+            curl_easy_setopt(curl, CURLOPT_PATH_AS_IS, 1L);
 
             curl_easy_setopt(curl, CURLOPT_URL, url);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
+
+            Bytef *compressed = NULL;
+            uLongf len = 0;
+            if (postData != NULL) {
+                struct curl_slist *list = NULL;
+                int               rc;
+
+                len        = compressBound((uLong) postData->buff->len);
+                compressed = palloc(len);
+
+                if ((rc = compress2(compressed, &len, (Bytef *) postData->buff->data, (uLong) postData->buff->len, 1)) != Z_OK) {
+                    elog(ERROR, "compression error: %d", rc);
+                }
+
+                list = curl_slist_append(list, "Content-Encoding: deflate");
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+            }
+
+            if (compressed != NULL) {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, len);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, compressed);
+            } else {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
+            }
             curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
             curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
             curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
@@ -265,12 +291,36 @@ StringInfo rest_call(char *method, char *url, StringInfo postData) {
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_ERRORBUFFER, errorbuff);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOSIGNAL, 1);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PATH_AS_IS, 1L);
 
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_URL, url);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_CUSTOMREQUEST, method);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEDATA, response);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+
+        Bytef *compressed = NULL;
+        uLongf len = 0;
+        if (postData != NULL) {
+            struct curl_slist *list = NULL;
+            int rc;
+
+            len        = compressBound((uLong) postData->len);
+            compressed = palloc(len);
+
+            if ((rc = compress2(compressed, &len, (Bytef *) postData->data, (uLong) postData->len, 1)) != Z_OK) {
+                elog(ERROR, "compression error: %d", rc);
+            }
+
+            list = curl_slist_append(list, "Content-Encoding: deflate");
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTPHEADER, list);
+        }
+
+        if (compressed != NULL) {
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, len);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, compressed);
+        } else {
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+        }
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (postData && postData->data) ? 1 : 0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TCP_NODELAY, 1L);

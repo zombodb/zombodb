@@ -26,7 +26,15 @@ import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
+import org.elasticsearch.action.ActionFuture;
+import org.elasticsearch.action.get.MultiGetItemResponse;
+import org.elasticsearch.action.get.MultiGetRequest;
+import org.elasticsearch.action.get.MultiGetRequestBuilder;
+import org.elasticsearch.action.get.MultiGetResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
@@ -38,16 +46,14 @@ import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.significant.SignificantTermsBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
+import org.elasticsearch.search.fetch.source.FetchSourceContext;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
-import java.util.AbstractCollection;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import static org.elasticsearch.index.query.FilterBuilders.*;
@@ -142,7 +148,7 @@ public abstract class QueryRewriter {
     private boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
 
-    private Map<String, StringBuilder> arrayData;
+    private Map<String, String> arrayData;
 
     protected final IndexMetadataManager metadataManager;
 
@@ -913,32 +919,114 @@ public abstract class QueryRewriter {
             @Override
             public QueryBuilder b(QueryParserNode n) {
                 if ("_id".equals(node.getFieldname())) {
-                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()).toString(), ", \r\n\t\f\"'[]");
+                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
                     Collection<String> terms = st.getAllTokens();
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
-                    return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), new Iterable<Object>() {
-                        @Override
-                        public Iterator<Object> iterator() {
-                            final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()).toString(), ", \r\n\t\f\"'[]");
-                            return new Iterator<Object>() {
-                                @Override
-                                public boolean hasNext() {
-                                    return st.hasMoreTokens();
+                    String fieldname = "dynamic_" + node.getFieldname();
+                    String data = arrayData.get(node.getValue().toString());
+                    String indexname = metadataManager.getMyIndex().getIndexName() + ".dynamic";
+                    List values;
+
+                    if (data.length() > 0 && "_zdb_id".equals(node.getFieldname())) {
+                        values = Arrays.asList(data.split(","));
+                    } else {
+                        final EscapingStringTokenizer st = new EscapingStringTokenizer(data, ", \r\n\t\f\"'[]");
+                        values = st.getAllTokens();
+                    }
+
+                    if (values.size() >= 8000) {
+                        int STEP = 8000;
+                        int blocks = 0;
+
+                        try {
+                            List<ActionFuture<IndexResponse>> responses = new ArrayList<>();
+                            Map<String, List> ids = new HashMap<>();
+
+                            // build blocks of doc ids and matching values
+                            for (int i = 0, size = values.size(); i < size; i += STEP) {
+                                List sublist = values.subList(i, Math.min(size, i + STEP));
+                                String id = UUID.nameUUIDFromBytes(sublist.toString().getBytes()).toString();
+                                ids.put(id, sublist);
+                                blocks++;
+                            }
+
+                            // build JSON structure for MultiGetRequest
+                            StringBuilder json = new StringBuilder();
+                            json.append("{\"docs\":[");
+                            int z=0;
+                            for (String id : ids.keySet()) {
+                                if (z>0) json.append(",");
+                                json.append("{\"_index\":\"").append(indexname).append("\",\"_type\":\"dynamic\",\"_id\":\"").append(id).append("\"}");
+                                z++;
+                            }
+                            json.append("]}");
+
+                            // look for all those ids in the index
+                            MultiGetRequest getRequest = new MultiGetRequest()
+                                    .add(indexname, "dynamic", null, new FetchSourceContext(false), null, new BytesArray(json.toString()), true)
+                                    .realtime(true)
+                                    .preference("_local");
+                            MultiGetResponse getResponse = client.multiGet(getRequest).get();
+
+                            // if a block not found index it
+                            for (MultiGetItemResponse item : getResponse) {
+                                String id = item.getId();
+
+                                if (!item.getResponse().isExists()) {
+                                    // index it
+                                    IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client, indexname)
+                                            .setType("dynamic")
+                                            .setId(id)
+                                            .setSource(fieldname, ids.get(id))
+                                            .setRefresh(true);
+
+                                    responses.add(client.index(indexRequestBuilder.request()));
+                                }
+                            }
+
+                            // wait for all in-flight indexing requests to complete, if any
+                            for (ActionFuture<IndexResponse> response : responses)
+                                response.get();
+
+                            if (blocks == 1) {
+                                // only one block, so just use it
+                                String id = ids.keySet().iterator().next();
+                                return filteredQuery(null, termsLookupFilter(n.getFieldname())
+                                        .lookupIndex(indexname)
+                                        .lookupType("dynamic")
+                                        .lookupPath(fieldname)
+                                        .lookupId(id)
+                                        .cache(true)
+                                        .cacheKey(id)
+                                );
+                            } else {
+                                // build boolean OR clause to filter each block
+                                OrFilterBuilder ofb = orFilter();
+                                for (String id : ids.keySet()) {
+                                    ofb.add(termsLookupFilter(n.getFieldname())
+                                            .lookupIndex(indexname)
+                                            .lookupType("dynamic")
+                                            .lookupPath(fieldname)
+                                            .lookupId(id)
+                                            .cache(true)
+                                            .cacheKey(id)
+                                    );
                                 }
 
-                                @Override
-                                public Object next() {
-                                    return st.nextToken();
-                                }
-
-                                @Override
-                                public void remove() {
-
-                                }
-                            };
+                                return filteredQuery(null, ofb);
+                            }
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
                         }
-                    }).cache(true));
+
+                    } else {
+                        if (values.size() == 1) {
+                            return termQuery(node.getFieldname(), values.get(0));
+                        } else {
+                            return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), values).cache(true));
+                        }
+                    }
                 }
             }
         });
@@ -1172,7 +1260,12 @@ public abstract class QueryRewriter {
         if (exclusion != null) {
             BoolQueryBuilder bqb = boolQuery();
             bqb.must(query);
-            bqb.mustNot(build(exclusion));
+            if (exclusion instanceof ASTOr) {
+                for (QueryParserNode child : exclusion)
+                    bqb.mustNot(build(child));
+            } else {
+                bqb.mustNot(build(exclusion));
+            }
             query = bqb;
         }
         return query;
