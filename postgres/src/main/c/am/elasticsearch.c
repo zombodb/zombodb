@@ -299,30 +299,6 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
     response = rest_call("POST", endpoint->data, indexSettings);
 
     freeStringInfo(response);
-    resetStringInfo(endpoint);
-    resetStringInfo(indexSettings);
-
-    appendStringInfo(indexSettings, "{"
-            "   \"mappings\": {"
-            "      \"dynamic\": {"
-            "          \"_source\": { \"enabled\": true },"
-            "          \"_all\": { \"enabled\": false },"
-            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-            "          \"date_detection\": false"
-            "      }"
-            "   },"
-            "   \"settings\": {"
-            "      \"refresh_interval\": -1,"
-            "      \"number_of_shards\": 1,"
-            "      \"number_of_replicas\": %d"
-            "   }"
-            "}", shards-1);
-
-    appendStringInfo(endpoint, "%s/%s.dynamic", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, indexSettings);
-
-
-    freeStringInfo(response);
     freeStringInfo(indexSettings);
     freeStringInfo(endpoint);
 }
@@ -440,12 +416,6 @@ void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
     appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("DELETE", endpoint->data, NULL);
     freeStringInfo(response);
-
-    resetStringInfo(endpoint);
-    appendStringInfo(endpoint, "%s/%s.dynamic", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("DELETE", endpoint->data, NULL);
-    freeStringInfo(response);
-
     freeStringInfo(endpoint);
 }
 

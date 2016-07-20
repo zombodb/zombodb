@@ -26,15 +26,7 @@ import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
-import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.get.MultiGetItemResponse;
-import org.elasticsearch.action.get.MultiGetRequest;
-import org.elasticsearch.action.get.MultiGetRequestBuilder;
-import org.elasticsearch.action.get.MultiGetResponse;
-import org.elasticsearch.action.index.IndexRequestBuilder;
-import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
@@ -46,7 +38,6 @@ import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.significant.SignificantTermsBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
-import org.elasticsearch.search.fetch.source.FetchSourceContext;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 
@@ -923,9 +914,7 @@ public abstract class QueryRewriter {
                     Collection<String> terms = st.getAllTokens();
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
-                    String fieldname = "dynamic_" + node.getFieldname();
                     String data = arrayData.get(node.getValue().toString());
-                    String indexname = metadataManager.getMyIndex().getIndexName() + ".dynamic";
                     List values;
 
                     if (data.length() > 0 && "_zdb_id".equals(node.getFieldname())) {
@@ -937,94 +926,22 @@ public abstract class QueryRewriter {
 
                     if (values.size() >= 8000) {
                         int STEP = 8000;
-                        int blocks = 0;
-
-                        try {
-                            List<ActionFuture<IndexResponse>> responses = new ArrayList<>();
-                            Map<String, List> ids = new HashMap<>();
-
-                            // build blocks of doc ids and matching values
-                            for (int i = 0, size = values.size(); i < size; i += STEP) {
-                                List sublist = values.subList(i, Math.min(size, i + STEP));
-                                String id = UUID.nameUUIDFromBytes(sublist.toString().getBytes()).toString();
-                                ids.put(id, sublist);
-                                blocks++;
-                            }
-
-                            // build JSON structure for MultiGetRequest
-                            StringBuilder json = new StringBuilder();
-                            json.append("{\"docs\":[");
-                            int z=0;
-                            for (String id : ids.keySet()) {
-                                if (z>0) json.append(",");
-                                json.append("{\"_index\":\"").append(indexname).append("\",\"_type\":\"dynamic\",\"_id\":\"").append(id).append("\"}");
-                                z++;
-                            }
-                            json.append("]}");
-
-                            // look for all those ids in the index
-                            MultiGetRequest getRequest = new MultiGetRequest()
-                                    .add(indexname, "dynamic", null, new FetchSourceContext(false), null, new BytesArray(json.toString()), true)
-                                    .realtime(true)
-                                    .preference("_local");
-                            MultiGetResponse getResponse = client.multiGet(getRequest).get();
-
-                            // if a block not found index it
-                            for (MultiGetItemResponse item : getResponse) {
-                                String id = item.getId();
-
-                                if (!item.getResponse().isExists()) {
-                                    // index it
-                                    IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client, indexname)
-                                            .setType("dynamic")
-                                            .setId(id)
-                                            .setSource(fieldname, ids.get(id))
-                                            .setRefresh(true);
-
-                                    responses.add(client.index(indexRequestBuilder.request()));
-                                }
-                            }
-
-                            // wait for all in-flight indexing requests to complete, if any
-                            for (ActionFuture<IndexResponse> response : responses)
-                                response.get();
-
-                            if (blocks == 1) {
-                                // only one block, so just use it
-                                String id = ids.keySet().iterator().next();
-                                return filteredQuery(null, termsLookupFilter(n.getFieldname())
-                                        .lookupIndex(indexname)
-                                        .lookupType("dynamic")
-                                        .lookupPath(fieldname)
-                                        .lookupId(id)
-                                        .cache(true)
-                                        .cacheKey(id)
-                                );
-                            } else {
-                                // build boolean OR clause to filter each block
-                                OrFilterBuilder ofb = orFilter();
-                                for (String id : ids.keySet()) {
-                                    ofb.add(termsLookupFilter(n.getFieldname())
-                                            .lookupIndex(indexname)
-                                            .lookupType("dynamic")
-                                            .lookupPath(fieldname)
-                                            .lookupId(id)
-                                            .cache(true)
-                                            .cacheKey(id)
-                                    );
-                                }
-
-                                return filteredQuery(null, ofb);
-                            }
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
+                        String key = "";
+                        OrFilterBuilder ofb = orFilter();
+                        
+                        for (int i = 0, size = values.size(); i < size; i += STEP) {
+                            List sublist = values.subList(i, Math.min(size, i + STEP));
+                            String id = UUID.nameUUIDFromBytes(sublist.toString().getBytes()).toString();
+                            ofb.add(termsFilter(n.getFieldname(), sublist).cache(true).cacheKey(id));
+                            key += id;
                         }
+                        return filteredQuery(null, ofb.cache(true).cacheKey(key));
 
                     } else {
                         if (values.size() == 1) {
                             return termQuery(node.getFieldname(), values.get(0));
                         } else {
-                            return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), values).cache(true));
+                            return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), values));
                         }
                     }
                 }
