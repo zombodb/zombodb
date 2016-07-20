@@ -941,7 +941,7 @@ public abstract class QueryRewriter {
                         if (values.size() == 1) {
                             return termQuery(node.getFieldname(), values.get(0));
                         } else {
-                            return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), values));
+                            return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), values).cache(true));
                         }
                     }
                 }
