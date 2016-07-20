@@ -245,7 +245,7 @@ static void es_wait_for_index_availability(ZDBIndexDescriptor *indexDescriptor) 
 
     /* ask ES to wait for the health status of this index to be at least yellow.  Has default timeout of 30s */
     appendStringInfo(endpoint, "%s/_cluster/health/%s?wait_for_status=yellow", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("GET", endpoint->data, NULL);
+    response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
     if (response->len == 0 || response->data[0] != '{')
         elog(ERROR, "Response from cluster health not in correct format: %s", response->data);
 
@@ -296,7 +296,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
                                                            : "false", fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"));
 
     appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, indexSettings);
+    response = rest_call("POST", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
 
     freeStringInfo(response);
     freeStringInfo(indexSettings);
@@ -319,7 +319,7 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
     RelationClose(indexRel);
 
     appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("PUT", endpoint->data, indexSettings);
+    response = rest_call("PUT", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
 
     freeStringInfo(response);
 
@@ -364,7 +364,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "}", pkey, indexDescriptor->alwaysResolveJoins ? "true" : "false", properties);
 
     appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("PUT", endpoint->data, request);
+    response = rest_call("PUT", endpoint->data, request, indexDescriptor->compressionLevel);
     freeStringInfo(response);
 
     /*
@@ -381,7 +381,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "}", ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
 
     appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("PUT", endpoint->data, request);
+    response = rest_call("PUT", endpoint->data, request, indexDescriptor->compressionLevel);
     freeStringInfo(response);
 
     RelationClose(indexRel);
@@ -401,7 +401,7 @@ char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQue
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
     query    = buildQuery(indexDescriptor, &userQuery, 1, useInvisibilityMap, strstr(userQuery, "#expand") != NULL);
-    response = rest_call("POST", endpoint->data, query);
+    response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
 
     freeStringInfo(query);
     freeStringInfo(endpoint);
@@ -414,7 +414,7 @@ void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo response = NULL;
 
     appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("DELETE", endpoint->data, NULL);
+    response = rest_call("DELETE", endpoint->data, NULL, indexDescriptor->compressionLevel);
     freeStringInfo(response);
     freeStringInfo(endpoint);
 }
@@ -427,7 +427,7 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
 
             elog(LOG, "[zombodb] Refreshing index %s", indexDescriptor->fullyQualifiedName);
             appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-            response = rest_call("GET", endpoint->data, NULL);
+            response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
             checkForRefreshError(response);
 
             freeStringInfo(response);
@@ -482,7 +482,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
     appendStringInfoChar(request, ']');
 
     appendStringInfo(endpoint, "%s/%s/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, descriptors[0]->compressionLevel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
@@ -505,7 +505,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 
     query    = buildQuery(indexDescriptor, queries, nqueries, useInvisibilityMap,
                           strstr(queries[0], "#expand") != NULL);
-    response = rest_call("POST", endpoint->data, query);
+    response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
 
     if (response->data[0] != '\0')
         elog(ERROR, "%s", response->data);
@@ -545,7 +545,7 @@ uint64 elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor,
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
-    response = rest_call("GET", endpoint->data, NULL);
+    response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
     if (response->data[0] != '{')
         elog(ERROR, "%s", response->data);
 
@@ -571,7 +571,7 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
     query    = buildQuery(indexDescriptor, queries, nqueries, true, true);
-    response = rest_call("POST", endpoint->data, query);
+    response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
     if (response->data[0] == '{')
         elog(ERROR, "%s", response->data);
 
@@ -595,7 +595,7 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
-    response = rest_call("POST", endpoint->data, query);
+    response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
     if (response->data[0] == '{')
         elog(ERROR, "%s", response->data);
 
@@ -620,7 +620,7 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, 
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\", %d) %s", fieldname, stem, max_terms, sort_order, shard_size, query->data);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
@@ -641,7 +641,7 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#range(%s, '%s') %s", fieldname, range_spec, query->data);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
@@ -662,7 +662,7 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char 
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s", fieldname, stem, max_terms, query->data);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
@@ -683,7 +683,7 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fi
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#extended_stats(%s) %s", fieldname, query->data);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
@@ -705,7 +705,7 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "%s %s", aggregate_query, query->data);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
@@ -726,7 +726,7 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fie
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
@@ -751,7 +751,7 @@ char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, ch
     appendStringInfo(request, ", \"size\":%d}", size);
 
     appendStringInfo(endpoint, "%s/%s/_zdbtermlist", descriptor->url, descriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, descriptor->compressionLevel);
 
     freeStringInfo(request);
     freeStringInfo(endpoint);
@@ -767,7 +767,7 @@ char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor) {
 
     sprintf(indexName, "%s", indexDescriptor->fullyQualifiedName);
     appendStringInfo(endpoint, "%s/%s/_mapping", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("GET", endpoint->data, NULL);
+    response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
     return TextDatumGetCString(DirectFunctionCall2(json_object_field, CStringGetTextDatum(response->data), CStringGetTextDatum(indexName)));
@@ -782,7 +782,7 @@ char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, ch
         appendStringInfo(request, "#options(%s) ", indexDescriptor->options);
 
     appendStringInfo(endpoint, "%s/%s/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
     freeStringInfo(request);
@@ -796,7 +796,7 @@ char *elasticsearch_analyzeText(ZDBIndexDescriptor *indexDescriptor, char *analy
 
     appendStringInfo(request, "%s", data);
     appendStringInfo(endpoint, "%s/%s/_analyze?analyzer=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, analyzerName);
-    response = rest_call("GET", endpoint->data, request);
+    response = rest_call("GET", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
     freeStringInfo(request);
@@ -816,7 +816,7 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *user_qu
     appendStringInfoChar(request, '}');
 
     appendStringInfo(endpoint, "%s/%s/_zdbhighlighter", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
     freeStringInfo(request);
@@ -842,7 +842,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
         appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
         if (request->len >= indexDescriptor->batch_size) {
-            response = rest_call("POST", endpoint->data, request);
+            response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
             checkForBulkError(response, "delete");
 
             resetStringInfo(request);
@@ -851,7 +851,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     }
 
     if (request->len > 0) {
-        response = rest_call("POST", endpoint->data, request);
+        response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
         checkForBulkError(response, "delete");
     }
 
@@ -918,7 +918,7 @@ void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPoint
         appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
         /* send the request to index this batch */
-        rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk);
+        rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, indexDescriptor->compressionLevel);
         elog(LOG, "[zombodb] Indexed %d rows for %s (%d in batch, active=%d)", batch->nprocessed, indexDescriptor->fullyQualifiedName, batch->nrecs, batch->rest->nhandles - batch->rest->available);
 
         /* reset the bulk StringInfo for the next batch of records */
@@ -959,12 +959,12 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
                     }
                 }
 
-                response = rest_call("POST", endpoint->data, batch->bulk->buff);
+                response = rest_call("POST", endpoint->data, batch->bulk->buff, indexDescriptor->compressionLevel);
             } else {
                 /*
                  * otherwise we'll do a full refresh below, so there's no need to do it here
                  */
-                response = rest_call("POST", endpoint->data, batch->bulk->buff);
+                response = rest_call("POST", endpoint->data, batch->bulk->buff, indexDescriptor->compressionLevel);
             }
             checkForBulkError(response, "batch finish");
             freeStringInfo(response);
@@ -994,7 +994,7 @@ uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_jso
 
     appendStringInfo(request, "%s", jsonXids);
     appendStringInfo(endpoint, "%s/%s/_zdbvacsup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, request);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
     freeStringInfo(request);

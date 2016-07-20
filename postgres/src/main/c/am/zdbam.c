@@ -1042,7 +1042,8 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
                                                 {"bulk_concurrency",     RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, bulk_concurrency)},
                                                 {"batch_size",           RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, batch_size)},
                                                 {"field_lists",          RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, fieldListsValueOffset)},
-                                                {"always_resolve_joins", RELOPT_TYPE_BOOL,   offsetof(ZDBIndexOptions, alwaysResolveJoins)},};
+                                                {"always_resolve_joins", RELOPT_TYPE_BOOL,   offsetof(ZDBIndexOptions, alwaysResolveJoins)},
+                                                {"compression_level",    RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, compressionLevel)},};
 
     options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB, &numoptions);
 
