@@ -36,6 +36,9 @@
 
 #include "am/zdb_interface.h"
 
+/* defined in zdbxactvac_worker.c */
+extern int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc);
+
 static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heapRelId, Oid xactRelId, invisibility_callback cb, void *ctids, void *xids, int *nctids);
 
 typedef struct {
@@ -212,6 +215,24 @@ Oid *findZDBIndexes(Oid relid, int *many) {
     return indexes;
 }
 
+Oid *find_all_zdb_indexes(int *many) {
+    Oid        *indexes = NULL;
+    int        i;
+
+    SPI_connect();
+
+    SPI_execute("select oid from pg_class where relam = (select oid from pg_am where amname = 'zombodb');", true, 0);
+    *many = SPI_processed;
+    if (SPI_processed > 0) {
+        indexes = (Oid *) MemoryContextAlloc(TopTransactionContext, sizeof(Oid) * SPI_processed);
+        for (i  = 0; i < SPI_processed; i++)
+            indexes[i] = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
+    }
+    SPI_finish();
+
+    return indexes;
+}
+
 Oid *oid_array_to_oids(ArrayType *arr, int *many) {
     if (ARR_NDIM(arr) != 1 || ARR_HASNULL(arr) || ARR_ELEMTYPE(arr) != OIDOID)
         elog(ERROR, "expected oid[] of non-null values");
@@ -297,28 +318,22 @@ bool is_invisible_xid(Snapshot snapshot, TransactionId xid) {
 }
 
 static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heapRelId, Oid xactRelId, invisibility_callback cb, void *ctids, void *xids, int *nctids) {
-    Snapshot             snapshot   = GetActiveSnapshot();
-    TransactionId        currentxid = GetCurrentTransactionId();
-    TransactionId        lastxid    = InvalidTransactionId;
-    IndexScanDesc        scanDesc;
-    Relation             heapRel;
-    Relation             xactRel;
-    ItemPointer          tid;
-    int                  invs       = 0, current = 0, skipped = 0, aborted = 0, tuples = 0;
-    struct timeval       tv1, tv2;
+    Relation       heapRel;
+    int            invs = 0, current = 0, skipped = 0, aborted = 0, killed = 0, tuples = 0;
+    struct timeval tv1, tv2;
 
     gettimeofday(&tv1, NULL);
 
+    killed = zdb_vacuum_xact_index(desc);
+
     heapRel = heap_open(heapRelId, AccessShareLock);
     if (visibilitymap_count(heapRel) != RelationGetNumberOfBlocks(heapRel)) {
-        HASHCTL ctl;
-        HTAB    *htab;
-
-        MemSet(&ctl, 0, sizeof(HASHCTL));
-        ctl.keysize   = sizeof(uint64);
-        ctl.entrysize = sizeof(uint64);
-        ctl.hash      = tag_hash;
-        htab = hash_create("killable tids", 32768, &ctl, HASH_ELEM | HASH_FUNCTION);
+        Snapshot      snapshot   = GetActiveSnapshot();
+        TransactionId currentxid = GetCurrentTransactionId();
+        TransactionId lastxid    = InvalidTransactionId;
+        IndexScanDesc scanDesc;
+        Relation      xactRel;
+        ItemPointer   tid;
 
         xactRel  = index_open(xactRelId, AccessShareLock);
         scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
@@ -350,7 +365,7 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
             if (!is_insert && currentxid == xid) {
                 cb(tid, InvalidTransactionId, ctids, xids, nctids);
                 current++;
-            } else if (is_invisible_xid(snapshot, xid)) {
+            } else if (is_invisible_xid(snapshot, xid) || TransactionIdIsInProgress(xid)) {
                 /* xact is still active, so skip because these are wholesale excluded in our query */
                 skipped++;
             } else if (!is_insert && TransactionIdDidCommit(xid)) {
@@ -368,13 +383,12 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
         }
         index_endscan(scanDesc);
         index_close(xactRel, AccessShareLock);
-        hash_destroy(htab);
     }
 
     gettimeofday(&tv2, NULL);
-    elog(LOG, "[zombodb invisibility stats] heap=%s, invisible=%d, skipped=%d, current=%d, aborted=%d, tuples=%d, ttl=%fs", RelationGetRelationName(heapRel), invs, skipped, current, aborted, tuples, TO_SECONDS(tv1, tv2));
-
+    elog(LOG, "[zombodb invisibility stats] heap=%s, invisible=%d, skipped=%d, current=%d, aborted=%d, killed=%d, tuples=%d, ttl=%fs", RelationGetRelationName(heapRel), invs, skipped, current, aborted, killed, tuples, TO_SECONDS(tv1, tv2));
     heap_close(heapRel, AccessShareLock);
+
     return invs;
 }
 
@@ -412,5 +426,4 @@ void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toO
     triggerAddress.objectSubId = 0;
 
     recordDependencyOn(&triggerAddress, &indexAddress, dependencyType);
-
 }

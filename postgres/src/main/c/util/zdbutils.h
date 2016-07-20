@@ -37,6 +37,7 @@ void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, 
 void freeStringInfo(StringInfo si);
 char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing);
 Oid  *findZDBIndexes(Oid relid, int *many);
+Oid *find_all_zdb_indexes(int *many);
 Oid  *oid_array_to_oids(ArrayType *arr, int *many);
 char **text_array_to_strings(ArrayType *array, int *many);
 
