@@ -118,6 +118,7 @@ void zdb_index_init(void) {
     add_string_reloption(RELOPT_KIND_ZDB, "field_lists", "field=[field1, field2, field3], other=[field4,field5]", NULL, validate_field_lists);
     add_bool_reloption(RELOPT_KIND_ZDB, "ignore_visibility", "Should queries that require visibility information actually use it?", false);
     add_bool_reloption(RELOPT_KIND_ZDB, "always_resolve_joins", "Should queries that link to other indexes always resolve the links", false);
+    add_int_reloption(RELOPT_KIND_ZDB, "compression_level", "0-9 value to indicate the level of HTTP compression", 0, 0, 9);
 
     DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
@@ -188,12 +189,17 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         desc->shards    = ZDBIndexOptionsGetNumberOfShards(shadowRel);
         desc->indexName = pstrdup(RelationGetRelationName(shadowRel));
         desc->url       = ZDBIndexOptionsGetUrl(shadowRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(shadowRel));
+
+        desc->compressionLevel  = ZDBIndexOptionsGetCompressionLevel(shadowRel);
+
         relation_close(shadowRel, AccessShareLock);
     } else {
         /* or just from the actual index if we're not a shadow */
         desc->shards    = ZDBIndexOptionsGetNumberOfShards(indexRel);
         desc->indexName = pstrdup(RelationGetRelationName(indexRel));
         desc->url       = ZDBIndexOptionsGetUrl(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(indexRel));
+
+        desc->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
     }
 
     xactIndexName = palloc(strlen(RelationGetRelationName(heapRel)) + strlen(XACT_INDEX_SUFFIX) + 1);

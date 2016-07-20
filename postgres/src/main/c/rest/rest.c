@@ -64,6 +64,21 @@ static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlno
     return 0;
 }
 
+static char *do_compression(StringInfo input, int level, uint64 *len) {
+    Bytef *compressed = NULL;
+    if (input != NULL) {
+        int rc;
+
+        *len = compressBound((uLong) input->len);
+        compressed = palloc(*len);
+
+        if ((rc = compress2(compressed, len, (Bytef *) input->data, (uLong) input->len, 1)) != Z_OK) {
+            elog(ERROR, "compression error: %d", rc);
+        }
+    }
+    return (char *) compressed;
+}
+
 void rest_multi_init(MultiRestState *state, int nhandles) {
     int i;
 
@@ -94,7 +109,7 @@ int rest_multi_perform(MultiRestState *state) {
     return still_running;
 }
 
-void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData) {
+void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData, int compressionLevel) {
     int i;
 
     if (state->available == 0) {
@@ -141,30 +156,22 @@ void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEnt
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
 
-            Bytef *compressed = NULL;
-            uLongf len = 0;
-            if (postData != NULL) {
+            if (postData != NULL && compressionLevel > 0) {
                 struct curl_slist *list = NULL;
-                int               rc;
+                char *data;
+                uint64 len;
 
-                len        = compressBound((uLong) postData->buff->len);
-                compressed = palloc(len);
-
-                if ((rc = compress2(compressed, &len, (Bytef *) postData->buff->data, (uLong) postData->buff->len, 1)) != Z_OK) {
-                    elog(ERROR, "compression error: %d", rc);
-                }
+                data = do_compression(postData->buff, compressionLevel, &len);
 
                 list = curl_slist_append(list, "Content-Encoding: deflate");
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-            }
-
-            if (compressed != NULL) {
                 curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, len);
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, compressed);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
             } else {
                 curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
                 curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
             }
+
             curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
             curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
             curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
@@ -269,7 +276,7 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
     }
 }
 
-StringInfo rest_call(char *method, char *url, StringInfo postData) {
+StringInfo rest_call(char *method, char *url, StringInfo postData, int compressionLevel) {
     char *errorbuff = (char *) palloc0(CURL_ERROR_SIZE);
 
     StringInfo response = makeStringInfo();
@@ -296,30 +303,22 @@ StringInfo rest_call(char *method, char *url, StringInfo postData) {
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_CUSTOMREQUEST, method);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEDATA, response);
 
-        Bytef *compressed = NULL;
-        uLongf len = 0;
-        if (postData != NULL) {
+        if (postData != NULL && compressionLevel > 0) {
             struct curl_slist *list = NULL;
-            int rc;
+            char *data;
+            uint64 len;
 
-            len        = compressBound((uLong) postData->len);
-            compressed = palloc(len);
-
-            if ((rc = compress2(compressed, &len, (Bytef *) postData->data, (uLong) postData->len, 1)) != Z_OK) {
-                elog(ERROR, "compression error: %d", rc);
-            }
+            data = do_compression(postData, compressionLevel, &len);
 
             list = curl_slist_append(list, "Content-Encoding: deflate");
             curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTPHEADER, list);
-        }
-
-        if (compressed != NULL) {
             curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, len);
-            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, compressed);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, data);
         } else {
             curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
             curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
         }
+
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (postData && postData->data) ? 1 : 0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TCP_NODELAY, 1L);

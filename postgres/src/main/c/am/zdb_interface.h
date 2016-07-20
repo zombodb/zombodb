@@ -46,6 +46,7 @@ typedef struct {
     int   batch_size;
     int   fieldListsValueOffset;
     bool  alwaysResolveJoins;
+    int   compressionLevel;
 } ZDBIndexOptions;
 
 #define ZDBIndexOptionsGetUrl(relation) \
@@ -83,6 +84,9 @@ typedef struct {
 #define ZDBIndexOptionsGetBatchSize(relation) \
     (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->batch_size : 12
 
+#define ZDBIndexOptionsGetCompressionLevel(relation) \
+    (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->compressionLevel : 1
+
 #define ZDBIndexOptionsGetFieldLists(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->fieldListsValueOffset > 0 ? \
       (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->fieldListsValueOffset : (NULL))
@@ -119,6 +123,7 @@ typedef struct {
     char *refreshInterval;
     int  bulk_concurrency;
     int  batch_size;
+    int  compressionLevel;
     bool ignoreVisibility;
 
     char *fieldLists;
