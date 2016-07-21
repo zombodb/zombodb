@@ -9,7 +9,7 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >> /et
 RUN wget --no-check-certificate --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN apt-get update -y --fix-missing
 RUN apt-get install -y --force-yes postgresql-server-dev-9.5
-RUN apt-get install -y gcc make build-essential
+RUN apt-get install -y gcc make build-essential libz-dev zlib1g-dev strace
 
 COPY curl-7.43.0.tar.gz /usr/local/src/
 WORKDIR /usr/local/src/
