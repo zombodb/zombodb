@@ -180,7 +180,11 @@ int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc) {
                             tuple.t_data = (HeapTupleHeader) PageGetItem(page, itemid);
                             tuple.t_len  = ItemIdGetLength(itemid);
 
+#if (PG_VERSION_NUM >= 90400)
+                            switch (HeapTupleSatisfiesVacuum(&tuple, oldestXmin, buffer)) {
+#else
                             switch (HeapTupleSatisfiesVacuum(tuple.t_data, oldestXmin, buffer)) {
+#endif
                                 case HEAPTUPLE_DEAD:
                                     if (TransactionIdDidCommit(xid)) {
                                         canKill = true;

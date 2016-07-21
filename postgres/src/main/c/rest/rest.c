@@ -33,7 +33,6 @@
 
 #include "rest.h"
 
-#include <zlib.h>
 
 static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userdata);
 static int    curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
