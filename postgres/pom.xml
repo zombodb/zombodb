@@ -258,6 +258,28 @@
                             </execution>
 
                             <execution>
+                                <id>jessie_pg93</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jdeb</goal>
+                                </goals>
+                                <configuration>
+                                    <deb>${project.build.directory}/${project.artifactId}_jessie_pg93-${project.version}_amd64.deb
+                                    </deb>
+                                    <dataSet>
+                                        <data>
+                                            <src>${project.build.directory}/pg9.3/debian_jessie/</src>
+                                            <type>directory</type>
+                                            <mapper>
+                                                <type>perm</type>
+                                                <prefix>/</prefix>
+                                            </mapper>
+                                        </data>
+                                    </dataSet>
+                                </configuration>
+                            </execution>
+
+                            <execution>
                                 <id>precise_pg94</id>
                                 <phase>package</phase>
                                 <goals>
@@ -290,6 +312,27 @@
                                     <dataSet>
                                         <data>
                                             <src>${project.build.directory}/pg9.4/ubuntu_trusty/</src>
+                                            <type>directory</type>
+                                            <mapper>
+                                                <type>perm</type>
+                                                <prefix>/</prefix>
+                                            </mapper>
+                                        </data>
+                                    </dataSet>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>jessie_pg94</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jdeb</goal>
+                                </goals>
+                                <configuration>
+                                    <deb>${project.build.directory}/${project.artifactId}_jessie_pg94-${project.version}_amd64.deb
+                                    </deb>
+                                    <dataSet>
+                                        <data>
+                                            <src>${project.build.directory}/pg9.4/debian_jessie/</src>
                                             <type>directory</type>
                                             <mapper>
                                                 <type>perm</type>
@@ -333,6 +376,27 @@
                                     <dataSet>
                                         <data>
                                             <src>${project.build.directory}/pg9.5/ubuntu_trusty/</src>
+                                            <type>directory</type>
+                                            <mapper>
+                                                <type>perm</type>
+                                                <prefix>/</prefix>
+                                            </mapper>
+                                        </data>
+                                    </dataSet>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>jessie_pg95</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jdeb</goal>
+                                </goals>
+                                <configuration>
+                                    <deb>${project.build.directory}/${project.artifactId}_jessie_pg95-${project.version}_amd64.deb
+                                    </deb>
+                                    <dataSet>
+                                        <data>
+                                            <src>${project.build.directory}/pg9.5/debian_jessie/</src>
                                             <type>directory</type>
                                             <mapper>
                                                 <type>perm</type>
