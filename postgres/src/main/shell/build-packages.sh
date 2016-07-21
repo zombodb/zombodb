@@ -2,7 +2,7 @@
 
 VERSION=$1
 BASE=`pwd`
-DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise"
+DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise debian_jessie"
 POSTGRES_VERSIONS="9.3 9.4 9.5"
 
 ##
