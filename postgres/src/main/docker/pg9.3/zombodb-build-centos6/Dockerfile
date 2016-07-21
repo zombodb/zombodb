@@ -7,7 +7,7 @@ RUN yum install -y tar
 RUN yum install -y openssl
 RUN yum install -y http://yum.postgresql.org/9.3/redhat/rhel-6-x86_64/pgdg-redhat93-9.3-1.noarch.rpm
 RUN yum install -y postgresql93-devel
-RUN yum install -y gcc make
+RUN yum install -y gcc make zlib-devel
 
 COPY curl-7.43.0.tar.gz /usr/local/src/
 WORKDIR /usr/local/src/
