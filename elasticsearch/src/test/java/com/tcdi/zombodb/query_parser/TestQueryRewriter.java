@@ -4754,5 +4754,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
         );
     }
+
+    @Test
+    public void testIssue132() throws Exception {
+        assertJson("((#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))))",
+                "");
+    }
 }
 
