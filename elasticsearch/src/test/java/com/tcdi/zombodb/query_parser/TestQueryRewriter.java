@@ -4756,6 +4756,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
     public void testIssue132() throws Exception {
         assertAST("#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))",
                 "QueryTree\n" +
