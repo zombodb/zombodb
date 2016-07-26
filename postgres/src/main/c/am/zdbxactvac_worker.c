@@ -108,6 +108,7 @@ static bool can_vacuum(ItemPointer itemptr, void *state) {
 
 int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc) {
     TransactionId        oldestXmin;
+    TransactionId        lastXid = InvalidTransactionId;
     BufferAccessStrategy strategy = GetAccessStrategy(BAS_VACUUM);
     Snapshot snapshot = GetActiveSnapshot();
     IndexScanDesc        scanDesc;
@@ -155,7 +156,7 @@ int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc) {
                 is_insert    = DatumGetBool(index_getattr(scanDesc->xs_itup, 2, scanDesc->xs_itupdesc, &isnull));
                 xid          = (TransactionId) (convertedxid);
 
-                if (!is_insert && !is_invisible_xid(snapshot, xid)) {
+                if (TransactionIdPrecedesOrEquals(xid, oldestXmin) && xid != lastXid && !is_insert && !is_invisible_xid(snapshot, xid)) {
                     BlockNumber  blockno = ItemPointerGetBlockNumber(tid);
                     OffsetNumber offnum  = ItemPointerGetOffsetNumber(tid);
                     Buffer       buffer;
@@ -188,6 +189,7 @@ int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc) {
                                 case HEAPTUPLE_DEAD:
                                     if (TransactionIdDidCommit(xid)) {
                                         canKill = true;
+                                        lastXid = InvalidTransactionId;
                                     }
                                     break;
 
@@ -195,10 +197,12 @@ int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc) {
                                     if (TransactionIdDidAbort(xid)) {
                                         uint64 tid_64 = ItemPointerToUint64(tid);
                                         hash_search(htab, &tid_64, HASH_ENTER, &found);
+                                        lastXid = InvalidTransactionId;
                                     }
                                     break;
 
                                 default:
+                                    lastXid = xid;
                                     break;
                             }
                         }
