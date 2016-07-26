@@ -49,6 +49,7 @@ import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.fetch.source.FetchSourceContext;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
+import solutions.siren.join.index.query.FilterJoinBuilder;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -945,9 +946,23 @@ public abstract class QueryRewriter {
 
                             // build blocks of doc ids and matching values
                             for (int i = 0, size = values.size(); i < size; i += STEP) {
-                                List sublist = values.subList(i, Math.min(size, i + STEP));
+                                final List sublist = values.subList(i, Math.min(size, i + STEP));
                                 String id = UUID.nameUUIDFromBytes(sublist.toString().getBytes()).toString();
-                                ids.put(id, sublist);
+                                ids.put(id, new AbstractList() {
+                                    @Override
+                                    public Object get(int index) {
+                                        try {
+                                            return Long.valueOf(String.valueOf(sublist.get(index)));
+                                        } catch (NumberFormatException nfe) {
+                                            return sublist.get(index);
+                                        }
+                                    }
+
+                                    @Override
+                                    public int size() {
+                                        return sublist.size();
+                                    }
+                                });
                                 blocks++;
                             }
 
@@ -990,33 +1005,43 @@ public abstract class QueryRewriter {
                             for (ActionFuture<IndexResponse> response : responses)
                                 response.get();
 
-                            if (blocks == 1) {
-                                // only one block, so just use it
-                                String id = ids.keySet().iterator().next();
-                                return filteredQuery(null, termsLookupFilter(n.getFieldname())
-                                        .lookupIndex(indexname)
-                                        .lookupType("dynamic")
-                                        .lookupPath(fieldname)
-                                        .lookupId(id)
-                                        .cache(true)
-                                        .cacheKey(id)
-                                );
-                            } else {
-                                // build boolean OR clause to filter each block
-                                OrFilterBuilder ofb = orFilter();
-                                for (String id : ids.keySet()) {
-                                    ofb.add(termsLookupFilter(n.getFieldname())
-                                            .lookupIndex(indexname)
-                                            .lookupType("dynamic")
-                                            .lookupPath(fieldname)
-                                            .lookupId(id)
-                                            .cache(true)
-                                            .cacheKey(id)
-                                    );
-                                }
-
-                                return filteredQuery(null, ofb);
-                            }
+                            FilterJoinBuilder fjb = new FilterJoinBuilder(n.getFieldname());
+                            fjb.indices(indexname)
+                                    .types("dynamic")
+                                    .path(fieldname)
+                                    .query(idsQuery("dynamic").addIds(ids.keySet().toArray(new String[ids.size()])));
+                            return filteredQuery(null, fjb);
+//                            if (blocks == 1) {
+//                                // only one block, so just use it
+//                                String id = ids.keySet().iterator().next();
+//                                return filteredQuery(null, termsLookupFilter(n.getFieldname())
+//                                        .lookupIndex(indexname)
+//                                        .lookupType("dynamic")
+//                                        .lookupPath(fieldname)
+//                                        .lookupId(id)
+//                                        .cache(true)
+//                                        .cacheKey(id)
+//                                );
+//                            } else {
+//                                // build boolean OR clause to filter each block
+//                                String key = "";
+//                                OrFilterBuilder ofb = orFilter();
+//                                for (String id : ids.keySet()) {
+//                                    Loggers.getLogger(getClass()).info("id=" + id);
+//                                    key += id;
+//                                    ofb.add(termsLookupFilter(n.getFieldname())
+//                                            .lookupIndex(indexname)
+//                                            .lookupType("dynamic")
+//                                            .lookupPath(fieldname)
+//                                            .lookupId(id)
+//                                            .lookupCache(true)
+//                                            .cache(true)
+//                                            .cacheKey(id)
+//                                    );
+//                                }
+//
+//                                return filteredQuery(null, ofb.cache(true).cacheKey(key));
+//                            }
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
