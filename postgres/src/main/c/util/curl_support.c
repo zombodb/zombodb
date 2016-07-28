@@ -26,6 +26,7 @@ List   *MULTI_REST_STATES        = NULL;
 
 static void curl_shared_state_xact_cleanup(XactEvent event, void *arg) {
     switch (event) {
+        case XACT_EVENT_PRE_PREPARE:
         case XACT_EVENT_COMMIT:
         case XACT_EVENT_ABORT:
             /* cleanup our global curl instance */

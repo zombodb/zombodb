@@ -26,11 +26,16 @@
 #include "catalog/dependency.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_type.h"
+#include "executor/executor.h"
 #include "executor/spi.h"
+#include "nodes/makefuncs.h"
+#include "optimizer/planmain.h"
 #include "storage/bufmgr.h"
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
 #include "utils/builtins.h"
+#include "utils/datum.h"
+#include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/snapmgr.h"
 #include "utils/tqual.h"
@@ -427,4 +432,87 @@ void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toO
     triggerAddress.objectSubId = 0;
 
     recordDependencyOn(&triggerAddress, &indexAddress, dependencyType);
+}
+
+/*
+ * Copied from Postgres' src/backend/optimizer/util/clauses.c
+ *
+ * evaluate_expr: pre-evaluate a constant expression
+ *
+ * We use the executor's routine ExecEvalExpr() to avoid duplication of
+ * code and ensure we get the same result as the executor would get.
+ */
+Expr *
+evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod,
+              Oid result_collation)
+{
+    EState	   *estate;
+    ExprState  *exprstate;
+    MemoryContext oldcontext;
+    Datum		const_val;
+    bool		const_is_null;
+    int16		resultTypLen;
+    bool		resultTypByVal;
+
+    /*
+     * To use the executor, we need an EState.
+     */
+    estate = CreateExecutorState();
+
+    /* We can use the estate's working context to avoid memory leaks. */
+    oldcontext = MemoryContextSwitchTo(estate->es_query_cxt);
+
+    /* Make sure any opfuncids are filled in. */
+    fix_opfuncids((Node *) expr);
+
+    /*
+     * Prepare expr for execution.  (Note: we can't use ExecPrepareExpr
+     * because it'd result in recursively invoking eval_const_expressions.)
+     */
+    exprstate = ExecInitExpr(expr, NULL);
+
+    /*
+     * And evaluate it.
+     *
+     * It is OK to use a default econtext because none of the ExecEvalExpr()
+     * code used in this situation will use econtext.  That might seem
+     * fortuitous, but it's not so unreasonable --- a constant expression does
+     * not depend on context, by definition, n'est ce pas?
+     */
+    const_val = ExecEvalExprSwitchContext(exprstate,
+                                          GetPerTupleExprContext(estate),
+                                          &const_is_null, NULL);
+
+    /* Get info needed about result datatype */
+    get_typlenbyval(result_type, &resultTypLen, &resultTypByVal);
+
+    /* Get back to outer memory context */
+    MemoryContextSwitchTo(oldcontext);
+
+    /*
+     * Must copy result out of sub-context used by expression eval.
+     *
+     * Also, if it's varlena, forcibly detoast it.  This protects us against
+     * storing TOAST pointers into plans that might outlive the referenced
+     * data.  (makeConst would handle detoasting anyway, but it's worth a few
+     * extra lines here so that we can do the copy and detoast in one step.)
+     */
+    if (!const_is_null)
+    {
+        if (resultTypLen == -1)
+            const_val = PointerGetDatum(PG_DETOAST_DATUM_COPY(const_val));
+        else
+            const_val = datumCopy(const_val, resultTypByVal, resultTypLen);
+    }
+
+    /* Release all the junk we just created */
+    FreeExecutorState(estate);
+
+    /*
+     * Make the constant result node.
+     */
+    return (Expr *) makeConst(result_type, result_typmod, result_collation,
+                              resultTypLen,
+                              const_val, const_is_null,
+                              resultTypByVal);
 }

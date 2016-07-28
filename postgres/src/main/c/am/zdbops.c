@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include "postgres.h"
+#include "executor/executor.h"
 #include "executor/spi.h"
 #include "access/xact.h"
 #include "catalog/indexing.h"
@@ -131,8 +132,17 @@ void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid) {
     a1 = linitial(funcExpr->args);
     a2 = lsecond(funcExpr->args);
 
+    if (IsA(a1, FuncExpr)) {
+        /*
+         * first argument is a function call, so evaluate the expression and use its return value.
+         * It's probably a double-cast like zdb('tablename'::text::regclass)
+         *
+         * If it isn't, we'll catch it below
+         */
+        a1 = (Node *) evaluate_expr((Expr *) a1, REGCLASSOID, 0, InvalidOid);
+    }
     if (!IsA(a1, Const) || ((Const *) a1)->consttype != REGCLASSOID)
-        elog(ERROR, "First argument of the 'zdb' column function is not ::regclass");
+        elog(ERROR, "First argument of the 'zdb' column function is not ::regclass, it is a %d", a1->type);
     else if (!IsA(a2, Var) || ((Var *) a2)->vartype != TIDOID)
         elog(ERROR, "Second argument of the 'zdb' column function is not ::tid");
 
