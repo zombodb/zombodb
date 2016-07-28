@@ -182,10 +182,6 @@ static void xact_complete_cleanup(XactEvent event) {
 static void zdbam_xact_callback(XactEvent event, void *arg) {
     switch (event) {
         case XACT_EVENT_PRE_PREPARE:
-        case XACT_EVENT_PREPARE:
-            elog(ERROR, "zombodb doesn't support prepared transactions");
-            break;
-
         case XACT_EVENT_COMMIT: {
             if (zdb_batch_mode_guc) {
                 ListCell *lc;
@@ -208,6 +204,7 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
     }
 
     switch (event) {
+        case XACT_EVENT_PRE_PREPARE:
         case XACT_EVENT_COMMIT:
         case XACT_EVENT_ABORT:
             /* cleanup, the xact is over */

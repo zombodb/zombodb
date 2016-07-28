@@ -49,5 +49,6 @@ uint64     convert_xid(TransactionId xid);
 bool       is_invisible_xid(Snapshot snapshot, TransactionId xid);
 
 void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toObjectId, DependencyType dependencyType);
+Expr *evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod, Oid result_collation);
 
 #endif
