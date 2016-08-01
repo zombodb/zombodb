@@ -4757,8 +4757,34 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testIssue132() throws Exception {
-        assertJson("((#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))))",
-                "");
+        assertAST("#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))",
+                "QueryTree\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         group_id=<db.schema.table.index>group_id\n" +
+                        "         Or\n" +
+                        "            Expansion\n" +
+                        "               id=<db.schema.table.index>id\n" +
+                        "               Or\n" +
+                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "            Expansion\n" +
+                        "               group_id=<db.schema.table.index>group_id\n" +
+                        "               Expansion\n" +
+                        "                  id=<db.schema.table.index>id\n" +
+                        "                  Or\n" +
+                        "                     Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "            Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)");
     }
 }
 

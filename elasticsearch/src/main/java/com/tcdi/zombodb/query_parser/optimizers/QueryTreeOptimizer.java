@@ -258,21 +258,21 @@ public class QueryTreeOptimizer {
     }
 
     private void convertGeneratedExpansionsToASTOr(QueryParserNode root) {
-        if (root.getChildren() == null || root.getChildren().size() == 0)
-            return;
+        // need to build the ASTOr structure from the bottom-up so that
+        // nested generated expansions don't exclude rows from inner-expansions
+        // where the join field value is null
+        Stack<ASTExpansion> stack = ExpansionOptimizer.buildExpansionStack(root, new Stack<ASTExpansion>());
 
-        for (QueryParserNode child : root) {
-            if (child instanceof ASTExpansion) {
-                if (((ASTExpansion) child).isGenerated()) {
-                    ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
-                    or.jjtAddChild(child, 0);
-                    QueryParserNode queryNode = ((ASTExpansion) child).getQuery().copy();
-                    or.jjtAddChild(queryNode, 1);
-                    root.replaceChild(child, or);
-                }
+        while (!stack.empty()) {
+            ASTExpansion expansion = stack.pop();
+            QueryParserNode parent = (QueryParserNode) expansion.jjtGetParent();
+            if (expansion.isGenerated()) {
+                ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
+                or.jjtAddChild(expansion, 0);
+                QueryParserNode queryNode = expansion.getQuery().copy();
+                or.jjtAddChild(queryNode, 1);
+                parent.replaceChild(expansion, or);
             }
-
-            convertGeneratedExpansionsToASTOr(child);
         }
     }
 }

@@ -106,7 +106,7 @@ public class ExpansionOptimizer {
         }
     }
 
-    private Stack<ASTExpansion> buildExpansionStack(QueryParserNode root, Stack<ASTExpansion> stack) {
+    static Stack<ASTExpansion> buildExpansionStack(QueryParserNode root, Stack<ASTExpansion> stack) {
 
         if (root != null) {
             if (root instanceof ASTExpansion) {
