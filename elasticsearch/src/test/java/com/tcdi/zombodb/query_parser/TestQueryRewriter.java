@@ -4705,5 +4705,54 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "         Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
                         "            Word (fieldname=english_field, operator=CONTAINS, value=darl, index=db.schema.table.index)");
     }
+
+    @Test
+    public void testIssue35() throws Exception {
+        QueryRewriter qr;
+
+        qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50)");
+        assertEquals(
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}}}",
+                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
+        );
+
+        qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50, #tally(field, \"^.*\", 5000, \"term\"))");
+        assertEquals(
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}},\"aggregations\":{\"field\":{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":0,\"order\":{\"_term\":\"asc\"}}}}}",
+                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
+        );
+    }
+
+    @Test
+    public void testIssue132() throws Exception {
+        assertAST("#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))",
+                "QueryTree\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         group_id=<db.schema.table.index>group_id\n" +
+                        "         Or\n" +
+                        "            Expansion\n" +
+                        "               id=<db.schema.table.index>id\n" +
+                        "               Or\n" +
+                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "            Expansion\n" +
+                        "               group_id=<db.schema.table.index>group_id\n" +
+                        "               Expansion\n" +
+                        "                  id=<db.schema.table.index>id\n" +
+                        "                  Or\n" +
+                        "                     Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "            Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)");
+    }
 }
 

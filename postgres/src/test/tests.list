@@ -80,3 +80,6 @@ zdb_dump_query
 direct-ctid
 xact_visibility
 matview
+schema
+index_dependency
+issue-132
