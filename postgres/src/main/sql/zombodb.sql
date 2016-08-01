@@ -717,7 +717,14 @@ INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_s
             "shingle_filter"
           ]
         }', true);
-INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_shingles_search', ``, true);
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_shingles_search', '{
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "shingle_filter_search"
+          ]
+        }', true);
 
 CREATE DOMAIN fulltext_with_shingles AS text;
 
