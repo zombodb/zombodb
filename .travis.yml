@@ -45,7 +45,12 @@ script:
   - sudo cp /usr/lib/postgresql/9.5/lib/zombodb.so /usr/lib/postgresql/9.5/lib/plugins/zombodb.so
   - sudo rm /usr/lib/postgresql/9.5/lib/zombodb.so
   - sudo src/main/shell/hack-configs-for-travisci.sh
-  - sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+  - if [ "$ES" = "1.7" ]; then
+      sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+    fi
+  - if [ "$ES" = "2.x" ]; then
+      sudo /usr/share/elasticsearch/bin/plugin install file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+    fi
   - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
   - sudo /etc/init.d/postgresql start 9.5
   - cat /etc/elasticsearch/elasticsearch.yml
