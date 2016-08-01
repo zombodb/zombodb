@@ -371,7 +371,7 @@ static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heap
             if (!is_insert && currentxid == xid) {
                 cb(tid, InvalidTransactionId, ctids, xids, nctids);
                 current++;
-            } else if (is_invisible_xid(snapshot, xid) || TransactionIdIsInProgress(xid)) {
+            } else if (is_invisible_xid(snapshot, xid)) {
                 /* xact is still active, so skip because these are wholesale excluded in our query */
                 skipped++;
             } else if (!is_insert && TransactionIdDidCommit(xid)) {
