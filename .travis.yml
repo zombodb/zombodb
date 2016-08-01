@@ -3,7 +3,7 @@ language: java
 env:
   matrix:
     - ES=1.7
-    - ES=2
+    - ES=2.x
 
 sudo: required
 dist: trusty
@@ -12,12 +12,7 @@ before_install:
   - free
   - ls -la /etc/init.d/
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
-  - if [ "$ES" = "1.7" ]; then
-      echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
-    fi
-  - if [ "$ES" = "2" ]; then
-      echo "deb https://packages.elastic.co/elasticsearch/2.x/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-2.x.list
-    fi
+  - echo "deb https://packages.elastic.co/elasticsearch/$ES/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-$ES.list
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
   - sudo apt-get install -y rpm
