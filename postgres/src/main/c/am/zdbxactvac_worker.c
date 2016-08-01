@@ -108,14 +108,15 @@ static bool can_vacuum(ItemPointer itemptr, void *state) {
 
 int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc) {
     TransactionId        oldestXmin;
-    TransactionId        lastXid = InvalidTransactionId;
-    BufferAccessStrategy strategy = GetAccessStrategy(BAS_VACUUM);
-    Snapshot snapshot = GetActiveSnapshot();
+    TransactionId        lastXid    = InvalidTransactionId;
+    TransactionId        currentXid = GetCurrentTransactionId();
+    BufferAccessStrategy strategy   = GetAccessStrategy(BAS_VACUUM);
+    Snapshot             snapshot   = GetActiveSnapshot();
     IndexScanDesc        scanDesc;
-    Relation             heapRel  = NULL;
+    Relation             heapRel    = NULL;
     Relation             xactRel;
     ItemPointer          tid;
-    int                  killed   = 0, tuples = 0;
+    int                  killed     = 0, tuples = 0;
     bool                 found;
     HASHCTL              ctl;
     HTAB                 *htab;
@@ -156,7 +157,7 @@ int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc) {
                 is_insert    = DatumGetBool(index_getattr(scanDesc->xs_itup, 2, scanDesc->xs_itupdesc, &isnull));
                 xid          = (TransactionId) (convertedxid);
 
-                if (TransactionIdPrecedesOrEquals(xid, oldestXmin) && xid != lastXid && !is_insert && !is_invisible_xid(snapshot, xid)) {
+                if (!is_insert && TransactionIdPrecedesOrEquals(xid, currentXid) && xid != lastXid && !is_invisible_xid(snapshot, xid)) {
                     BlockNumber  blockno = ItemPointerGetBlockNumber(tid);
                     OffsetNumber offnum  = ItemPointerGetOffsetNumber(tid);
                     Buffer       buffer;
@@ -174,6 +175,7 @@ int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc) {
                             /* noop */
                         } else if (ItemIdIsDead(itemid)) {
                             canKill = true;
+                            lastXid = InvalidTransactionId;
                         } else {
                             HeapTupleData tuple;
 

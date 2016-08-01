@@ -30,12 +30,14 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.get.MultiGetItemResponse;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.get.MultiGetResponse;
+import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.engine.DocumentAlreadyExistsException;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
@@ -49,7 +51,6 @@ import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.fetch.source.FetchSourceContext;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
-import solutions.siren.join.index.query.FilterJoinBuilder;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -914,6 +915,39 @@ public abstract class QueryRewriter {
         });
     }
 
+    protected QueryBuilder buildDynamicLookup(ASTArrayData node, String indexname, String fieldname, Map<String, List> blocks) {
+        if (blocks.size() == 1) {
+            // only one block, so just use it
+            String id = blocks.keySet().iterator().next();
+            return filteredQuery(null, termsLookupFilter(node.getFieldname())
+                    .lookupIndex(indexname)
+                    .lookupType("dynamic")
+                    .lookupPath(fieldname)
+                    .lookupId(id)
+                    .cache(true)
+                    .cacheKey(id)
+            );
+        } else {
+            // build boolean OR clause to filter each block
+            String key = "";
+            OrFilterBuilder ofb = orFilter();
+            for (String id : blocks.keySet()) {
+                key += id;
+                ofb.add(termsLookupFilter(node.getFieldname())
+                        .lookupIndex(indexname)
+                        .lookupType("dynamic")
+                        .lookupPath(fieldname)
+                        .lookupId(id)
+                        .lookupCache(true)
+                        .cache(true)
+                        .cacheKey(id)
+                );
+            }
+
+            return filteredQuery(null, ofb.cache(true).cacheKey(key));
+        }
+    }
+
     private QueryBuilder build(final ASTArrayData node) {
         validateOperator(node);
         return buildStandard(node, new QBF() {
@@ -938,17 +972,16 @@ public abstract class QueryRewriter {
 
                     if (values.size() >= 8000) {
                         int STEP = 8000;
-                        int blocks = 0;
 
                         try {
-                            List<ActionFuture<IndexResponse>> responses = new ArrayList<>();
-                            Map<String, List> ids = new HashMap<>();
+                            Map<String, List> blocks = new HashMap<>();
 
                             // build blocks of doc ids and matching values
                             for (int i = 0, size = values.size(); i < size; i += STEP) {
                                 final List sublist = values.subList(i, Math.min(size, i + STEP));
                                 String id = UUID.nameUUIDFromBytes(sublist.toString().getBytes()).toString();
-                                ids.put(id, new AbstractList() {
+
+                                blocks.put(id, new AbstractList() {
                                     @Override
                                     public Object get(int index) {
                                         try {
@@ -963,85 +996,71 @@ public abstract class QueryRewriter {
                                         return sublist.size();
                                     }
                                 });
-                                blocks++;
                             }
 
                             // build JSON structure for MultiGetRequest
                             StringBuilder json = new StringBuilder();
                             json.append("{\"docs\":[");
                             int z=0;
-                            for (String id : ids.keySet()) {
+                            for (String id : blocks.keySet()) {
                                 if (z>0) json.append(",");
                                 json.append("{\"_index\":\"").append(indexname).append("\",\"_type\":\"dynamic\",\"_id\":\"").append(id).append("\"}");
                                 z++;
                             }
                             json.append("]}");
 
-                            // look for all those ids in the index
-                            MultiGetRequest getRequest = new MultiGetRequest()
-                                    .add(indexname, "dynamic", null, new FetchSourceContext(false), null, new BytesArray(json.toString()), true)
-                                    .realtime(true)
-                                    .preference("_local");
-                            MultiGetResponse getResponse = client.multiGet(getRequest).get();
+                            boolean hasFailures;
+                            do {
+                                hasFailures = false;
 
-                            // if a block not found index it
-                            for (MultiGetItemResponse item : getResponse) {
-                                String id = item.getId();
+                                // look for all those ids in the index
+                                MultiGetRequest getRequest = new MultiGetRequest()
+                                        .add(indexname, "dynamic", null, new FetchSourceContext(false), null, new BytesArray(json.toString()), true)
+                                        .realtime(false);
+                                MultiGetResponse getResponse = client.multiGet(getRequest).get();
 
-                                if (!item.getResponse().isExists()) {
-                                    // index it
-                                    IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client, indexname)
-                                            .setType("dynamic")
-                                            .setId(id)
-                                            .setSource(fieldname, ids.get(id))
-                                            .setTTL(TimeValue.timeValueHours(24).getMillis())
-                                            .setRefresh(true);
+                                // if a block not found index it
+                                List<ActionFuture<IndexResponse>> indexResponses = new ArrayList<>();
+                                for (MultiGetItemResponse item : getResponse) {
+                                    String id = item.getId();
 
-                                    responses.add(client.index(indexRequestBuilder.request()));
+                                    if (!item.getResponse().isExists()) {
+                                        // index it
+                                        IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client, indexname)
+                                                .setType("dynamic")
+                                                .setId(id)
+                                                .setSource(fieldname, blocks.get(id))
+                                                .setTTL(TimeValue.timeValueHours(24).getMillis())
+                                                .setOpType(IndexRequest.OpType.CREATE)
+                                                .setRefresh(true);
+
+                                        indexResponses.add(client.index(indexRequestBuilder.request()));
+                                    }
                                 }
-                            }
 
-                            // wait for all in-flight indexing requests to complete, if any
-                            for (ActionFuture<IndexResponse> response : responses)
-                                response.get();
+                                // wait for all in-flight indexing requests to complete, if any
+                                for (ActionFuture<IndexResponse> response : indexResponses) {
+                                    try {
+                                        response.get();
+                                    } catch (Exception e) {
+                                        Throwable cause = e;
 
-                            FilterJoinBuilder fjb = new FilterJoinBuilder(n.getFieldname());
-                            fjb.indices(indexname)
-                                    .types("dynamic")
-                                    .path(fieldname)
-                                    .query(idsQuery("dynamic").addIds(ids.keySet().toArray(new String[ids.size()])));
-                            return filteredQuery(null, fjb);
-//                            if (blocks == 1) {
-//                                // only one block, so just use it
-//                                String id = ids.keySet().iterator().next();
-//                                return filteredQuery(null, termsLookupFilter(n.getFieldname())
-//                                        .lookupIndex(indexname)
-//                                        .lookupType("dynamic")
-//                                        .lookupPath(fieldname)
-//                                        .lookupId(id)
-//                                        .cache(true)
-//                                        .cacheKey(id)
-//                                );
-//                            } else {
-//                                // build boolean OR clause to filter each block
-//                                String key = "";
-//                                OrFilterBuilder ofb = orFilter();
-//                                for (String id : ids.keySet()) {
-//                                    Loggers.getLogger(getClass()).info("id=" + id);
-//                                    key += id;
-//                                    ofb.add(termsLookupFilter(n.getFieldname())
-//                                            .lookupIndex(indexname)
-//                                            .lookupType("dynamic")
-//                                            .lookupPath(fieldname)
-//                                            .lookupId(id)
-//                                            .lookupCache(true)
-//                                            .cache(true)
-//                                            .cacheKey(id)
-//                                    );
-//                                }
-//
-//                                return filteredQuery(null, ofb.cache(true).cacheKey(key));
-//                            }
+                                        while (cause != null) {
+                                            if (cause instanceof DocumentAlreadyExistsException) {
+                                                hasFailures = true;
+                                                break;
+                                            }
+                                            cause = cause.getCause();
+                                        }
+
+                                        if (!hasFailures)
+                                            throw new RuntimeException(e);
+                                    }
+                                }
+
+                            } while (hasFailures);
+
+                            return buildDynamicLookup(node, indexname, fieldname, blocks);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
