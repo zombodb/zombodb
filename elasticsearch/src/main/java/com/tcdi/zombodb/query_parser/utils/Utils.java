@@ -223,7 +223,7 @@ public class Utils {
 
     private static List<String> analyze(Client client, IndexMetadataManager metadataManager, String analyzer, String fieldname, String phrase) throws RuntimeException {
         if (analyzer == null)
-            analyzer = "exact";
+            return Arrays.asList(phrase);
 
         try {
             AnalyzeResponse response = client.admin().indices().analyze(
@@ -245,12 +245,12 @@ public class Utils {
         }
     }
 
-    public static QueryParserNode convertToProximityForHighlighting(ASTPhrase phrase) {
-        return convertToProximityForHighlighting(phrase.getFieldname(), Utils.simpleTokenize(String.valueOf(phrase.getValue())));
+    public static QueryParserNode convertToProximityForHighlighting(IndexMetadataManager metadataManager, ASTPhrase phrase) {
+        return convertToProximityForHighlighting(metadataManager, phrase.getFieldname(), Utils.simpleTokenize(String.valueOf(phrase.getValue())));
     }
 
-    public static QueryParserNode convertToProximityForHighlighting(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
-        return convertToProximityForHighlighting(fieldname, new Iterable<String>() {
+    public static QueryParserNode convertToProximityForHighlighting(IndexMetadataManager metadataManager, String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
+        return convertToProximityForHighlighting(metadataManager, fieldname, new Iterable<String>() {
             @Override
             public Iterator<String> iterator() {
                 final Iterator<AnalyzeResponse.AnalyzeToken> iterator = tokens.iterator();
@@ -274,7 +274,7 @@ public class Utils {
         });
     }
 
-    private static QueryParserNode convertToProximityForHighlighting(String fieldname, Iterable<String> tokens) {
+    private static QueryParserNode convertToProximityForHighlighting(IndexMetadataManager metadataManager, String fieldname, Iterable<String> tokens) {
         // rewrite the phrase as a proximity query
         StringBuilder sb = new StringBuilder();
         for (String token : tokens) {
@@ -292,7 +292,7 @@ public class Utils {
 
         try {
             QueryParser qp = new QueryParser(new StringReader(sb.toString()));
-            ASTQueryTree tree = qp.parse(false);
+            ASTQueryTree tree = qp.parse(metadataManager, false);
             return tree.getChild(0);
         } catch (RuntimeException re) {
             throw re;
@@ -435,7 +435,7 @@ public class Utils {
         if (input.equals(node.getEscapedValue())) {
             // and it uses a build-in analyzer...
             String analyzer = metadataManager.getMetadataForField(node.getFieldname()).getSearchAnalyzer(node.getFieldname());
-            if ((analyzer == null || "exact".equals(analyzer) || "phrase".equals(analyzer) || "fulltext".equals(analyzer) || "fulltext_with_shingles".equals(analyzer))
+            if (("exact".equals(analyzer) || "phrase".equals(analyzer) || "fulltext".equals(analyzer) || "fulltext_with_shingles".equals(analyzer))
                     && !isComplex) { // ... and is a single term
 
                 // then we'll just convert it to lowercase

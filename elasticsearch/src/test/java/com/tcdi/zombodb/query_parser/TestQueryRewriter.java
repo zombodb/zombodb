@@ -19,6 +19,7 @@ package com.tcdi.zombodb.query_parser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.highlight.DocumentHighlighter;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import com.tcdi.zombodb.test.ZomboDBTestCase;
@@ -3324,7 +3325,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (value=f, index=db.schema.table.index)"
         );
 
-        ASTQueryTree tree = new QueryParser(new StringReader("#field_lists(field1=[a,b,c], field2=[d,e,f])")).parse(true);
+        ASTQueryTree tree = new QueryParser(new StringReader("#field_lists(field1=[a,b,c], field2=[d,e,f])")).parse(new IndexMetadataManager(client(), DEFAULT_INDEX_NAME), true);
 
         Map<String, ASTFieldListEntry> fieldLists = tree.getFieldLists();
         assertEquals(2, tree.getFieldLists().size());

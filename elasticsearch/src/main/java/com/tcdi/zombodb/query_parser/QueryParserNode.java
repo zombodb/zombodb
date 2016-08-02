@@ -16,6 +16,8 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 
 import java.util.*;
@@ -143,7 +145,12 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         this.fuzzyness = fuzzyness;
     }
 
-    public boolean isNested() {
+    public boolean isNested(IndexMetadataManager metadataManager) {
+        if (fieldname != null && fieldname.contains(".")) {
+            IndexMetadata md = metadataManager.getMetadataForField(fieldname);
+            if (md != null && md.isMultiField(fieldname))
+                return false;
+        }
         return fieldname != null && fieldname.contains(".");
     }
 

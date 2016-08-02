@@ -167,13 +167,10 @@ public abstract class QueryRewriter {
             arrayData = Utils.extractArrayData(input, newQuery);
 
             QueryParser parser = new QueryParser(new StringReader(newQuery.toString()));
-            tree = parser.parse(true);
+            tree = parser.parse(metadataManager, true);
         } catch (ParseException ioe) {
             throw new QueryRewriteException(ioe);
         }
-
-        // load index mappings for any index defined in #options()
-        metadataManager.loadReferencedMappings(tree.getOptions());
 
         ASTAggregate aggregate = tree.getAggregate();
         ASTSuggest suggest = tree.getSuggest();
@@ -1273,12 +1270,12 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder maybeNest(QueryParserNode node, QueryBuilder fb) {
-        if (withDepth == 0 && node.isNested()) {
+        if (withDepth == 0 && node.isNested(metadataManager)) {
             if (shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(), fb);
             else
                 return filteredQuery(matchAllQuery(), nestedFilter(node.getNestedPath(), fb).join(false));
-        } else if (!node.isNested()) {
+        } else if (!node.isNested(metadataManager)) {
             if (_isBuildingAggregate)
                 return matchAllQuery();
             return fb;  // it's not nested, so just return

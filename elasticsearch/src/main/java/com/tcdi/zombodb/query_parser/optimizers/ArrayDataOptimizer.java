@@ -65,7 +65,7 @@ public class ArrayDataOptimizer {
 
                         try {
                             QueryParser qp = new QueryParser(new StringReader(arrayQuery.toString()));
-                            ASTQueryTree tree = qp.parse(false);
+                            ASTQueryTree tree = qp.parse(metadataManager, false);
                             root.replaceChild(child, tree.getQueryNode());
                         } catch (Exception e) {
                             throw new RuntimeException("Problem subparsing ArrayData", e);
