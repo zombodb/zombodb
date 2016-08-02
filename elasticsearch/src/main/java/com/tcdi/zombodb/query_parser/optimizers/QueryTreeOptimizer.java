@@ -17,14 +17,17 @@
 package com.tcdi.zombodb.query_parser.optimizers;
 
 import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 
 import java.util.*;
 
 public class QueryTreeOptimizer {
     private final ASTQueryTree tree;
+    private final IndexMetadataManager metadataManager;
 
-    public QueryTreeOptimizer(ASTQueryTree tree) {
+    public QueryTreeOptimizer(ASTQueryTree tree, IndexMetadataManager metadataManager) {
         this.tree = tree;
+        this.metadataManager = metadataManager;
     }
 
     public void optimize() {
@@ -157,7 +160,7 @@ public class QueryTreeOptimizer {
             if (child instanceof ASTAggregate)
                 continue;
 
-            if (child.isNested() && root instanceof ASTAnd)
+            if (child.isNested(metadataManager) && root instanceof ASTAnd)
                 continue;
 
             if (child instanceof ASTWord || child instanceof ASTPhrase || child instanceof ASTNumber || child instanceof ASTBoolean || child instanceof ASTArray) {

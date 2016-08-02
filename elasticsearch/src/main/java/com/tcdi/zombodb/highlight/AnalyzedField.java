@@ -17,6 +17,7 @@
 package com.tcdi.zombodb.highlight;
 
 import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequest;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
@@ -206,16 +207,16 @@ public class AnalyzedField {
                 }
             } else {
                 if (value.contains("*") || value.contains("?") || value.contains("*")) {
-                    toKeep = Utils.convertToProximityForHighlighting(phrase);
+                    toKeep = Utils.convertToProximityForHighlighting(metadataManager, phrase);
                 } else {
                     try {
                         if (client == null)
                             return;
                         AnalyzeResponse response = analyzePhrase(value);
-                        toKeep = Utils.convertToProximityForHighlighting(phrase.getFieldname(), response.getTokens());
+                        toKeep = Utils.convertToProximityForHighlighting(metadataManager, phrase.getFieldname(), response.getTokens());
                     } catch (Exception e2) {
                         try {
-                            toKeep = Utils.convertToProximityForHighlighting(phrase);
+                            toKeep = Utils.convertToProximityForHighlighting(metadataManager, phrase);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -368,6 +369,7 @@ public class AnalyzedField {
     }
 
     private final Client client;
+    private final IndexMetadataManager metadataManager;
     private final String indexName;
     private final Object primaryKey;
     private final String fieldName;
@@ -384,8 +386,9 @@ public class AnalyzedField {
     };
     private Proxy proxy = null;
 
-    public AnalyzedField(Client client, String indexName, Object primaryKey, String fieldName, int arrayIndex, AnalyzeResponse analysis) {
+    public AnalyzedField(Client client, IndexMetadataManager metadataManager, String indexName, Object primaryKey, String fieldName, int arrayIndex, AnalyzeResponse analysis) {
         this.client = client;
+        this.metadataManager = metadataManager;
         this.indexName = indexName;
         this.primaryKey = primaryKey;
         this.fieldName = fieldName;
@@ -526,7 +529,7 @@ public class AnalyzedField {
         if (phrase.getOperator() == QueryParserNode.Operator.REGEX)
             return matchRegex(phrase);
 
-        QueryParserNode node = Utils.convertToProximityForHighlighting(phrase);
+        QueryParserNode node = Utils.convertToProximityForHighlighting(metadataManager, phrase);
         if (node instanceof ASTProximity) {
             ASTProximity prox = (ASTProximity) node;
             List<ProximityGroup> scratch = new ArrayList<>();

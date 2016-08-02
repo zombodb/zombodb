@@ -18,6 +18,7 @@ package com.tcdi.zombodb.query_parser.rewriters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.QueryParser;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.optimizers.ArrayDataOptimizer;
@@ -153,18 +154,15 @@ public abstract class QueryRewriter {
         metadataManager = new IndexMetadataManager(client, indexName);
 
         final StringBuilder newQuery = new StringBuilder(input.length());
-        com.tcdi.zombodb.query_parser.QueryParser parser;
-        arrayData = Utils.extractArrayData(input, newQuery);
 
         try {
-            parser = new com.tcdi.zombodb.query_parser.QueryParser(new StringReader(newQuery.toString()));
-            tree = parser.parse(true);
-        } catch (ParseException pe) {
-            throw new QueryRewriteException(pe);
-        }
+            arrayData = Utils.extractArrayData(input, newQuery);
 
-        // load index mappings for any index defined in #options()
-        metadataManager.loadReferencedMappings(tree.getOptions());
+            QueryParser parser = new QueryParser(new StringReader(newQuery.toString()));
+            tree = parser.parse(true);
+        } catch (ParseException ioe) {
+            throw new QueryRewriteException(ioe);
+        }
 
         ASTAggregate aggregate = tree.getAggregate();
         ASTSuggest suggest = tree.getSuggest();
@@ -190,7 +188,7 @@ public abstract class QueryRewriter {
 
     /**
      * Subclasses can override if additional optimizations are necessary, but
-     * they should definitely call {@link super#performOptimizations()}
+     * they should definitely call {@link super.performOptimizations(Client)}
      */
     protected void performOptimizations(Client client) {
         new ArrayDataOptimizer(tree, metadataManager, arrayData).optimize();
@@ -914,7 +912,6 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.value.toString()).toString(), ", \r\n\t\f\"'[]");
                 if ("_id".equals(node.getFieldname())) {
                     final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()).toString(), ", \r\n\t\f\"'[]");
                     Collection<String> terms = st.getAllTokens();
@@ -1140,12 +1137,12 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder maybeNest(QueryParserNode node, QueryBuilder fb) {
-        if (withDepth == 0 && node.isNested()) {
+        if (withDepth == 0 && node.isNested(metadataManager)) {
             if (shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(), fb);
             else
                 return filteredQuery(matchAllQuery(), nestedFilter(node.getNestedPath(), fb).join(false));
-        } else if (!node.isNested()) {
+        } else if (!node.isNested(metadataManager)) {
             if (_isBuildingAggregate)
                 return matchAllQuery();
             return fb;  // it's not nested, so just return
