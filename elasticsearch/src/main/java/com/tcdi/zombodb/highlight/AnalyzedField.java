@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@ import com.tcdi.zombodb.query_parser.*;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequest;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
+import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import org.elasticsearch.client.Client;
 
 import java.util.*;
@@ -48,7 +49,7 @@ public class AnalyzedField {
         private ProximityGroup group = null;
 
         public Token(Object primaryKey, String fieldName, int arrayIndex, AnalyzeResponse.AnalyzeToken token) {
-            super(token.getTerm(), token.getPosition(), token.getStartOffset(), token.getEndOffset(), token.getType());
+            super(token.getTerm(), token.getPosition(), token.getStartOffset(), token.getEndOffset(), token.getType(), null);  // java.util.Map<java.lang.String,java.lang.Object> - null
             this.primaryKey = primaryKey;
             this.fieldName = fieldName;
             this.arrayIndex = arrayIndex;
@@ -564,7 +565,8 @@ public class AnalyzedField {
 
     private AnalyzeResponse analyzePhrase(String value) {
         try {
-            AnalyzeRequest request = new AnalyzeRequestBuilder(client.admin().indices(), indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
+            // AnalyzeRequest request = new AnalyzeRequestBuilder(client.admin().indices(), indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
+            AnalyzeRequest request = new AnalyzeRequestBuilder(client, AnalyzeAction.INSTANCE, indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
             return client.admin().indices().analyze(request).get();
         } catch (Exception e) {
             throw new RuntimeException(e);

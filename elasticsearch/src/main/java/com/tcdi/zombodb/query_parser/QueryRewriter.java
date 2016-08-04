@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,8 +22,10 @@ import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
-import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramBuilder;
+import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.significant.SignificantTermsBuilder;
@@ -31,7 +33,12 @@ import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
+import org.elasticsearch.common.io.stream.ByteBufferStreamInput;
+import org.elasticsearch.common.io.stream.InputStreamStreamInput;
+import org.elasticsearch.script.Script;
+import org.elasticsearch.index.query.support.QueryInnerHitBuilder;
 
+import java.nio.ByteBuffer;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
@@ -41,9 +48,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import static org.elasticsearch.index.query.FilterBuilders.*;
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
+
 
 public abstract class QueryRewriter {
 
@@ -352,39 +359,41 @@ public abstract class QueryRewriter {
         }
 
         if (useHistogram) {
-            DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
+            // DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
+            // DateHistogramAggregationBuilder dhb = dateHistogram(agg.getFieldname())
+            DateHistogramBuilder dhb = AggregationBuilders.dateHistogram(agg.getFieldname())
                     .field(getAggregateFieldName(agg) + DateSuffix)
                     .order(stringToDateHistogramOrder(agg.getSortOrder()))
                     .offset(intervalOffset);
 
             switch (interval) {
                 case year:
-                    dhb.interval(DateHistogram.Interval.YEAR);
+                    dhb.interval(DateHistogramInterval.YEAR);
                     dhb.format("yyyy");
                     break;
                 case month:
-                    dhb.interval(DateHistogram.Interval.MONTH);
+                    dhb.interval(DateHistogramInterval.MONTH);
                     dhb.format("yyyy-MM");
                     break;
                 case week:
-                    dhb.interval(DateHistogram.Interval.WEEK);
+                    dhb.interval(DateHistogramInterval.WEEK);
                     dhb.format("yyyy-MM-dd");
                     break;
                 case day:
-                    dhb.interval(DateHistogram.Interval.DAY);
+                    dhb.interval(DateHistogramInterval.DAY);
                     dhb.format("yyyy-MM-dd");
                     break;
                 case hour:
-                    dhb.interval(DateHistogram.Interval.HOUR);
+                    dhb.interval(DateHistogramInterval.HOUR);
                     dhb.format("yyyy-MM-dd HH");
                     break;
                 case minute:
-                    dhb.interval(DateHistogram.Interval.MINUTE);
+                    dhb.interval(DateHistogramInterval.MINUTE);
                     dhb.format("yyyy-MM-dd HH:mm");
                     break;
                 case second:
                     dhb.format("yyyy-MM-dd HH:mm:ss");
-                    dhb.interval(DateHistogram.Interval.SECOND);
+                    dhb.interval(DateHistogramInterval.SECOND);
                     break;
                 default:
                     throw new QueryRewriteException("Unsupported date histogram interval: " + agg.getStem());
@@ -398,8 +407,10 @@ public abstract class QueryRewriter {
                     .shardSize(0)
                     .order(stringToTermsOrder(agg.getSortOrder()));
 
-            if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
-                tb.include(agg.getStem(), Pattern.CASE_INSENSITIVE);
+            if ("string".equalsIgnoreCase(md.getType(agg.getFieldname()))) {
+                // tb.include(agg.getStem(), Pattern.CASE_INSENSITIVE);
+                tb.include(agg.getStem());
+            }
 
             return tb;
         }
@@ -500,16 +511,16 @@ public abstract class QueryRewriter {
         }
     }
 
-    private static DateHistogram.Order stringToDateHistogramOrder(String s) {
+    private static Histogram.Order stringToDateHistogramOrder(String s) {
         switch (s) {
             case "term":
-                return DateHistogram.Order.KEY_ASC;
+                return Histogram.Order.KEY_ASC;
             case "count":
-                return DateHistogram.Order.COUNT_ASC;
+                return Histogram.Order.COUNT_ASC;
             case "reverse_term":
-                return DateHistogram.Order.KEY_DESC;
+                return Histogram.Order.KEY_DESC;
             case "reverse_count":
-                return DateHistogram.Order.COUNT_DESC;
+                return Histogram.Order.COUNT_DESC;
             default:
                 return null;
         }
@@ -620,7 +631,8 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(withNestedPath, fb);
             else
-                return filteredQuery(matchAllQuery(), nestedFilter(withNestedPath, fb).join(false));
+                // return filteredQuery(matchAllQuery(), nestedFilter(withNestedPath, fb).join(false));
+                return nestedQuery(withNestedPath, fb);
         } else {
             return fb;
         }
@@ -673,7 +685,12 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder build(ASTScript node) {
-        return filteredQuery(matchAllQuery(), scriptFilter(node.getValue().toString()));
+        // return filteredQuery(matchAllQuery(), scriptFilter(node.getValue().toString()));
+        try {
+            return scriptQuery(Script.readScript(new ByteBufferStreamInput(ByteBuffer.wrap(node.getValue().toString().trim().getBytes()))));
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
     }
 
     private QueryBuilder build(final ASTPhrase node) {
@@ -761,7 +778,8 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                return filteredQuery(matchAllQuery(), missingFilter(n.getFieldname()));
+                // return filteredQuery(matchAllQuery(), missingFilter(n.getFieldname()));
+                return missingQuery(n.getFieldname());
             }
         });
     }
@@ -782,7 +800,8 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                return filteredQuery(matchAllQuery(), existsFilter(n.getFieldname()));
+                // return filteredQuery(matchAllQuery(), existsFilter(n.getFieldname()));
+                return existsQuery(n.getFieldname());
             }
         });
     }
@@ -876,12 +895,13 @@ public abstract class QueryRewriter {
                         };
                     }
                 }
-                if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
-                    TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
-                    return filteredQuery(matchAllQuery(), builder);
-                } else {
-                    final Iterable<Object> finalItr = itr;
-                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+
+                // if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
+                //     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
+                //     return filteredQuery(matchAllQuery(), builder);
+                // } else {
+                final Iterable<Object> finalItr = itr;
+                TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
                         @Override
                         public Iterator<Object> iterator() {
                             return finalItr.iterator();
@@ -893,10 +913,11 @@ public abstract class QueryRewriter {
                         }
                     });
 
-                    if (minShouldMatch > 1)
-                        builder.minimumMatch(minShouldMatch);
-                    return builder;
-                }
+                if (minShouldMatch > 1)
+                    builder.minimumShouldMatch(minShouldMatch+"");
+                // builder.minimumMatch(minShouldMatch);
+                return builder;
+                // }
             }
         });
     }
@@ -1101,8 +1122,8 @@ public abstract class QueryRewriter {
                 return moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).minWordLength(3).minTermFreq(minTermFreq).stopWords(IndexMetadata.MLT_STOP_WORDS);
             }
 
-            case FUZZY_CONCEPT:
-                return fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO);
+            // case FUZZY_CONCEPT:
+            //     return fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO);
 
             default:
                 throw new QueryRewriteException("Unexpected operator: " + node.getOperator());
@@ -1114,7 +1135,8 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(), fb);
             else
-                return filteredQuery(matchAllQuery(), nestedFilter(node.getNestedPath(), fb).join(false));
+                // return filteredQuery(matchAllQuery(), nestedFilter(node.getNestedPath(), fb).join(false));
+                return nestedQuery(node.getNestedPath(), fb);
         } else if (!node.isNested()) {
             if (_isBuildingAggregate)
                 return matchAllQuery();

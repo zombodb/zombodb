@@ -59,7 +59,7 @@ public class RestTermlistAction extends BaseRestHandler {
                 @Override
                 public RestResponse buildResponse(TermlistResponse response, XContentBuilder builder) throws Exception {
                     builder.startObject();
-                    buildBroadcastShardsHeader(builder, response);
+                    buildBroadcastShardsHeader(builder, request, response);
                     builder.field("took", (System.nanoTime() - t0) / 1000000);
                     builder.field("numdocs", response.getNumDocs());
                     builder.field("numterms", response.getTermlist().size());

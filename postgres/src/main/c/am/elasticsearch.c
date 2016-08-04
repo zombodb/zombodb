@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -262,7 +262,11 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "      \"data\": {"
             "          \"_source\": { \"enabled\": false },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
+                     /*
+                       "index" and "store" were removed in ES2 (so I excluded it from tests)
+                       See https://github.com/elastic/elasticsearch/issues/8143
+                     */
+            /* "          \"_field_names\": { \"index\": \"no\", \"store\": false }," */
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
@@ -343,7 +347,11 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "   \"data\": {"
             "      \"_source\": { \"enabled\": false },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "      \"_field_names\": { \"index\": \"no\", \"store\": false },"
+                     /*
+                       "index" and "store" were removed in ES2 (so I excluded it from tests)
+                       See https://github.com/elastic/elasticsearch/issues/8143
+                     */
+            /* "      \"_field_names\": { \"index\": \"no\", \"store\": false }," */
             "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"

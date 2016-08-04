@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@ package com.tcdi.zombodb.query_parser;
 
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchType;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.client.Client;
 
 import java.util.*;
@@ -368,11 +369,14 @@ public class IndexLinkOptimizer {
     }
 
     private long estimateCount(ASTExpansion expansion, boolean useQuery) {
-        SearchRequestBuilder builder = new SearchRequestBuilder(client);
+        // SearchRequestBuilder builder = new SearchRequestBuilder(client, AnalyzeAction.INSTANCE);
+        SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
+        // SearchRequestBuilder builder = AnalyzeAction.INSTANCE.newRequestBuilder(client);
+
         builder.setIndices(expansion.getIndexLink().getIndexName());
         builder.setSize(0);
         builder.setSearchType(SearchType.COUNT);
-        builder.setQueryCache(true);
+        builder.setRequestCache(true);
         builder.setFetchSource(false);
         builder.setTrackScores(false);
         builder.setNoFields();
@@ -391,6 +395,7 @@ public class IndexLinkOptimizer {
 
             COUNT_ESTIMATE_CACHE.put(key, count);
             return count;
+            // return 0;
         } catch (Exception e) {
             throw new RuntimeException("Problem estimating count", e);
         }

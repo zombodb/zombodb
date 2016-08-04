@@ -18,6 +18,7 @@ package com.tcdi.zombodb.query_parser;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -148,15 +149,22 @@ public class ExpansionOptimizer {
             query = bqb;
         }
 
-        SearchRequestBuilder builder = new SearchRequestBuilder(client)
+        // SearchRequestBuilder builder = new SearchRequestBuilder(client)
+        // SearchRequestBuilder builder = AnalyzeAction.INSTANCE.newRequestBuilder(client)
+        SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE)
                 .setSize(0)
                 .setSearchType(SearchType.COUNT)
                 .setQuery(query)
-                .setQueryCache(true)
+                .setRequestCache(true)
                 .setIndices(link.getIndexName())
                 .setTrackScores(false)
                 .setPreference(searchPreference)
                 .addAggregation(termsBuilder);
+
+
+        // .setIndex(metadataManager.getMetadataForField(fieldname).getLink().getIndexName())
+        //      .setText(phrase)
+        //      .setAnalyzer(analyzer).request()
 
         ActionFuture<SearchResponse> future = client.search(builder.request());
 

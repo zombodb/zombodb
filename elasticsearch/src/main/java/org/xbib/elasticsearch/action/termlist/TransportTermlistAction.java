@@ -20,7 +20,7 @@ import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.DefaultShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastShardOperationFailedException;
-import org.elasticsearch.action.support.broadcast.TransportBroadcastOperationAction;
+import org.elasticsearch.action.support.broadcast.TransportBroadcastAction;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.block.ClusterBlockException;
@@ -37,6 +37,7 @@ import org.elasticsearch.index.shard.IndexShard;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -45,7 +46,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
  * Termlist index/indices action.
  */
 public class TransportTermlistAction
-        extends TransportBroadcastOperationAction<TermlistRequest, TermlistResponse, ShardTermlistRequest, ShardTermlistResponse> {
+        extends TransportBroadcastAction<TermlistRequest, TermlistResponse, ShardTermlistRequest, ShardTermlistResponse> {
 
     private final static ESLogger logger = ESLoggerFactory.getLogger(TransportTermlistAction.class.getName());
 
@@ -54,21 +55,29 @@ public class TransportTermlistAction
     @Inject
     public TransportTermlistAction(Settings settings, ThreadPool threadPool, ClusterService clusterService,
                                    TransportService transportService,
-                                   IndicesService indicesService,
-                                   ActionFilters actionFilters) {
-        super(settings, TermlistAction.NAME, threadPool, clusterService, transportService, actionFilters);
+                                   ActionFilters actionFilters,
+                                   IndexNameExpressionResolver indexNameExpressionResolver,
+                                   IndicesService indicesService) {
+        // super(settings, TermlistAction.NAME, threadPool, clusterService, transportService, actionFilters);
+        super(settings, TermlistAction.NAME, threadPool, clusterService, transportService, actionFilters,
+              indexNameExpressionResolver,
+              TermlistRequest.class,
+              ShardTermlistRequest.class,
+              ThreadPool.Names.GENERIC
+              );
+        // super(FlushAction.NAME, FlushRequest::new, settings, threadPool, clusterService, transportService, actionFilters, indexNameExpressionResolver, replicatedFlushAction);
         this.indicesService = indicesService;
     }
 
-    @Override
-    protected String executor() {
-        return ThreadPool.Names.GENERIC;
-    }
+    // @Override
+    // protected String executor() {
+    //     return ThreadPool.Names.GENERIC;
+    // }
 
-    @Override
-    protected TermlistRequest newRequest() {
-        return new TermlistRequest();
-    }
+    // @Override
+    // protected TermlistRequest newRequest() {
+    //     return new TermlistRequest();
+    // }
 
     @Override
     protected TermlistResponse newResponse(TermlistRequest request, AtomicReferenceArray shardsResponses, ClusterState clusterState) {
@@ -120,11 +129,6 @@ public class TransportTermlistAction
     }
 
     @Override
-    protected ShardTermlistRequest newShardRequest() {
-        return new ShardTermlistRequest();
-    }
-
-    @Override
     protected ShardTermlistRequest newShardRequest(int numShards, ShardRouting shard, TermlistRequest request) {
         return new ShardTermlistRequest(shard.getIndex(), shard.shardId(), request);
     }
@@ -172,7 +176,7 @@ public class TransportTermlistAction
                     BytesRef term;
 
                     // start iterating terms and...
-                    termsEnum = terms.iterator(null);
+                    termsEnum = terms.iterator();
                     if (prefix != null) {
                         // seek to our term prefix (if we have one)
                         status = termsEnum.seekCeil(prefix);

@@ -20,6 +20,8 @@ import com.tcdi.zombodb.query_parser.QueryRewriter;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.MultiSearchRequestBuilder;
 import org.elasticsearch.action.search.MultiSearchResponse;
+import org.elasticsearch.action.search.MultiSearchAction;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -34,6 +36,7 @@ import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZombodbMultiSearchAction extends BaseRestHandler {
+// public class ZombodbMultiSearchAction extends MultiSearchAction {
 
     public static class ZDBMultiSearchDescriptor {
         private String indexName;
@@ -75,20 +78,22 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
     }
 
     @Inject
-    protected ZombodbMultiSearchAction(Settings settings, RestController controller, Client client) {
+    public ZombodbMultiSearchAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
         controller.registerHandler(GET, "/{index}/_zdbmsearch", this);
         controller.registerHandler(POST, "/{index}/_zdbmsearch", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, final Client client) throws Exception {
+    public void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         final long start = System.currentTimeMillis();
         final ZDBMultiSearchDescriptor[] descriptors = new ObjectMapper().readValue(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
-        MultiSearchRequestBuilder msearchBuilder = new MultiSearchRequestBuilder(client);
+        MultiSearchRequestBuilder msearchBuilder = new MultiSearchRequestBuilder(client, MultiSearchAction.INSTANCE);
+        // MultiSearchRequestBuilder msearchBuilder = newRequestBuilder(client);
 
         for (ZDBMultiSearchDescriptor md : descriptors) {
-            SearchRequestBuilder srb = new SearchRequestBuilder(client);
+            // SearchRequestBuilder srb = new SearchRequestBuilder(client, AnalyzeAction.INSTANCE);
+            SearchRequestBuilder srb = new SearchRequestBuilder(client, SearchAction.INSTANCE);
 
             srb.setIndices(md.getIndexName());
             if (md.getPkey() != null) srb.addFieldDataField(md.getPkey());
