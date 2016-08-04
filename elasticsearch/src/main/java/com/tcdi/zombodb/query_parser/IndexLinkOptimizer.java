@@ -32,7 +32,7 @@ public class IndexLinkOptimizer {
     private final ASTQueryTree tree;
     private final IndexMetadataManager metadataManager;
 
-    private Set<ASTIndexLink> usedIndexes = new HashSet<>();
+    private Map<ASTIndexLink, Boolean> usedIndexes = new IdentityHashMap<>();
 
     public IndexLinkOptimizer(Client client, QueryRewriter rewriter, ASTQueryTree tree, IndexMetadataManager metadataManager) {
         this.client = client;
@@ -61,7 +61,7 @@ public class IndexLinkOptimizer {
 
         ASTAggregate agg = tree.getAggregate();
         while (agg != null) {
-            usedIndexes.add(metadataManager.findField(agg.getFieldname()));
+            usedIndexes.put(metadataManager.findField(agg.getFieldname()), true);
             agg = agg.getSubAggregate();
         }
 
@@ -72,15 +72,15 @@ public class IndexLinkOptimizer {
     private void expand_allFieldAndAssignIndexLinks(QueryParserNode root, ASTIndexLink currentIndex) {
         if (root == null || root.children == null || root.children.isEmpty() || (root instanceof ASTExpansion && !((ASTExpansion) root).isGenerated())) {
             if (root instanceof ASTExpansion)
-                usedIndexes.add(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()));
+                usedIndexes.put(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()), true);
             return;
         }
 
         if (root instanceof ASTExpansion && ((ASTExpansion) root).isGenerated()) {
             ASTIndexLink left = metadataManager.findField(root.getIndexLink().getLeftFieldname());
             ASTIndexLink right = metadataManager.findField(root.getIndexLink().getRightFieldname());
-            usedIndexes.add(left);
-            usedIndexes.add(right);
+            usedIndexes.put(left, true);
+            usedIndexes.put(right, true);
         }
 
         for (int i = 0, many = root.children.size(); i < many; i++) {
@@ -101,7 +101,7 @@ public class IndexLinkOptimizer {
                         copy.setIndexLink(link);
 
                         group.jjtAddChild(copy, group.jjtGetNumChildren());
-                        usedIndexes.add(link);
+                        usedIndexes.put(link, true);
                     }
 
                     group.parent = root;
@@ -115,7 +115,7 @@ public class IndexLinkOptimizer {
                 } else if (!fieldname.startsWith("_")) {
                     ASTIndexLink link = metadataManager.findField(fieldname);
                     child.setIndexLink(link);
-                    usedIndexes.add(link);
+                    usedIndexes.put(link, true);
                 }
             }
 

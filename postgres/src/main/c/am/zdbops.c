@@ -469,7 +469,6 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
         /* otherwise, build a mapping based on the field type */
         typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(tupdesc->attrs[i]->atttypid)));
         appendStringInfo(result, "\"%s\": {", name);
-        appendStringInfo(result, "\"store\":false,");
 
         if (strcmp("fulltext", typename) == 0) {
             /* phrase-indexed field */
@@ -485,7 +484,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"type\": \"string\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"index_analyzer\": \"fulltext_with_shingles\",");
+            appendStringInfo(result, "\"analyzer\": \"fulltext_with_shingles\",");
             appendStringInfo(result, "\"search_analyzer\": \"fulltext_with_shingles_search\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");

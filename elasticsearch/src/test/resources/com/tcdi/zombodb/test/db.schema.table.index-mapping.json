@@ -8,8 +8,8 @@
         "enabled": false
       },
       "_field_names": {
-        "index": "no",
-        "store": false
+        "type": "_field_names",
+        "enabled": true
       },
       "_meta": {
         "primary_key": "id"
@@ -97,8 +97,8 @@
         "analyzer": "phrase"
       },
       "_field_names": {
-        "index": "no",
-        "store": false
+        "enabled": true,
+        "type": "_field_names"
       },
       "_parent": {
         "type": "xact"
@@ -170,7 +170,7 @@
           "index_options": "positions",
           "include_in_all": "true",
           "search_analyzer": "fulltext_with_shingles_search",
-          "index_analyzer": "fulltext_with_shingles",
+          "analyzer": "fulltext_with_shingles",
           "fielddata": {
             "format": "disabled"
           },

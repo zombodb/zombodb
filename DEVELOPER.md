@@ -81,3 +81,12 @@ add `<scope>provided</scope>` to this dependecy in a `pom.xml` file.
 ## Tests
 
 When you run `./run.sh` tests are run automatically.
+
+
+## Notes
+
+there is no `index_analyzer` option anymore in ES (just `analyzer`)
+no store
+no index
+`field_names` configuration is limited to disabling the field.
+

@@ -10,8 +10,7 @@
       },
       "_field_names": {
         "enabled": false,
-        "type": "_field_names",
-        "index": "no"
+        "type": "_field_names"
       },
       "properties": {
         "_cmax": {
@@ -75,8 +74,7 @@
       },
       "_field_names": {
         "enabled": false,
-        "type": "_field_names",
-        "index": "no"
+        "type": "_field_names"
       },
       "_source": {
         "enabled": false

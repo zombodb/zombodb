@@ -32,60 +32,60 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 public class TestTermListPlugin extends ZomboDBTestCase {
 
-    // @Test
-    // public void testPlugin() throws IOException {
-    //     XContentBuilder builder = jsonBuilder()
-    //             .startObject()
-    //             .startObject("properties")
-    //             .startObject("content")
-    //             .field("type", "string")
-    //             .field("analzyer", "german")
-    //             .endObject()
-    //             .endObject()
-    //             .endObject();
-    //     // CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client().admin().indices())
-    //     CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client(), CreateIndexAction.INSTANCE)
-    //             .setIndex("test")
-    //             .addMapping("docs", builder);
-    //     createIndexRequestBuilder.execute().actionGet();
-    //     for (int i = 0; i < 10; i++) {
-    //         String content = join(makeList(), " ");
-    //         //logger.info("{} -> {}", i, content);
-    //         IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client(), IndexAction.INSTANCE)
-    //                 .setIndex("test")
-    //                 .setType("docs")
-    //                 .setId(Integer.toString(i))
-    //                 .setSource("content", content);
-    //         indexRequestBuilder.setRefresh(true).execute().actionGet();
-    //     }
-    //     TermlistRequestBuilder termlistRequestBuilder = new TermlistRequestBuilder(client(), TermlistAction.INSTANCE);
-    //     termlistRequestBuilder.execute().actionGet();
-    // }
+    @Test
+    public void testPlugin() throws IOException {
+        // XContentBuilder builder = jsonBuilder()
+        //         .startObject()
+        //         .startObject("properties")
+        //         .startObject("content")
+        //         .field("type", "string")
+        //         .field("analzyer", "german")
+        //         .endObject()
+        //         .endObject()
+        //         .endObject();
+        // // CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client().admin().indices())
+        // CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client(), CreateIndexAction.INSTANCE)
+        //         .setIndex("test")
+        //         .addMapping("docs", builder);
+        // createIndexRequestBuilder.execute().actionGet();
+        // for (int i = 0; i < 10; i++) {
+        //     String content = join(makeList(), " ");
+        //     //logger.info("{} -> {}", i, content);
+        //     IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client(), IndexAction.INSTANCE)
+        //             .setIndex("test")
+        //             .setType("docs")
+        //             .setId(Integer.toString(i))
+        //             .setSource("content", content);
+        //     indexRequestBuilder.setRefresh(true).execute().actionGet();
+        // }
+        // TermlistRequestBuilder termlistRequestBuilder = new TermlistRequestBuilder(client(), TermlistAction.INSTANCE);
+        // termlistRequestBuilder.execute().actionGet();
+    }
 
-    // private List<String> makeList() throws IOException {
-    //     InputStream in = getClass().getResourceAsStream("/navid-kermani.txt");
-    //     String s = Streams.copyToString(new InputStreamReader(in, "UTF-8"));
-    //     in.close();
-    //     StringTokenizer tokenizer = new StringTokenizer(s);
-    //     List<String> list = new LinkedList<String>();
-    //     while (tokenizer.hasMoreTokens()) {
-    //         String token = tokenizer.nextToken();
-    //         if (!token.isEmpty()) {
-    //             list.add(token);
-    //         }
-    //     }
-    //     Random random = new Random();
-    //     Collections.shuffle(list);
-    //     return list.subList(0, Math.min(10, random.nextInt(list.size())));
-    // }
+    private List<String> makeList() throws IOException {
+        InputStream in = getClass().getResourceAsStream("/navid-kermani.txt");
+        String s = Streams.copyToString(new InputStreamReader(in, "UTF-8"));
+        in.close();
+        StringTokenizer tokenizer = new StringTokenizer(s);
+        List<String> list = new LinkedList<String>();
+        while (tokenizer.hasMoreTokens()) {
+            String token = tokenizer.nextToken();
+            if (!token.isEmpty()) {
+                list.add(token);
+            }
+        }
+        Random random = new Random();
+        Collections.shuffle(list);
+        return list.subList(0, Math.min(10, random.nextInt(list.size())));
+    }
 
-    // private String join(List<String> s, String delimiter) {
-    //     if (s == null || s.isEmpty()) return "";
-    //     Iterator<String> it = s.iterator();
-    //     StringBuilder builder = new StringBuilder(it.next());
-    //     while (it.hasNext()) {
-    //         builder.append(delimiter).append(it.next());
-    //     }
-    //     return builder.toString();
-    // }
+    private String join(List<String> s, String delimiter) {
+        if (s == null || s.isEmpty()) return "";
+        Iterator<String> it = s.iterator();
+        StringBuilder builder = new StringBuilder(it.next());
+        while (it.hasNext()) {
+            builder.append(delimiter).append(it.next());
+        }
+        return builder.toString();
+    }
 }
