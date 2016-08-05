@@ -4708,23 +4708,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
-    public void testIssue35() throws Exception {
-        QueryRewriter qr;
-
-        qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50)");
-        assertEquals(
-                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}}}",
-                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
-        );
-
-        qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50, #tally(field, \"^.*\", 5000, \"term\"))");
-        assertEquals(
-                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}},\"aggregations\":{\"field\":{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":0,\"order\":{\"_term\":\"asc\"}}}}}",
-                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
-        );
-    }
-
-    @Test
     public void testIssue132() throws Exception {
         assertAST("#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))",
                 "QueryTree\n" +
