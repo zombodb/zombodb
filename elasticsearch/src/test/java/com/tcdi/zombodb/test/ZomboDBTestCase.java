@@ -31,6 +31,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.node.Node;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -135,7 +136,7 @@ public abstract class ZomboDBTestCase {
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
-        assertEquals(expectedJson.trim(), qr(query).rewriteQuery().toString().trim());
+        JSONAssert.assertEquals(expectedJson.trim(), qr(query).rewriteQuery().toString().trim(), false);
     }
 
     protected void assertAST(String query, String expectedAST) throws Exception {

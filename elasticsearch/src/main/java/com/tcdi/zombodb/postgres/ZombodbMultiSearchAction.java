@@ -16,6 +16,7 @@
 package com.tcdi.zombodb.postgres;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.tcdi.zombodb.query_parser.QueryRewriter;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.MultiSearchRequestBuilder;
@@ -85,9 +86,9 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
     }
 
     @Override
-    public void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         final long start = System.currentTimeMillis();
-        final ZDBMultiSearchDescriptor[] descriptors = new ObjectMapper().readValue(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
+        final ZDBMultiSearchDescriptor[] descriptors = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).readValue(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
         MultiSearchRequestBuilder msearchBuilder = new MultiSearchRequestBuilder(client, MultiSearchAction.INSTANCE);
         // MultiSearchRequestBuilder msearchBuilder = newRequestBuilder(client);
 

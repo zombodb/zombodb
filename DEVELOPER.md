@@ -90,3 +90,15 @@ no store
 no index
 `field_names` configuration is limited to disabling the field.
 
+
+This relates to ObjectMapper errors (access): https://github.com/wikimedia/search-repository-swift/issues/20
+
+
+
+"TooManyClauses":
+
+
+
+
+nosuchmethod: "com.fasterxml.jackson.core.JsonGenerator.writeStartObject(Ljava/lang/Object;)V"
+It looks like the problem is that you are getting incompatible versions of jackson-core and jackson-databind - jackson-core 2.0.5 is being pulled in, but I believe at least 2.1.0 is required. 

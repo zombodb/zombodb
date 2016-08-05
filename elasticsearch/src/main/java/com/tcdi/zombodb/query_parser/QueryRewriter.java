@@ -17,6 +17,7 @@
 package com.tcdi.zombodb.query_parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.MapperFeature;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.*;
@@ -101,7 +102,7 @@ public abstract class QueryRewriter {
     /**
      * Container for range aggregation spec
      */
-    static class RangeSpecEntry {
+    public static class RangeSpecEntry {
         public String key;
         public Double from;
         public Double to;
@@ -110,7 +111,7 @@ public abstract class QueryRewriter {
     /**
      * Container for date range aggregation spec
      */
-    static class DateRangeSpecEntry {
+    public static class DateRangeSpecEntry {
         public String key;
         public String from;
         public String to;
@@ -359,8 +360,6 @@ public abstract class QueryRewriter {
         }
 
         if (useHistogram) {
-            // DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
-            // DateHistogramAggregationBuilder dhb = dateHistogram(agg.getFieldname())
             DateHistogramBuilder dhb = AggregationBuilders.dateHistogram(agg.getFieldname())
                     .field(getAggregateFieldName(agg) + DateSuffix)
                     .order(stringToDateHistogramOrder(agg.getSortOrder()))
@@ -429,7 +428,7 @@ public abstract class QueryRewriter {
 
     private static <T> T createRangeSpec(Class<T> type, String value) {
         try {
-            ObjectMapper om = new ObjectMapper();
+            ObjectMapper om = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
             return om.readValue(value, type);
         } catch (IOException ioe) {
             throw new QueryRewriteException("Problem decoding range spec: " + value, ioe);
@@ -678,7 +677,6 @@ public abstract class QueryRewriter {
             @Override
             public QueryBuilder b(QueryParserNode n) {
                 Object value = n.getValue();
-
                 return termQuery(n.getFieldname(), value);
             }
         });
@@ -1122,7 +1120,9 @@ public abstract class QueryRewriter {
                 return moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).minWordLength(3).minTermFreq(minTermFreq).stopWords(IndexMetadata.MLT_STOP_WORDS);
             }
 
+            // deprecated 3.0
             // case FUZZY_CONCEPT:
+            //     // return queryFilter(fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO));
             //     return fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO);
 
             default:
