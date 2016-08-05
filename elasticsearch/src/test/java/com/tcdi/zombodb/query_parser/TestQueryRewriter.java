@@ -38,7 +38,7 @@ import static org.junit.Assert.fail;
 /**
  * Tests for {@link QueryRewriter}
  */
-@Ignore
+
 public class TestQueryRewriter extends ZomboDBTestCase {
     String query = "#options(id=<table.index>id, id=<table.index>id, id=<table.index>id, other:(left=<table.index>right)) #extended_stats(custodian) #tally(subject, '^.*', 1000, '_term', #significant_terms(author, '^.*', 1000))  " +
             "#field_lists(field1=[a,b,c], field2=[d,e,f], field3=[a,b,c,d,e,f]) " +
@@ -88,8 +88,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
             "         _xmax_is_committed = false))))  " + //  that has not been committed
             ")";
 
-    // error
-    @Ignore
     @Test
     public void testComplexQueryJson() throws Exception {
         assertJson(query, resource(this.getClass(), "testComplexQueryJson.expected"));

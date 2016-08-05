@@ -683,12 +683,7 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder build(ASTScript node) {
-        // return filteredQuery(matchAllQuery(), scriptFilter(node.getValue().toString()));
-        try {
-            return scriptQuery(Script.readScript(new ByteBufferStreamInput(ByteBuffer.wrap(node.getValue().toString().trim().getBytes()))));
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-        }
+        return scriptQuery(new Script(node.getValue().toString()));
     }
 
     private QueryBuilder build(final ASTPhrase node) {

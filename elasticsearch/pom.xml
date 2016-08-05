@@ -85,10 +85,12 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <!-- 
-                 Releases: https://github.com/FasterXML/jackson-databind/releases
+                 Releases:
+                   https://github.com/FasterXML/jackson-databind/releases
+
                  Notes:
-                 Version of jackson-databind should match jackson-core to avoid strange errors like:
-                 java.lang.NoSuchMethodError: com.fasterxml.jackson.core.JsonGenerator.writeStartObject(Ljava/lang/Object;)V
+                   Version of jackson-databind should match jackson-core to avoid strange errors like:
+                   java.lang.NoSuchMethodError: com.fasterxml.jackson.core.JsonGenerator.writeStartObject(Ljava/lang/Object;)V
             -->
             <version>2.6.6</version>
         </dependency>
