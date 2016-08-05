@@ -30,6 +30,10 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 # ask apt to update itself
 RUN apt-get update -y -qq --fix-missing
 
+# update apt
+RUN apt-get update -y -qq
+RUN apt-get install -y -qq apt-utils
+
 # must have wget
 RUN apt-get install -y -qq wget
 
@@ -40,10 +44,6 @@ RUN wget --no-check-certificate -qO - https://packages.elastic.co/GPG-KEY-elasti
 # postgres
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --no-check-certificate -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-
-# update apt
-RUN apt-get update -y -qq
-RUN apt-get install -y -qq apt-utils
 
 # java 7
 RUN apt-get install -y -qq python-software-properties
@@ -91,4 +91,3 @@ RUN chmod a+x /build/build.sh
 WORKDIR /build/zombodb
 ENTRYPOINT ["/build/build.sh"]
 CMD ["/bin/bash"]
-

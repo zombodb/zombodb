@@ -245,7 +245,7 @@ thai
 > For example:
 > 
 > ```
-> SELECT zdb_define_filter('my_ngram_tokenizer', '{
+> SELECT zdb_define_tokenizer('my_ngram_tokenizer', '{
                         "type" : "nGram",
                         "min_gram" : "2",
                         "max_gram" : "3",
