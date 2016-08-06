@@ -42,7 +42,7 @@ import java.util.List;
 
 // import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public abstract class ZomboDBTestCase {
     protected static final String DEFAULT_INDEX_NAME = "db.schema.table.index";
@@ -136,7 +136,15 @@ public abstract class ZomboDBTestCase {
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
-        JSONAssert.assertEquals(expectedJson.trim(), qr(query).rewriteQuery().toString().trim(), false);
+        String res = qr(query).rewriteQuery().toString().trim();
+        try{
+            JSONAssert.assertEquals(expectedJson.trim(), res, false);
+        } catch (AssertionError e) {
+            e.printStackTrace();
+            System.out.println("Result:");
+            System.out.println(res);
+            fail("JSONAssert exception: " + e.getMessage());
+        }
     }
 
     protected void assertAST(String query, String expectedAST) throws Exception {

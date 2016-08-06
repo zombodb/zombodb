@@ -889,28 +889,29 @@ public abstract class QueryRewriter {
                     }
                 }
 
-                // if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
-                //     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
-                //     return filteredQuery(matchAllQuery(), builder);
-                // } else {
-                final Iterable<Object> finalItr = itr;
-                TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
-                        @Override
-                        public Iterator<Object> iterator() {
-                            return finalItr.iterator();
-                        }
+                if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
+                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), itr);
+                    return boolQuery().must(matchAllQuery()).filter(builder);
+                } else {
+                    final Iterable<Object> finalItr = itr;
+                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+                            @Override
+                            public Iterator<Object> iterator() {
+                                return finalItr.iterator();
+                            }
 
-                        @Override
-                        public int size() {
-                            return cnt;
-                        }
-                    });
+                            @Override
+                            public int size() {
+                                return cnt;
+                            }
+                        });
 
-                if (minShouldMatch > 1)
-                    builder.minimumShouldMatch(minShouldMatch+"");
-                // builder.minimumMatch(minShouldMatch);
-                return builder;
-                // }
+                    BoolQueryBuilder boolBuilder = boolQuery().filter(builder);
+                    if (minShouldMatch > 1)
+                        boolBuilder.minimumNumberShouldMatch(minShouldMatch);
+
+                    return boolBuilder;
+                }
             }
         });
     }
