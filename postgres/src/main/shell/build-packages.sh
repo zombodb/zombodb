@@ -2,7 +2,7 @@
 
 VERSION=$1
 BASE=`pwd`
-DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise"
+DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise debian_jessie"
 POSTGRES_VERSIONS="9.3 9.4 9.5"
 
 ##
@@ -16,8 +16,9 @@ for POSTGRES_VERSION in ${POSTGRES_VERSIONS} ; do
 
         cd src/main/docker/pg${POSTGRES_VERSION}/zombodb-build-${distro}
 
-        docker build -t zombodb-build-${POSTGRES_VERSION}-${distro} .
-        docker run --rm -v $BASE:/mnt -w /mnt -e DESTDIR=target/pg${POSTGRES_VERSION}/${distro} zombodb-build-${POSTGRES_VERSION}-${distro} make clean install
+        echo "BUILDING: $distro, $POSTGRES_VERSION ****"
+        docker build -t zombodb-build-${POSTGRES_VERSION}-${distro} . > $BASE/target/pg${POSTGRES_VERSION}/${distro}/docker-build.log
+        docker run --rm -v $BASE:/mnt -w /mnt -e DESTDIR=target/pg${POSTGRES_VERSION}/${distro} zombodb-build-${POSTGRES_VERSION}-${distro} make clean install &> $BASE/target/pg${POSTGRES_VERSION}/${distro}/compile.log
 
         # move the zombod.so into the plugins/ directory
         cd $BASE/target/pg${POSTGRES_VERSION}

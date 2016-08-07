@@ -19,6 +19,7 @@ package com.tcdi.zombodb.query_parser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.highlight.DocumentHighlighter;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import com.tcdi.zombodb.test.ZomboDBTestCase;
@@ -3324,7 +3325,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (value=f, index=db.schema.table.index)"
         );
 
-        ASTQueryTree tree = new QueryParser(new StringReader("#field_lists(field1=[a,b,c], field2=[d,e,f])")).parse(true);
+        ASTQueryTree tree = new QueryParser(new StringReader("#field_lists(field1=[a,b,c], field2=[d,e,f])")).parse(new IndexMetadataManager(client(), DEFAULT_INDEX_NAME), true);
 
         Map<String, ASTFieldListEntry> fieldLists = tree.getFieldLists();
         assertEquals(2, tree.getFieldLists().size());
@@ -4753,6 +4754,37 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}},\"aggregations\":{\"field\":{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":0,\"order\":{\"_term\":\"asc\"}}}}}",
                 qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
         );
+    }
+
+    public void testIssue132() throws Exception {
+        assertAST("#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))",
+                "QueryTree\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         group_id=<db.schema.table.index>group_id\n" +
+                        "         Or\n" +
+                        "            Expansion\n" +
+                        "               id=<db.schema.table.index>id\n" +
+                        "               Or\n" +
+                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "            Expansion\n" +
+                        "               group_id=<db.schema.table.index>group_id\n" +
+                        "               Expansion\n" +
+                        "                  id=<db.schema.table.index>id\n" +
+                        "                  Or\n" +
+                        "                     Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "            Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)");
     }
 }
 

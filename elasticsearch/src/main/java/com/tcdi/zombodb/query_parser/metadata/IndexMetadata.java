@@ -20,6 +20,7 @@ import com.tcdi.zombodb.query_parser.ASTIndexLink;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -52,6 +53,8 @@ public class IndexMetadata {
 
             fields = (Map) mmd.getSourceAsMap().get("properties");
             fields.put("_all", (Map) mmd.getSourceAsMap().get("_all"));
+            pullUpMultiFields();
+
             pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
             alwaysResolveJoins = meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins")));
         } catch (IOException ioe) {
@@ -71,9 +74,13 @@ public class IndexMetadata {
         return alwaysResolveJoins;
     }
 
+    public boolean isMultiField(String fieldname) {
+        return fieldname != null && fieldname.contains(".") && fields.containsKey(fieldname);
+    }
+
     public boolean hasField(String fieldname) {
-        if (fieldname.indexOf('.') < 0)
-            return fields.containsKey(fieldname);
+        if (isMultiField(fieldname))
+            return true;
 
         Map fields = this.fields;
         while (fieldname.contains(".")) {
@@ -96,6 +103,12 @@ public class IndexMetadata {
     public String getType(String fieldname) {
         if (fieldname == null)
             return "unknown";
+
+        if (isMultiField(fieldname)) {
+            Map properties = (Map) fields.get(fieldname).get("properties");
+            if (properties != null)
+                return String.valueOf(properties.get("type"));
+        }
 
         String[] parts = fieldname.split("[.]");
         if (parts.length == 1) {
@@ -127,7 +140,7 @@ public class IndexMetadata {
     public String getSearchAnalyzer(String fieldname) {
         Map<String, Object> fieldInfo = fields.get(fieldname);
         if (fieldInfo == null)
-            return null;
+            return "exact"; // we don't know about this field, so assume it's using index default analyzer of 'exact'
 
         String analyzer = (String) fieldInfo.get("search_analyzer");
         if (analyzer == null)
@@ -139,7 +152,7 @@ public class IndexMetadata {
     public String getIndexAnalyzer(String fieldname) {
         Map<String, Object> fieldInfo = fields.get(fieldname);
         if (fieldInfo == null)
-            return null;
+            return "exact"; // we don't know about this field, so assume it's using index default analyzer of 'exact'
 
         String analyzer = (String) fieldInfo.get("index_analyzer");
         if (analyzer == null)
@@ -156,4 +169,18 @@ public class IndexMetadata {
     public String toString() {
         return fields.toString();
     }
+
+    private void pullUpMultiFields() {
+        Map<String, Map<String, Object>> found = new HashMap<>();
+        for(Map.Entry<String, Map<String, Object>> entry : fields.entrySet()) {
+            Map<String, Object> multifields = (Map) entry.getValue().get("fields");
+            if (multifields != null) {
+                for (Map.Entry<String, Object> mfield : multifields.entrySet()) {
+                    found.put(entry.getKey() + "." + mfield.getKey(), (Map) mfield.getValue());
+                }
+            }
+        }
+        fields.putAll(found);
+    }
+
 }
