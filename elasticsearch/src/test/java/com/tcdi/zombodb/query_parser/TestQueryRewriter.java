@@ -19,6 +19,9 @@ package com.tcdi.zombodb.query_parser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.highlight.DocumentHighlighter;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
+import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
+import com.tcdi.zombodb.query_parser.utils.Utils;
 import com.tcdi.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
@@ -3056,7 +3059,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  \"bool\" : {\n" +
                         "    \"must\" : [ {\n" +
                         "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
+                        "        \"must\" : [ {\n" +
                         "          \"wildcard\" : {\n" +
                         "            \"exact_field\" : \"phrase with *wildcard*\"\n" +
                         "          }\n" +
@@ -3084,7 +3087,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      }\n" +
                         "    }, {\n" +
                         "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
+                        "        \"must\" : [ {\n" +
                         "          \"match\" : {\n" +
                         "            \"phrase_field\" : {\n" +
                         "              \"query\" : \"phrase value\",\n" +
@@ -3322,7 +3325,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (value=f, index=db.schema.table.index)"
         );
 
-        ASTQueryTree tree = new QueryParser(new StringReader("#field_lists(field1=[a,b,c], field2=[d,e,f])")).parse(true);
+        ASTQueryTree tree = new QueryParser(new StringReader("#field_lists(field1=[a,b,c], field2=[d,e,f])")).parse(new IndexMetadataManager(client(), DEFAULT_INDEX_NAME), true);
 
         Map<String, ASTFieldListEntry> fieldLists = tree.getFieldLists();
         assertEquals(2, tree.getFieldLists().size());
@@ -3378,7 +3381,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("phrase_field:(asdflkj234-132asdfuj asiodfja;sdf #487adqerydfskf0230 &@#$23)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
+                        "    \"must\" : [ {\n" +
                         "      \"match\" : {\n" +
                         "        \"phrase_field\" : {\n" +
                         "          \"query\" : \"asdflkj234-132asdfuj\",\n" +
@@ -3503,10 +3506,10 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
                         "      Proximity (fieldname=phrase_field, operator=CONTAINS, index=db.schema.table.index)\n" +
-                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*)\n" +
-                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=non)\n" +
-                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*)\n" +
-                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=programmers)"
+                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=non, index=db.schema.table.index)\n" +
+                        "         NotNull (fieldname=phrase_field, operator=CONTAINS, value=*, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=programmers, index=db.schema.table.index)"
         );
     }
 
@@ -4692,5 +4695,48 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testComplexTokenPulloutWithAND() throws Exception {
+        assertAST("english_field:(\"I''ll see you later\" and darling)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Phrase (fieldname=english_field, operator=CONTAINS, value=I''ll see you later, index=db.schema.table.index)\n" +
+                        "         Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "            Word (fieldname=english_field, operator=CONTAINS, value=darl, index=db.schema.table.index)");
+    }
+
+    @Test
+    public void testIssue132() throws Exception {
+        assertAST("#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))",
+                "QueryTree\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         group_id=<db.schema.table.index>group_id\n" +
+                        "         Or\n" +
+                        "            Expansion\n" +
+                        "               id=<db.schema.table.index>id\n" +
+                        "               Or\n" +
+                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "            Expansion\n" +
+                        "               group_id=<db.schema.table.index>group_id\n" +
+                        "               Expansion\n" +
+                        "                  id=<db.schema.table.index>id\n" +
+                        "                  Or\n" +
+                        "                     Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "            Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)");
+    }
 }
 

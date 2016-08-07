@@ -15,6 +15,7 @@
  */
 package com.tcdi.zombodb.query_parser;
 
+import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import org.junit.Test;
 
 import java.util.Arrays;

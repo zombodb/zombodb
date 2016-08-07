@@ -660,7 +660,8 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
                    strcmp("character", typename) == 0 || strcmp("character varying", typename) == 0 ||
                    strcmp("text[]", typename) == 0 || strcmp("varchar[]", typename) == 0 ||
                    strcmp("character[]", typename) == 0 || strcmp("character varying[]", typename) == 0 ||
-                   strcmp("uuid", typename) == 0 || strcmp("uuid[]", typename) == 0) {
+                   strcmp("uuid", typename) == 0 || strcmp("uuid[]", typename) == 0 ||
+                   strcmp("citext", typename) == 0 || strcmp("citext[]", typename) == 0) {
             /* string field */
             appendStringInfo(result, "\"type\": \"string\",");
             appendStringInfo(result, "\"norms\": {\"enabled\":false},");

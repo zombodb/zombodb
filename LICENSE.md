@@ -1,4 +1,4 @@
-Portions Copyright 2013-2015 Technology Concepts & Design, Inc.
+Portions Copyright 2013-2015 Technology Concepts & Design, Inc.  
 Portions Copyright 2015-2016 ZomboDB, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
