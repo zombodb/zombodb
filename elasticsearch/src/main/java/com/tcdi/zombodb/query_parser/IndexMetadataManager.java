@@ -39,7 +39,7 @@ public class IndexMetadataManager {
     private final List<IndexLinkAndMapping> mappings = new ArrayList<>();
     private final Map<String, ASTIndexLink> indexLinksByIndexName = new HashMap<>();
     private List<FieldAndIndexPair> allFields;
-    private Map<ASTIndexLink, Boolean> usedIndexes = new IdentityHashMap<>();
+    private Set<ASTIndexLink> usedIndexes = new HashSet<>();
     private final IndexRelationshipManager relationshipManager = new IndexRelationshipManager();
     private Map<ASTIndexLink, IndexMetadata> metadataCache = new HashMap<>();
 
@@ -60,10 +60,10 @@ public class IndexMetadataManager {
     }
 
     public Set<ASTIndexLink> getUsedIndexes() {
-        return usedIndexes.keySet();
+        return usedIndexes;
     }
 
-    public void setUsedIndexes(Map<ASTIndexLink, Boolean> usedIndexes) {
+    public void setUsedIndexes(Set<ASTIndexLink> usedIndexes) {
         this.usedIndexes = usedIndexes;
     }
 
