@@ -14,7 +14,6 @@
 package org.xbib.elasticsearch.action.termlist;
 
 import org.elasticsearch.action.Action;
-import org.elasticsearch.client.Client; //ClientAction
 import org.elasticsearch.client.ElasticsearchClient;
 
 public class TermlistAction extends Action<TermlistRequest, TermlistResponse, TermlistRequestBuilder> {

@@ -13,9 +13,10 @@
 package org.xbib.elasticsearch.plugin.termlist;
 
 import com.tcdi.zombodb.test.ZomboDBTestCase;
+import org.elasticsearch.action.admin.indices.create.CreateIndexAction;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
-import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexAction;
+import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.junit.Test;
@@ -27,7 +28,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 
-import org.elasticsearch.action.admin.indices.create.CreateIndexAction;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 public class TestTermListPlugin extends ZomboDBTestCase {
@@ -39,7 +39,7 @@ public class TestTermListPlugin extends ZomboDBTestCase {
                 .startObject("properties")
                 .startObject("content")
                 .field("type", "string")
-                .field("analzyer", "german")
+                .field("analyzer", "german")
                 .endObject()
                 .endObject()
                 .endObject();

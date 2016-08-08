@@ -15,7 +15,6 @@ package org.xbib.elasticsearch.action.termlist;
 
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.broadcast.BroadcastOperationRequestBuilder;
-import org.elasticsearch.client.Client;
 import org.elasticsearch.client.ElasticsearchClient;
 
 /**
@@ -47,8 +46,8 @@ public class TermlistRequestBuilder extends BroadcastOperationRequestBuilder<Ter
         return this;
     }
 
-    // @Override
-    // protected void doExecute(ActionListener<TermlistResponse> listener) {
-    //     client.execute(TermlistAction.INSTANCE, request, listener);
-    // }
+    @Override
+    public void execute(ActionListener<TermlistResponse> listener) {
+        client.execute(TermlistAction.INSTANCE, request, listener);
+    }
 }

@@ -37,7 +37,6 @@ import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZombodbMultiSearchAction extends BaseRestHandler {
-// public class ZombodbMultiSearchAction extends MultiSearchAction {
 
     public static class ZDBMultiSearchDescriptor {
         private String indexName;
@@ -90,10 +89,8 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
         final long start = System.currentTimeMillis();
         final ZDBMultiSearchDescriptor[] descriptors = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).readValue(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
         MultiSearchRequestBuilder msearchBuilder = new MultiSearchRequestBuilder(client, MultiSearchAction.INSTANCE);
-        // MultiSearchRequestBuilder msearchBuilder = newRequestBuilder(client);
 
         for (ZDBMultiSearchDescriptor md : descriptors) {
-            // SearchRequestBuilder srb = new SearchRequestBuilder(client, AnalyzeAction.INSTANCE);
             SearchRequestBuilder srb = new SearchRequestBuilder(client, SearchAction.INSTANCE);
 
             srb.setIndices(md.getIndexName());

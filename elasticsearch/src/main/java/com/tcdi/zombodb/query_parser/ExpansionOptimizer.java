@@ -149,8 +149,6 @@ public class ExpansionOptimizer {
             query = bqb;
         }
 
-        // SearchRequestBuilder builder = new SearchRequestBuilder(client)
-        // SearchRequestBuilder builder = AnalyzeAction.INSTANCE.newRequestBuilder(client)
         SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE)
                 .setSize(0)
                 .setSearchType(SearchType.COUNT)

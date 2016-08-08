@@ -369,9 +369,7 @@ public class IndexLinkOptimizer {
     }
 
     private long estimateCount(ASTExpansion expansion, boolean useQuery) {
-        // SearchRequestBuilder builder = new SearchRequestBuilder(client, AnalyzeAction.INSTANCE);
         SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
-        // SearchRequestBuilder builder = AnalyzeAction.INSTANCE.newRequestBuilder(client);
 
         builder.setIndices(expansion.getIndexLink().getIndexName());
         builder.setSize(0);
