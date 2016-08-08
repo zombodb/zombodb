@@ -771,7 +771,6 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                // return filteredQuery(matchAllQuery(), missingFilter(n.getFieldname()));
                 return missingQuery(n.getFieldname());
             }
         });
@@ -793,7 +792,6 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                // return filteredQuery(matchAllQuery(), existsFilter(n.getFieldname()));
                 return existsQuery(n.getFieldname());
             }
         });

@@ -13,9 +13,9 @@
     </files>
     <dependencySets>
         <dependencySet>
-          <outputDirectory>/</outputDirectory>
-          <useProjectArtifact>true</useProjectArtifact>
-          <useTransitiveFiltering>true</useTransitiveFiltering>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>true</useProjectArtifact>
+            <useTransitiveFiltering>true</useTransitiveFiltering>
         </dependencySet>
     </dependencySets>
 </assembly>

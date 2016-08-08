@@ -31,7 +31,6 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.node.Node;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -40,7 +39,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-// import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 import static org.junit.Assert.*;
 
@@ -67,7 +65,6 @@ public abstract class ZomboDBTestCase {
         CONFIG.mkdirs();
         TestingHelper.copyFile(ZomboDBTestCase.class.getResourceAsStream("logging.yml"), new File(CONFIG.getAbsolutePath() + "/logging.yml"));
 
-        // Settings settings = settingsBuilder()
         Settings settings = Settings.builder()
                 .put("http.enabled", false)
                 .put("network.host", "127.0.0.1")
@@ -92,16 +89,12 @@ public abstract class ZomboDBTestCase {
     private static void createIndex(String indexName) throws Exception {
         String settings = resource(ZomboDBTestCase.class, indexName + "-mapping.json");
 
-        // CreateIndexRequestBuilder builder = new CreateIndexRequestBuilder(client().admin().indices(), indexName);
-        // CreateIndexRequestBuilder builder = new CreateIndexRequestBuilder(client(), CreateIndexAction.INSTANCE);
         CreateIndexRequestBuilder builder = client().admin().indices().prepareCreate(indexName);
         builder.setSource(settings);
 
         CreateIndexResponse response = client().admin().indices().create(builder.request()).get();
         response.writeTo(new OutputStreamStreamOutput(System.out));
-        // client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
         client().admin().indices().flush(new FlushRequestBuilder(client(), FlushAction.INSTANCE).setIndices(indexName).setForce(true).request()).get();
-        // client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();
         client().admin().indices().refresh(new RefreshRequestBuilder(client(), RefreshAction.INSTANCE).setIndices(indexName).request()).get();
     }
 
@@ -136,15 +129,7 @@ public abstract class ZomboDBTestCase {
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
-        String res = qr(query).rewriteQuery().toString().trim();
-        try{
-            JSONAssert.assertEquals(expectedJson.trim(), res, false);
-        } catch (AssertionError e) {
-            e.printStackTrace();
-            System.out.println("Result:");
-            System.out.println(res);
-            fail("JSONAssert exception: " + e.getMessage());
-        }
+        assertEquals(expectedJson.trim(), qr(query).rewriteQuery().toString().trim());
     }
 
     protected void assertAST(String query, String expectedAST) throws Exception {

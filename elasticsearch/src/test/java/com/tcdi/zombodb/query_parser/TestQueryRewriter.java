@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,7 +24,6 @@ import com.tcdi.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.junit.Test;
-import org.junit.Ignore;
 
 import java.io.StringReader;
 import java.util.Arrays;
@@ -38,7 +37,6 @@ import static org.junit.Assert.fail;
 /**
  * Tests for {@link QueryRewriter}
  */
-
 public class TestQueryRewriter extends ZomboDBTestCase {
     String query = "#options(id=<table.index>id, id=<table.index>id, id=<table.index>id, other:(left=<table.index>right)) #extended_stats(custodian) #tally(subject, '^.*', 1000, '_term', #significant_terms(author, '^.*', 1000))  " +
             "#field_lists(field1=[a,b,c], field2=[d,e,f], field3=[a,b,c,d,e,f]) " +
@@ -357,7 +355,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}");
     }
 
-    @Ignore
     @Test
     public void testPhraseWithFuzzyTerms() throws Exception {
         assertJson("phrase_field:'Here~ is~ fuzzy~ words'",
@@ -409,7 +406,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}");
     }
 
-    @Ignore
     @Test
     public void testPhraseWithEscapedFuzzyCharacters() throws Exception {
         assertJson("phrase_field:'Here\\~ is\\~ fuzzy\\~ words'",
@@ -1381,7 +1377,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    @Ignore
     @Test
     public void testMoreLikeThis() throws Exception {
         assertJson("phrase_field:@'this is a test'",
@@ -1398,7 +1393,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    @Ignore
     @Test
     public void testFuzzyLikeThis() throws Exception {
         assertJson("phrase_field:@~'this is a test'",
@@ -1414,8 +1408,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    // err: java.io.EOFException
-    @Ignore
     @Test
     public void testScript() throws Exception {
         assertJson("$$ this.is.a.script[12] = 42; $$",
@@ -2464,7 +2456,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    @Ignore
     @Test
     public void test_AggregateQuery() throws Exception {
         assertJson("#tally(cp_case_name, \"^.*\", 5000, \"term\") #options(fk_doc_cp_link_doc = <table.index>pk_doc, fk_doc_cp_link_cp = <table.index>pk_cp) ((((_xmin = 5353919 AND _cmin < 0 AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0))) OR (_xmin_is_committed = true AND (_xmax = 0 OR (_xmax = 5353919 AND _cmax >= 0) OR (_xmax <> 5353919 AND _xmax_is_committed = false)))))) AND ((( ( pk_doc_cp = \"*\" ) )))",
@@ -3591,18 +3582,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    // error: com.fasterxml.jackson.core.JsonGenerator.writeStartObject(Ljava/lang/Object;)V
-    
-    // java.lang.NoSuchMethodError: com.fasterxml.jackson.core.JsonGenerator.writeStartObject(Ljava/lang/Object;)V
-	// at com.fasterxml.jackson.databind.ser.BeanSerializer.serialize(BeanSerializer.java:151)
-	// at com.fasterxml.jackson.databind.ser.impl.IndexedListSerializer.serializeContents(IndexedListSerializer.java:119)
-	// at com.fasterxml.jackson.databind.ser.impl.IndexedListSerializer.serialize(IndexedListSerializer.java:79)
-	// at com.fasterxml.jackson.databind.ser.impl.IndexedListSerializer.serialize(IndexedListSerializer.java:18)
-	// at com.fasterxml.jackson.databind.ser.DefaultSerializerProvider.serializeValue(DefaultSerializerProvider.java:292)
-	// at com.fasterxml.jackson.databind.ObjectMapper._configAndWriteValue(ObjectMapper.java:3672)
-	// at com.fasterxml.jackson.databind.ObjectMapper.writeValueAsString(ObjectMapper.java:3048)
-	// at com.tcdi.zombodb.postgres.ZombodbDocumentHighlighterAction.handleRequest(ZombodbDocumentHighlighterAction.java:73)
-    @Ignore
     @Test
     public void testIssue62Highlighting() throws Exception {
         Map<String, Object> data = new HashMap<>();
@@ -3623,8 +3602,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).writeValueAsString(highlights));
     }
 
-    // error: com.fasterxml.jackson.core.JsonGenerator.writeStartObject(Ljava/lang/Object;)V
-    @Ignore
     @Test
     public void testIssue87() throws Exception {
         Map<String, Object> data = new HashMap<>();
@@ -3776,8 +3753,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    // error
-    @Ignore
     @Test
     public void testIssue75Highlighting() throws Exception {
         Map<String, Object> data = new HashMap<>();
@@ -3798,8 +3773,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).writeValueAsString(highlights));
     }
 
-    // error: com.fasterxml.jackson.core.JsonGenerator.writeStartObject(Ljava/lang/Object;)V
-    @Ignore
     @Test
     public void testProximityHighlighting() throws Exception {
         Map<String, Object> data = new HashMap<>();
@@ -4102,7 +4075,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    @Ignore
     @Test
     public void testSingleQuestionMark_issue102() throws Exception {
         assertJson("exact_field:?",
@@ -4132,7 +4104,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    @Ignore
     @Test
     public void testMultipleAsterisksMarks_issue102() throws Exception {
         assertJson("exact_field:****",
@@ -4331,7 +4302,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    @Ignore
     @Test
     public void testExactPhrasesGetMerged() throws Exception {
         assertJson("( (( AND ( data_client_name = WELLMARK AND (exact_field = \"asdf, CATHI (sdfg)\" OR " +
@@ -4625,7 +4595,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    @Ignore
     @Test
     public void testRewritingWildcardsWithShingles_WildcardOnly() throws Exception {
         assertJson("shingle_field:*",
@@ -4644,7 +4613,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
-    @Ignore
     @Test
     public void testRewritingWildcardsWithShingles_NE_WildcardOnly() throws Exception {
         assertJson("shingle_field<>*",

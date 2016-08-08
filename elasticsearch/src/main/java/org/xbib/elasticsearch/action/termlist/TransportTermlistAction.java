@@ -58,26 +58,11 @@ public class TransportTermlistAction
                                    ActionFilters actionFilters,
                                    IndexNameExpressionResolver indexNameExpressionResolver,
                                    IndicesService indicesService) {
-        // super(settings, TermlistAction.NAME, threadPool, clusterService, transportService, actionFilters);
         super(settings, TermlistAction.NAME, threadPool, clusterService, transportService, actionFilters,
-              indexNameExpressionResolver,
-              TermlistRequest.class,
-              ShardTermlistRequest.class,
-              ThreadPool.Names.GENERIC
-              );
-        // super(FlushAction.NAME, FlushRequest::new, settings, threadPool, clusterService, transportService, actionFilters, indexNameExpressionResolver, replicatedFlushAction);
+              indexNameExpressionResolver, TermlistRequest.class, ShardTermlistRequest.class,
+              ThreadPool.Names.GENERIC);
         this.indicesService = indicesService;
     }
-
-    // @Override
-    // protected String executor() {
-    //     return ThreadPool.Names.GENERIC;
-    // }
-
-    // @Override
-    // protected TermlistRequest newRequest() {
-    //     return new TermlistRequest();
-    // }
 
     @Override
     protected TermlistResponse newResponse(TermlistRequest request, AtomicReferenceArray shardsResponses, ClusterState clusterState) {

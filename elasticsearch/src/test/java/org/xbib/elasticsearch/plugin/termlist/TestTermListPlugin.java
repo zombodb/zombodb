@@ -34,32 +34,31 @@ public class TestTermListPlugin extends ZomboDBTestCase {
 
     @Test
     public void testPlugin() throws IOException {
-        // XContentBuilder builder = jsonBuilder()
-        //         .startObject()
-        //         .startObject("properties")
-        //         .startObject("content")
-        //         .field("type", "string")
-        //         .field("analzyer", "german")
-        //         .endObject()
-        //         .endObject()
-        //         .endObject();
-        // // CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client().admin().indices())
-        // CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client(), CreateIndexAction.INSTANCE)
-        //         .setIndex("test")
-        //         .addMapping("docs", builder);
-        // createIndexRequestBuilder.execute().actionGet();
-        // for (int i = 0; i < 10; i++) {
-        //     String content = join(makeList(), " ");
-        //     //logger.info("{} -> {}", i, content);
-        //     IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client(), IndexAction.INSTANCE)
-        //             .setIndex("test")
-        //             .setType("docs")
-        //             .setId(Integer.toString(i))
-        //             .setSource("content", content);
-        //     indexRequestBuilder.setRefresh(true).execute().actionGet();
-        // }
-        // TermlistRequestBuilder termlistRequestBuilder = new TermlistRequestBuilder(client(), TermlistAction.INSTANCE);
-        // termlistRequestBuilder.execute().actionGet();
+        XContentBuilder builder = jsonBuilder()
+                .startObject()
+                .startObject("properties")
+                .startObject("content")
+                .field("type", "string")
+                .field("analzyer", "german")
+                .endObject()
+                .endObject()
+                .endObject();
+        CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client(), CreateIndexAction.INSTANCE)
+                .setIndex("test")
+                .addMapping("docs", builder);
+        createIndexRequestBuilder.execute().actionGet();
+        for (int i = 0; i < 10; i++) {
+            String content = join(makeList(), " ");
+            //logger.info("{} -> {}", i, content);
+            IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client(), IndexAction.INSTANCE)
+                    .setIndex("test")
+                    .setType("docs")
+                    .setId(Integer.toString(i))
+                    .setSource("content", content);
+            indexRequestBuilder.setRefresh(true).execute().actionGet();
+        }
+        TermlistRequestBuilder termlistRequestBuilder = new TermlistRequestBuilder(client(), TermlistAction.INSTANCE);
+        termlistRequestBuilder.execute().actionGet();
     }
 
     private List<String> makeList() throws IOException {
