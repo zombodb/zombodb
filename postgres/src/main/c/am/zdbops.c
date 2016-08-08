@@ -500,22 +500,20 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
         } else if (strcmp("date", typename) == 0 || strcmp("date[]", typename) == 0) {
             /* date field */
             appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
             appendStringInfo(result, "\"index\": \"not_analyzed\",");
             appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"}"
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", \"norms\": {\"enabled\":false}}"
                     "}");
 
         } else if (strcmp("timestamp", typename) == 0 || strcmp("timestamp without time zone", typename) == 0 ||
                    strcmp("timestamp[]", typename) == 0 || strcmp("timestamp without time zone[]", typename) == 0) {
             /* timestamp field */
             appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
             appendStringInfo(result, "\"index\": \"not_analyzed\",");
             appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\""
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", \"norms\": {\"enabled\":false}"
 #if (PG_VERSION_NUM < 90400)
                     ",\"format\": \"date_optional_time||yyyy-MM-dd HH:mm:ss.SSSSSSSSSS||"
                     "yyyy-MM-dd HH:mm:ss.SSSSSSSSS||"
@@ -537,11 +535,10 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
                    strcmp("timestamp with time zone[]", typename) == 0) {
             /* timestamp field */
             appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
             appendStringInfo(result, "\"index\": \"not_analyzed\",");
             appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\""
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", \"norms\": {\"enabled\":false}"
 #if (PG_VERSION_NUM < 90400)
                     ",\"format\": \"date_optional_time||yyyy-MM-dd HH:mm:ss.SSSSSSSSSSZ||"
                     "yyyy-MM-dd HH:mm:ss.SSSSSSSSSZ||"
@@ -564,11 +561,10 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
                    strcmp("time without time zone[]", typename) == 0) {
             /* time field */
             appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
             appendStringInfo(result, "\"index\": \"not_analyzed\",");
             appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\""
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", \"norms\": {\"enabled\":false}"
 #if (PG_VERSION_NUM < 90400)
                     ",\"format\": \"HH:mm:ss.SSSSSSSSSS||"
                     "HH:mm:ss.SSSSSSSSS||"
@@ -589,11 +585,10 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
         } else if (strcmp("time with time zone", typename) == 0 || strcmp("time with time zone[]", typename) == 0) {
             /* time field */
             appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
             appendStringInfo(result, "\"index\": \"not_analyzed\",");
             appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\""
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\", \"norms\": {\"enabled\":false}"
 #if (PG_VERSION_NUM < 90400)
                     ",\"format\": \"HH:mm:ss.SSSSSSSSSSZ||"
                     "HH:mm:ss.SSSSSSSSSZ||"
@@ -670,10 +665,20 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
         } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
             /* json field */
             appendStringInfo(result, "\"type\": \"nested\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+
+            /* TODO: These 2 commented lines and others(! not commented)
+               "enabled" and "ignore_above" should be inside fields:{}
+               block.  Otherwise - ERROR: Mapping definition for [data]
+               has unsupported parameters: [ignore_above : 32000] [norms
+               : {enabled=false}]];
+
+               If tests run only for "json field" then others need to be
+               tested as well*/
+
+            /* appendStringInfo(result, "\"norms\": {\"enabled\":false},"); */
             appendStringInfo(result, "\"include_in_parent\":true,");
             appendStringInfo(result, "\"include_in_root\":true,");
-            appendStringInfo(result, "\"ignore_above\":32000,");
+            /* appendStringInfo(result, "\"ignore_above\":32000,"); */
             appendStringInfo(result, "\"include_in_all\":true");
 
         } else {
