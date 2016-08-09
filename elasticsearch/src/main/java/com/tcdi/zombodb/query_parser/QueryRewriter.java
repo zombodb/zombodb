@@ -1113,10 +1113,8 @@ public abstract class QueryRewriter {
                 return moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).minWordLength(3).minTermFreq(minTermFreq).stopWords(IndexMetadata.MLT_STOP_WORDS);
             }
 
-            // deprecated 3.0
-            // case FUZZY_CONCEPT:
-            //     // return queryFilter(fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO));
-            //     return fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO);
+            case FUZZY_CONCEPT:
+                return moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80);
 
             default:
                 throw new QueryRewriteException("Unexpected operator: " + node.getOperator());
