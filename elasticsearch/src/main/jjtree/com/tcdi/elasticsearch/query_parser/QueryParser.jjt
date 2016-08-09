@@ -13,6 +13,8 @@ options {
 PARSER_BEGIN(QueryParser)
 
 package com.tcdi.zombodb.query_parser;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
+import com.tcdi.zombodb.query_parser.optimizers.*;
 import java.io.*;
 import java.util.*;
 
@@ -76,11 +78,13 @@ public class QueryParser {
     private java.util.Stack<FieldnameAndOperator> fieldnameStack = new Stack();
     private boolean inArray = false;
 
-    public ASTQueryTree parse(boolean optimize) throws ParseException {
+    public ASTQueryTree parse(IndexMetadataManager metadataManager, boolean optimize) throws ParseException {
         ASTQueryTree tree = parse0();
 
+        metadataManager.loadReferencedMappings(tree.getOptions());
+
         if (optimize)
-            new QueryTreeOptimizer(tree).optimize();
+            new QueryTreeOptimizer(tree, metadataManager).optimize();
 
         for (ASTFieldListEntry entry : tree.getFieldLists().values()) {
             usedFieldnames.addAll(entry.getFields());

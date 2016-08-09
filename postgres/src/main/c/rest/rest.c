@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include <curl/curl.h>
+#include <zlib.h>
 
 #include <stdlib.h>
 #include <string.h>

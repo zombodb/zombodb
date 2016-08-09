@@ -52,7 +52,7 @@
               "bool" : {
                 "should" : [ {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "1-2",
@@ -114,7 +114,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "1-2",
@@ -176,7 +176,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "1-2",
@@ -238,7 +238,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "1-2",
@@ -300,7 +300,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "1-2",
@@ -362,7 +362,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "1-2",
@@ -424,7 +424,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "1-2",
@@ -486,7 +486,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "1-2",
@@ -552,7 +552,7 @@
               "bool" : {
                 "should" : [ {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "1-2",
@@ -614,7 +614,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "1-2",
@@ -1296,7 +1296,7 @@
               "bool" : {
                 "should" : [ {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -1396,7 +1396,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -1496,7 +1496,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -1596,7 +1596,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -1696,7 +1696,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -1796,7 +1796,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -1896,7 +1896,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -1996,7 +1996,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -2100,7 +2100,7 @@
               "bool" : {
                 "should" : [ {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -2200,7 +2200,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "span_near" : {
                         "clauses" : [ {
                           "span_term" : {
@@ -3125,7 +3125,7 @@
               "bool" : {
                 "should" : [ {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "a-b-c-d",
@@ -3155,7 +3155,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "a-b-c-d",
@@ -3185,7 +3185,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "a-b-c-d",
@@ -3215,7 +3215,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "a-b-c-d",
@@ -3245,7 +3245,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "a-b-c-d",
@@ -3275,7 +3275,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "a-b-c-d",
@@ -3305,7 +3305,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "a-b-c-d",
@@ -3335,7 +3335,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "a-b-c-d",
@@ -3369,7 +3369,7 @@
               "bool" : {
                 "should" : [ {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "fulltext_field" : {
                           "query" : "a-b-c-d",
@@ -3399,7 +3399,7 @@
                   }
                 }, {
                   "bool" : {
-                    "should" : [ {
+                    "must" : [ {
                       "match" : {
                         "_all" : {
                           "query" : "a-b-c-d",

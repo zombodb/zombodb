@@ -78,3 +78,6 @@ issue-118
 zdb_dump_query
 270-beta3-bug
 direct-ctid
+matview
+issue-132
+issue-134

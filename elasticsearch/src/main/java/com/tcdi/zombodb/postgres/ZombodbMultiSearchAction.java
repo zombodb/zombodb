@@ -17,7 +17,7 @@ package com.tcdi.zombodb.postgres;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.MapperFeature;
-import com.tcdi.zombodb.query_parser.QueryRewriter;
+import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.MultiSearchRequestBuilder;
 import org.elasticsearch.action.search.MultiSearchResponse;

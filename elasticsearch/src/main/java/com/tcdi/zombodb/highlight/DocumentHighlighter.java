@@ -17,6 +17,8 @@
 package com.tcdi.zombodb.highlight;
 
 import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
+import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import org.elasticsearch.client.Client;
@@ -28,6 +30,7 @@ import java.util.concurrent.ExecutionException;
 public class DocumentHighlighter {
 
     private final Client client;
+    private final IndexMetadataManager metadataManager;
     private final ASTQueryTree query;
     private final Map<String, List<AnalyzedField>> analyzedFields = new HashMap<String, List<AnalyzedField>>() {
         @Override
@@ -45,7 +48,8 @@ public class DocumentHighlighter {
         QueryParser parser = new QueryParser(new StringReader(newQuery.toString().toLowerCase()));
 
         this.client = client;
-        this.query = parser.parse(true);
+        this.metadataManager = new IndexMetadataManager(client, indexName);
+        this.query = parser.parse(metadataManager, true);
 
         analyzeFields(parser, indexName, primaryKeyFieldname, documentData);
     }
@@ -155,7 +159,7 @@ public class DocumentHighlighter {
                             rb.setAnalyzer("phrase");
 
                             try {
-                                fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
+                                fields.add(new AnalyzedField(client, metadataManager, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
                             } catch (InterruptedException | ExecutionException e) {
                                 // ignore
                             }
@@ -166,7 +170,7 @@ public class DocumentHighlighter {
                     rb.setAnalyzer("phrase");
 
                     try {
-                        fields.add(new AnalyzedField(client, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
+                        fields.add(new AnalyzedField(client, metadataManager, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
                     } catch (InterruptedException | ExecutionException e) {
                         // ignore
                     }
