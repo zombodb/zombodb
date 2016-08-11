@@ -1,9 +1,9 @@
 SELECT * FROM zdb_highlight('so_posts', 'title_and_tags:"with t*"', 'zdb(''so_posts'', ctid)==>''title_and_tags:"with"'' ORDER BY id LIMIT 10');
  primaryKey | fieldName | arrayIndex |   term   |    type    | position | startOffset | endOffset |        clause         
 ------------+-----------+------------+----------+------------+----------+-------------+-----------+-----------------------
- 1257       | title     |          0 | with     | <ALPHANUM> |        4 |          16 |        20 | title CONTAINS "null"
- 1257       | title     |          0 | teachers | <ALPHANUM> |        5 |          21 |        29 | title CONTAINS "null"
- 2164       | title     |          0 | with     | <ALPHANUM> |        3 |          12 |        16 | title CONTAINS "null"
- 2164       | title     |          0 | the      | <ALPHANUM> |        4 |          17 |        20 | title CONTAINS "null"
+ 1257       | title     |          0 | with     | <ALPHANUM> |        5 |          16 |        20 | title CONTAINS "null"
+ 1257       | title     |          0 | teachers | <ALPHANUM> |        6 |          21 |        29 | title CONTAINS "null"
+ 2164       | title     |          0 | with     | <ALPHANUM> |        4 |          12 |        16 | title CONTAINS "null"
+ 2164       | title     |          0 | the      | <ALPHANUM> |        5 |          17 |        20 | title CONTAINS "null"
 (4 rows)
 

@@ -1,30 +1,30 @@
 SELECT * FROM zdb_highlight('products', 'long_description="but"', 'id IN (1,2,3,4,5)');  -- works
  primaryKey |    fieldName     | arrayIndex | term |    type    | position | startOffset | endOffset |          clause           
 ------------+------------------+------------+------+------------+----------+-------------+-----------+---------------------------
- 4          | long_description |          0 | but  | <ALPHANUM> |       12 |          68 |        71 | long_description EQ "but"
+ 4          | long_description |          0 | but  | <ALPHANUM> |       13 |          68 |        71 | long_description EQ "but"
 (1 row)
 
 SELECT * FROM zdb_highlight('products', 'long_description="(but"', 'id IN (1,2,3,4,5)');  -- errors
  primaryKey |    fieldName     | arrayIndex | term |    type    | position | startOffset | endOffset |           clause           
 ------------+------------------+------------+------+------------+----------+-------------+-----------+----------------------------
- 4          | long_description |          0 | but  | <ALPHANUM> |       12 |          68 |        71 | long_description EQ "(but"
+ 4          | long_description |          0 | but  | <ALPHANUM> |       13 |          68 |        71 | long_description EQ "(but"
 (1 row)
 
 SELECT * FROM zdb_highlight('products', 'long_description="(but)"', 'id IN (1,2,3,4,5)');  -- errors
  primaryKey |    fieldName     | arrayIndex | term |    type    | position | startOffset | endOffset |           clause            
 ------------+------------------+------------+------+------------+----------+-------------+-----------+-----------------------------
- 4          | long_description |          0 | but  | <ALPHANUM> |       12 |          68 |        71 | long_description EQ "(but)"
+ 4          | long_description |          0 | but  | <ALPHANUM> |       13 |          68 |        71 | long_description EQ "(but)"
 (1 row)
 
 SELECT * FROM zdb_highlight('products', 'long_description="#but"', 'id IN (1,2,3,4,5)');  -- errors
  primaryKey |    fieldName     | arrayIndex | term |    type    | position | startOffset | endOffset |           clause           
 ------------+------------------+------------+------+------------+----------+-------------+-----------+----------------------------
- 4          | long_description |          0 | but  | <ALPHANUM> |       12 |          68 |        71 | long_description EQ "#but"
+ 4          | long_description |          0 | but  | <ALPHANUM> |       13 |          68 |        71 | long_description EQ "#but"
 (1 row)
 
 SELECT * FROM zdb_highlight('products', 'long_description="@but"', 'id IN (1,2,3,4,5)');  -- errors
  primaryKey |    fieldName     | arrayIndex | term |    type    | position | startOffset | endOffset |           clause           
 ------------+------------------+------------+------+------------+----------+-------------+-----------+----------------------------
- 4          | long_description |          0 | but  | <ALPHANUM> |       12 |          68 |        71 | long_description EQ "@but"
+ 4          | long_description |          0 | but  | <ALPHANUM> |       13 |          68 |        71 | long_description EQ "@but"
 (1 row)
 
