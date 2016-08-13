@@ -365,7 +365,8 @@ public abstract class QueryRewriter {
         }
 
         if (useHistogram) {
-            DateHistogramBuilder dhb = AggregationBuilders.dateHistogram(agg.getFieldname())
+            DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
+                    .minDocCount(1)  // default: 0 for ES 2.x, 1 for 1.x
                     .field(getAggregateFieldName(agg) + DateSuffix)
                     .order(stringToDateHistogramOrder(agg.getSortOrder()))
                     .offset(intervalOffset);
