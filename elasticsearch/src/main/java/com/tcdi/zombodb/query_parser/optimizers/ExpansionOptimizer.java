@@ -163,11 +163,6 @@ public class ExpansionOptimizer {
                 .setPreference(searchPreference)
                 .addAggregation(termsBuilder);
 
-
-        // .setIndex(metadataManager.getMetadataForField(fieldname).getLink().getIndexName())
-        //      .setText(phrase)
-        //      .setAnalyzer(analyzer).request()
-
         ActionFuture<SearchResponse> future = client.search(builder.request());
 
         try {

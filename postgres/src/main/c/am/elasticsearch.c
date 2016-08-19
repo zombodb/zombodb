@@ -262,11 +262,6 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "      \"data\": {"
             "          \"_source\": { \"enabled\": false },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-                     /*
-                       "index" and "store" were removed in ES2 (so I excluded it from tests)
-                       See https://github.com/elastic/elasticsearch/issues/8143
-                     */
-            /* "          \"_field_names\": { \"index\": \"no\", \"store\": false }," */
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
@@ -347,11 +342,6 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "   \"data\": {"
             "      \"_source\": { \"enabled\": false },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-                     /*
-                       "index" and "store" were removed in ES2 (so I excluded it from tests)
-                       See https://github.com/elastic/elasticsearch/issues/8143
-                     */
-            /* "      \"_field_names\": { \"index\": \"no\", \"store\": false }," */
             "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"

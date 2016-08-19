@@ -9,7 +9,7 @@
       },
       "_field_names": {
         "type": "_field_names",
-        "enabled": true
+        "enabled": false
       },
       "_meta": {
         "primary_key": "id"
@@ -97,7 +97,7 @@
         "analyzer": "phrase"
       },
       "_field_names": {
-        "enabled": true,
+        "enabled": false,
         "type": "_field_names"
       },
       "_parent": {
@@ -169,8 +169,8 @@
           "type": "string",
           "index_options": "positions",
           "include_in_all": "true",
-          "search_analyzer": "fulltext_with_shingles_search",
           "analyzer": "fulltext_with_shingles",
+          "search_analyzer": "fulltext_with_shingles_search",
           "fielddata": {
             "format": "disabled"
           },

@@ -413,8 +413,11 @@ public abstract class QueryRewriter {
                     .order(stringToTermsOrder(agg.getSortOrder()));
 
             if ("string".equalsIgnoreCase(md.getType(agg.getFieldname()))) {
-                // tb.include(agg.getStem(), Pattern.CASE_INSENSITIVE);
-                tb.include(agg.getStem());
+                // Thats how it is in ES 2.x: no "^" or "$", match full string
+                String stem = agg.getStem();
+                if (stem.startsWith("^"))
+                    stem = stem.substring(1);
+                tb.include(stem);
             }
 
             return tb;
@@ -490,8 +493,13 @@ public abstract class QueryRewriter {
                 .field(getAggregateFieldName(agg))
                 .size(agg.getMaxTerms());
 
-        if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
-            stb.include(agg.getStem(), Pattern.CASE_INSENSITIVE);
+        if ("string".equalsIgnoreCase(md.getType(agg.getFieldname()))) {
+            // Thats how it is in ES 2.x: no "^" or "$", match full string
+            String stem = agg.getStem();
+            if (stem.startsWith("^"))
+                stem = stem.substring(1);
+            stb.include(stem);
+        }
 
         return stb;
     }
@@ -636,8 +644,7 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(withNestedPath, fb);
             else
-                // return filteredQuery(matchAllQuery(), nestedFilter(withNestedPath, fb).join(false));
-                return nestedQuery(withNestedPath, fb);
+                return boolQuery().filter(nestedQuery(withNestedPath, fb));
         } else {
             return fb;
         }
@@ -777,7 +784,7 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                return missingQuery(n.getFieldname());
+                return boolQuery().mustNot(existsQuery(n.getFieldname()));
             }
         });
     }
@@ -893,28 +900,33 @@ public abstract class QueryRewriter {
                     }
                 }
 
+                final Iterable<Object> finalItr = itr;
+                TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+                        @Override
+                        public Iterator<Object> iterator() {
+                            return finalItr.iterator();
+                        }
+
+                        @Override
+                        public int size() {
+                            return cnt;
+                        }
+                    });
+
                 if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
-                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), itr);
-                    return boolQuery().must(matchAllQuery()).filter(builder);
+                    return boolQuery().filter(builder);
                 } else {
-                    final Iterable<Object> finalItr = itr;
-                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
-                            @Override
-                            public Iterator<Object> iterator() {
-                                return finalItr.iterator();
-                            }
+                    if (cnt == minShouldMatch && minShouldMatch > 1){
+                        BoolQueryBuilder fb = boolQuery();
+                        for (Iterator<Object> i = finalItr.iterator(); i.hasNext();){
+                            fb.must(termQuery(n.getFieldname(), i.next()));
+                        }
+                        return fb;
+                    }
+                    if (minShouldMatch == 1)
+                        return builder;
 
-                            @Override
-                            public int size() {
-                                return cnt;
-                            }
-                        });
-
-                    BoolQueryBuilder boolBuilder = boolQuery().filter(builder);
-                    if (minShouldMatch > 1)
-                        boolBuilder.minimumNumberShouldMatch(minShouldMatch);
-
-                    return boolBuilder;
+                    return boolQuery().filter(builder);
                 }
             }
         });
@@ -1133,8 +1145,7 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(), fb);
             else
-                // return filteredQuery(matchAllQuery(), nestedFilter(node.getNestedPath(), fb).join(false));
-                return nestedQuery(node.getNestedPath(), fb);
+                return boolQuery().filter(nestedQuery(node.getNestedPath(), fb));
         } else if (!node.isNested(metadataManager)) {
             if (_isBuildingAggregate)
                 return matchAllQuery();

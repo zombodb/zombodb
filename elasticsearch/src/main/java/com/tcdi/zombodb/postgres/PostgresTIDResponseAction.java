@@ -174,7 +174,6 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
                 future = client.searchScroll(new SearchScrollRequestBuilder(client, SearchScrollAction.INSTANCE)
                         .setScrollId(searchResponse.getScrollId())
                         .setScroll(TimeValue.timeValueMinutes(10))
-                        // .listenerThreaded(true)
                         .request()
                 );
             }
