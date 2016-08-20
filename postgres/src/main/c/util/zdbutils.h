@@ -35,20 +35,14 @@ char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname);
 bool type_is_domain(char *type_name, Oid *base_type);
 void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen);
 void freeStringInfo(StringInfo si);
-char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing);
+char *lookup_primary_key(char *schemaName, char *tableName);
 Oid  *findZDBIndexes(Oid relid, int *many);
 Oid *find_all_zdb_indexes(int *many);
 Oid  *oid_array_to_oids(ArrayType *arr, int *many);
 char **text_array_to_strings(ArrayType *array, int *many);
 
-Oid get_relation_oid(char *namespace, char *relname);
-
-typedef void (*invisibility_callback)(ItemPointer ctid, uint64 xid, void *ctids, void *xids, int *nctids);
-int find_invisible_ctids(const void *desc, Relation heapRel, Oid xactRelOid, StringInfo ctids, StringInfo xids);
 uint64     convert_xid(TransactionId xid);
-bool       is_invisible_xid(Snapshot snapshot, TransactionId xid);
 
-void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toObjectId, DependencyType dependencyType);
 Expr *evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod, Oid result_collation);
 
 #endif

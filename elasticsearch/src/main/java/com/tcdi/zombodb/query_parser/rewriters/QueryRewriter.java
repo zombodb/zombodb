@@ -17,6 +17,8 @@
 package com.tcdi.zombodb.query_parser.rewriters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcdi.zombodb.postgres.DynamicSearchActionHelper;
+import com.tcdi.zombodb.query.ExpansionQueryBuilder;
 import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.QueryParser;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
@@ -33,14 +35,18 @@ import org.elasticsearch.action.get.MultiGetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.bytes.BytesArray;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.engine.DocumentAlreadyExistsException;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
+import org.elasticsearch.search.aggregations.Aggregator;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
@@ -70,24 +76,24 @@ public abstract class QueryRewriter {
         static {
             try {
                 IS_SIREN_AVAILABLE = Class.forName("solutions.siren.join.index.query.FilterJoinBuilder") != null;
-                System.err.println("[zombodb] Using SIREn for join resolution");
+                Loggers.getLogger(QueryRewriter.Factory.class).info("[zombodb] Using SIREn for join resolution");
             } catch (Exception e) {
                 IS_SIREN_AVAILABLE = false;
-                System.err.println("[zombodb] Using ZomboDB for join resolution");
+                Loggers.getLogger(QueryRewriter.Factory.class).info("[zombodb] Using ZomboDB for join resolution");
             }
         }
 
-        public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+        public static QueryRewriter create(Client client, long xid, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
             if (IS_SIREN_AVAILABLE) {
                 try {
                     Class clazz = Class.forName("com.tcdi.zombodb.query_parser.rewriters.SirenQueryRewriter");
-                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class);
-                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
+                    Constructor ctor = clazz.getConstructor(Client.class, long.class, String.class, String.class, String.class, boolean.class, boolean.class);
+                    return (QueryRewriter) ctor.newInstance(client, xid, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
                 } catch (Exception e) {
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
             } else {
-                return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
+                return new ZomboDBQueryRewriter(client, xid, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
             }
         }
     }
@@ -154,8 +160,11 @@ public abstract class QueryRewriter {
 
     protected final IndexMetadataManager metadataManager;
 
-    public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+    protected final long myXid;
+
+    public QueryRewriter(Client client, long xid, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
         this.client = client;
+        this.myXid = xid;
         this.searchPreference = searchPreference;
         this.doFullFieldDataLookup = doFullFieldDataLookup;
 
@@ -1301,18 +1310,80 @@ public abstract class QueryRewriter {
 
     public QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
         QueryParserNode exclusion = tree.getExclusion(indexName);
+        String keyFieldname;
 
-        if (exclusion != null) {
-            BoolQueryBuilder bqb = boolQuery();
-            bqb.must(query);
-            if (exclusion instanceof ASTOr) {
-                for (QueryParserNode child : exclusion)
-                    bqb.mustNot(build(child));
-            } else {
-                bqb.mustNot(build(exclusion));
+        if (exclusion != null)
+            query = boolQuery()
+                    .must(query)
+                    .mustNot(build(exclusion));
+
+        if (myXid == 0)
+            return query;
+
+        keyFieldname = metadataManager.getMetadata(metadataManager.getIndexLinkByIndexName(indexName)).getPrimaryKeyFieldName();
+
+        TermsBuilder termsAgg = new TermsBuilder("keys")
+                .minDocCount(2)
+                .shardMinDocCount(2)
+                .collectMode(Aggregator.SubAggCollectionMode.BREADTH_FIRST) // ~4x faster than DEPTH_FIRST default
+                .size(0)
+                .shardSize(0)
+                .field(keyFieldname);
+        TermsBuilder xidsAgg = new TermsBuilder("xids")
+                .size(0)
+                .shardSize(0)
+                .order(Terms.Order.term(false))
+                .field("_xid");
+        TermsBuilder zdbidAgg = new TermsBuilder("zdbid")
+                .size(0)
+                .field("_zdb_id");
+
+        xidsAgg.subAggregation(zdbidAgg);
+        termsAgg.subAggregation(xidsAgg);
+
+        SearchRequestBuilder builder = new SearchRequestBuilder(client)
+                .setIndices(indexName)
+                .setTypes("data")
+                .addAggregation(termsAgg)
+                .setQueryCache(true)
+                .setQuery(new ExpansionQueryBuilder(keyFieldname).query(query))
+                .setSize(0)
+                .setPreference(searchPreference);
+
+        SearchResponse response = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).actionGet();
+        List<Object> keysToExclude = new ArrayList<>();
+        List<Long> zdbidsToInclude = new ArrayList<>();
+
+        for (Terms.Bucket keysBuckets : ((Terms) response.getAggregations().get("keys")).getBuckets()) {
+            // wholesale exclude this particular key
+            keysToExclude.add(keysBuckets.getKey());
+
+            for (Terms.Bucket xidsBucket : ((Terms) keysBuckets.getAggregations().get("xids")).getBuckets()) {
+                long xidValue = xidsBucket.getKeyAsNumber().longValue();
+
+                if (xidValue <= myXid) {
+                    // TODO:  need to make xidValue is committed
+                    // TODO:  need an "xid sequence" field on each row so
+                    //        that if a row is updated multiple times in
+                    //        a transaction, we can pick the most recent one
+                    long zdbid = ((Terms) xidsBucket.getAggregations().get("zdbid")).getBuckets().get(0).getKeyAsNumber().longValue();
+
+                    // include the zdb_id represented by this xid
+                    zdbidsToInclude.add(zdbid);
+                    break;
+                }
             }
-            query = bqb;
         }
+
+        if (!keysToExclude.isEmpty()) {
+            OrFilterBuilder or = orFilter();
+
+            or.add(notFilter(termsFilter(keyFieldname, keysToExclude)));
+            or.add(termsFilter("_zdb_id", zdbidsToInclude));
+
+            query = filteredQuery(query, or);
+        }
+
         return query;
     }
 }

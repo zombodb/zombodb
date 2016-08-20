@@ -39,7 +39,9 @@
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
 #include "utils/builtins.h"
+#include "utils/int8.h"
 #include "utils/json.h"
+#include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/tqual.h"
 
@@ -61,7 +63,6 @@ PG_FUNCTION_INFO_V1(zdbrestpos);
 PG_FUNCTION_INFO_V1(zdbbulkdelete);
 PG_FUNCTION_INFO_V1(zdbvacuumcleanup);
 PG_FUNCTION_INFO_V1(zdboptions);
-PG_FUNCTION_INFO_V1(zdbtupledeletedtrigger);
 PG_FUNCTION_INFO_V1(zdbeventtrigger);
 PG_FUNCTION_INFO_V1(zdbcostestimate);
 
@@ -95,8 +96,6 @@ typedef struct {
 } ZDBBulkDeleteState;
 
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state);
-
-static TransactionId lastxid = 0;
 
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
@@ -141,10 +140,6 @@ static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forIns
     if (desc == NULL) {
         desc            = zdb_alloc_index_descriptor(indexRel);
         usedIndexesList = lappend(usedIndexesList, desc);
-    }
-
-    if (desc->xactRelId == InvalidOid) {
-        desc->xactRelId = get_relation_oid(desc->schemaName, desc->xactRelName);
     }
 
     if (forInsert && !desc->isShadow)
@@ -374,7 +369,7 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
         buildstate.desc->implementation->dropIndex(buildstate.desc);
 
         /* create a new, empty index */
-        mappingDatum    = make_es_mapping(heapRel->rd_id, heapRel->rd_att, false);
+        mappingDatum    = make_es_mapping(buildstate.desc, heapRel->rd_id, heapRel->rd_att, false);
         propertiesDatum = DirectFunctionCall2(json_object_field, mappingDatum, PROPERTIES);
         properties      = TextDatumGetCString(propertiesDatum);
 
@@ -388,90 +383,6 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 
         /* reset the settings to reasonable values for production use */
         buildstate.desc->implementation->finalizeNewIndex(buildstate.desc);
-
-		if (heapRel->rd_rel->relkind != 'm')
-		{
-            StringInfo triggerSQL;
-
-			/* put a trigger on the table to forward UPDATEs and DELETEs into our code for ES xact synchronization */
-			SPI_connect();
-
-			triggerSQL = makeStringInfo();
-			appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", RelationGetRelid(heapRel), RelationGetRelid(indexRel));
-			if (SPI_execute(triggerSQL->data, true, 0) == SPI_OK_SELECT && SPI_processed == 0)
-			{
-				resetStringInfo(triggerSQL);
-				appendStringInfo(triggerSQL,
-						"CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
-								"       BEFORE UPDATE OR DELETE ON \"%s\".\"%s\" "
-								"       FOR EACH ROW EXECUTE PROCEDURE zdbtupledeletedtrigger('%d');"
-								"UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d';"
-								"SELECT oid "
-								"       FROM pg_trigger "
-								"       WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'",
-						RelationGetRelid(heapRel), RelationGetRelid(indexRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid(indexRel),  /* CREATE TRIGGER args */
-						RelationGetRelid(heapRel), RelationGetRelid(indexRel), /* UPDATE pg_trigger args */
-						RelationGetRelid(heapRel), RelationGetRelid(indexRel) /* SELECT FROM pg_trigger args */
-				);
-
-				if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1) {
-                    define_dependency(RelationRelationId, RelationGetRelid(indexRel), TriggerRelationId, (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1)), DEPENDENCY_INTERNAL);
-				}
-				else {
-					elog(ERROR, "Cannot create trigger");
-				}
-			}
-
-			pfree(triggerSQL->data);
-			pfree(triggerSQL);
-
-			SPI_finish();
-		}
-
-        if (buildstate.desc->xactRelId == InvalidOid) {
-            IndexInfo *ii = palloc0(sizeof(IndexInfo));
-            Oid colids[] = {InvalidOid, InvalidOid};
-            Oid opclasses[] = {GetDefaultOpClass(INT8OID, BTREE_AM_OID), GetDefaultOpClass(BOOLOID, BTREE_AM_OID)};
-            int16 coloptions[] = {0, 0};
-            Relation xactRel;
-            BTSpool *spool;
-
-            /* CREATE INDEX xact_index ON table ((null)::int8, (null)::boolean) WHERE false; */
-            ii->ii_NumIndexAttrs = 2;
-            ii->ii_Expressions   = lappend(lappend(NULL, makeNullConst(INT8OID, -1, InvalidOid)), makeNullConst(BOOLOID, -1, InvalidOid));
-            ii->ii_Predicate     = lappend(NULL, makeBoolConst(false, false));
-
-            /* create the index, noting that we don't ask it to do a build... */
-            buildstate.desc->xactRelId = index_create(heapRel, buildstate.desc->xactRelName, InvalidOid, InvalidOid,
-                                                      ii, lappend(lappend(NULL, "first"), "second"),
-                                                      BTREE_AM_OID, indexRel->rd_rel->reltablespace,
-                                                      colids, opclasses, coloptions, PointerGetDatum(NULL),
-                                                      false, false, false, false, false, true, false, false
-                                                      #if (PG_VERSION_NUM >= 90500)
-                                                            ,false /* if_not_exists */
-                                                      #endif
-            );
-
-            /*
-             * ... because we fake building an empty btree index ourselves
-             *
-             * This eliminates the need for Postgres to scan the entire heap
-             * but never actually add anything to the index because
-             * of the "WHERE false" predicate
-             */
-            xactRel = RelationIdGetRelation(buildstate.desc->xactRelId);
-            spool   = _bt_spoolinit(heapRel, xactRel, indexInfo->ii_Unique, false);
-            _bt_leafbuild(spool, NULL);
-            _bt_spooldestroy(spool);
-            RelationClose(xactRel);
-
-            /*
-             * relate this "xact" index to the primary index such that dropping the primary index
-             * will also drop the "xact" index, but dropping the "xact" index will raise an ERROR
-             */
-            define_dependency(RelationRelationId, RelationGetRelid(indexRel), RelationRelationId, buildstate.desc->xactRelId, DEPENDENCY_INTERNAL);
-            define_dependency(RelationRelationId, buildstate.desc->xactRelId, RelationRelationId, RelationGetRelid(indexRel), DEPENDENCY_NORMAL);
-        }
 
         pfree(DatumGetPointer(mappingDatum));
         pfree(DatumGetPointer(propertiesDatum));
@@ -518,7 +429,6 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
     Datum              *values              = (Datum *) PG_GETARG_POINTER(1);
 //    bool	   *isnull = (bool *) PG_GETARG_POINTER(2);
     ItemPointer        ht_ctid              = (ItemPointer) PG_GETARG_POINTER(3);
-    Relation           heapRel              = (Relation) PG_GETARG_POINTER(4);
 //    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
     TransactionId      currentTransactionId = GetCurrentTransactionId();
     ZDBIndexDescriptor *desc;
@@ -526,26 +436,6 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
     desc = alloc_index_descriptor(indexRel, true);
     if (desc->isShadow)
         PG_RETURN_BOOL(false);
-
-    if (lastxid != currentTransactionId) {
-        Relation xactRel;
-        Datum datum[2];
-        static bool isnull[2] = {false, false};
-
-        datum[0] = Int64GetDatum(convert_xid(currentTransactionId));
-        datum[1] = true;
-
-        /*
-         * If we haven't already done so for this transaction, insert a single
-         * tuple into our xact index to record this transaction id so concurrent/future
-         * scans will exclude it.
-         */
-        xactRel = index_open(desc->xactRelId, RowExclusiveLock);
-        index_insert(xactRel, datum, isnull, ht_ctid, heapRel, UNIQUE_CHECK_NO);
-        index_close(xactRel, RowExclusiveLock);
-
-        lastxid = currentTransactionId;
-    }
 
     desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), currentTransactionId);
 
@@ -750,102 +640,6 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
     PG_RETURN_VOID();
 }
 
-static int delete_xids_from_xact_index(Relation heapRel, Relation xactRel, ZDBIndexDescriptor *desc) {
-    IndexScanDesc scanDesc;
-    ItemPointer   tid;
-    StringInfo    xids    = makeStringInfo();
-    uint64        lastxid = InvalidTransactionId;
-    TransactionId oldestXmin;
-    int           killed  = 0;
-
-#if (PG_VERSION_NUM >= 90400)
-    oldestXmin = GetOldestXmin(heapRel, false);
-#else
-    oldestXmin = GetOldestXmin(false, false);
-#endif
-
-    /*
-     * scan our xact index and build a unique list (a json-formatted string of xids) of xids it contains
-     * that are at least before the GetOldestXmin.  These should be completed xids, either committed or aborted
-     */
-    scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
-    scanDesc->xs_want_itup = true;
-
-    index_rescan(scanDesc, NULL, 0, NULL, 0);
-    while ((tid = index_getnext_tid(scanDesc, ForwardScanDirection)) != NULL) {
-        uint64        convertedxid;
-        TransactionId xid;
-        bool          isnull;
-
-        convertedxid = (uint64) DatumGetInt64(index_getattr(scanDesc->xs_itup, 1, scanDesc->xs_itupdesc, &isnull));
-        xid          = (TransactionId) (convertedxid);
-
-        if (lastxid != convertedxid && TransactionIdPrecedesOrEquals(xid, oldestXmin)) {
-            if (TransactionIdDidAbort(xid)) {
-                if (xids->len == 0)
-                    appendStringInfoChar(xids, '[');
-                else if (xids->len > 1)
-                    appendStringInfoChar(xids, ',');
-                appendStringInfo(xids, "%lu", convertedxid);
-                lastxid = convertedxid;
-            }
-        }
-    }
-
-    /* if we have some xids from above... */
-    if (xids->len > 0) {
-        uint32 nxids;
-        uint64* dead_xids;
-
-        /*
-         * ... then find the ones that no longer exist in Elasticsearch.  This means
-         * previous vacuum runs managed to fully clean up the individual rows
-         */
-        appendStringInfoChar(xids, ']');
-        dead_xids = desc->implementation->vacuumSupport(desc, xids->data, &nxids);
-
-        if (nxids > 0) {
-            HASHCTL ctl;
-            HTAB *htab;
-            uint32 i;
-            bool found;
-
-            /* convert our list of dead xids into a hashtable for fast lookup */
-            MemSet(&ctl, 0, sizeof(HASHCTL));
-            ctl.keysize   = sizeof(uint64);
-            ctl.entrysize = sizeof(uint64);
-            ctl.hash      = tag_hash;
-            htab = hash_create("dead xids", nxids, &ctl, HASH_ELEM | HASH_FUNCTION);
-            for (i = 0; i < nxids; i++)
-                hash_search(htab, &dead_xids[i], HASH_ENTER, &found);
-
-            /*
-             * and for any that are no longer in ES, we'll 'kill_prior_tuple' on them
-             * to get them out of our xact index so future "invisibility map" scans
-             * won't try to exclude things that no longer exist
-             */
-            index_rescan(scanDesc, NULL, 0, NULL, 0);
-            while (index_getnext_tid(scanDesc, ForwardScanDirection) != NULL) {
-                uint64 convertedxid;
-                bool   isnull;
-
-                convertedxid = (uint64) DatumGetInt64(index_getattr(scanDesc->xs_itup, 1, scanDesc->xs_itupdesc, &isnull));
-
-                hash_search(htab, &convertedxid, HASH_FIND, &found);
-                if (found) {
-                    scanDesc->kill_prior_tuple = true;
-                    killed++;
-                }
-            }
-        }
-    }
-
-    index_endscan(scanDesc);
-
-    return killed;
-}
-
-
 /*
  * lifted from various Postgres versions of vacuumlazy.c
  *
@@ -943,11 +737,8 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 //    IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
     void                    *callback_state = (void *) PG_GETARG_POINTER(3);
     Relation                indexRel        = info->index;
-    Relation                heapRel;
-    Relation                xactRel;
     ZDBIndexDescriptor      *desc;
     LVRelStats              *relstats;
-    int                     xids_killed;
     struct timeval          tv1, tv2;
 
     gettimeofday(&tv1, NULL);
@@ -963,10 +754,6 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     relstats = (LVRelStats *) callback_state; /* XXX:  cast to our copy/paste of LVRelStats! */
 
     desc->implementation->bulkDelete(desc, relstats->dead_tuples, relstats->num_dead_tuples);
-    heapRel     = RelationIdGetRelation(desc->heapRelid);
-    xactRel     = relation_open(desc->xactRelId, AccessShareLock);
-    xids_killed = delete_xids_from_xact_index(heapRel, xactRel, desc);
-    relation_close(xactRel, AccessShareLock);
 
     stats->num_pages        = 1;
     stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
@@ -974,8 +761,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 
     gettimeofday(&tv2, NULL);
 
-    elog(LOG, "[zombodb vacuum status] heap=%s, num_removed=%d, num_index_tuples=%lu, xids_killed=%d, ttl=%fs", RelationGetRelationName(heapRel), relstats->num_dead_tuples, (uint64) stats->num_index_tuples, xids_killed, TO_SECONDS(tv1, tv2));
-    RelationClose(heapRel);
+    elog(LOG, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), relstats->num_dead_tuples, (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
 
     PG_RETURN_POINTER(stats);
 }
@@ -1082,7 +868,7 @@ Datum zdbeventtrigger(PG_FUNCTION_ARGS) {
                 indexRel = relation_open(indexOids[i], AccessShareLock);
                 desc     = alloc_index_descriptor(indexRel, false);
 
-                mapping = TextDatumGetCString(make_es_mapping(heapRel->rd_id, heapRel->rd_att, false));
+                mapping = TextDatumGetCString(make_es_mapping(desc, heapRel->rd_id, heapRel->rd_att, false));
                 desc->implementation->updateMapping(desc, mapping);
 
                 relation_close(indexRel, AccessShareLock);
@@ -1145,51 +931,4 @@ Datum zdbcostestimate(PG_FUNCTION_ARGS) {
 
     freeStringInfo(query);
     PG_RETURN_VOID();
-}
-
-Datum
-zdbtupledeletedtrigger(PG_FUNCTION_ARGS)
-{
-    TriggerData        *trigdata = (TriggerData *) fcinfo->context;
-    TransactionId      currentTransactionId       = GetCurrentTransactionId();
-    Oid                indexRelOid;
-    ZDBIndexDescriptor *desc;
-    Relation           xactRel;
-    Datum              datum[2];
-    static bool        isnull[2] = {false, false};
-
-    /* make sure it's called as a trigger at all */
-    if (!CALLED_AS_TRIGGER(fcinfo))
-        elog(ERROR, "zdbtupledeletedtrigger: not called by trigger manager");
-
-    if (!(TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event) ||
-          TRIGGER_FIRED_BY_DELETE(trigdata->tg_event)))
-        elog(ERROR, "zdbtupledeletedtrigger: can only be fired for UPDATE and DELETE");
-
-    if (TRIGGER_FIRED_AFTER(trigdata->tg_event))
-        elog(ERROR, "zdbtupledeletedtrigger: can only be fired as a BEFORE trigger");
-
-    if (trigdata->tg_trigger->tgnargs != 1)
-        elog(ERROR, "zdbtupledeletedtrigger: must specify the index oid as the only argument");
-
-    indexRelOid = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
-    desc        = zdb_alloc_index_descriptor_by_index_oid(indexRelOid);
-    datum[0]    = Int64GetDatum(convert_xid(currentTransactionId));
-    datum[1]    = BoolGetDatum(TRIGGER_FIRED_BY_INSERT(trigdata->tg_event));
-
-    /*
-     * add a row into our xact index to record the item pointer of the tuple being updated
-     * this is its existing tid, not the new one
-     */
-    xactRel = index_open(desc->xactRelId, RowExclusiveLock);
-    index_insert(xactRel, datum, isnull, &trigdata->tg_trigtuple->t_self, trigdata->tg_relation, UNIQUE_CHECK_NO);
-    index_close(xactRel, RowExclusiveLock);
-
-    /* return the right thing */
-    if (TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event))
-        return PointerGetDatum(trigdata->tg_newtuple);
-    else if (TRIGGER_FIRED_BY_DELETE(trigdata->tg_event))
-        return PointerGetDatum(trigdata->tg_trigtuple);
-    else
-        elog(ERROR, "trigger called in wrong context");
 }

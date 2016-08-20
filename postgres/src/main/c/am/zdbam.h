@@ -35,7 +35,6 @@ extern Datum zdbrestrpos(PG_FUNCTION_ARGS);
 extern Datum zdbbulkdelete(PG_FUNCTION_ARGS);
 extern Datum zdbvacuumcleanup(PG_FUNCTION_ARGS);
 extern Datum zdboptions(PG_FUNCTION_ARGS);
-extern Datum zdbtupledeletedtrigger(PG_FUNCTION_ARGS);
 extern Datum zdbeventtrigger(PG_FUNCTION_ARGS);
 extern Datum zdbcostestimate(PG_FUNCTION_ARGS);
 

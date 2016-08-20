@@ -74,7 +74,6 @@ ALTER FUNCTION pg_catalog.regclass(text) IMMUTABLE;
 --
 -- trigger support
 --
-CREATE OR REPLACE FUNCTION zdbtupledeletedtrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
@@ -104,11 +103,11 @@ $$;
 
 CREATE OR REPLACE FUNCTION count_of_table(table_name REGCLASS) RETURNS INT8 LANGUAGE plpgsql AS $$
 DECLARE
-  cnt INT8;
+  termCount INT8;
 BEGIN
   EXECUTE format('SELECT count(*) FROM %s', table_name)
-  INTO cnt;
-  RETURN cnt;
+  INTO termCount;
+  RETURN termCount;
 END;
 $$;
 

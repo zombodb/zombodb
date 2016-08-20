@@ -42,11 +42,6 @@
 
 #include "am/zdb_interface.h"
 
-/* defined in zdbxactvac_worker.c */
-extern int zdb_vacuum_xact_index(ZDBIndexDescriptor *desc);
-
-static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heapRelId, Oid xactRelId, invisibility_callback cb, void *ctids, void *xids, int *nctids);
-
 typedef struct {
     TransactionId last_xid;
     uint32        epoch;
@@ -168,21 +163,31 @@ void freeStringInfo(StringInfo si) {
     }
 }
 
-char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing) {
+char *lookup_primary_key(char *schemaName, char *tableName) {
     StringInfo sql = makeStringInfo();
     char       *keyname;
 
     SPI_connect();
-    appendStringInfo(sql, "SELECT column_name FROM information_schema.key_column_usage WHERE table_schema = '%s' AND table_name = '%s'", schemaName, tableName);
+    appendStringInfo(sql,
+                     "select (select attname from pg_attribute where attrelid = indrelid and attnum = indkey[0]) "
+                             "from pg_index "
+                             "where indrelid = '%s.%s'::regclass "
+                             "and indisunique = true "
+                             "and indexprs is null "
+                             "and indpred is null "
+                             "and indnatts = 1 "
+                             "and exists (select 1 "
+                             "       from pg_attribute "
+                             "      where attrelid = indrelid "
+                             "        and (attnotnull = true or (select relkind from pg_class where oid = indrelid) = 'm') "
+                             "        and attnum = indkey[0] "
+							 "        and atttypid = (select oid from pg_type where typname = 'int8') "
+                             ") "
+                             "order by case when indisprimary then 0 else 1 end", schemaName, tableName);
     SPI_execute(sql->data, true, 1);
 
     if (SPI_processed == 0) {
-        if (failOnMissing)
-            elog(ERROR, "Cannot find primary key column for: %s.%s", schemaName, tableName);
-        else {
-            SPI_finish();
-            return NULL;
-        }
+        elog(ERROR, "Cannot find a 'NOT NULL' column of type 'int8/bigint/serial8' with a UNIQUE index on table: %s.%s", schemaName, tableName);
     }
 
     keyname = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
@@ -267,137 +272,6 @@ char **text_array_to_strings(ArrayType *array, int *many) {
     return result;
 }
 
-Oid get_relation_oid(char *namespace, char *relname) {
-    StringInfo sb = makeStringInfo();
-    RangeVar   *rv;
-
-    if (namespace != NULL)
-        appendStringInfo(sb, "%s.%s", namespace, relname);
-    else
-        appendStringInfo(sb, "%s", relname);
-
-    rv = makeRangeVarFromNameList(textToQualifiedNameList(cstring_to_text(sb->data)));
-
-    freeStringInfo(sb);
-    /* We might not even have permissions on this relation; don't lock it. */
-    return RangeVarGetRelid(rv, NoLock, true);
-}
-
-static void string_invisibility_callback(ItemPointer ctid, uint64 xid, void *ctids, void *xids, int *nctids) {
-
-    if (ctid != NULL) {
-        StringInfo sb = (StringInfo) ctids;
-        if (sb->len > 0)
-            appendStringInfoCharMacro(sb, ',');
-        appendStringInfo(sb, "%lu", ItemPointerToUint64(ctid));
-        *nctids = *nctids+1;
-    }
-
-    if (xid != InvalidTransactionId) {
-        StringInfo sb = (StringInfo) xids;
-        if (sb->len > 0)
-            appendStringInfoCharMacro(sb, ',');
-        appendStringInfo(sb, "%lu", xid);
-    }
-
-}
-
-int find_invisible_ctids(const void *indexDesc, Relation heapRel, Oid xactRelOid, StringInfo ctids, StringInfo xids) {
-    int nctids = 0;
-    ZDBIndexDescriptor *desc = (ZDBIndexDescriptor *) indexDesc;
-
-    find_invisible_ctids_with_callback(desc, heapRel->rd_id, xactRelOid, string_invisibility_callback, ctids, xids, &nctids);
-    return nctids;
-}
-
-bool is_invisible_xid(Snapshot snapshot, TransactionId xid) {
-    int i;
-
-    if (xid >= snapshot->xmax)
-        return true;
-
-    for (i=0; i<snapshot->xcnt; i++) {
-        if (snapshot->xip[i] == xid)
-            return true;
-    }
-    return false;
-}
-
-static int find_invisible_ctids_with_callback(ZDBIndexDescriptor *desc, Oid heapRelId, Oid xactRelId, invisibility_callback cb, void *ctids, void *xids, int *nctids) {
-    Relation       heapRel;
-    int            invs = 0, current = 0, skipped = 0, aborted = 0, killed = 0, tuples = 0;
-    struct timeval tv1, tv2;
-
-    gettimeofday(&tv1, NULL);
-
-    killed = zdb_vacuum_xact_index(desc);
-
-    heapRel = heap_open(heapRelId, AccessShareLock);
-    if (visibilitymap_count(heapRel) != RelationGetNumberOfBlocks(heapRel)) {
-        Snapshot      snapshot   = GetActiveSnapshot();
-        TransactionId currentxid = GetCurrentTransactionId();
-        TransactionId lastxid    = InvalidTransactionId;
-        IndexScanDesc scanDesc;
-        Relation      xactRel;
-        ItemPointer   tid;
-
-        xactRel  = index_open(xactRelId, AccessShareLock);
-        scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
-        scanDesc->xs_want_itup         = true;
-        scanDesc->ignore_killed_tuples = true;
-
-        index_rescan(scanDesc, NULL, 0, NULL, 0);
-        while ((tid = index_getnext_tid(scanDesc, ForwardScanDirection)) != NULL) {
-            uint64        convertedxid;
-            TransactionId xid;
-            bool          is_insert;
-            bool          isnull;
-
-            convertedxid = (uint64) DatumGetInt64(index_getattr(scanDesc->xs_itup, 1, scanDesc->xs_itupdesc, &isnull));
-            is_insert    = DatumGetBool(index_getattr(scanDesc->xs_itup, 2, scanDesc->xs_itupdesc, &isnull));
-            xid          = (TransactionId) (convertedxid);
-
-            //
-            // if xid is current
-            //      then add tid to list of ctids we should exclude
-            // else if xid is currently active
-            //      then skip it entirely
-            // else if not is_insert and xid committed
-            //      then add tid to list of ctids we should exclude
-            // else if xid aborted
-            //      then add xid to list of xids we should exclude
-            //
-
-            if (!is_insert && currentxid == xid) {
-                cb(tid, InvalidTransactionId, ctids, xids, nctids);
-                current++;
-            } else if (is_invisible_xid(snapshot, xid)) {
-                /* xact is still active, so skip because these are wholesale excluded in our query */
-                skipped++;
-            } else if (!is_insert && TransactionIdDidCommit(xid)) {
-                /* ignore ctid of committed update/delete */
-                cb(tid, InvalidTransactionId, ctids, xids, nctids);
-                invs++;
-            } else if (lastxid != xid && TransactionIdDidAbort(xid)) {
-                /* ignore xid of aborted transactions */
-                cb(NULL, convertedxid, ctids, xids, NULL);
-                aborted++;
-                lastxid = xid;
-            }
-
-            tuples++;
-        }
-        index_endscan(scanDesc);
-        index_close(xactRel, AccessShareLock);
-    }
-
-    gettimeofday(&tv2, NULL);
-    elog(LOG, "[zombodb invisibility stats] heap=%s, invisible=%d, skipped=%d, current=%d, aborted=%d, killed=%d, tuples=%d, ttl=%fs", RelationGetRelationName(heapRel), invs, skipped, current, aborted, killed, tuples, TO_SECONDS(tv1, tv2));
-    heap_close(heapRel, AccessShareLock);
-
-    return invs;
-}
-
 /* adapted from Postgres' txid.c#convert_xid function */
 uint64 convert_xid(TransactionId xid) {
     TxidEpoch state;
@@ -417,21 +291,6 @@ uint64 convert_xid(TransactionId xid) {
         epoch++;
 
     return (epoch << 32) | xid;
-}
-
-void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toObjectId, DependencyType dependencyType) {
-    ObjectAddress indexAddress;
-    ObjectAddress triggerAddress;
-
-    indexAddress.classId     = fromClassId;
-    indexAddress.objectId    = fromObjectId;
-    indexAddress.objectSubId = 0;
-
-    triggerAddress.classId     = toClassId;
-    triggerAddress.objectId    = toObjectId;
-    triggerAddress.objectSubId = 0;
-
-    recordDependencyOn(&triggerAddress, &indexAddress, dependencyType);
 }
 
 /*

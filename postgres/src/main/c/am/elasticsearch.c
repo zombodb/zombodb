@@ -137,38 +137,24 @@ static char *buildXidExclusionClause() {
 
     /*
      * exclude records by xid that we know we cannot see, which are
+     *
      *   a) anything greater than or equal to the snapshot's 'xmax'
-     *      (but we can see ourself)
      */
-    appendStringInfo(sb, "(_xid >= %lu AND _xid<>%lu) OR ", convert_xid(snap->xmax), convert_xid(GetCurrentTransactionId()));
+    appendStringInfo(sb, "_xid >= %lu OR ", convert_xid(snap->xmax));
 
-    /*
-     *   b) the xid of any currently running transaction
-     */
-    appendStringInfo(sb, "_xid:[[");
-    for (i = 0; i < snap->xcnt; i++) {
-        if (i > 0) appendStringInfoChar(sb, ',');
-        appendStringInfo(sb, "%lu", convert_xid(snap->xip[i]));
+    if (snap->xcnt > 0) {
+        /*
+         *   b) the xid of any currently running transaction
+         */
+        appendStringInfo(sb, "_xid:[[");
+        for (i = 0; i < snap->xcnt; i++) {
+            if (i > 0) appendStringInfoChar(sb, ',');
+            appendStringInfo(sb, "%lu", convert_xid(snap->xip[i]));
+        }
+        appendStringInfo(sb, "]]");
     }
-    appendStringInfo(sb, "]]");
 
     return sb->data;
-}
-
-static void buildTidExclusionClause(const ZDBIndexDescriptor *desc, const StringInfo baseQuery, const char *xidExclusionClause) {
-    Relation   heapRel;
-    StringInfo ctids = makeStringInfo();
-    StringInfo xids = makeStringInfo();
-
-    heapRel = RelationIdGetRelation(desc->heapRelid);
-
-    find_invisible_ctids(desc, heapRel, desc->xactRelId, ctids, xids);
-
-    appendStringInfo(baseQuery, "#exclude<%s>(_zdb_id:[[%s]] OR _xid:[[%s]] OR (%s)) ", desc->fullyQualifiedName, ctids->data, xids->data, xidExclusionClause);
-
-    RelationClose(heapRel);
-    freeStringInfo(ctids);
-    freeStringInfo(xids);
 }
 
 static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nqueries, bool useInvisibilityMap, bool invisibilityMapRequired) {
@@ -189,16 +175,13 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 
             for (i = 0; i < index_cnt; i++) {
                 ZDBIndexDescriptor *tmp = zdb_alloc_index_descriptor_by_index_oid(DatumGetObjectId(DirectFunctionCall1(text_regclass, CStringGetTextDatum(indices[i]))));
-
-                if (!tmp->ignoreVisibility) {
-                    buildTidExclusionClause(tmp, baseQuery, xidExclusionClause);
-                }
+                appendStringInfo(baseQuery, "#exclude<%s>(%s)", tmp->fullyQualifiedName, xidExclusionClause);
             }
         }
 
         if (invisibilityMapRequired) {
             if (!desc->ignoreVisibility) {
-                buildTidExclusionClause(desc, baseQuery, xidExclusionClause);
+                appendStringInfo(baseQuery, "#exclude<%s>(%s)", desc->fullyQualifiedName, xidExclusionClause);
             }
         }
     }
@@ -263,18 +246,13 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
     StringInfo endpoint      = makeStringInfo();
     StringInfo indexSettings = makeStringInfo();
     StringInfo response;
-    char       *pkey         = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
-
-    if (pkey == NULL) {
-        pkey = "__no primary key__";
-        elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
-    }
 
     appendStringInfo(indexSettings, "{"
             "   \"mappings\": {"
             "      \"data\": {"
             "          \"_source\": { \"enabled\": false },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
+            "          \"_routing\": { \"required\": true, \"path\": \"%s\"}, "
             "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "          \"date_detection\": false,"
@@ -292,7 +270,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "         \"analyzer\": { %s }"
             "      }"
             "   }"
-            "}", pkey, indexDescriptor->alwaysResolveJoins ? "true"
+            "}", indexDescriptor->pkeyFieldname, indexDescriptor->pkeyFieldname, indexDescriptor->alwaysResolveJoins ? "true"
                                                            : "false", fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"));
 
     appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
@@ -361,13 +339,8 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
     StringInfo endpoint   = makeStringInfo();
     StringInfo request    = makeStringInfo();
     StringInfo response;
-    char       *pkey      = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
+    char       *pkey      = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName);
     Relation   indexRel;
-
-    if (pkey == NULL) {
-        pkey = "__no primary key__";
-        elog(WARNING, "No primary key detected for %s.%s, continuing anyway", indexDescriptor->schemaName, indexDescriptor->tableName);
-    }
 
     properties = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(mapping), PROPERTIES));
 
@@ -482,7 +455,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 
         indexName  = descriptors[i]->fullyQualifiedName;
         preference = descriptors[i]->searchPreference;
-        pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, false);
+        pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName);
         query      = buildQuery(descriptors[i], &user_queries[i], 1, true, true);
 
         if (!preference) preference = "null";
@@ -512,7 +485,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
     }
     appendStringInfoChar(request, ']');
 
-    appendStringInfo(endpoint, "%s/%s/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_zdbmsearch?xid=%lu", descriptors[0]->url, descriptors[0]->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     response = rest_call("POST", endpoint->data, request, descriptors[0]->compressionLevel);
 
     freeStringInfo(request);
@@ -530,9 +503,9 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     ZDBScore          max_score;
     bool              useInvisibilityMap = strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
 
-    appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgtid?xid=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query    = buildQuery(indexDescriptor, queries, nqueries, useInvisibilityMap,
                           strstr(queries[0], "#expand") != NULL);
@@ -574,7 +547,7 @@ uint64 elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor,
 
     appendStringInfo(endpoint, "%s/%s/%s/_count", indexDescriptor->url, indexDescriptor->fullyQualifiedName, type_name);
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
     if (response->data[0] != '{')
@@ -597,9 +570,9 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
     StringInfo response;
     uint64     nhits;
 
-    appendStringInfo(endpoint, "%s/%s/_pgcount", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgcount?xid=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query    = buildQuery(indexDescriptor, queries, nqueries, true, true);
     response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
@@ -645,9 +618,9 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, 
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg?xid=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#tally(%s, \"%s\", %ld, \"%s\", %d) %s", fieldname, stem, max_terms, sort_order, shard_size, query->data);
@@ -666,9 +639,9 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg?xid=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#range(%s, '%s') %s", fieldname, range_spec, query->data);
@@ -687,9 +660,9 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char 
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg?xid=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#significant_terms(%s, \"%s\", %ld) %s", fieldname, stem, max_terms, query->data);
@@ -708,9 +681,9 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fi
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg?xid=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#extended_stats(%s) %s", fieldname, query->data);
@@ -730,9 +703,9 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg?xid=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "%s %s", aggregate_query, query->data);
@@ -751,9 +724,9 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fie
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_pgagg?xid=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(GetCurrentTransactionId()));
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query = buildQuery(indexDescriptor, &user_query, 1, true, true);
     appendStringInfo(request, "#suggest(%s, '%s', %ld) %s", fieldname, stem, max_terms, query->data);
@@ -839,7 +812,7 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *user_qu
     StringInfo endpoint = makeStringInfo();
     StringInfo request  = makeStringInfo();
     StringInfo response;
-    char       *pkey    = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, true);
+    char       *pkey    = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName);
 
     appendStringInfo(request, "{\"query\":%s, \"primary_key\": \"%s\", \"documents\":%s", user_query, pkey, documentJson);
     if (indexDescriptor->fieldLists)

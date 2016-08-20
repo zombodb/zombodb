@@ -41,6 +41,6 @@ extern Datum zdb_internal_analyze_text(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_update_mapping(PG_FUNCTION_ARGS);
 extern Datum zdb_internal_dump_query(PG_FUNCTION_ARGS);
 
-extern Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous);
+extern Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdesc, bool isAnonymous);
 
 #endif

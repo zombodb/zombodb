@@ -1,5 +1,6 @@
 SET datestyle TO 'iso, mdy';
 CREATE TABLE multifield AS SELECT * FROM so_users ORDER BY id LIMIT 10;
+ALTER TABLE multifield ADD PRIMARY KEY (id);
 SELECT zdb_define_mapping('multifield', 'display_name', '{
     "type": "string", "analyzer": "phrase",
     "fields": {

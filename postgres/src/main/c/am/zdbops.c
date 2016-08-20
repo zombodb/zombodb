@@ -422,7 +422,7 @@ Datum zdb_internal_update_mapping(PG_FUNCTION_ARGS) {
     heapRel = RelationIdGetRelation(desc->heapRelid);
     tupdesc = RelationGetDescr(heapRel);
 
-    desc->implementation->updateMapping(desc, TextDatumGetCString(make_es_mapping(desc->heapRelid, tupdesc, false)));
+    desc->implementation->updateMapping(desc, TextDatumGetCString(make_es_mapping(desc, desc->heapRelid, tupdesc, false)));
     RelationClose(heapRel);
 
     PG_RETURN_VOID();
@@ -441,7 +441,7 @@ Datum zdb_internal_dump_query(PG_FUNCTION_ARGS) {
     PG_RETURN_TEXT_P(CStringGetTextDatum(jsonQuery));
 }
 
-Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
+Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
     StringInfo result = makeStringInfo();
     char       *json;
     int        i;

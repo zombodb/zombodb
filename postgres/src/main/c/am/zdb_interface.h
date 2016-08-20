@@ -109,8 +109,7 @@ typedef struct {
     char  *tableName;
     char  *indexName;
     char  *fullyQualifiedName;
-    char  *xactRelName;
-    Oid   xactRelId;
+    char  *pkeyFieldname;
     int   shards;
     bool  hasJson;
 

@@ -17,9 +17,11 @@
 package com.tcdi.zombodb;
 
 import com.tcdi.zombodb.postgres.*;
+import com.tcdi.zombodb.query.ExpansionQueryParser;
 import org.elasticsearch.action.ActionModule;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.indices.query.IndicesQueriesModule;
 import org.elasticsearch.plugins.AbstractPlugin;
 import org.elasticsearch.rest.RestModule;
 import org.xbib.elasticsearch.action.termlist.TermlistAction;
@@ -49,6 +51,10 @@ public class ZombodbPlugin extends AbstractPlugin {
         module.registerAction(TermlistAction.INSTANCE, TransportTermlistAction.class);
     }
 
+    public void onModule(IndicesQueriesModule module) {
+        module.addQuery(ExpansionQueryParser.class);
+    }
+
     @Override
     public String name() {
         return "Zombodb";
@@ -56,6 +62,6 @@ public class ZombodbPlugin extends AbstractPlugin {
 
     @Override
     public String description() {
-        return "REST endpoints in support of ZomboDB";
+        return "ZomboDB support plugin";
     }
 }

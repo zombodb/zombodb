@@ -1,5 +1,5 @@
 CREATE TABLE tas_update_fail (
-  pk_id           SERIAL8,
+  pk_id           SERIAL8 NOT NULL,
   start_date_text TEXT,
   end_date_text   TEXT,
   duration        TEXT,

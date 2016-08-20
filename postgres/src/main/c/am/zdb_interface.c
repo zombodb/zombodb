@@ -131,7 +131,6 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     Relation           heapRel;
     ZDBIndexDescriptor *desc;
     ListCell           *lc;
-    char               *xactIndexName;
     int                i;
 
     if (indexRel->rd_index == NULL)
@@ -140,9 +139,6 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     foreach(lc, allocated_descriptors) {
         desc = lfirst(lc);
         if (desc->indexRelid == indexRel->rd_id) {
-            if (desc->xactRelId == InvalidOid) {
-                desc->xactRelId = get_relation_oid(desc->schemaName, desc->xactRelName);
-            }
             return desc;
         }
     }
@@ -159,7 +155,9 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->databaseName = pstrdup(get_database_name(MyDatabaseId));
     desc->schemaName   = pstrdup(get_namespace_name(RelationGetNamespace(heapRel)));
     desc->tableName    = pstrdup(RelationGetRelationName(heapRel));
-	desc->options		 = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
+	desc->options	   = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
+
+    desc->pkeyFieldname = pstrdup(lookup_primary_key(desc->schemaName, desc->tableName));
 
     desc->searchPreference   = ZDBIndexOptionsGetSearchPreference(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetSearchPreference(indexRel));
     desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel) ? pstrdup("-1") : pstrdup(ZDBIndexOptionsGetRefreshInterval(indexRel));
@@ -201,11 +199,6 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 
         desc->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
     }
-
-    xactIndexName = palloc(strlen(RelationGetRelationName(heapRel)) + strlen(XACT_INDEX_SUFFIX) + 1);
-    sprintf(xactIndexName, "%s"XACT_INDEX_SUFFIX, RelationGetRelationName(heapRel));
-    desc->xactRelName  = xactIndexName;
-    desc->xactRelId = get_relation_oid(desc->schemaName, desc->xactRelName);
 
     desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
 

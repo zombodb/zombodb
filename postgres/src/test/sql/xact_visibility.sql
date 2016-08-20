@@ -1,6 +1,6 @@
 BEGIN;
 CREATE TABLE xact_test (
-  id serial8,
+  id serial8 not null primary key,
   title text
 );
 CREATE INDEX idxxact_test ON xact_test USING zombodb(zdb('xact_test', ctid), zdb(xact_test)) WITH (url='http://localhost:9200/');

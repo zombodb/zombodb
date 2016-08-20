@@ -81,6 +81,5 @@ direct-ctid
 xact_visibility
 matview
 schema
-index_dependency
 issue-132
 issue-134

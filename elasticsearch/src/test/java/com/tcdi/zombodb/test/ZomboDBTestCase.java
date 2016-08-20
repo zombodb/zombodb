@@ -123,7 +123,7 @@ public abstract class ZomboDBTestCase {
 
 
     protected QueryRewriter qr(String query) {
-        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, query, null, true, false) { /* anonymous implementation */ };
+        return new QueryRewriter(client(), 0, DEFAULT_INDEX_NAME, query, null, true, false) { /* anonymous implementation */ };
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {

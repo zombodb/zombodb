@@ -18,7 +18,6 @@ set(SOURCE_FILES
     src/main/c/am/zdbseqscan.h
     src/main/c/am/zdbscore.c
     src/main/c/am/zdbscore.h
-    src/main/c/am/zdbxactvac_worker.c
     src/main/c/rest/rest.c
     src/main/c/rest/rest.h
     src/main/c/util/curl_support.c
