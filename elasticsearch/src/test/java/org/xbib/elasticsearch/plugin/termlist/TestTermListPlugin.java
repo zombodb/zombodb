@@ -20,6 +20,7 @@ import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.xbib.elasticsearch.action.termlist.TermlistRequestBuilder;
 import org.xbib.elasticsearch.action.termlist.TermlistAction;
 
@@ -30,6 +31,7 @@ import java.util.*;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
+@Ignore
 public class TestTermListPlugin extends ZomboDBTestCase {
 
     @Test
