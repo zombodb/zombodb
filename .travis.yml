@@ -2,7 +2,6 @@ language: java
 
 env:
   matrix:
-    - ES=1.7
     - ES=2.x
 
 sudo: required
