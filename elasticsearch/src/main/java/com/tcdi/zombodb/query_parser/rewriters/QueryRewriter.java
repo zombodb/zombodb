@@ -17,8 +17,6 @@
 package com.tcdi.zombodb.query_parser.rewriters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tcdi.zombodb.postgres.DynamicSearchActionHelper;
-import com.tcdi.zombodb.query.ExpansionQueryBuilder;
 import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.QueryParser;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
@@ -35,8 +33,6 @@ import org.elasticsearch.action.get.MultiGetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.logging.Loggers;
@@ -46,7 +42,6 @@ import org.elasticsearch.index.engine.DocumentAlreadyExistsException;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
-import org.elasticsearch.search.aggregations.Aggregator;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
@@ -64,6 +59,7 @@ import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
 import static org.elasticsearch.index.query.FilterBuilders.*;
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
@@ -1322,68 +1318,6 @@ public abstract class QueryRewriter {
 
         keyFieldname = metadataManager.getMetadata(metadataManager.getIndexLinkByIndexName(indexName)).getPrimaryKeyFieldName();
 
-        TermsBuilder termsAgg = new TermsBuilder("keys")
-                .minDocCount(2)
-                .shardMinDocCount(2)
-                .collectMode(Aggregator.SubAggCollectionMode.BREADTH_FIRST) // ~4x faster than DEPTH_FIRST default
-                .size(0)
-                .shardSize(0)
-                .field(keyFieldname);
-        TermsBuilder xidsAgg = new TermsBuilder("xids")
-                .size(0)
-                .shardSize(0)
-                .order(Terms.Order.term(false))
-                .field("_xid");
-        TermsBuilder zdbidAgg = new TermsBuilder("zdbid")
-                .size(0)
-                .field("_zdb_id");
-
-        xidsAgg.subAggregation(zdbidAgg);
-        termsAgg.subAggregation(xidsAgg);
-
-        SearchRequestBuilder builder = new SearchRequestBuilder(client)
-                .setIndices(indexName)
-                .setTypes("data")
-                .addAggregation(termsAgg)
-                .setQueryCache(true)
-                .setQuery(new ExpansionQueryBuilder(keyFieldname).query(query))
-                .setSize(0)
-                .setPreference(searchPreference);
-
-        SearchResponse response = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).actionGet();
-        List<Object> keysToExclude = new ArrayList<>();
-        List<Long> zdbidsToInclude = new ArrayList<>();
-
-        for (Terms.Bucket keysBuckets : ((Terms) response.getAggregations().get("keys")).getBuckets()) {
-            // wholesale exclude this particular key
-            keysToExclude.add(keysBuckets.getKey());
-
-            for (Terms.Bucket xidsBucket : ((Terms) keysBuckets.getAggregations().get("xids")).getBuckets()) {
-                long xidValue = xidsBucket.getKeyAsNumber().longValue();
-
-                if (xidValue <= myXid) {
-                    // TODO:  need to make xidValue is committed
-                    // TODO:  need an "xid sequence" field on each row so
-                    //        that if a row is updated multiple times in
-                    //        a transaction, we can pick the most recent one
-                    long zdbid = ((Terms) xidsBucket.getAggregations().get("zdbid")).getBuckets().get(0).getKeyAsNumber().longValue();
-
-                    // include the zdb_id represented by this xid
-                    zdbidsToInclude.add(zdbid);
-                    break;
-                }
-            }
-        }
-
-        if (!keysToExclude.isEmpty()) {
-            OrFilterBuilder or = orFilter();
-
-            or.add(notFilter(termsFilter(keyFieldname, keysToExclude)));
-            or.add(termsFilter("_zdb_id", zdbidsToInclude));
-
-            query = filteredQuery(query, or);
-        }
-
-        return query;
+        return boolQuery().must(query).must(visibility(keyFieldname).query(query).xid(myXid));
     }
 }

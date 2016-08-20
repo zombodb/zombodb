@@ -17,7 +17,7 @@
 package com.tcdi.zombodb;
 
 import com.tcdi.zombodb.postgres.*;
-import com.tcdi.zombodb.query.ExpansionQueryParser;
+import com.tcdi.zombodb.query.ZomboDBVisibilityQueryParser;
 import org.elasticsearch.action.ActionModule;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -52,7 +52,7 @@ public class ZombodbPlugin extends AbstractPlugin {
     }
 
     public void onModule(IndicesQueriesModule module) {
-        module.addQuery(ExpansionQueryParser.class);
+        module.addQuery(ZomboDBVisibilityQueryParser.class);
     }
 
     @Override

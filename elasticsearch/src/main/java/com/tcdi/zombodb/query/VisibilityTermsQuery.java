@@ -1,12 +1,9 @@
-package org.apache.lucene.search.join;
-
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Copyright 2016 ZomboDB, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -16,6 +13,7 @@ package org.apache.lucene.search.join;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.tcdi.zombodb.query;
 
 import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.Terms;
@@ -33,12 +31,12 @@ import java.io.IOException;
  * A query that has an array of terms from a specific field. This query will match documents have one or more terms in
  * the specified field that match with the terms specified in the array.
  */
-public class ZomboDBTermsQuery extends MultiTermQuery {
+class VisibilityTermsQuery extends MultiTermQuery {
 
     private final LongSet terms;
     private final Query fromQuery; // Used for equals() only
 
-    ZomboDBTermsQuery(String field, Query fromQuery, LongSet terms) {
+    VisibilityTermsQuery(String field, Query fromQuery, LongSet terms) {
         super(field);
         this.fromQuery = fromQuery;
         this.terms = terms;
@@ -55,7 +53,7 @@ public class ZomboDBTermsQuery extends MultiTermQuery {
 
     @Override
     public String toString(String string) {
-        return "ZomboDBTermsQuery{" + "field=" + field + '}';
+        return "VisibilityTermsQuery{" + "field=" + field + '}';
     }
 
     @Override
@@ -65,7 +63,7 @@ public class ZomboDBTermsQuery extends MultiTermQuery {
         if (!super.equals(obj) || getClass() != obj.getClass())
             return false;
 
-        ZomboDBTermsQuery other = (ZomboDBTermsQuery) obj;
+        VisibilityTermsQuery other = (VisibilityTermsQuery) obj;
         return fromQuery.equals(other.fromQuery);
     }
 
@@ -94,7 +92,6 @@ public class ZomboDBTermsQuery extends MultiTermQuery {
         @Override
         protected AcceptStatus accept(BytesRef term) throws IOException {
             long value = NumericUtils.prefixCodedToLong(term);
-
             if (terms.contains(value)) {
                 return AcceptStatus.YES;
             } else {
