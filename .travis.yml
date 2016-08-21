@@ -47,8 +47,6 @@ script:
   - sudo /usr/share/elasticsearch/bin/plugin install file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
   - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
   - sudo /etc/init.d/postgresql start 9.5
-  - sudo echo "script.inline: on\n" >> /etc/elasticsearch/elasticsearch.yml
-  - sudo echo "script.indexed: on\n" >> /etc/elasticsearch/elasticsearch.yml
   - sudo cat /etc/elasticsearch/elasticsearch.yml
   - cat /etc/postgresql/9.5/main/postgresql.conf
 #  - sudo -u postgres createuser -s travis
