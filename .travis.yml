@@ -25,8 +25,6 @@ before_install:
   - sudo apt-get install -y postgresql-9.5 postgresql-server-dev-9.5
   - sudo ls -lad /usr/share/postgresql/*
   - sudo apt-get install -y maven
-  - sudo echo "script.inline: on\n" >> /etc/elasticsearch/elasticsearch.yml
-  - sudo echo "script.indexed: on\n" >> /etc/elasticsearch/elasticsearch.yml
 
 script:
   - sudo /etc/init.d/postgresql stop 9.5
@@ -49,9 +47,11 @@ script:
   - sudo /usr/share/elasticsearch/bin/plugin install file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
   - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
   - sudo /etc/init.d/postgresql start 9.5
-  - cat /etc/elasticsearch/elasticsearch.yml
+  - sudo echo "script.inline: on\n" >> /etc/elasticsearch/elasticsearch.yml
+  - sudo echo "script.indexed: on\n" >> /etc/elasticsearch/elasticsearch.yml
+  - sudo cat /etc/elasticsearch/elasticsearch.yml
   - cat /etc/postgresql/9.5/main/postgresql.conf
-  - sudo -u postgres createuser -s travis
+#  - sudo -u postgres createuser -s travis
   - sudo sleep 10
   - make installcheck
 
