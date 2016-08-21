@@ -25,6 +25,8 @@ before_install:
   - sudo apt-get install -y postgresql-9.5 postgresql-server-dev-9.5
   - sudo ls -lad /usr/share/postgresql/*
   - sudo apt-get install -y maven
+  - sudo echo "script.inline: on\n" >> /etc/elasticsearch/elasticsearch.yml
+  - sudo echo "script.indexed: on\n" >> /etc/elasticsearch/elasticsearch.yml
 
 script:
   - sudo /etc/init.d/postgresql stop 9.5
