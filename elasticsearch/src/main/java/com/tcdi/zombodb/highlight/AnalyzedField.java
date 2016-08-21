@@ -22,6 +22,7 @@ import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequest;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
+import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import org.elasticsearch.client.Client;
 
 import java.util.*;
@@ -50,7 +51,7 @@ public class AnalyzedField {
         private ProximityGroup group = null;
 
         public Token(Object primaryKey, String fieldName, int arrayIndex, AnalyzeResponse.AnalyzeToken token) {
-            super(token.getTerm(), token.getPosition(), token.getStartOffset(), token.getEndOffset(), token.getType());
+            super(token.getTerm(), token.getPosition()+1, token.getStartOffset(), token.getEndOffset(), token.getType(), null);
             this.primaryKey = primaryKey;
             this.fieldName = fieldName;
             this.arrayIndex = arrayIndex;
@@ -90,7 +91,7 @@ public class AnalyzedField {
 
         @Override
         public String toString() {
-            return fieldName + ":#" + getPosition() + " (" + getStartOffset() + "," + getEndOffset() + ")" + getType() + ": " + getTerm();
+            return fieldName + ":#" + getPosition()+1 + " (" + getStartOffset() + "," + getEndOffset() + ")" + getType() + ": " + getTerm();
         }
     }
 
@@ -295,25 +296,25 @@ public class AnalyzedField {
                         if (ordered) {
                             int min_pos = pair.min_pos - (distance + 1);
                             int max_pos = pair.min_pos;
-                            int pos = lt.getPosition();
+                            int pos = lt.getPosition()+1;
 
                             if (pos >= min_pos && pos < max_pos) {
                                 pair.tokens.push(lt);
                                 if (!foundClosestMatch) {
-                                    pair.min_pos = Math.min(pair.min_pos, lt.getPosition());
-                                    pair.max_pos = Math.max(pair.max_pos, lt.getPosition());
+                                    pair.min_pos = Math.min(pair.min_pos, lt.getPosition()+1);
+                                    pair.max_pos = Math.max(pair.max_pos, lt.getPosition()+1);
                                     foundClosestMatch = true;
                                 }
                             }
                         } else {
                             int min_pos = pair.min_pos - (distance + 1);
                             int max_pos = pair.max_pos + (distance);
-                            int pos = lt.getPosition();
+                            int pos = lt.getPosition()+1;
 
                             if (pos >= min_pos && pos <= max_pos) {
                                 pair.tokens.push(lt);
-                                pair.min_pos = Math.min(pair.min_pos, lt.getPosition());
-                                pair.max_pos = Math.max(pair.max_pos, lt.getPosition());
+                                pair.min_pos = Math.min(pair.min_pos, lt.getPosition()+1);
+                                pair.max_pos = Math.max(pair.max_pos, lt.getPosition()+1);
                             }
                         }
                     }
@@ -326,8 +327,8 @@ public class AnalyzedField {
 
                 for (Token lt : leftTokens) {
                     for (Token rt : rightTokens) {
-                        int min_pos = lt.getPosition();
-                        int max_pos = rt.getPosition();
+                        int min_pos = lt.getPosition()+1;
+                        int max_pos = rt.getPosition()+1;
                         int diff = max_pos - min_pos;
 
                         if (ordered && diff < 0)
@@ -338,7 +339,7 @@ public class AnalyzedField {
                                 scratch.add(lt.group);
                             if (rt.group != null)
                                 scratch.add(rt.group);
-                            scratch.add(new ProximityGroup(lt, rt, Math.min(lt.getPosition(), rt.getPosition()), Math.max(lt.getPosition(), rt.getPosition())));
+                            scratch.add(new ProximityGroup(lt, rt, Math.min(lt.getPosition()+1, rt.getPosition()+1), Math.max(lt.getPosition()+1, rt.getPosition()+1)));
                         }
                     }
                 }
@@ -568,7 +569,8 @@ public class AnalyzedField {
 
     private AnalyzeResponse analyzePhrase(String value) {
         try {
-            AnalyzeRequest request = new AnalyzeRequestBuilder(client.admin().indices(), indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
+            // AnalyzeRequest request = new AnalyzeRequestBuilder(client.admin().indices(), indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
+            AnalyzeRequest request = new AnalyzeRequestBuilder(client, AnalyzeAction.INSTANCE, indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
             return client.admin().indices().analyze(request).get();
         } catch (Exception e) {
             throw new RuntimeException(e);

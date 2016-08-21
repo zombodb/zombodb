@@ -10,7 +10,7 @@ select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_s
 
 select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" AND my_json.sub_state:SC)';
 
-select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" OR my_json.sub_state:SC)';
+select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" OR my_json.sub_state:SC)' order by pk_id;
 
 select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" WITH my_json.sub_state:SC)';
 

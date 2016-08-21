@@ -20,6 +20,7 @@ import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
@@ -47,12 +48,12 @@ public class PostgresCountAction extends BaseRestHandler {
             QueryAndIndexPair query;
 
             query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true);
-            SearchRequestBuilder builder = new SearchRequestBuilder(client);
+            SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
             builder.setIndices(query.getIndexName());
             builder.setSize(0);
             builder.setSearchType(SearchType.COUNT);
             builder.setPreference(request.param("preference"));
-            builder.setQueryCache(true);
+            builder.setRequestCache(true);
             builder.setFetchSource(false);
             builder.setTrackScores(false);
             builder.setNoFields();

@@ -4,6 +4,13 @@
         <format>zip</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
+    <!-- plugin descriptor -->
+    <files>
+      <file>
+        <source>src/main/resources/plugin-descriptor.properties</source>
+        <filtered>true</filtered>
+      </file>
+    </files>
     <dependencySets>
         <dependencySet>
             <outputDirectory>/</outputDirectory>

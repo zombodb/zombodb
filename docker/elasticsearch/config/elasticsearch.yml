@@ -3,7 +3,8 @@ path:
   logs: /data/log
   work: /data/work
 
-script.disable_dynamic: false
+script.inline: on
+script.indexed: on
 
 threadpool.bulk.queue_size: 1024
 threadpool.bulk.size: 12

@@ -17,10 +17,21 @@
 
 export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
 
+
 mvn clean install
 
-/usr/share/elasticsearch/bin/plugin -i zombodb -u file:///build/zombodb/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+export ESV=$(curl -s -XGET 'localhost:9200' | grep number | sed 's/.*: "//;s/\..*//')
+export ESV=2
+echo "Installing ES ${ESV} plugin..."
+if [[ $ESV = "2" ]]
+then
+    echo "ES2.x"
+    /usr/share/elasticsearch/bin/plugin install file:///build/zombodb/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+else
+    /usr/share/elasticsearch/bin/plugin -i zombodb -u file:///build/zombodb/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+fi
 /etc/init.d/elasticsearch start
+
 
 cd postgres
 make clean install
@@ -33,3 +44,6 @@ createuser -s -U postgres root
 
 sleep 5
 make installcheck
+
+
+# sudo cat /var/log/elasticsearch/*.log

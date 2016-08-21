@@ -19,8 +19,11 @@ import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.admin.indices.create.CreateIndexAction;
 import org.elasticsearch.action.admin.indices.flush.FlushRequestBuilder;
+import org.elasticsearch.action.admin.indices.flush.FlushAction;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
+import org.elasticsearch.action.admin.indices.refresh.RefreshAction;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.io.stream.OutputStreamStreamOutput;
 import org.elasticsearch.common.logging.log4j.LogConfigurator;
@@ -36,9 +39,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public abstract class ZomboDBTestCase {
     protected static final String DEFAULT_INDEX_NAME = "db.schema.table.index";
@@ -63,7 +65,7 @@ public abstract class ZomboDBTestCase {
         CONFIG.mkdirs();
         TestingHelper.copyFile(ZomboDBTestCase.class.getResourceAsStream("logging.yml"), new File(CONFIG.getAbsolutePath() + "/logging.yml"));
 
-        Settings settings = settingsBuilder()
+        Settings settings = Settings.builder()
                 .put("http.enabled", false)
                 .put("network.host", "127.0.0.1")
                 .put("cluster.name", "ZomboDB_JUnit_Cluster")
@@ -74,26 +76,26 @@ public abstract class ZomboDBTestCase {
                 .build();
 
         // make sure ES' logging system knows where to find our custom logging.xml
-        LogConfigurator.configure(settings);
+        LogConfigurator.configure(settings, true);
 
         // startup a standalone node to use for tests
         return nodeBuilder()
                 .settings(settings)
                 .local(true)
-                .loadConfigSettings(false)
+                // .loadConfigSettings(false)
                 .node();
     }
 
     private static void createIndex(String indexName) throws Exception {
         String settings = resource(ZomboDBTestCase.class, indexName + "-mapping.json");
 
-        CreateIndexRequestBuilder builder = new CreateIndexRequestBuilder(client().admin().indices(), indexName);
+        CreateIndexRequestBuilder builder = client().admin().indices().prepareCreate(indexName);
         builder.setSource(settings);
 
         CreateIndexResponse response = client().admin().indices().create(builder.request()).get();
         response.writeTo(new OutputStreamStreamOutput(System.out));
-        client().admin().indices().flush(new FlushRequestBuilder(client().admin().indices()).setIndices(indexName).setForce(true).request()).get();
-        client().admin().indices().refresh(new RefreshRequestBuilder(client().admin().indices()).setIndices(indexName).request()).get();
+        client().admin().indices().flush(new FlushRequestBuilder(client(), FlushAction.INSTANCE).setIndices(indexName).setForce(true).request()).get();
+        client().admin().indices().refresh(new RefreshRequestBuilder(client(), RefreshAction.INSTANCE).setIndices(indexName).request()).get();
     }
 
     protected static Client client() {

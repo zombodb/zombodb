@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 #
 # Copyright 2015-2016 ZomboDB, LLC
 #
@@ -15,5 +15,10 @@
 # limitations under the License.
 #
 
-docker build -t zdb-pg95-local-ci . || exit 1
-docker run --rm -m 6G --oom-kill-disable=true -v $(dirname `pwd`):/build/zombodb -w /build/zombodb zdb-pg95-local-ci
+# for ES 1.7
+# docker build -t zdb-pg95-local-ci . || exit 1
+# docker run --rm -m 6G --oom-kill-disable=true  -v $(dirname `pwd`):/build/zombodb -w /build/zombodb zdb-pg95-local-ci
+
+# for ES 2.x
+docker build -f es2 -t zdb-pg95-local-ci-es2 . || exit 1
+docker run --rm -m 6G --oom-kill-disable=true  -v $(dirname `pwd`):/build/zombodb -w /build/zombodb zdb-pg95-local-ci-es2
