@@ -6,7 +6,8 @@
       },
       "date_detection": false,
       "_all": {
-        "enabled": false
+        "enabled": false,
+        "analyzer": "phrase"
       },
       "_field_names": {
         "enabled": false,

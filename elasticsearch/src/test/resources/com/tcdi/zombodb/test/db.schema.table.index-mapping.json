@@ -5,7 +5,8 @@
         "enabled": true
       },
       "_all": {
-        "enabled": false
+        "enabled": false,
+        "analyzer": "phrase"
       },
       "_field_names": {
         "type": "_field_names",
