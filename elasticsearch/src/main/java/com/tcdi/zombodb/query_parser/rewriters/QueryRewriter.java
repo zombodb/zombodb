@@ -1308,13 +1308,14 @@ public abstract class QueryRewriter {
         QueryParserNode exclusion = tree.getExclusion(indexName);
         String keyFieldname;
 
+        // TODO:  apply this in {@link ZomboDBVisibilityQuery} instead
         if (exclusion != null)
             query = boolQuery()
                     .must(query)
                     .mustNot(build(exclusion));
 
         if (myXid == 0)
-            return query;
+        return query;
 
         keyFieldname = metadataManager.getMetadata(metadataManager.getIndexLinkByIndexName(indexName)).getPrimaryKeyFieldName();
 
