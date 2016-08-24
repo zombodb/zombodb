@@ -67,10 +67,6 @@ CREATE OR REPLACE FUNCTION zdb_num_hits() RETURNS int8 AS '$libdir/plugins/zombo
 CREATE OR REPLACE FUNCTION zdb_query_func(json, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 2147483647;
 CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 1;
 
--- necessary for citus support because index conditions are written as USING zombodb (zdb('name'::text::regclass, ctid), zdb(name))
-ALTER FUNCTION pg_catalog.regclass(text) IMMUTABLE;
-
-
 --
 -- trigger support
 --

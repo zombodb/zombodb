@@ -27,6 +27,7 @@
 #include "rewrite/rewriteHandler.h"
 #endif
 
+#include "nodes/makefuncs.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/rel.h"
@@ -132,21 +133,64 @@ void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid) {
     a1 = linitial(funcExpr->args);
     a2 = lsecond(funcExpr->args);
 
+	/*
+	 * possibly change 'a1' to point to something different
+	 */
     if (IsA(a1, FuncExpr)) {
         /*
          * first argument is a function call, so evaluate the expression and use its return value.
-         * It's probably a double-cast like zdb('tablename'::text::regclass)
+         * It's probably a double-cast like zdb('tablename'::text::regclass, ctid)
          *
          * If it isn't, we'll catch it below
          */
         a1 = (Node *) evaluate_expr((Expr *) a1, REGCLASSOID, 0, InvalidOid);
-    }
-    if (!IsA(a1, Const) || ((Const *) a1)->consttype != REGCLASSOID)
-        elog(ERROR, "First argument of the 'zdb' column function is not ::regclass, it is a %d", a1->type);
-    else if (!IsA(a2, Var) || ((Var *) a2)->vartype != TIDOID)
-        elog(ERROR, "Second argument of the 'zdb' column function is not ::tid");
+    } else if (IsA(a1, RelabelType)) {
+		/*
+		 * first argument is a RelableType, so we just want to use its argument directly
+		 * if it's of type REGCLASSOID.
+		 *
+		 * It's probably a call like zdb(tbl.tableoid, tbl.ctid)
+		 */
+		RelabelType *rt = (RelabelType *) a1;
 
-    *heapRelOid = (Oid) DatumGetObjectId(((Const *) a1)->constvalue);
+		if (rt->resulttype == REGCLASSOID)
+			a1 = (Node *) rt->arg;
+		else
+			elog(ERROR, "First argument of the 'zdb' column function is a RelabelType we don't understand: %d", rt->resulttype);
+	}
+
+	/*
+	 * now evaluate that a1 is still a thing we can deal with
+	 */
+	if (IsA(a1, Var)) {
+		Var *var = (Var *) a1;
+
+		switch (var->varno) {
+			case INNER_VAR:
+			case OUTER_VAR:
+				elog(ERROR, "Cannot determine index.  First argument of left side of operator is a Var type we don't understand");
+				break;
+
+			default: {
+				QueryDesc     *query  = linitial(CURRENT_QUERY_STACK);
+				RangeTblEntry *rentry = rt_fetch(var->varno, query->plannedstmt->rtable);
+				*heapRelOid = rentry->relid;
+			}
+		}
+	} else if (IsA(a1, Const)) {
+		Const *cnst = (Const *) a1;
+
+		if (cnst->consttype == REGCLASSOID)
+			*heapRelOid = (Oid) DatumGetObjectId(cnst->constvalue);
+		else
+			elog(ERROR, "First argument of the 'zdb' column function is not ::regclass, it is a %d", a1->type);
+	} else {
+		elog(ERROR, "Cannot determine index.  First argument of the 'zdb' column function is not a node type we understand: %d", a1->type);
+	}
+
+	/* validate 'a2' as well */
+	if (!IsA(a2, Var) || ((Var *) a2)->vartype != TIDOID)
+		elog(ERROR, "Second argument of the 'zdb' column function is not ::tid");
 }
 
 Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
