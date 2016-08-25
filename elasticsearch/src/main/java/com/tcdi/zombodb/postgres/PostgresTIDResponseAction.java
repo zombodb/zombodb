@@ -116,7 +116,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             QueryBuilder query;
 
             if (queryString != null && queryString.trim().length() > 0) {
-                QueryRewriter qr = QueryRewriter.Factory.create(client, request.paramAsLong("xid", 0), indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex);
+                QueryRewriter qr = QueryRewriter.Factory.create(client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex);
                 query = qr.rewriteQuery();
                 indexName = qr.getSearchIndexName();
             } else {

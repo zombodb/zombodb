@@ -31,10 +31,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 final class VisibilityQueryHelper {
 
-    static IntObjectMap<FixedBitSet> determineVisibility(final String field, Query query, long xid, IndexReader reader) throws IOException {
+    static IntObjectMap<FixedBitSet> determineVisibility(final String field, Query query, final long xmin, final long xmax, final Set<Long> activeXids, IndexReader reader) throws IOException {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //
@@ -80,14 +81,19 @@ final class VisibilityQueryHelper {
                         pkeys.setDocument(doc);
                         xids.setDocument(doc);
 
-                        long pkey = pkeys.valueAt(0);
                         long xid = xids.valueAt(0);
+                        if (xid >= xmax || activeXids.contains(xid))
+                            return;
 
-                        List<VisibilityInfo> matchingDocs = map.get(pkey);
-                        if (matchingDocs == null) {
-                            map.put(pkey, matchingDocs = new ArrayList<>());
+                        if (xid < xmin) {
+                            long pkey = pkeys.valueAt(0);
+
+                            List<VisibilityInfo> matchingDocs = map.get(pkey);
+                            if (matchingDocs == null) {
+                                map.put(pkey, matchingDocs = new ArrayList<>());
+                            }
+                            matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, pkey, xid));
                         }
-                        matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, pkey, xid));
                     }
 
                     @Override
@@ -117,14 +123,13 @@ final class VisibilityQueryHelper {
             });
 
             for (VisibilityInfo mapping : cursor.value) {
-                if (mapping.xid <= xid) {
-                    // TODO:  need to know if mapping.xid is visible or not
+                // TODO: if (xid.didCommit) {
                     FixedBitSet bitset = visibilityBitSets.get(mapping.readerOrd);
                     if (bitset == null)
                         visibilityBitSets.put(mapping.readerOrd, bitset = new FixedBitSet(mapping.maxdoc));
                     bitset.set(mapping.docid);
                     break;
-                }
+                // }
             }
         }
 

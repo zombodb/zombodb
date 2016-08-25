@@ -134,7 +134,7 @@ PARSER_END(QueryParser)
 
   | <TO: "/to/" >
 
-  | <EXCLUDE: "#exclude" >
+  | <VISIBILITY: "#visibility" >
 
   | <NESTED: "#nested" >
   | <TALLY: "#tally" >
@@ -193,7 +193,7 @@ private ASTQueryTree parse0() #QueryTree :
 {
 }
 {
-    ( Aggregations() | Options() | FieldLists() | Exclude() )* [ Expression() ] <EOF>
+    ( Aggregations() | Options() | FieldLists() | Visibility() )* [ Expression() ] <EOF>
     {
         return jjtThis;
     }
@@ -292,9 +292,9 @@ void FieldListEntry() #FieldListEntry :
     { jjtThis.fieldname = fieldname; }
 }
 
-void Exclude() #Exclude : {}
+void Visibility() #Visibility : {}
 {
-    <EXCLUDE> "<" IndexName() ">" "(" Expression() ")"
+    <VISIBILITY> "(" Number() /* xmin */ "," Number() /* xmax */ "," Array() /* snapshot.xips */ ")"
 }
 
 void IndexLink() #IndexLink :
@@ -698,7 +698,7 @@ QueryParserNode Array() #Array(>0) :
 }
 {
     (
-        "[" { inArray = true; } (Literal() ( "," Literal() )*) { inArray = false; } "]"
+        "[" { inArray = true; } [ (Literal() ( "," Literal() )*) ] { inArray = false; } "]"
     )
     { return jjtThis; }
 }

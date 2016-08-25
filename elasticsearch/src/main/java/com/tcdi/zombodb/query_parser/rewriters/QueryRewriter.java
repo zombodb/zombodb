@@ -79,17 +79,17 @@ public abstract class QueryRewriter {
             }
         }
 
-        public static QueryRewriter create(Client client, long xid, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+        public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
             if (IS_SIREN_AVAILABLE) {
                 try {
                     Class clazz = Class.forName("com.tcdi.zombodb.query_parser.rewriters.SirenQueryRewriter");
-                    Constructor ctor = clazz.getConstructor(Client.class, long.class, String.class, String.class, String.class, boolean.class, boolean.class);
-                    return (QueryRewriter) ctor.newInstance(client, xid, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
+                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class);
+                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
                 } catch (Exception e) {
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
             } else {
-                return new ZomboDBQueryRewriter(client, xid, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
+                return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
             }
         }
     }
@@ -156,11 +156,8 @@ public abstract class QueryRewriter {
 
     protected final IndexMetadataManager metadataManager;
 
-    protected final long myXid;
-
-    public QueryRewriter(Client client, long xid, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+    public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
         this.client = client;
-        this.myXid = xid;
         this.searchPreference = searchPreference;
         this.doFullFieldDataLookup = doFullFieldDataLookup;
 
@@ -1006,9 +1003,9 @@ public abstract class QueryRewriter {
                             // build JSON structure for MultiGetRequest
                             StringBuilder json = new StringBuilder();
                             json.append("{\"docs\":[");
-                            int z=0;
+                            int z = 0;
                             for (String id : blocks.keySet()) {
-                                if (z>0) json.append(",");
+                                if (z > 0) json.append(",");
                                 json.append("{\"_index\":\"").append(indexname).append("\",\"_type\":\"dynamic\",\"_id\":\"").append(id).append("\"}");
                                 z++;
                             }
@@ -1305,20 +1302,22 @@ public abstract class QueryRewriter {
     }
 
     public QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
-        QueryParserNode exclusion = tree.getExclusion(indexName);
+        ASTVisibility visibility = tree.getVisibility();
         String keyFieldname;
 
-        // TODO:  apply this in {@link ZomboDBVisibilityQuery} instead
-        if (exclusion != null)
-            query = boolQuery()
-                    .must(query)
-                    .mustNot(build(exclusion));
-
-        if (myXid == 0)
-        return query;
+        if (visibility == null)
+            return query;
 
         keyFieldname = metadataManager.getMetadata(metadataManager.getIndexLinkByIndexName(indexName)).getPrimaryKeyFieldName();
 
-        return boolQuery().must(query).must(visibility(keyFieldname).query(query).xid(myXid));
+        return boolQuery()
+                .must(query)
+                .must(
+                        visibility(keyFieldname)
+                                .query(query)
+                                .xmin(visibility.getXmin())
+                                .xmax(visibility.getXmax())
+                                .activeXids(visibility.getActiveXids())
+                );
     }
 }

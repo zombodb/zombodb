@@ -23,8 +23,8 @@ import org.elasticsearch.client.Client;
  */
 public class ZomboDBQueryRewriter extends QueryRewriter {
 
-    public ZomboDBQueryRewriter(Client client, long xid, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
-        super(client, xid, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex);
+    public ZomboDBQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex);
     }
 
     @Override

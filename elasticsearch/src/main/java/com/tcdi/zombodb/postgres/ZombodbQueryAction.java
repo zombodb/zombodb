@@ -47,7 +47,7 @@ public class ZombodbQueryAction extends BaseRestHandler {
                 QueryRewriter qr;
                 String json;
 
-                qr = QueryRewriter.Factory.create(client, request.paramAsLong("xid", 0), request.param("index"), request.param("preference"), query, true, false);
+                qr = QueryRewriter.Factory.create(client, request.param("index"), request.param("preference"), query, true, false);
                 json = qr.rewriteQuery().toString();
 
                 response = new BytesRestResponse(RestStatus.OK, "application/json", json);

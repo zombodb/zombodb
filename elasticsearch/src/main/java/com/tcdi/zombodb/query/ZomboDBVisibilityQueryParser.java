@@ -17,11 +17,16 @@ package com.tcdi.zombodb.query;
 
 import org.apache.lucene.search.Query;
 import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.index.mapper.core.CompletionFieldMapper;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryParser;
 import org.elasticsearch.index.query.QueryParsingException;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class ZomboDBVisibilityQueryParser implements QueryParser {
     public static String NAME = "zombodb_visibility";
@@ -37,7 +42,9 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
 
         Query query = null;
         String fieldname = null;
-        long xid = -1;
+        long xmin = -1;
+        long xmax = -1;
+        Set<Long> activeXids = new HashSet<>();
 
         String currentFieldName = null;
         XContentParser.Token token;
@@ -51,11 +58,19 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
                 } else {
                     throw new QueryParsingException(parseContext.index(), "[zdb visibility] query does not support [" + currentFieldName + "]");
                 }
+            } else if (token == XContentParser.Token.START_ARRAY) {
+                if ("active_xids".equals(currentFieldName)) {
+                    while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
+                        activeXids.add(parser.longValue());
+                    }
+                }
             } else if (token.isValue()) {
                 if ("name".equals(currentFieldName)) {
                     fieldname = parser.text();
-                } else if ("xid".equals(currentFieldName)) {
-                    xid = parser.longValue();
+                } else if ("xmin".equals(currentFieldName)) {
+                    xmin = parser.longValue();
+                } else if ("xmax".equals(currentFieldName)) {
+                    xmax = parser.longValue();
                 } else {
                     throw new QueryParsingException(parseContext.index(), "[zdb visibility] query does not support [" + currentFieldName + "]");
                 }
@@ -66,9 +81,9 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
             throw new QueryParsingException(parseContext.index(), "[zdb visibility] missing [query]");
         else if (fieldname == null)
             throw new QueryParsingException(parseContext.index(), "[zdb visibility] missing [name]");
-        else if (xid == -1)
-            throw new QueryParsingException(parseContext.index(), "[zdb visibility] missing [xid]");
+        else if (xmin == -1)
+            throw new QueryParsingException(parseContext.index(), "[zdb visibility] missing [xmin]");
 
-        return new ZomboDBVisibilityQuery(fieldname, xid, query);
+        return new ZomboDBVisibilityQuery(fieldname, xmin, xmax, activeXids, query);
     }
 }

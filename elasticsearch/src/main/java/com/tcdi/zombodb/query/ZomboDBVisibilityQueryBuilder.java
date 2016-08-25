@@ -24,8 +24,11 @@ import java.io.IOException;
 public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
 
     private final String fieldname;
-    private boolean haveXid;
-    private long xid;
+    private boolean haveXmin;
+    private long xmin;
+    private boolean haveXmax;
+    private long xmax;
+    private long[] activeXids;
 
     private QueryBuilder query;
 
@@ -33,9 +36,20 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
         fieldname = name;
     }
 
-    public ZomboDBVisibilityQueryBuilder xid(long xid) {
-        this.xid = xid;
-        haveXid = true;
+    public ZomboDBVisibilityQueryBuilder xmin(long xmin) {
+        this.xmin = xmin;
+        haveXmin = true;
+        return this;
+    }
+
+    public ZomboDBVisibilityQueryBuilder xmax(long xmax) {
+        this.xmax = xmax;
+        haveXmax = true;
+        return this;
+    }
+
+    public ZomboDBVisibilityQueryBuilder activeXids(long[] xids) {
+        activeXids = xids;
         return this;
     }
 
@@ -49,9 +63,12 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
         builder.startObject(ZomboDBVisibilityQueryParser.NAME);
         builder.field("name", fieldname);
 
-        if (haveXid)
-            builder.field("xid", xid);
-
+        if (haveXmin)
+            builder.field("xmin", xmin);
+        if (haveXmax)
+            builder.field("xmax", xmax);
+        if (activeXids != null && activeXids.length > 0)
+            builder.field("active_xids", activeXids);
         if (query != null) {
             builder.field("query");
             query.toXContent(builder, params);

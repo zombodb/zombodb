@@ -33,19 +33,23 @@ import java.util.Set;
 class ZomboDBVisibilityQuery extends Query {
 
     private final String fieldname;
+    private final long xmin;
+    private final long xmax;
+    private final Set<Long> activeXids;
     private final Query subquery;
-    private final long xid;
 
-    ZomboDBVisibilityQuery(String fieldname, long xid, Query subquery) {
+    ZomboDBVisibilityQuery(String fieldname, long xmin, long xmax, Set<Long> activeXids, Query subquery) {
         this.fieldname = fieldname;
+        this.xmin = xmin;
+        this.xmax = xmax;
+        this.activeXids = activeXids;
         this.subquery = subquery;
-        this.xid = xid;
     }
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
 
-        final IntObjectMap<FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(fieldname, subquery, xid, reader);
+        final IntObjectMap<FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(fieldname, subquery, xmin, xmax, activeXids, reader);
         if (visibilityBitSets == null)
             return new MatchNoDocsQuery();
 
