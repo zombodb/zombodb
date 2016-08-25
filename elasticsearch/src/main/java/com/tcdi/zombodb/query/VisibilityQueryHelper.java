@@ -69,7 +69,7 @@ final class VisibilityQueryHelper {
         //
 
         final LongObjectMap<List<VisibilityInfo>> map = new LongObjectOpenHashMap<>(values.size());
-        searcher.search(new ConstantScoreQuery(new VisibilityTermsQuery(field, query, values)),
+        searcher.search(new ConstantScoreQuery(new VisibilityTermsQuery(field, xmin, xmax, activeXids, query, values)),
                 new ZomboDBTermsCollector(field) {
                     private SortedNumericDocValues pkeys;
                     private SortedNumericDocValues xids;

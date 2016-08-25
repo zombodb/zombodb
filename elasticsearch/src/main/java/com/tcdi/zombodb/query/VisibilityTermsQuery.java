@@ -26,6 +26,7 @@ import org.apache.lucene.util.NumericUtils;
 import org.elasticsearch.common.hppc.LongSet;
 
 import java.io.IOException;
+import java.util.Set;
 
 /**
  * A query that has an array of terms from a specific field. This query will match documents have one or more terms in
@@ -34,10 +35,18 @@ import java.io.IOException;
 class VisibilityTermsQuery extends MultiTermQuery {
 
     private final LongSet terms;
-    private final Query fromQuery; // Used for equals() only
 
-    VisibilityTermsQuery(String field, Query fromQuery, LongSet terms) {
+    // thee are used for equals() only
+    private final long xmin;
+    private final long xmax;
+    private final Set<Long> activeXids;
+    private final Query fromQuery;
+
+    VisibilityTermsQuery(String field, long xmin, long xmax, Set<Long> activeXids, Query fromQuery, LongSet terms) {
         super(field);
+        this.xmin = xmin;
+        this.xmax = xmax;
+        this.activeXids = activeXids;
         this.fromQuery = fromQuery;
         this.terms = terms;
     }
@@ -64,15 +73,20 @@ class VisibilityTermsQuery extends MultiTermQuery {
             return false;
 
         VisibilityTermsQuery other = (VisibilityTermsQuery) obj;
-        return fromQuery.equals(other.fromQuery);
+        return fromQuery.equals(other.fromQuery) &&
+                xmin == other.xmin &&
+                xmax == other.xmax &&
+                activeXids.equals(other.activeXids);
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result += prime * fromQuery.hashCode();
-        return result;
+        int hash = super.hashCode();
+        hash = hash * 31 + fromQuery.hashCode();
+        hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
+        hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
+        hash = hash * 31 + activeXids.hashCode();
+        return hash;
     }
 
     private static class SeekingTermSetTermsEnum extends FilteredTermsEnum {

@@ -25,6 +25,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.elasticsearch.common.hppc.IntObjectMap;
+import org.elasticsearch.common.lang3.ArrayUtils;
 import org.elasticsearch.common.lucene.search.MatchNoDocsQuery;
 
 import java.io.IOException;
@@ -70,7 +71,7 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public String toString(String field) {
-        return "visibility(" + fieldname + ", " + subquery.toString(field) + ")";
+        return "visibility(" + fieldname + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ", query=" + subquery.toString(field) + ")";
     }
 
     @Override
@@ -78,6 +79,9 @@ class ZomboDBVisibilityQuery extends Query {
         int hash = super.hashCode();
         hash = hash * 31 + fieldname.hashCode();
         hash = hash * 31 + subquery.hashCode();
+        hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
+        hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
+        hash = hash * 31 + ArrayUtils.toString(activeXids).hashCode();
         return hash;
     }
 
@@ -88,6 +92,11 @@ class ZomboDBVisibilityQuery extends Query {
         assert obj instanceof ZomboDBVisibilityQuery;
         ZomboDBVisibilityQuery eq = (ZomboDBVisibilityQuery) obj;
 
-        return this.fieldname.equals(eq.fieldname) && this.subquery.equals(eq.subquery);
+        return this.fieldname.equals(eq.fieldname) &&
+                this.subquery.equals(eq.subquery) &&
+                this.xmin == eq.xmin &&
+                this.xmax == eq.xmax &&
+                ArrayUtils.isEquals(this.activeXids, eq.activeXids);
+
     }
 }
