@@ -18,14 +18,13 @@ package com.tcdi.zombodb.query;
 import org.apache.lucene.index.AtomicReaderContext;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.elasticsearch.common.hppc.*;
 import org.elasticsearch.common.hppc.cursors.LongObjectCursor;
+import org.elasticsearch.common.logging.Loggers;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,34 +41,37 @@ final class VisibilityQueryHelper {
         // first, collect all the terms from 'field' that match the incoming query
         //
 
-        final LongSet values = new LongOpenHashSet();
+        long start = System.currentTimeMillis();
+        final LongArrayList values = new LongArrayList();
         searcher.search(new ConstantScoreQuery(query), new ZomboDBTermsCollector(field) {
-            private SortedNumericDocValues fromDocTerms;
+            private SortedNumericDocValues pkeys;
 
             @Override
             public void collect(int doc) throws IOException {
-                fromDocTerms.setDocument(doc);
-                long value = fromDocTerms.valueAt(0);
-                values.add(value);
+                pkeys.setDocument(doc);
+                if (pkeys.count() > 0)
+                    values.add(pkeys.valueAt(0));
             }
 
             @Override
             public void setNextReader(AtomicReaderContext context) throws IOException {
-                fromDocTerms = context.reader().getSortedNumericDocValues(field);
+                pkeys = context.reader().getSortedNumericDocValues(field);
             }
         });
+        long end = System.currentTimeMillis();
+        Loggers.getLogger(VisibilityQueryHelper.class).info("initial ttl=" + ((end-start)/1000D));
 
         if (values.size() == 0)
             return null;
 
-
         //
-        // secondly, expand that list of terms to *all* documents that have
-        // have those values in 'field'
+        // secondly, expand that list of terms to all  documents that have
+        // have those values in 'field' and are visible to our current Postgres transaction
         //
 
+        start = System.currentTimeMillis();
         final LongObjectMap<List<VisibilityInfo>> map = new LongObjectOpenHashMap<>(values.size());
-        searcher.search(new ConstantScoreQuery(new VisibilityTermsQuery(field, xmin, xmax, activeXids, query, values)),
+        searcher.search(new ConstantScoreQuery(new VisibilityTermsQuery(field, xmin, xmax, activeXids, query, new LongOpenHashSet(values))),
                 new ZomboDBTermsCollector(field) {
                     private SortedNumericDocValues pkeys;
                     private SortedNumericDocValues xids;
@@ -79,20 +81,20 @@ final class VisibilityQueryHelper {
                     @Override
                     public void collect(int doc) throws IOException {
                         pkeys.setDocument(doc);
-                        xids.setDocument(doc);
 
-                        long xid = xids.valueAt(0);
-                        if (xid >= xmax || activeXids.contains(xid))
-                            return;
+                        if (pkeys.count() > 0) {
+                            xids.setDocument(doc);
+                            long xid = xids.valueAt(0);
 
-                        if (xid < xmin) {
-                            long pkey = pkeys.valueAt(0);
+                            if (xid < xmin && !activeXids.contains(xid)) {
+                                long pkey = pkeys.valueAt(0);
 
-                            List<VisibilityInfo> matchingDocs = map.get(pkey);
-                            if (matchingDocs == null) {
-                                map.put(pkey, matchingDocs = new ArrayList<>());
+                                List<VisibilityInfo> matchingDocs = map.get(pkey);
+                                if (matchingDocs == null) {
+                                    map.put(pkey, matchingDocs = new ArrayList<>());
+                                }
+                                matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, pkey, xid));
                             }
-                            matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, pkey, xid));
                         }
                     }
 
@@ -105,6 +107,8 @@ final class VisibilityQueryHelper {
                     }
                 }
         );
+        end = System.currentTimeMillis();
+        Loggers.getLogger(VisibilityQueryHelper.class).info("second ttl=" + ((end-start)/1000D));
 
 
         //

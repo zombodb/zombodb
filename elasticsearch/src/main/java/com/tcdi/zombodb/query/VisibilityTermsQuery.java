@@ -36,7 +36,7 @@ class VisibilityTermsQuery extends MultiTermQuery {
 
     private final LongSet terms;
 
-    // thee are used for equals() only
+    // these are used for equals() only
     private final long xmin;
     private final long xmax;
     private final Set<Long> activeXids;
