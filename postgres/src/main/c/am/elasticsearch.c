@@ -36,8 +36,6 @@
 #include "zdbseqscan.h"
 #include "zdb_interface.h"
 
-#define MAX_LINKED_INDEXES 1024
-
 typedef struct {
     ZDBIndexDescriptor *indexDescriptor;
     MultiRestState     *rest;
