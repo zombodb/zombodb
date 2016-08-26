@@ -22,6 +22,7 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.OpenBitSet;
 import org.elasticsearch.common.hppc.*;
 import org.elasticsearch.common.hppc.cursors.LongObjectCursor;
 import org.elasticsearch.common.logging.Loggers;
@@ -42,7 +43,7 @@ final class VisibilityQueryHelper {
         //
 
         long start = System.currentTimeMillis();
-        final LongArrayList values = new LongArrayList();
+        final OpenBitSet pkeysBitset = new OpenBitSet();
         searcher.search(new ConstantScoreQuery(query), new ZomboDBTermsCollector(field) {
             private SortedNumericDocValues pkeys;
 
@@ -50,7 +51,7 @@ final class VisibilityQueryHelper {
             public void collect(int doc) throws IOException {
                 pkeys.setDocument(doc);
                 if (pkeys.count() > 0)
-                    values.add(pkeys.valueAt(0));
+                    pkeysBitset.set(pkeys.valueAt(0));
             }
 
             @Override
@@ -61,7 +62,7 @@ final class VisibilityQueryHelper {
         long end = System.currentTimeMillis();
         Loggers.getLogger(VisibilityQueryHelper.class).info("initial ttl=" + ((end-start)/1000D));
 
-        if (values.size() == 0)
+        if (pkeysBitset.cardinality() == 0)
             return null;
 
         //
@@ -70,8 +71,8 @@ final class VisibilityQueryHelper {
         //
 
         start = System.currentTimeMillis();
-        final LongObjectMap<List<VisibilityInfo>> map = new LongObjectOpenHashMap<>(values.size());
-        searcher.search(new ConstantScoreQuery(new VisibilityTermsQuery(field, xmin, xmax, activeXids, query, new LongOpenHashSet(values))),
+        final LongObjectMap<List<VisibilityInfo>> map = new LongObjectOpenHashMap<>();
+        searcher.search(new ConstantScoreQuery(new VisibilityTermsQuery(field, xmin, xmax, activeXids, query, pkeysBitset)),
                 new ZomboDBTermsCollector(field) {
                     private SortedNumericDocValues pkeys;
                     private SortedNumericDocValues xids;
@@ -80,22 +81,20 @@ final class VisibilityQueryHelper {
 
                     @Override
                     public void collect(int doc) throws IOException {
+                        xids.setDocument(doc);
+                        long xid = xids.valueAt(0);
+
+                        if (xid >= xmax || activeXids.contains(xid))
+                            return;
+
                         pkeys.setDocument(doc);
+                        long pkey = pkeys.valueAt(0);
 
-                        if (pkeys.count() > 0) {
-                            xids.setDocument(doc);
-                            long xid = xids.valueAt(0);
-
-                            if (xid < xmin && !activeXids.contains(xid)) {
-                                long pkey = pkeys.valueAt(0);
-
-                                List<VisibilityInfo> matchingDocs = map.get(pkey);
-                                if (matchingDocs == null) {
-                                    map.put(pkey, matchingDocs = new ArrayList<>());
-                                }
-                                matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, pkey, xid));
-                            }
+                        List<VisibilityInfo> matchingDocs = map.get(pkey);
+                        if (matchingDocs == null) {
+                            map.put(pkey, matchingDocs = new ArrayList<>());
                         }
+                        matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, pkey, xid));
                     }
 
                     @Override
@@ -128,10 +127,10 @@ final class VisibilityQueryHelper {
 
             for (VisibilityInfo mapping : cursor.value) {
                 // TODO: if (xid.didCommit) {
-                    FixedBitSet bitset = visibilityBitSets.get(mapping.readerOrd);
-                    if (bitset == null)
-                        visibilityBitSets.put(mapping.readerOrd, bitset = new FixedBitSet(mapping.maxdoc));
-                    bitset.set(mapping.docid);
+                    FixedBitSet visibilityBitset = visibilityBitSets.get(mapping.readerOrd);
+                    if (visibilityBitset == null)
+                        visibilityBitSets.put(mapping.readerOrd, visibilityBitset = new FixedBitSet(mapping.maxdoc));
+                    visibilityBitset.set(mapping.docid);
                     break;
                 // }
             }

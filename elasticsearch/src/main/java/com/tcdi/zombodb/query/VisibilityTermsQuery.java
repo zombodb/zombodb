@@ -23,7 +23,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.OpenBitSet;
 import org.elasticsearch.common.hppc.LongSet;
+import org.elasticsearch.common.logging.Loggers;
 
 import java.io.IOException;
 import java.util.Set;
@@ -34,7 +36,7 @@ import java.util.Set;
  */
 class VisibilityTermsQuery extends MultiTermQuery {
 
-    private final LongSet terms;
+    private final OpenBitSet terms;
 
     // these are used for equals() only
     private final long xmin;
@@ -42,7 +44,7 @@ class VisibilityTermsQuery extends MultiTermQuery {
     private final Set<Long> activeXids;
     private final Query fromQuery;
 
-    VisibilityTermsQuery(String field, long xmin, long xmax, Set<Long> activeXids, Query fromQuery, LongSet terms) {
+    VisibilityTermsQuery(String field, long xmin, long xmax, Set<Long> activeXids, Query fromQuery, OpenBitSet terms) {
         super(field);
         this.xmin = xmin;
         this.xmax = xmax;
@@ -53,11 +55,11 @@ class VisibilityTermsQuery extends MultiTermQuery {
 
     @Override
     protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
-        if (this.terms.size() == 0) {
+        if (this.terms.cardinality() == 0) {
             return TermsEnum.EMPTY;
         }
 
-        return new SeekingTermSetTermsEnum(terms.iterator(null), this.terms);
+        return new SeekingTermSetTermsEnum(terms.iterator(null));
     }
 
     @Override
@@ -89,13 +91,10 @@ class VisibilityTermsQuery extends MultiTermQuery {
         return hash;
     }
 
-    private static class SeekingTermSetTermsEnum extends FilteredTermsEnum {
+    private class SeekingTermSetTermsEnum extends FilteredTermsEnum {
 
-        private final LongSet terms;
-
-        SeekingTermSetTermsEnum(TermsEnum tenum, LongSet terms) {
+        SeekingTermSetTermsEnum(TermsEnum tenum) {
             super(tenum);
-            this.terms = terms;
         }
 
         @Override
@@ -106,11 +105,7 @@ class VisibilityTermsQuery extends MultiTermQuery {
         @Override
         protected AcceptStatus accept(BytesRef term) throws IOException {
             long value = NumericUtils.prefixCodedToLong(term);
-            if (terms.contains(value)) {
-                return AcceptStatus.YES;
-            } else {
-                return AcceptStatus.NO;
-            }
+            return terms.get(value) ? AcceptStatus.YES : AcceptStatus.NO;
         }
     }
 }
