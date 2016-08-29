@@ -2,6 +2,8 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=false,NODE_PREFIX=AST,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.tcdi.zombodb.query_parser;
 
+import java.util.Arrays;
+
 public
 class ASTVisibility extends com.tcdi.zombodb.query_parser.QueryParserNode {
   public ASTVisibility(int id) {
@@ -31,6 +33,7 @@ class ASTVisibility extends com.tcdi.zombodb.query_parser.QueryParserNode {
     for (QueryParserNode node : array) {
       xids[i++] = Long.valueOf(node.getEscapedValue());
     }
+    Arrays.sort(xids);
     return xids;
   }
 

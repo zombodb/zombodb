@@ -68,7 +68,7 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xmin);
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, uint64 pkey, ItemPointer old_ctid, TransactionId xmin);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 static uint64 *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
@@ -537,12 +537,12 @@ static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer 
     MemoryContextDelete(me);
 }
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xmin) {
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, uint64 pkey, ItemPointer old_ctid, TransactionId xmin) {
     MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
     Assert(!indexDescriptor->isShadow);
 
-    elasticsearch_batchInsertRow(indexDescriptor, ctid, data, xmin);
+    elasticsearch_batchInsertRow(indexDescriptor, ctid, data, isupdate, pkey, old_ctid, xmin);
 
     MemoryContextSwitchTo(oldContext);
 }

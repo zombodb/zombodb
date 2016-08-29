@@ -18,12 +18,13 @@ package com.tcdi.zombodb.query;
 import org.apache.lucene.index.AtomicReaderContext;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
-import org.apache.lucene.util.CollectionUtil;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.OpenBitSet;
+import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.util.*;
 import org.elasticsearch.common.hppc.*;
+import org.elasticsearch.common.hppc.cursors.LongCursor;
 import org.elasticsearch.common.hppc.cursors.LongObjectCursor;
 import org.elasticsearch.common.logging.Loggers;
 
@@ -39,40 +40,12 @@ final class VisibilityQueryHelper {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //
-        // first, collect all the terms from 'field' that match the incoming query
+        // collect all the pkeys in the query that are likely visible to our current Postgres transaction
         //
 
-        long start = System.currentTimeMillis();
-        final OpenBitSet pkeysBitset = new OpenBitSet();
-        searcher.search(new ConstantScoreQuery(query), new ZomboDBTermsCollector(field) {
-            private SortedNumericDocValues pkeys;
-
-            @Override
-            public void collect(int doc) throws IOException {
-                pkeys.setDocument(doc);
-                if (pkeys.count() > 0)
-                    pkeysBitset.set(pkeys.valueAt(0));
-            }
-
-            @Override
-            public void setNextReader(AtomicReaderContext context) throws IOException {
-                pkeys = context.reader().getSortedNumericDocValues(field);
-            }
-        });
-        long end = System.currentTimeMillis();
-        Loggers.getLogger(VisibilityQueryHelper.class).info("initial ttl=" + ((end-start)/1000D));
-
-        if (pkeysBitset.cardinality() == 0)
-            return null;
-
-        //
-        // secondly, expand that list of terms to all  documents that have
-        // have those values in 'field' and are visible to our current Postgres transaction
-        //
-
-        start = System.currentTimeMillis();
         final LongObjectMap<List<VisibilityInfo>> map = new LongObjectOpenHashMap<>();
-        searcher.search(new ConstantScoreQuery(new VisibilityTermsQuery(field, xmin, xmax, activeXids, query, pkeysBitset)),
+        searcher.search(
+                query,
                 new ZomboDBTermsCollector(field) {
                     private SortedNumericDocValues pkeys;
                     private SortedNumericDocValues xids;
@@ -85,7 +58,7 @@ final class VisibilityQueryHelper {
                         long xid = xids.valueAt(0);
 
                         if (xid >= xmax || activeXids.contains(xid))
-                            return;
+                            return; // document definitely not visible to us
 
                         pkeys.setDocument(doc);
                         long pkey = pkeys.valueAt(0);
@@ -106,12 +79,10 @@ final class VisibilityQueryHelper {
                     }
                 }
         );
-        end = System.currentTimeMillis();
-        Loggers.getLogger(VisibilityQueryHelper.class).info("second ttl=" + ((end-start)/1000D));
 
 
         //
-        // finally, pick out the ones that match our visibility rules
+        // pick out the first VisibilityInfo for each document that is committed
         // and build a FixedBitSet for each reader 'ord' that contains visible
         // documents.  A map of these (key'd on reader ord) is what we return.
         //

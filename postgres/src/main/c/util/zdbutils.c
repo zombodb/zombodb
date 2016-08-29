@@ -375,3 +375,26 @@ evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod,
                               const_val, const_is_null,
                               resultTypByVal);
 }
+
+uint64 lookup_pkey(Oid heapRelOid, char *pkeyFieldname, ItemPointer ctid) {
+    Relation heapRel;
+    HeapTupleData tuple;
+    Buffer buffer;
+    Datum pkey;
+    bool isnull;
+
+    heapRel = RelationIdGetRelation(heapRelOid);
+    tuple.t_self = *ctid;
+
+    if (!heap_fetch(heapRel, SnapshotAny, &tuple, &buffer, false, NULL))
+        elog(ERROR, "Unable to fetch heap page from index");
+
+    pkey = heap_getattr(&tuple, get_attnum(heapRelOid, pkeyFieldname), RelationGetDescr(heapRel), &isnull);
+    if (isnull)
+        elog(ERROR, "detected NULL key value.  Cannot update row");
+
+    ReleaseBuffer(buffer);
+    RelationClose(heapRel);
+
+    return DatumGetInt64(pkey);
+}

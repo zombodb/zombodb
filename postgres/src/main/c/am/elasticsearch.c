@@ -22,12 +22,16 @@
 #include "miscadmin.h"
 #include "access/genam.h"
 #include "access/heapam.h"
+#include "access/htup_details.h"
 #include "access/xact.h"
+#include "storage/bufmgr.h"
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
+#include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/snapmgr.h"
+#include "utils/tqual.h"
 
 #include "rest/rest.h"
 #include "util/zdbutils.h"
@@ -175,7 +179,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "      \"data\": {"
             "          \"_source\": { \"enabled\": false },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_routing\": { \"required\": true, \"path\": \"%s\"}, "
+            "          \"_routing\": { \"required\": true }, "
             "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "          \"date_detection\": false,"
@@ -193,7 +197,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "         \"analyzer\": { %s }"
             "      }"
             "   }"
-            "}", indexDescriptor->pkeyFieldname, indexDescriptor->pkeyFieldname, indexDescriptor->alwaysResolveJoins ? "true"
+            "}", indexDescriptor->pkeyFieldname, indexDescriptor->alwaysResolveJoins ? "true"
                                                            : "false", fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"));
 
     appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
@@ -221,6 +225,30 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "}");
 
     appendStringInfo(endpoint, "%s/%s.dynamic", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("POST", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
+
+    freeStringInfo(response);
+    resetStringInfo(endpoint);
+    resetStringInfo(indexSettings);
+
+    appendStringInfo(indexSettings, "{"
+            "   \"mappings\": {"
+            "      \"state\": {"
+            "          \"_source\": { \"enabled\": true },"
+            "          \"_all\": { \"enabled\": false },"
+            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
+            "          \"date_detection\": false,"
+            "          \"properties\": { \"pkey\": {\"type\": \"long\"}, \"xid\": {\"type\": \"long\"},\"ctid\": {\"type\": \"string\", \"index\": \"not_analyzed\" } }"
+            "      }"
+            "   },"
+            "   \"settings\": {"
+            "      \"refresh_interval\": 1,"
+            "      \"number_of_shards\": 1,"
+            "      \"number_of_replicas\": 0"
+            "   }"
+            "}");
+
+    appendStringInfo(endpoint, "%s/%s.state", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("POST", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
 
 
@@ -340,6 +368,11 @@ void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
 
     resetStringInfo(endpoint);
     appendStringInfo(endpoint, "%s/%s.dynamic", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("DELETE", endpoint->data, NULL, indexDescriptor->compressionLevel);
+	freeStringInfo(response);
+
+    resetStringInfo(endpoint);
+    appendStringInfo(endpoint, "%s/%s.state", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("DELETE", endpoint->data, NULL, indexDescriptor->compressionLevel);
     freeStringInfo(response);
 
@@ -766,6 +799,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
         ItemPointer item = &itemPointers[i];
 
         appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+        appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\",\"_index\":\"%s.state\",\"_type\":\"state\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item), indexDescriptor->fullyQualifiedName);
 
         if (request->len >= indexDescriptor->batch_size) {
             response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
@@ -785,9 +819,9 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, TransactionId xmin) {
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, uint64 pkey, ItemPointer old_ctid, TransactionId xmin) {
     /* the data */
-    appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
+    appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_routing\":%lu}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid), pkey);
     if (indexDescriptor->hasJson)
         appendBinaryStringInfoAndStripLineBreaks(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
     else
@@ -799,6 +833,11 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
     /* ...append our transaction id to the json */
     appendStringInfo(bulk, ",\"_xid\":%lu,\"_zdb_id\":\"%lu\"}\n", convert_xid(xmin), ItemPointerToUint64(ht_ctid));
+
+	if (isupdate) {
+		appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_index\":\"%s.state\",\"_type\":\"state\"}}\n", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid), indexDescriptor->fullyQualifiedName);
+		appendStringInfo(bulk, "{\"pkey\":%lu,\"xid\":%lu,\"ctid\":\"%d-%d\"}\n", pkey, convert_xid(GetCurrentTransactionId()), ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
+	}
 }
 
 static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
@@ -819,14 +858,15 @@ static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
     elog(ERROR, "Unable to checkout from batch pool");
 }
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xid) {
+void
+elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, uint64 pkey, ItemPointer old_ctid, TransactionId xid) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
     bool fast_path = false;
 
     if (batch->bulk == NULL)
         batch->bulk = checkout_batch_pool(batch);
 
-    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, xid);
+    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, pkey, old_ctid, xid);
     batch->nprocessed++;
     batch->nrecs++;
 

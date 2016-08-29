@@ -44,5 +44,6 @@ char **text_array_to_strings(ArrayType *array, int *many);
 uint64     convert_xid(TransactionId xid);
 
 Expr *evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod, Oid result_collation);
+uint64 lookup_pkey(Oid heapRelOid, char *pkeyFieldname, ItemPointer ctid);
 
 #endif

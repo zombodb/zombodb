@@ -193,7 +193,7 @@ typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse
 
 typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
-typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xmin);
+typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, uint64 pkey, ItemPointer old_ctid, TransactionId xmin);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
 
 typedef uint64 *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);

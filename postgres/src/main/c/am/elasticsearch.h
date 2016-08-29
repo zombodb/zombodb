@@ -54,7 +54,7 @@ void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xid);
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, uint64 pkey, ItemPointer old_ctid, TransactionId xid);
 void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);

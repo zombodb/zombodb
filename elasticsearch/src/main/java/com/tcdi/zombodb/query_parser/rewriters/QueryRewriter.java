@@ -33,6 +33,8 @@ import org.elasticsearch.action.get.MultiGetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.logging.Loggers;
@@ -1310,11 +1312,42 @@ public abstract class QueryRewriter {
 
         keyFieldname = metadataManager.getMetadata(metadataManager.getIndexLinkByIndexName(indexName)).getPrimaryKeyFieldName();
 
+        TermsBuilder updatedKeysAgg = terms("keys")
+                .field("pkey")
+                .size(0);
+        SearchRequestBuilder search = new SearchRequestBuilder(client)
+                .setSize(0)
+                .setNoFields()
+                .setIndices(indexName + ".state")
+                .setTypes("state")
+                .setPreference("_primary")
+                .setQueryCache(true)
+                .addAggregation(updatedKeysAgg);
+
+        final SearchResponse aggResults = client.search(search.request()).actionGet();
+        List<Long> bucketList = new AbstractList<Long>() {
+            Terms terms = aggResults.getAggregations().get("keys");
+
+            @Override
+            public Long get(int index) {
+                Terms.Bucket bucket = terms.getBuckets().get(index);
+                return bucket.getKeyAsNumber().longValue();
+            }
+
+            @Override
+            public int size() {
+                return terms.getBuckets().size();
+            }
+        };
+
         return boolQuery()
-                .must(query)
-                .must(
+                .should(
+                        boolQuery()
+                                .must(filteredQuery(query, notFilter(termsFilter(keyFieldname, bucketList))))
+                )
+                .should(
                         visibility(keyFieldname)
-                                .query(query)
+                                .query(filteredQuery(matchAllQuery(), termsFilter(keyFieldname, bucketList)))
                                 .xmin(visibility.getXmin())
                                 .xmax(visibility.getXmax())
                                 .activeXids(visibility.getActiveXids())

@@ -36,7 +36,7 @@ import java.util.Set;
  */
 class VisibilityTermsQuery extends MultiTermQuery {
 
-    private final OpenBitSet terms;
+    private final LongSet terms;
 
     // these are used for equals() only
     private final long xmin;
@@ -44,7 +44,7 @@ class VisibilityTermsQuery extends MultiTermQuery {
     private final Set<Long> activeXids;
     private final Query fromQuery;
 
-    VisibilityTermsQuery(String field, long xmin, long xmax, Set<Long> activeXids, Query fromQuery, OpenBitSet terms) {
+    VisibilityTermsQuery(String field, long xmin, long xmax, Set<Long> activeXids, Query fromQuery, LongSet terms) {
         super(field);
         this.xmin = xmin;
         this.xmax = xmax;
@@ -55,7 +55,7 @@ class VisibilityTermsQuery extends MultiTermQuery {
 
     @Override
     protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
-        if (this.terms.cardinality() == 0) {
+        if (this.terms.size() == 0) {
             return TermsEnum.EMPTY;
         }
 
@@ -105,7 +105,7 @@ class VisibilityTermsQuery extends MultiTermQuery {
         @Override
         protected AcceptStatus accept(BytesRef term) throws IOException {
             long value = NumericUtils.prefixCodedToLong(term);
-            return terms.get(value) ? AcceptStatus.YES : AcceptStatus.NO;
+            return terms.contains(value) ? AcceptStatus.YES : AcceptStatus.NO;
         }
     }
 }

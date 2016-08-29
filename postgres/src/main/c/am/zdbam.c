@@ -43,6 +43,8 @@
 #include "utils/json.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/rel.h"
+#include "utils/snapmgr.h"
 #include "utils/tqual.h"
 
 #include "zdb_interface.h"
@@ -415,8 +417,10 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state) {
     ZDBBuildState      *buildstate = (ZDBBuildState *) state;
     ZDBIndexDescriptor *desc       = buildstate->desc;
+	uint64 pkey;
 
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), HeapTupleHeaderGetXmin(htup->t_data));
+	pkey = lookup_pkey(desc->heapRelid, desc->pkeyFieldname, &htup->t_self);
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, pkey, NULL, HeapTupleHeaderGetXmin(htup->t_data));
 
     buildstate->indtuples++;
 }
@@ -432,12 +436,39 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
 //    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
     TransactionId      currentTransactionId = GetCurrentTransactionId();
     ZDBIndexDescriptor *desc;
+    QueryDesc *queryDesc = (QueryDesc *) linitial(CURRENT_QUERY_STACK);
+	ItemPointer old_ctid = NULL;
+    uint64 pkey = 0;
+	bool isupdate = false;
 
-    desc = alloc_index_descriptor(indexRel, true);
-    if (desc->isShadow)
-        PG_RETURN_BOOL(false);
+	desc = alloc_index_descriptor(indexRel, true);
+	if (desc->isShadow)
+		PG_RETURN_BOOL(false);
 
-    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), currentTransactionId);
+	switch (queryDesc->operation) {
+        case CMD_UPDATE:
+            isupdate = true;
+            break;
+
+        case CMD_SELECT:
+            if (queryDesc->plannedstmt->hasModifyingCTE) {
+                ModifyTableState *mts = linitial(queryDesc->estate->es_auxmodifytables);
+                isupdate = mts->operation == CMD_UPDATE;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    if (isupdate) {
+		TupleTableSlot *slot = list_nth(queryDesc->estate->es_tupleTable, 1);
+
+		pkey = lookup_pkey(desc->heapRelid, desc->pkeyFieldname, ht_ctid);
+		old_ctid = &slot->tts_tuple->t_self;
+	}
+
+    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, pkey, old_ctid, currentTransactionId);
 
     PG_RETURN_BOOL(true);
 }
