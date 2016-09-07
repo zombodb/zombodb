@@ -793,7 +793,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     StringInfo response;
     int i;
 
-    appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=default&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
     for (i=0; i<nitems; i++) {
         ItemPointer item = &itemPointers[i];
@@ -819,9 +819,13 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, uint64 pkey, ItemPointer old_ctid, TransactionId xmin) {
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin) {
     /* the data */
-    appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_routing\":%lu}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid), pkey);
+    appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_routing\":\"%d-%d\"}}\n",
+					 ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid),
+							 isupdate ? ItemPointerGetBlockNumber(old_ctid) : ItemPointerGetBlockNumber(ht_ctid),
+							 isupdate ? ItemPointerGetOffsetNumber(old_ctid) : ItemPointerGetOffsetNumber(ht_ctid)
+					);
     if (indexDescriptor->hasJson)
         appendBinaryStringInfoAndStripLineBreaks(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
     else
@@ -831,13 +835,8 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
     while (bulk->data[bulk->len] != '}')
         bulk->len--;
 
-    /* ...append our transaction id to the json */
-    appendStringInfo(bulk, ",\"_xid\":%lu,\"_zdb_id\":\"%lu\"}\n", convert_xid(xmin), ItemPointerToUint64(ht_ctid));
-
-	if (isupdate) {
-		appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_index\":\"%s.state\",\"_type\":\"state\"}}\n", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid), indexDescriptor->fullyQualifiedName);
-		appendStringInfo(bulk, "{\"pkey\":%lu,\"xid\":%lu,\"ctid\":\"%d-%d\"}\n", pkey, convert_xid(GetCurrentTransactionId()), ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
-	}
+    /* ...append our transaction id and group id to the json */
+    appendStringInfo(bulk, ",\"_xid\":%lu}\n", convert_xid(xmin));
 }
 
 static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
@@ -859,14 +858,14 @@ static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
 }
 
 void
-elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, uint64 pkey, ItemPointer old_ctid, TransactionId xid) {
+elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
     bool fast_path = false;
 
     if (batch->bulk == NULL)
         batch->bulk = checkout_batch_pool(batch);
 
-    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, pkey, old_ctid, xid);
+    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, old_ctid, xid);
     batch->nprocessed++;
     batch->nrecs++;
 
@@ -881,7 +880,7 @@ elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ct
         StringInfo endpoint = makeStringInfo();
 
         /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-        appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+        appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
         /* send the request to index this batch */
         rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, indexDescriptor->compressionLevel);
@@ -911,7 +910,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
-            appendStringInfo(endpoint, "%s/%s/data/_bulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+            appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
             if (batch->nrequests == 0) {
                 /*

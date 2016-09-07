@@ -15,10 +15,7 @@
  */
 package com.tcdi.zombodb.query;
 
-import org.apache.lucene.index.AtomicReaderContext;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.index.Term;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.search.similarities.Similarity;
@@ -29,10 +26,7 @@ import org.elasticsearch.common.hppc.cursors.LongObjectCursor;
 import org.elasticsearch.common.logging.Loggers;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 final class VisibilityQueryHelper {
 
@@ -40,14 +34,14 @@ final class VisibilityQueryHelper {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //
-        // collect all the pkeys in the query that are likely visible to our current Postgres transaction
+        // collect all the _routing values in the query that are likely visible to our current Postgres transaction
         //
 
-        final LongObjectMap<List<VisibilityInfo>> map = new LongObjectOpenHashMap<>();
+        final Map<String, List<VisibilityInfo>> map = new HashMap();
         searcher.search(
                 query,
                 new ZomboDBTermsCollector(field) {
-                    private SortedNumericDocValues pkeys;
+                    private BinaryDocValues routings;
                     private SortedNumericDocValues xids;
                     private int ord;
                     private int maxdoc;
@@ -60,19 +54,18 @@ final class VisibilityQueryHelper {
                         if (xid >= xmax || activeXids.contains(xid))
                             return; // document definitely not visible to us
 
-                        pkeys.setDocument(doc);
-                        long pkey = pkeys.valueAt(0);
+                        String routing = routings.get(doc).utf8ToString();
 
-                        List<VisibilityInfo> matchingDocs = map.get(pkey);
+                        List<VisibilityInfo> matchingDocs = map.get(routing);
                         if (matchingDocs == null) {
-                            map.put(pkey, matchingDocs = new ArrayList<>());
+                            map.put(routing, matchingDocs = new ArrayList<>());
                         }
-                        matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, pkey, xid));
+                        matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, xid));
                     }
 
                     @Override
                     public void setNextReader(AtomicReaderContext context) throws IOException {
-                        pkeys = context.reader().getSortedNumericDocValues(field);
+                        routings = FieldCache.DEFAULT.getTerms(context.reader(), field, false);
                         xids = context.reader().getSortedNumericDocValues("_xid");
                         ord = context.ord;
                         maxdoc = context.reader().maxDoc();
@@ -88,15 +81,15 @@ final class VisibilityQueryHelper {
         //
 
         final IntObjectMap<FixedBitSet> visibilityBitSets = new IntObjectOpenHashMap<>();
-        for (LongObjectCursor<List<VisibilityInfo>> cursor : map) {
-            CollectionUtil.timSort(cursor.value, new Comparator<VisibilityInfo>() {
+        for (List<VisibilityInfo> visibility : map.values()) {
+            CollectionUtil.timSort(visibility, new Comparator<VisibilityInfo>() {
                 @Override
                 public int compare(VisibilityInfo o1, VisibilityInfo o2) {
                     return Long.compare(o2.xid, o1.xid);
                 }
             });
 
-            for (VisibilityInfo mapping : cursor.value) {
+            for (VisibilityInfo mapping : visibility) {
                 // TODO: if (xid.didCommit) {
                     FixedBitSet visibilityBitset = visibilityBitSets.get(mapping.readerOrd);
                     if (visibilityBitset == null)

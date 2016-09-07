@@ -417,10 +417,8 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state) {
     ZDBBuildState      *buildstate = (ZDBBuildState *) state;
     ZDBIndexDescriptor *desc       = buildstate->desc;
-	uint64 pkey;
 
-	pkey = lookup_pkey(desc->heapRelid, desc->pkeyFieldname, &htup->t_self);
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, pkey, NULL, HeapTupleHeaderGetXmin(htup->t_data));
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, HeapTupleHeaderGetXmin(htup->t_data));
 
     buildstate->indtuples++;
 }
@@ -438,7 +436,6 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
     ZDBIndexDescriptor *desc;
     QueryDesc *queryDesc = (QueryDesc *) linitial(CURRENT_QUERY_STACK);
 	ItemPointer old_ctid = NULL;
-    uint64 pkey = 0;
 	bool isupdate = false;
 
 	desc = alloc_index_descriptor(indexRel, true);
@@ -464,11 +461,10 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
     if (isupdate) {
 		TupleTableSlot *slot = list_nth(queryDesc->estate->es_tupleTable, 1);
 
-		pkey = lookup_pkey(desc->heapRelid, desc->pkeyFieldname, ht_ctid);
 		old_ctid = &slot->tts_tuple->t_self;
 	}
 
-    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, pkey, old_ctid, currentTransactionId);
+    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, old_ctid, currentTransactionId);
 
     PG_RETURN_BOOL(true);
 }

@@ -44,6 +44,7 @@ import org.elasticsearch.index.engine.DocumentAlreadyExistsException;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
+import org.elasticsearch.search.aggregations.Aggregator;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
@@ -1305,33 +1306,32 @@ public abstract class QueryRewriter {
 
     public QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
         ASTVisibility visibility = tree.getVisibility();
-        String keyFieldname;
 
         if (visibility == null)
             return query;
 
-        keyFieldname = metadataManager.getMetadata(metadataManager.getIndexLinkByIndexName(indexName)).getPrimaryKeyFieldName();
-
-        TermsBuilder updatedKeysAgg = terms("keys")
-                .field("pkey")
+        TermsBuilder updatedKeysAgg = terms("routing")
+                .field("_routing")
+                .shardMinDocCount(2)
+                .minDocCount(2)
                 .size(0);
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setSize(0)
                 .setNoFields()
-                .setIndices(indexName + ".state")
-                .setTypes("state")
+                .setIndices(indexName)
+                .setTypes("data")
                 .setPreference("_primary")
                 .setQueryCache(true)
                 .addAggregation(updatedKeysAgg);
 
         final SearchResponse aggResults = client.search(search.request()).actionGet();
-        List<Long> bucketList = new AbstractList<Long>() {
-            Terms terms = aggResults.getAggregations().get("keys");
+        List<String> bucketList = new AbstractList<String>() {
+            Terms terms = aggResults.getAggregations().get("routing");
 
             @Override
-            public Long get(int index) {
+            public String get(int index) {
                 Terms.Bucket bucket = terms.getBuckets().get(index);
-                return bucket.getKeyAsNumber().longValue();
+                return bucket.getKey();
             }
 
             @Override
@@ -1340,14 +1340,15 @@ public abstract class QueryRewriter {
             }
         };
 
+        Loggers.getLogger(QueryRewriter.class).info("ttl=" + aggResults.getTookInMillis());
         return boolQuery()
                 .should(
                         boolQuery()
-                                .must(filteredQuery(query, notFilter(termsFilter(keyFieldname, bucketList))))
+                                .must(filteredQuery(query, notFilter(termsFilter("_routing", bucketList))))
                 )
                 .should(
-                        visibility(keyFieldname)
-                                .query(filteredQuery(matchAllQuery(), termsFilter(keyFieldname, bucketList)))
+                        visibility("_routing")
+                                .query(filteredQuery(matchAllQuery(), termsFilter("_routing", bucketList)))
                                 .xmin(visibility.getXmin())
                                 .xmax(visibility.getXmax())
                                 .activeXids(visibility.getActiveXids())
