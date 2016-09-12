@@ -6,12 +6,12 @@ insert into public.mam_test_json(my_json) values('[{"sub_id":"1","sub_state":"NC
 insert into public.mam_test_json(my_json) values('[{"sub_id":"1","sub_state":"NC","sub_status":"A"}]');
 
 select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"SC" with my_json.sub_status:"I")
-            AND (my_json.sub_state:"NC" with my_json.sub_status:"A")';
+            AND (my_json.sub_state:"NC" with my_json.sub_status:"A")' order by pk_id;
 
-select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" AND my_json.sub_state:SC)';
+select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" AND my_json.sub_state:SC)' order by pk_id;
 
-select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" OR my_json.sub_state:SC)';
+select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" OR my_json.sub_state:SC)' order by pk_id;
 
-select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" WITH my_json.sub_state:SC)';
+select * from mam_test_json where zdb('mam_test_json', ctid) ==> '(my_json.sub_state:"NC" WITH my_json.sub_state:SC)' order by pk_id;
 
 drop table mam_test_json;
