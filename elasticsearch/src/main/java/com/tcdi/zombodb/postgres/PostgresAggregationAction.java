@@ -59,6 +59,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
             SuggestBuilder.SuggestionBuilder tsb = rewriter.rewriteSuggestions();
 
             builder.setIndices(rewriter.getAggregateIndexName());
+            builder.setTypes("data");
             builder.setQuery(qb);
 
             if (ab != null) {

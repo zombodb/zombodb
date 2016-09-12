@@ -374,6 +374,7 @@ public class IndexLinkOptimizer {
     private long estimateCount(ASTExpansion expansion, boolean useQuery) {
         SearchRequestBuilder builder = new SearchRequestBuilder(client);
         builder.setIndices(expansion.getIndexLink().getIndexName());
+        builder.setTypes("data");
         builder.setSize(0);
         builder.setSearchType(SearchType.COUNT);
         builder.setQueryCache(true);

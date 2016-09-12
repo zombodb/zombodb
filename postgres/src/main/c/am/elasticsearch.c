@@ -179,11 +179,25 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "      \"data\": {"
             "          \"_source\": { \"enabled\": false },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_routing\": { \"required\": true }, "
             "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
+            "      },"
+			"      \"state\": {"
+			"          \"_source\": { \"enabled\": false },"
+			"          \"_all\": { \"enabled\": false },"
+			"          \"_field_names\": { \"index\": \"no\", \"store\": false },"
+			"          \"date_detection\": false,"
+			"          \"properties\": { \"_ctid\":{\"type\":\"string\",\"index\":\"not_analyzed\"} }"
+			"      },"
+            "      \"committed\": {"
+            "          \"_source\": { \"enabled\": false },"
+            "          \"_all\": { \"enabled\": false },"
+            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
+            "          \"properties\": {"
+            "             \"xid\": { \"type\": \"long\" }"
+            "          }"
             "      }"
             "   },"
             "   \"settings\": {"
@@ -228,41 +242,39 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
     response = rest_call("POST", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
 
     freeStringInfo(response);
-    resetStringInfo(endpoint);
-    resetStringInfo(indexSettings);
-
-    appendStringInfo(indexSettings, "{"
-            "   \"mappings\": {"
-            "      \"state\": {"
-            "          \"_source\": { \"enabled\": true },"
-            "          \"_all\": { \"enabled\": false },"
-            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-            "          \"date_detection\": false,"
-            "          \"properties\": { \"pkey\": {\"type\": \"long\"}, \"xid\": {\"type\": \"long\"},\"ctid\": {\"type\": \"string\", \"index\": \"not_analyzed\" } }"
-            "      }"
-            "   },"
-            "   \"settings\": {"
-            "      \"refresh_interval\": 1,"
-            "      \"number_of_shards\": 1,"
-            "      \"number_of_replicas\": 0"
-            "   }"
-            "}");
-
-    appendStringInfo(endpoint, "%s/%s.state", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
-
-
-    freeStringInfo(response);
     freeStringInfo(indexSettings);
     freeStringInfo(endpoint);
 }
 
-void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
+void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids) {
+	HASH_SEQ_STATUS seq;
+	TransactionId *xid;
     StringInfo endpoint      = makeStringInfo();
+	StringInfo request       = makeStringInfo();
     StringInfo indexSettings = makeStringInfo();
     StringInfo response;
     Relation   indexRel;
 
+	/*
+	 * push out all committed transaction ids to ES
+	 */
+	hash_seq_init(&seq, committedXids);
+	while ( (xid = hash_seq_search(&seq)) != NULL) {
+		uint64 convertedXid = convert_xid(*xid);
+
+		appendStringInfo(request, "{\"index\":{\"_id\":%lu}}\n", convertedXid);
+		appendStringInfo(request, "{\"xid\":%lu}\n", convertedXid);
+	}
+    if (request->len > 0) {
+        appendStringInfo(endpoint, "%s/%s/committed/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+        response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
+        checkForBulkError(response, "bulk committed xid");
+    }
+    freeStringInfo(request);
+
+	/*
+	 * set various index settings to make it live
+	 */
     indexRel = RelationIdGetRelation(indexDescriptor->indexRelid);
     appendStringInfo(indexSettings, "{"
             "   \"index\": {"
@@ -272,6 +284,7 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
             "}", ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
     RelationClose(indexRel);
 
+	resetStringInfo(endpoint);
     appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("PUT", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
 
@@ -799,7 +812,6 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
         ItemPointer item = &itemPointers[i];
 
         appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
-        appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\",\"_index\":\"%s.state\",\"_type\":\"state\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item), indexDescriptor->fullyQualifiedName);
 
         if (request->len >= indexDescriptor->batch_size) {
             response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
@@ -821,11 +833,8 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
 
 static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin) {
     /* the data */
-    appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\",\"_routing\":\"%d-%d\"}}\n",
-					 ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid),
-							 isupdate ? ItemPointerGetBlockNumber(old_ctid) : ItemPointerGetBlockNumber(ht_ctid),
-							 isupdate ? ItemPointerGetOffsetNumber(old_ctid) : ItemPointerGetOffsetNumber(ht_ctid)
-					);
+    appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
+
     if (indexDescriptor->hasJson)
         appendBinaryStringInfoAndStripLineBreaks(bulk, VARDATA(value), VARSIZE(value) - VARHDRSZ);
     else
@@ -835,8 +844,13 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
     while (bulk->data[bulk->len] != '}')
         bulk->len--;
 
-    /* ...append our transaction id and group id to the json */
-    appendStringInfo(bulk, ",\"_xid\":%lu}\n", convert_xid(xmin));
+    /* ...append our transaction id to the json */
+    appendStringInfo(bulk, ",\"_xid\":%lu", convert_xid(xmin));
+
+	if (isupdate)
+		appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));
+
+	appendStringInfo(bulk, "}\n");
 }
 
 static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
@@ -858,7 +872,7 @@ static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
 }
 
 void
-elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid) {
+elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
     bool fast_path = false;
 
@@ -950,6 +964,24 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
         batchInsertDataList = list_delete(batchInsertDataList, batch);
         pfree(batch);
     }
+}
+
+void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid) {
+	uint64 convertedXid = convert_xid(xid);
+	StringInfo endpoint = makeStringInfo();
+	StringInfo request  = makeStringInfo();
+	StringInfo response;
+
+	appendStringInfo(endpoint, "%s/%s/committed/_bulk?consistency=default&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+
+	appendStringInfo(request, "{\"index\":{\"_id\":%lu}}\n", convertedXid);
+	appendStringInfo(request, "{\"xid\":%lu}\n", convertedXid);
+	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
+	checkForBulkError(response, "mark transaction committed");
+
+	freeStringInfo(endpoint);
+	freeStringInfo(request);
+	freeStringInfo(response);
 }
 
 uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {

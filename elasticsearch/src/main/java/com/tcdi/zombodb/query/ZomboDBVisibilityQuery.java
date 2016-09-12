@@ -18,10 +18,7 @@ package com.tcdi.zombodb.query;
 import org.apache.lucene.index.AtomicReaderContext;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.search.*;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.elasticsearch.common.hppc.IntObjectMap;
@@ -37,22 +34,21 @@ class ZomboDBVisibilityQuery extends Query {
     private final long xmin;
     private final long xmax;
     private final Set<Long> activeXids;
+    private final Set<Long> committedXids;
     private final Query subquery;
 
-    ZomboDBVisibilityQuery(String fieldname, long xmin, long xmax, Set<Long> activeXids, Query subquery) {
+    ZomboDBVisibilityQuery(String fieldname, long xmin, long xmax, Set<Long> activeXids, Set<Long> committedXids, Query subquery) {
         this.fieldname = fieldname;
         this.xmin = xmin;
         this.xmax = xmax;
         this.activeXids = activeXids;
+        this.committedXids = committedXids;
         this.subquery = subquery;
     }
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
-
-        final IntObjectMap<FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(fieldname, subquery, xmin, xmax, activeXids, reader);
-        if (visibilityBitSets == null)
-            return new MatchNoDocsQuery();
+        final IntObjectMap<FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(fieldname, subquery, xmin, xmax, activeXids, committedXids, reader);
 
         return new ConstantScoreQuery(
                 new Filter() {
@@ -71,7 +67,7 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public String toString(String field) {
-        return "visibility(" + fieldname + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ", query=" + subquery.toString(field) + ")";
+        return "visibility(" + fieldname + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ", committed=" + ArrayUtils.toString(committedXids) + ", query=" + subquery.toString(field) + ")";
     }
 
     @Override
@@ -82,6 +78,7 @@ class ZomboDBVisibilityQuery extends Query {
         hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
         hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
         hash = hash * 31 + ArrayUtils.toString(activeXids).hashCode();
+        hash = hash * 31 + ArrayUtils.toString(committedXids).hashCode();
         return hash;
     }
 
@@ -89,6 +86,7 @@ class ZomboDBVisibilityQuery extends Query {
     public boolean equals(Object obj) {
         if (obj == this)
             return true;
+
         assert obj instanceof ZomboDBVisibilityQuery;
         ZomboDBVisibilityQuery eq = (ZomboDBVisibilityQuery) obj;
 
@@ -96,7 +94,7 @@ class ZomboDBVisibilityQuery extends Query {
                 this.subquery.equals(eq.subquery) &&
                 this.xmin == eq.xmin &&
                 this.xmax == eq.xmax &&
-                ArrayUtils.isEquals(this.activeXids, eq.activeXids);
-
+                ArrayUtils.isEquals(this.activeXids, eq.activeXids) &&
+                ArrayUtils.isEquals(this.committedXids, eq.committedXids);
     }
 }

@@ -19,7 +19,7 @@
 #include "zdb_interface.h"
 
 void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
+void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
 void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
@@ -54,8 +54,10 @@ void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid);
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId);
 void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
+
+void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
 uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
 

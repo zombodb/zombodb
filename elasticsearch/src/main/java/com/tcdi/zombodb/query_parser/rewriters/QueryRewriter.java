@@ -55,6 +55,10 @@ import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.fetch.source.FetchSourceContext;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
+import org.xbib.elasticsearch.action.termlist.TermInfo;
+import org.xbib.elasticsearch.action.termlist.TermlistAction;
+import org.xbib.elasticsearch.action.termlist.TermlistRequestBuilder;
+import org.xbib.elasticsearch.action.termlist.TermlistResponse;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -1304,54 +1308,81 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
+    public QueryBuilder applyExclusion(QueryBuilder query, final String indexName) {
         ASTVisibility visibility = tree.getVisibility();
 
         if (visibility == null)
             return query;
 
-        TermsBuilder updatedKeysAgg = terms("routing")
-                .field("_routing")
-                .shardMinDocCount(2)
-                .minDocCount(2)
-                .size(0);
-        SearchRequestBuilder search = new SearchRequestBuilder(client)
-                .setSize(0)
-                .setNoFields()
-                .setIndices(indexName)
-                .setTypes("data")
-                .setPreference("_primary")
-                .setQueryCache(true)
-                .addAggregation(updatedKeysAgg);
+        final SearchResponse committedXidsAgg = client.search(
+                new SearchRequestBuilder(client)
+                        .setIndices(indexName)
+                        .setTypes("committed")
+                        .setSize(0)
+                        .addAggregation(
+                                terms("committed_xids")
+                                        .field("xid")
+                                        .size(0)
+                        )
+                        .request()
+        ).actionGet();
 
-        final SearchResponse aggResults = client.search(search.request()).actionGet();
-        List<String> bucketList = new AbstractList<String>() {
-            Terms terms = aggResults.getAggregations().get("routing");
+        final TermlistResponse updatedCtidTerms = client.execute(
+                TermlistAction.INSTANCE,
+                new TermlistRequestBuilder(client)
+                        .setField("_ctid")
+                        .setIndices(indexName)
+                        .setSize(Integer.MAX_VALUE)
+                        .setTerm(null)
+                        .setStartAt(null)
+                        .request()
+        ).actionGet();
+
+        List<Long> committedXids = new AbstractList<Long>() {
+            private Terms xids = committedXidsAgg.getAggregations().get("committed_xids");
 
             @Override
-            public String get(int index) {
-                Terms.Bucket bucket = terms.getBuckets().get(index);
-                return bucket.getKey();
+            public Long get(int index) {
+                return xids.getBuckets().get(index).getKeyAsNumber().longValue();
             }
 
             @Override
             public int size() {
-                return terms.getBuckets().size();
+                return xids.getBuckets().size();
             }
         };
 
-        Loggers.getLogger(QueryRewriter.class).info("ttl=" + aggResults.getTookInMillis());
+        List<String> updatedCtids = new AbstractList<String>() {
+            private List<TermInfo> ctids = updatedCtidTerms.getTermlist();
+
+            @Override
+            public String get(int index) {
+                return ctids.get(index).getTerm();
+            }
+
+            @Override
+            public int size() {
+                return ctids.size();
+            }
+        };
+
         return boolQuery()
-                .should(
-                        boolQuery()
-                                .must(filteredQuery(query, notFilter(termsFilter("_routing", bucketList))))
-                )
-                .should(
-                        visibility("_routing")
-                                .query(filteredQuery(matchAllQuery(), termsFilter("_routing", bucketList)))
+                .must(query)
+                .mustNot(
+                        visibility("_prev_ctid")
                                 .xmin(visibility.getXmin())
                                 .xmax(visibility.getXmax())
                                 .activeXids(visibility.getActiveXids())
+                                .committedXids(committedXids)
+                                .query(
+                                        filteredQuery(
+                                                matchAllQuery(),
+                                                orFilter(
+                                                        termsFilter("_prev_ctid", updatedCtids),
+                                                        termsFilter("_zdb_updated", true)
+                                                )
+                                        )
+                                )
                 );
     }
 }

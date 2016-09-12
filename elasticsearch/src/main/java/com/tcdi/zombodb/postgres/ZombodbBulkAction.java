@@ -6,8 +6,13 @@ import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.bulk.BulkShardRequest;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.get.GetRequestBuilder;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
@@ -22,7 +27,10 @@ import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.support.RestBuilderListener;
 
-import static org.elasticsearch.index.query.QueryBuilders.constantScoreQuery;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import static org.elasticsearch.index.query.QueryBuilders.idsQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 import static org.elasticsearch.rest.RestStatus.OK;
@@ -56,33 +64,62 @@ public class ZombodbBulkAction extends BaseRestHandler {
         bulkRequest.refresh(request.paramAsBoolean("refresh", bulkRequest.refresh()));
         bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, true);
 
+        List<ActionRequest> trackingRequests = new ArrayList<>();
         for (ActionRequest ar : bulkRequest.requests()) {
             if (ar instanceof IndexRequest) {
                 IndexRequest doc = (IndexRequest) ar;
-                String id = doc.id();
-                String routing = doc.routing();
+                Map<String, Object> data = doc.sourceAsMap();
+                final String prevCtid = (String) data.get("_prev_ctid");
 
-                assert routing != null;
+                if (prevCtid == null) {
+                    long xid = (Long) data.get("_xid");
+                    String routing = doc.id() + ":" + xid;
 
-                if (id.equals(routing))
-                    // document is the root document, nothing to do
-                    continue;
+                    // this IndexRequest represents an INSERT
+                    // and as such it needs to reference itself
+                    data.put("_prev_ctid", routing);
+                    doc.routing(routing);
+                } else {
+                    // this IndexRequest represents an UPDATE to a previous
+                    // record, so we want to get that record's _prev_ctid value
+                    String routing = lookupRouting(client, defaultIndex, defaultType, prevCtid);
 
-                SearchResponse result = client.search(
-                        new SearchRequestBuilder(client)
-                                .setIndices(defaultIndex)
-                                .setTypes(defaultType)
-                                .setSize(1)
-                                .setFetchSource(false)
-                                .addField("_routing")
-                                .setQuery(constantScoreQuery(idsQuery(defaultType).addIds(routing)))
-                                .setTerminateAfter(1)
+                    if (routing != null) {
+                        data.put("_prev_ctid", routing);
+                        data.put("_zdb_updated", true);
+                        doc.routing(routing);
+
+                        trackingRequests.add(
+                                new IndexRequestBuilder(client)
+                                        .setId(prevCtid)
+                                        .setIndex(defaultIndex)
+                                        .setType("state")
+                                        .setSource("_ctid", routing)
+                                        .request()
+                        );
+                    }
+                }
+
+                doc.source(data);
+            } else if (ar instanceof DeleteRequest) {
+                DeleteRequest doc = (DeleteRequest) ar;
+                String routing = lookupRouting(client, defaultIndex, defaultType, doc.id());
+
+                if (routing == null)
+                    continue;   // this doc doesn't exist, nothing for us to do
+
+                doc.routing(routing);
+
+                trackingRequests.add(
+                        new DeleteRequestBuilder(client)
+                                .setId(doc.id())
+                                .setIndex(defaultIndex)
+                                .setType("state")
                                 .request()
-                ).actionGet();
-
-                doc.routing((String) result.getHits().getAt(0).field("_routing").getValue());
+                );
             }
         }
+        bulkRequest.requests().addAll(0, trackingRequests);
 
         client.bulk(bulkRequest, new RestBuilderListener<BulkResponse>(channel) {
             @Override
@@ -138,6 +175,42 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 return new BytesRestResponse(OK, builder);
             }
         });
+    }
+
+    private String lookupRouting(Client client, String index, String type, String ctid) {
+        String routing = null;
+
+        GetResponse updatedDoc = client.get(
+                new GetRequestBuilder(client)
+                        .setId(ctid)
+                        .setIndex(index)
+                        .setType(type)
+                        .setFields("_prev_ctid")
+                        .setFetchSource(false)
+                        .request()
+        ).actionGet();
+
+        if (!updatedDoc.isExists()) {
+            SearchResponse response = client.search(
+                    new SearchRequestBuilder(client)
+                            .setIndices(index)
+                            .setTypes(type)
+                            .setQuery(idsQuery(type).addIds(ctid))
+                            .addFields("_prev_ctid")
+                            .setQueryCache(false)
+                            .setFetchSource(false)
+                            .setTerminateAfter(1)
+                            .setSize(1)
+                            .request()
+            ).actionGet();
+
+            if (response.getHits().totalHits() == 1) {
+                routing = response.getHits().getAt(0).field("_prev_ctid").getValue();
+            }
+        } else {
+            routing = (String) updatedDoc.getField("_prev_ctid").getValue();
+        }
+        return routing;
     }
 
     private static final class Fields {

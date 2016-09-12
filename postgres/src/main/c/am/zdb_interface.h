@@ -161,7 +161,7 @@ void interface_transaction_cleanup(void);
 * Defines what an index implementation looks like
 */
 typedef void (*ZDBCreateNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor);
+typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
 typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 typedef char *(*ZDBDumpQuery_function)(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
@@ -193,8 +193,10 @@ typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse
 
 typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
-typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin);
+typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
+
+typedef void (*ZDBMarkTransactionCommitted)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
 typedef uint64 *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
 
@@ -237,6 +239,8 @@ struct ZDBIndexImplementation {
 
     ZDBIndexBatchInsertRow_function    batchInsertRow;
     ZDBIndexBatchInsertFinish_function batchInsertFinish;
+
+	ZDBMarkTransactionCommitted markTransactionCommitted;
 
     ZDBVacuumSupport_function vacuumSupport;
 

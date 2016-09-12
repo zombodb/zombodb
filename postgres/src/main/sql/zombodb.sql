@@ -70,6 +70,7 @@ CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c
 --
 -- trigger support
 --
+CREATE OR REPLACE FUNCTION zdbupdatetrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 

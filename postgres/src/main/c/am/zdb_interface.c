@@ -38,7 +38,7 @@ bool        zdb_batch_mode_guc;
 bool        zdb_ignore_visibility_guc;
 
 static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
+static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
 static void wrapper_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 static char *wrapper_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
@@ -68,8 +68,10 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin);
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
+
+static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
 static uint64 *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
 
@@ -236,6 +238,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->bulkDelete              = wrapper_bulkDelete;
     desc->implementation->batchInsertRow          = wrapper_batchInsertRow;
     desc->implementation->batchInsertFinish       = wrapper_batchInsertFinish;
+	desc->implementation->markTransactionCommitted = wrapper_markTransactionCommitted;
     desc->implementation->vacuumSupport           = wrapper_vacuumSupport;
     desc->implementation->transactionFinish       = wrapper_transactionFinish;
 
@@ -304,13 +307,13 @@ static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shar
     MemoryContextDelete(me);
 }
 
-static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
+static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_finalizeNewIndex", 512, 64, 64);
     MemoryContext oldContext = MemoryContextSwitchTo(me);
 
     Assert(!indexDescriptor->isShadow);
 
-    elasticsearch_finalizeNewIndex(indexDescriptor);
+    elasticsearch_finalizeNewIndex(indexDescriptor, committedXids);
 
     MemoryContextSwitchTo(oldContext);
     MemoryContextDelete(me);
@@ -537,12 +540,12 @@ static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer 
     MemoryContextDelete(me);
 }
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin) {
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId) {
     MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
     Assert(!indexDescriptor->isShadow);
 
-    elasticsearch_batchInsertRow(indexDescriptor, ctid, data, isupdate, old_ctid, xmin);
+    elasticsearch_batchInsertRow(indexDescriptor, ctid, data, isupdate, old_ctid, xmin, commandId);
 
     MemoryContextSwitchTo(oldContext);
 }
@@ -556,6 +559,19 @@ static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
 
     MemoryContextSwitchTo(oldContext);
 }
+
+static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid) {
+	MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_markTransactionCommitted", 512, 64, 64);
+	MemoryContext oldContext = MemoryContextSwitchTo(me);
+
+	Assert(!indexDescriptor->isShadow);
+
+	elasticsearch_markTransactionCommitted(indexDescriptor, xid);
+
+	MemoryContextSwitchTo(oldContext);
+	MemoryContextDelete(me);
+}
+
 
 static uint64 *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {
     MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);

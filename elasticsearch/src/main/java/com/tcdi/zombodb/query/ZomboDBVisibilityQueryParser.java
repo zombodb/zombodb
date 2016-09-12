@@ -45,6 +45,7 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
         long xmin = -1;
         long xmax = -1;
         Set<Long> activeXids = new HashSet<>();
+        Set<Long> committedXids = new HashSet<>();
 
         String currentFieldName = null;
         XContentParser.Token token;
@@ -62,6 +63,10 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
                 if ("active_xids".equals(currentFieldName)) {
                     while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
                         activeXids.add(parser.longValue());
+                    }
+                } else if ("committed_xids".equals(currentFieldName)) {
+                    while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
+                        committedXids.add(parser.longValue());
                     }
                 }
             } else if (token.isValue()) {
@@ -84,6 +89,6 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
         else if (xmin == -1)
             throw new QueryParsingException(parseContext.index(), "[zdb visibility] missing [xmin]");
 
-        return new ZomboDBVisibilityQuery(fieldname, xmin, xmax, activeXids, query);
+        return new ZomboDBVisibilityQuery(fieldname, xmin, xmax, activeXids, committedXids, query);
     }
 }

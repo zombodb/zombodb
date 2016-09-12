@@ -158,6 +158,7 @@ public class ExpansionOptimizer {
                 .setQuery(query)
                 .setQueryCache(true)
                 .setIndices(link.getIndexName())
+                .setTypes("data")
                 .setTrackScores(false)
                 .setPreference(searchPreference)
                 .addAggregation(termsBuilder);
