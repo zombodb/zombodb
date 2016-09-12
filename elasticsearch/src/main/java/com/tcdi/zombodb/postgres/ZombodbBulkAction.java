@@ -72,8 +72,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 final String prevCtid = (String) data.get("_prev_ctid");
 
                 if (prevCtid == null) {
-                    long xid = (Long) data.get("_xid");
-                    String routing = doc.id() + ":" + xid;
+                    Number xid = (Number) data.get("_xid");
+                    String routing = doc.id() + ":" + xid.longValue();
 
                     // this IndexRequest represents an INSERT
                     // and as such it needs to reference itself
