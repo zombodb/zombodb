@@ -103,7 +103,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
     if (!zdb_ignore_visibility_guc && useInvisibilityMap) {
         Snapshot snapshot = GetActiveSnapshot();
 
-        appendStringInfo(baseQuery, "#visibility(%lu, %lu, [", convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
+        appendStringInfo(baseQuery, "#visibility(%lu, %lu, %lu, [", convert_xid(GetCurrentTransactionId()), convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
         if (snapshot->xcnt > 0) {
             for (i = 0; i < snapshot->xcnt; i++) {
                 if (i > 0) appendStringInfoChar(baseQuery, ',');
@@ -196,7 +196,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_all\": { \"enabled\": false },"
             "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "          \"properties\": {"
-            "             \"xid\": { \"type\": \"long\" }"
+            "             \"_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\" }"
             "          }"
             "      }"
             "   },"
@@ -215,30 +215,6 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
                                                            : "false", fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"));
 
     appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
-
-    freeStringInfo(response);
-    resetStringInfo(endpoint);
-    resetStringInfo(indexSettings);
-
-    appendStringInfo(indexSettings, "{"
-            "   \"mappings\": {"
-            "      \"dynamic\": {"
-            "          \"_source\": { \"enabled\": true },"
-            "          \"_all\": { \"enabled\": false },"
-            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-            "          \"date_detection\": false,"
-            "          \"properties\": { \"dynamic__zdb_id\": {\"type\": \"long\"} }"
-            "      }"
-            "   },"
-            "   \"settings\": {"
-            "      \"refresh_interval\": -1,"
-            "      \"number_of_shards\": 1,"
-            "      \"number_of_replicas\": 0"
-            "   }"
-            "}");
-
-    appendStringInfo(endpoint, "%s/%s.dynamic", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("POST", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
 
     freeStringInfo(response);
@@ -263,7 +239,7 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *c
 		uint64 convertedXid = convert_xid(*xid);
 
 		appendStringInfo(request, "{\"index\":{\"_id\":%lu}}\n", convertedXid);
-		appendStringInfo(request, "{\"xid\":%lu}\n", convertedXid);
+		appendStringInfo(request, "{\"_xid\":%lu}\n", convertedXid);
 	}
     if (request->len > 0) {
         appendStringInfo(endpoint, "%s/%s/committed/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
@@ -378,18 +354,6 @@ void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
     appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("DELETE", endpoint->data, NULL, indexDescriptor->compressionLevel);
     freeStringInfo(response);
-
-    resetStringInfo(endpoint);
-    appendStringInfo(endpoint, "%s/%s.dynamic", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("DELETE", endpoint->data, NULL, indexDescriptor->compressionLevel);
-	freeStringInfo(response);
-
-    resetStringInfo(endpoint);
-    appendStringInfo(endpoint, "%s/%s.state", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("DELETE", endpoint->data, NULL, indexDescriptor->compressionLevel);
-    freeStringInfo(response);
-
-    freeStringInfo(endpoint);
 }
 
 void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
@@ -975,7 +939,7 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 	appendStringInfo(endpoint, "%s/%s/committed/_bulk?consistency=default&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 	appendStringInfo(request, "{\"index\":{\"_id\":%lu}}\n", convertedXid);
-	appendStringInfo(request, "{\"xid\":%lu}\n", convertedXid);
+	appendStringInfo(request, "{\"_xid\":%lu}\n", convertedXid);
 	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 	checkForBulkError(response, "mark transaction committed");
 

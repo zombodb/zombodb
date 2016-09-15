@@ -26,25 +26,14 @@ import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
-import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.get.MultiGetItemResponse;
-import org.elasticsearch.action.get.MultiGetRequest;
-import org.elasticsearch.action.get.MultiGetResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.index.IndexRequestBuilder;
-import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.Fuzziness;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.engine.DocumentAlreadyExistsException;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
-import org.elasticsearch.search.aggregations.Aggregator;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
@@ -52,13 +41,8 @@ import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.significant.SignificantTermsBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
-import org.elasticsearch.search.fetch.source.FetchSourceContext;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
-import org.xbib.elasticsearch.action.termlist.TermInfo;
-import org.xbib.elasticsearch.action.termlist.TermlistAction;
-import org.xbib.elasticsearch.action.termlist.TermlistRequestBuilder;
-import org.xbib.elasticsearch.action.termlist.TermlistResponse;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -967,120 +951,8 @@ public abstract class QueryRewriter {
                     Collection<String> terms = st.getAllTokens();
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
-                    String fieldname = "dynamic_" + node.getFieldname();
-                    String data = arrayData.get(node.getValue().toString());
-                    String indexname = metadataManager.getMyIndex().getIndexName() + ".dynamic";
-                    List values;
-
-                    if (data.length() > 0 && "_zdb_id".equals(node.getFieldname())) {
-                        values = Arrays.asList(data.split(","));
-                    } else {
-                        final EscapingStringTokenizer st = new EscapingStringTokenizer(data, ", \r\n\t\f\"'[]");
-                        values = st.getAllTokens();
-                    }
-
-                    if (values.size() >= 8000) {
-                        int STEP = 8000;
-
-                        try {
-                            Map<String, List> blocks = new HashMap<>();
-
-                            // build blocks of doc ids and matching values
-                            for (int i = 0, size = values.size(); i < size; i += STEP) {
-                                final List sublist = values.subList(i, Math.min(size, i + STEP));
-                                String id = UUID.nameUUIDFromBytes(sublist.toString().getBytes()).toString();
-
-                                blocks.put(id, new AbstractList() {
-                                    @Override
-                                    public Object get(int index) {
-                                        try {
-                                            return Long.valueOf(String.valueOf(sublist.get(index)));
-                                        } catch (NumberFormatException nfe) {
-                                            return sublist.get(index);
-                                        }
-                                    }
-
-                                    @Override
-                                    public int size() {
-                                        return sublist.size();
-                                    }
-                                });
-                            }
-
-                            // build JSON structure for MultiGetRequest
-                            StringBuilder json = new StringBuilder();
-                            json.append("{\"docs\":[");
-                            int z = 0;
-                            for (String id : blocks.keySet()) {
-                                if (z > 0) json.append(",");
-                                json.append("{\"_index\":\"").append(indexname).append("\",\"_type\":\"dynamic\",\"_id\":\"").append(id).append("\"}");
-                                z++;
-                            }
-                            json.append("]}");
-
-                            boolean hasFailures;
-                            do {
-                                hasFailures = false;
-
-                                // look for all those ids in the index
-                                MultiGetRequest getRequest = new MultiGetRequest()
-                                        .add(indexname, "dynamic", null, new FetchSourceContext(false), null, new BytesArray(json.toString()), true)
-                                        .realtime(false);
-                                MultiGetResponse getResponse = client.multiGet(getRequest).get();
-
-                                // if a block not found index it
-                                List<ActionFuture<IndexResponse>> indexResponses = new ArrayList<>();
-                                for (MultiGetItemResponse item : getResponse) {
-                                    String id = item.getId();
-
-                                    if (!item.getResponse().isExists()) {
-                                        // index it
-                                        IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client, indexname)
-                                                .setType("dynamic")
-                                                .setId(id)
-                                                .setSource(fieldname, blocks.get(id))
-                                                .setTTL(TimeValue.timeValueHours(24).getMillis())
-                                                .setOpType(IndexRequest.OpType.CREATE)
-                                                .setRefresh(true);
-
-                                        indexResponses.add(client.index(indexRequestBuilder.request()));
-                                    }
-                                }
-
-                                // wait for all in-flight indexing requests to complete, if any
-                                for (ActionFuture<IndexResponse> response : indexResponses) {
-                                    try {
-                                        response.get();
-                                    } catch (Exception e) {
-                                        Throwable cause = e;
-
-                                        while (cause != null) {
-                                            if (cause instanceof DocumentAlreadyExistsException) {
-                                                hasFailures = true;
-                                                break;
-                                            }
-                                            cause = cause.getCause();
-                                        }
-
-                                        if (!hasFailures)
-                                            throw new RuntimeException(e);
-                                    }
-                                }
-
-                            } while (hasFailures);
-
-                            return buildDynamicLookup(node, indexname, fieldname, blocks);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-
-                    } else {
-                        if (values.size() == 1) {
-                            return termQuery(node.getFieldname(), values.get(0));
-                        } else {
-                            return filteredQuery(matchAllQuery(), termsFilter(n.getFieldname(), values).cache(true));
-                        }
-                    }
+                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
+                    return filteredQuery(matchAllQuery(), termsFilter(node.getFieldname(), st.getAllTokens()).cache(true));
                 }
             }
         });
@@ -1318,23 +1190,27 @@ public abstract class QueryRewriter {
                 new SearchRequestBuilder(client)
                         .setIndices(indexName)
                         .setTypes("committed")
+                        .setPreference("_primary")
                         .setSize(0)
                         .addAggregation(
                                 terms("committed_xids")
-                                        .field("xid")
+                                        .field("_xid")
                                         .size(0)
                         )
                         .request()
         ).actionGet();
 
-        final TermlistResponse updatedCtidTerms = client.execute(
-                TermlistAction.INSTANCE,
-                new TermlistRequestBuilder(client)
-                        .setField("_ctid")
+        final SearchResponse updatedCtidsAgg = client.search(
+                new SearchRequestBuilder(client)
                         .setIndices(indexName)
-                        .setSize(Integer.MAX_VALUE)
-                        .setTerm(null)
-                        .setStartAt(null)
+                        .setTypes("state")
+                        .setPreference("_primary")
+                        .setSize(0)
+                        .addAggregation(
+                                terms("updated_ctids")
+                                        .field("_ctid")
+                                        .size(0)
+                        )
                         .request()
         ).actionGet();
 
@@ -1353,36 +1229,41 @@ public abstract class QueryRewriter {
         };
 
         List<String> updatedCtids = new AbstractList<String>() {
-            private List<TermInfo> ctids = updatedCtidTerms.getTermlist();
+            private Terms ctids = updatedCtidsAgg.getAggregations().get("updated_ctids");
 
             @Override
             public String get(int index) {
-                return ctids.get(index).getTerm();
+                return ctids.getBuckets().get(index).getKey();
             }
 
             @Override
             public int size() {
-                return ctids.size();
+                return ctids.getBuckets().size();
             }
         };
 
-        return boolQuery()
-                .must(query)
-                .mustNot(
-                        visibility("_prev_ctid")
-                                .xmin(visibility.getXmin())
-                                .xmax(visibility.getXmax())
-                                .activeXids(visibility.getActiveXids())
-                                .committedXids(committedXids)
-                                .query(
-                                        filteredQuery(
-                                                matchAllQuery(),
-                                                orFilter(
-                                                        termsFilter("_prev_ctid", updatedCtids),
-                                                        termsFilter("_zdb_updated", true)
+        return
+                boolQuery()
+                        .must(query)
+                        .must(rangeQuery("_xid").lte(visibility.getMyXid()))
+                        .mustNot(termsQuery("_xid", visibility.getActiveXids()))
+                        .mustNot(rangeQuery("_xid").gte(visibility.getXmax()))
+                        .mustNot(
+                                visibility("_prev_ctid")
+                                        .myXid(visibility.getMyXid())
+                                        .xmin(visibility.getXmin())
+                                        .xmax(visibility.getXmax())
+                                        .activeXids(visibility.getActiveXids())
+                                        .committedXids(committedXids)
+                                        .query(
+                                                filteredQuery(
+                                                        matchAllQuery(),
+                                                        orFilter(
+                                                                termsFilter("_prev_ctid", updatedCtids),
+                                                                termFilter("_zdb_updated", true)
+                                                        )
                                                 )
                                         )
-                                )
-                );
+                        );
     }
 }

@@ -294,7 +294,7 @@ void FieldListEntry() #FieldListEntry :
 
 void Visibility() #Visibility : {}
 {
-    <VISIBILITY> "(" Number() /* xmin */ "," Number() /* xmax */ "," Array() /* snapshot.xips */ ")"
+    <VISIBILITY> "(" Number() /* current xid */ "," Number() /* xmin */ "," Number() /* xmax */ "," Array() /* snapshot.xips */ ")"
 }
 
 void IndexLink() #IndexLink :

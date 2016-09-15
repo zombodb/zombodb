@@ -25,8 +25,10 @@ import java.util.Collection;
 public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
 
     private final String fieldname;
-    private boolean haveXmin;
+    private long myXid;
+    private boolean haveMyXid;
     private long xmin;
+    private boolean haveXmin;
     private boolean haveXmax;
     private long xmax;
     private long[] activeXids;
@@ -36,6 +38,12 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
 
     public ZomboDBVisibilityQueryBuilder(String name) {
         fieldname = name;
+    }
+
+    public ZomboDBVisibilityQueryBuilder myXid(long myXid) {
+        this.myXid = myXid;
+        haveMyXid = true;
+        return this;
     }
 
     public ZomboDBVisibilityQueryBuilder xmin(long xmin) {
@@ -70,6 +78,8 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
         builder.startObject(ZomboDBVisibilityQueryParser.NAME);
         builder.field("name", fieldname);
 
+        if (haveMyXid)
+            builder.field("myxid", myXid);
         if (haveXmin)
             builder.field("xmin", xmin);
         if (haveXmax)

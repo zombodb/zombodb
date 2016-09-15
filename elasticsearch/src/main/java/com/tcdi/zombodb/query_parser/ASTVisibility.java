@@ -14,17 +14,20 @@ class ASTVisibility extends com.tcdi.zombodb.query_parser.QueryParserNode {
     super(p, id);
   }
 
-
-  public long getXmin() {
+  public long getMyXid() {
     return Long.valueOf(getChild(0).getEscapedValue());
   }
 
-  public long getXmax() {
+  public long getXmin() {
     return Long.valueOf(getChild(1).getEscapedValue());
   }
 
+  public long getXmax() {
+    return Long.valueOf(getChild(2).getEscapedValue());
+  }
+
   public long[] getActiveXids() {
-    ASTArray array = (ASTArray) getChild(2);
+    ASTArray array = (ASTArray) getChild(3);
     if (array == null)
       return new long[0];
     long[] xids = new long[array.jjtGetNumChildren()];

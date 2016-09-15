@@ -31,14 +31,16 @@ import java.util.Set;
 class ZomboDBVisibilityQuery extends Query {
 
     private final String fieldname;
+    private final long myXid;
     private final long xmin;
     private final long xmax;
     private final Set<Long> activeXids;
     private final Set<Long> committedXids;
     private final Query subquery;
 
-    ZomboDBVisibilityQuery(String fieldname, long xmin, long xmax, Set<Long> activeXids, Set<Long> committedXids, Query subquery) {
+    ZomboDBVisibilityQuery(String fieldname, long myXid, long xmin, long xmax, Set<Long> activeXids, Set<Long> committedXids, Query subquery) {
         this.fieldname = fieldname;
+        this.myXid = myXid;
         this.xmin = xmin;
         this.xmax = xmax;
         this.activeXids = activeXids;
@@ -48,7 +50,7 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
-        final IntObjectMap<FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(fieldname, subquery, xmin, xmax, activeXids, committedXids, reader);
+        final IntObjectMap<FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(fieldname, subquery, myXid, xmin, xmax, activeXids, committedXids, reader);
 
         return new ConstantScoreQuery(
                 new Filter() {
@@ -67,7 +69,7 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public String toString(String field) {
-        return "visibility(" + fieldname + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ", committed=" + ArrayUtils.toString(committedXids) + ", query=" + subquery.toString(field) + ")";
+        return "visibility(" + fieldname + ", myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ", committed=" + ArrayUtils.toString(committedXids) + ", query=" + subquery.toString(field) + ")";
     }
 
     @Override
@@ -75,6 +77,7 @@ class ZomboDBVisibilityQuery extends Query {
         int hash = super.hashCode();
         hash = hash * 31 + fieldname.hashCode();
         hash = hash * 31 + subquery.hashCode();
+        hash = hash * 31 + (int)(myXid ^ (myXid >>> 32));
         hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
         hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
         hash = hash * 31 + ArrayUtils.toString(activeXids).hashCode();
@@ -92,6 +95,7 @@ class ZomboDBVisibilityQuery extends Query {
 
         return this.fieldname.equals(eq.fieldname) &&
                 this.subquery.equals(eq.subquery) &&
+                this.myXid == eq.myXid &&
                 this.xmin == eq.xmin &&
                 this.xmax == eq.xmax &&
                 ArrayUtils.isEquals(this.activeXids, eq.activeXids) &&

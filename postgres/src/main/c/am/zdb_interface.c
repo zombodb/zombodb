@@ -20,10 +20,12 @@
 #include "access/heapam_xlog.h"
 #include "access/nbtree.h"
 #include "access/reloptions.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "commands/dbcommands.h"
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
+#include "utils/formatting.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
@@ -202,10 +204,10 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         desc->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
     }
 
-    desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
+	desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
 
-    appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
-    desc->fullyQualifiedName = pstrdup(scratch->data);
+	appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
+	desc->fullyQualifiedName = pstrdup(str_tolower(scratch->data, (size_t) scratch->len, DEFAULT_COLLATION_OID));
 
     resetStringInfo(scratch);
     appendStringInfo(scratch, "%s.%s", get_namespace_name(RelationGetNamespace(heapRel)), RelationGetRelationName(heapRel));

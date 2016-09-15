@@ -28,7 +28,7 @@ import static org.apache.lucene.index.SortedSetDocValues.NO_MORE_ORDS;
 
 final class VisibilityQueryHelper {
 
-    static IntObjectMap<FixedBitSet> determineVisibility(final String field, Query query, final long xmin, final long xmax, final Set<Long> activeXids, final Set<Long> committedXids, IndexReader reader) throws IOException {
+    static IntObjectMap<FixedBitSet> determineVisibility(final String field, Query query, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, final Set<Long> committedXids, IndexReader reader) throws IOException {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //
@@ -54,7 +54,7 @@ final class VisibilityQueryHelper {
                         long xid = xids.valueAt(0);
 
                         long nextOrd;
-                        if ( (nextOrd = prevCtids.nextOrd()) != NO_MORE_ORDS) {
+                        if ((nextOrd = prevCtids.nextOrd()) != NO_MORE_ORDS) {
                             String routing = prevCtids.lookupOrd(nextOrd).utf8ToString();
                             List<VisibilityInfo> matchingDocs = map.get(routing);
 
