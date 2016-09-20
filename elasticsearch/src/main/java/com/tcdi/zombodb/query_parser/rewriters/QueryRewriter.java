@@ -1247,7 +1247,7 @@ public abstract class QueryRewriter {
                         .must(query)
                         .must(rangeQuery("_xid").lte(visibility.getMyXid()))
                         .mustNot(termsQuery("_xid", visibility.getActiveXids()))
-                        .mustNot(rangeQuery("_xid").gte(visibility.getXmax()))
+                        .mustNot(rangeQuery("_xid").gt(visibility.getXmax()))
                         .mustNot(
                                 visibility("_prev_ctid")
                                         .myXid(visibility.getMyXid())
