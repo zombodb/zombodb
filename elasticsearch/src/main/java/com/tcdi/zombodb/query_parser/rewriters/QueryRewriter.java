@@ -908,39 +908,6 @@ public abstract class QueryRewriter {
         });
     }
 
-    protected QueryBuilder buildDynamicLookup(ASTArrayData node, String indexname, String fieldname, Map<String, List> blocks) {
-        if (blocks.size() == 1) {
-            // only one block, so just use it
-            String id = blocks.keySet().iterator().next();
-            return filteredQuery(null, termsLookupFilter(node.getFieldname())
-                    .lookupIndex(indexname)
-                    .lookupType("dynamic")
-                    .lookupPath(fieldname)
-                    .lookupId(id)
-                    .cache(true)
-                    .cacheKey(id)
-            );
-        } else {
-            // build boolean OR clause to filter each block
-            String key = "";
-            OrFilterBuilder ofb = orFilter();
-            for (String id : blocks.keySet()) {
-                key += id;
-                ofb.add(termsLookupFilter(node.getFieldname())
-                        .lookupIndex(indexname)
-                        .lookupType("dynamic")
-                        .lookupPath(fieldname)
-                        .lookupId(id)
-                        .lookupCache(true)
-                        .cache(true)
-                        .cacheKey(id)
-                );
-            }
-
-            return filteredQuery(null, ofb.cache(true).cacheKey(key));
-        }
-    }
-
     private QueryBuilder build(final ASTArrayData node) {
         validateOperator(node);
         return buildStandard(node, new QBF() {

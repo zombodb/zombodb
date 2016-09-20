@@ -65,16 +65,4 @@ public class SirenQueryRewriter extends QueryRewriter {
             return filteredQuery(matchAllQuery(), fjb);
         }
     }
-
-    @Override
-    protected QueryBuilder buildDynamicLookup(ASTArrayData node, String indexname, String fieldname, Map<String, List> blocks) {
-        FilterJoinBuilder fjb = new FilterJoinBuilder(node.getFieldname());
-        fjb.indices(indexname)
-                .types("dynamic")
-                .path(fieldname)
-                .query(idsQuery("dynamic")
-                        .addIds(blocks.keySet().toArray(new String[blocks.size()]))
-                );
-        return filteredQuery(null, fjb);
-    }
 }
