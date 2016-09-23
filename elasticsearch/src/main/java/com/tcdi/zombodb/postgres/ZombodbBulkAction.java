@@ -156,7 +156,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
                         .setTypes(defaultType)
                         .setPreference("_primary")
                         .setQuery(ids)
-                        .setSize(Integer.MAX_VALUE)
+                        .setSize(requests.size())
+                        .setTerminateAfter(requests.size())
                         .addField("_prev_ctid")
                         .request()
         ).actionGet();
@@ -208,7 +209,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
                         .setTypes(defaultType)
                         .setPreference("_primary")
                         .setQuery(ids)
-                        .setSize(Integer.MAX_VALUE)
+                        .setQueryCache(true)
+                        .setSize(lookup.size())
+                        .setTerminateAfter(lookup.size())
                         .addField("_prev_ctid")
                         .request()
         ).actionGet();
@@ -222,7 +225,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
             Map<String, Object> data = doc.sourceAsMap();
             data.put("_prev_ctid", prevCtid);
-            data.put("_zdb_updated", true);
             doc.source(data);
             doc.routing(prevCtid);
 

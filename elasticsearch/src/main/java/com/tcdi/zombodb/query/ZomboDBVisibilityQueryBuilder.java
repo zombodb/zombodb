@@ -32,9 +32,6 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
     private boolean haveXmax;
     private long xmax;
     private long[] activeXids;
-    private Collection<Long> committedXids;
-
-    private QueryBuilder query;
 
     public ZomboDBVisibilityQueryBuilder(String name) {
         fieldname = name;
@@ -63,16 +60,6 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
         return this;
     }
 
-    public ZomboDBVisibilityQueryBuilder committedXids(Collection<Long> xids) {
-        committedXids = xids;
-        return this;
-    }
-
-    public ZomboDBVisibilityQueryBuilder query(QueryBuilder query) {
-        this.query = query;
-        return this;
-    }
-
     @Override
     protected void doXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(ZomboDBVisibilityQueryParser.NAME);
@@ -86,12 +73,6 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
             builder.field("xmax", xmax);
         if (activeXids != null && activeXids.length > 0)
             builder.field("active_xids", activeXids);
-        if (committedXids != null && committedXids.size() > 0)
-            builder.field("committed_xids", committedXids);
-        if (query != null) {
-            builder.field("query");
-            query.toXContent(builder, params);
-        }
         builder.endObject();
     }
 }

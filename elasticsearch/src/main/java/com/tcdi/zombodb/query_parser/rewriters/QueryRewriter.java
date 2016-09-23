@@ -1153,62 +1153,6 @@ public abstract class QueryRewriter {
         if (visibility == null)
             return query;
 
-        final SearchResponse committedXidsAgg = client.search(
-                new SearchRequestBuilder(client)
-                        .setIndices(indexName)
-                        .setTypes("committed")
-                        .setPreference("_primary")
-                        .setSize(0)
-                        .addAggregation(
-                                terms("committed_xids")
-                                        .field("_xid")
-                                        .size(0)
-                        )
-                        .request()
-        ).actionGet();
-
-        final SearchResponse updatedCtidsAgg = client.search(
-                new SearchRequestBuilder(client)
-                        .setIndices(indexName)
-                        .setTypes("state")
-                        .setPreference("_primary")
-                        .setSize(0)
-                        .addAggregation(
-                                terms("updated_ctids")
-                                        .field("_ctid")
-                                        .size(0)
-                        )
-                        .request()
-        ).actionGet();
-
-        List<Long> committedXids = new AbstractList<Long>() {
-            private Terms xids = committedXidsAgg.getAggregations().get("committed_xids");
-
-            @Override
-            public Long get(int index) {
-                return xids.getBuckets().get(index).getKeyAsNumber().longValue();
-            }
-
-            @Override
-            public int size() {
-                return xids.getBuckets().size();
-            }
-        };
-
-        List<String> updatedCtids = new AbstractList<String>() {
-            private Terms ctids = updatedCtidsAgg.getAggregations().get("updated_ctids");
-
-            @Override
-            public String get(int index) {
-                return ctids.getBuckets().get(index).getKey();
-            }
-
-            @Override
-            public int size() {
-                return ctids.getBuckets().size();
-            }
-        };
-
         return
                 boolQuery()
                         .must(query)
@@ -1221,16 +1165,6 @@ public abstract class QueryRewriter {
                                         .xmin(visibility.getXmin())
                                         .xmax(visibility.getXmax())
                                         .activeXids(visibility.getActiveXids())
-                                        .committedXids(committedXids)
-                                        .query(
-                                                filteredQuery(
-                                                        matchAllQuery(),
-                                                        orFilter(
-                                                                termsFilter("_prev_ctid", updatedCtids),
-                                                                termFilter("_zdb_updated", true)
-                                                        )
-                                                )
-                                        )
                         );
     }
 }

@@ -196,7 +196,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_all\": { \"enabled\": false },"
             "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "          \"properties\": {"
-            "             \"_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\" }"
+            "             \"_zdb_committed_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\" }"
             "          }"
             "      }"
             "   },"
@@ -237,9 +237,12 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *c
 	hash_seq_init(&seq, committedXids);
 	while ( (xid = hash_seq_search(&seq)) != NULL) {
 		uint64 convertedXid = convert_xid(*xid);
+		int i;
 
-		appendStringInfo(request, "{\"index\":{\"_id\":%lu}}\n", convertedXid);
-		appendStringInfo(request, "{\"_xid\":%lu}\n", convertedXid);
+		for (i=0; i<indexDescriptor->shards; i++) {
+			appendStringInfo(request, "{\"index\":{\"_id\":%lu,\"_routing\":\"%d\"}}\n", convertedXid, i);
+			appendStringInfo(request, "{\"_zdb_committed_xid\":%lu}\n", convertedXid);
+		}
 	}
     if (request->len > 0) {
         appendStringInfo(endpoint, "%s/%s/committed/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
@@ -935,11 +938,14 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
+	int i;
 
 	appendStringInfo(endpoint, "%s/%s/committed/_bulk?consistency=default&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
-	appendStringInfo(request, "{\"index\":{\"_id\":%lu}}\n", convertedXid);
-	appendStringInfo(request, "{\"_xid\":%lu}\n", convertedXid);
+	for (i=0; i<indexDescriptor->shards; i++) {
+		appendStringInfo(request, "{\"index\":{\"_id\":%lu,\"_routing\":\"%d\"}}\n", convertedXid, i);
+		appendStringInfo(request, "{\"_zdb_committed_xid\":%lu}\n", convertedXid);
+	}
 	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 	checkForBulkError(response, "mark transaction committed");
 
