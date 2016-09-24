@@ -894,16 +894,23 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
             if (batch->nrequests == 0) {
-                /*
-                 * if this is the only request being made in this batch, then we'll &refresh=true
-                 * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
-                 * and b) if the index refresh interval is -1
-                 */
-                if (!zdb_batch_mode_guc) {
-                    if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-                        appendStringInfo(endpoint, "&refresh=true");
-                    }
-                }
+				/*
+				 * We need to refresh only if we're in a transaction block.
+				 *
+				 * If we're not, the index will be refreshed when the transaction commits
+				 */
+				if (IsTransactionBlock()) {
+					/*
+					 * if this is the only request being made in this batch, then we'll &refresh=true
+					 * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
+					 * and b) if the index refresh interval is -1
+					 */
+					if (!zdb_batch_mode_guc) {
+						if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+							appendStringInfo(endpoint, "&refresh=true");
+						}
+					}
+				}
 
                 response = rest_call("POST", endpoint->data, batch->bulk->buff, indexDescriptor->compressionLevel);
             } else {
@@ -920,12 +927,19 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             elog(LOG, "[zombodb] Indexed %d rows in %d requests for %s", batch->nprocessed,
                  batch->nrequests + 1, indexDescriptor->fullyQualifiedName);
 
-            /*
-             * If this wasn't the only request being made in this batch
-             * then ask ES to refresh the index, but only if a) we're not in batch mode
-             * and b) if the index refresh interval is -1
-             */
-            elasticsearch_refreshIndex(indexDescriptor);
+			/*
+			 * We need to refresh only if we're in a transaction block.
+			 *
+			 * If we're not, the index will be refreshed when the transaction commits
+			 */
+			if (IsTransactionBlock()) {
+				/*
+				 * If this wasn't the only request being made in this batch
+				 * then ask ES to refresh the index, but only if a) we're not in batch mode
+				 * and b) if the index refresh interval is -1
+				 */
+				elasticsearch_refreshIndex(indexDescriptor);
+			}
         }
 
         batchInsertDataList = list_delete(batchInsertDataList, batch);

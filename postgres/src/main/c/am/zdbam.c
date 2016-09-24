@@ -499,7 +499,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 
 
 	hash_search(buildstate->committedXids, &xmin, HASH_FIND, &found);
-	if (!found && TransactionIdDidCommit(xmin))
+	if (!found && (TransactionIdDidCommit(xmin) || xmin == GetCurrentTransactionId()))
 		hash_search(buildstate->committedXids, &xmin, HASH_ENTER, &found);
 
 	hash_search(buildstate->committedXids, &xmax, HASH_FIND, &found);
