@@ -54,7 +54,7 @@ public class PostgresCountAction extends BaseRestHandler {
             builder.setSize(0);
             builder.setSearchType(SearchType.COUNT);
             builder.setPreference(request.param("preference"));
-            builder.setQueryCache(true);
+            builder.setQueryCache(false);
             builder.setFetchSource(false);
             builder.setTrackScores(false);
             builder.setNoFields();
