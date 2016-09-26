@@ -9,8 +9,6 @@ import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.delete.DeleteResponse;
-import org.elasticsearch.action.get.GetRequestBuilder;
-import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
@@ -20,27 +18,32 @@ import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
+import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentBuilderString;
-import org.elasticsearch.index.query.IdsQueryBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.index.query.IdsFilterBuilder;
 import org.elasticsearch.rest.*;
-import org.elasticsearch.rest.action.support.RestBuilderListener;
 import org.elasticsearch.search.SearchHit;
 
 import java.util.*;
 
-import static org.elasticsearch.index.query.QueryBuilders.idsQuery;
+import static org.elasticsearch.index.query.FilterBuilders.idsFilter;
+import static org.elasticsearch.index.query.QueryBuilders.filteredQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 import static org.elasticsearch.rest.RestStatus.OK;
 
 public class ZombodbBulkAction extends BaseRestHandler {
 
+    private ClusterService clusterService;
+
     @Inject
-    public ZombodbBulkAction(Settings settings, RestController controller, Client client) {
+    public ZombodbBulkAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
         super(settings, controller, client);
 
+        this.clusterService = clusterService;
         controller.registerHandler(POST, "/{index}/{type}/_zdbbulk", this);
     }
 
@@ -51,6 +54,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         String defaultIndex = request.param("index");
         String defaultType = request.param("type");
         String defaultRouting = request.param("routing");
+        boolean isdelete = false;
 
         String replicationType = request.param("replication");
         if (replicationType != null) {
@@ -64,76 +68,99 @@ public class ZombodbBulkAction extends BaseRestHandler {
         bulkRequest.refresh(request.paramAsBoolean("refresh", bulkRequest.refresh()));
         bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, true);
 
+        List<ActionRequest> trackingRequests = new ArrayList<>();
         if (!bulkRequest.requests().isEmpty()) {
-            List<ActionRequest> trackingRequests = new ArrayList<>();
+            isdelete = bulkRequest.requests().get(0) instanceof DeleteRequest;
 
-            if (bulkRequest.requests().get(0) instanceof DeleteRequest)
+            if (isdelete) {
                 trackingRequests = handleDeleteRequests(client, bulkRequest.requests(), defaultIndex, defaultType);
-            else
+            } else {
                 trackingRequests = handleIndexRequests(client, bulkRequest.requests(), defaultIndex, defaultType);
-
-            bulkRequest.requests().addAll(0, trackingRequests);
+            }
         }
 
-        client.bulk(bulkRequest, new RestBuilderListener<BulkResponse>(channel) {
-            @Override
-            public RestResponse buildResponse(BulkResponse response, XContentBuilder builder) throws Exception {
-                builder.startObject();
-                builder.field(Fields.TOOK, response.getTookInMillis());
-                builder.field(Fields.ERRORS, response.hasFailures());
-                builder.startArray(Fields.ITEMS);
-                for (BulkItemResponse itemResponse : response) {
-                    builder.startObject();
-                    builder.startObject(itemResponse.getOpType());
-                    builder.field(Fields._INDEX, itemResponse.getIndex());
-                    builder.field(Fields._TYPE, itemResponse.getType());
-                    builder.field(Fields._ID, itemResponse.getId());
-                    long version = itemResponse.getVersion();
-                    if (version != -1) {
-                        builder.field(Fields._VERSION, itemResponse.getVersion());
-                    }
-                    if (itemResponse.isFailed()) {
-                        builder.field(Fields.STATUS, itemResponse.getFailure().getStatus().getStatus());
-                        builder.field(Fields.ERROR, itemResponse.getFailure().getMessage());
-                    } else {
-                        if (itemResponse.getResponse() instanceof DeleteResponse) {
-                            DeleteResponse deleteResponse = itemResponse.getResponse();
-                            if (deleteResponse.isFound()) {
-                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
-                            } else {
-                                builder.field(Fields.STATUS, RestStatus.NOT_FOUND.getStatus());
-                            }
-                            builder.field(Fields.FOUND, deleteResponse.isFound());
-                        } else if (itemResponse.getResponse() instanceof IndexResponse) {
-                            IndexResponse indexResponse = itemResponse.getResponse();
-                            if (indexResponse.isCreated()) {
-                                builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
-                            } else {
-                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
-                            }
-                        } else if (itemResponse.getResponse() instanceof UpdateResponse) {
-                            UpdateResponse updateResponse = itemResponse.getResponse();
-                            if (updateResponse.isCreated()) {
-                                builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
-                            } else {
-                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
-                            }
-                        }
-                    }
-                    builder.endObject();
-                    builder.endObject();
-                }
-                builder.endArray();
+        BulkResponse response;
 
-                builder.endObject();
-                return new BytesRestResponse(OK, builder);
-            }
-        });
+        if (isdelete) {
+            response = client.bulk(bulkRequest).actionGet();
+            processTrackingRequests(request, client, trackingRequests);
+        } else {
+            processTrackingRequests(request, client, trackingRequests);
+            response = client.bulk(bulkRequest).actionGet();
+        }
+
+        channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
     }
 
+    private void processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests) {
+        if (trackingRequests.isEmpty())
+            return;
+
+        BulkRequest bulkRequest;
+        bulkRequest = Requests.bulkRequest();
+        bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
+        bulkRequest.refresh(request.paramAsBoolean("refresh", bulkRequest.refresh()));
+        bulkRequest.requests().addAll(trackingRequests);
+
+        client.bulk(bulkRequest).actionGet(); // we don't really care about the response here
+    }
+
+    private RestResponse buildResponse(BulkResponse response, XContentBuilder builder) throws Exception {
+        builder.startObject();
+        if (response.hasFailures()) {
+            builder.field(Fields.TOOK, response.getTookInMillis());
+            builder.field(Fields.ERRORS, response.hasFailures());
+            builder.startArray(Fields.ITEMS);
+            for (BulkItemResponse itemResponse : response) {
+                builder.startObject();
+                builder.startObject(itemResponse.getOpType());
+                builder.field(Fields._INDEX, itemResponse.getIndex());
+                builder.field(Fields._TYPE, itemResponse.getType());
+                builder.field(Fields._ID, itemResponse.getId());
+                long version = itemResponse.getVersion();
+                if (version != -1) {
+                    builder.field(Fields._VERSION, itemResponse.getVersion());
+                }
+                if (itemResponse.isFailed()) {
+                    builder.field(Fields.STATUS, itemResponse.getFailure().getStatus().getStatus());
+                    builder.field(Fields.ERROR, itemResponse.getFailure().getMessage());
+                } else {
+                    if (itemResponse.getResponse() instanceof DeleteResponse) {
+                        DeleteResponse deleteResponse = itemResponse.getResponse();
+                        if (deleteResponse.isFound()) {
+                            builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                        } else {
+                            builder.field(Fields.STATUS, RestStatus.NOT_FOUND.getStatus());
+                        }
+                        builder.field(Fields.FOUND, deleteResponse.isFound());
+                    } else if (itemResponse.getResponse() instanceof IndexResponse) {
+                        IndexResponse indexResponse = itemResponse.getResponse();
+                        if (indexResponse.isCreated()) {
+                            builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
+                        } else {
+                            builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                        }
+                    } else if (itemResponse.getResponse() instanceof UpdateResponse) {
+                        UpdateResponse updateResponse = itemResponse.getResponse();
+                        if (updateResponse.isCreated()) {
+                            builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
+                        } else {
+                            builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                        }
+                    }
+                }
+                builder.endObject();
+                builder.endObject();
+            }
+            builder.endArray();
+        }
+        builder.endObject();
+
+        return new BytesRestResponse(OK, builder);
+    }
     private List<ActionRequest> handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
-        IdsQueryBuilder ids = idsQuery(defaultType);
+        IdsFilterBuilder ids = idsFilter(defaultType);
         Map<String, DeleteRequest> lookup = new HashMap<>(requests.size());
 
         for (ActionRequest ar : requests) {
@@ -141,13 +168,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
             ids.addIds(doc.id());
 
             lookup.put(doc.id(), doc);
-            trackingRequests.add(
-                    new DeleteRequestBuilder(client)
-                            .setId(doc.id())
-                            .setIndex(defaultIndex)
-                            .setType("state")
-                            .request()
-            );
         }
 
         SearchResponse response = client.search(
@@ -155,7 +175,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                         .setIndices(defaultIndex)
                         .setTypes(defaultType)
                         .setPreference("_primary")
-                        .setQuery(ids)
+                        .setQuery(filteredQuery(null, ids))
                         .setSize(requests.size())
                         .setTerminateAfter(requests.size())
                         .addField("_prev_ctid")
@@ -166,8 +186,20 @@ public class ZombodbBulkAction extends BaseRestHandler {
             DeleteRequest doc = lookup.get(hit.id());
             String prevCtid = hit.field("_prev_ctid").getValue();
 
-            if (doc != null)
+            if (doc != null) {
                 doc.routing(prevCtid);
+
+                trackingRequests.add(
+                        new DeleteRequestBuilder(client)
+                                .setId(doc.id())
+                                .setIndex(defaultIndex)
+                                .setType("state")
+                                .setRouting(prevCtid)
+                                .setRefresh(true)
+                                .request()
+                );
+
+            }
         }
 
         return trackingRequests;
@@ -175,7 +207,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
     private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
-        IdsQueryBuilder ids = idsQuery(defaultType);
+        IdsFilterBuilder ids = idsFilter(defaultType);
         Map<String, IndexRequest> lookup = new HashMap<>(requests.size());
 
         for (ActionRequest ar : requests) {
@@ -208,7 +240,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                         .setIndices(defaultIndex)
                         .setTypes(defaultType)
                         .setPreference("_primary")
-                        .setQuery(ids)
+                        .setQuery(filteredQuery(null, ids))
                         .setQueryCache(true)
                         .setSize(lookup.size())
                         .setTerminateAfter(lookup.size())
@@ -233,7 +265,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
                             .setId(hit.id())
                             .setIndex(defaultIndex)
                             .setType("state")
+                            .setRouting(prevCtid)
                             .setSource("_ctid", prevCtid)
+                            .setRefresh(true)
                             .request()
             );
 

@@ -16,13 +16,14 @@
 package com.tcdi.zombodb.query;
 
 import org.apache.lucene.index.*;
+import org.apache.lucene.queries.TermFilter;
 import org.apache.lucene.queries.TermsFilter;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.FieldCache;
+import org.apache.lucene.search.FilteredQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
-import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
-import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.*;
 import org.elasticsearch.common.hppc.IntObjectMap;
 import org.elasticsearch.common.hppc.IntObjectOpenHashMap;
 import org.elasticsearch.common.lucene.search.Queries;
@@ -34,83 +35,36 @@ final class VisibilityQueryHelper {
 
     static IntObjectMap<FixedBitSet> determineVisibility(final String field, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, IndexReader reader) throws IOException {
         final IntObjectMap<FixedBitSet> visibilityBitSets = new IntObjectOpenHashMap<>();
-        final Set<Long> committedXids = new HashSet<>();
+        final Set<BytesRef> multiples = new HashSet<>();
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //
-        // collect all the committed transaction ids from the index (_zdb_committed_xid)
+        // search the "state" type and collect a distinct set of all the _ctids
+        // these represent the records in the index that have been updated
+        // used below to determine visibility
         //
 
-        for (AtomicReaderContext context : reader.getContext().leaves()) {
-            FieldCache.Longs longs = FieldCache.DEFAULT.getLongs(context.reader(), "_zdb_committed_xid", false);
-            Bits docsWithValues = FieldCache.DEFAULT.getDocsWithField(context.reader(), "_zdb_committed_xid");
-            int maxdoc = docsWithValues.length();
+        searcher.search(
+                new FilteredQuery(Queries.newMatchAllQuery(), new TermFilter(new Term("_type", "state"))),
+                new ZomboDBTermsCollector("_ctid") {
 
-            for (int i = 0; i < maxdoc; i++) {
-                if (docsWithValues.get(i))
-                    committedXids.add(longs.get(i));
-            }
-        }
+                    private BinaryDocValues fromDocTerms;
 
+                    @Override
+                    public void collect(int doc) throws IOException {
+                        final BytesRef term = fromDocTerms.get(doc);
+                        multiples.add(BytesRef.deepCopyOf(term));
+                    }
 
-        //
-        // similar to the above but with the _prev_ctid field
-        // scan all documents in the shard to
-        // find all the _prev_ctid values with a count >1
-        // then form a query that ors that list together
-        //
-
-        Set<BytesRef> multiples = new HashSet<>();
-        Map<BytesRef, BytesRef> singles = new HashMap<>();
-        TermsEnum termsEnum = null;
-        for (AtomicReaderContext context : reader.leaves()) {
-            Bits liveDocs = context.reader().getLiveDocs();
-            Terms terms = context.reader().terms("_prev_ctid");
-            if (terms == null)
-                continue;
-
-            termsEnum = terms.iterator(termsEnum);
-
-            SortedDocValues ssdv = FieldCache.DEFAULT.getTermsIndex(context.reader(), "_prev_ctid");
-            for (int i=0; i<context.reader().maxDoc(); i++) {
-                if (liveDocs == null || liveDocs.get(i)) {
-                    BytesRef prevCtid = ssdv.get(i);
-                    if (prevCtid.length == 0)
-                        continue;
-
-                    BytesRef single = singles.get(prevCtid);
-
-                    if (single != null) {
-                        multiples.add(single);
-                    } else {
-                        BytesRef copy = BytesRef.deepCopyOf(prevCtid);
-                        singles.put(copy, copy);
+                    @Override
+                    public void setNextReader(AtomicReaderContext context) throws IOException {
+                        fromDocTerms = FieldCache.DEFAULT.getTerms(context.reader(), "_ctid", false);
                     }
                 }
-
-            }
-
-//            DocsEnum docsEnum = null;
-//            BytesRef prevCtid;
-//            while ((prevCtid = termsEnum.next()) != null) {
-//                if ( (docsEnum = termsEnum.docs(liveDocs, docsEnum)).nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-//                    BytesRef single = singles.get(prevCtid);
-//
-//                    if (single != null) {
-//                        multiples.add(single);
-//                    } else {
-//                        BytesRef copy = BytesRef.deepCopyOf(prevCtid);
-//                        singles.put(copy, copy);
-//                    }
-//                }
-//            }
-        }
+        );
 
         if (multiples.size() == 0)
             return visibilityBitSets;
-
-        TermsFilter filter = new TermsFilter("_prev_ctid", multiples.toArray(new BytesRef[multiples.size()]));
-        Query query = new FilteredQuery(Queries.newMatchAllQuery(), filter);
 
         //
         // build a map of {@link VisibilityInfo} objects by each _prev_ctid
@@ -118,7 +72,7 @@ final class VisibilityQueryHelper {
 
         final Map<String, List<VisibilityInfo>> map = new HashMap<>();
         searcher.search(
-                query,
+                new FilteredQuery(Queries.newMatchAllQuery(), new TermsFilter(field, multiples.toArray(new BytesRef[multiples.size()]))),
                 new ZomboDBTermsCollector(field) {
                     private SortedDocValues prevCtids;
                     private SortedNumericDocValues xids;
@@ -140,7 +94,7 @@ final class VisibilityQueryHelper {
 
                     @Override
                     public void setNextReader(AtomicReaderContext context) throws IOException {
-                        prevCtids = FieldCache.DEFAULT.getTermsIndex(context.reader(), "_prev_ctid");
+                        prevCtids = FieldCache.DEFAULT.getTermsIndex(context.reader(), field);
                         xids = context.reader().getSortedNumericDocValues("_xid");
                         ord = context.ord;
                         maxdoc = context.reader().maxDoc();
@@ -154,6 +108,8 @@ final class VisibilityQueryHelper {
         // documents.  A map of these (key'd on reader ord) is what we return.
         //
 
+        BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
+        TermsEnum termsEnum = MultiFields.getFields(reader).terms("_zdb_committed_xid").iterator(null);
         for (List<VisibilityInfo> visibility : map.values()) {
             CollectionUtil.timSort(visibility, new Comparator<VisibilityInfo>() {
                 @Override
@@ -165,7 +121,7 @@ final class VisibilityQueryHelper {
             boolean foundVisible = false;
             for (VisibilityInfo mapping : visibility) {
 
-                if (foundVisible || mapping.xid >= xmax || activeXids.contains(mapping.xid) || !committedXids.contains(mapping.xid)) {
+                if (foundVisible || mapping.xid >= xmax || activeXids.contains(mapping.xid) || !isCommitted(termsEnum, mapping.xid, bytesRefBuilder)) {
                     // document is not visible to us
                     FixedBitSet visibilityBitset = visibilityBitSets.get(mapping.readerOrd);
                     if (visibilityBitset == null)
@@ -178,5 +134,14 @@ final class VisibilityQueryHelper {
         }
 
         return visibilityBitSets;
+    }
+
+    private static boolean isCommitted(TermsEnum termsEnum, long xid, BytesRefBuilder builder) throws IOException {
+        try {
+            NumericUtils.longToPrefixCoded(xid, 0, builder);
+            return termsEnum.seekExact(builder.toBytesRef());
+        } finally {
+            builder.clear();
+        }
     }
 }

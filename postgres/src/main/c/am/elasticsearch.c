@@ -122,15 +122,17 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
 }
 
 static void checkForBulkError(StringInfo response, char *type) {
-    text *errorsText = DatumGetTextP(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("errors")));
-    if (errorsText == NULL)
-        elog(ERROR, "Unexpected response from elasticsearch during %s: %s", type, response->data);
-    else {
-        char *errors = TextDatumGetCString(errorsText);
-        if (strcmp(errors, "false") != 0)
-            elog(ERROR, "Error updating %s data: %s", type, response->data);
-        pfree(errors);
-        pfree(errorsText);
+    if (strstr(response->data, "errors") != NULL) {
+        text *errorsText = DatumGetTextP(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(response->data), CStringGetTextDatum("errors")));
+        if (errorsText == NULL)
+            elog(ERROR, "Unexpected response from elasticsearch during %s: %s", type, response->data);
+        else {
+            char *errors = TextDatumGetCString(errorsText);
+            if (strcmp(errors, "false") != 0)
+                elog(ERROR, "Error updating %s data: %s", type, response->data);
+            pfree(errors);
+            pfree(errorsText);
+        }
     }
 }
 
