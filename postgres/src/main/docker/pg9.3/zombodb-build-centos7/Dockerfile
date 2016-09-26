@@ -4,7 +4,7 @@ MAINTAINER ZomboDB, LLC (zombodb@gmail.com)
 
 RUN yum update -y
 RUN yum install -y openssl
-RUN yum install -y http://yum.postgresql.org/9.3/redhat/rhel-6-x86_64/pgdg-redhat93-9.3-1.noarch.rpm
+RUN yum install -y http://yum.postgresql.org/9.3/redhat/rhel-6-x86_64/pgdg-redhat93-9.3-3.noarch.rpm
 RUN yum install -y postgresql93-devel
 RUN yum install -y gcc make zlib-devel
 
