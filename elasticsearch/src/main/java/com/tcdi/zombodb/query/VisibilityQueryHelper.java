@@ -149,14 +149,13 @@ final class VisibilityQueryHelper {
         if (KNOWN_COMMITTED_XIDS.contains(xid))
             return true;
 
-        try {
-            NumericUtils.longToPrefixCoded(xid, 0, builder);
-            boolean isCommitted = termsEnum.seekExact(builder.toBytesRef());
-            if (isCommitted)
-                KNOWN_COMMITTED_XIDS.add(xid);
-            return isCommitted;
-        } finally {
-            builder.clear();
-        }
+        NumericUtils.longToPrefixCoded(xid, 0, builder);
+        boolean isCommitted = termsEnum.seekExact(builder.toBytesRef());
+
+        if (isCommitted)
+            KNOWN_COMMITTED_XIDS.add(xid);
+
+        builder.clear();
+        return isCommitted;
     }
 }
