@@ -897,20 +897,13 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
 
             if (batch->nrequests == 0) {
 				/*
-				 * We need to refresh only if we're in a transaction block.
-				 *
-				 * If we're not, the index will be refreshed when the transaction commits
+				 * if this is the only request being made in this batch, then we'll &refresh=true
+				 * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
+				 * and b) if the index refresh interval is -1
 				 */
-				if (IsTransactionBlock()) {
-					/*
-					 * if this is the only request being made in this batch, then we'll &refresh=true
-					 * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
-					 * and b) if the index refresh interval is -1
-					 */
-					if (!zdb_batch_mode_guc) {
-						if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-							appendStringInfo(endpoint, "&refresh=true");
-						}
+				if (!zdb_batch_mode_guc) {
+					if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+						appendStringInfo(endpoint, "&refresh=true");
 					}
 				}
 
@@ -930,18 +923,11 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
                  batch->nrequests + 1, indexDescriptor->fullyQualifiedName);
 
 			/*
-			 * We need to refresh only if we're in a transaction block.
-			 *
-			 * If we're not, the index will be refreshed when the transaction commits
+			 * If this wasn't the only request being made in this batch
+			 * then ask ES to refresh the index, but only if a) we're not in batch mode
+			 * and b) if the index refresh interval is -1
 			 */
-			if (IsTransactionBlock()) {
-				/*
-				 * If this wasn't the only request being made in this batch
-				 * then ask ES to refresh the index, but only if a) we're not in batch mode
-				 * and b) if the index refresh interval is -1
-				 */
-				elasticsearch_refreshIndex(indexDescriptor);
-			}
+			elasticsearch_refreshIndex(indexDescriptor);
         }
 
         batchInsertDataList = list_delete(batchInsertDataList, batch);
