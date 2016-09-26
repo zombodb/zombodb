@@ -38,7 +38,7 @@ final class VisibilityQueryHelper {
 
     static IntObjectMap<FixedBitSet> determineVisibility(final Query query, final String field, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, IndexReader reader) throws IOException {
         final IntObjectMap<FixedBitSet> visibilityBitSets = new IntObjectOpenHashMap<>();
-        final Set<BytesRef> multiples = new HashSet<>();
+        final Set<BytesRef> updatedCtids = new HashSet<>();
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //
@@ -56,7 +56,7 @@ final class VisibilityQueryHelper {
                     @Override
                     public void collect(int doc) throws IOException {
                         final BytesRef term = fromDocTerms.get(doc);
-                        multiples.add(BytesRef.deepCopyOf(term));
+                        updatedCtids.add(BytesRef.deepCopyOf(term));
                     }
 
                     @Override
@@ -66,7 +66,7 @@ final class VisibilityQueryHelper {
                 }
         );
 
-        if (multiples.size() == 0)
+        if (updatedCtids.size() == 0)
             return visibilityBitSets;
 
         //
@@ -75,7 +75,7 @@ final class VisibilityQueryHelper {
 
         final Map<String, List<VisibilityInfo>> map = new HashMap<>();
         searcher.search(
-                new FilteredQuery(Queries.newMatchAllQuery(), new TermsFilter(field, multiples.toArray(new BytesRef[multiples.size()]))),
+                new FilteredQuery(Queries.newMatchAllQuery(), new TermsFilter(field, updatedCtids.toArray(new BytesRef[updatedCtids.size()]))),
                 new ZomboDBTermsCollector(field) {
                     private SortedDocValues prevCtids;
                     private SortedNumericDocValues xids;
