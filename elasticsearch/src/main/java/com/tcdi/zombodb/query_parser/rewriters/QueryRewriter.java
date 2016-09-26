@@ -1165,6 +1165,7 @@ public abstract class QueryRewriter {
                                         .xmin(visibility.getXmin())
                                         .xmax(visibility.getXmax())
                                         .activeXids(visibility.getActiveXids())
+                                        .query(query)
                         );
     }
 }

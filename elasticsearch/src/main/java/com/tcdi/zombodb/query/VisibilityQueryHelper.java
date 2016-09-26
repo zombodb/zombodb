@@ -30,10 +30,13 @@ import org.elasticsearch.common.lucene.search.Queries;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 final class VisibilityQueryHelper {
 
-    static IntObjectMap<FixedBitSet> determineVisibility(final String field, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, IndexReader reader) throws IOException {
+    private static final ConcurrentSkipListSet<Long> KNOWN_COMMITTED_XIDS = new ConcurrentSkipListSet<>();
+
+    static IntObjectMap<FixedBitSet> determineVisibility(final Query query, final String field, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, IndexReader reader) throws IOException {
         final IntObjectMap<FixedBitSet> visibilityBitSets = new IntObjectOpenHashMap<>();
         final Set<BytesRef> multiples = new HashSet<>();
         IndexSearcher searcher = new IndexSearcher(reader);
@@ -108,7 +111,13 @@ final class VisibilityQueryHelper {
         // documents.  A map of these (key'd on reader ord) is what we return.
         //
 
-        BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
+        BytesRefBuilder bytesRefBuilder = new BytesRefBuilder() {
+            /* overloaded to avoid making a copy of the byte array */
+            @Override
+            public BytesRef toBytesRef() {
+                return new BytesRef(this.bytes(), 0, this.length());
+            }
+        };
         TermsEnum termsEnum = MultiFields.getFields(reader).terms("_zdb_committed_xid").iterator(null);
         for (List<VisibilityInfo> visibility : map.values()) {
             CollectionUtil.timSort(visibility, new Comparator<VisibilityInfo>() {
@@ -137,9 +146,15 @@ final class VisibilityQueryHelper {
     }
 
     private static boolean isCommitted(TermsEnum termsEnum, long xid, BytesRefBuilder builder) throws IOException {
+        if (KNOWN_COMMITTED_XIDS.contains(xid))
+            return true;
+
         try {
             NumericUtils.longToPrefixCoded(xid, 0, builder);
-            return termsEnum.seekExact(builder.toBytesRef());
+            boolean isCommitted = termsEnum.seekExact(builder.toBytesRef());
+            if (isCommitted)
+                KNOWN_COMMITTED_XIDS.add(xid);
+            return isCommitted;
         } finally {
             builder.clear();
         }

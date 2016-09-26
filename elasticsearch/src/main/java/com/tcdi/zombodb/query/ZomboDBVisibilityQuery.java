@@ -30,13 +30,15 @@ import java.util.Set;
 
 class ZomboDBVisibilityQuery extends Query {
 
+    private final Query query;
     private final String fieldname;
     private final long myXid;
     private final long xmin;
     private final long xmax;
     private final Set<Long> activeXids;
 
-    ZomboDBVisibilityQuery(String fieldname, long myXid, long xmin, long xmax, Set<Long> activeXids) {
+    ZomboDBVisibilityQuery(Query query, String fieldname, long myXid, long xmin, long xmax, Set<Long> activeXids) {
+        this.query = query;
         this.fieldname = fieldname;
         this.myXid = myXid;
         this.xmin = xmin;
@@ -46,7 +48,7 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
-        final IntObjectMap<FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(fieldname, myXid, xmin, xmax, activeXids, reader);
+        final IntObjectMap<FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, activeXids, reader);
 
         return new ConstantScoreQuery(
                 new Filter() {
@@ -65,12 +67,13 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public String toString(String field) {
-        return "visibility(" + fieldname + ", myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ")";
+        return "visibility(" + fieldname + ", query=" + query + ", myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ")";
     }
 
     @Override
     public int hashCode() {
         int hash = super.hashCode();
+        hash = hash * 31 + query.hashCode();
         hash = hash * 31 + fieldname.hashCode();
         hash = hash * 31 + (int)(myXid ^ (myXid >>> 32));
         hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
@@ -87,7 +90,8 @@ class ZomboDBVisibilityQuery extends Query {
         assert obj instanceof ZomboDBVisibilityQuery;
         ZomboDBVisibilityQuery eq = (ZomboDBVisibilityQuery) obj;
 
-        return this.fieldname.equals(eq.fieldname) &&
+        return this.query.equals(eq.query) &&
+                this.fieldname.equals(eq.fieldname) &&
                 this.myXid == eq.myXid &&
                 this.xmin == eq.xmin &&
                 this.xmax == eq.xmax &&

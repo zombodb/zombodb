@@ -24,6 +24,7 @@ import java.util.Collection;
 
 public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
 
+    private QueryBuilder query;
     private final String fieldname;
     private long myXid;
     private boolean haveMyXid;
@@ -60,6 +61,11 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
         return this;
     }
 
+    public ZomboDBVisibilityQueryBuilder query(QueryBuilder query) {
+        this.query = query;
+        return this;
+    }
+
     @Override
     protected void doXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(ZomboDBVisibilityQueryParser.NAME);
@@ -73,6 +79,10 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
             builder.field("xmax", xmax);
         if (activeXids != null && activeXids.length > 0)
             builder.field("active_xids", activeXids);
+        if (query != null) {
+            builder.field("query");
+            query.toXContent(builder, params);
+        }
         builder.endObject();
     }
 }
