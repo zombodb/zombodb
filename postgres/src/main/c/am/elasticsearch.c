@@ -897,13 +897,20 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
 
             if (batch->nrequests == 0) {
 				/*
-				 * if this is the only request being made in this batch, then we'll &refresh=true
-				 * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
-				 * and b) if the index refresh interval is -1
+				 * We need to refresh only if we're in a transaction block.
+				 *
+				 * If we're not, the index will be refreshed when the transaction commits
 				 */
-				if (!zdb_batch_mode_guc) {
-					if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-						appendStringInfo(endpoint, "&refresh=true");
+				if (IsTransactionBlock()) {
+					/*
+					 * if this is the only request being made in this batch, then we'll &refresh=true
+					 * to avoid an additional round-trip to ES, but only if a) we're not in batch mode
+					 * and b) if the index refresh interval is -1
+					 */
+					if (!zdb_batch_mode_guc) {
+						if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+							appendStringInfo(endpoint, "&refresh=true");
+						}
 					}
 				}
 
@@ -923,11 +930,18 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
                  batch->nrequests + 1, indexDescriptor->fullyQualifiedName);
 
 			/*
-			 * If this wasn't the only request being made in this batch
-			 * then ask ES to refresh the index, but only if a) we're not in batch mode
-			 * and b) if the index refresh interval is -1
+			 * We need to refresh only if we're in a transaction block.
+			 *
+			 * If we're not, the index will be refreshed when the transaction commits
 			 */
-			elasticsearch_refreshIndex(indexDescriptor);
+			if (IsTransactionBlock()) {
+				/*
+				 * If this wasn't the only request being made in this batch
+				 * then ask ES to refresh the index, but only if a) we're not in batch mode
+				 * and b) if the index refresh interval is -1
+				 */
+				elasticsearch_refreshIndex(indexDescriptor);
+			}
         }
 
         batchInsertDataList = list_delete(batchInsertDataList, batch);
@@ -942,7 +956,7 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 	StringInfo response;
 	int i;
 
-	appendStringInfo(endpoint, "%s/%s/committed/_bulk?consistency=default&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/committed/_bulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 	for (i=0; i<indexDescriptor->shards; i++) {
 		appendStringInfo(request, "{\"index\":{\"_id\":%lu,\"_routing\":\"%d\"}}\n", convertedXid, i);
@@ -951,9 +965,10 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 	checkForBulkError(response, "mark transaction committed");
 
-	freeStringInfo(endpoint);
-	freeStringInfo(request);
-	freeStringInfo(response);
+    resetStringInfo(endpoint);
+    appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+    checkForRefreshError(response);
 }
 
 uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {
