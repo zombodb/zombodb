@@ -99,7 +99,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(request.paramAsBoolean("refresh", bulkRequest.refresh()));
+        bulkRequest.refresh(true);
         bulkRequest.requests().addAll(trackingRequests);
 
         client.bulk(bulkRequest).actionGet(); // we don't really care about the response here
@@ -247,6 +247,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
                         .addField("_prev_ctid")
                         .request()
         ).actionGet();
+
+        if (response.getHits().getHits().length != lookup.size())
+            throw new RuntimeException("Did not find all previous ctids");
 
         for (SearchHit hit : response.getHits()) {
             String prevCtid = hit.field("_prev_ctid").getValue();

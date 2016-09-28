@@ -494,6 +494,9 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	TransactionId xmin, xmax;
 	bool found;
 
+    if (HeapTupleIsHeapOnly(htup))
+        elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
+
 	xmin = HeapTupleHeaderGetXmin(htup->t_data);
 	xmax = HeapTupleHeaderGetRawXmax(htup->t_data);
 
