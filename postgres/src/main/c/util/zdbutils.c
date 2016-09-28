@@ -163,31 +163,21 @@ void freeStringInfo(StringInfo si) {
     }
 }
 
-char *lookup_primary_key(char *schemaName, char *tableName) {
+char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing) {
     StringInfo sql = makeStringInfo();
     char       *keyname;
 
     SPI_connect();
-    appendStringInfo(sql,
-                     "select (select attname from pg_attribute where attrelid = indrelid and attnum = indkey[0]) "
-                             "from pg_index "
-                             "where indrelid = '%s.%s'::regclass "
-                             "and indisunique = true "
-                             "and indexprs is null "
-                             "and indpred is null "
-                             "and indnatts = 1 "
-                             "and exists (select 1 "
-                             "       from pg_attribute "
-                             "      where attrelid = indrelid "
-                             "        and (attnotnull = true or (select relkind from pg_class where oid = indrelid) = 'm') "
-                             "        and attnum = indkey[0] "
-							 "        and atttypid = (select oid from pg_type where typname = 'int8') "
-                             ") "
-                             "order by case when indisprimary then 0 else 1 end", schemaName, tableName);
+    appendStringInfo(sql, "SELECT column_name FROM information_schema.key_column_usage WHERE table_schema = '%s' AND table_name = '%s'", schemaName, tableName);
     SPI_execute(sql->data, true, 1);
 
     if (SPI_processed == 0) {
-        elog(ERROR, "Cannot find a 'NOT NULL' column of type 'int8/bigint/serial8' with a UNIQUE index on table: %s.%s", schemaName, tableName);
+        if (failOnMissing)
+            elog(ERROR, "Cannot find primary key column for: %s.%s", schemaName, tableName);
+        else {
+            SPI_finish();
+            return NULL;
+        }
     }
 
     keyname = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);

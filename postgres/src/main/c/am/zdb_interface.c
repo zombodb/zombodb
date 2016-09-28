@@ -161,7 +161,9 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->tableName    = pstrdup(RelationGetRelationName(heapRel));
 	desc->options	   = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
 
-    desc->pkeyFieldname = pstrdup(lookup_primary_key(desc->schemaName, desc->tableName));
+    desc->pkeyFieldname = lookup_primary_key(desc->schemaName, desc->tableName, false);
+	if (desc->pkeyFieldname != NULL)
+		desc->pkeyFieldname = pstrdup(desc->pkeyFieldname);
 
     desc->searchPreference   = ZDBIndexOptionsGetSearchPreference(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetSearchPreference(indexRel));
     desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel) ? pstrdup("-1") : pstrdup(ZDBIndexOptionsGetRefreshInterval(indexRel));

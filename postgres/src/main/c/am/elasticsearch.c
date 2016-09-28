@@ -284,7 +284,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
     StringInfo endpoint   = makeStringInfo();
     StringInfo request    = makeStringInfo();
     StringInfo response;
-    char       *pkey      = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName);
+    char       *pkey      = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
     Relation   indexRel;
 
     properties = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(mapping), PROPERTIES));
@@ -393,7 +393,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 
         indexName  = descriptors[i]->fullyQualifiedName;
         preference = descriptors[i]->searchPreference;
-        pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName);
+        pkey       = lookup_primary_key(descriptors[i]->schemaName, descriptors[i]->tableName, true);
         query      = buildQuery(descriptors[i], &user_queries[i], 1, true);
 
         if (!preference) preference = "null";
@@ -749,7 +749,7 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *user_qu
     StringInfo endpoint = makeStringInfo();
     StringInfo request  = makeStringInfo();
     StringInfo response;
-    char       *pkey    = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName);
+    char       *pkey    = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, true);
 
     appendStringInfo(request, "{\"query\":%s, \"primary_key\": \"%s\", \"documents\":%s", user_query, pkey, documentJson);
     if (indexDescriptor->fieldLists)

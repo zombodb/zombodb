@@ -35,7 +35,7 @@ char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname);
 bool type_is_domain(char *type_name, Oid *base_type);
 void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, int datalen);
 void freeStringInfo(StringInfo si);
-char *lookup_primary_key(char *schemaName, char *tableName);
+char *lookup_primary_key(char *schemaName, char *tableName, bool failOnMissing);
 Oid  *findZDBIndexes(Oid relid, int *many);
 Oid *find_all_zdb_indexes(int *many);
 Oid  *oid_array_to_oids(ArrayType *arr, int *many);
