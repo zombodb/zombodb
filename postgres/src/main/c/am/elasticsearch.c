@@ -775,7 +775,10 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     StringInfo response;
     int i;
 
-    appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default&refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+        appendStringInfo(endpoint, "&refresh=true");
+    }
 
     for (i=0; i<nitems; i++) {
         ItemPointer item = &itemPointers[i];
@@ -965,10 +968,12 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 	checkForBulkError(response, "mark transaction committed");
 
-    resetStringInfo(endpoint);
-    appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
-    checkForRefreshError(response);
+    if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+        resetStringInfo(endpoint);
+        appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+        response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+        checkForRefreshError(response);
+    }
 }
 
 uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {

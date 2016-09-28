@@ -99,7 +99,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(true);
+        bulkRequest.refresh(false);
         bulkRequest.requests().addAll(trackingRequests);
 
         client.bulk(bulkRequest).actionGet(); // we don't really care about the response here
@@ -195,7 +195,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setIndex(defaultIndex)
                                 .setType("state")
                                 .setRouting(prevCtid)
-                                .setRefresh(true)
                                 .request()
                 );
 
@@ -235,21 +234,36 @@ public class ZombodbBulkAction extends BaseRestHandler {
         if (lookup.isEmpty())
             return Collections.emptyList();
 
-        SearchResponse response = client.search(
-                new SearchRequestBuilder(client)
-                        .setIndices(defaultIndex)
-                        .setTypes(defaultType)
-                        .setPreference("_primary")
-                        .setQuery(filteredQuery(null, ids))
-                        .setQueryCache(true)
-                        .setSize(lookup.size())
-                        .setTerminateAfter(lookup.size())
-                        .addField("_prev_ctid")
-                        .request()
-        ).actionGet();
+        SearchResponse response = null;
+        int retries = 0;
+        while(retries <= 1) {
+
+            response = client.search(
+                    new SearchRequestBuilder(client)
+                            .setIndices(defaultIndex)
+                            .setTypes(defaultType)
+                            .setPreference("_primary")
+                            .setQuery(filteredQuery(null, ids))
+                            .setQueryCache(retries == 0)
+                            .setSize(lookup.size())
+                            .setTerminateAfter(lookup.size())
+                            .addField("_prev_ctid")
+                            .request()
+            ).actionGet();
+
+            if (response.getHits().getHits().length != lookup.size()) {
+                // didn't find everything, maybe it's because the index needs to be refreshed
+                // so lets do that and try one more time
+                client.admin().indices().refresh(Requests.refreshRequest(defaultIndex)).actionGet();
+                retries++;
+                continue;
+            }
+
+            break;
+        }
 
         if (response.getHits().getHits().length != lookup.size())
-            throw new RuntimeException("Did not find all previous ctids");
+             throw new RuntimeException("Did not find all previous ctids an UPDATE");
 
         for (SearchHit hit : response.getHits()) {
             String prevCtid = hit.field("_prev_ctid").getValue();
@@ -270,7 +284,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
                             .setType("state")
                             .setRouting(prevCtid)
                             .setSource("_ctid", prevCtid)
-                            .setRefresh(true)
                             .request()
             );
 
