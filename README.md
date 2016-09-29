@@ -56,6 +56,7 @@ Not to suggest that these things are impossible, but there's a small set of non-
 
 - ZomboDB indexes are not WAL-logged by Postgres.  As such, ZomboDB indexes are not recoverable in the event of a Postgres server crash and will require a `REINDEX`
 - interoperability with various Postgres replication schemes is unknown
+- Postgres [HOT](https://github.com/postgres/postgres/blob/master/src/backend/access/heap/README.HOT) update chains are not supported (necessitates a `VACUUM FULL` if a HOT-updated row is found)
 
 ## What you need
 
