@@ -118,6 +118,16 @@
           },
           "index": "not_analyzed"
         },
+        "null_field": {
+          "store": false,
+          "type": "string",
+          "norms": {
+            "enabled": false
+          },
+          "index_options": "docs",
+          "analyzer": "exact",
+          "null_value": "_zdbnull"
+        },
         "exact_field": {
           "store": false,
           "type": "string",

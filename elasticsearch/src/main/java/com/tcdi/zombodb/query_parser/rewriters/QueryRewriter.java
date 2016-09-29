@@ -768,7 +768,11 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                return filteredQuery(matchAllQuery(), missingFilter(n.getFieldname()));
+                String nullValue = metadataManager.getMetadataForField(n.getFieldname()).getNullValue(n.getFieldname());
+                MissingFilterBuilder filter = missingFilter(n.getFieldname());
+                if (nullValue != null)
+                    filter.nullValue(true);
+                return filteredQuery(matchAllQuery(), filter);
             }
         });
     }

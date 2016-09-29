@@ -4787,5 +4787,40 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
                         "            Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)");
     }
+
+    @Test
+    public void testIssue148() throws Exception {
+        assertJson(
+                "null_field:null, exact_field:null",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"filtered\" : {\n" +
+                        "        \"query\" : {\n" +
+                        "          \"match_all\" : { }\n" +
+                        "        },\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"missing\" : {\n" +
+                        "            \"field\" : \"null_field\",\n" +
+                        "            \"null_value\" : true\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"filtered\" : {\n" +
+                        "        \"query\" : {\n" +
+                        "          \"match_all\" : { }\n" +
+                        "        },\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"missing\" : {\n" +
+                        "            \"field\" : \"exact_field\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 
