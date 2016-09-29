@@ -41,7 +41,7 @@ You only need to create the index on the master Citus node, and Citus will take 
 
 It's important to note that each shard inherits the `WITH (...)` settings of the `CREATE INDEX` statement, so each Citus worker node will need access to the server behind ZomboDB's `url='...'` option.
 
-The Elasticsearch indexes that are created include the Citus `shardId`, just as the actual shard tables do, so they'll be relateable via tools like Marvel.
+The Elasticsearch indexes that are created are named with the Citus `shardId`, just as the actual shard tables do, so they'll be relateable via tools like Marvel.
 
 
 ### ZomboDB features that don't work
