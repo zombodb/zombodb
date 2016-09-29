@@ -1,8 +1,10 @@
-## Support for Citus Community/Enterprise
+## Support for Citus Community/Enterprise 6.0+
 
 Thanks to some [cooperation](https://github.com/citusdata/citus/pull/773) with the very smart folks at [Citus](https://citusdata.com/), ZomboDB and Citus Community/Enterprise can now be used together.  ZomboDB is not available on the Citus Cloud offering.
 
 When using ZomboDB with Citus, there are some differences and certain ZomboDB features don't work, but basic index creation and searching do.
+
+Note that Citus won't contain support for ZomboDB until Citus 6.0 is released.
 
 ### Syntax Differences
 
