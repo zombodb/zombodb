@@ -1,0 +1,9 @@
+SELECT *
+FROM zdb_highlight('so_posts', 'body:("coworker" w/4 ("that" OR "this"))', 'id=1', '{body}')
+ORDER BY "primaryKey", "fieldName", "arrayIndex", "position";
+ primaryKey | fieldName | arrayIndex |   term   |    type    | position | startOffset | endOffset |        clause        
+------------+-----------+------------+----------+------------+----------+-------------+-----------+----------------------
+ 1          | body      |          0 | coworker | <ALPHANUM> |        3 |           5 |        13 | body CONTAINS "null"
+ 1          | body      |          0 | that     | <ALPHANUM> |        7 |          31 |        35 | body CONTAINS "null"
+(2 rows)
+

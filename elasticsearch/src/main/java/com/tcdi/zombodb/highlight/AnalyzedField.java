@@ -254,7 +254,7 @@ public class AnalyzedField {
         public void keep(ASTProximity proximity) {
             List<ProximityGroup> scratch = new ArrayList<>();
             keep(proximity, scratch);
-            int cnt = proximity.countNodes() / 2 + 1;
+            int cnt = proximity.jjtGetNumChildren() / 2 + 1;
             for (ProximityGroup pair : scratch) {
                 for (Token token : pair.tokens) {
                     if (token.shouldKeep() || pair.tokens.size() >= cnt)
@@ -429,6 +429,8 @@ public class AnalyzedField {
             return match((ASTArray) node);
         else if (node instanceof ASTPhrase)
             return match((ASTPhrase) node);
+        else if (node instanceof ASTOr)
+            return match((ASTOr) node);
         else if (node instanceof ASTNotNull) {
             ASTWildcard wildcard = new ASTWildcard(QueryParserTreeConstants.JJTWILDCARD);
             wildcard.setValue("*");
@@ -552,6 +554,15 @@ public class AnalyzedField {
         } else {
             return match(node);
         }
+    }
+
+    private List<Token> match(ASTOr or) {
+        List<Token> tokens = new ArrayList<>();
+        for(QueryParserNode child : or) {
+            tokens.addAll(match(child));
+        }
+
+        return tokens;
     }
 
     private List<Token> matchRegex(QueryParserNode node) {
