@@ -46,7 +46,7 @@ The Elasticsearch indexes that are created include the Citus `shardId`, just as 
 
 ### ZomboDB features that don't work
 
-There's quite a large list of ZomboDB features that don't (yet) work under citus.
+There's quite a large list of ZomboDB features that don't (yet) work under Citus.
 
 Rather than list them individually, the answer is basically any SQL-level function that starts with `zdb_` and executes a query.  This includes functions like `zdb_estimate_count()` and `zdb_tally()`.
 
