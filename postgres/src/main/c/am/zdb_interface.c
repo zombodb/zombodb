@@ -105,6 +105,10 @@ static void validate_refresh_interval(char *str) {
     // noop
 }
 
+static void validate_alias(char *str){
+	// noop
+}
+
 static List *allocated_descriptors = NULL;
 
 void zdb_index_init(void) {
@@ -123,6 +127,7 @@ void zdb_index_init(void) {
     add_bool_reloption(RELOPT_KIND_ZDB, "ignore_visibility", "Should queries that require visibility information actually use it?", false);
     add_bool_reloption(RELOPT_KIND_ZDB, "always_resolve_joins", "Should queries that link to other indexes always resolve the links", false);
     add_int_reloption(RELOPT_KIND_ZDB, "compression_level", "0-9 value to indicate the level of HTTP compression", 0, 0, 9);
+	add_string_reloption(RELOPT_KIND_ZDB, "alias", "The Elasticsearch Alias to which this index should belong", NULL, validate_alias);
 
     DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
@@ -214,6 +219,8 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     resetStringInfo(scratch);
     appendStringInfo(scratch, "%s.%s", get_namespace_name(RelationGetNamespace(heapRel)), RelationGetRelationName(heapRel));
     desc->qualifiedTableName = pstrdup(scratch->data);
+
+	desc->alias = ZDBIndexOptionsGetAlias(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetAlias(indexRel));
 
     desc->implementation                          = palloc0(sizeof(ZDBIndexImplementation));
     desc->implementation->_last_selectivity_query = NULL;

@@ -177,6 +177,7 @@ public class IndexLinkOptimizer {
 
                 ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
                 String indexName;
+                String alias = null;
 
                 indexName = current.substring(0, current.indexOf(':'));
                 if (next != null) {
@@ -189,12 +190,13 @@ public class IndexLinkOptimizer {
                     rightFieldname = leftFieldname;
                     leftFieldname = current.substring(current.indexOf(':') + 1);
                     indexName = lastExpansion.getIndexLink().getIndexName();
+                    alias = lastExpansion.getIndexLink().getAlias();
                 }
 
                 if (leftFieldname.equals(rightFieldname))
                     break;
 
-                ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, rightFieldname);
+                ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, alias, rightFieldname);
                 expansion.jjtAddChild(newLink, 0);
                 expansion.jjtAddChild(last == null ? root : last, 1);
                 newLink.setFieldname(link.getFieldname());

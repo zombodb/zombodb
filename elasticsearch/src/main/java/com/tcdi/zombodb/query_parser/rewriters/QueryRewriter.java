@@ -77,6 +77,7 @@ public abstract class QueryRewriter {
                     Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class);
                     return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
             } else {
@@ -239,12 +240,15 @@ public abstract class QueryRewriter {
     }
 
     public String getAggregateIndexName() {
+        ASTIndexLink link;
         if (tree.getAggregate() != null)
-            return metadataManager.findField(tree.getAggregate().getFieldname()).getIndexName();
+            link = metadataManager.findField(tree.getAggregate().getFieldname());
         else if (tree.getSuggest() != null)
-            return metadataManager.findField(tree.getSuggest().getFieldname()).getIndexName();
+            link = metadataManager.findField(tree.getSuggest().getFieldname());
         else
             throw new QueryRewriteException("Cannot figure out which index to use for aggregation");
+
+        return link.getAlias() != null ? link.getAlias() : link.getIndexName();
     }
 
     public String getAggregateFieldName() {
@@ -279,7 +283,7 @@ public abstract class QueryRewriter {
         if (!queryRewritten)
             throw new IllegalStateException("Must call .rewriteQuery() before calling .getSearchIndexName()");
 
-        return metadataManager.getMyIndex().getIndexName();
+        return metadataManager.getMyIndex().getAlias() == null ? metadataManager.getMyIndex().getIndexName() : metadataManager.getMyIndex().getAlias();
     }
 
     private AbstractAggregationBuilder build(ASTAggregate agg) {
