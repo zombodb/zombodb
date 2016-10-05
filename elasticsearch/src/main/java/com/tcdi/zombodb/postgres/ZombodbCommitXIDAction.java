@@ -79,29 +79,17 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
         if (routingTable != null)
             return routingTable;
 
-
-        routingTable = new String[shards];
         ClusterState clusterState = clusterService.state();
         OperationRouting operationRouting = clusterService.operationRouting();
-        int loops = 0;
-        repeat: while (true) {
 
-            for (int i = 0; i < shards; i++) {
-                if (routingTable[i] == null) {
-                    String routing = (loops > 0 ? String.valueOf(loops) : "") + String.valueOf(i);
-                    ShardId shardId = operationRouting.indexShards(clusterState, index, "committed", routing, null).shardId();
+        routingTable = new String[shards];
+        for (int i=0; i<shards; i++) {
+            String routing = String.valueOf(i);
 
-                    routingTable[shardId.id()] = routing;
-                }
-            }
-            loops++;
-
-            for (int i = 0; i < shards; i++) {
-                if (routingTable[i] == null)
-                    continue repeat;
-            }
-
-            break;
+            int cnt=0;
+            while ( (operationRouting.indexShards(clusterState, index, "committed", routing, null).shardId()).id() != i)
+                routing = String.valueOf(i + ++cnt);
+            routingTable[i] = routing;
         }
 
         routingTablesByIndex.put(key, routingTable);
