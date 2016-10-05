@@ -243,15 +243,13 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *c
 	hash_seq_init(&seq, committedXids);
 	while ( (xid = hash_seq_search(&seq)) != NULL) {
 		uint64 convertedXid = convert_xid(*xid);
-		int i;
 
-		for (i=0; i<indexDescriptor->shards; i++) {
-			appendStringInfo(request, "{\"index\":{\"_id\":%lu,\"_routing\":\"%d\"}}\n", convertedXid, i);
-			appendStringInfo(request, "{\"_zdb_committed_xid\":%lu}\n", convertedXid);
-		}
+		if (request->len > 0)
+			appendStringInfoChar(request, '\n');
+		appendStringInfo(request, "%lu", convertedXid);
 	}
     if (request->len > 0) {
-        appendStringInfo(endpoint, "%s/%s/committed/_bulk?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+        appendStringInfo(endpoint, "%s/%s/_zdbxid?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
         response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
         checkForBulkError(response, "bulk committed xid");
     }
@@ -961,14 +959,9 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
-	int i;
 
-	appendStringInfo(endpoint, "%s/%s/committed/_bulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-
-	for (i=0; i<indexDescriptor->shards; i++) {
-		appendStringInfo(request, "{\"index\":{\"_id\":%lu,\"_routing\":\"%d\"}}\n", convertedXid, i);
-		appendStringInfo(request, "{\"_zdb_committed_xid\":%lu}\n", convertedXid);
-	}
+	appendStringInfo(request, "%lu", convertedXid);
+	appendStringInfo(endpoint, "%s/%s/_zdbxid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 	checkForBulkError(response, "mark transaction committed");
 
