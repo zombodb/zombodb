@@ -156,7 +156,6 @@ static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forIns
 
 static void xact_complete_cleanup(XactEvent event) {
 	List     *usedIndexes     = usedIndexesList;
-	List     *insertedIndexes = indexesInsertedList;
 	ListCell *lc;
 
     /* free up our static vars on xact finish */
@@ -171,14 +170,6 @@ static void xact_complete_cleanup(XactEvent event) {
     zdb_sequential_scan_support_cleanup();
     zdb_transaction_finish();
 
-	/* push this transaction id to ES for each index we inserted into */
-	foreach (lc, insertedIndexes) {
-		ZDBIndexDescriptor *desc = lfirst(lc);
-
-		if (event == XACT_EVENT_COMMIT)
-			desc->implementation->markTransactionCommitted(desc, GetCurrentTransactionId());
-	}
-
     /* notify each index we used that the xact is over */
     foreach(lc, usedIndexes) {
         ZDBIndexDescriptor *desc = lfirst(lc);
@@ -192,18 +183,24 @@ static void xact_complete_cleanup(XactEvent event) {
 static void zdbam_xact_callback(XactEvent event, void *arg) {
     switch (event) {
         case XACT_EVENT_PRE_PREPARE:
-        case XACT_EVENT_COMMIT: {
-            if (zdb_batch_mode_guc) {
-                ListCell *lc;
+        case XACT_EVENT_PRE_COMMIT: {
+			ListCell *lc;
 
+            if (zdb_batch_mode_guc) {
                 /* finish the batch insert (and refresh) for each index into which new records were inserted */
                 foreach (lc, indexesInsertedList) {
                     ZDBIndexDescriptor *desc = lfirst(lc);
 
-                    desc->implementation->batchInsertFinish(desc);
+					desc->implementation->batchInsertFinish(desc);
                 }
             }
 
+			/* push this transaction id to ES for each index we inserted into */
+			foreach (lc, indexesInsertedList) {
+				ZDBIndexDescriptor *desc = lfirst(lc);
+
+				desc->implementation->markTransactionCommitted(desc, GetCurrentTransactionId());
+			}
         }
             break;
         case XACT_EVENT_ABORT:
