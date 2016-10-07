@@ -962,15 +962,13 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 
 	appendStringInfo(request, "%lu", convertedXid);
 	appendStringInfo(endpoint, "%s/%s/_zdbxid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	if (!zdb_batch_mode_guc) {
+		if (strcmp("-1", indexDescriptor->refreshInterval) == 0)
+			appendStringInfo(endpoint, "?refresh=true");
+	}
+
 	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 	checkForBulkError(response, "mark transaction committed");
-
-    if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-        resetStringInfo(endpoint);
-        appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-        response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
-        checkForRefreshError(response);
-    }
 }
 
 uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {

@@ -2,6 +2,8 @@ package com.tcdi.zombodb.postgres;
 
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.WriteConsistencyLevel;
+import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
+import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -19,6 +21,7 @@ import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.cluster.ClusterService;
+import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -28,6 +31,7 @@ import org.elasticsearch.index.query.IdsFilterBuilder;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 
+import java.io.IOException;
 import java.util.*;
 
 import static org.elasticsearch.index.query.FilterBuilders.idsFilter;
@@ -55,6 +59,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         String defaultType = request.param("type");
         String defaultRouting = request.param("routing");
         boolean isdelete = false;
+        String pkeyFieldname = lookupPkeyFieldname(client, defaultIndex);
 
         String replicationType = request.param("replication");
         if (replicationType != null) {
@@ -75,13 +80,22 @@ public class ZombodbBulkAction extends BaseRestHandler {
             if (isdelete) {
                 trackingRequests = handleDeleteRequests(client, bulkRequest.requests(), defaultIndex, defaultType);
             } else {
-                trackingRequests = handleIndexRequests(client, bulkRequest.requests(), defaultIndex, defaultType);
+                if (pkeyFieldname == null) {
+                    trackingRequests = handleIndexRequests(client, bulkRequest.requests(), defaultIndex, defaultType);
+                } else {
+                    trackingRequests = handleIndexRequestsUsingPkey(client, bulkRequest.requests(), defaultIndex, pkeyFieldname);
+                    if (trackingRequests == null) {
+                        // couldn't do it by primary key, so do it the slow way
+                        trackingRequests = handleIndexRequests(client, bulkRequest.requests(), defaultIndex, defaultType);
+                    }
+                }
             }
         }
 
         BulkResponse response;
 
         if (isdelete) {
+            bulkRequest.refresh(false);
             response = client.bulk(bulkRequest).actionGet();
             processTrackingRequests(request, client, trackingRequests);
         } else {
@@ -99,7 +113,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(false);
+        bulkRequest.refresh(request.paramAsBoolean("refresh", false));
         bulkRequest.requests().addAll(trackingRequests);
 
         client.bulk(bulkRequest).actionGet(); // we don't really care about the response here
@@ -290,6 +304,49 @@ public class ZombodbBulkAction extends BaseRestHandler {
         }
 
         return trackingRequests;
+    }
+
+    private List<ActionRequest> handleIndexRequestsUsingPkey(Client client, List<ActionRequest> requests, String defaultIndex, String pkeyFieldname) {
+        List<ActionRequest> trackingRequests = new ArrayList<>();
+        for (ActionRequest ar : requests) {
+            IndexRequest doc = (IndexRequest) ar;
+            Map<String, Object> data = doc.sourceAsMap();
+            Object pkey = data.get(pkeyFieldname);
+            Object prevCtid = data.get("_prev_ctid");
+
+            if (pkey == null)
+                return null;    // can't use this at all
+
+            data.put("_prev_ctid", String.valueOf(pkey));
+            doc.routing(String.valueOf(pkey));
+            doc.source(data);
+
+            if (prevCtid != null) {
+                trackingRequests.add(
+                        new IndexRequestBuilder(client)
+                                .setId(String.valueOf(prevCtid))
+                                .setIndex(defaultIndex)
+                                .setType("state")
+                                .setRouting(String.valueOf(pkey))
+                                .setSource("_ctid", String.valueOf(pkey))
+                                .request()
+                );
+            }
+
+        }
+
+        return trackingRequests;
+    }
+
+    private String lookupPkeyFieldname(Client client, String index) {
+        GetMappingsResponse mappings = client.admin().indices().getMappings(new GetMappingsRequest().indices(index).types("data")).actionGet();
+        MappingMetaData mmd = mappings.getMappings().get(index).get("data");
+
+        try {
+            return (String) ((Map) mmd.getSourceAsMap().get("_meta")).get("primary_key");
+        } catch (IOException ioe){
+            throw new RuntimeException(ioe);
+        }
     }
 
     private static final class Fields {
