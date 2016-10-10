@@ -26,11 +26,12 @@ import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.Fuzziness;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
@@ -577,6 +578,8 @@ public abstract class QueryRewriter {
             qb = build((ASTScript) node);
         else if (node instanceof ASTExpansion)
             qb = build((ASTExpansion) node);
+        else if (node instanceof ASTJsonQuery)
+            qb = build((ASTJsonQuery) node);
         else
             throw new QueryRewriteException("Unexpected node type: " + node.getClass().getName());
 
@@ -670,6 +673,22 @@ public abstract class QueryRewriter {
             expansionBuilder = bqb;
         }
         return expansionBuilder;
+    }
+
+    private QueryBuilder build(final ASTJsonQuery node) {
+        return new BaseQueryBuilder() {
+            @Override
+            public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+                JsonXContentParser parser = (JsonXContentParser) JsonXContent.jsonXContent.createParser(node.getEscapedValue());
+                builder.copyCurrentStructure(parser);
+                return builder;
+            }
+
+            @Override
+            protected void doXContent(XContentBuilder builder, Params params) throws IOException {
+                // noop
+            }
+        };
     }
 
     private QueryBuilder build(ASTWord node) {

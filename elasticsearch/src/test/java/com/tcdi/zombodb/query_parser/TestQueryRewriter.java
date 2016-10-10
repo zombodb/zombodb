@@ -4822,5 +4822,68 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
+
+    @Test
+    public void testIssue143_ASTParsing() throws Exception {
+        assertAST(
+                "subject:(beer or wine and cheese) and ({" +
+                        "\"match_all\":{}" +
+                        "}) not subject:pickles",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Or\n" +
+                        "            Word (fieldname=subject, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "            And\n" +
+                        "               Array (fieldname=subject, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "                  Word (fieldname=subject, operator=CONTAINS, value=wine, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=subject, operator=CONTAINS, value=cheese, index=db.schema.table.index)\n" +
+                        "         JsonQuery (value={\"match_all\":{}})\n" +
+                        "         Not\n" +
+                        "            Word (fieldname=subject, operator=CONTAINS, value=pickles, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue143_Json() throws Exception {
+        assertJson(
+                "subject:(beer or wine and cheese) and ({" +
+                        "\"match_all\":{}" +
+                        "}) not subject:pickles",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"subject\" : \"beer\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"bool\" : {\n" +
+                        "            \"must\" : {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"subject\" : [ \"wine\", \"cheese\" ],\n" +
+                        "                \"minimum_should_match\" : \"2\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"subject\" : \"pickles\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
 }
 

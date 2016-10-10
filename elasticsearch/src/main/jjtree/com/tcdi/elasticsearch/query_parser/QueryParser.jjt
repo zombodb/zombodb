@@ -161,7 +161,7 @@ PARSER_END(QueryParser)
   | <NUMBER: (("-")? (["1"-"9"]) (<DIGIT>)* ("." (<DIGIT>)+)?) | (("0")+ ("." (<DIGIT>)+)) | ("0") >
 
   | <WORD:
-               (~["'","\"",":","*","~","?","!","%","&","(",")",",","<","=",">","[","]","^"," ","\r","\n","\t","\f"] | ("\\"~[]))+
+               (~["'","\"",":","*","~","?","!","%","&","(",")",",","<","=",">","[","]","{","}","^"," ","\r","\n","\t","\f"] | ("\\"~[]))+
            | ("'" ((~["'","*","?","~"," ","\r","\n","\t","\f"] | ("\\"~[]))+) "'")
            | ("\"" ((~["\"","*","?","~"," ","\r","\n","\t","\f"] | ("\\"~[]))+) "\"")
     >
@@ -184,6 +184,7 @@ PARSER_END(QueryParser)
              ) ("~" ("!")? (<DIGIT>)+)?
     >
   | <SCRIPT: "$$" (~[])* "$$" >
+  | <JSON_QUERY: "({" (~[])* "})" >
 
   | <#LETTER: ["a"-"z", "_"] >
   | <#DIGIT: ["0"-"9"] >
@@ -408,6 +409,7 @@ void UnaryExpression() :
         | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
         | ("(" ")") // just ignore empty parens, ie:  ()
         | n = Expansion()
+        | n = JsonQuery()
         | n = BoolQuery()
         | n = Literal()
         | n = Script()
@@ -493,6 +495,18 @@ QueryParserNode Filter() #Filter : {}
 {
     ( <FILTER> "(" Expression() ")" )
     { return jjtThis; }
+}
+
+QueryParserNode JsonQuery() #JsonQuery :
+{
+    Token t;
+}
+{
+    ( t = <JSON_QUERY> )
+    {
+        jjtThis.value = t.image.substring(1, t.image.length()-1);
+        return jjtThis;
+    }
 }
 
 void OptionalBoost(QueryParserNode n) :
