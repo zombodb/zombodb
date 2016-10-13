@@ -56,6 +56,7 @@ static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *f
 static char *wrapper_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 static char *wrapper_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query);
 static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query);
+static char *wrapper_json_aggregate(ZDBIndexDescriptor *indexDescriptor, zdb_json json_agg, char *user_query);
 static char *wrapper_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 static char *wrapper_termlist(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 
@@ -239,6 +240,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->significant_terms       = wrapper_significant_terms;
     desc->implementation->extended_stats          = wrapper_extended_stats;
     desc->implementation->arbitrary_aggregate     = wrapper_arbitrary_aggregate;
+    desc->implementation->json_aggregate          = wrapper_json_aggregate;
     desc->implementation->suggest_terms           = wrapper_suggest_terms;
     desc->implementation->termlist                = wrapper_termlist;
     desc->implementation->describeNestedObject    = wrapper_describeNestedObject;
@@ -466,6 +468,16 @@ static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, ch
     char          *results;
 
     results = elasticsearch_arbitrary_aggregate(indexDescriptor, aggregate_query, user_query);
+
+    MemoryContextSwitchTo(oldContext);
+    return results;
+}
+
+static char *wrapper_json_aggregate(ZDBIndexDescriptor *indexDescriptor, zdb_json json_agg, char *user_query) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    char          *results;
+
+    results = elasticsearch_json_aggregate(indexDescriptor, json_agg, user_query);
 
     MemoryContextSwitchTo(oldContext);
     return results;

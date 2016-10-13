@@ -129,6 +129,46 @@ thai
 (8 rows)
 ```
 
+### `FUNCTION zdb_json_agg(table_name regclass, aggregration_json_spec json, query text) RETURNS json`
+
+> `table_name`: The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index
+> `aggregation_json_spec`: a correctly-defined Elasticsearch aggregation, in JSON
+> `query`: a full text query
+> 
+> returns the Elasticsearch-created JSON results for the specified aggregation.  The data returned is MVCC-safe.
+> 
+> This function can be used when you need more advanced Elasticsearch aggregation support than ZomboDB provides out-of-the-box.
+> 
+> An example using Elasticsearch's "top hits" aggregation, against the tutorial `products` table:
+> 
+> ```sql
+> tutorial=# SELECT *
+tutorial-# FROM zdb_json_aggregate('products', '{
+         "top-tags": {
+             "terms": {
+                 "field": "keywords",
+                 "size": 3
+             },
+             "aggs": {
+                 "top_tag_hits": {
+                     "top_hits": {
+                         "sort": [
+                             {
+                                 "availability_date": {
+                                     "order": "desc"
+                                 }
+                             }
+                         ],
+                         "size" : 1
+                     }
+                 }
+             }
+         }
+     }', 'wooden');
+-[ RECORD 1 ]------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+zdb_json_aggregate | {"top-tags":{"doc_count_error_upper_bound":0,"sum_other_doc_count":4,"buckets":[{"key":"baseball","doc_count":1,"top_tag_hits":{"hits":{"total":1,"max_score":null,"hits":[{"_index":"tutorial.public.products.idx_zdb_products","_type":"data","_id":"0-2","_score":null,"sort":["2015-08-21"]}]}}},{"key":"box","doc_count":1,"top_tag_hits":{"hits":{"total":1,"max_score":null,"hits":[{"_index":"tutorial.public.products.idx_zdb_products","_type":"data","_id":"0-4","_score":null,"sort":["2015-07-01"]}]}}},{"key":"negative space","doc_count":1,"top_tag_hits":{"hits":{"total":1,"max_score":null,"hits":[{"_index":"tutorial.public.products.idx_zdb_products","_type":"data","_id":"0-4","_score":null,"sort":["2015-07-01"]}]}}}]}}
+```
+
 #### ```FUNCTION zdb_arbitrary_aggregate(table_name regclass, aggregate_query json, query text) RETURNS json```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
@@ -163,6 +203,12 @@ thai
 > #extended_stats(fieldname)
 > ```
 > 
+> or
+>
+> ```
+> #json_agg({ ... Elasticsearch JSON aggregation ... })
+>```
+>
 > or
 > 
 > ```
@@ -518,7 +564,7 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 > 
 > Note that if one of the `table_names` elements is actually a view, the view must contain the primary key field name from the underlying table (as determined by `zdb_determine_index()`), otherwise an ERROR will be thrown.
 > 
-> Example (using the "contrib_regression" database that comes with ZomboDB sources):
+> Example (using the "tutorial" database that comes with ZomboDB sources):
 > 
 > ```
 > select * from zdb_multi_search(ARRAY['so_posts', 'so_users'], ARRAY['a', 'b'], NULL, 'java javascript');

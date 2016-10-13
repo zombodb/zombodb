@@ -24,6 +24,7 @@ import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import com.tcdi.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.junit.Test;
 
@@ -4885,5 +4886,78 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}"
         );
     }
+
+    @Test
+    public void testIssue150() throws Exception {
+        QueryRewriter qr = qr("#json_agg({\n" +
+                "  \"top-tags\" : {\n" +
+                "    \"terms\" : {\n" +
+                "      \"field\" : \"tags\",\n" +
+                "      \"size\" : 3\n" +
+                "    },\n" +
+                "    \"aggs\" : {\n" +
+                "      \"top_tag_hits\" : {\n" +
+                "        \"top_hits\" : {\n" +
+                "          \"sort\" : [ {\n" +
+                "            \"last_activity_date\" : {\n" +
+                "              \"order\" : \"desc\"\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"_source\" : {\n" +
+                "            \"include\" : [ \"title\" ]\n" +
+                "          },\n" +
+                "          \"size\" : 1\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}) beer,wine,cheese");
+        SearchRequestBuilder builder = new SearchRequestBuilder(client());
+        builder.setQuery(qr.rewriteQuery());
+        builder.addAggregation(qr.rewriteAggregations());
+
+        assertEquals(
+                "{\n" +
+                        "  \"query\" : {\n" +
+                        "    \"bool\" : {\n" +
+                        "      \"should\" : [ {\n" +
+                        "        \"terms\" : {\n" +
+                        "          \"fulltext_field\" : [ \"beer\", \"wine\", \"cheese\" ]\n" +
+                        "        }\n" +
+                        "      }, {\n" +
+                        "        \"terms\" : {\n" +
+                        "          \"_all\" : [ \"beer\", \"wine\", \"cheese\" ]\n" +
+                        "        }\n" +
+                        "      } ]\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  \"aggregations\" : {\n" +
+                        "    \"top-tags\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"field\" : \"tags\",\n" +
+                        "        \"size\" : 3\n" +
+                        "      },\n" +
+                        "      \"aggs\" : {\n" +
+                        "        \"top_tag_hits\" : {\n" +
+                        "          \"top_hits\" : {\n" +
+                        "            \"sort\" : [ {\n" +
+                        "              \"last_activity_date\" : {\n" +
+                        "                \"order\" : \"desc\"\n" +
+                        "              }\n" +
+                        "            } ],\n" +
+                        "            \"_source\" : {\n" +
+                        "              \"include\" : [ \"title\" ]\n" +
+                        "            },\n" +
+                        "            \"size\" : 1\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
+                builder.toString()
+        );
+    }
+
 }
 

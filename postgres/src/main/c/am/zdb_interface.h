@@ -185,6 +185,7 @@ typedef char *(*ZDBRangeAggregate_function)(ZDBIndexDescriptor *indexDescriptor,
 typedef char *(*ZDBSignificantTerms_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 typedef char *(*ZDBExtendedStats_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query);
 typedef char *(*ZDBArbitraryAggregate_function)(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query);
+typedef char *(*ZDBJsonAggregate_function)(ZDBIndexDescriptor *indexDescriptor, zdb_json json_aggregate, char *user_query);
 typedef char *(*ZDBSuggestTerms_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 typedef char *(*ZDBTermList_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 
@@ -229,6 +230,7 @@ struct ZDBIndexImplementation {
     ZDBSignificantTerms_function   significant_terms;
     ZDBExtendedStats_function      extended_stats;
     ZDBArbitraryAggregate_function arbitrary_aggregate;
+	ZDBJsonAggregate_function      json_aggregate;
     ZDBSuggestTerms_function       suggest_terms;
     ZDBTermList_function           termlist;
 

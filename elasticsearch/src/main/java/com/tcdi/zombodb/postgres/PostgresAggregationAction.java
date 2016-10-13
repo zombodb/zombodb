@@ -64,7 +64,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
 
             if (ab != null) {
                 builder.addAggregation(ab);
-                if (!rewriter.isAggregateNested()) {
+                if (!rewriter.hasJsonAggregate() && !rewriter.isAggregateNested()) {
                     builder.addAggregation(missing("missing").field(rewriter.getAggregateFieldName()));
                 }
             } else if (tsb != null) {

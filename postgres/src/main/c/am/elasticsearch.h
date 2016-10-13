@@ -39,6 +39,7 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
 char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query);
 char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query);
+char *elasticsearch_json_aggregate(ZDBIndexDescriptor *indexDescriptor, zdb_json json_agg, char *user_query);
 char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 

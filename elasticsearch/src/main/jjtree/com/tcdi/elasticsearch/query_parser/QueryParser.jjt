@@ -138,6 +138,7 @@ PARSER_END(QueryParser)
 
   | <NESTED: "#nested" >
   | <TALLY: "#tally" >
+  | <JSON_AGG: "#json_agg" >
   | <RANGE: "#range" >
   | <SIGNIFICANT_TERMS: "#significant_terms" >
   | <EXTENDED_STATS: "#extended_stats" >
@@ -202,7 +203,7 @@ private ASTQueryTree parse0() #QueryTree :
 
 void Aggregations() : {}
 {
-    ( Tally() | RangeAggregate() | SignificantTerms() | ExtendedStats() | Suggest() )
+    ( Tally() | RangeAggregate() | SignificantTerms() | ExtendedStats() | JsonAgg() | Suggest() )
 }
 
 void Tally() #Tally :
@@ -214,6 +215,17 @@ void Tally() #Tally :
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
+    }
+}
+
+void JsonAgg() #JsonAgg :
+{
+    Token t;
+}
+{
+    ( <JSON_AGG> t = <JSON_QUERY> )
+    {
+         jjtThis.value = t.image.substring(1, t.image.length()-1);
     }
 }
 

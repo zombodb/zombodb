@@ -29,7 +29,9 @@ import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.Fuzziness;
+import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 import org.elasticsearch.index.query.*;
@@ -148,6 +150,7 @@ public abstract class QueryRewriter {
     private Map<String, String> arrayData;
 
     protected final IndexMetadataManager metadataManager;
+    private boolean hasJsonAggregate = false;
 
     public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
         this.client = client;
@@ -183,7 +186,7 @@ public abstract class QueryRewriter {
         performOptimizations(client);
 
         if (!metadataManager.getMetadataForMyIndex().alwaysResolveJoins()) {
-            if (canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
+            if (!hasJsonAggregate && canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
                 metadataManager.setMyIndex(metadataManager.getUsedIndexes().iterator().next());
             }
         }
@@ -229,6 +232,10 @@ public abstract class QueryRewriter {
 
     public boolean isAggregateNested() {
         return tree.getAggregate().isNested();
+    }
+
+    public boolean hasJsonAggregate() {
+        return hasJsonAggregate;
     }
 
     public SuggestBuilder.SuggestionBuilder rewriteSuggestions() {
@@ -295,6 +302,8 @@ public abstract class QueryRewriter {
 
         if (agg instanceof ASTTally)
             ab = build((ASTTally) agg);
+        else if (agg instanceof ASTJsonAgg)
+            ab = build((ASTJsonAgg) agg);
         else if (agg instanceof ASTRangeAggregate)
             ab = build((ASTRangeAggregate) agg);
         else if (agg instanceof ASTSignificantTerms)
@@ -415,6 +424,21 @@ public abstract class QueryRewriter {
 
             return tb;
         }
+    }
+
+    private AbstractAggregationBuilder build(final ASTJsonAgg node) {
+        hasJsonAggregate = true;
+        return new AbstractAggregationBuilder("zdb_json", null) {
+            @Override
+            public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+                Map<String, Object> agg = new ObjectMapper().readValue(node.getEscapedValue(), Map.class);
+                for (Map.Entry<String, Object> entry : agg.entrySet()) {
+                    builder.field(entry.getKey());
+                    builder.value(entry.getValue());
+                }
+                return builder;
+            }
+        };
     }
 
     /**

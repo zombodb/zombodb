@@ -657,6 +657,27 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
     return response->data;
 }
 
+char *elasticsearch_json_aggregate(ZDBIndexDescriptor *indexDescriptor, zdb_json json_agg, char *user_query) {
+    StringInfo request  = makeStringInfo();
+    StringInfo endpoint = makeStringInfo();
+    StringInfo query;
+    StringInfo response;
+
+    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    if (indexDescriptor->searchPreference != NULL)
+        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+
+    query = buildQuery(indexDescriptor, &user_query, 1, true);
+    appendStringInfo(request, "#json_agg(%s) %s ", json_agg, query->data);
+    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
+
+    freeStringInfo(request);
+    freeStringInfo(endpoint);
+    freeStringInfo(query);
+
+    return response->data;
+}
+
 char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *user_query, int64 max_terms) {
     StringInfo request  = makeStringInfo();
     StringInfo endpoint = makeStringInfo();
