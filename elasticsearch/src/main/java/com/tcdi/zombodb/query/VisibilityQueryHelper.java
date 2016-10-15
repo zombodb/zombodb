@@ -16,6 +16,7 @@
 package com.tcdi.zombodb.query;
 
 import org.apache.lucene.index.*;
+import org.apache.lucene.queries.TermsFilter;
 import org.apache.lucene.search.FieldCache;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -24,6 +25,7 @@ import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.util.*;
 import org.elasticsearch.common.hppc.IntObjectMap;
 import org.elasticsearch.common.hppc.IntObjectOpenHashMap;
+import org.elasticsearch.common.lucene.search.Queries;
 import org.elasticsearch.search.internal.SearchContext;
 
 import java.io.IOException;
@@ -63,7 +65,7 @@ final class VisibilityQueryHelper {
 
         final Map<BytesRef, List<VisibilityInfo>> map = new HashMap<>();
         searcher.search(
-                new FilteredQuery(query, SearchContext.current().filterCache().cache(new ZomboDBTermsFilter(field, updatedCtids))),
+                new FilteredQuery(Queries.newMatchAllQuery(), SearchContext.current().filterCache().cache(new ZomboDBTermsFilter(field, updatedCtids))),
                 new ZomboDBTermsCollector(field) {
                     private SortedDocValues prevCtids;
                     private SortedNumericDocValues xids;
