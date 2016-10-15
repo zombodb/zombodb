@@ -16,8 +16,6 @@
 package com.tcdi.zombodb.query;
 
 import org.apache.lucene.index.*;
-import org.apache.lucene.queries.TermFilter;
-import org.apache.lucene.queries.TermsFilter;
 import org.apache.lucene.search.FieldCache;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -26,7 +24,7 @@ import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.util.*;
 import org.elasticsearch.common.hppc.IntObjectMap;
 import org.elasticsearch.common.hppc.IntObjectOpenHashMap;
-import org.elasticsearch.common.lucene.search.Queries;
+import org.elasticsearch.search.internal.SearchContext;
 
 import java.io.IOException;
 import java.util.*;
@@ -38,7 +36,7 @@ final class VisibilityQueryHelper {
 
     static IntObjectMap<FixedBitSet> determineVisibility(final Query query, final String field, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, IndexReader reader) throws IOException {
         final IntObjectMap<FixedBitSet> visibilityBitSets = new IntObjectOpenHashMap<>();
-        final Set<BytesRef> updatedCtids = new HashSet<>();
+        final Set<BytesRef> updatedCtids = new TreeSet<>();
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //
@@ -47,24 +45,14 @@ final class VisibilityQueryHelper {
         // used below to determine visibility
         //
 
-        searcher.search(
-                new FilteredQuery(Queries.newMatchAllQuery(), new TermFilter(new Term("_type", "state"))),
-                new ZomboDBTermsCollector("_ctid") {
-
-                    private BinaryDocValues fromDocTerms;
-
-                    @Override
-                    public void collect(int doc) throws IOException {
-                        final BytesRef term = fromDocTerms.get(doc);
-                        updatedCtids.add(BytesRef.deepCopyOf(term));
-                    }
-
-                    @Override
-                    public void setNextReader(AtomicReaderContext context) throws IOException {
-                        fromDocTerms = FieldCache.DEFAULT.getTerms(context.reader(), "_ctid", false);
-                    }
-                }
-        );
+        Terms ctidTerms = MultiFields.getTerms(reader, "_ctid");
+        if (ctidTerms != null) {
+            TermsEnum ctids = ctidTerms.iterator(null);
+            BytesRef ctid;
+            while ((ctid = ctids.next()) != null) {
+                updatedCtids.add(BytesRef.deepCopyOf(ctid));
+            }
+        }
 
         if (updatedCtids.size() == 0)
             return visibilityBitSets;
@@ -73,9 +61,9 @@ final class VisibilityQueryHelper {
         // build a map of {@link VisibilityInfo} objects by each _prev_ctid
         //
 
-        final Map<String, List<VisibilityInfo>> map = new HashMap<>();
+        final Map<BytesRef, List<VisibilityInfo>> map = new HashMap<>();
         searcher.search(
-                new FilteredQuery(Queries.newMatchAllQuery(), new TermsFilter(field, updatedCtids.toArray(new BytesRef[updatedCtids.size()]))),
+                new FilteredQuery(query, SearchContext.current().filterCache().cache(new ZomboDBTermsFilter(field, updatedCtids))),
                 new ZomboDBTermsCollector(field) {
                     private SortedDocValues prevCtids;
                     private SortedNumericDocValues xids;
@@ -86,12 +74,12 @@ final class VisibilityQueryHelper {
                     public void collect(int doc) throws IOException {
                         xids.setDocument(doc);
                         long xid = xids.valueAt(0);
-                        String prevCtid = prevCtids.get(doc).utf8ToString();
+                        BytesRef prevCtid = prevCtids.get(doc);
 
                         List<VisibilityInfo> matchingDocs = map.get(prevCtid);
 
                         if (matchingDocs == null)
-                            map.put(prevCtid, matchingDocs = new ArrayList<>());
+                            map.put(BytesRef.deepCopyOf(prevCtid), matchingDocs = new ArrayList<>());
                         matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, xid));
                     }
 
@@ -104,6 +92,9 @@ final class VisibilityQueryHelper {
                     }
                 }
         );
+
+        if (map.isEmpty())
+            return visibilityBitSets;
 
         //
         // pick out the first VisibilityInfo for each document that is visible & committed
