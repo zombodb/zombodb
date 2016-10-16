@@ -38,7 +38,7 @@ final class VisibilityQueryHelper {
 
     static IntObjectMap<FixedBitSet> determineVisibility(final Query query, final String field, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, IndexReader reader) throws IOException {
         final IntObjectMap<FixedBitSet> visibilityBitSets = new IntObjectOpenHashMap<>();
-        final Set<BytesRef> updatedCtids = new TreeSet<>();
+        final Set<BytesRef> updatedCtids = new HashSet<>();
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //
@@ -113,7 +113,7 @@ final class VisibilityQueryHelper {
         };
         TermsEnum termsEnum = MultiFields.getFields(reader).terms("_zdb_committed_xid").iterator(null);
         for (List<VisibilityInfo> visibility : map.values()) {
-            CollectionUtil.timSort(visibility, new Comparator<VisibilityInfo>() {
+            CollectionUtil.introSort(visibility, new Comparator<VisibilityInfo>() {
                 @Override
                 public int compare(VisibilityInfo o1, VisibilityInfo o2) {
                     return Long.compare(o2.xid, o1.xid);
