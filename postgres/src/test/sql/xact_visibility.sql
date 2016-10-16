@@ -11,5 +11,8 @@ INSERT INTO xact_test (title) values ('test 3');
 
 SELECT * FROM xact_test WHERE zdb('xact_test', ctid) ==> 'title:test*' ORDER BY id;
 
+UPDATE xact_test SET title = 'foo' WHERE title = 'test 1';
+SELECT * FROM xact_test WHERE zdb('xact_test', ctid) ==> '' ORDER BY id;
+
 SELECT * FROM zdb_tally('xact_test', 'title', '^.*', '', 5000, 'term');
 ABORT;

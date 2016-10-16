@@ -15,10 +15,19 @@ SELECT * FROM xact_test WHERE zdb('xact_test', ctid) ==> 'title:test*' ORDER BY 
   3 | test 3
 (3 rows)
 
+UPDATE xact_test SET title = 'foo' WHERE title = 'test 1';
+SELECT * FROM xact_test WHERE zdb('xact_test', ctid) ==> '' ORDER BY id;
+ id | title  
+----+--------
+  1 | foo
+  2 | test 2
+  3 | test 3
+(3 rows)
+
 SELECT * FROM zdb_tally('xact_test', 'title', '^.*', '', 5000, 'term');
   term  | count 
 --------+-------
- test 1 |     1
+ foo    |     1
  test 2 |     1
  test 3 |     1
 (3 rows)

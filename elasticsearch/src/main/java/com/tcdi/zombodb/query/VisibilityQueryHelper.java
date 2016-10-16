@@ -111,19 +111,23 @@ final class VisibilityQueryHelper {
                 return new BytesRef(this.bytes(), 0, this.length());
             }
         };
-        TermsEnum termsEnum = MultiFields.getFields(reader).terms("_zdb_committed_xid").iterator(null);
+
+        Terms committedXidsTerms = MultiFields.getFields(reader).terms("_zdb_committed_xid");
+        TermsEnum committedXidsEnum = committedXidsTerms == null ? null : committedXidsTerms.iterator(null);
         for (List<VisibilityInfo> visibility : map.values()) {
             CollectionUtil.introSort(visibility, new Comparator<VisibilityInfo>() {
                 @Override
                 public int compare(VisibilityInfo o1, VisibilityInfo o2) {
-                    return Long.compare(o2.xid, o1.xid);
+                    int cmp = Long.compare(o2.xid, o1.xid);
+                    cmp = cmp == 0 ? Integer.compare(o2.readerOrd, o1.readerOrd) : cmp;
+                    return cmp == 0 ? Integer.compare(o2.docid, o1.docid) : cmp;
                 }
             });
 
             boolean foundVisible = false;
             for (VisibilityInfo mapping : visibility) {
 
-                if (foundVisible || mapping.xid >= xmax || activeXids.contains(mapping.xid) || !isCommitted(termsEnum, mapping.xid, bytesRefBuilder)) {
+                if (foundVisible || mapping.xid >= xmax || activeXids.contains(mapping.xid) || (mapping.xid != myXid && !isCommitted(committedXidsEnum, mapping.xid, bytesRefBuilder))) {
                     // document is not visible to us
                     FixedBitSet visibilityBitset = visibilityBitSets.get(mapping.readerOrd);
                     if (visibilityBitset == null)
@@ -141,6 +145,9 @@ final class VisibilityQueryHelper {
     private static boolean isCommitted(TermsEnum termsEnum, long xid, BytesRefBuilder builder) throws IOException {
         if (KNOWN_COMMITTED_XIDS.contains(xid))
             return true;
+
+        if (termsEnum == null)
+            return false;
 
         NumericUtils.longToPrefixCoded(xid, 0, builder);
         boolean isCommitted = termsEnum.seekExact(builder.toBytesRef());
