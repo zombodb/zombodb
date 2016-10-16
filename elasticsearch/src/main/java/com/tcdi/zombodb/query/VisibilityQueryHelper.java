@@ -65,7 +65,7 @@ final class VisibilityQueryHelper {
 
         final Map<BytesRef, List<VisibilityInfo>> map = new HashMap<>();
         searcher.search(
-                new FilteredQuery(Queries.newMatchAllQuery(), SearchContext.current().filterCache().cache(new ZomboDBTermsFilter(field, updatedCtids))),
+                new FilteredQuery(Queries.newMatchAllQuery(), SearchContext.current().filterCache().cache(new TermsFilter(field, updatedCtids.toArray(new BytesRef[updatedCtids.size()])))),
                 new ZomboDBTermsCollector(field) {
                     private SortedDocValues prevCtids;
                     private SortedNumericDocValues xids;
