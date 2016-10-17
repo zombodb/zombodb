@@ -205,8 +205,6 @@ typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDesc
 
 typedef void (*ZDBMarkTransactionCommitted)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
-typedef uint64 *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
-
 typedef void (*ZDBTransactionFinish_function)(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
 struct ZDBIndexImplementation {
@@ -249,8 +247,6 @@ struct ZDBIndexImplementation {
     ZDBIndexBatchInsertFinish_function batchInsertFinish;
 
 	ZDBMarkTransactionCommitted markTransactionCommitted;
-
-    ZDBVacuumSupport_function vacuumSupport;
 
     ZDBTransactionFinish_function transactionFinish;
 };

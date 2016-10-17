@@ -76,8 +76,6 @@ static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
-static uint64 *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
-
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
 static void validate_url(char *str) {
@@ -252,7 +250,6 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->batchInsertRow          = wrapper_batchInsertRow;
     desc->implementation->batchInsertFinish       = wrapper_batchInsertFinish;
 	desc->implementation->markTransactionCommitted = wrapper_markTransactionCommitted;
-    desc->implementation->vacuumSupport           = wrapper_vacuumSupport;
     desc->implementation->transactionFinish       = wrapper_transactionFinish;
 
     allocated_descriptors = lappend(allocated_descriptors, desc);
@@ -595,19 +592,6 @@ static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor
 	MemoryContextDelete(me);
 }
 
-
-static uint64 *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {
-    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
-    uint64 *xids;
-
-    Assert(!indexDescriptor->isShadow);
-
-    xids = elasticsearch_vacuumSupport(indexDescriptor, jsonXids, nxids);
-
-    MemoryContextSwitchTo(oldContext);
-
-    return xids;
-}
 
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_transactionFinish", 512, 64, 64);

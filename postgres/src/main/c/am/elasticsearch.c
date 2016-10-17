@@ -992,23 +992,6 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 	checkForBulkError(response, "mark transaction committed");
 }
 
-uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids) {
-    StringInfo endpoint = makeStringInfo();
-    StringInfo request  = makeStringInfo();
-    StringInfo response;
-
-    appendStringInfo(request, "%s", jsonXids);
-    appendStringInfo(endpoint, "%s/%s/_zdbvacsup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
-
-    freeStringInfo(endpoint);
-    freeStringInfo(request);
-
-    memcpy(nxids, response->data, sizeof(uint32));
-    response->data += sizeof(uint32);
-    return (uint64 *) response->data;
-}
-
 void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {
     batchInsertDataList = NULL;
 }

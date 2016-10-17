@@ -41,13 +41,10 @@ import static org.elasticsearch.rest.RestStatus.OK;
 
 public class ZombodbBulkAction extends BaseRestHandler {
 
-    private ClusterService clusterService;
-
     @Inject
-    public ZombodbBulkAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
+    public ZombodbBulkAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
 
-        this.clusterService = clusterService;
         controller.registerHandler(POST, "/{index}/{type}/_zdbbulk", this);
     }
 
