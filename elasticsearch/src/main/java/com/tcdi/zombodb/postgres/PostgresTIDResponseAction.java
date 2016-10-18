@@ -21,7 +21,9 @@ import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchScrollRequestBuilder;
+import org.elasticsearch.action.search.SearchScrollAction;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -75,7 +77,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             query = buildJsonQueryFromRequestContent(client, request, true, false);
             parseEnd = System.nanoTime();
 
-            SearchRequestBuilder builder = new SearchRequestBuilder(client);
+            SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
             builder.setIndices(query.getIndexName());
             builder.setTypes("data");
             builder.setSize(32768);
@@ -83,7 +85,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setSearchType(SearchType.SCAN);
             builder.setPreference(request.param("preference"));
             builder.setTrackScores(true);
-            builder.setQueryCache(true);
+            builder.setRequestCache(true);
             builder.setFetchSource(false);
             builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
@@ -151,7 +153,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         offset += Utils.encodeFloat(0, results, offset);
 
         // kick off the first scroll request
-        ActionFuture<SearchResponse> future = client.searchScroll(new SearchScrollRequestBuilder(client)
+        ActionFuture<SearchResponse> future = client.searchScroll(new SearchScrollRequestBuilder(client, SearchScrollAction.INSTANCE)
                 .setScrollId(searchResponse.getScrollId())
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .request()
@@ -170,10 +172,9 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             if (cnt + searchResponse.getHits().getHits().length < many) {
                 // go ahead and do the next scroll request
                 // while we walk the hits of this chunk
-                future = client.searchScroll(new SearchScrollRequestBuilder(client)
+                future = client.searchScroll(new SearchScrollRequestBuilder(client, SearchScrollAction.INSTANCE)
                         .setScrollId(searchResponse.getScrollId())
                         .setScroll(TimeValue.timeValueMinutes(10))
-                        .listenerThreaded(true)
                         .request()
                 );
             }

@@ -15,18 +15,13 @@
  */
 package com.tcdi.zombodb.query;
 
-import org.apache.lucene.index.AtomicReaderContext;
+import com.carrotsearch.hppc.IntObjectMap;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.*;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
-import org.elasticsearch.common.hppc.IntObjectMap;
-import org.elasticsearch.common.lang3.ArrayUtils;
-import org.elasticsearch.search.internal.SearchContext;
 
 import java.io.IOException;
 import java.util.Set;
@@ -57,10 +52,24 @@ class ZomboDBVisibilityQuery extends Query {
             private int searchHash = reader.hashCode();
 
             @Override
-            public DocIdSet getDocIdSet(AtomicReaderContext context, Bits acceptDocs) throws IOException {
+            public DocIdSet getDocIdSet(LeafReaderContext context, Bits acceptDocs) throws IOException {
                 if (visibilityBitSets == null)
                     visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, activeXids, reader);
-                return visibilityBitSets.get(context.ord);
+                final FixedBitSet bitset = visibilityBitSets.get(context.ord);
+                if (bitset == null)
+                    return null;
+                else
+                    return new DocIdSet() {
+                        @Override
+                        public DocIdSetIterator iterator() throws IOException {
+                            return new BitSetIterator(bitset, bitset.length());
+                        }
+
+                        @Override
+                        public long ramBytesUsed() {
+                            return 0;
+                        }
+                    };
             }
 
             @Override
@@ -76,19 +85,19 @@ class ZomboDBVisibilityQuery extends Query {
                 VisFilter eq = (VisFilter) obj;
                 return outer.equals(eq.outer) && eq.searchHash == searchHash;
             }
+
+            @Override
+            public String toString(String field) {
+                return outer.toString();
+            }
         }
 
-        return new ConstantScoreQuery(SearchContext.current().filterCache().cache(new VisFilter()));
-    }
-
-    @Override
-    public void extractTerms(Set<Term> terms) {
-
+        return new ConstantScoreQuery(new QueryWrapperFilter(new VisFilter()));
     }
 
     @Override
     public String toString(String field) {
-        return "visibility(" + fieldname + ", query=" + query + ", myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ")";
+        return "visibility(" + fieldname + ", query=" + query + ", myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + activeXids + ")";
     }
 
     @Override

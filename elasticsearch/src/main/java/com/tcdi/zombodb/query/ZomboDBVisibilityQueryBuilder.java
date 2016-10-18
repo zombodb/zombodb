@@ -16,13 +16,12 @@
 package com.tcdi.zombodb.query;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.index.query.BaseQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 
 import java.io.IOException;
 import java.util.Collection;
 
-public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
+public class ZomboDBVisibilityQueryBuilder extends QueryBuilder {
 
     private QueryBuilder query;
     private final String fieldname;

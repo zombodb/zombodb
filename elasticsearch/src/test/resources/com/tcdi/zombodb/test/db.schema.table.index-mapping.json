@@ -5,11 +5,12 @@
         "enabled": true
       },
       "_all": {
-        "enabled": false
+        "enabled": false,
+        "analyzer": "phrase"
       },
       "_field_names": {
-        "index": "no",
-        "store": false
+        "type": "_field_names",
+        "enabled": false
       },
       "_meta": {
         "primary_key": "id"
@@ -97,8 +98,8 @@
         "analyzer": "phrase"
       },
       "_field_names": {
-        "index": "no",
-        "store": false
+        "enabled": false,
+        "type": "_field_names"
       },
       "_parent": {
         "type": "xact"
@@ -179,8 +180,8 @@
           "type": "string",
           "index_options": "positions",
           "include_in_all": "true",
+          "analyzer": "fulltext_with_shingles",
           "search_analyzer": "fulltext_with_shingles_search",
-          "index_analyzer": "fulltext_with_shingles",
           "fielddata": {
             "format": "disabled"
           },

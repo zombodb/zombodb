@@ -16,6 +16,7 @@
  */
 package com.tcdi.zombodb.query_parser.rewriters;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.QueryParser;
@@ -28,17 +29,16 @@ import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.unit.Fuzziness;
-import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 import org.elasticsearch.index.query.*;
+import org.elasticsearch.script.Script;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
-import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogram;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramBuilder;
+import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.significant.SignificantTermsBuilder;
@@ -50,11 +50,12 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
-import java.util.*;
-import java.util.regex.Pattern;
+import java.util.AbstractCollection;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 
 import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
-import static org.elasticsearch.index.query.FilterBuilders.*;
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 
@@ -108,7 +109,7 @@ public abstract class QueryRewriter {
     /**
      * Container for range aggregation spec
      */
-    static class RangeSpecEntry {
+    public static class RangeSpecEntry {
         public String key;
         public Double from;
         public Double to;
@@ -117,7 +118,7 @@ public abstract class QueryRewriter {
     /**
      * Container for date range aggregation spec
      */
-    static class DateRangeSpecEntry {
+    public static class DateRangeSpecEntry {
         public String key;
         public String from;
         public String to;
@@ -374,38 +375,39 @@ public abstract class QueryRewriter {
 
         if (useHistogram) {
             DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
+                    .minDocCount(1)  // default: 0 for ES 2.x, 1 for 1.x
                     .field(getAggregateFieldName(agg) + DateSuffix)
                     .order(stringToDateHistogramOrder(agg.getSortOrder()))
                     .offset(intervalOffset);
 
             switch (interval) {
                 case year:
-                    dhb.interval(DateHistogram.Interval.YEAR);
+                    dhb.interval(DateHistogramInterval.YEAR);
                     dhb.format("yyyy");
                     break;
                 case month:
-                    dhb.interval(DateHistogram.Interval.MONTH);
+                    dhb.interval(DateHistogramInterval.MONTH);
                     dhb.format("yyyy-MM");
                     break;
                 case week:
-                    dhb.interval(DateHistogram.Interval.WEEK);
+                    dhb.interval(DateHistogramInterval.WEEK);
                     dhb.format("yyyy-MM-dd");
                     break;
                 case day:
-                    dhb.interval(DateHistogram.Interval.DAY);
+                    dhb.interval(DateHistogramInterval.DAY);
                     dhb.format("yyyy-MM-dd");
                     break;
                 case hour:
-                    dhb.interval(DateHistogram.Interval.HOUR);
+                    dhb.interval(DateHistogramInterval.HOUR);
                     dhb.format("yyyy-MM-dd HH");
                     break;
                 case minute:
-                    dhb.interval(DateHistogram.Interval.MINUTE);
+                    dhb.interval(DateHistogramInterval.MINUTE);
                     dhb.format("yyyy-MM-dd HH:mm");
                     break;
                 case second:
                     dhb.format("yyyy-MM-dd HH:mm:ss");
-                    dhb.interval(DateHistogram.Interval.SECOND);
+                    dhb.interval(DateHistogramInterval.SECOND);
                     break;
                 default:
                     throw new QueryRewriteException("Unsupported date histogram interval: " + agg.getStem());
@@ -419,8 +421,13 @@ public abstract class QueryRewriter {
                     .shardSize(agg.getShardSize())
                     .order(stringToTermsOrder(agg.getSortOrder()));
 
-            if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
-                tb.include(agg.getStem(), Pattern.CASE_INSENSITIVE);
+            if ("string".equalsIgnoreCase(md.getType(agg.getFieldname()))) {
+                // Thats how it is in ES 2.x: no "^" or "$", match full string
+                String stem = agg.getStem();
+                if (stem.startsWith("^"))
+                    stem = stem.substring(1);
+                tb.include(stem);
+            }
 
             return tb;
         }
@@ -454,7 +461,7 @@ public abstract class QueryRewriter {
 
     private static <T> T createRangeSpec(Class<T> type, String value) {
         try {
-            ObjectMapper om = new ObjectMapper();
+            ObjectMapper om = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
             return om.readValue(value, type);
         } catch (IOException ioe) {
             throw new QueryRewriteException("Problem decoding range spec: " + value, ioe);
@@ -510,8 +517,13 @@ public abstract class QueryRewriter {
                 .field(getAggregateFieldName(agg))
                 .size(agg.getMaxTerms());
 
-        if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
-            stb.include(agg.getStem(), Pattern.CASE_INSENSITIVE);
+        if ("string".equalsIgnoreCase(md.getType(agg.getFieldname()))) {
+            // Thats how it is in ES 2.x: no "^" or "$", match full string
+            String stem = agg.getStem();
+            if (stem.startsWith("^"))
+                stem = stem.substring(1);
+            stb.include(stem);
+        }
 
         return stb;
     }
@@ -536,16 +548,16 @@ public abstract class QueryRewriter {
         }
     }
 
-    private static DateHistogram.Order stringToDateHistogramOrder(String s) {
+    private static Histogram.Order stringToDateHistogramOrder(String s) {
         switch (s) {
             case "term":
-                return DateHistogram.Order.KEY_ASC;
+                return Histogram.Order.KEY_ASC;
             case "count":
-                return DateHistogram.Order.COUNT_ASC;
+                return Histogram.Order.COUNT_ASC;
             case "reverse_term":
-                return DateHistogram.Order.KEY_DESC;
+                return Histogram.Order.KEY_DESC;
             case "reverse_count":
-                return DateHistogram.Order.COUNT_DESC;
+                return Histogram.Order.COUNT_DESC;
             default:
                 return null;
         }
@@ -658,7 +670,7 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(withNestedPath, fb);
             else
-                return filteredQuery(matchAllQuery(), nestedFilter(withNestedPath, fb).join(false));
+                return boolQuery().filter(nestedQuery(withNestedPath, fb));
         } else {
             return fb;
         }
@@ -700,7 +712,7 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder build(final ASTJsonQuery node) {
-        return new BaseQueryBuilder() {
+        return new QueryBuilder() {
             @Override
             public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
                 JsonXContentParser parser = (JsonXContentParser) JsonXContent.jsonXContent.createParser(node.getEscapedValue());
@@ -720,14 +732,13 @@ public abstract class QueryRewriter {
             @Override
             public QueryBuilder b(QueryParserNode n) {
                 Object value = n.getValue();
-
                 return termQuery(n.getFieldname(), value);
             }
         });
     }
 
     private QueryBuilder build(ASTScript node) {
-        return filteredQuery(matchAllQuery(), scriptFilter(node.getValue().toString()));
+        return scriptQuery(new Script(node.getValue().toString()));
     }
 
     private QueryBuilder build(final ASTPhrase node) {
@@ -815,11 +826,7 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                String nullValue = metadataManager.getMetadataForField(n.getFieldname()).getNullValue(n.getFieldname());
-                MissingFilterBuilder filter = missingFilter(n.getFieldname());
-                if (nullValue != null)
-                    filter.nullValue(true);
-                return filteredQuery(matchAllQuery(), filter);
+                return boolQuery().mustNot(existsQuery(n.getFieldname()));
             }
         });
     }
@@ -840,7 +847,7 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                return filteredQuery(matchAllQuery(), existsFilter(n.getFieldname()));
+                return existsQuery(n.getFieldname());
             }
         });
     }
@@ -934,12 +941,9 @@ public abstract class QueryRewriter {
                         };
                     }
                 }
-                if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
-                    TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
-                    return filteredQuery(matchAllQuery(), builder);
-                } else {
-                    final Iterable<Object> finalItr = itr;
-                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+
+                final Iterable<Object> finalItr = itr;
+                TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
                         @Override
                         public Iterator<Object> iterator() {
                             return finalItr.iterator();
@@ -951,9 +955,20 @@ public abstract class QueryRewriter {
                         }
                     });
 
-                    if (minShouldMatch > 1)
-                        builder.minimumMatch(minShouldMatch);
-                    return builder;
+                if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
+                    return boolQuery().filter(builder);
+                } else {
+                    if (cnt == minShouldMatch && minShouldMatch > 1){
+                        BoolQueryBuilder fb = boolQuery();
+                        for (Iterator<Object> i = finalItr.iterator(); i.hasNext();){
+                            fb.must(termQuery(n.getFieldname(), i.next()));
+                        }
+                        return fb;
+                    }
+                    if (minShouldMatch == 1)
+                        return builder;
+
+                    return boolQuery().filter(builder);
                 }
             }
         });
@@ -970,7 +985,7 @@ public abstract class QueryRewriter {
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
                     final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
-                    return filteredQuery(matchAllQuery(), termsFilter(node.getFieldname(), st.getAllTokens()).cache(true));
+                    return filteredQuery(matchAllQuery(), termsQuery(node.getFieldname(), st.getAllTokens()));
                 }
             }
         });
@@ -1161,7 +1176,7 @@ public abstract class QueryRewriter {
             }
 
             case FUZZY_CONCEPT:
-                return fuzzyLikeThisFieldQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80).fuzziness(Fuzziness.AUTO);
+                return moreLikeThisQuery(node.getFieldname()).likeText(String.valueOf(node.getValue())).maxQueryTerms(80);
 
             default:
                 throw new QueryRewriteException("Unexpected operator: " + node.getOperator());
@@ -1173,7 +1188,7 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(), fb);
             else
-                return filteredQuery(matchAllQuery(), nestedFilter(node.getNestedPath(), fb).join(false));
+                return boolQuery().filter(nestedQuery(node.getNestedPath(), fb));
         } else if (!node.isNested(metadataManager)) {
             if (_isBuildingAggregate)
                 return matchAllQuery();

@@ -1,5 +1,9 @@
 language: java
 
+env:
+  matrix:
+    - ES=2.x
+
 sudo: required
 dist: trusty
 
@@ -7,7 +11,7 @@ before_install:
   - free
   - ls -la /etc/init.d/
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
-  - echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
+  - echo "deb https://packages.elastic.co/elasticsearch/$ES/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-$ES.list
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
   - sudo apt-get install -y rpm
@@ -40,10 +44,10 @@ script:
   - sudo cp /usr/lib/postgresql/9.5/lib/zombodb.so /usr/lib/postgresql/9.5/lib/plugins/zombodb.so
   - sudo rm /usr/lib/postgresql/9.5/lib/zombodb.so
   - sudo src/main/shell/hack-configs-for-travisci.sh
-  - sudo /usr/share/elasticsearch/bin/plugin -i zombodb -u file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+  - sudo /usr/share/elasticsearch/bin/plugin install file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
   - sudo ES_MAX_MEM=512m /etc/init.d/elasticsearch start
   - sudo /etc/init.d/postgresql start 9.5
-  - cat /etc/elasticsearch/elasticsearch.yml
+  - sudo cat /etc/elasticsearch/elasticsearch.yml
   - cat /etc/postgresql/9.5/main/postgresql.conf
 #  - sudo -u postgres createuser -s travis
   - sudo sleep 10
@@ -52,7 +56,7 @@ script:
 after_failure:
   - sudo cat regression.diffs
   - sudo cat /var/log/postgresql/*.log
-  - sudo cat /var/log/elasticsearch/*.log 
+  - sudo cat /var/log/elasticsearch/*.log
   - df -h
   - ps auwwx
   - sudo dmesg

@@ -532,7 +532,8 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
         /* otherwise, build a mapping based on the field type */
         typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(tupdesc->attrs[i]->atttypid)));
         appendStringInfo(result, "\"%s\": {", name);
-        appendStringInfo(result, "\"store\":false,");
+        bool is_json = (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0);
+        if (!is_json) appendStringInfo(result, "\"store\":false,");
 
         if (strcmp("fulltext", typename) == 0) {
             /* phrase-indexed field */
@@ -547,7 +548,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"type\": \"string\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"index_analyzer\": \"fulltext_with_shingles\",");
+            appendStringInfo(result, "\"analyzer\": \"fulltext_with_shingles\",");
             appendStringInfo(result, "\"search_analyzer\": \"fulltext_with_shingles_search\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");
@@ -752,13 +753,11 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
 				/* arrays need a null_value set so that NULL can be searched */
 				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
-        } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
+        } else if (is_json) {
             /* json field */
             appendStringInfo(result, "\"type\": \"nested\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
             appendStringInfo(result, "\"include_in_parent\":true,");
             appendStringInfo(result, "\"include_in_root\":true,");
-            appendStringInfo(result, "\"ignore_above\":32000,");
             appendStringInfo(result, "\"include_in_all\":true");
 
         } else {

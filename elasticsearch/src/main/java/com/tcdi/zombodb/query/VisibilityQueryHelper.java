@@ -15,16 +15,14 @@
  */
 package com.tcdi.zombodb.query;
 
+import com.carrotsearch.hppc.IntObjectHashMap;
+import com.carrotsearch.hppc.IntObjectMap;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queries.TermsFilter;
-import org.apache.lucene.search.FieldCache;
-import org.apache.lucene.search.FilteredQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.queries.TermsQuery;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.util.*;
-import org.elasticsearch.common.hppc.IntObjectMap;
-import org.elasticsearch.common.hppc.IntObjectOpenHashMap;
 import org.elasticsearch.common.lucene.search.Queries;
 import org.elasticsearch.search.internal.SearchContext;
 
@@ -37,7 +35,7 @@ final class VisibilityQueryHelper {
     private static final ConcurrentSkipListSet<Long> KNOWN_COMMITTED_XIDS = new ConcurrentSkipListSet<>();
 
     static IntObjectMap<FixedBitSet> determineVisibility(final Query query, final String field, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, IndexReader reader) throws IOException {
-        final IntObjectMap<FixedBitSet> visibilityBitSets = new IntObjectOpenHashMap<>();
+        final IntObjectMap<FixedBitSet> visibilityBitSets = new IntObjectHashMap<>();
         final Set<BytesRef> updatedCtids = new HashSet<>();
         IndexSearcher searcher = new IndexSearcher(reader);
 
@@ -49,7 +47,7 @@ final class VisibilityQueryHelper {
 
         Terms ctidTerms = MultiFields.getTerms(reader, "_ctid");
         if (ctidTerms != null) {
-            TermsEnum ctids = ctidTerms.iterator(null);
+            TermsEnum ctids = ctidTerms.iterator();
             BytesRef ctid;
             while ((ctid = ctids.next()) != null) {
                 updatedCtids.add(BytesRef.deepCopyOf(ctid));
@@ -65,9 +63,9 @@ final class VisibilityQueryHelper {
 
         final Map<BytesRef, List<VisibilityInfo>> map = new HashMap<>();
         searcher.search(
-                new FilteredQuery(Queries.newMatchAllQuery(), SearchContext.current().filterCache().cache(new TermsFilter(field, updatedCtids.toArray(new BytesRef[updatedCtids.size()])))),
-                new ZomboDBTermsCollector(field) {
-                    private SortedDocValues prevCtids;
+                new TermsQuery(field, updatedCtids),
+                new SimpleCollector() {
+                    private SortedSetDocValues prevCtids;
                     private SortedNumericDocValues xids;
                     private int ord;
                     private int maxdoc;
@@ -76,7 +74,14 @@ final class VisibilityQueryHelper {
                     public void collect(int doc) throws IOException {
                         xids.setDocument(doc);
                         long xid = xids.valueAt(0);
-                        BytesRef prevCtid = prevCtids.get(doc);
+
+                        prevCtids.setDocument(doc);
+                        BytesRef prevCtid;
+                        long ctidOrd;
+                        if ( (ctidOrd = prevCtids.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS)
+                            prevCtid = prevCtids.lookupOrd(ctidOrd);
+                        else
+                            throw new RuntimeException("Count not get a " + field + " term for doc");
 
                         List<VisibilityInfo> matchingDocs = map.get(prevCtid);
 
@@ -85,12 +90,18 @@ final class VisibilityQueryHelper {
                         matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, xid));
                     }
 
+
                     @Override
-                    public void setNextReader(AtomicReaderContext context) throws IOException {
-                        prevCtids = FieldCache.DEFAULT.getTermsIndex(context.reader(), field);
+                    public void doSetNextReader(LeafReaderContext context) throws IOException {
+                        prevCtids = context.reader().getSortedSetDocValues(field);
                         xids = context.reader().getSortedNumericDocValues("_xid");
                         ord = context.ord;
                         maxdoc = context.reader().maxDoc();
+                    }
+
+                    @Override
+                    public boolean needsScores() {
+                        return false;
                     }
                 }
         );
@@ -113,7 +124,7 @@ final class VisibilityQueryHelper {
         };
 
         Terms committedXidsTerms = MultiFields.getFields(reader).terms("_zdb_committed_xid");
-        TermsEnum committedXidsEnum = committedXidsTerms == null ? null : committedXidsTerms.iterator(null);
+        TermsEnum committedXidsEnum = committedXidsTerms == null ? null : committedXidsTerms.iterator();
         for (List<VisibilityInfo> visibility : map.values()) {
             CollectionUtil.introSort(visibility, new Comparator<VisibilityInfo>() {
                 @Override

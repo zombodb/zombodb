@@ -8,34 +8,35 @@ import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.bulk.BulkShardRequest;
+import org.elasticsearch.action.delete.DeleteAction;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.index.IndexAction;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.index.query.IdsFilterBuilder;
+import org.elasticsearch.index.query.IdsQueryBuilder;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 
 import java.io.IOException;
 import java.util.*;
 
-import static org.elasticsearch.index.query.FilterBuilders.idsFilter;
 import static org.elasticsearch.index.query.QueryBuilders.filteredQuery;
+import static org.elasticsearch.index.query.QueryBuilders.idsQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 import static org.elasticsearch.rest.RestStatus.OK;
 
@@ -51,24 +52,18 @@ public class ZombodbBulkAction extends BaseRestHandler {
     @Override
     public void handleRequest(final RestRequest request, final RestChannel channel, final Client client) throws Exception {
         BulkRequest bulkRequest = Requests.bulkRequest();
-        bulkRequest.listenerThreaded(false);
         String defaultIndex = request.param("index");
         String defaultType = request.param("type");
-        String defaultRouting = request.param("routing");
         boolean isdelete = false;
         String pkeyFieldname = lookupPkeyFieldname(client, defaultIndex);
 
-        String replicationType = request.param("replication");
-        if (replicationType != null) {
-            bulkRequest.replicationType(ReplicationType.fromString(replicationType));
-        }
         String consistencyLevel = request.param("consistency");
         if (consistencyLevel != null) {
             bulkRequest.consistencyLevel(WriteConsistencyLevel.fromString(consistencyLevel));
         }
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
         bulkRequest.refresh(request.paramAsBoolean("refresh", bulkRequest.refresh()));
-        bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, true);
+        bulkRequest.add(request.content(), defaultIndex, defaultType, true);
 
         List<ActionRequest> trackingRequests = new ArrayList<>();
         if (!bulkRequest.requests().isEmpty()) {
@@ -171,7 +166,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
     }
     private List<ActionRequest> handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
-        IdsFilterBuilder ids = idsFilter(defaultType);
+        IdsQueryBuilder ids = idsQuery(defaultType);
         Map<String, DeleteRequest> lookup = new HashMap<>(requests.size());
 
         for (ActionRequest ar : requests) {
@@ -182,7 +177,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         }
 
         SearchResponse response = client.search(
-                new SearchRequestBuilder(client)
+                new SearchRequestBuilder(client, SearchAction.INSTANCE)
                         .setIndices(defaultIndex)
                         .setTypes(defaultType)
                         .setPreference("_primary")
@@ -201,7 +196,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 doc.routing(prevCtid);
 
                 trackingRequests.add(
-                        new DeleteRequestBuilder(client)
+                        new DeleteRequestBuilder(client, DeleteAction.INSTANCE)
                                 .setId(doc.id())
                                 .setIndex(defaultIndex)
                                 .setType("state")
@@ -217,7 +212,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
     private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
-        IdsFilterBuilder ids = idsFilter(defaultType);
+        IdsQueryBuilder ids = idsQuery(defaultType);
         Map<String, IndexRequest> lookup = new HashMap<>(requests.size());
 
         for (ActionRequest ar : requests) {
@@ -250,12 +245,12 @@ public class ZombodbBulkAction extends BaseRestHandler {
         while(retries <= 1) {
 
             response = client.search(
-                    new SearchRequestBuilder(client)
+                    new SearchRequestBuilder(client, SearchAction.INSTANCE)
                             .setIndices(defaultIndex)
                             .setTypes(defaultType)
                             .setPreference("_primary")
                             .setQuery(filteredQuery(null, ids))
-                            .setQueryCache(retries == 0)
+                            .setRequestCache(retries == 0)
                             .setSize(lookup.size())
                             .setTerminateAfter(lookup.size())
                             .addField("_prev_ctid")
@@ -289,7 +284,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             doc.routing(prevCtid);
 
             trackingRequests.add(
-                    new IndexRequestBuilder(client)
+                    new IndexRequestBuilder(client, IndexAction.INSTANCE)
                             .setId(hit.id())
                             .setIndex(defaultIndex)
                             .setType("state")
@@ -320,7 +315,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
             if (prevCtid != null) {
                 trackingRequests.add(
-                        new IndexRequestBuilder(client)
+                        new IndexRequestBuilder(client, IndexAction.INSTANCE)
                                 .setId(String.valueOf(prevCtid))
                                 .setIndex(defaultIndex)
                                 .setType("state")

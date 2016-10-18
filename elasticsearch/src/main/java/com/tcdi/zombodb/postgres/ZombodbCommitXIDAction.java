@@ -3,21 +3,21 @@ package com.tcdi.zombodb.postgres;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexAction;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
-import org.elasticsearch.cluster.routing.operation.OperationRouting;
+import org.elasticsearch.cluster.routing.OperationRouting;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.netty.util.internal.ConcurrentHashMap;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.rest.*;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -53,7 +53,7 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
 
             for (int i=0; i<shards; i++) {
                 bulkRequest.add(
-                        new IndexRequestBuilder(client)
+                        new IndexRequestBuilder(client, IndexAction.INSTANCE)
                                 .setIndex(index)
                                 .setType("committed")
                                 .setRouting(routingTable[i])

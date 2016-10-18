@@ -15,7 +15,7 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import org.elasticsearch.action.ClientAction;
+import org.elasticsearch.action.Action;
 import org.elasticsearch.action.search.*;
 
 /**
@@ -23,19 +23,19 @@ import org.elasticsearch.action.search.*;
  */
 public class DynamicSearchActionHelper {
 
-    public static ClientAction<SearchRequest, SearchResponse, SearchRequestBuilder> getSearchAction() {
+    public static Action<SearchRequest, SearchResponse, SearchRequestBuilder> getSearchAction() {
         try {
             Class clazz = Class.forName("solutions.siren.join.action.coordinate.CoordinateSearchAction");
-            return (ClientAction) clazz.getDeclaredField("INSTANCE").get(clazz);
+            return (Action) clazz.getDeclaredField("INSTANCE").get(clazz);
         } catch (Exception e) {
             return SearchAction.INSTANCE;
         }
     }
 
-    public static ClientAction<MultiSearchRequest, MultiSearchResponse, MultiSearchRequestBuilder> getMultiSearchAction() {
+    public static Action<MultiSearchRequest, MultiSearchResponse, MultiSearchRequestBuilder> getMultiSearchAction() {
         try {
             Class clazz = Class.forName("solutions.siren.join.action.coordinate.CoordinateMultiSearchAction");
-            return (ClientAction) clazz.getDeclaredField("INSTANCE").get(clazz);
+            return (Action) clazz.getDeclaredField("INSTANCE").get(clazz);
         } catch (Exception e) {
             return MultiSearchAction.INSTANCE;
         }

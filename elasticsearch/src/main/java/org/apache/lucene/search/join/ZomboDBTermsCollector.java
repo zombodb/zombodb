@@ -15,12 +15,14 @@
  */
 package org.apache.lucene.search.join;
 
+import org.apache.lucene.search.SimpleCollector;
+
 /**
  * Exists in this package to provide a <b>public</b> version of {@link TermsCollector}
  * that ZomboDB can implement
  */
-public abstract class ZomboDBTermsCollector extends TermsCollector {
-    protected ZomboDBTermsCollector(String field) {
-        super(field);
+public abstract class ZomboDBTermsCollector extends SimpleCollector {
+    protected ZomboDBTermsCollector() {
+
     }
 }
