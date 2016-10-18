@@ -826,7 +826,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     freeStringInfo(request);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin) {
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, uint64 sequence) {
     /* the data */
     appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
 
@@ -841,6 +841,9 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
     /* ...append our transaction id to the json */
     appendStringInfo(bulk, ",\"_xid\":%lu", convert_xid(xmin));
+
+	/* and the sequence number */
+	appendStringInfo(bulk, ",\"_zdb_seq\":%lu", sequence);
 
 	if (isupdate)
 		appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));
@@ -867,14 +870,14 @@ static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
 }
 
 void
-elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId) {
+elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, uint64 sequence) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
     bool fast_path = false;
 
     if (batch->bulk == NULL)
         batch->bulk = checkout_batch_pool(batch);
 
-    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, old_ctid, xid);
+    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, old_ctid, xid, sequence);
     batch->nprocessed++;
     batch->nrecs++;
 
