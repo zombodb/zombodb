@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.tcdi.elasticsearch</groupId>
         <artifactId>zombodb-parent</artifactId>
-        <version>3.1.0_BETA4</version>
+        <version>3.1.0_BETA5</version>
     </parent>
 
     <artifactId>zombodb</artifactId>
