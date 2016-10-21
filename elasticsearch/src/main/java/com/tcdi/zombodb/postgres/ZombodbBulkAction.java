@@ -202,7 +202,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
             if (doc != null) {
                 doc.routing(prevCtid);
-                doc.versionType(VersionType.EXTERNAL_GTE);
+                doc.versionType(VersionType.FORCE);
                 doc.version(2);
 
                 trackingRequests.add(
@@ -211,7 +211,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setIndex(defaultIndex)
                                 .setType("state")
                                 .setRouting(prevCtid)
-                                .setVersionType(VersionType.EXTERNAL_GTE)
+                                .setVersionType(VersionType.FORCE)
                                 .setVersion(2)
                                 .request()
                 );
@@ -244,7 +244,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 doc.source(data);
                 doc.routing(routing);
                 doc.opType(IndexRequest.OpType.CREATE);
-                doc.versionType(VersionType.EXTERNAL_GTE);
+                doc.versionType(VersionType.FORCE);
                 doc.version(2);
             } else {
                 // this IndexRequest represents an UPDATE
@@ -299,7 +299,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             doc.source(data);
             doc.routing(prevCtid);
             doc.opType(IndexRequest.OpType.CREATE);
-            doc.versionType(VersionType.EXTERNAL_GTE);
+            doc.versionType(VersionType.FORCE);
             doc.version(2);
 
             trackingRequests.add(
@@ -309,7 +309,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                             .setType("state")
                             .setRouting(prevCtid)
                             .setOpType(IndexRequest.OpType.CREATE)
-                            .setVersionType(VersionType.EXTERNAL_GTE)
+                            .setVersionType(VersionType.FORCE)
                             .setVersion(2)
                             .setSource("_ctid", prevCtid)
                             .request()
@@ -334,7 +334,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             data.put("_prev_ctid", String.valueOf(pkey));
             doc.routing(String.valueOf(pkey));
             doc.opType(IndexRequest.OpType.CREATE);
-            doc.versionType(VersionType.EXTERNAL_GTE);
+            doc.versionType(VersionType.FORCE);
             doc.version(2);
             doc.source(data);
 
@@ -346,7 +346,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setType("state")
                                 .setRouting(String.valueOf(pkey))
                                 .setOpType(IndexRequest.OpType.CREATE)
-                                .setVersionType(VersionType.EXTERNAL_GTE)
+                                .setVersionType(VersionType.FORCE)
                                 .setVersion(2)
                                 .setSource("_ctid", String.valueOf(pkey))
                                 .request()
