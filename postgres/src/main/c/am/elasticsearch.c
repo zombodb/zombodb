@@ -180,6 +180,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "   \"mappings\": {"
             "      \"data\": {"
             "          \"_source\": { \"enabled\": false },"
+            "          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
             "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
@@ -188,6 +189,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "      },"
 			"      \"state\": {"
 			"          \"_source\": { \"enabled\": false },"
+			"          \"_routing\": { \"required\": true },"
 			"          \"_all\": { \"enabled\": false },"
 			"          \"_field_names\": { \"index\": \"no\", \"store\": false },"
 			"          \"date_detection\": false,"
@@ -195,6 +197,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 			"      },"
             "      \"committed\": {"
             "          \"_source\": { \"enabled\": false },"
+			"          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": false },"
             "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "          \"properties\": {"
@@ -792,11 +795,11 @@ void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse) {
     pfree(searchResponse);
 }
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
+int elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
     StringInfo endpoint = makeStringInfo();
     StringInfo request  = makeStringInfo();
     StringInfo response;
-    int i;
+    int i, valid = 0;
 
     appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
@@ -806,15 +809,18 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
     for (i=0; i<nitems; i++) {
         ItemPointer item = &itemPointers[i];
 
-        appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+		if (ItemPointerIsValid(item)) {
+			appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
+			valid++;
 
-        if (request->len >= indexDescriptor->batch_size) {
-            response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
-            checkForBulkError(response, "delete");
-
-            resetStringInfo(request);
-            freeStringInfo(response);
-        }
+//			if (request->len >= indexDescriptor->batch_size) {
+//				response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
+//				checkForBulkError(response, "delete");
+//
+//				resetStringInfo(request);
+//				freeStringInfo(response);
+//			}
+		}
     }
 
     if (request->len > 0) {
@@ -824,7 +830,24 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
 
     freeStringInfo(endpoint);
     freeStringInfo(request);
+
+	return valid;
 }
+
+char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor) {
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+
+	appendStringInfo(endpoint, "%s/%s/_zdbvacsup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	response = rest_call("GET", endpoint->data, NULL, 0);
+	if (response->data[0] != 0)
+		elog(ERROR, "%s", response->data);
+
+	freeStringInfo(endpoint);
+
+	return response->data+1;
+}
+
 
 static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, uint64 sequence) {
     /* the data */
