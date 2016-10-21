@@ -743,6 +743,90 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
 }
 
 /*
+ * lifted from various Postgres versions of vacuumlazy.c
+ *
+ * We do this so that vacuuming our remote Elasticsearch index can
+ * look directly at LVRelStats.dead_tuples instead of walking through
+ * the index and asking about each and every tuple.
+ */
+#if (PG_VERSION_NUM < 90400)
+typedef struct LVRelStats
+{
+    /* hasindex = true means two-pass strategy; false means one-pass */
+    bool		hasindex;
+    /* Overall statistics about rel */
+    BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
+    BlockNumber rel_pages;		/* total number of pages */
+    BlockNumber scanned_pages;	/* number of pages we examined */
+    double		scanned_tuples; /* counts only tuples on scanned pages */
+    double		old_rel_tuples; /* previous value of pg_class.reltuples */
+    double		new_rel_tuples; /* new estimated total # of tuples */
+    BlockNumber pages_removed;
+    double		tuples_deleted;
+    BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+    /* List of TIDs of tuples we intend to delete */
+    /* NB: this list is ordered by TID address */
+    int			num_dead_tuples;	/* current # of entries */
+    int			max_dead_tuples;	/* # slots allocated in array */
+    ItemPointer dead_tuples;	/* array of ItemPointerData */
+    int			num_index_scans;
+    TransactionId latestRemovedXid;
+    bool		lock_waiter_detected;
+} LVRelStats;
+#elif (PG_VERSION_NUM < 90500)
+typedef struct LVRelStats
+{
+    /* hasindex = true means two-pass strategy; false means one-pass */
+    bool		hasindex;
+    /* Overall statistics about rel */
+    BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
+    BlockNumber rel_pages;		/* total number of pages */
+    BlockNumber scanned_pages;	/* number of pages we examined */
+    double		scanned_tuples; /* counts only tuples on scanned pages */
+    double		old_rel_tuples; /* previous value of pg_class.reltuples */
+    double		new_rel_tuples; /* new estimated total # of tuples */
+    double		new_dead_tuples;	/* new estimated total # of dead tuples */
+    BlockNumber pages_removed;
+    double		tuples_deleted;
+    BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+    /* List of TIDs of tuples we intend to delete */
+    /* NB: this list is ordered by TID address */
+    int			num_dead_tuples;	/* current # of entries */
+    int			max_dead_tuples;	/* # slots allocated in array */
+    ItemPointer dead_tuples;	/* array of ItemPointerData */
+    int			num_index_scans;
+    TransactionId latestRemovedXid;
+    bool		lock_waiter_detected;
+} LVRelStats;
+#elif (PG_VERSION_NUM < 90600)
+typedef struct LVRelStats
+{
+	/* hasindex = true means two-pass strategy; false means one-pass */
+	bool		hasindex;
+	/* Overall statistics about rel */
+	BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
+	BlockNumber rel_pages;		/* total number of pages */
+	BlockNumber scanned_pages;	/* number of pages we examined */
+	BlockNumber pinskipped_pages;		/* # of pages we skipped due to a pin */
+	double		scanned_tuples; /* counts only tuples on scanned pages */
+	double		old_rel_tuples; /* previous value of pg_class.reltuples */
+	double		new_rel_tuples; /* new estimated total # of tuples */
+	double		new_dead_tuples;	/* new estimated total # of dead tuples */
+	BlockNumber pages_removed;
+	double		tuples_deleted;
+	BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+	/* List of TIDs of tuples we intend to delete */
+	/* NB: this list is ordered by TID address */
+	int			num_dead_tuples;	/* current # of entries */
+	int			max_dead_tuples;	/* # slots allocated in array */
+	ItemPointer dead_tuples;	/* array of ItemPointerData */
+	int			num_index_scans;
+	TransactionId latestRemovedXid;
+	bool		lock_waiter_detected;
+} LVRelStats;
+#endif
+
+/*
  * Bulk deletion of all index entries pointing to a set of heap tuples.
  * The set of target tuples is specified via a callback routine that tells
  * whether any given heap tuple (identified by ItemPointer) is being deleted.
@@ -752,14 +836,12 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
 Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     IndexVacuumInfo *info = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
     IndexBulkDeleteResult *volatile stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
-    IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
+//    IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
     void                    *callback_state = (void *) PG_GETARG_POINTER(3);
     Relation                indexRel        = info->index;
     ZDBIndexDescriptor      *desc;
+    LVRelStats              *relstats;
     struct timeval          tv1, tv2;
-	char *ctidsToVacuum;
-	int manyCtidsToVacuum;
-	int removed = 0;
 
     gettimeofday(&tv1, NULL);
 
@@ -771,43 +853,17 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     if (desc->isShadow)
         PG_RETURN_POINTER(stats);
 
-	ctidsToVacuum = desc->implementation->vacuumSupport(desc);
-	memcpy(&manyCtidsToVacuum, ctidsToVacuum, sizeof(int32));
-	ctidsToVacuum += sizeof(int32);
+    relstats = (LVRelStats *) callback_state; /* XXX:  cast to our copy/paste of LVRelStats! */
 
-	if (manyCtidsToVacuum > 0) {
-		ItemPointer dead_tuples = palloc0(manyCtidsToVacuum * sizeof(ItemPointerData));
-		int i;
-
-		for (i=0; i<manyCtidsToVacuum; i++) {
-			BlockNumber blockno;
-			OffsetNumber offno;
-			ItemPointerData ctid;
-
-			memcpy(&blockno, ctidsToVacuum, sizeof(BlockNumber));
-			ctidsToVacuum += sizeof(BlockNumber);
-			memcpy(&offno, ctidsToVacuum, sizeof(OffsetNumber));
-			ctidsToVacuum += sizeof(OffsetNumber);
-
-			ItemPointerSet(&ctid, blockno, offno);
-
-			if (!callback(&ctid, callback_state)) {
-				ItemPointerSet(&ctid, InvalidBlockNumber, InvalidOffsetNumber);
-			}
-
-			memcpy(&dead_tuples[i], &ctid, sizeof(ItemPointerData));
-		}
-
-		removed = desc->implementation->bulkDelete(desc, dead_tuples, manyCtidsToVacuum);
-	}
+    desc->implementation->bulkDelete(desc, relstats->dead_tuples, relstats->num_dead_tuples);
 
     stats->num_pages        = 1;
     stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
-    stats->tuples_removed   = removed;
+    stats->tuples_removed   = relstats->num_dead_tuples;
 
     gettimeofday(&tv2, NULL);
 
-    elog(LOG, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), removed, (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
+    elog(LOG, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), relstats->num_dead_tuples, (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
 
     PG_RETURN_POINTER(stats);
 }
