@@ -20,13 +20,13 @@ import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.index.VersionType;
 import org.elasticsearch.index.query.IdsFilterBuilder;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
@@ -169,6 +169,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
         return new BytesRestResponse(OK, builder);
     }
+
     private List<ActionRequest> handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
         IdsFilterBuilder ids = idsFilter(defaultType);
@@ -188,7 +189,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
                         .setPreference("_primary")
                         .setQuery(filteredQuery(null, ids))
                         .setSize(requests.size())
-                        .setTerminateAfter(requests.size())
                         .addField("_prev_ctid")
                         .request()
         ).actionGet();
@@ -197,8 +197,13 @@ public class ZombodbBulkAction extends BaseRestHandler {
             DeleteRequest doc = lookup.get(hit.id());
             String prevCtid = hit.field("_prev_ctid").getValue();
 
+            if (prevCtid == null)
+                throw new RuntimeException("Found null _prev_ctid for " + hit.getId());
+
             if (doc != null) {
                 doc.routing(prevCtid);
+                doc.versionType(VersionType.EXTERNAL_GTE);
+                doc.version(2);
 
                 trackingRequests.add(
                         new DeleteRequestBuilder(client)
@@ -206,11 +211,15 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setIndex(defaultIndex)
                                 .setType("state")
                                 .setRouting(prevCtid)
+                                .setVersionType(VersionType.EXTERNAL_GTE)
+                                .setVersion(2)
                                 .request()
                 );
-
             }
         }
+
+        if (trackingRequests.size() != response.getHits().getHits().length)
+            throw new RuntimeException("didn't create enough tracking requests");
 
         return trackingRequests;
     }
@@ -234,6 +243,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 data.put("_prev_ctid", routing);
                 doc.source(data);
                 doc.routing(routing);
+                doc.opType(IndexRequest.OpType.CREATE);
+                doc.versionType(VersionType.EXTERNAL_GTE);
+                doc.version(2);
             } else {
                 // this IndexRequest represents an UPDATE
                 // so we'll look up its routing value in batch below
@@ -247,7 +259,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
         SearchResponse response = null;
         int retries = 0;
-        while(retries <= 1) {
+        while (retries <= 1) {
 
             response = client.search(
                     new SearchRequestBuilder(client)
@@ -257,7 +269,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
                             .setQuery(filteredQuery(null, ids))
                             .setQueryCache(retries == 0)
                             .setSize(lookup.size())
-                            .setTerminateAfter(lookup.size())
                             .addField("_prev_ctid")
                             .request()
             ).actionGet();
@@ -274,7 +285,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         }
 
         if (response.getHits().getHits().length != lookup.size())
-             throw new RuntimeException("Did not find all previous ctids an UPDATE");
+            throw new RuntimeException("Did not find all previous ctids an UPDATE");
 
         for (SearchHit hit : response.getHits()) {
             String prevCtid = hit.field("_prev_ctid").getValue();
@@ -287,6 +298,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
             data.put("_prev_ctid", prevCtid);
             doc.source(data);
             doc.routing(prevCtid);
+            doc.opType(IndexRequest.OpType.CREATE);
+            doc.versionType(VersionType.EXTERNAL_GTE);
+            doc.version(2);
 
             trackingRequests.add(
                     new IndexRequestBuilder(client)
@@ -294,6 +308,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
                             .setIndex(defaultIndex)
                             .setType("state")
                             .setRouting(prevCtid)
+                            .setOpType(IndexRequest.OpType.CREATE)
+                            .setVersionType(VersionType.EXTERNAL_GTE)
+                            .setVersion(2)
                             .setSource("_ctid", prevCtid)
                             .request()
             );
@@ -316,6 +333,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
             data.put("_prev_ctid", String.valueOf(pkey));
             doc.routing(String.valueOf(pkey));
+            doc.opType(IndexRequest.OpType.CREATE);
+            doc.versionType(VersionType.EXTERNAL_GTE);
+            doc.version(2);
             doc.source(data);
 
             if (prevCtid != null) {
@@ -325,6 +345,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setIndex(defaultIndex)
                                 .setType("state")
                                 .setRouting(String.valueOf(pkey))
+                                .setOpType(IndexRequest.OpType.CREATE)
+                                .setVersionType(VersionType.EXTERNAL_GTE)
+                                .setVersion(2)
                                 .setSource("_ctid", String.valueOf(pkey))
                                 .request()
                 );
@@ -341,7 +364,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
         try {
             return (String) ((Map) mmd.getSourceAsMap().get("_meta")).get("primary_key");
-        } catch (IOException ioe){
+        } catch (IOException ioe) {
             throw new RuntimeException(ioe);
         }
     }
