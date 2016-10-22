@@ -99,6 +99,8 @@ typedef struct {
     int                     many;
 } ZDBBulkDeleteState;
 
+static uint64 zdb_sequence = 0;
+
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state);
 
 static List *usedIndexesList     = NULL;
@@ -165,6 +167,7 @@ static void xact_complete_cleanup(XactEvent event) {
 	LAST_UPDATED_CTID         = NULL;
     executorDepth             = 0;
     numHitsFound              = -1;
+	zdb_sequence			  = 0;
 
     zdb_reset_scores();
     zdb_sequential_scan_support_cleanup();
@@ -506,7 +509,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	if (!found && TransactionIdDidCommit(xmax))
 		hash_search(buildstate->committedXids, &xmax, HASH_ENTER, &found);
 
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data));
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), zdb_sequence++);
 
     buildstate->indtuples++;
 }
@@ -536,7 +539,7 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
 		LAST_UPDATED_CTID = NULL;
     }
 
-    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, &old_ctid, currentTransactionId, GetCurrentCommandId(true));
+    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, &old_ctid, currentTransactionId, GetCurrentCommandId(true), zdb_sequence++);
 
     PG_RETURN_BOOL(true);
 }

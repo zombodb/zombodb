@@ -67,14 +67,17 @@ final class VisibilityQueryHelper {
                 new SimpleCollector() {
                     private SortedSetDocValues prevCtids;
                     private SortedNumericDocValues xids;
+                    private SortedNumericDocValues sequence;
                     private int ord;
                     private int maxdoc;
 
                     @Override
                     public void collect(int doc) throws IOException {
                         xids.setDocument(doc);
-                        long xid = xids.valueAt(0);
+                        sequence.setDocument(doc);
 
+                        long xid = xids.valueAt(0);
+                        long seq = sequence.valueAt(0);
                         prevCtids.setDocument(doc);
                         BytesRef prevCtid;
                         long ctidOrd;
@@ -87,7 +90,7 @@ final class VisibilityQueryHelper {
 
                         if (matchingDocs == null)
                             map.put(BytesRef.deepCopyOf(prevCtid), matchingDocs = new ArrayList<>());
-                        matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, xid));
+                        matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, xid, seq));
                     }
 
 
@@ -95,6 +98,7 @@ final class VisibilityQueryHelper {
                     public void doSetNextReader(LeafReaderContext context) throws IOException {
                         prevCtids = context.reader().getSortedSetDocValues(field);
                         xids = context.reader().getSortedNumericDocValues("_xid");
+                        sequence = context.reader().getSortedNumericDocValues("_zdb_seq");
                         ord = context.ord;
                         maxdoc = context.reader().maxDoc();
                     }
@@ -130,15 +134,14 @@ final class VisibilityQueryHelper {
                 @Override
                 public int compare(VisibilityInfo o1, VisibilityInfo o2) {
                     int cmp = Long.compare(o2.xid, o1.xid);
-                    cmp = cmp == 0 ? Integer.compare(o2.readerOrd, o1.readerOrd) : cmp;
-                    return cmp == 0 ? Integer.compare(o2.docid, o1.docid) : cmp;
+                    return cmp == 0 ? Long.compare(o2.sequence, o1.sequence) : cmp;
                 }
             });
 
             boolean foundVisible = false;
             for (VisibilityInfo mapping : visibility) {
 
-                if (foundVisible || mapping.xid >= xmax || activeXids.contains(mapping.xid) || (mapping.xid != myXid && !isCommitted(committedXidsEnum, mapping.xid, bytesRefBuilder))) {
+                if (foundVisible || mapping.xid > xmax || activeXids.contains(mapping.xid) || (mapping.xid != myXid && !isCommitted(committedXidsEnum, mapping.xid, bytesRefBuilder))) {
                     // document is not visible to us
                     FixedBitSet visibilityBitset = visibilityBitSets.get(mapping.readerOrd);
                     if (visibilityBitset == null)

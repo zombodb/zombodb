@@ -508,6 +508,14 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             "\"include_in_all\":\"false\","
             "\"norms\": {\"enabled\":false},"
             "\"index\": \"not_analyzed\""
+            "},");
+
+    appendStringInfo(result, "\"_zdb_seq\": {"
+            "\"type\":\"long\","
+            "\"fielddata\": {\"format\": \"doc_values\"},"
+            "\"include_in_all\":\"false\","
+            "\"norms\": {\"enabled\":false},"
+            "\"index\": \"not_analyzed\""
             "}");
 
     for (i = 0; i < tupdesc->natts; i++) {

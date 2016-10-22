@@ -20,11 +20,13 @@ class VisibilityInfo {
     final int maxdoc;
     final int docid;
     public final long xid;
+    public final long sequence;
 
-    VisibilityInfo(int readerOrd, int maxdoc, int docid, long xid) {
+    VisibilityInfo(int readerOrd, int maxdoc, int docid, long xid, long sequence) {
         this.readerOrd = readerOrd;
         this.maxdoc = maxdoc;
         this.docid = docid;
         this.xid = xid;
+        this.sequence = sequence;
     }
 }
