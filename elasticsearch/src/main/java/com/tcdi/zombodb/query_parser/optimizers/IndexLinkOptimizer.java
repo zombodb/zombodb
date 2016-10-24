@@ -49,6 +49,8 @@ public class IndexLinkOptimizer {
 
         QueryTreeOptimizer.rollupParentheticalGroups(tree);
 
+        rewriteIndirectReferenceIndexLinks(tree);
+
         injectASTExpansionNodes(tree);
 
         int before;
@@ -58,9 +60,6 @@ public class IndexLinkOptimizer {
 
             QueryTreeOptimizer.rollupParentheticalGroups(tree);
         } while (tree.countNodes() != before);
-
-
-        rewriteIndirectReferenceIndexLinks(tree);
 
         ASTAggregate agg = tree.getAggregate();
         while (agg != null) {
@@ -153,7 +152,10 @@ public class IndexLinkOptimizer {
             QueryParserNode lastExpansion = null;
             String leftFieldname = null;
             String rightFieldname;
-            Stack<String> paths = metadataManager.calculatePath(link, metadataManager.getMyIndex());
+            ASTIndexLink parentLink = metadataManager.getMyIndex();
+            if (parent instanceof ASTExpansion)
+                parentLink = ((ASTExpansion) parent).getIndexLink();
+            Stack<String> paths = metadataManager.calculatePath(link, parentLink);
 
             if (link.hasFieldname())
                 stripPath(root, link.getFieldname());
@@ -319,6 +321,25 @@ public class IndexLinkOptimizer {
                         }
                     };
                     node.jjtAddChild(newLink, 0);
+
+                    if (!link.getIndexName().equals(metadataManager.getMyIndex().getIndexName())) {
+                        Stack<String> path = metadataManager.calculatePath(newLink, metadataManager.getMyIndex());
+                        if (path.size() == 2) {
+                            String top = path.pop();
+                            String bottom = path.pop();
+                            String leftFieldname = bottom.split("[:]")[1];
+                            String rightFieldname = top.split("[:]")[1];
+                            String indexName = top.split("[:]")[0];
+
+                            ASTIndexLink intermediateLink = ASTIndexLink.create(leftFieldname, indexName, null, rightFieldname);
+                            ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
+                            ((QueryParserNode) node.jjtGetParent()).replaceChild(node, expansion);
+
+                            expansion.jjtAddChild(intermediateLink, 0);
+                            expansion.jjtAddChild(node, 1);
+                        }
+                    }
+
                 }
             }
         }
