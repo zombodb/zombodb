@@ -202,8 +202,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
             if (doc != null) {
                 doc.routing(prevCtid);
-                doc.versionType(VersionType.FORCE);
-                doc.version(2);
 
                 trackingRequests.add(
                         new DeleteRequestBuilder(client)
@@ -211,8 +209,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setIndex(defaultIndex)
                                 .setType("state")
                                 .setRouting(prevCtid)
-                                .setVersionType(VersionType.FORCE)
-                                .setVersion(2)
                                 .request()
                 );
             }
@@ -245,7 +241,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 doc.routing(routing);
                 doc.opType(IndexRequest.OpType.CREATE);
                 doc.versionType(VersionType.FORCE);
-                doc.version(2);
+                doc.version(xid.longValue());
             } else {
                 // this IndexRequest represents an UPDATE
                 // so we'll look up its routing value in batch below
@@ -295,12 +291,14 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 continue;
 
             Map<String, Object> data = doc.sourceAsMap();
+            Number xid = (Number) data.get("_xid");
+
             data.put("_prev_ctid", prevCtid);
             doc.source(data);
             doc.routing(prevCtid);
             doc.opType(IndexRequest.OpType.CREATE);
             doc.versionType(VersionType.FORCE);
-            doc.version(2);
+            doc.version(xid.longValue());
 
             trackingRequests.add(
                     new IndexRequestBuilder(client)
@@ -310,7 +308,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                             .setRouting(prevCtid)
                             .setOpType(IndexRequest.OpType.CREATE)
                             .setVersionType(VersionType.FORCE)
-                            .setVersion(2)
+                            .setVersion(xid.longValue())
                             .setSource("_ctid", prevCtid)
                             .request()
             );
@@ -327,6 +325,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             Map<String, Object> data = doc.sourceAsMap();
             Object pkey = data.get(pkeyFieldname);
             Object prevCtid = data.get("_prev_ctid");
+            Number xid = (Number) data.get("_xid");
 
             if (pkey == null)
                 return null;    // can't use this at all
@@ -335,7 +334,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             doc.routing(String.valueOf(pkey));
             doc.opType(IndexRequest.OpType.CREATE);
             doc.versionType(VersionType.FORCE);
-            doc.version(2);
+            doc.version(xid.longValue());
             doc.source(data);
 
             if (prevCtid != null) {
@@ -347,7 +346,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setRouting(String.valueOf(pkey))
                                 .setOpType(IndexRequest.OpType.CREATE)
                                 .setVersionType(VersionType.FORCE)
-                                .setVersion(2)
+                                .setVersion(xid.longValue())
                                 .setSource("_ctid", String.valueOf(pkey))
                                 .request()
                 );
