@@ -842,7 +842,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
 			resetStringInfo(endpoint);
 			appendStringInfo(endpoint, "%s/%s/_optimize?only_expunge_deletes=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
-			elog(LOG, "[zombodb vacuum] expunging deleted docs in %s", indexDescriptor->fullyQualifiedName);
+			elog(LOG, "[zombodb vacuum] expunging deleted docs in %s (docs.deleted=%lu)", indexDescriptor->fullyQualifiedName, deleted_docs);
 			rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 		}
 	}
