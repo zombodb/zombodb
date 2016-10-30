@@ -31,3 +31,8 @@ RUN ldconfig && ldconfig
 RUN rm -rf /usr/local/src/curl*
 
 ENV PATH /usr/pgsql-9.5/bin:$PATH
+
+ARG user
+ARG uid
+RUN useradd -ms /bin/bash --uid $uid $user
+USER $user
