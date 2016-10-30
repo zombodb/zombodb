@@ -1,6 +1,6 @@
 # zombodb extension
 comment = 'Elasticsearch-enabled Index Type for Postgres'
-default_version = '3.1.0_BETA6'
+default_version = '3.1.0_BETA7'
 module_pathname = '$libdir/zombodb'
 relocatable = true
 requires = ''
