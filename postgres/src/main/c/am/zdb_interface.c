@@ -127,6 +127,7 @@ void zdb_index_init(void) {
     add_bool_reloption(RELOPT_KIND_ZDB, "always_resolve_joins", "Should queries that link to other indexes always resolve the links", false);
     add_int_reloption(RELOPT_KIND_ZDB, "compression_level", "0-9 value to indicate the level of HTTP compression", 0, 0, 9);
 	add_string_reloption(RELOPT_KIND_ZDB, "alias", "The Elasticsearch Alias to which this index should belong", NULL, validate_alias);
+    add_int_reloption(RELOPT_KIND_ZDB, "optimize_after", "After how many deleted docs should ZDB _optimize the ES index?", 0, 0, INT32_MAX);
 
     DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
@@ -176,6 +177,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->ignoreVisibility   = ZDBIndexOptionsGetIgnoreVisibility(indexRel);
     desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetFieldLists(indexRel));
     desc->alwaysResolveJoins = ZDBIndexOptionsAlwaysResolveJoins(indexRel);
+    desc->optimizeAfter      = ZDBIndexOptionsGetOptimizeAfter(indexRel);
 
     heapTupDesc = RelationGetDescr(heapRel);
     for (i = 0; i < heapTupDesc->natts; i++) {

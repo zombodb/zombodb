@@ -793,11 +793,21 @@ void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse) {
     pfree(searchResponse);
 }
 
+static uint64 count_deleted_docs(ZDBIndexDescriptor *indexDescriptor) {
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+
+	appendStringInfo(endpoint, "%s/_cat/indices/%s?h=docs.deleted", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+
+	return (uint64) atoll(response->data);
+}
+
 void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
-    StringInfo endpoint = makeStringInfo();
-    StringInfo request  = makeStringInfo();
-    StringInfo response;
-    int i;
+	StringInfo endpoint = makeStringInfo();
+	StringInfo request  = makeStringInfo();
+	StringInfo response;
+	int        i;
 
     appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
@@ -822,6 +832,18 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
         response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
         checkForBulkError(response, "delete");
     }
+
+	if (indexDescriptor->optimizeAfter > 0) {
+		uint64 deleted_docs = count_deleted_docs(indexDescriptor);
+
+		if (deleted_docs >=  indexDescriptor->optimizeAfter) {
+			resetStringInfo(endpoint);
+			appendStringInfo(endpoint, "%s/%s/_optimize?only_expunge_deletes=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+
+			elog(LOG, "[zombodb vacuum] expunging deleted docs in %s (docs.deleted=%lu)", indexDescriptor->fullyQualifiedName, deleted_docs);
+			rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+		}
+	}
 
     freeStringInfo(endpoint);
     freeStringInfo(request);

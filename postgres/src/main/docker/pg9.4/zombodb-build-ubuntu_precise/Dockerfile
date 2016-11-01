@@ -31,3 +31,8 @@ RUN ./configure --without-ssl \
 RUN make -j2 && make install
 RUN ldconfig && ldconfig
 RUN rm -rf /usr/local/src/curl*
+
+ARG user
+ARG uid
+RUN useradd -ms /bin/bash --uid $uid $user
+USER $user

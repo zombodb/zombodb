@@ -929,7 +929,9 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
                                                 {"field_lists",          RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, fieldListsValueOffset)},
                                                 {"always_resolve_joins", RELOPT_TYPE_BOOL,   offsetof(ZDBIndexOptions, alwaysResolveJoins)},
                                                 {"compression_level",    RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, compressionLevel)},
-                                                {"alias",                RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, aliasOffset)},};
+                                                {"alias",                RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, aliasOffset)},
+                                                {"optimize_after",       RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, optimizeAfter)},
+    };
 
     options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB, &numoptions);
 

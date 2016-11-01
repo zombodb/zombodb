@@ -15,15 +15,18 @@
  */
 package com.tcdi.zombodb.query;
 
-import com.carrotsearch.hppc.IntObjectMap;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
+import org.elasticsearch.common.util.ArrayUtils;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 class ZomboDBVisibilityQuery extends Query {
@@ -47,14 +50,19 @@ class ZomboDBVisibilityQuery extends Query {
     @Override
     public Query rewrite(final IndexReader reader) throws IOException {
         class VisFilter extends Filter {
-            private final ZomboDBVisibilityQuery outer = ZomboDBVisibilityQuery.this;
-            private IntObjectMap<FixedBitSet> visibilityBitSets = null;
-            private int searchHash = reader.hashCode();
+            private Map<Integer, FixedBitSet> visibilityBitSets = null;
+            private final IndexSearcher searcher;
+            private final List<BytesRef> updatedCtids;
+
+            private VisFilter(IndexSearcher searcher, List<BytesRef> updatedCtids) {
+                this.searcher = searcher;
+                this.updatedCtids = updatedCtids;
+            }
 
             @Override
             public DocIdSet getDocIdSet(LeafReaderContext context, Bits acceptDocs) throws IOException {
                 if (visibilityBitSets == null)
-                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, activeXids, reader);
+                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, activeXids, searcher, updatedCtids);
                 final FixedBitSet bitset = visibilityBitSets.get(context.ord);
                 if (bitset == null)
                     return null;
@@ -73,26 +81,13 @@ class ZomboDBVisibilityQuery extends Query {
             }
 
             @Override
-            public int hashCode() {
-                return outer.hashCode() + (reader.hashCode() * 31);
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (!(obj instanceof VisFilter))
-                    throw new IllegalArgumentException();
-
-                VisFilter eq = (VisFilter) obj;
-                return outer.equals(eq.outer) && eq.searchHash == searchHash;
-            }
-
-            @Override
-            public String toString(String field) {
-                return outer.toString();
+            public String toString(String s) {
+                return "Visibiilty Filter";
             }
         }
 
-        return new ConstantScoreQuery(new QueryWrapperFilter(new VisFilter()));
+        IndexSearcher searcher = new IndexSearcher(reader);
+        return new ConstantScoreQuery(new VisFilter(searcher, VisibilityQueryHelper.findUpdatedCtids(searcher)));
     }
 
     @Override
@@ -105,10 +100,10 @@ class ZomboDBVisibilityQuery extends Query {
         int hash = super.hashCode();
         hash = hash * 31 + query.hashCode();
         hash = hash * 31 + fieldname.hashCode();
-//        hash = hash * 31 + (int)(myXid ^ (myXid >>> 32));
-//        hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
-//        hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
-//        hash = hash * 31 + ArrayUtils.toString(activeXids).hashCode();
+        hash = hash * 31 + (int)(myXid ^ (myXid >>> 32));
+        hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
+        hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
+        hash = hash * 31 + activeXids.hashCode();
         return hash;
     }
 
@@ -121,10 +116,10 @@ class ZomboDBVisibilityQuery extends Query {
         ZomboDBVisibilityQuery eq = (ZomboDBVisibilityQuery) obj;
 
         return this.query.equals(eq.query) &&
-                this.fieldname.equals(eq.fieldname);// &&
-//                this.myXid == eq.myXid &&
-//                this.xmin == eq.xmin &&
-//                this.xmax == eq.xmax &&
-//                ArrayUtils.isEquals(this.activeXids, eq.activeXids);
+                this.fieldname.equals(eq.fieldname) &&
+                this.myXid == eq.myXid &&
+                this.xmin == eq.xmin &&
+                this.xmax == eq.xmax &&
+                this.activeXids.equals(eq.activeXids);
     }
 }

@@ -22,7 +22,7 @@ else
 		SHLIB_LINK += -lcurl -lrtmp -lz
 		LDFLAGS := $(addprefix -L/usr/local/lib/ , $(LDFLAGS))
 	else
-		SHLIB_LINK  += -Wl,-Bstatic -lcurl -Wl,-Bdynamic -lrt -lz
+		SHLIB_LINK += -lcurl -lrt -lz # -Wl,-Bstatic -lcurl -Wl,-Bdynamic -lrt -lz
 	endif
 endif
 PG_CONFIG    = pg_config

@@ -48,6 +48,7 @@ typedef struct {
     bool  alwaysResolveJoins;
     int   compressionLevel;
     int   aliasOffset;
+    int   optimizeAfter;
 } ZDBIndexOptions;
 
 #define ZDBIndexOptionsGetUrl(relation) \
@@ -99,6 +100,9 @@ typedef struct {
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->aliasOffset > 0 ? \
       (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->aliasOffset : (NULL))
 
+#define ZDBIndexOptionsGetOptimizeAfter(relation) \
+    ((uint64) ((relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->optimizeAfter : 0))
+
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
@@ -117,6 +121,7 @@ typedef struct {
     char  *pkeyFieldname;
     char  *alias;
     int   shards;
+    int   optimizeAfter;
     bool  hasJson;
 
     char *qualifiedTableName;
