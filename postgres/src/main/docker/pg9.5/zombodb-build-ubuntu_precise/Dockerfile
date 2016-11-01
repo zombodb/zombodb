@@ -36,3 +36,4 @@ ARG user
 ARG uid
 RUN useradd -ms /bin/bash --uid $uid $user
 USER $user
+ENV IS_DOCKER true

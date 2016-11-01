@@ -13,17 +13,11 @@ REGRESS_OPTS = --inputdir=src/test
 PG_CPPFLAGS += -Isrc/main/c -I/usr/include
 UNAME=$(shell uname -s)
 WHOAMI=$(shell whoami)
-ifeq ($(UNAME),Darwin)
-	# OS X doesn't statically link to libcurl, so make sure you've installed a version that
-	# was configured with --disable-threaded-resolver
-	SHLIB_LINK += -lcurl -lz
+ifeq ($(IS_DOCKER),true)
+	# if building in docker, statically link libcurl
+	SHLIB_LINK  += -Wl,-Bstatic -lcurl -Wl,-Bdynamic -lz
 else
-	ifeq ($(WHOAMI),travis)
-		SHLIB_LINK += -lcurl -lrtmp -lz
-		LDFLAGS := $(addprefix -L/usr/local/lib/ , $(LDFLAGS))
-	else
-		SHLIB_LINK  += -Wl,-Bstatic -lcurl -Wl,-Bdynamic -lrt -lz
-	endif
+	SHLIB_LINK += -lcurl -lz
 endif
 PG_CONFIG    = pg_config
 
