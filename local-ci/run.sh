@@ -15,5 +15,5 @@
 # limitations under the License.
 #
 
-docker build -t zdb-pg95-local-ci . || exit 1
+docker build --build-arg uid=`id -u` --build-arg user=`whoami` -t zdb-pg95-local-ci . || exit 1
 docker run --rm -m 6G --oom-kill-disable=true -v $(dirname `pwd`):/build/zombodb -w /build/zombodb zdb-pg95-local-ci
