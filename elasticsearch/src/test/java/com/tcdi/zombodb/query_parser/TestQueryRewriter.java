@@ -3600,8 +3600,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ],\n" +
-                        "        \"_cache\" : true\n" +
+                        "        \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -4036,8 +4035,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ],\n" +
-                        "        \"_cache\" : true\n" +
+                        "        \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -4063,8 +4061,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ],\n" +
-                        "        \"_cache\" : true\n" +
+                        "        \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -4133,8 +4130,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ],\n" +
-                        "        \"_cache\" : true\n" +
+                        "        \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ]\n" +
                         "      }\n" +
                         "    }\n" +
                         "  }\n" +
@@ -4874,24 +4870,17 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"bool\" : {\n" +
                         "    \"should\" : [ {\n" +
-                        "      \"filtered\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"match_all\" : { }\n" +
-                        "        },\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"missing\" : {\n" +
-                        "            \"field\" : \"null_field\",\n" +
-                        "            \"null_value\" : true\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"exists\" : {\n" +
+                        "            \"field\" : \"null_field\"\n" +
                         "          }\n" +
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"filtered\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"match_all\" : { }\n" +
-                        "        },\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"missing\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"exists\" : {\n" +
                         "            \"field\" : \"exact_field\"\n" +
                         "          }\n" +
                         "        }\n" +
@@ -4941,9 +4930,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        }, {\n" +
                         "          \"bool\" : {\n" +
                         "            \"must\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"subject\" : [ \"wine\", \"cheese\" ],\n" +
-                        "                \"minimum_should_match\" : \"2\"\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"must\" : [ {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"subject\" : \"wine\"\n" +
+                        "                  }\n" +
+                        "                }, {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"subject\" : \"cheese\"\n" +
+                        "                  }\n" +
+                        "                } ]\n" +
                         "              }\n" +
                         "            }\n" +
                         "          }\n" +
