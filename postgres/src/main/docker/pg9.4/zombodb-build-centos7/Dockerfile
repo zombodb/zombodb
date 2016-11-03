@@ -35,3 +35,4 @@ RUN useradd -ms /bin/bash --uid $uid $user
 USER $user
 
 ENV PATH /usr/pgsql-9.4/bin:$PATH
+ENV IS_DOCKER true

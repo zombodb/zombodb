@@ -65,7 +65,7 @@ The last two settings can be turned up or down (`http.max_content_length` must b
 
 The `http.compression` setting is only necessary if you set the `compression_level` option on your ZomboDB indexes.  Using HTTP compression may or may not improve indexing performance -- the deciding factor will be the bandwith/latency of the network between Postgres and Elasticsearch.  Failure to set `http.compression` when you've set a `compression_level` will cause ZomboDB to fail when it communicates with Elasticsearch.
 
-Finally, restart the node.  Repeat for every "client" node in your cluster.
+Finally, restart the node.  Repeat for every node in your cluster.
 
 
 # Upgrading

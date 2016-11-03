@@ -87,7 +87,12 @@ class ZomboDBVisibilityQuery extends Query {
         }
 
         IndexSearcher searcher = new IndexSearcher(reader);
-        return new ConstantScoreQuery(new VisFilter(searcher, VisibilityQueryHelper.findUpdatedCtids(searcher)));
+        return new XConstantScoreQuery(new VisFilter(searcher, VisibilityQueryHelper.findUpdatedCtids(searcher)));
+    }
+
+    @Override
+    public void extractTerms(Set<Term> terms) {
+
     }
 
     @Override

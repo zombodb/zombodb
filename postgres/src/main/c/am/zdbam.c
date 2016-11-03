@@ -18,6 +18,7 @@
 
 #define ZDBSEQSCAN_INCLUDE_DEFINITIONS
 
+#include "miscadmin.h"
 #include "access/heapam_xlog.h"
 #include "access/nbtree.h"
 #include "access/reloptions.h"
@@ -198,12 +199,18 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
                 }
             }
 
-			/* push this transaction id to ES for each index we inserted into */
-			foreach (lc, indexesInsertedList) {
-				ZDBIndexDescriptor *desc = lfirst(lc);
+            if (indexesInsertedList != NULL) {
+                HOLD_INTERRUPTS();
 
-				desc->implementation->markTransactionCommitted(desc, GetCurrentTransactionId());
-			}
+                /* push this transaction id to ES for each index we inserted into */
+                foreach (lc, indexesInsertedList) {
+                    ZDBIndexDescriptor *desc = lfirst(lc);
+
+                    desc->implementation->markTransactionCommitted(desc, GetCurrentTransactionId());
+                }
+
+                RESUME_INTERRUPTS();
+            }
         }
             break;
         case XACT_EVENT_ABORT:

@@ -15,10 +15,5 @@
 # limitations under the License.
 #
 
-# for ES 1.7
-# docker build -t zdb-pg95-local-ci . || exit 1
-# docker run --rm -m 6G --oom-kill-disable=true  -v $(dirname `pwd`):/build/zombodb -w /build/zombodb zdb-pg95-local-ci
-
-# for ES 2.x
-docker build -f es2 -t zdb-pg95-local-ci-es2 . || exit 1
-docker run --rm -m 6G --oom-kill-disable=true  -v $(dirname `pwd`):/build/zombodb -w /build/zombodb zdb-pg95-local-ci-es2
+docker build --build-arg uid=`id -u` --build-arg user=`whoami` -t zdb-pg95-local-ci-es2 . || exit 1
+docker run --rm -m 6G --oom-kill-disable=true -v $(dirname `pwd`):/build/zombodb -w /build/zombodb zdb-pg95-local-ci
