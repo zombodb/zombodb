@@ -94,18 +94,20 @@ public class ZombodbBulkAction extends BaseRestHandler {
         if (isdelete) {
             bulkRequest.refresh(false);
             response = client.bulk(bulkRequest).actionGet();
-            processTrackingRequests(request, client, trackingRequests);
+            if (!response.hasFailures())
+                response = processTrackingRequests(request, client, trackingRequests);
         } else {
-            processTrackingRequests(request, client, trackingRequests);
-            response = client.bulk(bulkRequest).actionGet();
+            response = processTrackingRequests(request, client, trackingRequests);
+            if (!response.hasFailures())
+                response = client.bulk(bulkRequest).actionGet();
         }
 
         channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
     }
 
-    private void processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests) {
+    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests) {
         if (trackingRequests.isEmpty())
-            return;
+            return new BulkResponse(new BulkItemResponse[0], 0);
 
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
@@ -113,7 +115,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         bulkRequest.refresh(request.paramAsBoolean("refresh", false));
         bulkRequest.requests().addAll(trackingRequests);
 
-        client.bulk(bulkRequest).actionGet(); // we don't really care about the response here
+        return client.bulk(bulkRequest).actionGet();
     }
 
     private RestResponse buildResponse(BulkResponse response, XContentBuilder builder) throws Exception {

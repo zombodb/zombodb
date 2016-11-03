@@ -47,6 +47,10 @@ static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userda
 
 /** used to check for Postgres-level interrupts. */
 static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+    /* if interrupts are being held, then we don't want to abort this curl request */
+    if (InterruptHoldoffCount > 0)
+        return 0;
+
     /*
      * We only support detecting cancellation if we're actually in a transaction
      * i.e., we're not trying to COMMIT or ABORT a transaction
