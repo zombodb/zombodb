@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 cat << DONE >> /etc/elasticsearch/elasticsearch.yml
 script.inline: on
