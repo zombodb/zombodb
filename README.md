@@ -45,17 +45,20 @@ Elasticsearch-calculated aggregations are also provided through custom functions
   - regular expressions, inline scripts
   - range queries
   - "more like this"
+  - any Elasticsearch query construct through direct JSON
 - [query expansion](SYNTAX.md#query-expansion) and [index linking](INDEX-OPTIONS.md)
 - [support](SIREn-SUPPORT.md) for [SIREn](http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/) to resolve index links
 - [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-field_names-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
-- access to many of Elasticsearch's aggregations, including ability to nest aggregations
+- common Elasticsearch's aggregations, including ability to nest
+- access to all of Elasticsearch's aggregations via direct JSON
 - extensive test suite
 
 Not to suggest that these things are impossible, but there's a small set of non-features too:
 
 - ZomboDB indexes are not WAL-logged by Postgres.  As such, ZomboDB indexes are not recoverable in the event of a Postgres server crash and will require a `REINDEX`
 - interoperability with various Postgres replication schemes is unknown
+- Postgres [HOT](https://github.com/postgres/postgres/blob/master/src/backend/access/heap/README.HOT) update chains are not supported (necessitates a `VACUUM FULL` if a HOT-updated row is found)
 
 ## What you need
 

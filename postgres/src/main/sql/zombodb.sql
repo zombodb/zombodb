@@ -67,11 +67,10 @@ CREATE OR REPLACE FUNCTION zdb_num_hits() RETURNS int8 AS '$libdir/plugins/zombo
 CREATE OR REPLACE FUNCTION zdb_query_func(json, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 2147483647;
 CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 1;
 
-
 --
 -- trigger support
 --
-CREATE OR REPLACE FUNCTION zdbtupledeletedtrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
+CREATE OR REPLACE FUNCTION zdbupdatetrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
@@ -101,11 +100,11 @@ $$;
 
 CREATE OR REPLACE FUNCTION count_of_table(table_name REGCLASS) RETURNS INT8 LANGUAGE plpgsql AS $$
 DECLARE
-  cnt INT8;
+  termCount INT8;
 BEGIN
   EXECUTE format('SELECT count(*) FROM %s', table_name)
-  INTO cnt;
-  RETURN cnt;
+  INTO termCount;
+  RETURN termCount;
 END;
 $$;
 
@@ -353,27 +352,37 @@ CREATE OR REPLACE FUNCTION zdb_arbitrary_aggregate(table_name regclass, aggregat
     SELECT (zdb_internal_arbitrary_aggregate(zdb_determine_index(table_name), aggregate_query, query)->'aggregations')::zdb_arbitrary_aggregate_response
 $$;
 
+CREATE DOMAIN zdb_json_aggregate_response AS json;
+CREATE OR REPLACE FUNCTION zdb_internal_json_aggregate(type_oid oid, json_agg json, query text) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_json_aggregate(table_name regclass, json_agg json, query text) RETURNS zdb_json_aggregate_response STRICT IMMUTABLE LANGUAGE sql AS $$
+    SELECT (zdb_internal_json_aggregate(zdb_determine_index(table_name), json_agg, query)->'aggregations')::zdb_json_aggregate_response
+$$;
+
 /* NB:  column names are quoted to preserve case sensitivity so they exactly match the JSON property names when we call json_populate_recordset */
 CREATE TYPE zdb_highlight_response AS ("primaryKey" text, "fieldName" text, "arrayIndex" int4, "term" text, "type" text, "position" int4, "startOffset" int8, "endOffset" int8, "clause" text);
 CREATE OR REPLACE FUNCTION zdb_internal_highlight(type_oid oid, query json, document_json json) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdb_highlight(table_name regclass, es_query text, where_clause text) RETURNS SETOF zdb_highlight_response LANGUAGE plpgsql STRICT IMMUTABLE AS $$
+CREATE OR REPLACE FUNCTION zdb_highlight(table_name regclass, es_query text, where_clause text) RETURNS SETOF zdb_highlight_response LANGUAGE plpgsql STRICT VOLATILE AS $$
 DECLARE
     type_oid oid;
+    document_json json;
     json_data json;
     columns text;
 BEGIN
     type_oid := zdb_determine_index(table_name);
     SELECT array_to_string(array_agg(attname), ',') FROM pg_attribute WHERE attrelid = table_name AND attname <> 'zdb' AND not attisdropped INTO columns;
-    EXECUTE format('SELECT zdb_internal_highlight(%s, %L, json_agg(row_to_json)) FROM (SELECT row_to_json(the_table) FROM (SELECT %s FROM %s) the_table WHERE %s) x', type_oid, to_json(es_query::text), columns, table_name, where_clause) INTO json_data;
+
+    EXECUTE format('SELECT json_agg(data) FROM (SELECT row_to_json(the_table) AS data FROM (SELECT %s FROM %s) the_table WHERE %s) x', columns, table_name, where_clause) INTO document_json;
+    json_data := zdb_internal_highlight(type_oid, to_json(es_query), document_json);
 
     RETURN QUERY (
         SELECT * FROM json_populate_recordset(null::zdb_highlight_response, json_data) AS highlight_data ORDER BY "primaryKey", "fieldName", "arrayIndex", "position"
     );
 END;
 $$;
-CREATE OR REPLACE FUNCTION zdb_highlight(_table_name REGCLASS, es_query TEXT, where_clause TEXT, columns TEXT []) RETURNS SETOF zdb_highlight_response LANGUAGE plpgsql IMMUTABLE AS $$
+CREATE OR REPLACE FUNCTION zdb_highlight(_table_name REGCLASS, es_query TEXT, where_clause TEXT, columns TEXT []) RETURNS SETOF zdb_highlight_response LANGUAGE plpgsql VOLATILE AS $$
 DECLARE
   type_oid     OID;
+  document_json json;
   json_data    JSON;
   columns_list TEXT;
 BEGIN
@@ -389,7 +398,9 @@ BEGIN
   select unnest(columns)
   ) x INTO columns_list;
 
-  EXECUTE format('SELECT zdb_internal_highlight(%s, %L, json_agg(row_to_json)) FROM (SELECT row_to_json(the_table) FROM (SELECT %s FROM %s WHERE %s) the_table) x', type_oid, to_json(es_query :: TEXT), columns_list, _table_name, where_clause) INTO json_data;
+  EXECUTE format('SELECT json_agg(data) FROM (SELECT row_to_json(the_table) AS data FROM (SELECT %s FROM %s) the_table WHERE %s) x', columns_list, _table_name, where_clause) INTO document_json;
+  json_data := zdb_internal_highlight(type_oid, to_json(es_query), document_json);
+
   RETURN QUERY (
     SELECT *
     FROM json_populate_recordset(NULL :: zdb_highlight_response, json_data) AS highlight_data

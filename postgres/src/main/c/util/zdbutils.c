@@ -25,20 +25,22 @@
 #include "access/xlog.h"
 #include "catalog/dependency.h"
 #include "catalog/namespace.h"
-#include "catalog/objectaddress.h"
 #include "catalog/pg_type.h"
+#include "executor/executor.h"
 #include "executor/spi.h"
+#include "nodes/makefuncs.h"
+#include "optimizer/planmain.h"
 #include "storage/bufmgr.h"
-#include "utils/array.h"
+#include "storage/lmgr.h"
+#include "storage/procarray.h"
 #include "utils/builtins.h"
+#include "utils/datum.h"
+#include "utils/lsyscache.h"
 #include "utils/memutils.h"
-#include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/tqual.h"
 
-#include "zdbutils.h"
-
-static int find_invisible_ctids_with_callback(Relation heapRel, Relation xactRel, invisibility_callback cb, void *ctids, void *xids);
+#include "am/zdb_interface.h"
 
 typedef struct {
     TransactionId last_xid;
@@ -214,6 +216,24 @@ Oid *findZDBIndexes(Oid relid, int *many) {
     return indexes;
 }
 
+Oid *find_all_zdb_indexes(int *many) {
+    Oid        *indexes = NULL;
+    int        i;
+
+    SPI_connect();
+
+    SPI_execute("select oid from pg_class where relam = (select oid from pg_am where amname = 'zombodb');", true, 0);
+    *many = SPI_processed;
+    if (SPI_processed > 0) {
+        indexes = (Oid *) MemoryContextAlloc(TopTransactionContext, sizeof(Oid) * SPI_processed);
+        for (i  = 0; i < SPI_processed; i++)
+            indexes[i] = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
+    }
+    SPI_finish();
+
+    return indexes;
+}
+
 Oid *oid_array_to_oids(ArrayType *arr, int *many) {
     if (ARR_NDIM(arr) != 1 || ARR_HASNULL(arr) || ARR_ELEMTYPE(arr) != OIDOID)
         elog(ERROR, "expected oid[] of non-null values");
@@ -242,129 +262,6 @@ char **text_array_to_strings(ArrayType *array, int *many) {
     return result;
 }
 
-Oid get_relation_oid(char *namespace, char *relname) {
-    StringInfo sb = makeStringInfo();
-    RangeVar   *rv;
-
-    if (namespace != NULL)
-        appendStringInfo(sb, "%s.%s", namespace, relname);
-    else
-        appendStringInfo(sb, "%s", relname);
-
-    rv = makeRangeVarFromNameList(textToQualifiedNameList(cstring_to_text(sb->data)));
-
-    freeStringInfo(sb);
-    /* We might not even have permissions on this relation; don't lock it. */
-    return RangeVarGetRelid(rv, NoLock, true);
-}
-
-static void string_invisibility_callback(ItemPointer ctid, uint64 xid, void *ctids, void *xids) {
-
-    if (ctid != NULL) {
-        StringInfo sb = (StringInfo) ctids;
-        if (sb->len > 0)
-            appendStringInfoCharMacro(sb, ',');
-        appendStringInfo(sb, "%lu", ItemPointerToUint64(ctid));
-    }
-
-    if (xid != InvalidTransactionId) {
-        StringInfo sb = (StringInfo) xids;
-        if (sb->len > 0)
-            appendStringInfoCharMacro(sb, ',');
-        appendStringInfo(sb, "%lu", xid);
-    }
-
-}
-
-StringInfo find_invisible_ctids(Relation heapRel, Relation xactRel, StringInfo ctids, StringInfo xids) {
-    find_invisible_ctids_with_callback(heapRel, xactRel, string_invisibility_callback, ctids, xids);
-    return ctids;
-}
-
-bool is_active_xid(Snapshot snapshot, TransactionId xid) {
-    int i;
-
-    if (xid >= snapshot->xmax)
-        return true;
-
-    for (i=0; i<snapshot->xcnt; i++) {
-        if (snapshot->xip[i] == xid)
-            return true;
-    }
-    return false;
-}
-
-static int find_invisible_ctids_with_callback(Relation heapRel, Relation xactRel, invisibility_callback cb, void *ctids, void *xids) {
-    Snapshot       snapshot   = GetActiveSnapshot();
-    TransactionId  currentxid = GetCurrentTransactionId();
-    TransactionId  lastxid    = InvalidTransactionId;
-    IndexScanDesc  scanDesc;
-    ItemPointer    tid;
-    int            invs       = 0, current = 0, skipped = 0, aborted = 0, tuples = 0;
-    struct timeval tv1, tv2;
-
-    gettimeofday(&tv1, NULL);
-
-    if (visibilitymap_count(heapRel) != RelationGetNumberOfBlocks(heapRel)) {
-        scanDesc = index_beginscan(heapRel, xactRel, SnapshotAny, 0, 0);
-        scanDesc->xs_want_itup = true;
-        index_rescan(scanDesc, NULL, 0, NULL, 0);
-
-        while ((tid = index_getnext_tid(scanDesc, ForwardScanDirection)) != NULL) {
-            uint64        convertedxid;
-            TransactionId xid;
-            bool          is_insert;
-            bool          isnull;
-
-            convertedxid = (uint64) DatumGetInt64(index_getattr(scanDesc->xs_itup, 1, scanDesc->xs_itupdesc, &isnull));
-            is_insert    = DatumGetBool(index_getattr(scanDesc->xs_itup, 2, scanDesc->xs_itupdesc, &isnull));
-            xid          = (TransactionId) (convertedxid);
-
-            //
-            // if xid is current
-            //      then add tid to list of ctids we should exclude
-            // else if xid is currently active
-            //      then skip it entirely
-            // else if xid aborted
-            //      then add xid to list of xids we should exclude
-            // else if not is_insert and xid committed
-            //      then add tid to list of ctids we should exclude
-            //
-
-            if (currentxid == xid) {
-                if (!is_insert) {
-                    cb(tid, InvalidTransactionId, ctids, xids);
-                }
-                current++;
-            } else if (is_active_xid(snapshot, xid)) {
-                /* xact is still active, so skip because these are wholesale excluded in our query */
-                skipped++;
-            } else if (TransactionIdDidAbort(xid)) {
-                if (lastxid != xid) {
-                    cb(NULL, convertedxid, ctids, xids);
-                    aborted++;
-                    lastxid = xid;
-                }
-            } else if (TransactionIdDidCommit(xid)) {
-                /* ignore ctid of committed update/delete */
-                if (!is_insert) {
-                    cb(tid, InvalidTransactionId, ctids, xids);
-                    invs++;
-                }
-            }
-
-            tuples++;
-        }
-
-        index_endscan(scanDesc);
-    }
-
-    gettimeofday(&tv2, NULL);
-    elog(LOG, "[zombodb invisibility stats] heap=%s, invisible=%d, skipped=%d, current=%d, aborted=%d, tuples=%d, ttl=%fs", RelationGetRelationName(heapRel), invs, skipped, current, aborted, tuples, TO_SECONDS(tv1, tv2));
-
-    return invs;
-}
-
 /* adapted from Postgres' txid.c#convert_xid function */
 uint64 convert_xid(TransactionId xid) {
     TxidEpoch state;
@@ -386,18 +283,108 @@ uint64 convert_xid(TransactionId xid) {
     return (epoch << 32) | xid;
 }
 
-void define_dependency(Oid fromClassId, Oid fromObjectId, Oid toClassId, Oid toObjectId, DependencyType dependencyType) {
-    ObjectAddress indexAddress;
-    ObjectAddress triggerAddress;
+/*
+ * Copied from Postgres' src/backend/optimizer/util/clauses.c
+ *
+ * evaluate_expr: pre-evaluate a constant expression
+ *
+ * We use the executor's routine ExecEvalExpr() to avoid duplication of
+ * code and ensure we get the same result as the executor would get.
+ */
+Expr *
+evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod,
+              Oid result_collation)
+{
+    EState	   *estate;
+    ExprState  *exprstate;
+    MemoryContext oldcontext;
+    Datum		const_val;
+    bool		const_is_null;
+    int16		resultTypLen;
+    bool		resultTypByVal;
 
-    indexAddress.classId     = fromClassId;
-    indexAddress.objectId    = fromObjectId;
-    indexAddress.objectSubId = 0;
+    /*
+     * To use the executor, we need an EState.
+     */
+    estate = CreateExecutorState();
 
-    triggerAddress.classId     = toClassId;
-    triggerAddress.objectId    = toObjectId;
-    triggerAddress.objectSubId = 0;
+    /* We can use the estate's working context to avoid memory leaks. */
+    oldcontext = MemoryContextSwitchTo(estate->es_query_cxt);
 
-    recordDependencyOn(&triggerAddress, &indexAddress, dependencyType);
+    /* Make sure any opfuncids are filled in. */
+    fix_opfuncids((Node *) expr);
 
+    /*
+     * Prepare expr for execution.  (Note: we can't use ExecPrepareExpr
+     * because it'd result in recursively invoking eval_const_expressions.)
+     */
+    exprstate = ExecInitExpr(expr, NULL);
+
+    /*
+     * And evaluate it.
+     *
+     * It is OK to use a default econtext because none of the ExecEvalExpr()
+     * code used in this situation will use econtext.  That might seem
+     * fortuitous, but it's not so unreasonable --- a constant expression does
+     * not depend on context, by definition, n'est ce pas?
+     */
+    const_val = ExecEvalExprSwitchContext(exprstate,
+                                          GetPerTupleExprContext(estate),
+                                          &const_is_null, NULL);
+
+    /* Get info needed about result datatype */
+    get_typlenbyval(result_type, &resultTypLen, &resultTypByVal);
+
+    /* Get back to outer memory context */
+    MemoryContextSwitchTo(oldcontext);
+
+    /*
+     * Must copy result out of sub-context used by expression eval.
+     *
+     * Also, if it's varlena, forcibly detoast it.  This protects us against
+     * storing TOAST pointers into plans that might outlive the referenced
+     * data.  (makeConst would handle detoasting anyway, but it's worth a few
+     * extra lines here so that we can do the copy and detoast in one step.)
+     */
+    if (!const_is_null)
+    {
+        if (resultTypLen == -1)
+            const_val = PointerGetDatum(PG_DETOAST_DATUM_COPY(const_val));
+        else
+            const_val = datumCopy(const_val, resultTypByVal, resultTypLen);
+    }
+
+    /* Release all the junk we just created */
+    FreeExecutorState(estate);
+
+    /*
+     * Make the constant result node.
+     */
+    return (Expr *) makeConst(result_type, result_typmod, result_collation,
+                              resultTypLen,
+                              const_val, const_is_null,
+                              resultTypByVal);
+}
+
+uint64 lookup_pkey(Oid heapRelOid, char *pkeyFieldname, ItemPointer ctid) {
+    Relation heapRel;
+    HeapTupleData tuple;
+    Buffer buffer;
+    Datum pkey;
+    bool isnull;
+
+    heapRel = RelationIdGetRelation(heapRelOid);
+    tuple.t_self = *ctid;
+
+    if (!heap_fetch(heapRel, SnapshotAny, &tuple, &buffer, false, NULL))
+        elog(ERROR, "Unable to fetch heap page from index");
+
+    pkey = heap_getattr(&tuple, get_attnum(heapRelOid, pkeyFieldname), RelationGetDescr(heapRel), &isnull);
+    if (isnull)
+        elog(ERROR, "detected NULL key value.  Cannot update row");
+
+    ReleaseBuffer(buffer);
+    RelationClose(heapRel);
+
+    return DatumGetInt64(pkey);
 }

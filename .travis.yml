@@ -45,7 +45,7 @@ script:
   - sudo /etc/init.d/postgresql start 9.5
   - cat /etc/elasticsearch/elasticsearch.yml
   - cat /etc/postgresql/9.5/main/postgresql.conf
-  - sudo -u postgres createuser -s travis
+#  - sudo -u postgres createuser -s travis
   - sudo sleep 10
   - make installcheck
 

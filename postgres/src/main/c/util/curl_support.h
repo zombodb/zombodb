@@ -27,6 +27,7 @@
 typedef struct PostDataEntry {
     int pool_idx;
     StringInfo buff;
+    char *compressed_data;
 } PostDataEntry;
 
 typedef struct MultiRestState {

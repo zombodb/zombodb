@@ -77,6 +77,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             builder.setIndices(query.getIndexName());
+            builder.setTypes("data");
             builder.setSize(32768);
             builder.setScroll(TimeValue.timeValueMinutes(10));
             builder.setSearchType(SearchType.SCAN);

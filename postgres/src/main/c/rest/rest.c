@@ -33,6 +33,7 @@
 
 #include "rest.h"
 
+
 static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userdata);
 static int    curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
@@ -46,6 +47,10 @@ static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userda
 
 /** used to check for Postgres-level interrupts. */
 static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+    /* if interrupts are being held, then we don't want to abort this curl request */
+    if (InterruptHoldoffCount > 0)
+        return 0;
+
     /*
      * We only support detecting cancellation if we're actually in a transaction
      * i.e., we're not trying to COMMIT or ABORT a transaction
@@ -61,6 +66,21 @@ static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlno
             return -1;
     }
     return 0;
+}
+
+static char *do_compression(StringInfo input, int level, uint64 *len) {
+    Bytef *compressed = NULL;
+    if (input != NULL) {
+        int rc;
+
+        *len = compressBound((uLong) input->len);
+        compressed = palloc(*len);
+
+        if ((rc = compress2(compressed, len, (Bytef *) input->data, (uLong) input->len, 1)) != Z_OK) {
+            elog(ERROR, "compression error: %d", rc);
+        }
+    }
+    return (char *) compressed;
 }
 
 void rest_multi_init(MultiRestState *state, int nhandles) {
@@ -93,7 +113,7 @@ int rest_multi_perform(MultiRestState *state) {
     return still_running;
 }
 
-void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData) {
+void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData, int compressionLevel) {
     int i;
 
     if (state->available == 0) {
@@ -127,19 +147,36 @@ void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEnt
             curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
             curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
             curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
-            curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
+            curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb");
             curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
             curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
             curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorbuff);
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
             curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+            curl_easy_setopt(curl, CURLOPT_PATH_AS_IS, 1L);
 
             curl_easy_setopt(curl, CURLOPT_URL, url);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
+
+            if (postData != NULL && compressionLevel > 0) {
+                struct curl_slist *list = NULL;
+                char *data;
+                uint64 len;
+
+                postData->compressed_data = data = do_compression(postData->buff, compressionLevel, &len);
+
+                list = curl_slist_append(list, "Content-Encoding: deflate");
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, len);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+            } else {
+                postData->compressed_data = NULL;
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
+            }
+
             curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
             curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
             curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
@@ -209,7 +246,12 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
                     }
                     if (state->postDatas[i] != NULL) {
                         PostDataEntry *entry = state->postDatas[i];
+
                         resetStringInfo(entry->buff);
+                        if (state->postDatas[i]->compressed_data != NULL) {
+                            pfree(state->postDatas[i]->compressed_data);
+                            state->postDatas[i]->compressed_data = NULL;
+                        }
                         state->pool[entry->pool_idx] = entry->buff;
                     }
                     if (state->responses[i] != NULL) {
@@ -244,9 +286,9 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
     }
 }
 
-StringInfo rest_call(char *method, char *url, StringInfo postData) {
+StringInfo rest_call(char *method, char *url, StringInfo postData, int compressionLevel) {
     char *errorbuff = (char *) palloc0(CURL_ERROR_SIZE);
-
+    char *compressed_data = NULL;
     StringInfo response = makeStringInfo();
     CURLcode   ret;
     int64      response_code;
@@ -265,12 +307,27 @@ StringInfo rest_call(char *method, char *url, StringInfo postData) {
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_ERRORBUFFER, errorbuff);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOSIGNAL, 1);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PATH_AS_IS, 1L);
 
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_URL, url);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_CUSTOMREQUEST, method);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEDATA, response);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+
+        if (postData != NULL && compressionLevel > 0) {
+            struct curl_slist *list = NULL;
+            uint64 len;
+
+            compressed_data = do_compression(postData, compressionLevel, &len);
+
+            list = curl_slist_append(list, "Content-Encoding: deflate");
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTPHEADER, list);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, len);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, compressed_data);
+        } else {
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+        }
+
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (postData && postData->data) ? 1 : 0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TCP_NODELAY, 1L);
@@ -294,6 +351,8 @@ StringInfo rest_call(char *method, char *url, StringInfo postData) {
     }
 
     pfree(errorbuff);
+    if (compressed_data != NULL)
+        pfree(compressed_data);
 
     curl_easy_cleanup(GLOBAL_CURL_INSTANCE);
     GLOBAL_CURL_INSTANCE = NULL;

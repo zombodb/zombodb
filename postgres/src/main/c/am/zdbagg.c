@@ -27,6 +27,7 @@ PG_FUNCTION_INFO_V1(zdb_internal_range_agg);
 PG_FUNCTION_INFO_V1(zdb_internal_significant_terms);
 PG_FUNCTION_INFO_V1(zdb_internal_extended_stats);
 PG_FUNCTION_INFO_V1(zdb_internal_arbitrary_aggregate);
+PG_FUNCTION_INFO_V1(zdb_internal_json_aggregate);
 PG_FUNCTION_INFO_V1(zdb_internal_suggest_terms);
 PG_FUNCTION_INFO_V1(zdb_internal_termlist);
 
@@ -125,6 +126,20 @@ Datum zdb_internal_arbitrary_aggregate(PG_FUNCTION_ARGS) {
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
     json = desc->implementation->arbitrary_aggregate(desc, aggregate_query, query);
+
+    PG_RETURN_TEXT_P(CStringGetTextDatum(json));
+}
+
+Datum zdb_internal_json_aggregate(PG_FUNCTION_ARGS) {
+    Oid  indexrelid       = PG_GETARG_OID(0);
+	zdb_json json_agg     = GET_STR(PG_GETARG_TEXT_P(1));
+    char *query           = GET_STR(PG_GETARG_TEXT_P(2));
+
+    ZDBIndexDescriptor *desc;
+    char               *json;
+
+    desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
+    json = desc->implementation->json_aggregate(desc, json_agg, query);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(json));
 }

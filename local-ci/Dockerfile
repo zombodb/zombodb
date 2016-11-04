@@ -88,6 +88,10 @@ RUN mkdir /build/zombodb
 COPY config/build.sh /build/
 RUN chmod a+x /build/build.sh
 
+ARG user
+ARG uid
+RUN useradd -ms /bin/bash --uid $uid $user
+ENV HOST_USER $user
 WORKDIR /build/zombodb
 ENTRYPOINT ["/build/build.sh"]
 CMD ["/bin/bash"]

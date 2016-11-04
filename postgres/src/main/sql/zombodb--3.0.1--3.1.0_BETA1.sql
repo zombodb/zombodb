@@ -1,4 +1,7 @@
-CREATE OR REPLACE FUNCTION zdbtupledeletedtrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
+CREATE OR REPLACE FUNCTION zdbupdatetrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
+
+DROP FUNCTION zdb_tally(table_name REGCLASS, fieldname TEXT, is_nested BOOLEAN, stem TEXT, QUERY TEXT, max_terms BIGINT, sort_order zdb_tally_order);
+DROP FUNCTION zdb_tally(table_name regclass, fieldname text, stem text, query text, max_terms bigint, sort_order zdb_tally_order);
 
 DROP FUNCTION zdb_internal_tally(type_oid oid, fieldname text, stem text, query text, max_terms bigint, sort_order text);
 CREATE OR REPLACE FUNCTION zdb_internal_tally(type_oid oid, fieldname text, stem text, query text, max_terms bigint, sort_order text, shard_size int) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';

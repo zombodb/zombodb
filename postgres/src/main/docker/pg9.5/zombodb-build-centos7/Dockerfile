@@ -4,7 +4,7 @@ MAINTAINER ZomboDB, LLC (zombodb@gmail.com)
 
 RUN yum update -y
 RUN yum install -y openssl
-RUN yum install -y http://yum.postgresql.org/9.5/redhat/rhel-6-x86_64/pgdg-redhat95-9.5-1.noarch.rpm
+RUN yum install -y http://yum.postgresql.org/9.5/redhat/rhel-6-x86_64/pgdg-redhat95-9.5-3.noarch.rpm
 RUN yum install -y postgresql95-devel
 RUN yum install -y gcc make zlib-devel
 
@@ -30,3 +30,9 @@ RUN ldconfig && ldconfig
 RUN rm -rf /usr/local/src/curl*
 
 ENV PATH /usr/pgsql-9.5/bin:$PATH
+
+ARG user
+ARG uid
+RUN useradd -ms /bin/bash --uid $uid $user
+USER $user
+ENV IS_DOCKER true

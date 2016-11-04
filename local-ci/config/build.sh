@@ -22,14 +22,18 @@ mvn clean install
 /usr/share/elasticsearch/bin/plugin -i zombodb -u file:///build/zombodb/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
 /etc/init.d/elasticsearch start
 
+mvn clean
+
 cd postgres
 make clean install
 mkdir /usr/lib/postgresql/9.5/lib/plugins
 cp /usr/lib/postgresql/9.5/lib/zombodb.so /usr/lib/postgresql/9.5/lib/plugins/zombodb.so
 rm /usr/lib/postgresql/9.5/lib/zombodb.so
 src/main/shell/hack-configs-for-travisci.sh
+make clean
 sudo /etc/init.d/postgresql start 9.5
 createuser -s -U postgres root
 
 sleep 5
 make installcheck
+sudo chown -R $HOST_USER:$HOST_USER regression* results > /dev/null 2>&1

@@ -1,4 +1,5 @@
 CREATE TABLE analyzers_test (
+  pkey       serial8 NOT NULL PRIMARY KEY,
   arabic     arabic,
   armenian   armenian,
   basque     basque,
@@ -37,6 +38,7 @@ CREATE TABLE analyzers_test (
 
 
 INSERT INTO analyzers_test VALUES (
+  DEFAULT,
   'هذا اختبار'
   , 'սա փորձություն է'
   , 'hau froga bat da'
@@ -79,13 +81,14 @@ SELECT
   (SELECT zdb('analyzers_test', ctid) ==> (attname || ':test') :: TEXT
    FROM analyzers_test) found
 FROM pg_attribute
-WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1
+WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1 AND attname <> 'pkey'
 ORDER BY attnum;
 
 SELECT zdb_analyze_text('idxanalyzers_test', attname, (SELECT row_to_json(analyzers_test) ->> attname FROM analyzers_test))
 FROM pg_attribute
 WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1
-        AND attname <> 'persian' /* difference in output between OS X and Linux -- easier to just ignore it */
+        AND attname NOT IN ('persian', /* difference in output between OS X and Linux -- easier to just ignore it */
+                            'pkey')
 ORDER BY attnum;
 
 SELECT
@@ -96,7 +99,7 @@ FROM analyzers_test, (SELECT
                         (attname || ':' || ((SELECT row_to_json(analyzers_test)
                                              FROM analyzers_test) -> attname)) :: TEXT q
                       FROM pg_attribute
-                      WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1) x
+                      WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1 AND attname <> 'pkey') x
 WHERE zdb('analyzers_test', ctid) ==> q
 ORDER BY attname;
 

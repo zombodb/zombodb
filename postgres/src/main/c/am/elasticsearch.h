@@ -19,7 +19,7 @@
 #include "zdb_interface.h"
 
 void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
+void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
 void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
@@ -39,6 +39,7 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
 char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query);
 char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query);
+char *elasticsearch_json_aggregate(ZDBIndexDescriptor *indexDescriptor, zdb_json json_agg, char *user_query);
 char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 
@@ -54,10 +55,10 @@ void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, TransactionId xid);
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, uint64 sequence);
 void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
-uint64 *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, zdb_json jsonXids, uint32 *nxids);
+void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
 void elasticsearch_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
