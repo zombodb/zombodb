@@ -29,9 +29,9 @@ public class ArrayDataOptimizer {
 
     private final ASTQueryTree tree;
     private final IndexMetadataManager metadataManager;
-    private final Map<String, StringBuilder> arrayData;
+    private final Map<String, String> arrayData;
 
-    public ArrayDataOptimizer(ASTQueryTree tree, IndexMetadataManager metadataManager, Map<String, StringBuilder> arrayData) {
+    public ArrayDataOptimizer(ASTQueryTree tree, IndexMetadataManager metadataManager, Map<String, String> arrayData) {
         this.tree = tree;
         this.metadataManager = metadataManager;
         this.arrayData = arrayData;
@@ -52,13 +52,13 @@ public class ArrayDataOptimizer {
                         // we know the definition of the "exact" analyzer, and it forces things to lower-case
                         // so we'll short-circuit analyzing each term and just force the arraydata string to lower-case
                         String key = child.getValue().toString();
-                        StringBuilder arrayString = arrayData.get(key);
-                        arrayData.put(key, new StringBuilder(arrayString.toString().toLowerCase(Locale.ENGLISH)));
+                        String arrayString = arrayData.get(key);
+                        arrayData.put(key, arrayString.toLowerCase(Locale.ENGLISH));
                     } else {
                         // this field, which uses the double-bracket array syntax (ASTArrayData)
                         // is actually analyzed, so we need to convert it to a regular array, parse it,
                         // and replace the ASTArrayData node in the tree
-                        StringBuilder arrayString = arrayData.get(child.getValue().toString());
+                        String arrayString = arrayData.get(child.getValue().toString());
                         StringBuilder arrayQuery = new StringBuilder(arrayString.length());
 
                         arrayQuery.append(fieldname).append(":[").append(arrayString).append("]");

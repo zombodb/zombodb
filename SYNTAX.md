@@ -23,6 +23,7 @@ The ZomboDB query syntax provides support for searching (in no particular order)
 * proximity (of word or phrase or combinations),
 * scripted searching,
 * Elasticsearch "bool" queries
+* Direct access to any Elasticsearch query via JSON
 * query expansion,
 * "more like this", and
 * more!
@@ -84,10 +85,13 @@ And since the __AND__ operator is the default, it could also be written as:
 During query parsing, tokens are formed whenever a character in this set is encountered:
 
 ```
- [ "'", "\"",  ":",  "*",  "~", "?", 
+[  
+   "'", "\"",  ":",  "*",  "~", "?", 
    "!",  "%",  "&",  "(",  ")", ",",
    "<",  "=",  ">",  "[",  "]", "^",
-   " ",  "\r", "\n", "\t", "\f" ]
+   "{",  "}",  " ",  "\r", "\n", 
+   "\t", "\f" 
+]
 ```
 
 All other characters a valid token characters.
@@ -316,6 +320,24 @@ An example might be:
 ```
 
 Similar to `#expand<>()` above, `#bool()` is considered a unary operator, so it can be combined with boolean expressions, included inside `#expand<>()`, etc.
+
+## Elasticsearch JSON Queries
+
+While ZomboDB provides a fairly robust query language, it doesn't expose every query construct (and parameter) that Elasticsearch supports.
+
+As such, ZomboDB allows you to query using direct Elasticsearch-compatible JSON queries as well.  In fact, this feature operates as a unary operator within ZomboDB's query language so you can mix-n-match Elasticsearch JSON queries with ZomboDB query constructs.
+
+To use a direct JSON query, simply wrap your Elasticsearch-compatiable JSON in `({` and `})`.
+
+For example:
+
+```
+beer OR wine OR cheese AND ({ "term": "subject": "food" }) NOT pickles
+
+```
+
+The JSON query structure you provide can be as complex as you need, and you can include as many `({ })` constructs within the query as you want.
+
 
 ## Nested Object Searching using WITH
 

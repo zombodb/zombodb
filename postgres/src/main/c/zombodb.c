@@ -54,5 +54,5 @@ Datum rest_get(PG_FUNCTION_ARGS) {
     if (url == NULL)
         PG_RETURN_NULL();
 
-    PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL)->data));
+    PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL, 1)->data));
 }

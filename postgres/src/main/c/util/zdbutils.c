@@ -26,32 +26,26 @@
 #include "catalog/dependency.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_type.h"
+#include "executor/executor.h"
 #include "executor/spi.h"
+#include "nodes/makefuncs.h"
+#include "optimizer/planmain.h"
 #include "storage/bufmgr.h"
-#include "utils/array.h"
+#include "storage/lmgr.h"
+#include "storage/procarray.h"
 #include "utils/builtins.h"
+#include "utils/datum.h"
+#include "utils/lsyscache.h"
 #include "utils/memutils.h"
-#include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/tqual.h"
 
-#include "zdbutils.h"
-
-typedef enum VisibilityType {
-    VT_SKIPPABLE,
-    VT_VISIBLE,
-    VT_INVISIBLE,
-    VT_OUT_OF_RANGE
-} VisibilityType;
-
-uint64 ConvertedTopTransactionId;
-
-static VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer);
+#include "am/zdb_interface.h"
 
 typedef struct {
     TransactionId last_xid;
     uint32        epoch;
-}                     TxidEpoch;
+} TxidEpoch;
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
     char       *definition = "";
@@ -144,25 +138,21 @@ void appendBinaryStringInfoAndStripLineBreaks(StringInfo str, const char *data, 
     Assert(str != NULL);
 
     /* Make more room if needed */
-    enlargeStringInfo(str, datalen);
+    enlargeStringInfo(str, datalen+1);
 
     /* OK, append the data */
-    memcpy(str->data + str->len, data, datalen);
-    for (i = str->len; i < str->len + datalen; i++) {
-        switch (str->data[i]) {
+    for (i=0; i<datalen; i++) {
+        char ch = data[i];
+        switch (ch) {
             case '\r':
             case '\n':
-                str->data[i] = ' ';
+                appendStringInfoCharMacro(str, ' ');
+                break;
+            default:
+                appendStringInfoCharMacro(str, ch);
+                break;
         }
     }
-    str->len += datalen;
-
-    /*
-     * Keep a trailing null in place, even though it's probably useless for
-     * binary data.  (Some callers are dealing with text but call this because
-     * their input isn't null-terminated.)
-     */
-    str->data[str->len] = '\0';
 }
 
 
@@ -226,6 +216,24 @@ Oid *findZDBIndexes(Oid relid, int *many) {
     return indexes;
 }
 
+Oid *find_all_zdb_indexes(int *many) {
+    Oid        *indexes = NULL;
+    int        i;
+
+    SPI_connect();
+
+    SPI_execute("select oid from pg_class where relam = (select oid from pg_am where amname = 'zombodb');", true, 0);
+    *many = SPI_processed;
+    if (SPI_processed > 0) {
+        indexes = (Oid *) MemoryContextAlloc(TopTransactionContext, sizeof(Oid) * SPI_processed);
+        for (i  = 0; i < SPI_processed; i++)
+            indexes[i] = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[i], SPI_tuptable->tupdesc, 1));
+    }
+    SPI_finish();
+
+    return indexes;
+}
+
 Oid *oid_array_to_oids(ArrayType *arr, int *many) {
     if (ARR_NDIM(arr) != 1 || ARR_HASNULL(arr) || ARR_ELEMTYPE(arr) != OIDOID)
         elog(ERROR, "expected oid[] of non-null values");
@@ -254,180 +262,6 @@ char **text_array_to_strings(ArrayType *array, int *many) {
     return result;
 }
 
-static void string_invisibility_callback(ItemPointer ctid, void *stringInfo) {
-    StringInfo sb = (StringInfo) stringInfo;
-    if (sb->len > 0)
-        appendStringInfoChar(sb, ',');
-    appendStringInfo(sb, "%d-%d", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
-}
-
-StringInfo find_invisible_ctids(Relation rel) {
-    StringInfo sb = makeStringInfo();
-
-    find_invisible_ctids_with_callback(rel, false, string_invisibility_callback, sb);
-    return sb;
-}
-
-int find_invisible_ctids_with_callback(Relation heapRel, bool isVacuum, invisibility_callback cb, void *user_data) {
-    BlockNumber cnt            = visibilitymap_count(heapRel);
-    BlockNumber numberOfBlocks = RelationGetNumberOfBlocks(heapRel);
-    int         many           = 0, skipped = 0, pages = 0;
-
-    if (cnt == 0 || cnt != numberOfBlocks) {
-        Snapshot      snapshot  = GetActiveSnapshot();
-        Buffer        vmap_buff = InvalidBuffer;
-        HeapTupleData heapTuple;
-        BlockNumber   blockno;
-        OffsetNumber  offno;
-
-        for (blockno = 0; blockno < numberOfBlocks; blockno++) {
-            CHECK_FOR_INTERRUPTS();
-
-            if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
-                Buffer buffer = InvalidBuffer;
-                pages++;
-                for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
-                    VisibilityType rc;
-
-                    ItemPointerSet(&(heapTuple.t_self), blockno, offno);
-
-                    rc = tuple_is_visible(heapRel, snapshot, &heapTuple, &buffer);
-
-                    if (rc == VT_OUT_OF_RANGE)
-                        break; /* we're done with this page */
-
-                    if (isVacuum || rc == VT_INVISIBLE) {
-                        /* tuple is invisible to us */
-                        cb(&(heapTuple.t_self), user_data);
-                        many++;
-                    } else if (rc == VT_SKIPPABLE) {
-                        skipped++;
-                    }
-                }
-
-                if (BufferIsValid(buffer)) {
-                    LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-                    ReleaseBuffer(buffer);
-                }
-            }
-        }
-
-        if (BufferIsValid(vmap_buff))
-            ReleaseBuffer(vmap_buff);
-    }
-
-    elog(DEBUG1, "[ZomboDB invisibility stats] heap=%s, many=%d, skipped=%d, pages=%d, total_blocks=%d", RelationGetRelationName(heapRel), many, skipped, pages, numberOfBlocks);
-    return many;
-}
-
-/**
- * Adapted from heapam.c#heap_fetch()
- */
-static inline VisibilityType tuple_is_visible(Relation relation, Snapshot snapshot, HeapTuple tuple, Buffer *buffer) {
-    ItemPointer  tid = &(tuple->t_self);
-    ItemId       lp;
-    Page         page;
-    OffsetNumber offnum;
-    bool         valid;
-
-    if (BufferIsInvalid(*buffer)) {
-        /*
-         * Fetch and pin the appropriate page of the relation.
-         */
-        *buffer = ReadBuffer(relation, ItemPointerGetBlockNumber(tid));
-
-        /*
-         * Need share lock on buffer to examine tuple commit status.
-         */
-        LockBuffer(*buffer, BUFFER_LOCK_SHARE);
-    }
-    page = BufferGetPage(*buffer);
-
-    /*
-     * We'd better check for out-of-range offnum in case of VACUUM since the
-     * TID was obtained.
-     */
-    offnum = ItemPointerGetOffsetNumber(tid);
-    if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page)) {
-        return VT_OUT_OF_RANGE;
-    }
-
-    /*
-     * get the item line pointer corresponding to the requested tid
-     */
-    lp = PageGetItemId(page, offnum);
-
-    /*
-     * Must check for deleted tuple.
-     */
-    if (!ItemIdIsNormal(lp)) {
-        if (!ItemIdIsUsed(lp)) {
-            /*
-             * Technically this item is free, which means it's also *not* in our index
-             * so we don't need to actively exclude it.
-             *
-             * Should it become occupied (inserted into index) later on during this process, it's no big deal
-             * because it'll have an xmin that's outside our visible range and we filter those on the query
-             */
-            return VT_VISIBLE;
-        } else {
-            return VT_INVISIBLE;
-        }
-    }
-
-    /*
-     * fill in *tuple fields
-     */
-    tuple->t_data     = (HeapTupleHeader) PageGetItem(page, lp);
-    tuple->t_len      = ItemIdGetLength(lp);
-    tuple->t_tableOid = RelationGetRelid(relation);
-
-    /*
-     * check time qualification of tuple, then release lock
-     */
-    valid = HeapTupleSatisfiesVisibility(tuple, snapshot, *buffer);
-
-    if (!valid) {
-        int           i;
-        TransactionId xmin = HeapTupleHeaderGetXmin(tuple->t_data);
-        TransactionId xmax;
-
-        if (xmin >= snapshot->xmax) {
-            /*
-             * The tuple's xmin is >= to the snapshot's xmax, so we can skip this entirely
-             * because we include a (_xmin >= ?snapshot->xmax) clause in our query to Elasticsearch.
-             *
-             * In essence, we treat this as "visible", but it just gets filtered out at search time
-             */
-            return VT_SKIPPABLE;
-        }
-
-        // NB:  Is this really a good idea, from a performance perspective, to
-        // examine xmin/xmax once for every concurrent session?
-        xmax   = HeapTupleHeaderGetUpdateXid(tuple->t_data);
-        for (i = 0; i < snapshot->xcnt; i++) {
-            if (xmin == snapshot->xip[i] || xmax == snapshot->xip[i]) {
-                /*
-                 * Similar to above, if the tuple's xmin or xmax are part of an active
-                 * transaction, we can skip it because those transaction ids will be
-                 * filtered out when we query
-                 */
-                return VT_SKIPPABLE;
-            }
-        }
-    }
-
-    if (valid) {
-        /*
-         * All checks passed, so the tuple is visible to us
-         */
-        return VT_VISIBLE;
-    }
-
-    /* Tuple failed time qual */
-    return VT_INVISIBLE;
-}
-
 /* adapted from Postgres' txid.c#convert_xid function */
 uint64 convert_xid(TransactionId xid) {
     TxidEpoch state;
@@ -447,4 +281,110 @@ uint64 convert_xid(TransactionId xid) {
         epoch++;
 
     return (epoch << 32) | xid;
+}
+
+/*
+ * Copied from Postgres' src/backend/optimizer/util/clauses.c
+ *
+ * evaluate_expr: pre-evaluate a constant expression
+ *
+ * We use the executor's routine ExecEvalExpr() to avoid duplication of
+ * code and ensure we get the same result as the executor would get.
+ */
+Expr *
+evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod,
+              Oid result_collation)
+{
+    EState	   *estate;
+    ExprState  *exprstate;
+    MemoryContext oldcontext;
+    Datum		const_val;
+    bool		const_is_null;
+    int16		resultTypLen;
+    bool		resultTypByVal;
+
+    /*
+     * To use the executor, we need an EState.
+     */
+    estate = CreateExecutorState();
+
+    /* We can use the estate's working context to avoid memory leaks. */
+    oldcontext = MemoryContextSwitchTo(estate->es_query_cxt);
+
+    /* Make sure any opfuncids are filled in. */
+    fix_opfuncids((Node *) expr);
+
+    /*
+     * Prepare expr for execution.  (Note: we can't use ExecPrepareExpr
+     * because it'd result in recursively invoking eval_const_expressions.)
+     */
+    exprstate = ExecInitExpr(expr, NULL);
+
+    /*
+     * And evaluate it.
+     *
+     * It is OK to use a default econtext because none of the ExecEvalExpr()
+     * code used in this situation will use econtext.  That might seem
+     * fortuitous, but it's not so unreasonable --- a constant expression does
+     * not depend on context, by definition, n'est ce pas?
+     */
+    const_val = ExecEvalExprSwitchContext(exprstate,
+                                          GetPerTupleExprContext(estate),
+                                          &const_is_null, NULL);
+
+    /* Get info needed about result datatype */
+    get_typlenbyval(result_type, &resultTypLen, &resultTypByVal);
+
+    /* Get back to outer memory context */
+    MemoryContextSwitchTo(oldcontext);
+
+    /*
+     * Must copy result out of sub-context used by expression eval.
+     *
+     * Also, if it's varlena, forcibly detoast it.  This protects us against
+     * storing TOAST pointers into plans that might outlive the referenced
+     * data.  (makeConst would handle detoasting anyway, but it's worth a few
+     * extra lines here so that we can do the copy and detoast in one step.)
+     */
+    if (!const_is_null)
+    {
+        if (resultTypLen == -1)
+            const_val = PointerGetDatum(PG_DETOAST_DATUM_COPY(const_val));
+        else
+            const_val = datumCopy(const_val, resultTypByVal, resultTypLen);
+    }
+
+    /* Release all the junk we just created */
+    FreeExecutorState(estate);
+
+    /*
+     * Make the constant result node.
+     */
+    return (Expr *) makeConst(result_type, result_typmod, result_collation,
+                              resultTypLen,
+                              const_val, const_is_null,
+                              resultTypByVal);
+}
+
+uint64 lookup_pkey(Oid heapRelOid, char *pkeyFieldname, ItemPointer ctid) {
+    Relation heapRel;
+    HeapTupleData tuple;
+    Buffer buffer;
+    Datum pkey;
+    bool isnull;
+
+    heapRel = RelationIdGetRelation(heapRelOid);
+    tuple.t_self = *ctid;
+
+    if (!heap_fetch(heapRel, SnapshotAny, &tuple, &buffer, false, NULL))
+        elog(ERROR, "Unable to fetch heap page from index");
+
+    pkey = heap_getattr(&tuple, get_attnum(heapRelOid, pkeyFieldname), RelationGetDescr(heapRel), &isnull);
+    if (isnull)
+        elog(ERROR, "detected NULL key value.  Cannot update row");
+
+    ReleaseBuffer(buffer);
+    RelationClose(heapRel);
+
+    return DatumGetInt64(pkey);
 }

@@ -24,6 +24,7 @@ import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import com.tcdi.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.junit.Test;
 
@@ -3492,8 +3493,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testDoubleBrackets() throws Exception {
         assertJson("exact_field:[[a,b,c,d]]",
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"a\", \"b\", \"c\", \"d\" ],\n" +
+                        "        \"_cache\" : true\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -3920,8 +3929,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
         assertJson(q,
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ],\n" +
+                        "        \"_cache\" : true\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -3939,8 +3956,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
         assertJson(q,
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ],\n" +
+                        "        \"_cache\" : true\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -4001,8 +4026,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
         assertJson(q,
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ],\n" +
+                        "        \"_cache\" : true\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -4708,6 +4741,23 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testIssue35() throws Exception {
+        QueryRewriter qr;
+
+        qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50)");
+        assertEquals(
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}}}",
+                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
+        );
+
+        qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50, #tally(field, \"^.*\", 5000, \"term\"))");
+        assertEquals(
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}},\"aggregations\":{\"field\":{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":0,\"order\":{\"_term\":\"asc\"}}}}}",
+                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
+        );
+    }
+
+    @Test
     public void testIssue132() throws Exception {
         assertAST("#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))",
                 "QueryTree\n" +
@@ -4738,5 +4788,176 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
                         "            Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)");
     }
+
+    @Test
+    public void testIssue148() throws Exception {
+        assertJson(
+                "null_field:null, exact_field:null",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"filtered\" : {\n" +
+                        "        \"query\" : {\n" +
+                        "          \"match_all\" : { }\n" +
+                        "        },\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"missing\" : {\n" +
+                        "            \"field\" : \"null_field\",\n" +
+                        "            \"null_value\" : true\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"filtered\" : {\n" +
+                        "        \"query\" : {\n" +
+                        "          \"match_all\" : { }\n" +
+                        "        },\n" +
+                        "        \"filter\" : {\n" +
+                        "          \"missing\" : {\n" +
+                        "            \"field\" : \"exact_field\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue143_ASTParsing() throws Exception {
+        assertAST(
+                "subject:(beer or wine and cheese) and ({" +
+                        "\"match_all\":{}" +
+                        "}) not subject:pickles",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Or\n" +
+                        "            Word (fieldname=subject, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "            And\n" +
+                        "               Array (fieldname=subject, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "                  Word (fieldname=subject, operator=CONTAINS, value=wine, index=db.schema.table.index)\n" +
+                        "                  Word (fieldname=subject, operator=CONTAINS, value=cheese, index=db.schema.table.index)\n" +
+                        "         JsonQuery (value={\"match_all\":{}})\n" +
+                        "         Not\n" +
+                        "            Word (fieldname=subject, operator=CONTAINS, value=pickles, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue143_Json() throws Exception {
+        assertJson(
+                "subject:(beer or wine and cheese) and ({" +
+                        "\"match_all\":{}" +
+                        "}) not subject:pickles",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"should\" : [ {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"subject\" : \"beer\"\n" +
+                        "          }\n" +
+                        "        }, {\n" +
+                        "          \"bool\" : {\n" +
+                        "            \"must\" : {\n" +
+                        "              \"terms\" : {\n" +
+                        "                \"subject\" : [ \"wine\", \"cheese\" ],\n" +
+                        "                \"minimum_should_match\" : \"2\"\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        } ]\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"subject\" : \"pickles\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue150() throws Exception {
+        QueryRewriter qr = qr("#json_agg({\n" +
+                "  \"top-tags\" : {\n" +
+                "    \"terms\" : {\n" +
+                "      \"field\" : \"tags\",\n" +
+                "      \"size\" : 3\n" +
+                "    },\n" +
+                "    \"aggs\" : {\n" +
+                "      \"top_tag_hits\" : {\n" +
+                "        \"top_hits\" : {\n" +
+                "          \"sort\" : [ {\n" +
+                "            \"last_activity_date\" : {\n" +
+                "              \"order\" : \"desc\"\n" +
+                "            }\n" +
+                "          } ],\n" +
+                "          \"_source\" : {\n" +
+                "            \"include\" : [ \"title\" ]\n" +
+                "          },\n" +
+                "          \"size\" : 1\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}) beer,wine,cheese");
+        SearchRequestBuilder builder = new SearchRequestBuilder(client());
+        builder.setQuery(qr.rewriteQuery());
+        builder.addAggregation(qr.rewriteAggregations());
+
+        assertEquals(
+                "{\n" +
+                        "  \"query\" : {\n" +
+                        "    \"bool\" : {\n" +
+                        "      \"should\" : [ {\n" +
+                        "        \"terms\" : {\n" +
+                        "          \"fulltext_field\" : [ \"beer\", \"wine\", \"cheese\" ]\n" +
+                        "        }\n" +
+                        "      }, {\n" +
+                        "        \"terms\" : {\n" +
+                        "          \"_all\" : [ \"beer\", \"wine\", \"cheese\" ]\n" +
+                        "        }\n" +
+                        "      } ]\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  \"aggregations\" : {\n" +
+                        "    \"top-tags\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"field\" : \"tags\",\n" +
+                        "        \"size\" : 3\n" +
+                        "      },\n" +
+                        "      \"aggs\" : {\n" +
+                        "        \"top_tag_hits\" : {\n" +
+                        "          \"top_hits\" : {\n" +
+                        "            \"sort\" : [ {\n" +
+                        "              \"last_activity_date\" : {\n" +
+                        "                \"order\" : \"desc\"\n" +
+                        "              }\n" +
+                        "            } ],\n" +
+                        "            \"_source\" : {\n" +
+                        "              \"include\" : [ \"title\" ]\n" +
+                        "            },\n" +
+                        "            \"size\" : 1\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
+                builder.toString()
+        );
+    }
+
 }
 

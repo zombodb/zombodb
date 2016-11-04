@@ -29,20 +29,28 @@
 #include "postgres.h"
 #include "miscadmin.h"
 #include "access/xact.h"
+#include "utils/memutils.h"
 
 #include "rest.h"
+
 
 static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userdata);
 static int    curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
 static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userdata) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
     StringInfo response = (StringInfo) userdata;
     appendBinaryStringInfo(response, ptr, size * nmemb);
+    MemoryContextSwitchTo(oldContext);
     return size * nmemb;
 }
 
 /** used to check for Postgres-level interrupts. */
 static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+    /* if interrupts are being held, then we don't want to abort this curl request */
+    if (InterruptHoldoffCount > 0)
+        return 0;
+
     /*
      * We only support detecting cancellation if we're actually in a transaction
      * i.e., we're not trying to COMMIT or ABORT a transaction
@@ -58,6 +66,21 @@ static int curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlno
             return -1;
     }
     return 0;
+}
+
+static char *do_compression(StringInfo input, int level, uint64 *len) {
+    Bytef *compressed = NULL;
+    if (input != NULL) {
+        int rc;
+
+        *len = compressBound((uLong) input->len);
+        compressed = palloc(*len);
+
+        if ((rc = compress2(compressed, len, (Bytef *) input->data, (uLong) input->len, 1)) != Z_OK) {
+            elog(ERROR, "compression error: %d", rc);
+        }
+    }
+    return (char *) compressed;
 }
 
 void rest_multi_init(MultiRestState *state, int nhandles) {
@@ -79,63 +102,92 @@ void rest_multi_init(MultiRestState *state, int nhandles) {
     MULTI_REST_STATES = lappend(MULTI_REST_STATES, state);
 }
 
-void rest_multi_perform(MultiRestState *state) {
+int rest_multi_perform(MultiRestState *state) {
     int still_running;
-    curl_multi_perform(state->multi_handle, &still_running);
+    CURLMcode rc;
+
+    do {
+        rc = curl_multi_perform(state->multi_handle, &still_running);
+    } while (rc == CURLM_CALL_MULTI_PERFORM);
+
+    return still_running;
 }
 
-int rest_multi_call(MultiRestState *state, char *method, char *url, StringInfo postData, bool process) {
+void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData, int compressionLevel) {
     int i;
 
-    if (state->available == 0)
-        rest_multi_partial_cleanup(state, false, false);
+    if (state->available == 0) {
+        int still_running;
 
-    if (state->available > 0) {
-        for (i = 0; i < state->nhandles; i++) {
-            if (state->handles[i] == NULL) {
-                CURL       *curl;
-                char       *errorbuff;
-                StringInfo response;
-                int        still_running;
+        do {
+            CHECK_FOR_INTERRUPTS();
 
-                curl = state->handles[i] = curl_easy_init();
-                if (!state->handles[i])
-                    elog(ERROR, "Unable to initialize CURL handle");
+            still_running = rest_multi_perform(state);
+        } while (still_running == state->nhandles);
 
-                errorbuff = state->errorbuffs[i] = palloc0(CURL_ERROR_SIZE);
-                state->postDatas[i] = postData;
-                response = state->responses[i] = makeStringInfo();
-
-                curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
-                curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
-                curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
-                curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
-                curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
-                curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
-                curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorbuff);
-                curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
-                curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
-
-                curl_easy_setopt(curl, CURLOPT_URL, url);
-                curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
-                curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->data ? 1 : 0);
-
-                curl_multi_add_handle(state->multi_handle, curl);
-                state->available--;
-
-                if (process)
-                    curl_multi_perform(state->multi_handle, &still_running);
-
-                return i;
-            }
-        }
+        rest_multi_partial_cleanup(state, false, true);
+        if (state->available == 0)
+            elog(ERROR, "unable to cleanup an available rest_multi slot");
     }
 
-    return -1;
+    for (i = 0; i < state->nhandles; i++) {
+        if (state->handles[i] == NULL) {
+            CURL       *curl;
+            char       *errorbuff;
+            StringInfo response;
+
+            curl = state->handles[i] = curl_easy_init();
+            if (!state->handles[i])
+                elog(ERROR, "Unable to initialize CURL handle");
+
+            errorbuff = state->errorbuffs[i] = palloc0(CURL_ERROR_SIZE);
+            state->postDatas[i] = postData;
+            response = state->responses[i] = makeStringInfo();
+
+            curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
+            curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
+            curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
+            curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb");
+            curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
+            curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
+            curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorbuff);
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+            curl_easy_setopt(curl, CURLOPT_PATH_AS_IS, 1L);
+
+            curl_easy_setopt(curl, CURLOPT_URL, url);
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+
+            if (postData != NULL && compressionLevel > 0) {
+                struct curl_slist *list = NULL;
+                char *data;
+                uint64 len;
+
+                postData->compressed_data = data = do_compression(postData->buff, compressionLevel, &len);
+
+                list = curl_slist_append(list, "Content-Encoding: deflate");
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, len);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+            } else {
+                postData->compressed_data = NULL;
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->buff->len : 0);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->buff->data : NULL);
+            }
+
+            curl_easy_setopt(curl, CURLOPT_POST, strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
+            curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+            curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+
+            curl_multi_add_handle(state->multi_handle, curl);
+            state->available--;
+
+            rest_multi_perform(state);
+            return;
+        }
+    }
 }
 
 bool rest_multi_is_available(MultiRestState *state) {
@@ -143,7 +195,7 @@ bool rest_multi_is_available(MultiRestState *state) {
     int   still_running, numfds = 0;
 
     /* Has something finished? */
-    curl_multi_perform(multi_handle, &still_running);
+    still_running = rest_multi_perform(state);
     if (still_running < state->nhandles)
         return true;
 
@@ -153,13 +205,13 @@ bool rest_multi_is_available(MultiRestState *state) {
         return false;
 
     /* see if something has finished */
-    curl_multi_perform(multi_handle, &still_running);
+    still_running = rest_multi_perform(state);
     return still_running < state->nhandles;
 }
 
 bool rest_multi_all_done(MultiRestState *state) {
     int still_running;
-    curl_multi_perform(state->multi_handle, &still_running);
+    still_running = rest_multi_perform(state);
     return still_running == 0;
 }
 
@@ -174,17 +226,18 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
             bool found   = false;
             int  i;
 
-            curl_multi_remove_handle(state->multi_handle, handle);
-
             for (i = 0; i < state->nhandles; i++) {
                 if (state->handles[i] == handle) {
+                    CURLcode rc;
                     int64 response_code;
 
-                    curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code);
+                    if ( (rc = curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code)) != CURLE_OK)
+                        elog(ERROR, "Problem getting response code: rc=%d", rc);
+
                     if (msg->data.result != 0 || response_code != 200 ||
                         strstr(state->responses[i]->data, "\"errors\":true")) {
                         /* REST endpoint messed up */
-                        elog(ERROR, "libcurl error:  handle=%p, %s: %s, response_code=%ld, result=%d", handle, state->errorbuffs[i], state->responses[i]->data, response_code, msg->data.result);
+                        elog(ERROR, "i=%d, libcurl error:  handle=%p, %s: %s, response_code=%ld, result=%d", i, handle, state->errorbuffs[i], state->responses[i]->data, response_code, msg->data.result);
                     }
 
                     if (state->errorbuffs[i] != NULL) {
@@ -192,9 +245,14 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
                         state->errorbuffs[i] = NULL;
                     }
                     if (state->postDatas[i] != NULL) {
-                        pfree(state->postDatas[i]->data);
-                        pfree(state->postDatas[i]);
-                        state->postDatas[i] = NULL;
+                        PostDataEntry *entry = state->postDatas[i];
+
+                        resetStringInfo(entry->buff);
+                        if (state->postDatas[i]->compressed_data != NULL) {
+                            pfree(state->postDatas[i]->compressed_data);
+                            state->postDatas[i]->compressed_data = NULL;
+                        }
+                        state->pool[entry->pool_idx] = entry->buff;
                     }
                     if (state->responses[i] != NULL) {
                         pfree(state->responses[i]->data);
@@ -202,19 +260,20 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
                         state->responses[i] = NULL;
                     }
 
-                    curl_easy_cleanup(handle);
                     state->handles[i] = NULL;
                     state->available++;
-
-                    if (fast)
-                        return;
 
                     found = true;
                     break;
                 }
             }
 
-            if (!found) {
+            if (found) {
+                curl_multi_remove_handle(state->multi_handle, handle);
+                curl_easy_cleanup(handle);
+                if (fast)
+                    return;
+            } else {
                 elog(ERROR, "Couldn't find easy_handle for %p", handle);
             }
         }
@@ -227,9 +286,9 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
     }
 }
 
-StringInfo rest_call(char *method, char *url, StringInfo postData) {
+StringInfo rest_call(char *method, char *url, StringInfo postData, int compressionLevel) {
     char *errorbuff = (char *) palloc0(CURL_ERROR_SIZE);
-
+    char *compressed_data = NULL;
     StringInfo response = makeStringInfo();
     CURLcode   ret;
     int64      response_code;
@@ -248,13 +307,30 @@ StringInfo rest_call(char *method, char *url, StringInfo postData) {
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_ERRORBUFFER, errorbuff);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOSIGNAL, 1);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PATH_AS_IS, 1L);
 
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_URL, url);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_CUSTOMREQUEST, method);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEDATA, response);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+
+        if (postData != NULL && compressionLevel > 0) {
+            struct curl_slist *list = NULL;
+            uint64 len;
+
+            compressed_data = do_compression(postData, compressionLevel, &len);
+
+            list = curl_slist_append(list, "Content-Encoding: deflate");
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTPHEADER, list);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, len);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, compressed_data);
+        } else {
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
+            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+        }
+
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (postData && postData->data) ? 1 : 0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TCP_NODELAY, 1L);
     } else {
         elog(ERROR, "Unable to initialize libcurl");
     }
@@ -275,6 +351,8 @@ StringInfo rest_call(char *method, char *url, StringInfo postData) {
     }
 
     pfree(errorbuff);
+    if (compressed_data != NULL)
+        pfree(compressed_data);
 
     curl_easy_cleanup(GLOBAL_CURL_INSTANCE);
     GLOBAL_CURL_INSTANCE = NULL;

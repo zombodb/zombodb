@@ -27,7 +27,13 @@ import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.Fuzziness;
+import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
@@ -44,12 +50,10 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
-import java.util.AbstractCollection;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
+import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
 import static org.elasticsearch.index.query.FilterBuilders.*;
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
@@ -62,10 +66,10 @@ public abstract class QueryRewriter {
         static {
             try {
                 IS_SIREN_AVAILABLE = Class.forName("solutions.siren.join.index.query.FilterJoinBuilder") != null;
-                System.err.println("[zombodb] Using SIREn for join resolution");
+                Loggers.getLogger(QueryRewriter.Factory.class).info("[zombodb] Using SIREn for join resolution");
             } catch (Exception e) {
                 IS_SIREN_AVAILABLE = false;
-                System.err.println("[zombodb] Using ZomboDB for join resolution");
+                Loggers.getLogger(QueryRewriter.Factory.class).info("[zombodb] Using ZomboDB for join resolution");
             }
         }
 
@@ -76,6 +80,7 @@ public abstract class QueryRewriter {
                     Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class);
                     return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
             } else {
@@ -142,9 +147,10 @@ public abstract class QueryRewriter {
     private boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
 
-    private Map<String, StringBuilder> arrayData;
+    private Map<String, String> arrayData;
 
     protected final IndexMetadataManager metadataManager;
+    private boolean hasJsonAggregate = false;
 
     public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
         this.client = client;
@@ -180,7 +186,7 @@ public abstract class QueryRewriter {
         performOptimizations(client);
 
         if (!metadataManager.getMetadataForMyIndex().alwaysResolveJoins()) {
-            if (canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
+            if (!hasJsonAggregate && canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
                 metadataManager.setMyIndex(metadataManager.getUsedIndexes().iterator().next());
             }
         }
@@ -228,6 +234,10 @@ public abstract class QueryRewriter {
         return tree.getAggregate().isNested();
     }
 
+    public boolean hasJsonAggregate() {
+        return hasJsonAggregate;
+    }
+
     public SuggestBuilder.SuggestionBuilder rewriteSuggestions() {
         try {
             _isBuildingAggregate = true;
@@ -238,12 +248,15 @@ public abstract class QueryRewriter {
     }
 
     public String getAggregateIndexName() {
+        ASTIndexLink link;
         if (tree.getAggregate() != null)
-            return metadataManager.findField(tree.getAggregate().getFieldname()).getIndexName();
+            link = metadataManager.findField(tree.getAggregate().getFieldname());
         else if (tree.getSuggest() != null)
-            return metadataManager.findField(tree.getSuggest().getFieldname()).getIndexName();
+            link = metadataManager.findField(tree.getSuggest().getFieldname());
         else
             throw new QueryRewriteException("Cannot figure out which index to use for aggregation");
+
+        return link.getAlias() != null ? link.getAlias() : link.getIndexName();
     }
 
     public String getAggregateFieldName() {
@@ -278,7 +291,7 @@ public abstract class QueryRewriter {
         if (!queryRewritten)
             throw new IllegalStateException("Must call .rewriteQuery() before calling .getSearchIndexName()");
 
-        return metadataManager.getMyIndex().getIndexName();
+        return metadataManager.getMyIndex().getAlias() == null ? metadataManager.getMyIndex().getIndexName() : metadataManager.getMyIndex().getAlias();
     }
 
     private AbstractAggregationBuilder build(ASTAggregate agg) {
@@ -289,6 +302,8 @@ public abstract class QueryRewriter {
 
         if (agg instanceof ASTTally)
             ab = build((ASTTally) agg);
+        else if (agg instanceof ASTJsonAgg)
+            ab = build((ASTJsonAgg) agg);
         else if (agg instanceof ASTRangeAggregate)
             ab = build((ASTRangeAggregate) agg);
         else if (agg instanceof ASTSignificantTerms)
@@ -401,7 +416,7 @@ public abstract class QueryRewriter {
             TermsBuilder tb = terms(agg.getFieldname())
                     .field(getAggregateFieldName(agg))
                     .size(agg.getMaxTerms())
-                    .shardSize(0)
+                    .shardSize(agg.getShardSize())
                     .order(stringToTermsOrder(agg.getSortOrder()));
 
             if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
@@ -409,6 +424,21 @@ public abstract class QueryRewriter {
 
             return tb;
         }
+    }
+
+    private AbstractAggregationBuilder build(final ASTJsonAgg node) {
+        hasJsonAggregate = true;
+        return new AbstractAggregationBuilder("zdb_json", null) {
+            @Override
+            public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+                Map<String, Object> agg = new ObjectMapper().readValue(node.getEscapedValue(), Map.class);
+                for (Map.Entry<String, Object> entry : agg.entrySet()) {
+                    builder.field(entry.getKey());
+                    builder.value(entry.getValue());
+                }
+                return builder;
+            }
+        };
     }
 
     /**
@@ -572,6 +602,8 @@ public abstract class QueryRewriter {
             qb = build((ASTScript) node);
         else if (node instanceof ASTExpansion)
             qb = build((ASTExpansion) node);
+        else if (node instanceof ASTJsonQuery)
+            qb = build((ASTJsonQuery) node);
         else
             throw new QueryRewriteException("Unexpected node type: " + node.getClass().getName());
 
@@ -665,6 +697,22 @@ public abstract class QueryRewriter {
             expansionBuilder = bqb;
         }
         return expansionBuilder;
+    }
+
+    private QueryBuilder build(final ASTJsonQuery node) {
+        return new BaseQueryBuilder() {
+            @Override
+            public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+                JsonXContentParser parser = (JsonXContentParser) JsonXContent.jsonXContent.createParser(node.getEscapedValue());
+                builder.copyCurrentStructure(parser);
+                return builder;
+            }
+
+            @Override
+            protected void doXContent(XContentBuilder builder, Params params) throws IOException {
+                // noop
+            }
+        };
     }
 
     private QueryBuilder build(ASTWord node) {
@@ -767,7 +815,11 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                return filteredQuery(matchAllQuery(), missingFilter(n.getFieldname()));
+                String nullValue = metadataManager.getMetadataForField(n.getFieldname()).getNullValue(n.getFieldname());
+                MissingFilterBuilder filter = missingFilter(n.getFieldname());
+                if (nullValue != null)
+                    filter.nullValue(true);
+                return filteredQuery(matchAllQuery(), filter);
             }
         });
     }
@@ -912,12 +964,13 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(QueryParserNode n) {
-                final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()).toString(), ", \r\n\t\f\"'[]");
                 if ("_id".equals(node.getFieldname())) {
+                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
                     Collection<String> terms = st.getAllTokens();
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
-                    return termsQuery(n.getFieldname(), st.getAllTokens());
+                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
+                    return filteredQuery(matchAllQuery(), termsFilter(node.getFieldname(), st.getAllTokens()).cache(true));
                 }
             }
         });
@@ -1145,15 +1198,22 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyExclusion(QueryBuilder query, String indexName) {
-        QueryParserNode exclusion = tree.getExclusion(indexName);
+    public QueryBuilder applyExclusion(QueryBuilder query, final String indexName) {
+        ASTVisibility visibility = tree.getVisibility();
 
-        if (exclusion != null) {
-            BoolQueryBuilder bqb = boolQuery();
-            bqb.must(query);
-            bqb.mustNot(build(exclusion));
-            query = bqb;
-        }
-        return query;
+        if (visibility == null)
+            return query;
+
+        return
+                boolQuery()
+                        .must(query)
+                        .mustNot(
+                                visibility("_prev_ctid")
+                                        .myXid(visibility.getMyXid())
+                                        .xmin(visibility.getXmin())
+                                        .xmax(visibility.getXmax())
+                                        .activeXids(visibility.getActiveXids())
+                                        .query(query)
+                        );
     }
 }

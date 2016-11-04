@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include "postgres.h"
+#include "executor/executor.h"
 #include "executor/spi.h"
 #include "access/xact.h"
 #include "catalog/indexing.h"
@@ -26,6 +27,7 @@
 #include "rewrite/rewriteHandler.h"
 #endif
 
+#include "nodes/makefuncs.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/rel.h"
@@ -131,12 +133,64 @@ void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid) {
     a1 = linitial(funcExpr->args);
     a2 = lsecond(funcExpr->args);
 
-    if (!IsA(a1, Const) || ((Const *) a1)->consttype != REGCLASSOID)
-        elog(ERROR, "First argument of the 'zdb' column function is not ::regclass");
-    else if (!IsA(a2, Var) || ((Var *) a2)->vartype != TIDOID)
-        elog(ERROR, "Second argument of the 'zdb' column function is not ::tid");
+	/*
+	 * possibly change 'a1' to point to something different
+	 */
+    if (IsA(a1, FuncExpr)) {
+        /*
+         * first argument is a function call, so evaluate the expression and use its return value.
+         * It's probably a double-cast like zdb('tablename'::text::regclass, ctid)
+         *
+         * If it isn't, we'll catch it below
+         */
+        a1 = (Node *) evaluate_expr((Expr *) a1, REGCLASSOID, 0, InvalidOid);
+    } else if (IsA(a1, RelabelType)) {
+		/*
+		 * first argument is a RelableType, so we just want to use its argument directly
+		 * if it's of type REGCLASSOID.
+		 *
+		 * It's probably a call like zdb(tbl.tableoid, tbl.ctid)
+		 */
+		RelabelType *rt = (RelabelType *) a1;
 
-    *heapRelOid = (Oid) DatumGetObjectId(((Const *) a1)->constvalue);
+		if (rt->resulttype == REGCLASSOID)
+			a1 = (Node *) rt->arg;
+		else
+			elog(ERROR, "First argument of the 'zdb' column function is a RelabelType we don't understand: %d", rt->resulttype);
+	}
+
+	/*
+	 * now evaluate that a1 is still a thing we can deal with
+	 */
+	if (IsA(a1, Var)) {
+		Var *var = (Var *) a1;
+
+		switch (var->varno) {
+			case INNER_VAR:
+			case OUTER_VAR:
+				elog(ERROR, "Cannot determine index.  First argument of left side of operator is a Var type we don't understand");
+				break;
+
+			default: {
+				QueryDesc     *query  = linitial(CURRENT_QUERY_STACK);
+				RangeTblEntry *rentry = rt_fetch(var->varno, query->plannedstmt->rtable);
+				*heapRelOid = rentry->relid;
+			}
+		}
+	} else if (IsA(a1, Const)) {
+		Const *cnst = (Const *) a1;
+
+		if (cnst->consttype == REGCLASSOID)
+			*heapRelOid = (Oid) DatumGetObjectId(cnst->constvalue);
+		else
+			elog(ERROR, "First argument of the 'zdb' column function is not ::regclass, it is a %d", a1->type);
+	} else {
+		elog(ERROR, "Cannot determine index.  First argument of the 'zdb' column function is not a node type we understand: %d", a1->type);
+	}
+
+	/* validate 'a2' as well */
+	if (!IsA(a2, Var) || ((Var *) a2)->vartype != TIDOID)
+		elog(ERROR, "Second argument of the 'zdb' column function is not ::tid");
 }
 
 Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
@@ -412,7 +466,7 @@ Datum zdb_internal_update_mapping(PG_FUNCTION_ARGS) {
     heapRel = RelationIdGetRelation(desc->heapRelid);
     tupdesc = RelationGetDescr(heapRel);
 
-    desc->implementation->updateMapping(desc, TextDatumGetCString(make_es_mapping(desc->heapRelid, tupdesc, false)));
+    desc->implementation->updateMapping(desc, TextDatumGetCString(make_es_mapping(desc, desc->heapRelid, tupdesc, false)));
     RelationClose(heapRel);
 
     PG_RETURN_VOID();
@@ -431,7 +485,7 @@ Datum zdb_internal_dump_query(PG_FUNCTION_ARGS) {
     PG_RETURN_TEXT_P(CStringGetTextDatum(jsonQuery));
 }
 
-Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
+Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
     StringInfo result = makeStringInfo();
     char       *json;
     int        i;
@@ -439,9 +493,26 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
     appendStringInfo(result, "{\"is_anonymous\": %s,", isAnonymous ? "true" : "false");
     appendStringInfo(result, "\"properties\": {");
 
-    appendStringInfo(result, "\"_xact\": {"
+    appendStringInfo(result, "\"_xid\": {"
             "\"type\":\"long\","
-            "\"fielddata\":{\"format\":\"disabled\"},"
+            "\"fielddata\": {\"format\": \"doc_values\"},"
+            "\"include_in_all\":\"false\","
+            "\"norms\": {\"enabled\":false},"
+            "\"index\": \"not_analyzed\""
+            "},");
+
+    appendStringInfo(result, "\"_prev_ctid\": {"
+			"\"store\":true,"
+            "\"type\":\"string\","
+            "\"fielddata\": {\"format\": \"paged_bytes\"},"
+            "\"include_in_all\":\"false\","
+            "\"norms\": {\"enabled\":false},"
+            "\"index\": \"not_analyzed\""
+            "},");
+
+    appendStringInfo(result, "\"_zdb_seq\": {"
+            "\"type\":\"long\","
+            "\"fielddata\": {\"format\": \"doc_values\"},"
             "\"include_in_all\":\"false\","
             "\"norms\": {\"enabled\":false},"
             "\"index\": \"not_analyzed\""
@@ -479,8 +550,7 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"analyzer\": \"fulltext\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");
-
-        } else if (strcmp("fulltext_with_shingles", typename) == 0) {
+		} else if (strcmp("fulltext_with_shingles", typename) == 0) {
             /* phrase-indexed field */
             appendStringInfo(result, "\"type\": \"string\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
@@ -497,6 +567,9 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"analyzer\": \"phrase\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+			if (strstr(typename, "_array") != NULL)
+				/* arrays need a null_value set so that NULL can be searched */
+				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("date", typename) == 0 || strcmp("date[]", typename) == 0) {
             /* date field */
@@ -507,6 +580,9 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"fields\": {"
                     "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"}"
                     "}");
+			if (strstr(typename, "[]") != NULL)
+				/* arrays need a null_value set so that NULL can be searched */
+				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("timestamp", typename) == 0 || strcmp("timestamp without time zone", typename) == 0 ||
                    strcmp("timestamp[]", typename) == 0 || strcmp("timestamp without time zone[]", typename) == 0) {
@@ -533,6 +609,9 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
                     "}"
 #endif
                     "}");
+			if (strstr(typename, "[]") != NULL)
+				/* arrays need a null_value set so that NULL can be searched */
+				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("timestamp with time zone", typename) == 0 ||
                    strcmp("timestamp with time zone[]", typename) == 0) {
@@ -559,6 +638,9 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
                     "}"
 #endif
                     "}");
+			if (strstr(typename, "[]") != NULL)
+				/* arrays need a null_value set so that NULL can be searched */
+				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("time", typename) == 0 || strcmp("time[]", typename) == 0 ||
                    strcmp("time without time zone", typename) == 0 ||
@@ -586,6 +668,9 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
                     "}"
 #endif
                     "}");
+			if (strstr(typename, "[]") != NULL)
+				/* arrays need a null_value set so that NULL can be searched */
+				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("time with time zone", typename) == 0 || strcmp("time with time zone[]", typename) == 0) {
             /* time field */
@@ -611,6 +696,9 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
                     "}"
 #endif
                     "}");
+			if (strstr(typename, "[]") != NULL)
+				/* arrays need a null_value set so that NULL can be searched */
+				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("smallint", typename) == 0 || strcmp("integer", typename) == 0 ||
                    strcmp("smallint[]", typename) == 0 || strcmp("integer[]", typename) == 0) {
@@ -668,6 +756,9 @@ Datum make_es_mapping(Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
             appendStringInfo(result, "\"index_options\": \"docs\",");
             appendStringInfo(result, "\"ignore_above\":32000,");
             appendStringInfo(result, "\"analyzer\": \"exact\"");
+			if (strstr(typename, "[]") != NULL)
+				/* arrays need a null_value set so that NULL can be searched */
+				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
             /* json field */

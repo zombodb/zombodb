@@ -49,6 +49,8 @@ public class IndexLinkOptimizer {
 
         QueryTreeOptimizer.rollupParentheticalGroups(tree);
 
+        rewriteIndirectReferenceIndexLinks(tree);
+
         injectASTExpansionNodes(tree);
 
         int before;
@@ -58,9 +60,6 @@ public class IndexLinkOptimizer {
 
             QueryTreeOptimizer.rollupParentheticalGroups(tree);
         } while (tree.countNodes() != before);
-
-
-        rewriteIndirectReferenceIndexLinks(tree);
 
         ASTAggregate agg = tree.getAggregate();
         while (agg != null) {
@@ -153,7 +152,10 @@ public class IndexLinkOptimizer {
             QueryParserNode lastExpansion = null;
             String leftFieldname = null;
             String rightFieldname;
-            Stack<String> paths = metadataManager.calculatePath(link, metadataManager.getMyIndex());
+            ASTIndexLink parentLink = metadataManager.getMyIndex();
+            if (parent instanceof ASTExpansion)
+                parentLink = ((ASTExpansion) parent).getIndexLink();
+            Stack<String> paths = metadataManager.calculatePath(link, parentLink);
 
             if (link.hasFieldname())
                 stripPath(root, link.getFieldname());
@@ -177,6 +179,7 @@ public class IndexLinkOptimizer {
 
                 ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
                 String indexName;
+                String alias = null;
 
                 indexName = current.substring(0, current.indexOf(':'));
                 if (next != null) {
@@ -189,12 +192,13 @@ public class IndexLinkOptimizer {
                     rightFieldname = leftFieldname;
                     leftFieldname = current.substring(current.indexOf(':') + 1);
                     indexName = lastExpansion.getIndexLink().getIndexName();
+                    alias = lastExpansion.getIndexLink().getAlias();
                 }
 
                 if (leftFieldname.equals(rightFieldname))
                     break;
 
-                ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, rightFieldname);
+                ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, alias, rightFieldname);
                 expansion.jjtAddChild(newLink, 0);
                 expansion.jjtAddChild(last == null ? root : last, 1);
                 newLink.setFieldname(link.getFieldname());
@@ -317,6 +321,25 @@ public class IndexLinkOptimizer {
                         }
                     };
                     node.jjtAddChild(newLink, 0);
+
+                    if (!link.getIndexName().equals(metadataManager.getMyIndex().getIndexName())) {
+                        Stack<String> path = metadataManager.calculatePath(newLink, metadataManager.getMyIndex());
+                        if (path.size() == 2) {
+                            String top = path.pop();
+                            String bottom = path.pop();
+                            String leftFieldname = bottom.split("[:]")[1];
+                            String rightFieldname = top.split("[:]")[1];
+                            String indexName = top.split("[:]")[0];
+
+                            ASTIndexLink intermediateLink = ASTIndexLink.create(leftFieldname, indexName, null, rightFieldname);
+                            ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
+                            ((QueryParserNode) node.jjtGetParent()).replaceChild(node, expansion);
+
+                            expansion.jjtAddChild(intermediateLink, 0);
+                            expansion.jjtAddChild(node, 1);
+                        }
+                    }
+
                 }
             }
         }
@@ -374,6 +397,7 @@ public class IndexLinkOptimizer {
     private long estimateCount(ASTExpansion expansion, boolean useQuery) {
         SearchRequestBuilder builder = new SearchRequestBuilder(client);
         builder.setIndices(expansion.getIndexLink().getIndexName());
+        builder.setTypes("data");
         builder.setSize(0);
         builder.setSearchType(SearchType.COUNT);
         builder.setQueryCache(true);

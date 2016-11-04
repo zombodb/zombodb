@@ -135,8 +135,17 @@ public class IndexMetadataManager {
         if (link == null) {
             try {
                 GetMappingsResponse response = future.get();
-                String pkey = (String) ((Map) response.getMappings().get(indexName).get("data").getSourceAsMap().get("_meta")).get("primary_key");
-                link = ASTIndexLink.create(pkey, indexName, pkey, true);
+                String firstIndexName = response.getMappings().iterator().next().key;
+                String pkey = (String) ((Map) response.getMappings().get(firstIndexName).get("data").getSourceAsMap().get("_meta")).get("primary_key");
+
+                String alias = null;
+                if (!firstIndexName.equals(indexName)) {
+                    alias = indexName;
+                    indexName = firstIndexName;
+                }
+
+
+                link = ASTIndexLink.create(pkey, indexName, alias, pkey, true);
             } catch (Exception e) {
                 throw new RuntimeException("Problem creating anonymous ASTIndexLink for " + indexName, e);
             }

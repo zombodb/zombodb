@@ -1,0 +1,24 @@
+CREATE SCHEMA test_schema;
+CREATE TABLE test_schema.test_table (
+  id    SERIAL8 PRIMARY KEY,
+  title TEXT
+);
+CREATE INDEX idxtest_table ON test_schema.test_table USING zombodb(zdb('test_schema.test_table', ctid), zdb(test_table)) WITH (url='http://localhost:9200/');
+SELECT * FROM zdb_estimate_count('test_schema.test_table', 'beer');
+ zdb_estimate_count 
+--------------------
+                  0
+(1 row)
+
+DROP INDEX test_schema.test_table_zdb_xact;
+ERROR:  cannot drop index test_schema.test_table_zdb_xact because index test_schema.idxtest_table requires it
+HINT:  You can drop index test_schema.idxtest_table instead.
+DROP INDEX test_schema.idxtest_table;
+select count(*) from pg_index where indrelid = 'test_schema.test_table'::regclass;
+ count 
+-------
+     1
+(1 row)
+
+DROP SCHEMA test_schema CASCADE;
+NOTICE:  drop cascades to table test_schema.test_table

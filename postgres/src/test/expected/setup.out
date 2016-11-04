@@ -66,6 +66,7 @@ CREATE TABLE so_users (
     website_url phrase
 );
 CREATE TABLE words (
+    id serial8 NOT NULL PRIMARY KEY,
     word text NOT NULL
 );
 COPY so_posts (accepted_answer_id, answer_count, body, closed_date, comment_count, community_owned_date, creation_date, favorite_count, id, last_activity_date, last_editor_date, last_editor_display_name, last_editor_user_id, owner_display_name, owner_user_id, parent_id, post_type_id, score, tags, title, view_count) FROM stdin;
@@ -75,8 +76,6 @@ ALTER TABLE ONLY so_posts
     ADD CONSTRAINT posts_tmp_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY so_users
     ADD CONSTRAINT so_users_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY words
-    ADD CONSTRAINT words_pkey PRIMARY KEY (word);
 --
 -- PostgreSQL database dump complete
 --

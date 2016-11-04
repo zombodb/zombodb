@@ -134,10 +134,11 @@ PARSER_END(QueryParser)
 
   | <TO: "/to/" >
 
-  | <EXCLUDE: "#exclude" >
+  | <VISIBILITY: "#visibility" >
 
   | <NESTED: "#nested" >
   | <TALLY: "#tally" >
+  | <JSON_AGG: "#json_agg" >
   | <RANGE: "#range" >
   | <SIGNIFICANT_TERMS: "#significant_terms" >
   | <EXTENDED_STATS: "#extended_stats" >
@@ -161,7 +162,7 @@ PARSER_END(QueryParser)
   | <NUMBER: (("-")? (["1"-"9"]) (<DIGIT>)* ("." (<DIGIT>)+)?) | (("0")+ ("." (<DIGIT>)+)) | ("0") >
 
   | <WORD:
-               (~["'","\"",":","*","~","?","!","%","&","(",")",",","<","=",">","[","]","^"," ","\r","\n","\t","\f"] | ("\\"~[]))+
+               (~["'","\"",":","*","~","?","!","%","&","(",")",",","<","=",">","[","]","{","}","^"," ","\r","\n","\t","\f"] | ("\\"~[]))+
            | ("'" ((~["'","*","?","~"," ","\r","\n","\t","\f"] | ("\\"~[]))+) "'")
            | ("\"" ((~["\"","*","?","~"," ","\r","\n","\t","\f"] | ("\\"~[]))+) "\"")
     >
@@ -184,6 +185,7 @@ PARSER_END(QueryParser)
              ) ("~" ("!")? (<DIGIT>)+)?
     >
   | <SCRIPT: "$$" (~[])* "$$" >
+  | <JSON_QUERY: "({" (~[])* "})" >
 
   | <#LETTER: ["a"-"z", "_"] >
   | <#DIGIT: ["0"-"9"] >
@@ -193,7 +195,7 @@ private ASTQueryTree parse0() #QueryTree :
 {
 }
 {
-    ( Aggregations() | Options() | FieldLists() | Exclude() )* [ Expression() ] <EOF>
+    ( Aggregations() | Options() | FieldLists() | Visibility() )* [ Expression() ] <EOF>
     {
         return jjtThis;
     }
@@ -201,7 +203,7 @@ private ASTQueryTree parse0() #QueryTree :
 
 void Aggregations() : {}
 {
-    ( Tally() | RangeAggregate() | SignificantTerms() | ExtendedStats() | Suggest() )
+    ( Tally() | RangeAggregate() | SignificantTerms() | ExtendedStats() | JsonAgg() | Suggest() )
 }
 
 void Tally() #Tally :
@@ -209,10 +211,21 @@ void Tally() #Tally :
     FieldnameRef fn;
 }
 {
-    ( <TALLY> "(" (fn = TrackedFieldnameReference()) "," (Word()|Phrase()) "," Number() "," (Word()|Phrase()) [ "," Aggregations() ] ")" )
+    ( <TALLY> "(" (fn = TrackedFieldnameReference()) "," (Word()|Phrase()) "," Number() "," (Word()|Phrase()) [LOOKAHEAD(2) "," Number()] [ "," Aggregations() ] ")" )
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
+    }
+}
+
+void JsonAgg() #JsonAgg :
+{
+    Token t;
+}
+{
+    ( <JSON_AGG> t = <JSON_QUERY> )
+    {
+         jjtThis.value = t.image.substring(1, t.image.length()-1);
     }
 }
 
@@ -292,9 +305,9 @@ void FieldListEntry() #FieldListEntry :
     { jjtThis.fieldname = fieldname; }
 }
 
-void Exclude() #Exclude : {}
+void Visibility() #Visibility : {}
 {
-    <EXCLUDE> "<" IndexName() ">" "(" Expression() ")"
+    <VISIBILITY> "(" Number() /* current xid */ "," Number() /* xmin */ "," Number() /* xmax */ "," Array() /* snapshot.xips */ ")"
 }
 
 void IndexLink() #IndexLink :
@@ -408,6 +421,7 @@ void UnaryExpression() :
         | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
         | ("(" ")") // just ignore empty parens, ie:  ()
         | n = Expansion()
+        | n = JsonQuery()
         | n = BoolQuery()
         | n = Literal()
         | n = Script()
@@ -493,6 +507,18 @@ QueryParserNode Filter() #Filter : {}
 {
     ( <FILTER> "(" Expression() ")" )
     { return jjtThis; }
+}
+
+QueryParserNode JsonQuery() #JsonQuery :
+{
+    Token t;
+}
+{
+    ( t = <JSON_QUERY> )
+    {
+        jjtThis.value = t.image.substring(1, t.image.length()-1);
+        return jjtThis;
+    }
 }
 
 void OptionalBoost(QueryParserNode n) :
@@ -698,7 +724,7 @@ QueryParserNode Array() #Array(>0) :
 }
 {
     (
-        "[" { inArray = true; } (Literal() ( "," Literal() )*) { inArray = false; } "]"
+        "[" { inArray = true; } [ (Literal() ( "," Literal() )*) ] { inArray = false; } "]"
     )
     { return jjtThis; }
 }

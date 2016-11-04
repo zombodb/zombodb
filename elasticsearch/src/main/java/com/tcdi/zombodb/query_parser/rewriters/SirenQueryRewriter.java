@@ -15,6 +15,7 @@
  */
 package com.tcdi.zombodb.query_parser.rewriters;
 
+import com.tcdi.zombodb.query_parser.ASTArrayData;
 import com.tcdi.zombodb.query_parser.ASTExpansion;
 import com.tcdi.zombodb.query_parser.ASTIndexLink;
 import org.elasticsearch.client.Client;
@@ -22,18 +23,20 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import solutions.siren.join.index.query.FilterJoinBuilder;
 
+import java.util.List;
+import java.util.Map;
+
 import static org.elasticsearch.index.query.QueryBuilders.*;
 
 /**
  * A {@link QueryRewriter} that resolves joins using SIREn:
  * http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/
  */
-@SuppressWarnings("unused")
-/** used via reflection */
+
+@SuppressWarnings("unused") /* used via reflection */
 public class SirenQueryRewriter extends QueryRewriter {
 
-    @SuppressWarnings("unused")
-    /** used via reflection */
+    @SuppressWarnings("unused") /* used via reflection */
     public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
         super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex);
     }

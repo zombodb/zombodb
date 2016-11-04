@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 OLD=$1
 NEW=$2

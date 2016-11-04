@@ -28,8 +28,16 @@
                 }
               }
             }, {
-              "terms" : {
-                "subject" : [ "a", "b", "c", "d" ]
+              "filtered" : {
+                "query" : {
+                  "match_all" : { }
+                },
+                "filter" : {
+                  "terms" : {
+                    "subject" : [ "a", "b", "c", "d" ],
+                    "_cache" : true
+                  }
+                }
               }
             }, {
               "terms" : {
@@ -1230,8 +1238,16 @@
         "must" : [ {
           "bool" : {
             "must" : [ {
-              "terms" : {
-                "title" : [ "1", "2", "3", "4", "5" ]
+              "filtered" : {
+                "query" : {
+                  "match_all" : { }
+                },
+                "filter" : {
+                  "terms" : {
+                    "title" : [ "1", "2", "3", "4", "5" ],
+                    "_cache" : true
+                  }
+                }
               }
             }, {
               "filtered" : {

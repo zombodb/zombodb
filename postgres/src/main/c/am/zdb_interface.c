@@ -20,10 +20,12 @@
 #include "access/heapam_xlog.h"
 #include "access/nbtree.h"
 #include "access/reloptions.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "commands/dbcommands.h"
 #include "storage/lmgr.h"
 #include "utils/builtins.h"
+#include "utils/formatting.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
@@ -31,29 +33,30 @@
 #include "zdb_interface.h"
 #include "elasticsearch.h"
 
+#define XACT_INDEX_SUFFIX "_zdb_xact"
+
 relopt_kind RELOPT_KIND_ZDB;
 bool        zdb_batch_mode_guc;
 bool        zdb_ignore_visibility_guc;
 
 static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
+static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
 static void wrapper_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 static char *wrapper_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
 static void wrapper_dropIndex(ZDBIndexDescriptor *indexDescriptor);
-static void wrapper_refreshIndex(ZDBIndexDescriptor *indexDescriptor);
 
 static uint64            wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 static uint64            wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 static uint64            wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
 static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
-static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
-static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order);
+static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order, int shard_size);
 static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);
 static char *wrapper_significant_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 static char *wrapper_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *user_query);
 static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, char *aggregate_query, char *user_query);
+static char *wrapper_json_aggregate(ZDBIndexDescriptor *indexDescriptor, zdb_json json_agg, char *user_query);
 static char *wrapper_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms);
 static char *wrapper_termlist(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *prefix, char *startat, uint32 size);
 
@@ -66,10 +69,12 @@ static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query,
 
 static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems);
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data);
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
+
+static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
@@ -99,6 +104,10 @@ static void validate_refresh_interval(char *str) {
     // noop
 }
 
+static void validate_alias(char *str){
+	// noop
+}
+
 static List *allocated_descriptors = NULL;
 
 void zdb_index_init(void) {
@@ -116,6 +125,9 @@ void zdb_index_init(void) {
     add_string_reloption(RELOPT_KIND_ZDB, "field_lists", "field=[field1, field2, field3], other=[field4,field5]", NULL, validate_field_lists);
     add_bool_reloption(RELOPT_KIND_ZDB, "ignore_visibility", "Should queries that require visibility information actually use it?", false);
     add_bool_reloption(RELOPT_KIND_ZDB, "always_resolve_joins", "Should queries that link to other indexes always resolve the links", false);
+    add_int_reloption(RELOPT_KIND_ZDB, "compression_level", "0-9 value to indicate the level of HTTP compression", 0, 0, 9);
+	add_string_reloption(RELOPT_KIND_ZDB, "alias", "The Elasticsearch Alias to which this index should belong", NULL, validate_alias);
+    add_int_reloption(RELOPT_KIND_ZDB, "optimize_after", "After how many deleted docs should ZDB _optimize the ES index?", 0, 0, INT32_MAX);
 
     DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
@@ -135,8 +147,9 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 
     foreach(lc, allocated_descriptors) {
         desc = lfirst(lc);
-        if (desc->indexRelid == indexRel->rd_id)
+        if (desc->indexRelid == indexRel->rd_id) {
             return desc;
+        }
     }
 
     heapRel = relation_open(indexRel->rd_index->indrelid, AccessShareLock);
@@ -151,15 +164,20 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->databaseName = pstrdup(get_database_name(MyDatabaseId));
     desc->schemaName   = pstrdup(get_namespace_name(RelationGetNamespace(heapRel)));
     desc->tableName    = pstrdup(RelationGetRelationName(heapRel));
-	desc->options		 = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
+	desc->options	   = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
 
-    desc->searchPreference   = ZDBIndexOptionsGetSearchPreference(indexRel);
-    desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel);
+    desc->pkeyFieldname = lookup_primary_key(desc->schemaName, desc->tableName, false);
+	if (desc->pkeyFieldname != NULL)
+		desc->pkeyFieldname = pstrdup(desc->pkeyFieldname);
+
+    desc->searchPreference   = ZDBIndexOptionsGetSearchPreference(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetSearchPreference(indexRel));
+    desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel) ? pstrdup("-1") : pstrdup(ZDBIndexOptionsGetRefreshInterval(indexRel));
     desc->bulk_concurrency   = ZDBIndexOptionsGetBulkConcurrency(indexRel);
     desc->batch_size         = ZDBIndexOptionsGetBatchSize(indexRel);
     desc->ignoreVisibility   = ZDBIndexOptionsGetIgnoreVisibility(indexRel);
-    desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel);
+    desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetFieldLists(indexRel));
     desc->alwaysResolveJoins = ZDBIndexOptionsAlwaysResolveJoins(indexRel);
+    desc->optimizeAfter      = ZDBIndexOptionsGetOptimizeAfter(indexRel);
 
     heapTupDesc = RelationGetDescr(heapRel);
     for (i = 0; i < heapTupDesc->natts; i++) {
@@ -181,22 +199,29 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         desc->shards    = ZDBIndexOptionsGetNumberOfShards(shadowRel);
         desc->indexName = pstrdup(RelationGetRelationName(shadowRel));
         desc->url       = ZDBIndexOptionsGetUrl(shadowRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(shadowRel));
+
+        desc->compressionLevel  = ZDBIndexOptionsGetCompressionLevel(shadowRel);
+
         relation_close(shadowRel, AccessShareLock);
     } else {
         /* or just from the actual index if we're not a shadow */
         desc->shards    = ZDBIndexOptionsGetNumberOfShards(indexRel);
         desc->indexName = pstrdup(RelationGetRelationName(indexRel));
         desc->url       = ZDBIndexOptionsGetUrl(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(indexRel));
+
+        desc->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
     }
 
-    desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
+	desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
 
-    appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
-    desc->fullyQualifiedName = pstrdup(scratch->data);
+	appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
+	desc->fullyQualifiedName = pstrdup(str_tolower(scratch->data, (size_t) scratch->len, DEFAULT_COLLATION_OID));
 
     resetStringInfo(scratch);
     appendStringInfo(scratch, "%s.%s", get_namespace_name(RelationGetNamespace(heapRel)), RelationGetRelationName(heapRel));
     desc->qualifiedTableName = pstrdup(scratch->data);
+
+	desc->alias = ZDBIndexOptionsGetAlias(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetAlias(indexRel));
 
     desc->implementation                          = palloc0(sizeof(ZDBIndexImplementation));
     desc->implementation->_last_selectivity_query = NULL;
@@ -206,17 +231,16 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->updateMapping           = wrapper_updateMapping;
     desc->implementation->dumpQuery               = wrapper_dumpQuery;
     desc->implementation->dropIndex               = wrapper_dropIndex;
-    desc->implementation->refreshIndex            = wrapper_refreshIndex;
     desc->implementation->actualIndexRecordCount  = wrapper_actualIndexRecordCount;
     desc->implementation->estimateCount           = wrapper_estimateCount;
     desc->implementation->estimateSelectivity     = wrapper_estimateSelectivity;
     desc->implementation->searchIndex             = wrapper_searchIndex;
-    desc->implementation->getPossiblyExpiredItems = wrapper_getPossiblyExpiredItems;
     desc->implementation->tally                   = wrapper_tally;
     desc->implementation->rangeAggregate          = wrapper_rangeAggregate;
     desc->implementation->significant_terms       = wrapper_significant_terms;
     desc->implementation->extended_stats          = wrapper_extended_stats;
     desc->implementation->arbitrary_aggregate     = wrapper_arbitrary_aggregate;
+    desc->implementation->json_aggregate          = wrapper_json_aggregate;
     desc->implementation->suggest_terms           = wrapper_suggest_terms;
     desc->implementation->termlist                = wrapper_termlist;
     desc->implementation->describeNestedObject    = wrapper_describeNestedObject;
@@ -227,6 +251,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->bulkDelete              = wrapper_bulkDelete;
     desc->implementation->batchInsertRow          = wrapper_batchInsertRow;
     desc->implementation->batchInsertFinish       = wrapper_batchInsertFinish;
+	desc->implementation->markTransactionCommitted = wrapper_markTransactionCommitted;
     desc->implementation->transactionFinish       = wrapper_transactionFinish;
 
     allocated_descriptors = lappend(allocated_descriptors, desc);
@@ -294,13 +319,13 @@ static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shar
     MemoryContextDelete(me);
 }
 
-static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
+static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_finalizeNewIndex", 512, 64, 64);
     MemoryContext oldContext = MemoryContextSwitchTo(me);
 
     Assert(!indexDescriptor->isShadow);
 
-    elasticsearch_finalizeNewIndex(indexDescriptor);
+    elasticsearch_finalizeNewIndex(indexDescriptor, committedXids);
 
     MemoryContextSwitchTo(oldContext);
     MemoryContextDelete(me);
@@ -334,18 +359,6 @@ static void wrapper_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
     Assert(!indexDescriptor->isShadow);
 
     elasticsearch_dropIndex(indexDescriptor);
-
-    MemoryContextSwitchTo(oldContext);
-    MemoryContextDelete(me);
-}
-
-static void wrapper_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
-    MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_refreshIndex", 512, 64, 64);
-    MemoryContext oldContext = MemoryContextSwitchTo(me);
-
-    Assert(!indexDescriptor->isShadow);
-
-    elasticsearch_refreshIndex(indexDescriptor);
 
     MemoryContextSwitchTo(oldContext);
     MemoryContextDelete(me);
@@ -409,23 +422,11 @@ static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescripto
     return results;
 }
 
-static ZDBSearchResponse *wrapper_getPossiblyExpiredItems(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems) {
-    MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
-    ZDBSearchResponse *results;
-
-    Assert(!indexDescriptor->isShadow);
-
-    results = elasticsearch_getPossiblyExpiredItems(indexDescriptor, nitems);
-
-    MemoryContextSwitchTo(oldContext);
-    return results;
-}
-
-static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order) {
+static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order, int shard_size) {
     MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
     char          *results;
 
-    results = elasticsearch_tally(indexDescriptor, fieldname, stem, query, max_terms, sort_order);
+    results = elasticsearch_tally(indexDescriptor, fieldname, stem, query, max_terms, sort_order, shard_size);
 
     MemoryContextSwitchTo(oldContext);
     return results;
@@ -466,6 +467,16 @@ static char *wrapper_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, ch
     char          *results;
 
     results = elasticsearch_arbitrary_aggregate(indexDescriptor, aggregate_query, user_query);
+
+    MemoryContextSwitchTo(oldContext);
+    return results;
+}
+
+static char *wrapper_json_aggregate(ZDBIndexDescriptor *indexDescriptor, zdb_json json_agg, char *user_query) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    char          *results;
+
+    results = elasticsearch_json_aggregate(indexDescriptor, json_agg, user_query);
 
     MemoryContextSwitchTo(oldContext);
     return results;
@@ -539,7 +550,7 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse) {
     MemoryContextSwitchTo(oldContext);
 }
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, int nitems) {
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_bulkDelete", 512, 64, 64);
     MemoryContext oldContext = MemoryContextSwitchTo(me);
 
@@ -551,12 +562,12 @@ static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPo
     MemoryContextDelete(me);
 }
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data) {
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence) {
     MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
     Assert(!indexDescriptor->isShadow);
 
-    elasticsearch_batchInsertRow(indexDescriptor, ctid, data);
+    elasticsearch_batchInsertRow(indexDescriptor, ctid, data, isupdate, old_ctid, xmin, commandId, sequence);
 
     MemoryContextSwitchTo(oldContext);
 }
@@ -570,6 +581,19 @@ static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
 
     MemoryContextSwitchTo(oldContext);
 }
+
+static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid) {
+	MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_markTransactionCommitted", 512, 64, 64);
+	MemoryContext oldContext = MemoryContextSwitchTo(me);
+
+	Assert(!indexDescriptor->isShadow);
+
+	elasticsearch_markTransactionCommitted(indexDescriptor, xid);
+
+	MemoryContextSwitchTo(oldContext);
+	MemoryContextDelete(me);
+}
+
 
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_transactionFinish", 512, 64, 64);

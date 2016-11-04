@@ -16,10 +16,11 @@ DELETE FROM so_posts WHERE id IN (SELECT id FROM deltmp);
 SELECT assert(count(*), 162240, 'deleted 3k records from so_posts') FROM so_posts;
 SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
 
-SELECT assert(zdb_estimate_count('so_posts', 'id:*'), 162240, 'make sure ES does not still sees deleted rows');
+-- ES will still see deleted rows via zdb_estimate_count
+SELECT assert(zdb_estimate_count('so_posts', 'id:*'), 165240, 'make sure ES still sees deleted rows');
 
 -- the *actual* number of records elasticsearch has in the and 'data' type
--- should actually be 10k as well
+-- should actually be 165240 as well
 SELECT assert (zdb_actual_index_record_count('so_posts', 'data'), 165240, 'actual data after delete');
 
 COMMIT;

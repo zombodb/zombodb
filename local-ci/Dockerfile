@@ -27,6 +27,9 @@ ENV LANG en_US.UTF-8
 # turn off warnings from debconf
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
+# ask apt to update itself
+RUN apt-get update -y -qq --fix-missing
+
 # update apt
 RUN apt-get update -y -qq
 RUN apt-get install -y -qq apt-utils
@@ -85,6 +88,10 @@ RUN mkdir /build/zombodb
 COPY config/build.sh /build/
 RUN chmod a+x /build/build.sh
 
+ARG user
+ARG uid
+RUN useradd -ms /bin/bash --uid $uid $user
+ENV HOST_USER $user
 WORKDIR /build/zombodb
 ENTRYPOINT ["/build/build.sh"]
 CMD ["/bin/bash"]

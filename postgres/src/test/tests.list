@@ -78,6 +78,16 @@ issue-118
 zdb_dump_query
 270-beta3-bug
 direct-ctid
+xact_visibility
 matview
+schema
 issue-132
 issue-134
+tableoid
+issue-148
+issue-141
+aliases
+committed-xid-routing
+issue-143
+issue-150
+issue-153

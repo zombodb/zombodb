@@ -345,43 +345,48 @@ public class Utils {
         return prox;
     }
 
-    public static Map<String, StringBuilder> extractArrayData(String input, StringBuilder output) {
-        Map<String, StringBuilder> arrayData = new HashMap<>();
-        StringBuilder currentArray = null;
-        String currentArrayName = null;
+    public static Map<String, String> extractArrayData(String input, StringBuilder output) {
+        Map<String, String> arrayData = new HashMap<>();
         boolean inArrayData = false;
-        char nextChar;
+        int arrStart = -1;
+        int blockStart = -1;
 
         for (int i = 0, many = input.length(); i < many; i++) {
             char ch = input.charAt(i);
-            nextChar = i < many - 1 ? input.charAt(i + 1) : 0;
+            char nextChar = i < many - 1 ? input.charAt(i + 1) : 0;
 
             switch (ch) {
                 case '[':
                     if (nextChar == '[' && !inArrayData) {
+                        output.append(input.substring(blockStart, i));
+                        blockStart=-1;
                         inArrayData = true;
-                        currentArrayName = "$" + arrayData.size();
-                        currentArray = new StringBuilder();
                         i++;
+                        arrStart = i+1;  // plus one to skip the double brackets at start of array: [[
                     }
                     break;
                 case ']':
                     if (nextChar == ']' && inArrayData) {
-                        arrayData.put(currentArrayName, currentArray);
-                        output.append("[[").append(currentArrayName).append("]");
+                        String arrayName = "$" + arrayData.size();
+                        arrayData.put(arrayName, input.substring(arrStart, i));
+                        if (blockStart != -1) {
+                            output.append(input.substring(blockStart, i));
+                            blockStart = -1;
+                        }
+                        output.append("[[").append(arrayName).append("]]");
                         inArrayData = false;
                         i++;
                     }
                     break;
-            }
-
-            if (inArrayData) {
-                if (ch != '[')
-                    currentArray.append(ch);
-            } else {
-                output.append(ch);
+                default:
+                    if (!inArrayData && blockStart == -1)
+                        blockStart = i;
+                    break;
             }
         }
+
+        if (blockStart != -1)
+            output.append(input.substring(blockStart, input.length()));
 
         return arrayData;
     }
@@ -530,6 +535,37 @@ public class Utils {
         }
 
         return rc;
+    }
+
+    public static int encodeLong(long value, byte[] buffer, int offset) {
+        buffer[offset + 7] = (byte) (value >>> 56);
+        buffer[offset + 6] = (byte) (value >>> 48);
+        buffer[offset + 5] = (byte) (value >>> 40);
+        buffer[offset + 4] = (byte) (value >>> 32);
+        buffer[offset + 3] = (byte) (value >>> 24);
+        buffer[offset + 2] = (byte) (value >>> 16);
+        buffer[offset + 1] = (byte) (value >>> 8);
+        buffer[offset + 0] = (byte) (value >>> 0);
+
+        return 8;
+    }
+
+    public static int encodeFloat(float value, byte[] buffer, int offset) {
+        return encodeInteger(Float.floatToRawIntBits(value), buffer, offset);
+    }
+
+    public static int encodeInteger(int value, byte[] buffer, int offset) {
+        buffer[offset + 3] = (byte) ((value >>> 24) & 0xFF);
+        buffer[offset + 2] = (byte) ((value >>> 16) & 0xFF);
+        buffer[offset + 1] = (byte) ((value >>> 8) & 0xFF);
+        buffer[offset + 0] = (byte) ((value >>> 0) & 0xFF);
+        return 4;
+    }
+
+    public static int encodeCharacter(char value, byte[] buffer, int offset) {
+        buffer[offset + 1] = (byte) ((value >>> 8) & 0xFF);
+        buffer[offset + 0] = (byte) ((value >>> 0) & 0xFF);
+        return 2;
     }
 
 }

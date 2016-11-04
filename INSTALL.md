@@ -53,6 +53,8 @@ There are a few configuration settings that **must** be set in `elasticsearch.ym
 threadpool.bulk.queue_size: 1024
 threadpool.bulk.size: 12
 
+http.compression: true
+
 http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 ```
@@ -61,7 +63,9 @@ The bulk threadpool must be increased because ZomboDB multiplexes against the `_
 
 The last two settings can be turned up or down (`http.max_content_length` must be be greater than 8192kB), but are good defaults.
 
-Finally, restart the node.  Repeat for every "client" node in your cluster.
+The `http.compression` setting is only necessary if you set the `compression_level` option on your ZomboDB indexes.  Using HTTP compression may or may not improve indexing performance -- the deciding factor will be the bandwith/latency of the network between Postgres and Elasticsearch.  Failure to set `http.compression` when you've set a `compression_level` will cause ZomboDB to fail when it communicates with Elasticsearch.
+
+Finally, restart the node.  Repeat for every node in your cluster.
 
 
 # Upgrading

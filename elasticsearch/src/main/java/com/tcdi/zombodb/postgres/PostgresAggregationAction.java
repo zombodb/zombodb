@@ -59,11 +59,12 @@ public class PostgresAggregationAction extends BaseRestHandler {
             SuggestBuilder.SuggestionBuilder tsb = rewriter.rewriteSuggestions();
 
             builder.setIndices(rewriter.getAggregateIndexName());
+            builder.setTypes("data");
             builder.setQuery(qb);
 
             if (ab != null) {
                 builder.addAggregation(ab);
-                if (!rewriter.isAggregateNested()) {
+                if (!rewriter.hasJsonAggregate() && !rewriter.isAggregateNested()) {
                     builder.addAggregation(missing("missing").field(rewriter.getAggregateFieldName()));
                 }
             } else if (tsb != null) {

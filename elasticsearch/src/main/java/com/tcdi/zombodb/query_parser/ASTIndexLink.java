@@ -4,11 +4,11 @@ package com.tcdi.zombodb.query_parser;
 
 public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode {
 
-    public static ASTIndexLink create(final String leftFieldname, final String indexName, final String rightFieldname) {
-        return create(leftFieldname, indexName, rightFieldname, false);
+    public static ASTIndexLink create(final String leftFieldname, final String indexName, final String alias, final String rightFieldname) {
+        return create(leftFieldname, indexName, alias, rightFieldname, false);
     }
 
-    public static ASTIndexLink create(final String leftFieldname, final String indexName, final String rightFieldname, boolean anonymous) {
+    public static ASTIndexLink create(final String leftFieldname, final String indexName, final String alias, final String rightFieldname, boolean anonymous) {
         if (anonymous) {
             return new ASTIndexLink(QueryParserTreeConstants.JJTINDEXLINK) {
                 @Override
@@ -24,6 +24,11 @@ public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode 
                 @Override
                 public String getRightFieldname() {
                     return rightFieldname;
+                }
+
+                @Override
+                public String getAlias() {
+                    return alias;
                 }
             };
         } else {
@@ -41,9 +46,13 @@ public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode 
             right.setValue(rightFieldname);
             link.jjtAddChild(right, 2);
 
+            link.alias = alias;
+
             return link;
         }
     }
+
+    private String alias;
 
     public ASTIndexLink(int id) {
         super(id);
@@ -55,6 +64,10 @@ public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode 
 
     public boolean hasFieldname() {
         return getFieldname() != null;
+    }
+
+    public String getAlias() {
+        return alias;
     }
 
     /**

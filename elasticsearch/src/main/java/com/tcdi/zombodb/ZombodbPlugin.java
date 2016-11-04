@@ -17,9 +17,11 @@
 package com.tcdi.zombodb;
 
 import com.tcdi.zombodb.postgres.*;
+import com.tcdi.zombodb.query.ZomboDBVisibilityQueryParser;
 import org.elasticsearch.action.ActionModule;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.indices.query.IndicesQueriesModule;
 import org.elasticsearch.plugins.AbstractPlugin;
 import org.elasticsearch.rest.RestModule;
 import org.xbib.elasticsearch.action.termlist.TermlistAction;
@@ -42,10 +44,16 @@ public class ZombodbPlugin extends AbstractPlugin {
         module.addRestAction(ZombodbDocumentHighlighterAction.class);
         module.addRestAction(ZombodbMultiSearchAction.class);
         module.addRestAction(RestTermlistAction.class);
+        module.addRestAction(ZombodbBulkAction.class);
+        module.addRestAction(ZombodbCommitXIDAction.class);
     }
 
     public void onModule(ActionModule module) {
         module.registerAction(TermlistAction.INSTANCE, TransportTermlistAction.class);
+    }
+
+    public void onModule(IndicesQueriesModule module) {
+        module.addQuery(ZomboDBVisibilityQueryParser.class);
     }
 
     @Override
@@ -55,6 +63,6 @@ public class ZombodbPlugin extends AbstractPlugin {
 
     @Override
     public String description() {
-        return "REST endpoints in support of ZomboDB";
+        return "ZomboDB support plugin";
     }
 }

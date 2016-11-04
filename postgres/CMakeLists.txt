@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.3)
-project(postgres)
+cmake_minimum_required(VERSION 3.5)
+project(zombodb_postgres)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -26,6 +26,6 @@ set(SOURCE_FILES
     src/main/c/util/zdbutils.h
     src/main/c/zombodb.c)
 
-include_directories(src/main/c /usr/local/src/postgresql/src/include)
+include_directories(src/main/c /usr/local/src/pg93/src/include /usr/local/src/pg93/src/backend)
 
 add_executable(postgres ${SOURCE_FILES})

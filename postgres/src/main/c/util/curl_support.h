@@ -24,15 +24,23 @@
 /* this needs to match zdb_interface.h:MAX_BULK_CONCURRENCY */
 #define MAX_CURL_HANDLES 1024
 
+typedef struct PostDataEntry {
+    int pool_idx;
+    StringInfo buff;
+    char *compressed_data;
+} PostDataEntry;
+
 typedef struct MultiRestState {
-    int        nhandles;
-    CURL       *handles[MAX_CURL_HANDLES];
-    char       *errorbuffs[MAX_CURL_HANDLES];
-    StringInfo postDatas[MAX_CURL_HANDLES];
-    StringInfo responses[MAX_CURL_HANDLES];
+    int           nhandles;
+    CURL          *handles[MAX_CURL_HANDLES];
+    char          *errorbuffs[MAX_CURL_HANDLES];
+    PostDataEntry *postDatas[MAX_CURL_HANDLES];
+    StringInfo    responses[MAX_CURL_HANDLES];
 
     CURLM *multi_handle;
     int   available;
+
+    StringInfo *pool;
 } MultiRestState;
 
 extern CURLSH *GLOBAL_CURL_SHARED_STATE;
