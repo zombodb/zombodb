@@ -4300,17 +4300,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  \"bool\" : {\n" +
                         "    \"should\" : [ {\n" +
                         "      \"bool\" : {\n" +
-                        "        \"must\" : {\n" +
+                        "        \"must\" : [ {\n" +
                         "          \"term\" : {\n" +
                         "            \"field\" : \"value\"\n" +
                         "          }\n" +
-                        "        },\n" +
-                        "        \"must_not\" : {\n" +
+                        "        }, {\n" +
                         "          \"terms\" : {\n" +
                         "            \"other_field\" : [ \"other_value\", \"other_value2\" ],\n" +
                         "            \"minimum_should_match\" : \"2\"\n" +
                         "          }\n" +
-                        "        }\n" +
+                        "        } ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"term\" : {\n" +

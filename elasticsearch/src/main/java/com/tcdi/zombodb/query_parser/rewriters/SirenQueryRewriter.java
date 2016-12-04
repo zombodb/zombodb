@@ -18,11 +18,15 @@ package com.tcdi.zombodb.query_parser.rewriters;
 import com.tcdi.zombodb.query_parser.ASTExpansion;
 import com.tcdi.zombodb.query_parser.ASTIndexLink;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.BoolFilterBuilder;
+import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import solutions.siren.join.index.query.FilterJoinBuilder;
 
-import static org.elasticsearch.index.query.QueryBuilders.*;
+import static org.elasticsearch.index.query.FilterBuilders.boolFilter;
+import static org.elasticsearch.index.query.FilterBuilders.queryFilter;
+import static org.elasticsearch.index.query.QueryBuilders.filteredQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 
 /**
  * A {@link QueryRewriter} that resolves joins using SIREn:
@@ -41,24 +45,28 @@ public class SirenQueryRewriter extends QueryRewriter {
     protected QueryBuilder build(ASTExpansion node) {
         ASTIndexLink link = node.getIndexLink();
         ASTIndexLink myIndex = metadataManager.getMyIndex();
+        FilterBuilder filter;
 
         if (link.toString().equals(myIndex.toString()) && !node.isGenerated()) {
             return super.build(node);
         } else {
             FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname()).path(link.getRightFieldname()).indices(link.getIndexName());
-            if (node.getFilterQuery() != null) {
-                BoolQueryBuilder bqb = boolQuery();
-                bqb.must(applyVisibility(build(node.getQuery()), link.getIndexName()));
-                bqb.mustNot(build(node.getFilterQuery()));
-                fjb.query(bqb);
-            } else {
-                fjb.query(applyVisibility(build(node.getQuery()), link.getIndexName()));
-            }
+            fjb.query(applyVisibility(build(node.getQuery()), link.getIndexName()));
 
             if (!doFullFieldDataLookup)
                 fjb.maxTermsPerShard(1024);
 
-            return filteredQuery(matchAllQuery(), fjb);
+            filter = fjb;
         }
+
+        if (node.getFilterQuery() != null) {
+            BoolFilterBuilder bfb = boolFilter();
+
+            bfb.must(filter);
+            bfb.must(queryFilter(build(node.getFilterQuery())));
+            filter = bfb;
+        }
+
+        return filteredQuery(matchAllQuery(), filter);
     }
 }

@@ -48,7 +48,10 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
-import java.util.*;
+import java.util.AbstractCollection;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
@@ -691,7 +694,7 @@ public abstract class QueryRewriter {
         if (filterQuery != null) {
             BoolQueryBuilder bqb = boolQuery();
             bqb.must(expansionBuilder);
-            bqb.mustNot(build(filterQuery));
+            bqb.must(build(filterQuery));
             expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName());
         }
         return expansionBuilder;
