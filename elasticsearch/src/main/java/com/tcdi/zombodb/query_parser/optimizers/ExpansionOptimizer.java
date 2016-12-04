@@ -143,12 +143,12 @@ public class ExpansionOptimizer {
                 .shardSize(!doFullFieldDataLookup ? 1024 : 0)
                 .size(!doFullFieldDataLookup ? 1024 : 0);
 
-        QueryBuilder query = rewriter.applyExclusion(rewriter.build(nodeQuery), link.getIndexName());
+        QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery), link.getIndexName());
         QueryParserNode filterQuery = node.getFilterQuery();
         if (filterQuery != null) {
             BoolQueryBuilder bqb = boolQuery();
             bqb.must(query);
-            bqb.must(rewriter.build(filterQuery));
+            bqb.mustNot(rewriter.build(filterQuery));
             query = bqb;
         }
 

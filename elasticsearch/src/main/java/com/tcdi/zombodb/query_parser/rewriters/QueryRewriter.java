@@ -29,9 +29,7 @@ import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.Fuzziness;
-import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 import org.elasticsearch.index.query.*;
@@ -215,9 +213,9 @@ public abstract class QueryRewriter {
         queryRewritten = true;
 
         try {
-            return applyExclusion(qb, getAggregateIndexName());
+            return applyVisibility(qb, getAggregateIndexName());
         } catch (Exception e) {
-            return applyExclusion(qb, getSearchIndexName());
+            return applyVisibility(qb, getSearchIndexName());
         }
     }
 
@@ -692,9 +690,9 @@ public abstract class QueryRewriter {
         QueryParserNode filterQuery = node.getFilterQuery();
         if (filterQuery != null) {
             BoolQueryBuilder bqb = boolQuery();
-            bqb.must(applyExclusion(build(node.getQuery()), node.getIndexLink().getIndexName()));
-            bqb.must(build(filterQuery));
-            expansionBuilder = bqb;
+            bqb.must(expansionBuilder);
+            bqb.mustNot(build(filterQuery));
+            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName());
         }
         return expansionBuilder;
     }
@@ -1198,7 +1196,7 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyExclusion(QueryBuilder query, final String indexName) {
+    public QueryBuilder applyVisibility(QueryBuilder query, final String indexName) {
         ASTVisibility visibility = tree.getVisibility();
 
         if (visibility == null)
