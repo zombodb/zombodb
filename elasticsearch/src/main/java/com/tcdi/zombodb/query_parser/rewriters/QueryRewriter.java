@@ -29,9 +29,7 @@ import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.Fuzziness;
-import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 import org.elasticsearch.index.query.*;
@@ -50,7 +48,10 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
-import java.util.*;
+import java.util.AbstractCollection;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
@@ -215,9 +216,9 @@ public abstract class QueryRewriter {
         queryRewritten = true;
 
         try {
-            return applyExclusion(qb, getAggregateIndexName());
+            return applyVisibility(qb, getAggregateIndexName());
         } catch (Exception e) {
-            return applyExclusion(qb, getSearchIndexName());
+            return applyVisibility(qb, getSearchIndexName());
         }
     }
 
@@ -692,9 +693,9 @@ public abstract class QueryRewriter {
         QueryParserNode filterQuery = node.getFilterQuery();
         if (filterQuery != null) {
             BoolQueryBuilder bqb = boolQuery();
-            bqb.must(applyExclusion(build(node.getQuery()), node.getIndexLink().getIndexName()));
+            bqb.must(expansionBuilder);
             bqb.must(build(filterQuery));
-            expansionBuilder = bqb;
+            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName());
         }
         return expansionBuilder;
     }
@@ -1194,7 +1195,7 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyExclusion(QueryBuilder query, final String indexName) {
+    public QueryBuilder applyVisibility(QueryBuilder query, final String indexName) {
         ASTVisibility visibility = tree.getVisibility();
 
         if (visibility == null)

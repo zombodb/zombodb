@@ -24,15 +24,11 @@ import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 
 import java.util.*;
-
-import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
-import static org.elasticsearch.index.query.QueryBuilders.constantScoreQuery;
 
 public class ExpansionOptimizer {
     private final QueryRewriter rewriter;
@@ -143,14 +139,7 @@ public class ExpansionOptimizer {
                 .shardSize(!doFullFieldDataLookup ? 1024 : 0)
                 .size(!doFullFieldDataLookup ? 1024 : 0);
 
-        QueryBuilder query = rewriter.applyExclusion(rewriter.build(nodeQuery), link.getIndexName());
-        QueryParserNode filterQuery = node.getFilterQuery();
-        if (filterQuery != null) {
-            BoolQueryBuilder bqb = boolQuery();
-            bqb.must(query);
-            bqb.must(rewriter.build(filterQuery));
-            query = bqb;
-        }
+        QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery), link.getIndexName());
 
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(0)
@@ -195,7 +184,15 @@ public class ExpansionOptimizer {
                 }
             }, agg.getBuckets().size());
 
-            return array;
+            QueryParserNode filterQuery = node.getFilterQuery();
+            if (filterQuery != null) {
+                ASTAnd and = new ASTAnd(QueryParserTreeConstants.JJTAND);
+                and.jjtAddChild(array, 0);
+                and.jjtAddChild(filterQuery, 1);
+                return and;
+            } else {
+                return array;
+            }
         } catch (Exception e) {
             throw new QueryRewriter.QueryRewriteException(e);
         }
