@@ -100,34 +100,23 @@ public class IndexMetadata {
         return fields.containsKey(fieldname);
     }
 
-    public String getNullValue(String fieldname) {
-        return getFieldProperty(fieldname, "null_value");
-    }
-
     public String getType(String fieldname) {
-        if ("_all".equals(fieldname))
-            return "string";
-        String type = getFieldProperty(fieldname, "type");
-        return type == null ? "unknown" : type;
-    }
-
-    public String getFieldProperty(String fieldname, String property) {
         if (fieldname == null)
-            return null;
+            return "unknown";
 
         if (isMultiField(fieldname)) {
             Map properties = (Map) fields.get(fieldname).get("properties");
             if (properties != null)
-                return valueOf(properties.get(property));
+                return String.valueOf(properties.get("type"));
         }
 
         String[] parts = fieldname.split("[.]");
         if (parts.length == 1) {
             Map<String, Object> fieldProperties = fields.get(fieldname);
             if (fieldProperties == null) {
-                return null;
+                return "unknown";
             }
-            return valueOf(fieldProperties.get(property));
+            return String.valueOf(fieldProperties.get("type"));
         }
 
         Map properties = fields;
@@ -138,16 +127,14 @@ public class IndexMetadata {
         }
 
         if (properties == null)
-            return null;
+            return "unknown";
 
-        return valueOf(properties.get(property));
+        return String.valueOf(properties.get("type"));
     }
 
     public boolean getIncludeInAll(String fieldname) {
-//        Object o = fields.get(fieldname).get("include_in_all");
-//        return o == null || o == Boolean.TRUE || "true".equalsIgnoreCase(String.valueOf(o));
-        String includeInAll = getFieldProperty(fieldname, "include_in_all");
-        return includeInAll == null || "true".equalsIgnoreCase(includeInAll);
+        Object o = fields.get(fieldname).get("include_in_all");
+        return o == null || o == Boolean.TRUE || "true".equalsIgnoreCase(String.valueOf(o));
     }
 
     public String getSearchAnalyzer(String fieldname) {
@@ -194,10 +181,6 @@ public class IndexMetadata {
             }
         }
         fields.putAll(found);
-    }
-
-    private String valueOf(Object o) {
-        return o == null ? null : String.valueOf(o);
     }
 
 }

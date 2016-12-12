@@ -550,7 +550,8 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"analyzer\": \"fulltext\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");
-		} else if (strcmp("fulltext_with_shingles", typename) == 0) {
+
+        } else if (strcmp("fulltext_with_shingles", typename) == 0) {
             /* phrase-indexed field */
             appendStringInfo(result, "\"type\": \"string\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
@@ -567,9 +568,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"analyzer\": \"phrase\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");
-			if (strstr(typename, "_array") != NULL)
-				/* arrays need a null_value set so that NULL can be searched */
-				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("date", typename) == 0 || strcmp("date[]", typename) == 0) {
             /* date field */
@@ -580,9 +578,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"fields\": {"
                     "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"}"
                     "}");
-			if (strstr(typename, "[]") != NULL)
-				/* arrays need a null_value set so that NULL can be searched */
-				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("timestamp", typename) == 0 || strcmp("timestamp without time zone", typename) == 0 ||
                    strcmp("timestamp[]", typename) == 0 || strcmp("timestamp without time zone[]", typename) == 0) {
@@ -609,9 +604,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}"
 #endif
                     "}");
-			if (strstr(typename, "[]") != NULL)
-				/* arrays need a null_value set so that NULL can be searched */
-				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("timestamp with time zone", typename) == 0 ||
                    strcmp("timestamp with time zone[]", typename) == 0) {
@@ -638,9 +630,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}"
 #endif
                     "}");
-			if (strstr(typename, "[]") != NULL)
-				/* arrays need a null_value set so that NULL can be searched */
-				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("time", typename) == 0 || strcmp("time[]", typename) == 0 ||
                    strcmp("time without time zone", typename) == 0 ||
@@ -668,9 +657,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}"
 #endif
                     "}");
-			if (strstr(typename, "[]") != NULL)
-				/* arrays need a null_value set so that NULL can be searched */
-				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("time with time zone", typename) == 0 || strcmp("time with time zone[]", typename) == 0) {
             /* time field */
@@ -696,9 +682,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}"
 #endif
                     "}");
-			if (strstr(typename, "[]") != NULL)
-				/* arrays need a null_value set so that NULL can be searched */
-				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("smallint", typename) == 0 || strcmp("integer", typename) == 0 ||
                    strcmp("smallint[]", typename) == 0 || strcmp("integer[]", typename) == 0) {
@@ -756,9 +739,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"index_options\": \"docs\",");
             appendStringInfo(result, "\"ignore_above\":32000,");
             appendStringInfo(result, "\"analyzer\": \"exact\"");
-			if (strstr(typename, "[]") != NULL)
-				/* arrays need a null_value set so that NULL can be searched */
-				appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
 
         } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
             /* json field */
