@@ -807,11 +807,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             }
         }
 
-        if (strstr(typename, "[]") != NULL) {
-            /* arrays need a null_value set so that NULL can be searched */
-            appendStringInfo(result, ",\"null_value\": \"_zdbnull\"");
-        }
-
         appendStringInfoCharMacro(result, '}');
 
         pfree(typename);

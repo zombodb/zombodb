@@ -4790,41 +4790,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
-    public void testIssue148() throws Exception {
-        assertJson(
-                "null_field:null, exact_field:null",
-                "{\n" +
-                        "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"filtered\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"match_all\" : { }\n" +
-                        "        },\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"missing\" : {\n" +
-                        "            \"field\" : \"null_field\",\n" +
-                        "            \"null_value\" : true\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"filtered\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"match_all\" : { }\n" +
-                        "        },\n" +
-                        "        \"filter\" : {\n" +
-                        "          \"missing\" : {\n" +
-                        "            \"field\" : \"exact_field\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    } ]\n" +
-                        "  }\n" +
-                        "}"
-        );
-    }
-
-    @Test
     public void testIssue143_ASTParsing() throws Exception {
         assertAST(
                 "subject:(beer or wine and cheese) and ({" +
