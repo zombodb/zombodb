@@ -568,4 +568,11 @@ public class Utils {
         return 2;
     }
 
+    public static int decodeInteger(byte[] buffer, int offset) {
+        return ((buffer[offset+3]) << 24) +
+                ((buffer[offset + 2] & 0xFF) << 16) +
+                ((buffer[offset + 1] & 0xFF) << 8) +
+                ((buffer[offset + 0] & 0xFF));
+    }
+
 }

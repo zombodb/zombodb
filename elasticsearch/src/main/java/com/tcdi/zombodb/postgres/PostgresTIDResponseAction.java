@@ -37,6 +37,37 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class PostgresTIDResponseAction extends BaseRestHandler {
 
+    static class TidArrayQuickSort {
+
+        byte[] tmp = new byte[10];
+        void quickSort(byte[] array, int offset, int low, int high) {
+
+            if (high <= low)
+                return;
+
+            int i = low;
+            int j = high;
+            int pivot = Utils.decodeInteger(array, offset + ((low+(high-low)/2) * 10));
+            while (i <= j) {
+                while (Utils.decodeInteger(array, offset+i*10) < pivot)
+                    i++;
+                while (Utils.decodeInteger(array, offset+j*10) > pivot)
+                    j--;
+                if (i <= j) {
+                    System.arraycopy(array, offset+i*10, tmp, 0, 10);
+                    System.arraycopy(array, offset+j*10, array, offset+i*10, 10);
+                    System.arraycopy(tmp, 0, array, offset+j*10, 10);
+                    i++;
+                    j--;
+                }
+            }
+            if (low < j)
+                quickSort(array, offset, low, j);
+            if (i < high)
+                quickSort(array, offset, i, high);
+        }
+    }
+
     private static class BinaryTIDResponse {
         byte[] data;
         int many;
@@ -139,7 +170,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         long start = System.currentTimeMillis();
         byte[] results = new byte[1 + 8 + 4 + (many * 10)];    // NULL + totalhits + maxscore + (many * (sizeof(int4)+sizeof(int2)+sizeof(float4)))
-        int offset = 0, maxscore_offset;
+        int offset = 0, maxscore_offset, first_byte;
         float maxscore = 0;
 
         results[0] = 0;
@@ -149,6 +180,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         /* once we know the max score, it goes here */
         maxscore_offset = offset;
         offset += Utils.encodeFloat(0, results, offset);
+        first_byte = offset;
 
         // kick off the first scroll request
         ActionFuture<SearchResponse> future = client.searchScroll(new SearchScrollRequestBuilder(client)
@@ -209,6 +241,8 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         }
 
         Utils.encodeFloat(maxscore, results, maxscore_offset);
+
+        new TidArrayQuickSort().quickSort(results, first_byte, 0, many-1);
 
         long end = System.currentTimeMillis();
         return new BinaryTIDResponse(results, many, (end - start) / 1000D);
