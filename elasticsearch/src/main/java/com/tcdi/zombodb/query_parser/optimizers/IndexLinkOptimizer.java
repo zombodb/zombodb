@@ -213,7 +213,7 @@ public class IndexLinkOptimizer {
 
             if (last != null) {
                 parent.replaceChild(root, last);
-            } else {
+            } else if (parent.getIndexLink() == null || !parent.getIndexLink().getIndexName().equals(link.getIndexName())) {
                 ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
                 expansion.jjtAddChild(link, 0);
                 expansion.jjtAddChild(root, 1);

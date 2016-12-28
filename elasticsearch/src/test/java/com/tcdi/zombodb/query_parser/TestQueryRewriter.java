@@ -279,25 +279,23 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      Or\n" +
                         "         Expansion\n" +
                         "            data_cv_group_id=<db.schema.table.index>data_cv_group_id\n" +
-                        "            Expansion\n" +
-                        "               id=<db.schema.table.index>id\n" +
-                        "               And\n" +
-                        "                  Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
-                        "                  Or\n" +
-                        "                     Array (fieldname=data_custodian, operator=EQ, index=db.schema.table.index) (OR)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
-                        "                  Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
-                        "                  Not\n" +
-                        "                     NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
+                        "            And\n" +
+                        "               Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
+                        "               Or\n" +
+                        "                  Array (fieldname=data_custodian, operator=EQ, index=db.schema.table.index) (OR)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "               Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
+                        "               Not\n" +
+                        "                  NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
                         "         Expansion\n" +
                         "            id=<db.schema.table.index>id\n" +
                         "            And\n" +
@@ -2590,9 +2588,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Or\n" +
                         "      Expansion\n" +
                         "         cvgroupid=<db.schema.table.index>cvgroupid\n" +
-                        "         Expansion\n" +
-                        "            id=<db.schema.table.index>id\n" +
-                        "            Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*, index=db.schema.table.index)\n" +
+                        "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*, index=db.schema.table.index)\n" +
                         "      Expansion\n" +
                         "         id=<db.schema.table.index>id\n" +
                         "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*, index=db.schema.table.index)"
@@ -2792,9 +2788,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Or\n" +
                         "      Expansion\n" +
                         "         parent_id=<db.schema.table.index>parent_id\n" +
-                        "         Expansion\n" +
-                        "            id=<db.schema.table.index>id\n" +
-                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
                         "      Expansion\n" +
                         "         id=<db.schema.table.index>id\n" +
                         "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)");
@@ -4766,22 +4760,19 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "         group_id=<db.schema.table.index>group_id\n" +
                         "         Or\n" +
                         "            Expansion\n" +
-                        "               id=<db.schema.table.index>id\n" +
+                        "               group_id=<db.schema.table.index>group_id\n" +
                         "               Or\n" +
                         "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
                         "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
                         "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
-                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
-                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
-                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
                         "            Expansion\n" +
-                        "               group_id=<db.schema.table.index>group_id\n" +
-                        "               Expansion\n" +
-                        "                  id=<db.schema.table.index>id\n" +
-                        "                  Or\n" +
-                        "                     Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
-                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
-                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "               id=<db.schema.table.index>id\n" +
+                        "               Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                  Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                  Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "            Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "               Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "               Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
                         "      Expansion\n" +
                         "         id=<db.schema.table.index>id\n" +
                         "         Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
