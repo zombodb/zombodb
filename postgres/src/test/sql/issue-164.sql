@@ -35,5 +35,6 @@ SELECT * FROM test_expand.consolidated_record_view where zdb==>'( (#expand<var_f
 
 SELECT * FROM test_expand.consolidated_record_view where zdb==>'( (#expand<data_family_group=<this.index>data_family_group>( ( var_pets = "DOGS" ) AND )) )' ORDER BY pk_data;
 SELECT * FROM test_expand.consolidated_record_view where zdb==>'( (#expand<var_family_group=<this.index>var_family_group>( ( var_pets = "DOGS" ) AND )) )' ORDER BY pk_data;
+SELECT * FROM test_expand.consolidated_record_view where zdb==>'( (#expand<var_family_group=<this.index>var_family_group>( ( var_pets = "DOGS" AND data_first_name = "mark") AND )) )' ORDER BY pk_data;
 
 DROP SCHEMA test_expand CASCADE;
