@@ -17,3 +17,4 @@ postgres/src/test/sql/so_comments.sql
 postgres/src/test/sql/TUTORIAL.sql
 postgres/results
 postgres/regression.*
+cmake-build-debug/
