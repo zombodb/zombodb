@@ -61,6 +61,7 @@ RUN apt-get update -y -qq
 RUN apt-get install -y -qq sudo
 RUN apt-get install -y -qq gnupg
 RUN apt-get install -y -qq build-essential
+RUN apt-get install -y -qq libz-dev
 
 # maven
 RUN apt-get install -y -qq maven
