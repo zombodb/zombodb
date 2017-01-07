@@ -153,8 +153,11 @@ public class IndexLinkOptimizer {
             String leftFieldname = null;
             String rightFieldname;
             ASTIndexLink parentLink = metadataManager.getMyIndex();
-            if (parent instanceof ASTExpansion)
-                parentLink = ((ASTExpansion) parent).getIndexLink();
+            QueryParserNode tmp = root;
+            while (tmp != null && !(tmp instanceof ASTExpansion))
+                tmp = (QueryParserNode) tmp.jjtGetParent();
+            if (tmp != null)
+                parentLink = tmp.getIndexLink();
             Stack<String> paths = metadataManager.calculatePath(link, parentLink);
 
             if (link.hasFieldname())
@@ -215,7 +218,10 @@ public class IndexLinkOptimizer {
                 parent.replaceChild(root, last);
             } else if (parent.getIndexLink() == null || !parent.getIndexLink().getIndexName().equals(link.getIndexName())) {
                 ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
-                expansion.jjtAddChild(link, 0);
+                if (link == parentLink)
+                    expansion.jjtAddChild(link, 0);
+                else
+                    expansion.jjtAddChild(link.getFieldname() == null && link.getIndexName().equals(parentLink.getIndexName()) ? ASTIndexLink.create(link.getRightFieldname(), link.getIndexName(), link.getAlias(), link.getRightFieldname(), true) : link, 0);
                 expansion.jjtAddChild(root, 1);
                 parent.replaceChild(root, expansion);
             }

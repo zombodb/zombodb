@@ -55,6 +55,13 @@ SELECT * FROM test_expand.consolidated_record_view where zdb==>'( (#expand<var_f
        2 |                 1 | eric            |                1 | cats     | (0,2)
 (2 rows)
 
+SELECT * FROM test_expand.consolidated_record_view where zdb==>'( (#expand<var_family_group=<this.index>var_family_group>( ( var_pets = "DOGS" AND data_first_name = "mark") AND )) )' ORDER BY pk_data;
+ pk_data | data_family_group | data_first_name | var_family_group | var_pets |  zdb  
+---------+-------------------+-----------------+------------------+----------+-------
+       1 |                 1 | mark            |                1 | dogs     | (0,1)
+       2 |                 1 | eric            |                1 | cats     | (0,2)
+(2 rows)
+
 DROP SCHEMA test_expand CASCADE;
 NOTICE:  drop cascades to 3 other objects
 DETAIL:  drop cascades to table test_expand.data

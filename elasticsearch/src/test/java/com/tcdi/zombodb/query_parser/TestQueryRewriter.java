@@ -45,7 +45,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
             "#field_lists(field1=[a,b,c], field2=[d,e,f], field3=[a,b,c,d,e,f]) " +
             "(" +
             "fulltext=[beer] meeting not staff not cancelled not risk " +
-            "#expand<left_field = <table.index>right_field>(the subquery) " +
+            "#expand<left_field = <this.index>right_field>(the subquery) " +
             "(some query) (other query) (())" +
             "long.dotted.field:foo " +
             "fuzzy~32 '1-2' " +
