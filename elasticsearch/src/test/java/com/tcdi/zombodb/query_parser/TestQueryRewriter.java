@@ -1,6 +1,6 @@
 /*
  * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
             "#field_lists(field1=[a,b,c], field2=[d,e,f], field3=[a,b,c,d,e,f]) " +
             "(" +
             "fulltext=[beer] meeting not staff not cancelled not risk " +
-            "#expand<left_field = <table.index>right_field>(the subquery) " +
+            "#expand<left_field = <this.index>right_field>(the subquery) " +
             "(some query) (other query) (())" +
             "long.dotted.field:foo " +
             "fuzzy~32 '1-2' " +
@@ -3919,7 +3919,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testIssue80_analyzedExactField() throws Exception {
-        String q = "exact_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
+        String q = "exact_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2017\", \"UNKNOWN\", \"2/2/2017\"]]";
 
         assertJson(q,
                 "{\n" +
@@ -3929,7 +3929,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"unknown\", \"2/2/2016\" ],\n" +
+                        "        \"exact_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2017\", \"unknown\", \"2/2/2017\" ],\n" +
                         "        \"_cache\" : true\n" +
                         "      }\n" +
                         "    }\n" +
@@ -3947,7 +3947,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testIssue80_unanalyzedField() throws Exception {
-        String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
+        String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2017\", \"UNKNOWN\", \"2/2/2017\"]]";
         assertJson(q,
                 "{\n" +
                         "  \"filtered\" : {\n" +
@@ -3956,7 +3956,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\" ],\n" +
+                        "        \"unanalyzed_field\" : [ \"12/31/1999\", \"2/3/1999\", \"12/31/2017\", \"UNKNOWN\", \"2/2/2017\" ],\n" +
                         "        \"_cache\" : true\n" +
                         "      }\n" +
                         "    }\n" +
