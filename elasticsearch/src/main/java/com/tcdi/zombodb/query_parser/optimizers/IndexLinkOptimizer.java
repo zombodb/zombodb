@@ -135,6 +135,11 @@ public class IndexLinkOptimizer {
     }
 
     private void injectASTExpansionNodes(QueryParserNode root) {
+        if (root == null)
+            return;
+        if (root instanceof ASTExpansion)
+            injectASTExpansionNodes(((ASTExpansion) root).getFilterQuery());
+
         while (root instanceof ASTExpansion)
             root = ((ASTExpansion) root).getQuery();
 
