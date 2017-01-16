@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 ZomboDB, LLC
+ * Copyright 2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,11 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.search.MultiSearchRequestBuilder;
-import org.elasticsearch.action.search.MultiSearchResponse;
-import org.elasticsearch.action.search.MultiSearchAction;
-import org.elasticsearch.action.search.SearchAction;
-import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;

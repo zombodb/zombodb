@@ -1,6 +1,6 @@
 /*
  * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ public class PostgresCountAction extends BaseRestHandler {
             builder.setSize(0);
             builder.setSearchType(SearchType.COUNT);
             builder.setPreference(request.param("preference"));
-            builder.setRequestCache(true);
+            builder.setRequestCache(false);
             builder.setFetchSource(false);
             builder.setTrackScores(false);
             builder.setNoFields();

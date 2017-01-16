@@ -1,6 +1,6 @@
 /*
  * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,14 @@ public class IndexMetadataManager {
     }
 
     public void setMyIndex(ASTIndexLink myIndex) {
+        IndexLinkAndMapping newMe = lookupMapping(myIndex);
+
         this.myIndex = myIndex;
+
+        // move me to the top of the list so that fields will be
+        // resolved starting with me
+        mappings.remove(newMe);
+        mappings.add(0, newMe);
     }
 
     public Set<ASTIndexLink> getUsedIndexes() {

@@ -1,5 +1,5 @@
 /*
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,10 @@ import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
-import org.elasticsearch.action.admin.indices.create.CreateIndexAction;
-import org.elasticsearch.action.admin.indices.flush.FlushRequestBuilder;
 import org.elasticsearch.action.admin.indices.flush.FlushAction;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
+import org.elasticsearch.action.admin.indices.flush.FlushRequestBuilder;
 import org.elasticsearch.action.admin.indices.refresh.RefreshAction;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.io.stream.OutputStreamStreamOutput;
 import org.elasticsearch.common.logging.log4j.LogConfigurator;
@@ -40,7 +39,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public abstract class ZomboDBTestCase {
     protected static final String DEFAULT_INDEX_NAME = "db.schema.table.index";

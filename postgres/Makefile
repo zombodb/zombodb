@@ -19,6 +19,7 @@ ifeq ($(IS_DOCKER),true)
 else
 	SHLIB_LINK += -lcurl -lz
 endif
+
 PG_CONFIG    = pg_config
 
 # default target

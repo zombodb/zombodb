@@ -1,6 +1,6 @@
 /*
  * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
  */
 package com.tcdi.zombodb.query_parser;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.highlight.DocumentHighlighter;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
@@ -28,9 +28,9 @@ import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.junit.Test;
 import org.junit.Ignore;
-import java.io.*;
+import org.junit.Test;
+
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
 
 /**
  * Tests for {@link QueryRewriter}
@@ -48,7 +48,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
             "#field_lists(field1=[a,b,c], field2=[d,e,f], field3=[a,b,c,d,e,f]) " +
             "(" +
             "fulltext=[beer] meeting not staff not cancelled not risk " +
-            "#expand<left_field = <table.index>right_field>(the subquery) " +
+            "#expand<left_field = <this.index>right_field>(the subquery) " +
             "(some query) (other query) (())" +
             "long.dotted.field:foo " +
             "fuzzy~32 '1-2' " +
@@ -284,25 +284,23 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      Or\n" +
                         "         Expansion\n" +
                         "            data_cv_group_id=<db.schema.table.index>data_cv_group_id\n" +
-                        "            Expansion\n" +
-                        "               id=<db.schema.table.index>id\n" +
-                        "               And\n" +
-                        "                  Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
-                        "                  Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
-                        "                  Or\n" +
-                        "                     Array (fieldname=data_custodian, operator=EQ, index=db.schema.table.index) (OR)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
-                        "                        Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
-                        "                  Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
-                        "                  Not\n" +
-                        "                     NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
+                        "            And\n" +
+                        "               Word (fieldname=data_client_name, operator=EQ, value=anthem, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
+                        "               Or\n" +
+                        "                  Array (fieldname=data_custodian, operator=EQ, index=db.schema.table.index) (OR)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=querty, amy, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, colin, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, keith, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, perry, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, norm, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,mike, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty, dan, index=db.schema.table.index)\n" +
+                        "                     Word (fieldname=data_custodian, operator=EQ, value=qwerty,dan, index=db.schema.table.index)\n" +
+                        "               Prefix (fieldname=data_filter_06b, operator=EQ, value=qwerty, index=db.schema.table.index)\n" +
+                        "               Not\n" +
+                        "                  NotNull (fieldname=data_moved_to, operator=EQ, index=db.schema.table.index)\n" +
                         "         Expansion\n" +
                         "            id=<db.schema.table.index>id\n" +
                         "            And\n" +
@@ -1707,12 +1705,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            \"review_data_ben.review_data_id\" : 67115\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"should\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
-                        "              }\n" +
-                        "            }\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -2638,9 +2632,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Or\n" +
                         "      Expansion\n" +
                         "         cvgroupid=<db.schema.table.index>cvgroupid\n" +
-                        "         Expansion\n" +
-                        "            id=<db.schema.table.index>id\n" +
-                        "            Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*, index=db.schema.table.index)\n" +
+                        "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*, index=db.schema.table.index)\n" +
                         "      Expansion\n" +
                         "         id=<db.schema.table.index>id\n" +
                         "         Wildcard (fieldname=review_data_ridge.review_set_name, operator=CONTAINS, value=*beer*, index=db.schema.table.index)"
@@ -2840,9 +2832,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Or\n" +
                         "      Expansion\n" +
                         "         parent_id=<db.schema.table.index>parent_id\n" +
-                        "         Expansion\n" +
-                        "            id=<db.schema.table.index>id\n" +
-                        "            Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
                         "      Expansion\n" +
                         "         id=<db.schema.table.index>id\n" +
                         "         Word (fieldname=phrase_field, operator=CONTAINS, value=beer, index=db.schema.table.index)");
@@ -4025,7 +4015,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testIssue80_analyzedExactField() throws Exception {
-        String q = "exact_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
+        String q = "exact_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2017\", \"UNKNOWN\", \"2/2/2017\"]]";
 
         assertJson(q,
                 "{\n" +
@@ -4052,7 +4042,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testIssue80_unanalyzedField() throws Exception {
-        String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
+        String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2017\", \"UNKNOWN\", \"2/2/2017\"]]";
         assertJson(q,
                 "{\n" +
                         "  \"filtered\" : {\n" +
@@ -4426,12 +4416,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        \"data_client_name\" : \"wellmark\"\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"exact_field\" : [ \"asdf, cathi (sdfg)\", \"sdfg, qwer\", \"swergs, ersd\", \"wergf, fsd\", \"dhj, hsdgf\", \"dfbg, werfdvc\", \"sdfg, wwwert\", \"ersfd, kjhsa\", \"aiuksjd, kasdf\", \"sdfg, werww\" ]\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"asdf, cathi (sdfg)\", \"sdfg, qwer\", \"swergs, ersd\", \"wergf, fsd\", \"dhj, hsdgf\", \"dfbg, werfdvc\", \"sdfg, wwwert\", \"ersfd, kjhsa\", \"aiuksjd, kasdf\", \"sdfg, werww\" ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"range\" : {\n" +
@@ -4447,12 +4433,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        \"data_duplicate_resource\" : \"no\"\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"data_record_type\" : [ \"email\", \"email attachment\", \"email attachment ole\" ]\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"data_record_type\" : [ \"email\", \"email attachment\", \"email attachment ole\" ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"exists\" : {\n" +
@@ -4840,22 +4822,19 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "         group_id=<db.schema.table.index>group_id\n" +
                         "         Or\n" +
                         "            Expansion\n" +
-                        "               id=<db.schema.table.index>id\n" +
+                        "               group_id=<db.schema.table.index>group_id\n" +
                         "               Or\n" +
                         "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
                         "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
                         "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
-                        "                  Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
-                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
-                        "                     Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
                         "            Expansion\n" +
-                        "               group_id=<db.schema.table.index>group_id\n" +
-                        "               Expansion\n" +
-                        "                  id=<db.schema.table.index>id\n" +
-                        "                  Or\n" +
-                        "                     Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
-                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
-                        "                        Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "               id=<db.schema.table.index>id\n" +
+                        "               Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "                  Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "                  Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
+                        "            Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "               Number (fieldname=pk_id, operator=CONTAINS, value=3, index=db.schema.table.index)\n" +
+                        "               Number (fieldname=pk_id, operator=CONTAINS, value=5, index=db.schema.table.index)\n" +
                         "      Expansion\n" +
                         "         id=<db.schema.table.index>id\n" +
                         "         Array (fieldname=pk_id, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +

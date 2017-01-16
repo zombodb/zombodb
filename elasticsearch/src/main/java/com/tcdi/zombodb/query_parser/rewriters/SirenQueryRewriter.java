@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 ZomboDB, LLC
+ * Copyright 2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,12 @@
  */
 package com.tcdi.zombodb.query_parser.rewriters;
 
-import com.tcdi.zombodb.query_parser.ASTArrayData;
 import com.tcdi.zombodb.query_parser.ASTExpansion;
 import com.tcdi.zombodb.query_parser.ASTIndexLink;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import solutions.siren.join.index.query.FilterJoinBuilder;
-
-import java.util.List;
-import java.util.Map;
 
 import static org.elasticsearch.index.query.QueryBuilders.*;
 
@@ -51,12 +47,15 @@ public class SirenQueryRewriter extends QueryRewriter {
         } else {
             FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname()).path(link.getRightFieldname()).indices(link.getIndexName());
             if (node.getFilterQuery() != null) {
+                if (_isBuildingAggregate)
+                    return matchAllQuery();
+
                 BoolQueryBuilder bqb = boolQuery();
-                bqb.must(applyExclusion(build(node.getQuery()), link.getIndexName()));
+                bqb.must(applyVisibility(build(node.getQuery()), link.getIndexName()));
                 bqb.must(build(node.getFilterQuery()));
                 fjb.query(bqb);
             } else {
-                fjb.query(applyExclusion(build(node.getQuery()), link.getIndexName()));
+                fjb.query(applyVisibility(build(node.getQuery()), link.getIndexName()));
             }
 
             if (!doFullFieldDataLookup)

@@ -1,6 +1,6 @@
 /**
  * Portions Copyright (C) 2011-2015 Jörg Prante
- * Portions Copyright (C) 2016 ZomboDB, LLC
+ * Portions Copyright (C) 2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -25,6 +25,7 @@ import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.cluster.block.ClusterBlockLevel;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.routing.GroupShardsIterator;
 import org.elasticsearch.cluster.routing.ShardRouting;
 import org.elasticsearch.common.Strings;
@@ -37,7 +38,6 @@ import org.elasticsearch.index.shard.IndexShard;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;

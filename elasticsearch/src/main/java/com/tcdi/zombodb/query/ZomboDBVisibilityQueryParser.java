@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 ZomboDB, LLC
+ * Copyright 2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,12 @@ package com.tcdi.zombodb.query;
 
 import org.apache.lucene.search.Query;
 import org.elasticsearch.common.xcontent.XContentParser;
-import org.elasticsearch.index.mapper.core.CompletionFieldMapper;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryParser;
 import org.elasticsearch.index.query.QueryParsingException;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class ZomboDBVisibilityQueryParser implements QueryParser {
@@ -57,7 +54,7 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
                 if ("query".equals(currentFieldName)) {
                     query = parseContext.parseInnerQuery();
                 } else {
-                throw new QueryParsingException(parseContext, "[zdb visibility] query does not support [" + currentFieldName + "]");
+                    throw new QueryParsingException(parseContext, "[zdb visibility] query does not support [" + currentFieldName + "]");
                 }
             } else if (token == XContentParser.Token.START_ARRAY) {
                 if ("active_xids".equals(currentFieldName)) {

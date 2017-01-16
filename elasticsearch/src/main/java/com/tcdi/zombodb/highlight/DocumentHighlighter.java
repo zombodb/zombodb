@@ -1,6 +1,6 @@
 /*
  * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ package com.tcdi.zombodb.highlight;
 import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.utils.Utils;
-import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
+import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.client.Client;
 
 import java.io.StringReader;

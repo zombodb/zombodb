@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 ZomboDB, LLC
+ * Copyright 2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 
 import java.io.IOException;
-import java.util.Collection;
 
 public class ZomboDBVisibilityQueryBuilder extends QueryBuilder {
 

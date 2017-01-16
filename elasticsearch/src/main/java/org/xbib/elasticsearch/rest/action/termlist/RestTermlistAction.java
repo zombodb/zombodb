@@ -1,6 +1,6 @@
 /**
  * Portions Copyright (C) 2011-2015 Jörg Prante
- * Portions Copyright (C) 2016 ZomboDB, LLC
+ * Portions Copyright (C) 2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  */
 package org.xbib.elasticsearch.rest.action.termlist;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.inject.Inject;

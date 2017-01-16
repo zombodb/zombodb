@@ -313,10 +313,7 @@ QueryTree
                         Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
          Or
             Expansion
-               left_field=<table.index>right_field
-                  LeftField (value=left_field)
-                  IndexName (value=table.index)
-                  RightField (value=right_field)
+               left_field=<db.schema.table.index>right_field
                And
                   Or
                      Expansion

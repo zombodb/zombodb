@@ -28,8 +28,8 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.index.query.IdsQueryBuilder;
 import org.elasticsearch.index.VersionType;
+import org.elasticsearch.index.query.IdsQueryBuilder;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 
@@ -304,7 +304,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                             .setIndex(defaultIndex)
                             .setType("state")
                             .setRouting(prevCtid)
-                            .setOpType(IndexRequest.OpType.CREATE)
+                            .setOpType(IndexRequest.OpType.INDEX)
                             .setVersionType(VersionType.FORCE)
                             .setVersion(xid.longValue())
                             .setSource("_ctid", prevCtid)
@@ -342,7 +342,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setIndex(defaultIndex)
                                 .setType("state")
                                 .setRouting(String.valueOf(pkey))
-                                .setOpType(IndexRequest.OpType.CREATE)
+                                .setOpType(IndexRequest.OpType.INDEX)
                                 .setVersionType(VersionType.FORCE)
                                 .setVersion(xid.longValue())
                                 .setSource("_ctid", String.valueOf(pkey))

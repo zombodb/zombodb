@@ -1,6 +1,6 @@
 /*
  * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
  */
 package com.tcdi.zombodb.query_parser.utils;
 
-import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
-import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
+import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.client.Client;
 
@@ -566,6 +565,13 @@ public class Utils {
         buffer[offset + 1] = (byte) ((value >>> 8) & 0xFF);
         buffer[offset + 0] = (byte) ((value >>> 0) & 0xFF);
         return 2;
+    }
+
+    public static int decodeInteger(byte[] buffer, int offset) {
+        return ((buffer[offset+3]) << 24) +
+                ((buffer[offset + 2] & 0xFF) << 16) +
+                ((buffer[offset + 1] & 0xFF) << 8) +
+                ((buffer[offset + 0] & 0xFF));
     }
 
 }

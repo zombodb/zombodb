@@ -1,6 +1,6 @@
 /*
  * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -799,10 +799,17 @@ static uint64 count_deleted_docs(ZDBIndexDescriptor *indexDescriptor) {
 
 	appendStringInfo(endpoint, "%s/_cat/indices/%s?h=docs.deleted", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+<<<<<<< HEAD
 
 	return (uint64) atoll(response->data);
 }
 
+=======
+
+	return (uint64) atoll(response->data);
+}
+
+>>>>>>> develop
 void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request  = makeStringInfo();

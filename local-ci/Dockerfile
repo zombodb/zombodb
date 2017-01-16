@@ -1,5 +1,5 @@
 #
-# Copyright 2015-2016 ZomboDB, LLC
+# Copyright 2015-2017 ZomboDB, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,6 +61,7 @@ RUN apt-get update -y -qq
 RUN apt-get install -y -qq sudo
 RUN apt-get install -y -qq gnupg
 RUN apt-get install -y -qq build-essential
+RUN apt-get install -y -qq libz-dev
 
 # maven
 RUN apt-get install -y -qq maven

@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright 2016 ZomboDB, LLC
+=======
+ * Copyright 2017 ZomboDB, LLC
+>>>>>>> develop
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,7 +115,6 @@ final class VisibilityQueryHelper {
                             map.put(BytesRef.deepCopyOf(prevCtid), matchingDocs = new ArrayList<>());
                         matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, xid, seq));
                     }
-
 
                     @Override
                     public void doSetNextReader(LeafReaderContext context) throws IOException {

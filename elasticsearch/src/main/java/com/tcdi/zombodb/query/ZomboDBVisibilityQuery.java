@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 ZomboDB, LLC
+ * Copyright 2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.elasticsearch.common.util.ArrayUtils;
 
 import java.io.IOException;
 import java.util.List;

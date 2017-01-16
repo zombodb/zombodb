@@ -1,6 +1,6 @@
 /*
  * Portions Copyright 2013-2015 Technology Concepts & Design, Inc
- * Portions Copyright 2015-2016 ZomboDB, LLC
+ * Portions Copyright 2015-2017 ZomboDB, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -145,7 +145,7 @@ public abstract class QueryRewriter {
     protected final boolean doFullFieldDataLookup;
     protected final ASTQueryTree tree;
 
-    private boolean _isBuildingAggregate = false;
+    protected boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
 
     private Map<String, String> arrayData;
@@ -216,9 +216,9 @@ public abstract class QueryRewriter {
         queryRewritten = true;
 
         try {
-            return applyExclusion(qb, getAggregateIndexName());
+            return applyVisibility(qb, getAggregateIndexName());
         } catch (Exception e) {
-            return applyExclusion(qb, getSearchIndexName());
+            return applyVisibility(qb, getSearchIndexName());
         }
     }
 
@@ -642,9 +642,21 @@ public abstract class QueryRewriter {
     private QueryBuilder build(ASTAnd node) {
         BoolQueryBuilder fb = boolQuery();
 
+        int cnt = 0;
+        QueryBuilder last = null;
         for (QueryParserNode child : node) {
-            fb.must(build(child));
+            QueryBuilder qb = build(child);
+
+            if (qb instanceof MatchAllQueryBuilder)
+                continue;
+
+            fb.must(last = qb);
+            cnt++;
         }
+
+        if (cnt == 1)
+            return last;
+
         return fb;
     }
 
@@ -679,9 +691,25 @@ public abstract class QueryRewriter {
     private QueryBuilder build(ASTOr node) {
         BoolQueryBuilder fb = boolQuery();
 
+        int cnt = 0;
+        boolean hasMatchAll = false;
+        QueryBuilder last = null;
         for (QueryParserNode child : node) {
-            fb.should(build(child));
+            QueryBuilder qb = build(child);
+
+            if (qb instanceof MatchAllQueryBuilder && hasMatchAll)
+                continue;
+
+            fb.should(last = qb);
+
+            if (qb instanceof MatchAllQueryBuilder)
+                hasMatchAll = true;
+            cnt++;
         }
+
+        if (cnt == 1)
+            return last;
+
         return fb;
     }
 
@@ -704,9 +732,9 @@ public abstract class QueryRewriter {
         QueryParserNode filterQuery = node.getFilterQuery();
         if (filterQuery != null) {
             BoolQueryBuilder bqb = boolQuery();
-            bqb.must(applyExclusion(build(node.getQuery()), node.getIndexLink().getIndexName()));
+            bqb.must(expansionBuilder);
             bqb.must(build(filterQuery));
-            expansionBuilder = bqb;
+            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName());
         }
         return expansionBuilder;
     }
@@ -1213,7 +1241,7 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyExclusion(QueryBuilder query, final String indexName) {
+    public QueryBuilder applyVisibility(QueryBuilder query, final String indexName) {
         ASTVisibility visibility = tree.getVisibility();
 
         if (visibility == null)

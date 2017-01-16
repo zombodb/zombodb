@@ -746,135 +746,127 @@
           "bool" : {
             "should" : [ {
               "bool" : {
-                "must" : {
+                "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "bool" : {
-                        "should" : [ {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        } ]
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
                       }
                     }, {
-                      "bool" : {
-                        "should" : [ {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        } ]
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
                       }
                     } ]
                   }
-                }
+                }, {
+                  "bool" : {
+                    "should" : [ {
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    } ]
+                  }
+                } ]
               }
             }, {
               "bool" : {
-                "must" : {
+                "should" : [ {
                   "bool" : {
                     "should" : [ {
-                      "bool" : {
-                        "should" : [ {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        } ]
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
                       }
                     }, {
-                      "bool" : {
-                        "should" : [ {
-                          "terms" : {
-                            "fulltext_field" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        }, {
-                          "terms" : {
-                            "_all" : [ "the", "subquery" ],
-                            "minimum_should_match" : "2"
-                          }
-                        } ]
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
                       }
                     } ]
                   }
-                }
+                }, {
+                  "bool" : {
+                    "should" : [ {
+                      "terms" : {
+                        "fulltext_field" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    }, {
+                      "terms" : {
+                        "_all" : [ "the", "subquery" ],
+                        "minimum_should_match" : "2"
+                      }
+                    } ]
+                  }
+                } ]
               }
             } ]
           }
@@ -2979,12 +2971,8 @@
                         "nested_field.fieldb" : "wine"
                       }
                     }, {
-                      "bool" : {
-                        "should" : {
-                          "terms" : {
-                            "nested_field.fieldc" : [ "food", "cheese" ]
-                          }
-                        }
+                      "terms" : {
+                        "nested_field.fieldc" : [ "food", "cheese" ]
                       }
                     } ]
                   }
