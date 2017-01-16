@@ -49,16 +49,27 @@ final class VisibilityQueryHelper {
 
         searcher.search(new ConstantScoreQuery(new TermFilter(new Term("_type", "state"))),
                 new ZomboDBTermsCollector() {
-                    SortedDocValues ctids;
+                    SortedSetDocValues ctids;
 
                     @Override
                     public void collect(int doc) throws IOException {
-                        updatedCtids.add(BytesRef.deepCopyOf(ctids.get(doc)));
+                        if (ctids == null)
+                            return;
+
+                        ctids.setDocument(doc);
+                        long ctidOrd;
+                        BytesRef ctid;
+                        if ( (ctidOrd = ctids.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS)
+                            ctid = ctids.lookupOrd(ctidOrd);
+                        else
+                            throw new RuntimeException("Count not get a _ctid term for doc from state");
+
+                        updatedCtids.add(BytesRef.deepCopyOf(ctid));
                     }
 
                     @Override
                     protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                        ctids = context.reader().getSortedDocValues("_ctid");
+                        ctids = context.reader().getSortedSetDocValues("_ctid");
                     }
 
                     @Override

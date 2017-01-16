@@ -4015,7 +4015,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testIssue80_analyzedExactField() throws Exception {
-        String q = "exact_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2017\", \"UNKNOWN\", \"2/2/2017\"]]";
+        String q = "exact_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
 
         assertJson(q,
                 "{\n" +
@@ -4042,7 +4042,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testIssue80_unanalyzedField() throws Exception {
-        String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2017\", \"UNKNOWN\", \"2/2/2017\"]]";
+        String q = "unanalyzed_field =[[\"12/31/1999\",\"2/3/1999\", \"12/31/2016\", \"UNKNOWN\", \"2/2/2016\"]]";
         assertJson(q,
                 "{\n" +
                         "  \"filtered\" : {\n" +
@@ -4908,19 +4908,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "          }\n" +
                         "        }, {\n" +
                         "          \"bool\" : {\n" +
-                        "            \"must\" : {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"subject\" : \"wine\"\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"subject\" : \"cheese\"\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
+                        "            \"must\" : [ {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"subject\" : \"wine\"\n" +
                         "              }\n" +
-                        "            }\n" +
+                        "            }, {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"subject\" : \"cheese\"\n" +
+                        "              }\n" +
+                        "            } ]\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +

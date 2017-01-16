@@ -438,7 +438,7 @@ public abstract class QueryRewriter {
         return new AbstractAggregationBuilder("zdb_json", null) {
             @Override
             public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-                Map<String, Object> agg = new ObjectMapper().readValue(node.getEscapedValue(), Map.class);
+                Map<String, Object> agg = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).readValue(node.getEscapedValue(), Map.class);
                 for (Map.Entry<String, Object> entry : agg.entrySet()) {
                     builder.field(entry.getKey());
                     builder.value(entry.getValue());

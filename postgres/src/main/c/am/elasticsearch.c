@@ -799,17 +799,10 @@ static uint64 count_deleted_docs(ZDBIndexDescriptor *indexDescriptor) {
 
 	appendStringInfo(endpoint, "%s/_cat/indices/%s?h=docs.deleted", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
-<<<<<<< HEAD
 
 	return (uint64) atoll(response->data);
 }
 
-=======
-
-	return (uint64) atoll(response->data);
-}
-
->>>>>>> develop
 void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request  = makeStringInfo();
