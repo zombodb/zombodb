@@ -59,7 +59,14 @@ public class IndexMetadataManager {
     }
 
     public void setMyIndex(ASTIndexLink myIndex) {
+        IndexLinkAndMapping newMe = lookupMapping(myIndex);
+
         this.myIndex = myIndex;
+
+        // move me to the top of the list so that fields will be
+        // resolved starting with me
+        mappings.remove(newMe);
+        mappings.add(0, newMe);
     }
 
     public Set<ASTIndexLink> getUsedIndexes() {

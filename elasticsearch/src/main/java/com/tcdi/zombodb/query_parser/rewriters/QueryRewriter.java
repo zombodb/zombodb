@@ -145,7 +145,7 @@ public abstract class QueryRewriter {
     protected final boolean doFullFieldDataLookup;
     protected final ASTQueryTree tree;
 
-    private boolean _isBuildingAggregate = false;
+    protected boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
 
     private Map<String, String> arrayData;
@@ -631,9 +631,21 @@ public abstract class QueryRewriter {
     private QueryBuilder build(ASTAnd node) {
         BoolQueryBuilder fb = boolQuery();
 
+        int cnt = 0;
+        QueryBuilder last = null;
         for (QueryParserNode child : node) {
-            fb.must(build(child));
+            QueryBuilder qb = build(child);
+
+            if (qb instanceof MatchAllQueryBuilder)
+                continue;
+
+            fb.must(last = qb);
+            cnt++;
         }
+
+        if (cnt == 1)
+            return last;
+
         return fb;
     }
 
@@ -668,9 +680,25 @@ public abstract class QueryRewriter {
     private QueryBuilder build(ASTOr node) {
         BoolQueryBuilder fb = boolQuery();
 
+        int cnt = 0;
+        boolean hasMatchAll = false;
+        QueryBuilder last = null;
         for (QueryParserNode child : node) {
-            fb.should(build(child));
+            QueryBuilder qb = build(child);
+
+            if (qb instanceof MatchAllQueryBuilder && hasMatchAll)
+                continue;
+
+            fb.should(last = qb);
+
+            if (qb instanceof MatchAllQueryBuilder)
+                hasMatchAll = true;
+            cnt++;
         }
+
+        if (cnt == 1)
+            return last;
+
         return fb;
     }
 

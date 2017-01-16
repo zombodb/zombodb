@@ -50,6 +50,9 @@ public class SirenQueryRewriter extends QueryRewriter {
         if (link.toString().equals(myIndex.toString()) && !node.isGenerated()) {
             return super.build(node);
         } else {
+            if (_isBuildingAggregate)
+                return matchAllQuery();
+
             FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname()).path(link.getRightFieldname()).indices(link.getIndexName());
             fjb.query(applyVisibility(build(node.getQuery()), link.getIndexName()));
 
