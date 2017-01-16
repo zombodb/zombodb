@@ -1663,12 +1663,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            \"review_data_ben.review_data_id\" : 67115\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"should\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
-                        "              }\n" +
-                        "            }\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
@@ -4330,12 +4326,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        \"data_client_name\" : \"wellmark\"\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"exact_field\" : [ \"asdf, cathi (sdfg)\", \"sdfg, qwer\", \"swergs, ersd\", \"wergf, fsd\", \"dhj, hsdgf\", \"dfbg, werfdvc\", \"sdfg, wwwert\", \"ersfd, kjhsa\", \"aiuksjd, kasdf\", \"sdfg, werww\" ]\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"asdf, cathi (sdfg)\", \"sdfg, qwer\", \"swergs, ersd\", \"wergf, fsd\", \"dhj, hsdgf\", \"dfbg, werfdvc\", \"sdfg, wwwert\", \"ersfd, kjhsa\", \"aiuksjd, kasdf\", \"sdfg, werww\" ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"range\" : {\n" +
@@ -4351,12 +4343,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        \"data_duplicate_resource\" : \"no\"\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"data_record_type\" : [ \"email\", \"email attachment\", \"email attachment ole\" ]\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"data_record_type\" : [ \"email\", \"email attachment\", \"email attachment ole\" ]\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"filtered\" : {\n" +
@@ -4817,13 +4805,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            \"subject\" : \"beer\"\n" +
                         "          }\n" +
                         "        }, {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"subject\" : [ \"wine\", \"cheese\" ],\n" +
-                        "                \"minimum_should_match\" : \"2\"\n" +
-                        "              }\n" +
-                        "            }\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"subject\" : [ \"wine\", \"cheese\" ],\n" +
+                        "            \"minimum_should_match\" : \"2\"\n" +
                         "          }\n" +
                         "        } ]\n" +
                         "      }\n" +
