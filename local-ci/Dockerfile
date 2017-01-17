@@ -33,13 +33,13 @@ RUN apt-get update -y -qq --fix-missing
 # update apt
 RUN apt-get update -y -qq
 RUN apt-get install -y -qq apt-utils
+RUN apt-get install -y apt-transport-https
 
 # must have wget
 RUN apt-get install -y -qq wget
 
 # elasticsearch
-RUN echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
-RUN wget --no-check-certificate -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | apt-key add -
+RUN wget --no-check-certificate https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.4.4/elasticsearch-2.4.4.deb
 
 # postgres
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
@@ -67,7 +67,7 @@ RUN apt-get install -y -qq libz-dev
 RUN apt-get install -y -qq maven
 
 # stack
-RUN apt-get install -y -qq elasticsearch
+RUN dpkg -i elasticsearch-2.4.4.deb
 RUN apt-get install -y -qq postgresql-9.5 postgresql-server-dev-9.5
 
 # custom libcurl req'd by ZomboDB to statically link against
