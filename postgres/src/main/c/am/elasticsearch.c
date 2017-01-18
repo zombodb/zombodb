@@ -42,8 +42,8 @@
 
 /*
  * an Elasticsearch 2.x limit for the number of docs that can be returned by a SearchRequest.
- * ZDB issues SearchRequests during indexing and vacuum so we need to contorl it here.
- *
+ * ZDB issues SearchRequests during indexing and vacuum so we need to control it here.
+ */
 #define MAX_DOCS_PER_REQUEST 10000
 
 typedef struct {
