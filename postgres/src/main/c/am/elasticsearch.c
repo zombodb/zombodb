@@ -40,6 +40,12 @@
 #include "zdbseqscan.h"
 #include "zdb_interface.h"
 
+/*
+ * an Elasticsearch 2.x limit for the number of docs that can be returned by a SearchRequest.
+ * ZDB issues SearchRequests during indexing and vacuum so we need to contorl it here.
+ *
+#define MAX_DOCS_PER_REQUEST 10000
+
 typedef struct {
     ZDBIndexDescriptor *indexDescriptor;
     MultiRestState     *rest;
@@ -819,7 +825,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
 
         appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
-        if (request->len >= indexDescriptor->batch_size) {
+        if (request->len >= indexDescriptor->batch_size || i%MAX_DOCS_PER_REQUEST == 0) {
             response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
             checkForBulkError(response, "delete");
 
@@ -911,7 +917,7 @@ elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ct
         fast_path = batch->rest->available > before && batch->nrecs >= (batch->nprocessed/batch->nrequests) - 250;
     }
 
-    if (fast_path || batch->bulk->buff->len >= indexDescriptor->batch_size) {
+    if (fast_path || batch->bulk->buff->len >= indexDescriptor->batch_size || batch->nrecs%MAX_DOCS_PER_REQUEST == 0) {
         StringInfo endpoint = makeStringInfo();
 
         /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
