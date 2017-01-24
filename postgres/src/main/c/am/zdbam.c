@@ -355,6 +355,8 @@ void zdbam_fini(void) {
     ExecutorRun_hook    = prev_ExecutorRunHook;
     ExecutorFinish_hook = prev_ExecutorFinishHook;
 
+    ProcessUtility_hook = prev_ProcessUtilityHook;
+
     UnregisterXactCallback(zdbam_xact_callback, NULL);
 }
 
