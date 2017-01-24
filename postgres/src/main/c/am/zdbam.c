@@ -39,6 +39,7 @@
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
+#include "tcop/utility.h"
 #include "utils/builtins.h"
 #include "utils/int8.h"
 #include "utils/json.h"
@@ -111,6 +112,7 @@ static ItemPointer LAST_UPDATED_CTID = NULL;
 /* For tracking/pushing changed tuples */
 static ExecutorStart_hook_type prev_ExecutorStartHook = NULL;
 static ExecutorEnd_hook_type   prev_ExecutorEndHook   = NULL;
+static ProcessUtility_hook_type prev_ProcessUtilityHook = NULL;
 
 /* for tracking Executor nesting depth */
 static ExecutorRun_hook_type    prev_ExecutorRunHook    = NULL;
@@ -157,6 +159,21 @@ static ZDBIndexDescriptor *alloc_index_descriptor(Relation indexRel, bool forIns
     return desc;
 }
 
+static void process_inserted_indexes(bool doit) {
+    if (doit) {
+        ListCell *lc;
+
+        /* finish the batch insert (and refresh) for each index into which new records were inserted */
+        foreach (lc, indexesInsertedList) {
+            ZDBIndexDescriptor *desc = lfirst(lc);
+            desc->implementation->batchInsertFinish(desc);
+        }
+    }
+
+    /* make sure to cleanup seqscan globals too */
+    zdb_sequential_scan_support_cleanup();
+}
+
 static void xact_complete_cleanup(XactEvent event) {
 	List     *usedIndexes     = usedIndexesList;
 	ListCell *lc;
@@ -188,18 +205,12 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
     switch (event) {
         case XACT_EVENT_PRE_PREPARE:
         case XACT_EVENT_PRE_COMMIT: {
-			ListCell *lc;
-
-            if (zdb_batch_mode_guc) {
-                /* finish the batch insert (and refresh) for each index into which new records were inserted */
-                foreach (lc, indexesInsertedList) {
-                    ZDBIndexDescriptor *desc = lfirst(lc);
-
-					desc->implementation->batchInsertFinish(desc);
-                }
-            }
 
             if (indexesInsertedList != NULL) {
+                ListCell *lc;
+
+                process_inserted_indexes(zdb_batch_mode_guc);
+
                 HOLD_INTERRUPTS();
 
                 /* push this transaction id to ES for each index we inserted into */
@@ -246,18 +257,7 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags) {
 
 static void zdb_executor_end_hook(QueryDesc *queryDesc) {
     if (executorDepth == 0) {
-        if (!zdb_batch_mode_guc) {
-            ListCell *lc;
-
-            /* finish the batch insert (and refresh) for each index into which new records were inserted */
-            foreach (lc, indexesInsertedList) {
-                ZDBIndexDescriptor *desc = lfirst(lc);
-                desc->implementation->batchInsertFinish(desc);
-            }
-        }
-
-        /* make sure to cleanup seqscan globals too */
-        zdb_sequential_scan_support_cleanup();
+        process_inserted_indexes(!zdb_batch_mode_guc);
     }
 
     if (prev_ExecutorEndHook == zdb_executor_end_hook)
@@ -311,6 +311,16 @@ static void zdb_executor_finish_hook(QueryDesc *queryDesc) {
     PG_END_TRY();
 }
 
+static void zdb_process_utility_hook (Node *parsetree, const char *queryString, ProcessUtilityContext context, ParamListInfo params, DestReceiver *dest, char *completionTag) {
+
+    if (prev_ProcessUtilityHook)
+        prev_ProcessUtilityHook(parsetree, queryString, context, params, dest, completionTag);
+    else
+        standard_ProcessUtility(parsetree, queryString, context, params, dest, completionTag);
+
+    process_inserted_indexes(!zdb_batch_mode_guc);
+}
+
 void zdbam_init(void) {
     if (prev_ExecutorStartHook == zdb_executor_start_hook)
         elog(ERROR, "zdbam_init:  Unable to initialize ZomboDB.  ExecutorStartHook already assigned");
@@ -328,6 +338,9 @@ void zdbam_init(void) {
     prev_ExecutorFinishHook = ExecutorFinish_hook;
     ExecutorRun_hook        = zdb_executor_run_hook;
     ExecutorFinish_hook     = zdb_executor_finish_hook;
+
+    prev_ProcessUtilityHook = ProcessUtility_hook;
+    ProcessUtility_hook     = zdb_process_utility_hook;
 
     RegisterXactCallback(zdbam_xact_callback, NULL);
 }
