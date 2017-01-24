@@ -1011,10 +1011,11 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 
 	appendStringInfo(request, "%lu", convertedXid);
 	appendStringInfo(endpoint, "%s/%s/_zdbxid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-	if (!zdb_batch_mode_guc) {
-		if (strcmp("-1", indexDescriptor->refreshInterval) == 0)
-			appendStringInfo(endpoint, "?refresh=true");
-	}
+
+    /* we always want to refresh the index so long as the user hasn't specified a refresh interval */
+    if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+        appendStringInfo(endpoint, "?refresh=true");
+    }
 
 	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 	checkForBulkError(response, "mark transaction committed");
