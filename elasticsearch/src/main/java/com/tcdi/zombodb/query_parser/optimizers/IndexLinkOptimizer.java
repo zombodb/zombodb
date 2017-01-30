@@ -139,9 +139,9 @@ public class IndexLinkOptimizer {
             return;
 
         while (root instanceof ASTExpansion) {
+            injectASTExpansionNodes(((ASTExpansion) root).getFilterQuery());
+
             root = ((ASTExpansion) root).getQuery();
-            if (root instanceof ASTExpansion)
-                injectASTExpansionNodes(((ASTExpansion) root).getFilterQuery());
         }
 
         Set<ASTIndexLink> links = collectIndexLinks(root, new HashSet<ASTIndexLink>());
