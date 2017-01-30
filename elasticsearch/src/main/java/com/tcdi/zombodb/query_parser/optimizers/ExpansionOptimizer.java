@@ -50,17 +50,23 @@ public class ExpansionOptimizer {
     }
 
     public void optimize() {
-        Collection<ASTExpansion> expansions = tree.getChildrenOfType(ASTExpansion.class);
+        outer: while(true) {
+            Collection<ASTExpansion> expansions = tree.getChildrenOfType(ASTExpansion.class);
 
-        for (ASTExpansion expansion : expansions) {
-            if (expansion.isGenerated())
-                generatedExpansionsStack.push(expansion);
-            try {
-                expand(expansion);
-            } finally {
+            for (ASTExpansion expansion : expansions) {
+                if (expansion.jjtGetParent() == null)
+                    continue outer;
                 if (expansion.isGenerated())
-                    generatedExpansionsStack.pop();
+                    generatedExpansionsStack.push(expansion);
+                try {
+                    expand(expansion);
+                } finally {
+                    if (expansion.isGenerated())
+                        generatedExpansionsStack.pop();
+                }
             }
+
+            break;
         }
 
         mergeAdjacentANDs(tree);
@@ -79,26 +85,37 @@ public class ExpansionOptimizer {
     }
 
     private void expand(final ASTExpansion root) {
-        Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
+        outer: while(true) {
+            Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
 
-        ASTIndexLink myIndex = metadataManager.getMyIndex();
-        QueryParserNode last;
+            ASTIndexLink myIndex = metadataManager.getMyIndex();
+            QueryParserNode last;
 
-        try {
-            while (!stack.isEmpty()) {
-                ASTExpansion expansion = stack.pop();
+            try {
+                while (!stack.isEmpty()) {
+                    ASTExpansion expansion = stack.pop();
+                    if (expansion.jjtGetParent() == null)
+                        break;
 
-                if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
-                    last = expansion.getQuery();
-                } else {
-                    last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
+                    if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
+                        last = expansion.getQuery();
+                    } else {
+                        last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
+                    }
+
+                    // replace the ASTExpansion in the tree with the fieldData version
+                    ((QueryParserNode) expansion.jjtGetParent()).replaceChild(expansion, last);
+                    expansion.jjtSetParent(null);
+
+                    if (!(last instanceof ASTArray)) {
+                        continue outer;
+                    }
                 }
-
-                // replace the ASTExpansion in the tree with the fieldData version
-                ((QueryParserNode) expansion.jjtGetParent()).replaceChild(expansion, last);
+            } finally {
+                metadataManager.setMyIndex(myIndex);
             }
-        } finally {
-            metadataManager.setMyIndex(myIndex);
+
+            break;
         }
     }
 
