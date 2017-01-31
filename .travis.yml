@@ -28,7 +28,7 @@ script:
   - export WHERE=`pwd`
   - sudo echo "yes" | cpan TAP::Parser::SourceHandler::pgTAP
   - git clone https://github.com/theory/pgtap.git
-  - cd pgtap && make && make install
+  - cd pgtap && make && sudo make install && cd ..
   - mvn clean install
   - tar xzf postgres/src/main/docker/pg9.5/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
   - cd curl-7.43.0
@@ -50,7 +50,7 @@ script:
   - cat /etc/postgresql/9.5/main/postgresql.conf
 #  - sudo -u postgres createuser -s travis
   - sudo sleep 10
-  - make installcheck
+  - PATH=${PATH}:/home/travis/perl5/bin make installcheck
 
 after_failure:
   - sudo cat regression.diffs
