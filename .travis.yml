@@ -26,6 +26,7 @@ script:
   - sudo /etc/init.d/postgresql stop 9.5
   - export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
   - export WHERE=`pwd`
+  - sudp cpan TAP::Parser::SourceHandler::pgTAP
   - mvn clean install
   - tar xzf postgres/src/main/docker/pg9.5/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
   - cd curl-7.43.0
