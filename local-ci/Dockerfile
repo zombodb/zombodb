@@ -83,6 +83,19 @@ COPY config/maven-repo.tgz /tmp/
 RUN tar xzf /tmp/maven-repo.tgz
 RUN rm /tmp/maven-repo.tgz
 
+# install pg_prove
+RUN PATH="/root/perl5/bin${PATH:+:${PATH}}"; export PATH; \
+PERL5LIB="/root/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB; \
+PERL_LOCAL_LIB_ROOT="/root/perl5${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"; export PERL_LOCAL_LIB_ROOT; \
+PERL_MB_OPT="--install_base \"/root/perl5\""; export PERL_MB_OPT; \
+PERL_MM_OPT="INSTALL_BASE=/root/perl5"; export PERL_MM_OPT; \
+cpan TAP::Parser::SourceHandler::pgTAP
+
+# install pg_tap
+RUN apt-get install -y git
+RUN git clone https://github.com/theory/pgtap.git
+RUN cd pgtap && make && make install
+
 # setup runtime env
 RUN mkdir /build/
 RUN mkdir /build/zombodb
