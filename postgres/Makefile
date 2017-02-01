@@ -34,7 +34,12 @@ src/test/sql/so_comments.sql:
 src/test/sql/TUTORIAL.sql:
 	gunzip -c src/test/sql/TUTORIAL.sql.gz > src/test/sql/TUTORIAL.sql
 
-installcheck: src/test/sql/setup.sql src/test/sql/so_comments.sql src/test/sql/TUTORIAL.sql
+pgtap:
+	if [ "x" = "x${TEST}" ] ; then psql -qAt template1 -f src/test/zdbtaptests/sql/teardown.sql ; fi
+	if [ "x" = "x${TEST}" ] ; then psql -qAt template1 -f src/test/zdbtaptests/sql/setup.sql ; fi
+	if [ "x" = "x${TEST}" ] ; then pg_prove -d zdbtaptests src/test/zdbtaptests/tests/*.sql ; fi
+
+installcheck: src/test/sql/setup.sql src/test/sql/so_comments.sql src/test/sql/TUTORIAL.sql pgtap
 
 installcheck-random: REGRESS = $(shell echo --use-existing && (cat src/test/tests.list | grep -v ^setup | grep -v ^so_comments | grep -v ^configure | grep -v ^create-indexes | grep -v ^TUTORIAL) | src/main/shell/mysort)
 installcheck-random: installcheck
