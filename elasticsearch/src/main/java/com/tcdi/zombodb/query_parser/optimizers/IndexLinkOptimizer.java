@@ -371,6 +371,9 @@ public class IndexLinkOptimizer {
     }
 
     private QueryParserNode maybeInvertExpansion(ASTExpansion expansion) {
+        if (metadataManager.getMetadataForMyIndex().alwaysResolveJoins())
+            return expansion;
+
         long totalCnt, queryCnt;
 
         //
@@ -419,7 +422,7 @@ public class IndexLinkOptimizer {
         if (useQuery)
             builder.setQuery(rewriter.build(expansion.getQuery()));
 
-        String key = builder.toString();
+        String key = expansion.getIndexLink().getIndexName() + ":" + builder.toString();
         Long count = COUNT_ESTIMATE_CACHE.get(key);
         if (count != null)
             return count;
