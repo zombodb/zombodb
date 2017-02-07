@@ -73,8 +73,8 @@ public class IndexMetadataManager {
         return usedIndexes;
     }
 
-    public void setUsedIndexes(Set<ASTIndexLink> usedIndexes) {
-        this.usedIndexes = usedIndexes;
+    public void addUsedIndex(ASTIndexLink link) {
+        usedIndexes.add(link);
     }
 
     private boolean isNestedObjectFieldExternal(String fieldname) {
@@ -252,12 +252,18 @@ public class IndexMetadataManager {
                     continue;
                 }
 
-                if (md.getSearchAnalyzer(field) != null)
-                    fields.add(new FieldAndIndexPair(link, field, md));
+                if (md.getSearchAnalyzer(field) != null) {
+                    FieldAndIndexPair faip = new FieldAndIndexPair(link, field, md);
+                    if (!fields.contains(faip))
+                        fields.add(faip);
+                }
 
             }
-            if (hasAllField)
-                fields.add(new FieldAndIndexPair(link, "_all", md));    // we still want the "_all" field if any defined field lives in it
+            if (hasAllField) {
+                FieldAndIndexPair faip = new FieldAndIndexPair(link, "_all", md);
+                if (!fields.contains(faip))
+                    fields.add(faip);    // we still want the "_all" field if any defined field lives in it
+            }
         }
         if (fields.isEmpty())
             fields.add(new FieldAndIndexPair(null, "_all", null));
