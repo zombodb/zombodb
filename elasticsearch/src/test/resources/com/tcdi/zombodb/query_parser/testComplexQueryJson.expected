@@ -59,498 +59,54 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "meeting"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "meeting"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "meeting"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "meeting"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "must_not" : [ {
+              "bool" : {
+                "should" : [ {
                   "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
+                    "should" : [ {
+                      "term" : {
+                        "fulltext_field" : "staff"
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "fulltext_field" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
+                      "term" : {
+                        "_all" : "staff"
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
+                    "should" : [ {
+                      "term" : {
+                        "fulltext_field" : "staff"
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "_all" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "fulltext_field" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "_all" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "fulltext_field" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "_all" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "fulltext_field" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "_all" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
+                      "term" : {
+                        "_all" : "staff"
                       }
                     } ]
                   }
@@ -560,125 +116,53 @@
               "bool" : {
                 "should" : [ {
                   "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
+                    "should" : [ {
+                      "term" : {
+                        "fulltext_field" : "cancelled"
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "fulltext_field" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "fulltext_field" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
+                      "term" : {
+                        "_all" : "cancelled"
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "1-2",
-                          "type" : "phrase"
-                        }
+                    "should" : [ {
+                      "term" : {
+                        "fulltext_field" : "cancelled"
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_multi" : {
-                            "match" : {
-                              "prefix" : {
-                                "_all" : "prefix"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wildcard2*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "*wild*card3*"
-                              }
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "wildcard" : {
-                                "_all" : "wild*card4"
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 0,
-                        "in_order" : true
+                      "term" : {
+                        "_all" : "cancelled"
+                      }
+                    } ]
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "bool" : {
+                    "should" : [ {
+                      "term" : {
+                        "fulltext_field" : "risk"
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "meeting", "001", "123", "0", "000", "0.23", "some", "query", "other", "query" ],
-                        "minimum_should_match" : "10"
+                      "term" : {
+                        "_all" : "risk"
+                      }
+                    } ]
+                  }
+                }, {
+                  "bool" : {
+                    "should" : [ {
+                      "term" : {
+                        "fulltext_field" : "risk"
+                      }
+                    }, {
+                      "term" : {
+                        "_all" : "risk"
                       }
                     } ]
                   }
@@ -688,119 +172,61 @@
           }
         }, {
           "bool" : {
-            "must_not" : {
-              "bool" : {
-                "should" : [ {
-                  "bool" : {
-                    "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "staff", "cancelled", "risk" ]
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "staff", "cancelled", "risk" ]
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "staff", "cancelled", "risk" ]
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "staff", "cancelled", "risk" ]
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "staff", "cancelled", "risk" ]
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "staff", "cancelled", "risk" ]
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "staff", "cancelled", "risk" ]
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "staff", "cancelled", "risk" ]
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "staff", "cancelled", "risk" ]
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "staff", "cancelled", "risk" ]
-                      }
-                    } ]
-                  }
-                } ]
-              }
-            }
-          }
-        }, {
-          "bool" : {
             "should" : [ {
               "bool" : {
-                "should" : [ {
+                "must" : [ {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "should" : [ {
+                          "term" : {
+                            "fulltext_field" : "the"
+                          }
+                        }, {
+                          "term" : {
+                            "_all" : "the"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "should" : [ {
+                          "term" : {
+                            "fulltext_field" : "the"
+                          }
+                        }, {
+                          "term" : {
+                            "_all" : "the"
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "should" : [ {
+                          "term" : {
+                            "fulltext_field" : "subquery"
+                          }
+                        }, {
+                          "term" : {
+                            "_all" : "subquery"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "should" : [ {
+                          "term" : {
+                            "fulltext_field" : "subquery"
+                          }
+                        }, {
+                          "term" : {
+                            "_all" : "subquery"
+                          }
+                        } ]
                       }
                     } ]
                   }
@@ -808,61 +234,59 @@
               }
             }, {
               "bool" : {
-                "should" : [ {
+                "must" : [ {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "should" : [ {
+                          "term" : {
+                            "fulltext_field" : "the"
+                          }
+                        }, {
+                          "term" : {
+                            "_all" : "the"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "should" : [ {
+                          "term" : {
+                            "fulltext_field" : "the"
+                          }
+                        }, {
+                          "term" : {
+                            "_all" : "the"
+                          }
+                        } ]
                       }
                     } ]
                   }
                 }, {
                   "bool" : {
                     "should" : [ {
-                      "terms" : {
-                        "fulltext_field" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "should" : [ {
+                          "term" : {
+                            "fulltext_field" : "subquery"
+                          }
+                        }, {
+                          "term" : {
+                            "_all" : "subquery"
+                          }
+                        } ]
                       }
                     }, {
-                      "terms" : {
-                        "_all" : [ "the", "subquery" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "should" : [ {
+                          "term" : {
+                            "fulltext_field" : "subquery"
+                          }
+                        }, {
+                          "term" : {
+                            "_all" : "subquery"
+                          }
+                        } ]
                       }
                     } ]
                   }
@@ -875,48 +299,6 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
-                  "fuzzy" : {
-                    "fulltext_field" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 32
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "_all" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 32
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "fulltext_field" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 32
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "_all" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 32
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "fulltext_field" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 32
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "_all" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 32
-                    }
-                  }
-                }, {
                   "fuzzy" : {
                     "fulltext_field" : {
                       "value" : "fuzzy",
@@ -957,30 +339,46 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
-                  "prefix" : {
-                    "fulltext_field" : "prefix"
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "1-2",
+                      "type" : "phrase"
+                    }
                   }
                 }, {
-                  "prefix" : {
-                    "_all" : "prefix"
+                  "match" : {
+                    "_all" : {
+                      "query" : "1-2",
+                      "type" : "phrase"
+                    }
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "1-2",
+                      "type" : "phrase"
+                    }
                   }
                 }, {
-                  "prefix" : {
-                    "fulltext_field" : "prefix"
+                  "match" : {
+                    "_all" : {
+                      "query" : "1-2",
+                      "type" : "phrase"
+                    }
                   }
-                }, {
-                  "prefix" : {
-                    "_all" : "prefix"
-                  }
-                }, {
-                  "prefix" : {
-                    "fulltext_field" : "prefix"
-                  }
-                }, {
-                  "prefix" : {
-                    "_all" : "prefix"
-                  }
-                }, {
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
                   "prefix" : {
                     "fulltext_field" : "prefix"
                   }
@@ -1016,30 +414,6 @@
                   "wildcard" : {
                     "_all" : "*wildcard"
                   }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "*wildcard"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wildcard"
-                  }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "*wildcard"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wildcard"
-                  }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "*wildcard"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wildcard"
-                  }
                 } ]
               }
             }, {
@@ -1061,30 +435,6 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
-                  "wildcard" : {
-                    "fulltext_field" : "*wildcard2*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wildcard2*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "*wildcard2*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wildcard2*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "*wildcard2*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wildcard2*"
-                  }
-                }, {
                   "wildcard" : {
                     "fulltext_field" : "*wildcard2*"
                   }
@@ -1120,30 +470,6 @@
                   "wildcard" : {
                     "_all" : "*wild*card3*"
                   }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "*wild*card3*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wild*card3*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "*wild*card3*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wild*card3*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "*wild*card3*"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "*wild*card3*"
-                  }
                 } ]
               }
             }, {
@@ -1172,30 +498,6 @@
                   "wildcard" : {
                     "_all" : "wild*card4"
                   }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "wild*card4"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "wild*card4"
-                  }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "wild*card4"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "wild*card4"
-                  }
-                }, {
-                  "wildcard" : {
-                    "fulltext_field" : "wild*card4"
-                  }
-                }, {
-                  "wildcard" : {
-                    "_all" : "wild*card4"
-                  }
                 } ]
               }
             }, {
@@ -1207,6 +509,342 @@
                 }, {
                   "wildcard" : {
                     "_all" : "wild*card4"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_multi" : {
+                        "match" : {
+                          "prefix" : {
+                            "fulltext_field" : "prefix"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "fulltext_field" : "*wildcard"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "fulltext_field" : "*wildcard2*"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "fulltext_field" : "*wild*card3*"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "fulltext_field" : "wild*card4"
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 0,
+                    "in_order" : true
+                  }
+                }, {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_multi" : {
+                        "match" : {
+                          "prefix" : {
+                            "_all" : "prefix"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "_all" : "*wildcard"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "_all" : "*wildcard2*"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "_all" : "*wild*card3*"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "_all" : "wild*card4"
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 0,
+                    "in_order" : true
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_multi" : {
+                        "match" : {
+                          "prefix" : {
+                            "fulltext_field" : "prefix"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "fulltext_field" : "*wildcard"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "fulltext_field" : "*wildcard2*"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "fulltext_field" : "*wild*card3*"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "fulltext_field" : "wild*card4"
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 0,
+                    "in_order" : true
+                  }
+                }, {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_multi" : {
+                        "match" : {
+                          "prefix" : {
+                            "_all" : "prefix"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "_all" : "*wildcard"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "_all" : "*wildcard2*"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "_all" : "*wild*card3*"
+                          }
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "wildcard" : {
+                            "_all" : "wild*card4"
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 0,
+                    "in_order" : true
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "001"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "001"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "001"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "001"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "123"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "123"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "123"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "123"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "0"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "0"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "0"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "0"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "000"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "000"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "000"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "000"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "0.23"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "0.23"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "0.23"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "0.23"
                   }
                 } ]
               }
@@ -1222,6 +860,118 @@
                 "script" : " doc['id'].value > 1024 "
               }
             }
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "some"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "some"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "some"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "some"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "query"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "query"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "query"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "query"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "other"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "other"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "other"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "other"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "query"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "query"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "query"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "query"
+                  }
+                } ]
+              }
+            } ]
           }
         } ]
       }
@@ -1303,1008 +1053,416 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_term" : {
                         "fulltext_field" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
+                          "value" : "this"
                         }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
+                      "span_term" : {
                         "fulltext_field" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
+                          "value" : "is"
                         }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
+                      "span_term" : {
                         "fulltext_field" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
+                          "value" : "a"
                         }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
-                        }
-                      }
-                    }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
+                      "span_term" : {
                         "fulltext_field" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
+                          "value" : "sloppy"
                         }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
+                      "span_multi" : {
+                        "match" : {
+                          "fuzzy" : {
                             "fulltext_field" : {
-                              "value" : "this"
+                              "value" : "phrase",
+                              "prefix_length" : 3
                             }
                           }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
+                        }
                       }
-                    } ]
+                    } ],
+                    "slop" : 11,
+                    "in_order" : true
                   }
                 }, {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_term" : {
                         "_all" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
+                          "value" : "this"
                         }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "is"
+                        }
                       }
-                    } ]
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "a"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "sloppy"
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "fuzzy" : {
+                            "_all" : {
+                              "value" : "phrase",
+                              "prefix_length" : 3
+                            }
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 11,
+                    "in_order" : true
                   }
                 } ]
               }
             }, {
               "bool" : {
                 "should" : [ {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_term" : {
                         "fulltext_field" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
+                          "value" : "this"
                         }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "fulltext_field" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "fulltext_field" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "is"
+                        }
                       }
-                    } ]
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "a"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "sloppy"
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "fuzzy" : {
+                            "fulltext_field" : {
+                              "value" : "phrase",
+                              "prefix_length" : 3
+                            }
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 11,
+                    "in_order" : true
                   }
                 }, {
-                  "bool" : {
-                    "must" : [ {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "a"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : true
-                      }
-                    }, {
-                      "match" : {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_term" : {
                         "_all" : {
-                          "query" : "so is this",
-                          "type" : "phrase",
-                          "slop" : 42
+                          "value" : "this"
                         }
                       }
                     }, {
-                      "span_near" : {
-                        "clauses" : [ {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "this"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "is"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "an"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "unordered"
-                            }
-                          }
-                        }, {
-                          "span_term" : {
-                            "_all" : {
-                              "value" : "sloppy"
-                            }
-                          }
-                        }, {
-                          "span_multi" : {
-                            "match" : {
-                              "fuzzy" : {
-                                "_all" : {
-                                  "value" : "phrase",
-                                  "prefix_length" : 3
-                                }
-                              }
-                            }
-                          }
-                        } ],
-                        "slop" : 11,
-                        "in_order" : false
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "is"
+                        }
                       }
-                    } ]
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "a"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "sloppy"
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "fuzzy" : {
+                            "_all" : {
+                              "value" : "phrase",
+                              "prefix_length" : 3
+                            }
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 11,
+                    "in_order" : true
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "so is this",
+                      "type" : "phrase",
+                      "slop" : 42
+                    }
+                  }
+                }, {
+                  "match" : {
+                    "_all" : {
+                      "query" : "so is this",
+                      "type" : "phrase",
+                      "slop" : 42
+                    }
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "so is this",
+                      "type" : "phrase",
+                      "slop" : 42
+                    }
+                  }
+                }, {
+                  "match" : {
+                    "_all" : {
+                      "query" : "so is this",
+                      "type" : "phrase",
+                      "slop" : 42
+                    }
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "this"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "is"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "an"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "unordered"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "sloppy"
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "fuzzy" : {
+                            "fulltext_field" : {
+                              "value" : "phrase",
+                              "prefix_length" : 3
+                            }
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 11,
+                    "in_order" : false
+                  }
+                }, {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "this"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "is"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "an"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "unordered"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "sloppy"
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "fuzzy" : {
+                            "_all" : {
+                              "value" : "phrase",
+                              "prefix_length" : 3
+                            }
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 11,
+                    "in_order" : false
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "this"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "is"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "an"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "unordered"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "fulltext_field" : {
+                          "value" : "sloppy"
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "fuzzy" : {
+                            "fulltext_field" : {
+                              "value" : "phrase",
+                              "prefix_length" : 3
+                            }
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 11,
+                    "in_order" : false
+                  }
+                }, {
+                  "span_near" : {
+                    "clauses" : [ {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "this"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "is"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "an"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "unordered"
+                        }
+                      }
+                    }, {
+                      "span_term" : {
+                        "_all" : {
+                          "value" : "sloppy"
+                        }
+                      }
+                    }, {
+                      "span_multi" : {
+                        "match" : {
+                          "fuzzy" : {
+                            "_all" : {
+                              "value" : "phrase",
+                              "prefix_length" : 3
+                            }
+                          }
+                        }
+                      }
+                    } ],
+                    "slop" : 11,
+                    "in_order" : false
                   }
                 } ]
               }
@@ -2319,48 +1477,6 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
-                  "fuzzy" : {
-                    "fulltext_field" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 1
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "_all" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 1
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "fulltext_field" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 1
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "_all" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 1
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "fulltext_field" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 1
-                    }
-                  }
-                }, {
-                  "fuzzy" : {
-                    "_all" : {
-                      "value" : "fuzzy",
-                      "prefix_length" : 1
-                    }
-                  }
-                }, {
                   "fuzzy" : {
                     "fulltext_field" : {
                       "value" : "fuzzy",
@@ -2401,198 +1517,60 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "fulltext_field"
-                          }
-                        }
+                  "filtered" : {
+                    "query" : {
+                      "match_all" : { }
+                    },
+                    "filter" : {
+                      "missing" : {
+                        "field" : "fulltext_field"
                       }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
+                    }
                   }
                 }, {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "_all"
-                          }
-                        }
+                  "filtered" : {
+                    "query" : {
+                      "match_all" : { }
+                    },
+                    "filter" : {
+                      "missing" : {
+                        "field" : "fulltext_field"
                       }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
+                    }
                   }
                 }, {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "fulltext_field"
-                          }
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "_all"
-                          }
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "fulltext_field"
-                          }
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "_all"
-                          }
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "fulltext_field"
-                          }
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "_all"
-                          }
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
+                  "terms" : {
+                    "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99", "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                   }
                 } ]
               }
             }, {
               "bool" : {
                 "should" : [ {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "fulltext_field"
-                          }
-                        }
+                  "filtered" : {
+                    "query" : {
+                      "match_all" : { }
+                    },
+                    "filter" : {
+                      "missing" : {
+                        "field" : "_all"
                       }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
+                    }
                   }
                 }, {
-                  "bool" : {
-                    "should" : [ {
-                      "filtered" : {
-                        "query" : {
-                          "match_all" : { }
-                        },
-                        "filter" : {
-                          "missing" : {
-                            "field" : "_all"
-                          }
-                        }
+                  "filtered" : {
+                    "query" : {
+                      "match_all" : { }
+                    },
+                    "filter" : {
+                      "missing" : {
+                        "field" : "_all"
                       }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
-                      }
-                    } ]
+                    }
+                  }
+                }, {
+                  "terms" : {
+                    "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99", "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                   }
                 } ]
               }
@@ -3043,60 +2021,6 @@
                       "include_upper" : true
                     }
                   }
-                }, {
-                  "range" : {
-                    "fulltext_field" : {
-                      "from" : "foo",
-                      "to" : "three",
-                      "include_lower" : true,
-                      "include_upper" : true
-                    }
-                  }
-                }, {
-                  "range" : {
-                    "_all" : {
-                      "from" : "foo",
-                      "to" : "three",
-                      "include_lower" : true,
-                      "include_upper" : true
-                    }
-                  }
-                }, {
-                  "range" : {
-                    "fulltext_field" : {
-                      "from" : "foo",
-                      "to" : "three",
-                      "include_lower" : true,
-                      "include_upper" : true
-                    }
-                  }
-                }, {
-                  "range" : {
-                    "_all" : {
-                      "from" : "foo",
-                      "to" : "three",
-                      "include_lower" : true,
-                      "include_upper" : true
-                    }
-                  }
-                }, {
-                  "range" : {
-                    "fulltext_field" : {
-                      "from" : "foo",
-                      "to" : "three",
-                      "include_lower" : true,
-                      "include_upper" : true
-                    }
-                  }
-                }, {
-                  "range" : {
-                    "_all" : {
-                      "from" : "foo",
-                      "to" : "three",
-                      "include_lower" : true,
-                      "include_upper" : true
-                    }
-                  }
                 } ]
               }
             }, {
@@ -3128,308 +2052,284 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "a-b-c-d",
+                      "type" : "phrase"
+                    }
                   }
                 }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
-                  }
-                }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
+                  "match" : {
+                    "_all" : {
+                      "query" : "a-b-c-d",
+                      "type" : "phrase"
+                    }
                   }
                 } ]
               }
             }, {
               "bool" : {
                 "should" : [ {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "fulltext_field" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "fulltext_field" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "a-b-c-d",
+                      "type" : "phrase"
+                    }
                   }
                 }, {
-                  "bool" : {
-                    "must" : [ {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a-b-c-d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "a/b/c/d",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "match" : {
-                        "_all" : {
-                          "query" : "http://www.tcdi.com/?id=42",
-                          "type" : "phrase"
-                        }
-                      }
-                    }, {
-                      "terms" : {
-                        "_all" : [ "abcd", "to", "10", "a", "to", "z" ],
-                        "minimum_should_match" : "6"
-                      }
-                    } ]
+                  "match" : {
+                    "_all" : {
+                      "query" : "a-b-c-d",
+                      "type" : "phrase"
+                    }
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "abcd"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "abcd"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "abcd"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "abcd"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "a/b/c/d",
+                      "type" : "phrase"
+                    }
+                  }
+                }, {
+                  "match" : {
+                    "_all" : {
+                      "query" : "a/b/c/d",
+                      "type" : "phrase"
+                    }
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "a/b/c/d",
+                      "type" : "phrase"
+                    }
+                  }
+                }, {
+                  "match" : {
+                    "_all" : {
+                      "query" : "a/b/c/d",
+                      "type" : "phrase"
+                    }
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "http://www.tcdi.com/?id=42",
+                      "type" : "phrase"
+                    }
+                  }
+                }, {
+                  "match" : {
+                    "_all" : {
+                      "query" : "http://www.tcdi.com/?id=42",
+                      "type" : "phrase"
+                    }
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "match" : {
+                    "fulltext_field" : {
+                      "query" : "http://www.tcdi.com/?id=42",
+                      "type" : "phrase"
+                    }
+                  }
+                }, {
+                  "match" : {
+                    "_all" : {
+                      "query" : "http://www.tcdi.com/?id=42",
+                      "type" : "phrase"
+                    }
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "to"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "to"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "to"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "to"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "10"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "10"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "10"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "10"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "a"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "a"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "a"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "a"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "to"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "to"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "to"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "to"
+                  }
+                } ]
+              }
+            } ]
+          }
+        }, {
+          "bool" : {
+            "should" : [ {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "z"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "z"
+                  }
+                } ]
+              }
+            }, {
+              "bool" : {
+                "should" : [ {
+                  "term" : {
+                    "fulltext_field" : "z"
+                  }
+                }, {
+                  "term" : {
+                    "_all" : "z"
                   }
                 } ]
               }

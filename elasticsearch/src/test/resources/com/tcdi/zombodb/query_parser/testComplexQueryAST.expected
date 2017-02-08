@@ -64,253 +64,59 @@ QueryTree
             Expansion
                id=<db.schema.table.index>id
                Or
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=meeting, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=meeting, index=db.schema.table.index)
             Expansion
                other:(left=<db.schema.table.index>right)
                   LeftField (value=left)
                   IndexName (value=db.schema.table.index)
                   RightField (value=right)
                Or
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=1-2, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                        Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                        Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=meeting, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=001, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=000, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=0.23, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=some, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=meeting, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=meeting, index=db.schema.table.index)
          Not
             Or
                Expansion
                   id=<db.schema.table.index>id
                   Or
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=risk, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=risk, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=risk, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=risk, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
                Expansion
                   other:(left=<db.schema.table.index>right)
                      LeftField (value=left)
                      IndexName (value=db.schema.table.index)
                      RightField (value=right)
                   Or
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=risk, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=staff, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=staff, index=db.schema.table.index)
+            Or
+               Expansion
+                  id=<db.schema.table.index>id
+                  Or
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
+               Expansion
+                  other:(left=<db.schema.table.index>right)
+                     LeftField (value=left)
+                     IndexName (value=db.schema.table.index)
+                     RightField (value=right)
+                  Or
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=cancelled, index=db.schema.table.index)
+            Or
+               Expansion
+                  id=<db.schema.table.index>id
+                  Or
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=risk, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
+               Expansion
+                  other:(left=<db.schema.table.index>right)
+                     LeftField (value=left)
+                     IndexName (value=db.schema.table.index)
+                     RightField (value=right)
+                  Or
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=risk, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=risk, index=db.schema.table.index)
          Or
             Expansion
                left_field=<db.schema.table.index>right_field
@@ -319,93 +125,63 @@ QueryTree
                      Expansion
                         id=<db.schema.table.index>id
                         Or
-                           Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                           Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                           Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                           Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                           Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                           Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                           Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                           Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                           Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
+                           Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
                      Expansion
                         other:(left=<db.schema.table.index>right)
                            LeftField (value=left)
                            IndexName (value=db.schema.table.index)
                            RightField (value=right)
                         Or
-                           Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                           Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                              Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                              Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                           Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
+                           Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
+                  Or
+                     Expansion
+                        id=<db.schema.table.index>id
+                        Or
+                           Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                           Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                     Expansion
+                        other:(left=<db.schema.table.index>right)
+                           LeftField (value=left)
+                           IndexName (value=db.schema.table.index)
+                           RightField (value=right)
+                        Or
+                           Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                           Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
             And
                Or
                   Expansion
                      id=<db.schema.table.index>id
                      Or
-                        Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                        Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                        Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                        Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                        Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                        Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                        Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                        Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                        Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
+                        Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
                   Expansion
                      other:(left=<db.schema.table.index>right)
                         LeftField (value=left)
                         IndexName (value=db.schema.table.index)
                         RightField (value=right)
                      Or
-                        Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
-                        Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                           Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
-                           Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                        Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)
+                        Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)
+               Or
+                  Expansion
+                     id=<db.schema.table.index>id
+                     Or
+                        Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                        Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                  Expansion
+                     other:(left=<db.schema.table.index>right)
+                        LeftField (value=left)
+                        IndexName (value=db.schema.table.index)
+                        RightField (value=right)
+                     Or
+                        Word (fieldname=fulltext_field, operator=CONTAINS, value=subquery, index=db.schema.table.index)
+                        Word (fieldname=_all, operator=CONTAINS, value=subquery, index=db.schema.table.index)
          Or
             Expansion
                id=<db.schema.table.index>id
                Or
-                  Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
-                  Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
-                  Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
-                  Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
-                  Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
-                  Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=32, index=db.schema.table.index)
             Expansion
@@ -420,12 +196,20 @@ QueryTree
             Expansion
                id=<db.schema.table.index>id
                Or
-                  Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                  Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                  Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                  Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                  Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
-                  Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=1-2, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=1-2, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=1-2, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
                   Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
                   Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
             Expansion
@@ -442,12 +226,6 @@ QueryTree
                Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
             Expansion
                other:(left=<db.schema.table.index>right)
                   LeftField (value=left)
@@ -460,12 +238,6 @@ QueryTree
             Expansion
                id=<db.schema.table.index>id
                Or
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
             Expansion
@@ -482,12 +254,6 @@ QueryTree
                Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
             Expansion
                other:(left=<db.schema.table.index>right)
                   LeftField (value=left)
@@ -502,12 +268,6 @@ QueryTree
                Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                  Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
-                  Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
             Expansion
                other:(left=<db.schema.table.index>right)
                   LeftField (value=left)
@@ -516,7 +276,167 @@ QueryTree
                Or
                   Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
                   Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
+                     Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
+                     Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
+                     Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
+                     Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
+                     Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
+                  Proximity (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
+                     Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
+                     Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
+                     Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
+                     Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
+                     Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Proximity (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
+                     Prefix (fieldname=fulltext_field, operator=CONTAINS, value=prefix, index=db.schema.table.index)
+                     Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
+                     Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
+                     Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
+                     Wildcard (fieldname=fulltext_field, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
+                  Proximity (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
+                     Prefix (fieldname=_all, operator=CONTAINS, value=prefix, index=db.schema.table.index)
+                     Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard, index=db.schema.table.index)
+                     Wildcard (fieldname=_all, operator=CONTAINS, value=*wildcard2*, index=db.schema.table.index)
+                     Wildcard (fieldname=_all, operator=CONTAINS, value=*wild*card3*, index=db.schema.table.index)
+                     Wildcard (fieldname=_all, operator=CONTAINS, value=wild*card4, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=001, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=001, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=001, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=001, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=123, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=123, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=123, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=123, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=0, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=0, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=0, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=0, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=000, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=000, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=000, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=000, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=0.23, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=0.23, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=0.23, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=0.23, index=db.schema.table.index)
          Script (value= doc['id'].value > 1024 )
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=some, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=some, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=some, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=some, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=other, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=other, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=other, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=query, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=query, index=db.schema.table.index)
       And
          Expansion
             id=<db.schema.table.index>id
@@ -535,162 +455,88 @@ QueryTree
             Expansion
                id=<db.schema.table.index>id
                Or
-                  And
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                  And
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                  And
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                  And
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                  And
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                  And
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                  And
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                  And
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
+                  Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
+                     Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
+                  Proximity (fieldname=_all, operator=CONTAINS, distance=11, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
+                     Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
             Expansion
                other:(left=<db.schema.table.index>right)
                   LeftField (value=left)
                   IndexName (value=db.schema.table.index)
                   RightField (value=right)
                Or
-                  And
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                  And
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
-                     Proximity (fieldname=_all, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=an, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=unordered, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
-                        Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
+                  Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
+                     Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
+                  Proximity (fieldname=_all, operator=CONTAINS, distance=11, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
+                     Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=so is this, distance=42, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=an, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=unordered, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
+                     Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
+                  Proximity (fieldname=_all, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=an, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=unordered, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
+                     Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=this, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=an, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=unordered, index=db.schema.table.index)
+                     Word (fieldname=fulltext_field, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
+                     Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=phrase, index=db.schema.table.index)
+                  Proximity (fieldname=_all, operator=CONTAINS, distance=11, ordered=false, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=this, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=an, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=unordered, index=db.schema.table.index)
+                     Word (fieldname=_all, operator=CONTAINS, value=sloppy, index=db.schema.table.index)
+                     Fuzzy (fieldname=_all, operator=CONTAINS, value=phrase, index=db.schema.table.index)
       And
          Or
             Expansion
@@ -698,12 +544,6 @@ QueryTree
                Or
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-                  Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-                  Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-                  Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-                  Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-                  Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
-                  Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
             Expansion
                other:(left=<db.schema.table.index>right)
                   LeftField (value=left)
@@ -713,125 +553,46 @@ QueryTree
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
          Or
-            Expansion
-               id=<db.schema.table.index>id
-               Or
-                  Or
-                     Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                  Or
-                     Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=_all, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                  Or
-                     Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                  Or
-                     Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=_all, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                  Or
-                     Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                  Or
-                     Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=_all, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                  Or
-                     Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                  Or
-                     Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=_all, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-            Expansion
-               other:(left=<db.schema.table.index>right)
-                  LeftField (value=left)
-                  IndexName (value=db.schema.table.index)
-                  RightField (value=right)
-               Or
-                  Or
-                     Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                  Or
-                     Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Number (fieldname=_all, operator=CONTAINS, value=1, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=2, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=3, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
-                        Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
+            Or
+               Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
+               Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
+               Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=1, index=db.schema.table.index)
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=2, index=db.schema.table.index)
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=3, index=db.schema.table.index)
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=blah, index=db.schema.table.index)
+                  Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=1, index=db.schema.table.index)
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=2, index=db.schema.table.index)
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=3, index=db.schema.table.index)
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=blah, index=db.schema.table.index)
+                  Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
+            Or
+               Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
+               Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
+               Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
+                  Number (fieldname=_all, operator=CONTAINS, value=1, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=2, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=3, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
+                  Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=1, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=2, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=3, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
+                  Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
       And
          Expansion
             id=<db.schema.table.index>id
@@ -968,24 +729,6 @@ QueryTree
                   Range (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
                      Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
                      Word (fieldname=_all, operator=CONTAINS, value=three, index=db.schema.table.index)
-                  Range (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                     Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                     Word (fieldname=fulltext_field, operator=CONTAINS, value=three, index=db.schema.table.index)
-                  Range (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                     Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                     Word (fieldname=_all, operator=CONTAINS, value=three, index=db.schema.table.index)
-                  Range (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                     Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                     Word (fieldname=fulltext_field, operator=CONTAINS, value=three, index=db.schema.table.index)
-                  Range (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                     Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                     Word (fieldname=_all, operator=CONTAINS, value=three, index=db.schema.table.index)
-                  Range (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
-                     Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                     Word (fieldname=fulltext_field, operator=CONTAINS, value=three, index=db.schema.table.index)
-                  Range (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
-                     Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)
-                     Word (fieldname=_all, operator=CONTAINS, value=three, index=db.schema.table.index)
             Expansion
                other:(left=<db.schema.table.index>right)
                   LeftField (value=left)
@@ -1002,122 +745,128 @@ QueryTree
             Expansion
                id=<db.schema.table.index>id
                Or
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=z, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=z, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=z, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=z, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
             Expansion
                other:(left=<db.schema.table.index>right)
                   LeftField (value=left)
                   IndexName (value=db.schema.table.index)
                   RightField (value=right)
                Or
-                  And
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=fulltext_field, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=fulltext_field, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=fulltext_field, operator=CONTAINS, value=z, index=db.schema.table.index)
-                  And
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
-                     Phrase (fieldname=_all, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
-                     Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)
-                        Word (fieldname=_all, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Number (fieldname=_all, operator=CONTAINS, value=10, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
-                        Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=a\-b\-c\-d, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=a\b\c\d, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=a\/b\/c\/d, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Phrase (fieldname=fulltext_field, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
+                  Phrase (fieldname=_all, operator=CONTAINS, value=http\:\/\/www\.tcdi\.com\/\?id\=42, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=10, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=10, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Number (fieldname=fulltext_field, operator=CONTAINS, value=10, index=db.schema.table.index)
+                  Number (fieldname=_all, operator=CONTAINS, value=10, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=to, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=to, index=db.schema.table.index)
+         Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=z, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Word (fieldname=fulltext_field, operator=CONTAINS, value=z, index=db.schema.table.index)
+                  Word (fieldname=_all, operator=CONTAINS, value=z, index=db.schema.table.index)
          Or
             And
                Number (fieldname=_xmin, operator=EQ, value=42)

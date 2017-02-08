@@ -29,6 +29,19 @@ public class FieldAndIndexPair {
     }
 
     @Override
+    public int hashCode() {
+        return link.hashCode()^31 + fieldname.hashCode()^31;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        assert(obj instanceof FieldAndIndexPair);
+
+        FieldAndIndexPair other = (FieldAndIndexPair) obj;
+        return this.link.equals(other.link) && this.fieldname.equals(other.fieldname);
+    }
+
+    @Override
     public String toString() {
         return fieldname + "; " + link;
     }
