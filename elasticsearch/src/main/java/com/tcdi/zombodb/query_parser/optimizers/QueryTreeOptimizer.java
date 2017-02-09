@@ -17,6 +17,7 @@
 package com.tcdi.zombodb.query_parser.optimizers;
 
 import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.FieldAndIndexPair;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 
 import java.util.*;
@@ -31,8 +32,9 @@ public class QueryTreeOptimizer {
     }
 
     public void optimize() {
-        expandFieldLists(tree, tree.getFieldLists());
         validateAndFixProximityChainFieldnames(tree);
+        expandFieldLists(tree, tree.getFieldLists());
+        expandAllField(tree, metadataManager.getMyIndex());
         rollupParentheticalGroups(tree);
         mergeLiterals(tree);
         mergeArrays(tree);
@@ -80,7 +82,44 @@ public class QueryTreeOptimizer {
         }
     }
 
-    void validateAndFixProximityChainFieldnames(QueryParserNode root) {
+    private void expandAllField(QueryParserNode root, ASTIndexLink currentIndex) {
+        if (root == null || !root.hasChildren())
+            return;
+
+        for (int i = 0, many = root.getChildren().size(); i < many; i++) {
+            QueryParserNode child = root.getChild(i);
+
+            if (child instanceof ASTIndexLink || child instanceof ASTAggregate || child instanceof ASTSuggest)
+                continue;
+
+            String fieldname = child.getFieldname();
+            if (fieldname != null) {
+                if ("_all".equals(fieldname)) {
+                    ASTOr group = new ASTOr(QueryParserTreeConstants.JJTOR);
+                    for (FieldAndIndexPair pair : metadataManager.resolveAllField()) {
+                        ASTIndexLink link = pair.link != null ? pair.link : currentIndex;
+                        QueryParserNode copy = child.copy();
+
+                        copy.forceFieldname(pair.fieldname);
+                        copy.setIndexLink(link);
+
+                        group.jjtAddChild(copy, group.jjtGetNumChildren());
+                    }
+
+                    if (group.jjtGetNumChildren() == 1) {
+                        root.replaceChild(child, group.jjtGetChild(0));
+                    } else {
+                        root.replaceChild(child, group);
+                    }
+                }
+            }
+
+            if (!(child instanceof ASTArray))
+                expandAllField(child, child instanceof ASTExpansion ? metadataManager.findField(child.getIndexLink().getLeftFieldname()) : currentIndex);
+        }
+    }
+
+    private void validateAndFixProximityChainFieldnames(QueryParserNode root) {
         if (root.getChildren() == null || root.getChildren().size() == 0)
             return;
 
@@ -173,7 +212,7 @@ public class QueryTreeOptimizer {
 
                     array = null;
                     for (ASTArray a : arraysByField.values()) {
-                        if (a.getFieldname().equals(child.getFieldname()) && a.getOperator() == child.getOperator()) {
+                        if (a.getFieldname().equals(child.getFieldname()) && a.getOperator() == child.getOperator() && (a.getIndexLink() == child.getIndexLink() || a.getIndexLink().equals(child.getIndexLink()))) {
                             array = a;
                             break;
                         }
@@ -184,6 +223,7 @@ public class QueryTreeOptimizer {
                         array.setAnd(isAnd);
                         array.setFieldname(child.getFieldname());
                         array.setOperator(child.getOperator());
+                        array.setIndexLink(child.getIndexLink());
                         arraysByField.put(i, array);
                     }
 

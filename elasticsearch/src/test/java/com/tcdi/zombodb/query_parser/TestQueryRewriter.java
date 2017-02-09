@@ -4165,19 +4165,22 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      id=<db.schema.table.index>id\n" +
                         "      Or\n" +
                         "         And\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=time, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=time, index=db.schema.table.index)\n" +
+                        "         And\n" +
                         "            Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
                         "               Word (fieldname=english_field, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
-                        "               Word (fieldname=english_field, operator=CONTAINS, value=time, index=db.schema.table.index)\n" +
-                        "         Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
-                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
-                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=is, index=db.schema.table.index)\n" +
-                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=the, index=db.schema.table.index)\n" +
-                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=time, index=db.schema.table.index)\n" +
-                        "         Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
-                        "            Word (fieldname=_all, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
-                        "            Word (fieldname=_all, operator=CONTAINS, value=is, index=db.schema.table.index)\n" +
-                        "            Word (fieldname=_all, operator=CONTAINS, value=the, index=db.schema.table.index)\n" +
-                        "            Word (fieldname=_all, operator=CONTAINS, value=time, index=db.schema.table.index)"
+                        "               Word (fieldname=english_field, operator=CONTAINS, value=time, index=db.schema.table.index)"
         );
     }
 
@@ -4403,6 +4406,39 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testExactPhrasesGetMerged() throws Exception {
+        assertAST("( (( AND ( data_client_name = WELLMARK AND (exact_field = \"asdf, CATHI (sdfg)\" OR " +
+                        "exact_field = \"sdfg, qwer\" OR exact_field = \"swergs, ersd\" OR exact_field = \"wergf, fsd\" OR " +
+                        "exact_field = \"DHJ, hsdgf\" OR exact_field = \"dfbg, werfdvc\" OR exact_field = \"sdfg, wwwert\" OR " +
+                        "exact_field = \"ersfd, KJHSA\" OR exact_field = \"AIUKSJD, kasdf\" OR exact_field = \"sdfg, werww\") AND " +
+                        "data_date_combined_family <= \"2013-12-31\" AND data_duplicate_resource = NO AND " +
+                        "(data_record_type = EMAIL OR data_record_type = \"EMAIL ATTACHMENT\" OR data_record_type = \"EMAIL ATTACHMENT OLE\") AND data_filter_universal = \"*\" AND data_moved_to: null ) ) ) )",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Word (fieldname=data_client_name, operator=EQ, value=wellmark, index=db.schema.table.index)\n" +
+                        "         Or\n" +
+                        "            Array (fieldname=exact_field, operator=EQ, index=db.schema.table.index) (OR)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=asdf, cathi (sdfg), index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=sdfg, qwer, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=swergs, ersd, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=wergf, fsd, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=dhj, hsdgf, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=dfbg, werfdvc, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=sdfg, wwwert, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=ersfd, kjhsa, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=aiuksjd, kasdf, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=exact_field, operator=EQ, value=sdfg, werww, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=data_date_combined_family, operator=LTE, value=2013-12-31, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=data_duplicate_resource, operator=EQ, value=no, index=db.schema.table.index)\n" +
+                        "         Or\n" +
+                        "            Array (fieldname=data_record_type, operator=EQ, index=db.schema.table.index) (OR)\n" +
+                        "               Word (fieldname=data_record_type, operator=EQ, value=email, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=data_record_type, operator=EQ, value=email attachment, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=data_record_type, operator=EQ, value=email attachment ole, index=db.schema.table.index)\n" +
+                        "         NotNull (fieldname=data_filter_universal, operator=EQ, index=db.schema.table.index)\n" +
+                        "         Null (fieldname=data_moved_to, operator=CONTAINS, index=db.schema.table.index)"
+        );
         assertJson("( (( AND ( data_client_name = WELLMARK AND (exact_field = \"asdf, CATHI (sdfg)\" OR " +
                         "exact_field = \"sdfg, qwer\" OR exact_field = \"swergs, ersd\" OR exact_field = \"wergf, fsd\" OR " +
                         "exact_field = \"DHJ, hsdgf\" OR exact_field = \"dfbg, werfdvc\" OR exact_field = \"sdfg, wwwert\" OR " +
@@ -5008,4 +5044,86 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testIssue175() throws Exception {
+        assertAST("#options(other:(left=<so_users.idxso_users>right)) food beer",
+                "QueryTree\n" +
+                        "   Options\n" +
+                        "      other:(left=<db.schema.so_users.idxso_users>right)\n" +
+                        "         LeftField (value=left)\n" +
+                        "         IndexName (value=db.schema.so_users.idxso_users)\n" +
+                        "         RightField (value=right)\n" +
+                        "   And\n" +
+                        "      Or\n" +
+                        "         Expansion\n" +
+                        "            id=<db.schema.table.index>id\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=food, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=food, index=db.schema.table.index)\n" +
+                        "         Expansion\n" +
+                        "            other:(left=<db.schema.so_users.idxso_users>right)\n" +
+                        "               LeftField (value=left)\n" +
+                        "               IndexName (value=db.schema.so_users.idxso_users)\n" +
+                        "               RightField (value=right)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=body, operator=CONTAINS, value=food, index=db.schema.so_users.idxso_users)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=food, index=db.schema.so_users.idxso_users)\n" +
+                        "      Or\n" +
+                        "         Expansion\n" +
+                        "            id=<db.schema.table.index>id\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
+                        "         Expansion\n" +
+                        "            other:(left=<db.schema.so_users.idxso_users>right)\n" +
+                        "               LeftField (value=left)\n" +
+                        "               IndexName (value=db.schema.so_users.idxso_users)\n" +
+                        "               RightField (value=right)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=body, operator=CONTAINS, value=beer, index=db.schema.so_users.idxso_users)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.so_users.idxso_users)"
+        );
+    }
+
+    @Test
+    public void testIssue175InExpand() throws Exception {
+        assertAST("#expand<field=<this.index>field>(john doe)",
+                "QueryTree\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         field=<db.schema.table.index>field\n" +
+                        "         And\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=john, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=john, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=doe, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=doe, index=db.schema.table.index)\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         And\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=john, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=john, index=db.schema.table.index)\n" +
+                        "            Or\n" +
+                        "               Word (fieldname=fulltext_field, operator=CONTAINS, value=doe, index=db.schema.table.index)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=doe, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue175WithProximity() throws Exception {
+        assertAST("john w/12 doe",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Or\n" +
+                        "         Proximity (fieldname=fulltext_field, operator=CONTAINS, distance=12, ordered=false, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=john, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=doe, index=db.schema.table.index)\n" +
+                        "         Proximity (fieldname=_all, operator=CONTAINS, distance=12, ordered=false, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=_all, operator=CONTAINS, value=john, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=_all, operator=CONTAINS, value=doe, index=db.schema.table.index)"
+        );
+    }
 }

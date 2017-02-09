@@ -17,7 +17,6 @@
 package com.tcdi.zombodb.query_parser.optimizers;
 
 import com.tcdi.zombodb.query_parser.*;
-import com.tcdi.zombodb.query_parser.metadata.FieldAndIndexPair;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.search.SearchAction;
@@ -36,8 +35,6 @@ public class IndexLinkOptimizer {
     private final ASTQueryTree tree;
     private final IndexMetadataManager metadataManager;
 
-    private Set<ASTIndexLink> usedIndexes = new HashSet<>();
-
     public IndexLinkOptimizer(Client client, QueryRewriter rewriter, ASTQueryTree tree, IndexMetadataManager metadataManager) {
         this.client = client;
         this.rewriter = rewriter;
@@ -46,7 +43,7 @@ public class IndexLinkOptimizer {
     }
 
     public void optimize() {
-        expand_allFieldAndAssignIndexLinks(tree, metadataManager.getMyIndex());
+        assignIndexLinks(tree);
 
         QueryTreeOptimizer.rollupParentheticalGroups(tree);
 
@@ -64,66 +61,49 @@ public class IndexLinkOptimizer {
 
         ASTAggregate agg = tree.getAggregate();
         while (agg != null) {
-            usedIndexes.add(metadataManager.findField(agg.getFieldname()));
+            metadataManager.addUsedIndex(metadataManager.findField(agg.getFieldname()));
             agg = agg.getSubAggregate();
         }
-
-        metadataManager.setUsedIndexes(usedIndexes);
     }
 
 
-    private void expand_allFieldAndAssignIndexLinks(QueryParserNode root, ASTIndexLink currentIndex) {
+    private void assignIndexLinks(QueryParserNode root) {
         if (root == null || root.getChildren() == null || root.getChildren().isEmpty() || (root instanceof ASTExpansion && !((ASTExpansion) root).isGenerated())) {
             if (root instanceof ASTExpansion)
-                usedIndexes.add(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()));
+                metadataManager.addUsedIndex(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()));
             return;
         }
 
         if (root instanceof ASTExpansion && ((ASTExpansion) root).isGenerated()) {
             ASTIndexLink left = metadataManager.findField(root.getIndexLink().getLeftFieldname());
             ASTIndexLink right = metadataManager.findField(root.getIndexLink().getRightFieldname());
-            usedIndexes.add(left);
-            usedIndexes.add(right);
+            metadataManager.addUsedIndex(left);
+            metadataManager.addUsedIndex(right);
         }
 
         for (int i = 0, many = root.getChildren().size(); i < many; i++) {
-            QueryParserNode child = (QueryParserNode) root.getChild(i);
+            QueryParserNode child = root.getChild(i);
             String fieldname = child.getFieldname();
 
             if (child instanceof ASTIndexLink || child instanceof ASTAggregate || child instanceof ASTSuggest)
                 continue;
 
-            if (fieldname != null && !(child instanceof ASTExpansion)) {
-                if ("_all".equals(fieldname)) {
-                    ASTOr group = new ASTOr(QueryParserTreeConstants.JJTOR);
-                    for (FieldAndIndexPair pair : metadataManager.resolveAllField()) {
-                        ASTIndexLink link = pair.link != null ? pair.link : currentIndex;
-                        QueryParserNode copy = child.copy();
+            if (fieldname != null) {
+                if (fieldname.startsWith("_") && !"_all".equals(fieldname))
+                    continue;
 
-                        copy.forceFieldname(pair.fieldname);
-                        copy.setIndexLink(link);
+                ASTIndexLink link = child.getIndexLink();
 
-                        group.jjtAddChild(copy, group.jjtGetNumChildren());
-                        usedIndexes.add(link);
-                    }
-
-                    group.jjtSetParent(root);
-                    if (group.jjtGetNumChildren() == 1) {
-                        root.jjtAddChild(group.jjtGetChild(0), i);
-                        group.jjtGetChild(0).jjtSetParent(root);
-                    } else {
-                        root.replaceChild(child, group);
-                        root.jjtAddChild(group, i);
-                    }
-                } else if (!fieldname.startsWith("_")) {
-                    ASTIndexLink link = metadataManager.findField(fieldname);
+                if (link == null) {
+                    link = metadataManager.findField(fieldname);
                     child.setIndexLink(link);
-                    usedIndexes.add(link);
                 }
+
+                metadataManager.addUsedIndex(link);
             }
 
             if (!(child instanceof ASTArray))
-                expand_allFieldAndAssignIndexLinks(child, child instanceof ASTExpansion ? metadataManager.findField(child.getIndexLink().getLeftFieldname()) : currentIndex);
+                assignIndexLinks(child);
         }
     }
 
