@@ -2,7 +2,8 @@
 
 -- Start transaction and plan the tests.
 BEGIN;
-SELECT plan(46);
+SELECT plan(29);
+
 
 -- Run the tests.
 --**********************************************************************************************************************
@@ -151,94 +152,6 @@ PREPARE expected_result AS SELECT unnest(ARRAY[3, 6, 10]::BIGINT[]);
 PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text_shingles:"chuck" OR data_full_text_shingles:"norris") w/3 data_full_text_shingles:"in")';
 SELECT set_eq('expected_result', 'zdb_result', 'shingles: chuck OR shingles: kill w/3 shingles: in');
 --**********************************************************************************************************************
-
---This section is here specifically to stress the SIREn plugin cache mechanism
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/3 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/3 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/3 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/3 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/3 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/3 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/3 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/3 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/3 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/3 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/3 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/3 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/3 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/3 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
-DEALLOCATE ALL;
-PREPARE expected_result AS SELECT unnest(ARRAY[3, 6]::BIGINT[]);
-PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view WHERE zdb ==> 'data_phrase_1:("jack" w/6 "master")';
-SELECT set_eq('expected_result', 'zdb_result', 'jack" w/6 "master');
---**********************************************************************************************************************
---This section was here specifically to stress the SIREn plugin cache mechanism
 
 
 -- Finish the tests and clean up.
