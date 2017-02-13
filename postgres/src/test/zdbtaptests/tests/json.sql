@@ -1,4 +1,4 @@
--- USAGE: $ pg_prove -d zombo_tests -U postgres tests/json.sql
+-- USAGE: $ pg_prove -d zdbtaptests -U postgres src/test/zdbtaptests/tests/json.sql
 
 -- Start transaction and plan the tests.
 BEGIN;
