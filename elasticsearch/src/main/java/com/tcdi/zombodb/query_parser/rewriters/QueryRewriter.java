@@ -921,10 +921,9 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(final QueryParserNode n) {
-                boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
                 Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
                 final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
-                int minShouldMatch = (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? cnt : 1;
+                int minShouldMatch = node.isAnd() ? cnt : 1;
                 final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
 
                 switch (type) {
