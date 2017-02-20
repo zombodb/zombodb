@@ -174,7 +174,9 @@ If you plan on searching for a large list of terms, as in 1,000 or even 10,000, 
 * Note the double brackets
 
 This syntax is a "fast-pass" parsing that also doesn't run each individual term through analysis.  With lots of terms, this is significantly faster than the other form that uses single brackets.
-  
+
+In either case, the only supported operators are equals and not equals, ie:
+```:```, ```=```, ```!=```, ```<>```
 
 ## Wildcards
 
