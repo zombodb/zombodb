@@ -50,10 +50,7 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
-import java.util.AbstractCollection;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
 import static org.elasticsearch.index.query.QueryBuilders.*;
@@ -931,17 +928,19 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(final QueryParserNode n) {
-                boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
                 Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
                 final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
-                int minShouldMatch = (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? cnt : 1;
+                int minShouldMatch = node.isAnd() ? cnt : 1;
                 final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
+                boolean isNumber = false;
 
                 switch (type) {
                     case "integer":
                     case "long":
                     case "double":
                     case "float":
+                        isNumber = true;
+                        // fall-through
                     case "unknown": {
                         final Iterable<Object> finalItr = itr;
                         itr = new Iterable<Object>() {
@@ -1012,8 +1011,42 @@ public abstract class QueryRewriter {
                     Collection<String> terms = st.getAllTokens();
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
+                    final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
                     final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
-                    return filteredQuery(matchAllQuery(), termsQuery(node.getFieldname(), st.getAllTokens()));
+                    final List<String> tokens = st.getAllTokens();
+
+                    return termsQuery(node.getFieldname(), new AbstractCollection<Object>() {
+                        @Override
+                        public Iterator<Object> iterator() {
+                            final Iterator<String> itr = tokens.iterator();
+                            return new Iterator<Object>() {
+                                @Override
+                                public boolean hasNext() {
+                                    return itr.hasNext();
+                                }
+
+                                @Override
+                                public Object next() {
+                                    String token = itr.next();
+                                    try {
+                                        return coerceNumber(token, type);
+                                    } catch (Exception e) {
+                                        return token;
+                                    }
+                                }
+
+                                @Override
+                                public void remove() {
+                                    itr.remove();
+                                }
+                            };
+                        }
+
+                        @Override
+                        public int size() {
+                            return tokens.size();
+                        }
+                    });
                 }
             }
         });
