@@ -184,7 +184,7 @@ public class IndexLinkOptimizer {
                     alias = lastExpansion.getIndexLink().getAlias();
                 }
 
-                if (leftFieldname.equals(rightFieldname))
+                if (leftFieldname.equals(rightFieldname) && next == null)
                     break;
 
                 ASTIndexLink newLink = ASTIndexLink.create(leftFieldname, indexName, alias, rightFieldname);

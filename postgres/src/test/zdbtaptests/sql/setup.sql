@@ -256,4 +256,127 @@ CREATE VIEW unit_tests.consolidated_record_view AS
 VACUUM ANALYZE unit_tests.data;
 VACUUM ANALYZE unit_tests.var;
 VACUUM ANALYZE unit_tests.vol;
+
+
+-- same as above, but with similarly-named primary key columns
+--**********************************************************************************************************************
+
+CREATE TABLE unit_tests.data_same AS SELECT * FROM unit_tests.data;
+CREATE TABLE unit_tests.var_same AS SELECT * FROM unit_tests.var;
+CREATE TABLE unit_tests.vol_same AS SELECT * FROM unit_tests.vol;
+
+ALTER TABLE unit_tests.data_same RENAME COLUMN pk_data TO id;
+ALTER TABLE unit_tests.var_same RENAME COLUMN pk_var TO id;
+ALTER TABLE unit_tests.vol_same RENAME COLUMN pk_vol TO id;
+
+
+CREATE INDEX es_unit_tests_data_same ON unit_tests.data_same USING zombodb (zdb('unit_tests.data_same', ctid), zdb(data_same.*)) WITH (url=:zombodb_url, options='id = <var_same.es_unit_tests_var_same>id, id = <vol_same.es_unit_tests_vol_same>id', shards='3', replicas='1');
+CREATE INDEX es_unit_tests_var_same ON unit_tests.var_same USING zombodb (zdb('unit_tests.var_same', ctid), zdb(var_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_vol_same ON unit_tests.vol_same USING zombodb (zdb('unit_tests.vol_same', ctid), zdb(vol_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+
+CREATE VIEW unit_tests.consolidated_record_view_same AS
+  SELECT data_same.id
+    , data_bigint_1
+    , data_bigint_expand_group
+    , data_bigint_array_1
+    , data_bigint_array_2
+    , data_boolean
+    , data_char_1
+    , data_char_2
+    , data_char_array_1
+    , data_char_array_2
+    , data_date_1
+    , data_date_2
+    , data_date_array_1
+    , data_date_array_2
+    , data_full_text
+    , data_full_text_shingles
+    , data_int_1
+    , data_int_2
+    , data_int_array_1
+    , data_int_array_2
+    , data_json
+    , data_phrase_1
+    , data_phrase_2
+    , data_phrase_array_1
+    , data_phrase_array_2
+    , data_text_1
+    , data_text_filter
+    , data_text_array_1
+    , data_text_array_2
+    , data_timestamp
+    , data_varchar_1
+    , data_varchar_2
+    , data_varchar_array_1
+    , data_varchar_array_2
+    , var_bigint_1
+    , var_bigint_expand_group
+    , var_bigint_array_1
+    , var_bigint_array_2
+    , var_boolean
+    , var_char_1
+    , var_char_2
+    , var_char_array_1
+    , var_char_array_2
+    , var_date_1
+    , var_date_2
+    , var_date_array_1
+    , var_date_array_2
+    , var_int_1
+    , var_int_2
+    , var_int_array_1
+    , var_int_array_2
+    , var_json
+    , var_phrase_1
+    , var_phrase_2
+    , var_phrase_array_1
+    , var_phrase_array_2
+    , var_text_1
+    , var_text_filter
+    , var_text_array_1
+    , var_text_array_2
+    , var_timestamp
+    , var_varchar_1
+    , var_varchar_2
+    , var_varchar_array_1
+    , var_varchar_array_2
+    , vol_bigint_1
+    , vol_bigint_expand_group
+    , vol_bigint_array_1
+    , vol_bigint_array_2
+    , vol_boolean
+    , vol_char_1
+    , vol_char_2
+    , vol_char_array_1
+    , vol_char_array_2
+    , vol_date_1
+    , vol_date_2
+    , vol_date_array_1
+    , vol_date_array_2
+    , vol_int_1
+    , vol_int_2
+    , vol_int_array_1
+    , vol_int_array_2
+    , vol_json
+    , vol_phrase_1
+    , vol_phrase_2
+    , vol_phrase_array_1
+    , vol_phrase_array_2
+    , vol_text_1
+    , vol_text_filter
+    , vol_text_array_1
+    , vol_text_array_2
+    , vol_timestamp
+    , vol_varchar_1
+    , vol_varchar_2
+    , vol_varchar_array_1
+    , vol_varchar_array_2
+    , zdb('unit_tests.data_same', data_same.ctid) AS zdb
+  FROM unit_tests.data_same
+  LEFT JOIN unit_tests.var_same ON data_same.id = var_same.id
+  LEFT JOIN unit_tests.vol_same ON data_same.id = vol_same.id;
+
+VACUUM ANALYZE unit_tests.data_same;
+VACUUM ANALYZE unit_tests.var_same;
+VACUUM ANALYZE unit_tests.vol_same;
 --**********************************************************************************************************************
