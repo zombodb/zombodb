@@ -2,7 +2,7 @@
 
 -- Start transaction and plan the tests.
 BEGIN;
-SELECT plan(60);
+SELECT plan(66);
 
 -- Run the tests.
 --**********************************************************************************************************************
@@ -220,6 +220,36 @@ DEALLOCATE ALL;
 PREPARE expected_result AS SELECT unnest(ARRAY[1, 2, 3, 4, 5, 7, 8, 9]::BIGINT[]);
 PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'NOT (data_full_text_shingles:"in" wo/1 (data_full_text_shingles:"chuck" OR data_full_text_shingles:"norris"))';
 SELECT set_eq('expected_result', 'zdb_result', 'NOT shingles: in wo/1 shingles: chuck OR shingles: norris');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[2]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:"n??????"';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: n??????');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[2]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"n??????"';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: n??????');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:"p??????"';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: p??????');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"p??????"';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: p??????');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[8]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:"n???"';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: p??????');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[8]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"n???"';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: p??????');
 --**********************************************************************************************************************
 
 --This section is here specifically to stress the SIREn plugin cache mechanism
