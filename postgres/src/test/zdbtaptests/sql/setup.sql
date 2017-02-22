@@ -269,6 +269,9 @@ ALTER TABLE unit_tests.data_same RENAME COLUMN pk_data TO id;
 ALTER TABLE unit_tests.var_same RENAME COLUMN pk_var TO id;
 ALTER TABLE unit_tests.vol_same RENAME COLUMN pk_vol TO id;
 
+ALTER TABLE unit_tests.data_same ADD PRIMARY KEY (id);
+ALTER TABLE unit_tests.var_same ADD PRIMARY KEY (id);
+ALTER TABLE unit_tests.vol_same ADD PRIMARY KEY (id);
 
 CREATE INDEX es_unit_tests_data_same ON unit_tests.data_same USING zombodb (zdb('unit_tests.data_same', ctid), zdb(data_same.*)) WITH (url=:zombodb_url, options='id = <var_same.es_unit_tests_var_same>id, id = <vol_same.es_unit_tests_vol_same>id', shards='3', replicas='1');
 CREATE INDEX es_unit_tests_var_same ON unit_tests.var_same USING zombodb (zdb('unit_tests.var_same', ctid), zdb(var_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
