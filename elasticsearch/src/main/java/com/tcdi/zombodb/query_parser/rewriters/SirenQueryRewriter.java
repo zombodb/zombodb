@@ -47,9 +47,12 @@ public class SirenQueryRewriter extends QueryRewriter {
         ASTIndexLink myIndex = metadataManager.getMyIndex();
         FilterBuilder filter;
 
-        if (link.toString().equals(myIndex.toString()) && !node.isGenerated()) {
+        if (link == myIndex && !node.isGenerated()) {
             return super.build(node);
         } else {
+            if ("(null)".equals(link.getLeftFieldname()))
+                return super.build(node);
+
             if (_isBuildingAggregate)
                 return matchAllQuery();
 

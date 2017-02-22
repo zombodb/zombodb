@@ -47,7 +47,21 @@ The `WITH` settings are:
 
 - `zombodb.batch_mode`:  This is a boolean "GUC" that controls how ZomboDB sends index changes to Elasticsearch.  The default for `zombodb.batch_mode` is `false` which means that ZomboDB sends index changes to ES on a per-statement level and flushes the remote Elasticsearch index at the end of each statement.  Setting this to `true` will cause ZomboDB to batch index changes through the life of the transaction, and the final set of changes won't be available for search until `COMMIT`.  When set to `true`, ZomboDB delays flushing the index until transaction `COMMIT`.  This can be changed interactively by issuing `SET zombodb.batch_mode = true;`
 - `zombodb.ignore_visibility`:  This is a boolean "GUC" that controls if ZomboDB will honor MVCC visibility rules.  The default is `false` meaning it will, but you can `SET zombodb.ignore_visibility = true;` if you don't mind having dead/invisible rows counted in aggregates and `zdb_estimate_count()`.  This is similiar to the index-level setting of the same name, but can be controlled per session.
-
+- `zombodb.log_level`:  This is an enumerated "GUC" that controls ZomboDB's Postgres logging level.  It supports the same set of values that Postgres' other log levels support, and its default value is `DEBUG1`.  Possible values are:
+```
+      values in order of decreasing detail:
+        debug5
+        debug4
+        debug3
+        debug2
+        debug1* -- default value
+        log
+        notice
+        warning
+        error
+```
+    This setting can be changed per-session or in `postgresql.conf` for all sessions.
+    
 ## DROP INDEX
 
 To drop a ZomboDB index, use Postgres' standard `DROP INDEX` command:

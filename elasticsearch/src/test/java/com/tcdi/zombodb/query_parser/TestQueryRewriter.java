@@ -945,8 +945,16 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testTermRollups() throws Exception {
         assertJson("id: 100 OR id: 200",
                 "{\n" +
-                        "  \"terms\" : {\n" +
-                        "    \"id\" : [ 100, 200 ]\n" +
+                        "  \"filtered\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"match_all\" : { }\n" +
+                        "    },\n" +
+                        "    \"filter\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"id\" : [ 100, 200 ],\n" +
+                        "        \"_cache\" : true\n" +
+                        "      }\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -1526,11 +1534,31 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field<>(one & two & three)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must_not\" : {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ]\n" +
+                        "    \"must\" : [ {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"exact_field\" : \"one\"\n" +
+                        "          }\n" +
+                        "        }\n" +
                         "      }\n" +
-                        "    }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"exact_field\" : \"two\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"exact_field\" : \"three\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ]\n" +
                         "  }\n" +
                         "}"
         );
@@ -1541,12 +1569,31 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field<>(one , two , three)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must_not\" : {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
-                        "        \"minimum_should_match\" : \"3\"\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"exact_field\" : \"one\"\n" +
+                        "          }\n" +
+                        "        }\n" +
                         "      }\n" +
-                        "    }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"exact_field\" : \"two\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must_not\" : {\n" +
+                        "          \"term\" : {\n" +
+                        "            \"exact_field\" : \"three\"\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    } ]\n" +
                         "  }\n" +
                         "}"
         );
@@ -4022,7 +4069,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    },\n" +
                         "    \"filter\" : {\n" +
                         "      \"terms\" : {\n" +
-                        "        \"id\" : [ \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\" ],\n" +
+                        "        \"id\" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],\n" +
                         "        \"_cache\" : true\n" +
                         "      }\n" +
                         "    }\n" +
@@ -5016,6 +5063,18 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (fieldname=_all, operator=CONTAINS, value=john, index=db.schema.table.index)\n" +
                         "            Word (fieldname=_all, operator=CONTAINS, value=doe, index=db.schema.table.index)"
         );
+    }
+
+    @Test
+    public void testIssue183() throws Exception {
+        assertSameJson("id<>[1,2,3,4,5]", "id<>[[1,2,3,4,5]]");
+        assertSameJson("id=[1,2,3,4,5]", "id=[[1,2,3,4,5]]");
+        assertSameJson("id=['1','2','3','4','5']", "id=[['1','2','3','4','5']]");
+        assertSameJson("id=['1','2','3','4','5']", "id=[[1,2,3,4,5]]");
+        assertSameJson("id=[1,2,3,4,5]", "id=[['1','2','3','4','5']]");
+
+        assertDifferentJson("exact_field:[a,b,c]", "exact_field:[['a','b','c']]");
+        assertDifferentJson("exact_field:[1,2,3,4,5]", "exact_field:[['1','2','3','4','5']]");
     }
 }
 

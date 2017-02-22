@@ -11,10 +11,11 @@
 target/
 .DS_store
 foo.*
-postgres/src/main/sql/zombodb--3.1.7.sql
+postgres/src/main/sql/zombodb--3.1.8.sql
 postgres/src/test/sql/setup.sql
 postgres/src/test/sql/so_comments.sql
 postgres/src/test/sql/TUTORIAL.sql
+postgres/src/test/zdbtaptests/tests/expand-same.sql
 postgres/results
 postgres/regression.*
 cmake-build-debug/

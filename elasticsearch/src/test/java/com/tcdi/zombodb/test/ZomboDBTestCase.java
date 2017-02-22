@@ -39,6 +39,7 @@ import java.util.List;
 import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public abstract class ZomboDBTestCase {
     protected static final String DEFAULT_INDEX_NAME = "db.schema.table.index";
@@ -127,19 +128,27 @@ public abstract class ZomboDBTestCase {
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
-        assertEquals(expectedJson.trim(), qr(query).rewriteQuery().toString().trim());
+        assertEquals(expectedJson.trim(), toJson(query));
     }
 
     protected void assertAST(String query, String expectedAST) throws Exception {
-        assertEquals(expectedAST.trim(), toAST(query).trim());
+        assertEquals(expectedAST.trim(), toAST(query));
+    }
+
+    protected void assertSameJson(String query1, String query2) throws Exception {
+        assertEquals(toJson(query1), toJson(query2));
+    }
+
+    protected void assertDifferentJson(String query1, String query2) throws Exception {
+        assertNotEquals(toJson(query1), toJson(query2));
     }
 
     protected String toJson(String query) {
-        return qr(query).rewriteQuery().toString();
+        return qr(query).rewriteQuery().toString().trim();
     }
 
     protected String toAST(String query) {
-        return qr(query).dumpAsString();
+        return qr(query).dumpAsString().trim();
     }
 
     protected void sortHighlightTokens(List<AnalyzedField.Token> highlights) {

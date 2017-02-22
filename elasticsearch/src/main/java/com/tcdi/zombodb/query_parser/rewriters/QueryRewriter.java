@@ -48,10 +48,7 @@ import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
-import java.util.AbstractCollection;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
@@ -921,17 +918,19 @@ public abstract class QueryRewriter {
         return buildStandard(node, new QBF() {
             @Override
             public QueryBuilder b(final QueryParserNode n) {
-                boolean isNE = node.getOperator() == QueryParserNode.Operator.NE;
                 Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
                 final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
-                int minShouldMatch = (node.isAnd() && !isNE) || (!node.isAnd() && isNE) ? cnt : 1;
+                int minShouldMatch = node.isAnd() ? cnt : 1;
                 final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
+                boolean isNumber = false;
 
                 switch (type) {
                     case "integer":
                     case "long":
                     case "double":
                     case "float":
+                        isNumber = true;
+                        // fall-through
                     case "unknown": {
                         final Iterable<Object> finalItr = itr;
                         itr = new Iterable<Object>() {
@@ -959,7 +958,8 @@ public abstract class QueryRewriter {
                         };
                     }
                 }
-                if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
+
+                if (isNumber || (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024)) {
                     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
                     return filteredQuery(matchAllQuery(), builder);
                 } else {
@@ -995,7 +995,35 @@ public abstract class QueryRewriter {
                     return idsQuery().addIds(terms.toArray(new String[terms.size()]));
                 } else {
                     final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
-                    return filteredQuery(matchAllQuery(), termsFilter(node.getFieldname(), st.getAllTokens()).cache(true));
+                    final List<String> tokens = st.getAllTokens();
+                    final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
+                    return filteredQuery(matchAllQuery(), termsFilter(node.getFieldname(), new Iterable<Object>() {
+                        @Override
+                        public Iterator<Object> iterator() {
+                            final Iterator<String> itr = tokens.iterator();
+                            return new Iterator<Object>() {
+                                @Override
+                                public boolean hasNext() {
+                                    return itr.hasNext();
+                                }
+
+                                @Override
+                                public Object next() {
+                                    String value = itr.next();
+                                    try {
+                                        return coerceNumber(value, type);
+                                    } catch (Exception e) {
+                                        return value;
+                                    }
+                                }
+
+                                @Override
+                                public void remove() {
+                                    itr.remove();
+                                }
+                            };
+                        }
+                    }).cache(true));
                 }
             }
         });

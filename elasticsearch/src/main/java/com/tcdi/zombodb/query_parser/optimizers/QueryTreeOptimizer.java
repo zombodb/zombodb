@@ -203,7 +203,7 @@ public class QueryTreeOptimizer {
                 continue;
 
             if (child instanceof ASTWord || child instanceof ASTPhrase || child instanceof ASTNumber || child instanceof ASTBoolean || child instanceof ASTArray) {
-                if (child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ || child.getOperator() == QueryParserNode.Operator.NE) {
+                if (child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ) {
                     if (child instanceof ASTArray && isAnd)
                         continue;   // arrays within an ASTAnd cannot be merged
 
@@ -229,6 +229,12 @@ public class QueryTreeOptimizer {
 
                     if (array.jjtGetParent() == null) {
                         if (child instanceof ASTArray) {
+                            for (QueryParserNode elem : child) {
+                                elem.setFieldname(child.getFieldname());
+                                elem.setOperator(child.getOperator());
+                                elem.setIndexLink(child.getIndexLink());
+                                elem.setBoost(child.getBoost());
+                            }
                             array.adoptChildren(child);
                         } else {
                             array.jjtAddChild(child, array.jjtGetNumChildren());

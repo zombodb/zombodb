@@ -16,6 +16,7 @@ The ZomboDB query syntax provides support for searching (in no particular order)
 * words,
 * phrases,
 * fielded searching,
+* value lists
 * fuzzy words and phrases,
 * value ranges,
 * wildcards (left, middle, and right truncation),
@@ -157,7 +158,25 @@ Symbol | Description
 
 The list of keywords is very short: `with`, `and`, `or`, `not`, and `null`.  To use one of these as a search term, simply quote it.
 
-  
+
+## Value Lists ([] and [[]])
+
+ZomboDB supports searching for lists of values using an array-like syntax.  For example:
+
+```field = [1,2,3,4,5]``` or ```field = [a,b,c,d]```
+
+Each element of the array is parsed as a token and run through analysis.  The underlying search is as if you OR'd those terms together, as in ```field = 1 or field = 2 or field = 3 or field = 4 or field = 5```
+
+If you plan on searching for a large list of terms, as in 1,000 or even 10,000, you should use a slightly different syntax:
+
+```field = [[1,2,3...10000]]```
+
+* Note the double brackets
+
+This syntax is a "fast-pass" parsing that also doesn't run each individual term through analysis.  With lots of terms, this is significantly faster than the other form that uses single brackets.
+
+In either case, the only supported operators are equals and not equals, ie:
+```:```, ```=```, ```!=```, ```<>```
 
 ## Wildcards
 
