@@ -469,7 +469,7 @@ public class Utils {
 
                 node.setOperator(QueryParserNode.Operator.REGEX);
                 newToken = newToken.replaceAll("[*]", "\\[\\^\\$\\]\\*");
-                newToken = newToken.replaceAll("[?]", "\\[\\^\\$\\]\\?");
+                newToken = newToken.replaceAll("[?]", "\\[\\^\\$\\]");
                 node.setValue(newToken);
 
                 if (isNE) {
