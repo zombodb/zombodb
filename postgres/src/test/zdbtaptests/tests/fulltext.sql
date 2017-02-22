@@ -264,7 +264,7 @@ PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view wh
 SELECT set_eq('expected_result', 'zdb_result', 'fulltext: p??????');
 --**********************************************************************************************************************
 DEALLOCATE ALL;
-PREPARE expected_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"n???"';
+PREPARE expected_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:"n???"';
 PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"n???"';
 SELECT set_eq('expected_result', 'zdb_result', 'shingles: p??????');
 --**********************************************************************************************************************
