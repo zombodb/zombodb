@@ -885,7 +885,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 
     gettimeofday(&tv2, NULL);
 
-    elog(LOG, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), relstats->num_dead_tuples, (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
+    elog(zdbloglevel, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), relstats->num_dead_tuples, (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
 
     PG_RETURN_POINTER(stats);
 }
