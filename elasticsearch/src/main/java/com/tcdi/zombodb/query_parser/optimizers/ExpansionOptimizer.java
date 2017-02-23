@@ -101,7 +101,10 @@ public class ExpansionOptimizer {
                     if (generatedExpansionsStack.isEmpty() && expansion.getIndexLink() == myIndex) {
                         last = expansion.getQuery();
                     } else {
-                        last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
+                        if ("(null)".equals(expansion.getIndexLink().getLeftFieldname()))
+                            last = expansion.getQuery();
+                        else
+                            last = loadFielddata(expansion, expansion.getIndexLink().getLeftFieldname(), expansion.getIndexLink().getRightFieldname());
                     }
 
                     // replace the ASTExpansion in the tree with the fieldData version

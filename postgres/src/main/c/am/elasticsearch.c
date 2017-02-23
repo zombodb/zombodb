@@ -376,7 +376,7 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
-            elog(LOG, "[zombodb] Refreshing index %s", indexDescriptor->fullyQualifiedName);
+            elog(zdbloglevel, "[zombodb] Refreshing index %s", indexDescriptor->fullyQualifiedName);
             appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
             response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
             checkForRefreshError(response);
@@ -846,7 +846,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
 			resetStringInfo(endpoint);
 			appendStringInfo(endpoint, "%s/%s/_optimize?only_expunge_deletes=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
-			elog(LOG, "[zombodb vacuum] expunging deleted docs in %s (docs.deleted=%lu)", indexDescriptor->fullyQualifiedName, deleted_docs);
+			elog(zdbloglevel, "[zombodb vacuum] expunging deleted docs in %s (docs.deleted=%lu)", indexDescriptor->fullyQualifiedName, deleted_docs);
 			rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 		}
 	}
@@ -925,7 +925,7 @@ elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ct
 
         /* send the request to index this batch */
         rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, indexDescriptor->compressionLevel);
-        elog(LOG, "[zombodb] Indexed %d rows for %s (%d in batch, active=%d)", batch->nprocessed, indexDescriptor->fullyQualifiedName, batch->nrecs, batch->rest->nhandles - batch->rest->available);
+        elog(zdbloglevel, "[zombodb] Indexed %d rows for %s (%d in batch, active=%d)", batch->nprocessed, indexDescriptor->fullyQualifiedName, batch->nrecs, batch->rest->nhandles - batch->rest->available);
 
         /* reset the bulk StringInfo for the next batch of records */
         batch->bulk  = checkout_batch_pool(batch);
@@ -984,7 +984,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
         }
 
         if (batch->nrequests > 0) {
-            elog(LOG, "[zombodb] Indexed %d rows in %d requests for %s", batch->nprocessed,
+            elog(zdbloglevel, "[zombodb] Indexed %d rows in %d requests for %s", batch->nprocessed,
                  batch->nrequests + 1, indexDescriptor->fullyQualifiedName);
 
 			/*

@@ -35,6 +35,7 @@ src/test/sql/TUTORIAL.sql:
 	gunzip -c src/test/sql/TUTORIAL.sql.gz > src/test/sql/TUTORIAL.sql
 
 pgtap:
+	src/test/zdbtaptests/tests/build-same.sh > src/test/zdbtaptests/tests/expand-same.sql
 	if [ "x" = "x${TEST}" ] ; then psql -qAt template1 -f src/test/zdbtaptests/sql/teardown.sql ; fi
 	if [ "x" = "x${TEST}" ] ; then psql -qAt template1 -f src/test/zdbtaptests/sql/setup.sql ; fi
 	if [ "x" = "x${TEST}" ] ; then pg_prove -d zdbtaptests src/test/zdbtaptests/tests/*.sql ; fi
@@ -61,7 +62,7 @@ DATA = $(wildcard src/main/sql/$(EXTENSION)--*--*.sql) src/main/sql/$(EXTENSION)
 ES_HOST ?= localhost
 
 # add the SQL for this version to clean target
-EXTRA_CLEAN += src/main/sql/$(EXTENSION)--$(EXTVERSION).sql src/test/sql/setup.sql src/test/sql/so_comments.sql src/test/sql/TUTORIAL.sql
+EXTRA_CLEAN += src/main/sql/$(EXTENSION)--$(EXTVERSION).sql src/test/sql/setup.sql src/test/sql/so_comments.sql src/test/sql/TUTORIAL.sql src/test/zdbtaptests/tests/expand-same.sql
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
