@@ -2,7 +2,7 @@
 
 -- Start transaction and plan the tests.
 BEGIN;
-SELECT plan(66);
+SELECT plan(69);
 
 -- Run the tests.
 --**********************************************************************************************************************
@@ -251,6 +251,25 @@ PREPARE expected_result AS SELECT unnest(ARRAY[8]::BIGINT[]);
 PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"n???"';
 SELECT set_eq('expected_result', 'zdb_result', 'shingles: p??????');
 --**********************************************************************************************************************
+
+-- test equalivancies between wildcard queries against "data_full_text" and "data_full_text_shingles"
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:"n??????"';;
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"n??????"';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: n??????');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:"p??????"';
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"p??????"';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: p??????');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:"n???"';
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"n???"';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: p??????');
+--**********************************************************************************************************************
+
+
 
 --This section is here specifically to stress the SIREn plugin cache mechanism
 DEALLOCATE ALL;

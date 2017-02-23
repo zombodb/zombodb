@@ -4619,7 +4619,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"regexp\" : {\n" +
                         "    \"shingle_field\" : {\n" +
-                        "      \"value\" : \"the[^$]?\"\n" +
+                        "      \"value\" : \"the[^$]\"\n" +
                         "    }\n" +
                         "  }\n" +
                         "}"
@@ -4632,7 +4632,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"regexp\" : {\n" +
                         "    \"shingle_field\" : {\n" +
-                        "      \"value\" : \"t[^$]?he[^$]?\"\n" +
+                        "      \"value\" : \"t[^$]he[^$]\"\n" +
                         "    }\n" +
                         "  }\n" +
                         "}"
