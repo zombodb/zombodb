@@ -388,10 +388,11 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 >SELECT * FROM zdb_estimate_count('table', 'subject:meeting');
 >```
 
-#### ```FUNCTION zdb_extended_stats(table_name regclass, fieldname text, query text) RETURNS SET OF zdb_extended_stats_response```
+#### ```FUNCTION zdb_extended_stats(table_name regclass, fieldname text [, is_nested boolean], query text) RETURNS SET OF zdb_extended_stats_response```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```fieldname```: A numeric field in the specified table  
+> ```is_nested```: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 > ```query```: A full text query
 > 
 > returns the set of Elasticsearch ["extended statistics"](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-extendedstats-aggregation.html) aggregate.
@@ -583,10 +584,11 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 
 
 
-#### ```FUNCTION zdb_significant_terms(table_name regclass, fieldname text, stem text, query text, max_terms bigint) RETURNS SET OF zdb_significant_terms_response```
+#### ```FUNCTION zdb_significant_terms(table_name regclass, fieldname text [, is_nested boolean], stem text, query text, max_terms bigint) RETURNS SET OF zdb_significant_terms_response```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
-> ```fieldname```: The name of a field from which to derive significant terms  
+> ```fieldname```: The name of a field from which to derive significant terms
+> ```is_nested```: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 > ```stem```:  a Regular expression by which to filter returned terms   
 > ```query```: a full text query  
 > ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
@@ -627,10 +629,11 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 > LONG |     1
 > ```
 
-#### ```FUNCTION zdb_range_agg(table_name regclass, fieldname text, range_spec json, query text)```
+#### ```FUNCTION zdb_range_agg(table_name regclass, fieldname text [, is_nested boolean], range_spec json, query text)```
 
 > `table_name`:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > `fieldname`:  The name of a field from which to derive range aggregate buckets. If this is a date field, a date range aggregate will be executed.  
+> ```is_nested```: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 > `range_spec`:  JSON-formatted array that is compatible with Elasticsearch's [range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html) range definition if the field is not a date. If the field is a date, utilize Elasticsearch's [date range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-daterange-aggregation.html) syntax. 
 > `query`:  a full text query  
 > 
