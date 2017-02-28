@@ -50,7 +50,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
 - [support](SIREn-SUPPORT.md) for [SIREn](http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/) to resolve index links
 - [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-field_names-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
-- common Elasticsearch's aggregations, including ability to nest
+- support for common Elasticsearch aggregations, including ability to nest
 - access to all of Elasticsearch's aggregations via direct JSON
 - extensive test suite
 

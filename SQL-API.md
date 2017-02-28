@@ -388,10 +388,11 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 >SELECT * FROM zdb_estimate_count('table', 'subject:meeting');
 >```
 
-#### ```FUNCTION zdb_extended_stats(table_name regclass, fieldname text, query text) RETURNS SET OF zdb_extended_stats_response```
+#### ```FUNCTION zdb_extended_stats(table_name regclass, fieldname text [, is_nested boolean], query text) RETURNS SET OF zdb_extended_stats_response```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > ```fieldname```: A numeric field in the specified table  
+> ```is_nested```: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 > ```query```: A full text query
 > 
 > returns the set of Elasticsearch ["extended statistics"](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-extendedstats-aggregation.html) aggregate.
@@ -535,7 +536,7 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 
 > `table_names`:  An array of tables (or views) with ZomboDB indexes to search at the same time  
 > `user_identifiers`:  An array of arbitrary identifiers for each table.  This could be useful for a client application to distinguish between result rows that use the same underlying table.  
-> `field_names`:  A 2-d array of field names to return for each table.  If it is null, all fields (except those of type `fulltext`) will be returned.
+> `field_names`:  A 2-d array of field names to return for each table.  Field names in this 2-d array must be properly cased, but not quoted.  If it is null, all fields (except those of type `fulltext`) will be returned.
 > `query`: a full text query
 > 
 > This function searches the array of tables using the specified full text query, and returns the top 10 documents from each in descending score order.
@@ -583,10 +584,11 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 
 
 
-#### ```FUNCTION zdb_significant_terms(table_name regclass, fieldname text, stem text, query text, max_terms bigint) RETURNS SET OF zdb_significant_terms_response```
+#### ```FUNCTION zdb_significant_terms(table_name regclass, fieldname text [, is_nested boolean], stem text, query text, max_terms bigint) RETURNS SET OF zdb_significant_terms_response```
 
 > ```table_name```:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
-> ```fieldname```: The name of a field from which to derive significant terms  
+> ```fieldname```: The name of a field from which to derive significant terms
+> ```is_nested```: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 > ```stem```:  a Regular expression by which to filter returned terms   
 > ```query```: a full text query  
 > ```max_terms```: maximum number of terms to return.  A value of zero means "all terms".
@@ -627,10 +629,11 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 > LONG |     1
 > ```
 
-#### ```FUNCTION zdb_range_agg(table_name regclass, fieldname text, range_spec json, query text)```
+#### ```FUNCTION zdb_range_agg(table_name regclass, fieldname text [, is_nested boolean], range_spec json, query text)```
 
 > `table_name`:  The name of a table with a ZomboDB index, or the name of a view on top of a table with a ZomboDB index  
 > `fieldname`:  The name of a field from which to derive range aggregate buckets. If this is a date field, a date range aggregate will be executed.  
+> ```is_nested```: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 > `range_spec`:  JSON-formatted array that is compatible with Elasticsearch's [range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html) range definition if the field is not a date. If the field is a date, utilize Elasticsearch's [date range aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-daterange-aggregation.html) syntax. 
 > `query`:  a full text query  
 > 

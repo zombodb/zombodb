@@ -55,10 +55,10 @@ The `WITH` settings are:
         debug3
         debug2
         debug1* -- default value
-        log
+        info
         notice
         warning
-        error
+	log
 ```
     This setting can be changed per-session or in `postgresql.conf` for all sessions.
     
