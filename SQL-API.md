@@ -536,7 +536,7 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 
 > `table_names`:  An array of tables (or views) with ZomboDB indexes to search at the same time  
 > `user_identifiers`:  An array of arbitrary identifiers for each table.  This could be useful for a client application to distinguish between result rows that use the same underlying table.  
-> `field_names`:  A 2-d array of field names to return for each table.  If it is null, all fields (except those of type `fulltext`) will be returned.
+> `field_names`:  A 2-d array of field names to return for each table.  Field names in this 2-d array must be properly cased, but not quoted.  If it is null, all fields (except those of type `fulltext`) will be returned.
 > `query`: a full text query
 > 
 > This function searches the array of tables using the specified full text query, and returns the top 10 documents from each in descending score order.
