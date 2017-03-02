@@ -146,7 +146,7 @@ void zdb_index_init(void) {
 
     DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
-    DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &zdbloglevel, 5, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
+    DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &zdbloglevel, DEBUG1, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
