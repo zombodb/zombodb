@@ -85,13 +85,16 @@ public class ZombodbBulkAction extends BaseRestHandler {
             }
         }
 
-        BulkResponse response;
+        BulkResponse response = null;
 
         if (isdelete) {
-            bulkRequest.refresh(false);
-            response = client.bulk(bulkRequest).actionGet();
-            if (!response.hasFailures())
-                response = processTrackingRequests(request, client, trackingRequests);
+            if (bulkRequest.numberOfActions() > 0) {
+                bulkRequest.refresh(false);
+                response = client.bulk(bulkRequest).actionGet();
+
+                if (!response.hasFailures())
+                    response = processTrackingRequests(request, client, trackingRequests);
+            }
         } else {
             response = processTrackingRequests(request, client, trackingRequests);
             if (!response.hasFailures())
@@ -116,7 +119,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
     private RestResponse buildResponse(BulkResponse response, XContentBuilder builder) throws Exception {
         builder.startObject();
-        if (response.hasFailures()) {
+        if (response != null && response.hasFailures()) {
             builder.field(Fields.TOOK, response.getTookInMillis());
             builder.field(Fields.ERRORS, response.hasFailures());
             builder.startArray(Fields.ITEMS);
@@ -210,6 +213,20 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .request()
                 );
             }
+        }
+
+        //
+        // remove any incoming requests for which we couldn't find routing values
+        // these are rows that are dead in Postgres but don't exist in the ES index
+        // likely due to a process of:
+        //     UPDATE table SET id = id WHERE id = 1;
+        //     REINDEX table; -- possibly would skip known-dead rows depending on transaction visibility rules
+        //     VACUUM table;
+        //
+        for (Iterator<ActionRequest> itr = requests.iterator(); itr.hasNext();) {
+            DeleteRequest doc = (DeleteRequest) itr.next();
+            if (doc.routing() == null)
+                itr.remove();
         }
 
         if (trackingRequests.size() != response.getHits().getHits().length)
