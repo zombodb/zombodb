@@ -2,7 +2,7 @@
 
 -- Start transaction and plan the tests.
 BEGIN;
-SELECT plan(69);
+SELECT plan(97);
 
 -- Run the tests.
 --**********************************************************************************************************************
@@ -110,6 +110,36 @@ DEALLOCATE ALL;
 PREPARE expected_result AS SELECT unnest(ARRAY[1, 3, 4, 5, 6, 8, 9, 10]::BIGINT[]);
 PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:"chuck" NOT data_full_text_shingles:"kill"';
 SELECT set_eq('expected_result', 'zdb_result', 'shingles: chuck NOT shingles: kill');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[2]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:("chuck" & "kill")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck & kill)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[1, 2, 3, 4, 5, 6, 8, 9, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:("chuck", "kill")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck , kill)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[1, 3, 4, 5, 6, 8, 9, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text:("chuck" ! "kill")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck ! kill)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[2]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:("chuck" & "kill")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck & kill)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[1, 2, 3, 4, 5, 6, 8, 9, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:("chuck", "kill")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck, kill)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[1, 3, 4, 5, 6, 8, 9, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'data_full_text_shingles:("chuck" ! "kill")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck ! kill)');
 --**********************************************************************************************************************
 DEALLOCATE ALL;
 PREPARE expected_result AS SELECT * FROM (SELECT 1 WHERE 1=2)x; --this returns an empty result set
@@ -220,6 +250,116 @@ DEALLOCATE ALL;
 PREPARE expected_result AS SELECT unnest(ARRAY[1, 2, 3, 4, 5, 7, 8, 9]::BIGINT[]);
 PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'NOT (data_full_text_shingles:"in" wo/1 (data_full_text_shingles:"chuck" OR data_full_text_shingles:"norris"))';
 SELECT set_eq('expected_result', 'zdb_result', 'NOT shingles: in wo/1 shingles: chuck OR shingles: norris');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT * FROM (SELECT 1 WHERE 1=2)x; --this returns an empty result set
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text:("chuck", "norris")) w/0 data_full_text:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck , norris) w/0 fulltext: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text:("chuck", "norris")) w/1 data_full_text:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck, norris) w/1 fulltext: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text:("chuck", "norris")) w/2 data_full_text:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck, norris) w/2 fulltext: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[3, 6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text:("chuck", "norris")) w/3 data_full_text:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck, norris) w/3 fulltext: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT * FROM (SELECT 1 WHERE 1=2)x; --this returns an empty result set
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text_shingles:("chuck", "norris")) w/0 data_full_text_shingles:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck,  norris) w/0 shingles: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text_shingles:("chuck", "norris")) w/1 data_full_text_shingles:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck,  norris) w/1 shingles: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text_shingles:("chuck", "norris")) w/2 data_full_text_shingles:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck,  norris) w/2 shingles: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[3, 6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text_shingles:("chuck", "norris")) w/3 data_full_text_shingles:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck,  norris) w/3 shingles: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text:("chuck", "norris")) wo/3 data_full_text:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck, norris) wo/3 fulltext: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text:("chuck", "norris")) wo/2 data_full_text:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck, norris) wo/2 fulltext: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT * FROM (SELECT 1 WHERE 1=2)x; --this returns an empty result set
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text:("chuck", "norris")) wo/1 data_full_text:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: (chuck, norris) wo/1 fulltext: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text_shingles:("chuck", "norris")) wo/3 data_full_text_shingles:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck,  norris) wo/3 shingles: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text_shingles:("chuck", "norris")) wo/2 data_full_text_shingles:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck,  norris) wo/2 shingles: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT * FROM (SELECT 1 WHERE 1=2)x; --this returns an empty result set
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'((data_full_text_shingles:("chuck", "norris")) wo/1 data_full_text_shingles:"in")';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: (chuck,  norris) wo/1 shingles: in');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[3, 6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'(data_full_text:"in" wo/3 (data_full_text:("chuck", "norris")))';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: in wo/3 fulltext: (chuck, norris)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'(data_full_text:"in" wo/2 (data_full_text:("chuck", "norris")))';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: in wo/2 fulltext: (chuck, norris)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'(data_full_text:"in" wo/1 (data_full_text:("chuck", "norris")))';
+SELECT set_eq('expected_result', 'zdb_result', 'fulltext: in wo/1 fulltext: (chuck, norris)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[3, 6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'(data_full_text_shingles:"in" wo/3 (data_full_text_shingles:("chuck", "norris")))';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: in wo/3 shingles: (chuck,  norris)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'(data_full_text_shingles:"in" wo/2 (data_full_text_shingles:("chuck", "norris")))';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: in wo/2 shingles: (chuck,  norris)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[6, 10]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'(data_full_text_shingles:"in" wo/1 (data_full_text_shingles:("chuck", "norris")))';
+SELECT set_eq('expected_result', 'zdb_result', 'shingles: in wo/1 shingles: (chuck,  norris)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[1, 2, 3, 4, 5, 7, 8, 9]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'NOT (data_full_text:"in" wo/1 (data_full_text:("chuck", "norris")))';
+SELECT set_eq('expected_result', 'zdb_result', 'NOT fulltext: in wo/1 fulltext: (chuck, norris)');
+--**********************************************************************************************************************
+DEALLOCATE ALL;
+PREPARE expected_result AS SELECT unnest(ARRAY[1, 2, 3, 4, 5, 7, 8, 9]::BIGINT[]);
+PREPARE zdb_result AS SELECT pk_data FROM unit_tests.consolidated_record_view where zdb==>'NOT (data_full_text_shingles:"in" wo/1 (data_full_text_shingles:("chuck", "norris")))';
+SELECT set_eq('expected_result', 'zdb_result', 'NOT shingles: in wo/1 shingles: (chuck,  norris)');
 --**********************************************************************************************************************
 DEALLOCATE ALL;
 PREPARE expected_result AS SELECT unnest(ARRAY[2]::BIGINT[]);
