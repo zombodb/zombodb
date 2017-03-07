@@ -23,20 +23,7 @@
 
 extern void  zdbam_init(void);
 extern void  zdbam_fini(void);
-extern Datum zdbbuild(PG_FUNCTION_ARGS);
-extern Datum zdbbuildempty(PG_FUNCTION_ARGS);
-extern Datum zdbinsert(PG_FUNCTION_ARGS);
-extern Datum zdbbeginscan(PG_FUNCTION_ARGS);
-extern Datum zdbgettuple(PG_FUNCTION_ARGS);
-extern Datum zdbrescan(PG_FUNCTION_ARGS);
-extern Datum zdbendscan(PG_FUNCTION_ARGS);
-extern Datum zdbmarkpos(PG_FUNCTION_ARGS);
-extern Datum zdbrestrpos(PG_FUNCTION_ARGS);
-extern Datum zdbbulkdelete(PG_FUNCTION_ARGS);
-extern Datum zdbvacuumcleanup(PG_FUNCTION_ARGS);
-extern Datum zdboptions(PG_FUNCTION_ARGS);
 extern Datum zdbeventtrigger(PG_FUNCTION_ARGS);
-extern Datum zdbcostestimate(PG_FUNCTION_ARGS);
 extern Datum zdbupdatetrigger(PG_FUNCTION_ARGS);
 
 extern Datum zdb_num_hits(PG_FUNCTION_ARGS);

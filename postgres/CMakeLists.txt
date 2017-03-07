@@ -26,6 +26,6 @@ set(SOURCE_FILES
     src/main/c/util/zdbutils.h
     src/main/c/zombodb.c)
 
-include_directories(src/main/c /usr/local/src/pg93/src/include /usr/local/src/pg93/src/backend)
+include_directories(src/main/c /usr/local/src/pg96/src/include /usr/local/src/pg96/src/backend)
 
 add_executable(postgres ${SOURCE_FILES})

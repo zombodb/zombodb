@@ -29,6 +29,7 @@
 #include "executor/executor.h"
 #include "executor/spi.h"
 #include "nodes/makefuncs.h"
+#include "nodes/nodeFuncs.h"
 #include "optimizer/planmain.h"
 #include "storage/bufmgr.h"
 #include "storage/lmgr.h"

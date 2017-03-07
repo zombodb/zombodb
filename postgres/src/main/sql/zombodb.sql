@@ -2,70 +2,14 @@ CREATE DOMAIN phrase AS text;
 CREATE DOMAIN phrase_array AS text[];
 CREATE DOMAIN fulltext AS text;
 
-CREATE OR REPLACE FUNCTION sort_helper(value anyelement) RETURNS anyelement LANGUAGE plpgsql IMMUTABLE STRICT AS $$
-DECLARE
-    _type regtype;
-BEGIN
-    _type := pg_typeof(value);
-
-    IF _type IN ('date', 'timestamp', 'timestamp with time zone', 'time', 'smallint', 'integer', 'bigint', 'numeric', 'float', 'double precision', 'boolean') THEN
-        -- no translation required, use as-is
-        RETURN value;
-    ELSEIF _type IN ('varchar', 'text', 'public.phrase', 'public.fulltext') THEN
-        -- return a lower-cased, trimmed version of the value, truncated to 256 characters
-        RETURN lower(trim(substring(value::text, 1, 256)));
-    ELSE
-        RAISE EXCEPTION 'Cannot sort data type of %', _type;
-    END IF;
-END;
-$$;
-
-CREATE OR REPLACE VIEW pg_locks_pretty AS
-     SELECT (select nspname from pg_namespace where oid = relnamespace) as schema,
-            relname,
-            (SELECT usename FROM pg_stat_activity WHERE pid = pid LIMIT 1) As username,
-            application_name,
-            pg_locks.*,
-            case when state = 'active' then query else NULL end as query,
-            (now() - state_change)::interval as idle_time
-       FROM pg_locks
- INNER JOIN pg_class ON pg_locks.relation = pg_class.oid
- RIGHT JOIN pg_stat_activity ON pg_locks.pid = pg_stat_activity.pid
-   ORDER BY mode, relname;
-
-
---
--- simple function to convert an array to uppercase
---
-CREATE OR REPLACE FUNCTION array_upper(v text[]) RETURNS text[] IMMUTABLE LANGUAGE sql AS $$ SELECT upper($1::text)::text[]; $$;
-
---
--- ZOMBODB SPECIFIC STUFF HERE
---
-
-CREATE OR REPLACE FUNCTION zdbinsert(internal, internal, internal, internal, internal, internal) RETURNS boolean LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbbeginscan(internal, internal, internal) RETURNS internal LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbgettuple(internal, internal) RETURNS boolean LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbrescan(internal, internal, internal, internal, internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbendscan(internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbmarkpos(internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbrestrpos(internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbbuild(internal, internal, internal) RETURNS internal LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbbuildempty(internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbbulkdelete(internal, internal, internal, internal) RETURNS internal LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbvacuumcleanup(internal, internal) RETURNS internal LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbcostestimate(internal, internal, internal, internal, internal, internal, internal) RETURNS void LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdbsel(internal, oid, internal, integer) RETURNS float8 LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
-CREATE OR REPLACE FUNCTION zdboptions(text[], boolean) RETURNS bytea LANGUAGE c STABLE STRICT AS '$libdir/plugins/zombodb';
 
 --
 -- convenience methods for index creation and querying
 --
 CREATE OR REPLACE FUNCTION zdb(record) RETURNS json LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_row_to_json';
-CREATE OR REPLACE FUNCTION zdb(table_name regclass, ctid tid) RETURNS tid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid';
 CREATE OR REPLACE FUNCTION zdb_num_hits() RETURNS int8 AS '$libdir/plugins/zombodb' language c;
 CREATE OR REPLACE FUNCTION zdb_query_func(json, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 2147483647;
-CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 1;
+CREATE OR REPLACE FUNCTION zdbsel(internal, oid, internal, integer) RETURNS float8 LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
 
 --
 -- trigger support
@@ -546,70 +490,19 @@ BEGIN
 END;
 $$;
 
-DO LANGUAGE plpgsql $$
-BEGIN
-    PERFORM * FROM pg_am WHERE amname = 'zombodb';
-    IF NOT FOUND THEN
-        -- we don't really care what these values are, because we always update them below
-        INSERT INTO pg_am (amname, amstrategies, amsupport, amcanorder, amcanorderbyop, amcanbackward, amcanunique, amcanmulticol, amoptionalkey, amsearcharray, amsearchnulls, amstorage, amclusterable, ampredlocks, amkeytype, aminsert, ambeginscan, amgettuple, amgetbitmap, amrescan, amendscan, ammarkpos, amrestrpos, ambuild, ambuildempty, ambulkdelete, amvacuumcleanup, amcanreturn, amcostestimate, amoptions)
-        VALUES           ('zombodb', 1, 1, 'f', 'f', 'f', 'f', 't', 'f', 'f', 't', 't', 'f', 'f', 0, 'zdbinsert', 'zdbbeginscan', 'zdbgettuple', '-', 'zdbrescan', 'zdbendscan', 'zdbmarkpos', 'zdbrestrpos', 'zdbbuild', 'zdbbuildempty', 'zdbbulkdelete', 'zdbvacuumcleanup', '-', 'zdbcostestimate', 'zdboptions');
-    END IF;
-
-    UPDATE pg_am SET
-        amname = 'zombodb',
-        amstrategies = '1',
-        amsupport = '1',
-        amcanorder = 'f',
-        amcanorderbyop = 'f',
-        amcanbackward = 'f',
-        amcanunique = 'f',
-        amcanmulticol = 't',
-        amoptionalkey = 'f',
-        amsearcharray = 'f',
-        amsearchnulls = 't',
-        amstorage = 't',
-        amclusterable = 'f',
-        ampredlocks = 'f',
-        amkeytype = '0',
-        aminsert = 'zdbinsert',
-        ambeginscan = 'zdbbeginscan',
-        amgettuple = 'zdbgettuple',
-        amgetbitmap = '-',
-        amrescan = 'zdbrescan',
-        amendscan = 'zdbendscan',
-        ammarkpos = 'zdbmarkpos',
-        amrestrpos = 'zdbrestrpos',
-        ambuild = 'zdbbuild',
-        ambuildempty = 'zdbbuildempty',
-        ambulkdelete = 'zdbbulkdelete',
-        amvacuumcleanup = 'zdbvacuumcleanup',
-        amcanreturn = '-',
-        amcostestimate = 'zdbcostestimate',
-        amoptions = 'zdboptions'
-    WHERE amname = 'zombodb';
-
-    RETURN;
-END;
-$$;
+CREATE OR REPLACE FUNCTION zdbamhandler(internal) RETURNS index_am_handler LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
+CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER zdbamhandler;
 
 CREATE OPERATOR ==> (
     PROCEDURE = zdb_query_func,
+    RESTRICT = zdbsel,
     LEFTARG = json,
     RIGHTARG = text
 );
 
-CREATE OPERATOR CLASS zombodb_json_ops DEFAULT FOR TYPE json USING zombodb AS STORAGE json;
-
-CREATE OPERATOR ==> (
-    PROCEDURE = zdb_tid_query_func,
-    RESTRICT = zdbsel,
-    LEFTARG = tid,
-    RIGHTARG = text
-);
-
-CREATE OPERATOR CLASS zombodb_tid_ops DEFAULT FOR TYPE tid USING zombodb AS
-    OPERATOR 1 ==>(tid, text),
-    FUNCTION 1 zdb_tid_query_func(tid, text),
+CREATE OPERATOR CLASS zombodb_json_ops DEFAULT FOR TYPE json USING zombodb AS
+    OPERATOR 1 ==>(json, text),
+    FUNCTION 1 zdb_query_func(json, text),
     STORAGE json;
 
 

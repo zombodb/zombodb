@@ -19,6 +19,7 @@
 #define ZDBSEQSCAN_INCLUDE_DEFINITIONS
 
 #include "miscadmin.h"
+#include "access/amapi.h"
 #include "access/heapam_xlog.h"
 #include "access/nbtree.h"
 #include "access/reloptions.h"
@@ -55,20 +56,9 @@
 #include "zdbseqscan.h"
 
 
-PG_FUNCTION_INFO_V1(zdbbuild);
-PG_FUNCTION_INFO_V1(zdbbuildempty);
-PG_FUNCTION_INFO_V1(zdbinsert);
-PG_FUNCTION_INFO_V1(zdbbeginscan);
-PG_FUNCTION_INFO_V1(zdbgettuple);
-PG_FUNCTION_INFO_V1(zdbrescan);
-PG_FUNCTION_INFO_V1(zdbendscan);
-PG_FUNCTION_INFO_V1(zdbmarkpos);
-PG_FUNCTION_INFO_V1(zdbrestpos);
-PG_FUNCTION_INFO_V1(zdbbulkdelete);
-PG_FUNCTION_INFO_V1(zdbvacuumcleanup);
-PG_FUNCTION_INFO_V1(zdboptions);
+PG_FUNCTION_INFO_V1(zdbamhandler);
+
 PG_FUNCTION_INFO_V1(zdbeventtrigger);
-PG_FUNCTION_INFO_V1(zdbcostestimate);
 PG_FUNCTION_INFO_V1(zdbupdatetrigger);
 
 PG_FUNCTION_INFO_V1(zdb_num_hits);
@@ -104,6 +94,20 @@ typedef struct {
 static uint64 zdb_sequence = 0;
 
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state);
+
+static IndexBuildResult *zdbbuild(Relation heapRelation, Relation indexRelation, struct IndexInfo *indexInfo);
+static void zdbbuildempty(Relation indexRelation);
+static bool zdbinsert(Relation indexRelation, Datum *values, bool *isnull, ItemPointer heap_tid, Relation heapRelation, IndexUniqueCheck checkUnique);
+static IndexBulkDeleteResult *zdbbulkdelete(IndexVacuumInfo *info, IndexBulkDeleteResult *stats, IndexBulkDeleteCallback callback, void *callback_state);
+static IndexBulkDeleteResult *zdbvacuumcleanup(IndexVacuumInfo *info, IndexBulkDeleteResult *stats);
+static void zdbcostestimate(struct PlannerInfo *root, struct IndexPath *path, double loop_count, Cost *indexStartupCost, Cost *indexTotalCost, Selectivity *indexSelectivity, double *indexCorrelation);
+static bytea *zdboptions(Datum reloptions, bool validate);
+static bool zdbvalidate(Oid opclassoid);
+static IndexScanDesc zdbbeginscan(Relation indexRelation, int nkeys, int norderbys);
+static void zdbrescan(IndexScanDesc scan, ScanKey keys, int nkeys, ScanKey orderbys, int norderbys);
+static bool zdbgettuple(IndexScanDesc scan, ScanDirection direction);
+static void zdbendscan(IndexScanDesc scan);
+
 
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
@@ -271,7 +275,7 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc) {
         standard_ExecutorEnd(queryDesc);
 }
 
-static void zdb_executor_run_hook(QueryDesc *queryDesc, ScanDirection direction, long count) {
+static void zdb_executor_run_hook(QueryDesc *queryDesc, ScanDirection direction, uint64 count) {
     executorDepth++;
     PG_TRY();
             {
@@ -360,13 +364,50 @@ void zdbam_fini(void) {
     UnregisterXactCallback(zdbam_xact_callback, NULL);
 }
 
+
+Datum zdbamhandler(PG_FUNCTION_ARGS) {
+    IndexAmRoutine *iam = makeNode(IndexAmRoutine);
+
+    iam->amstrategies = 0;
+    iam->amsupport = 1;
+    iam->amcanorder = false;
+    iam->amcanorderbyop = false;
+    iam->amcanbackward = false;
+    iam->amcanunique = false;
+    iam->amcanmulticol = false;
+    iam->amoptionalkey = false;
+    iam->amsearcharray = false;
+    iam->amsearchnulls = false;
+    iam->amstorage = false;
+    iam->amclusterable = false;
+    iam->ampredlocks = false;
+    iam->amkeytype = InvalidOid;
+
+    iam->ambuild = zdbbuild;
+    iam->ambuildempty = zdbbuildempty;
+    iam->aminsert = zdbinsert;
+    iam->ambulkdelete = zdbbulkdelete;
+    iam->amvacuumcleanup = zdbvacuumcleanup;
+    iam->amcanreturn = NULL;
+    iam->amcostestimate = zdbcostestimate;
+    iam->amoptions = zdboptions;
+    iam->amproperty = NULL;
+    iam->amvalidate = zdbvalidate;
+    iam->ambeginscan = zdbbeginscan;
+    iam->amrescan = zdbrescan;
+    iam->amgettuple = zdbgettuple;
+    iam->amgetbitmap = NULL;
+    iam->amendscan = zdbendscan;
+    iam->ammarkpos = NULL;
+    iam->amrestrpos = NULL;
+
+    PG_RETURN_POINTER(iam);
+}
+
 /*
  *  zdbbuild() -- build a new zombodb index.
  */
-Datum zdbbuild(PG_FUNCTION_ARGS) {
-    Relation         heapRel    = (Relation) PG_GETARG_POINTER(0);
-    Relation         indexRel   = (Relation) PG_GETARG_POINTER(1);
-    IndexInfo        *indexInfo = (IndexInfo *) PG_GETARG_POINTER(2);
+static IndexBuildResult *zdbbuild(Relation heapRel, Relation indexRel, struct IndexInfo *indexInfo) {
     TupleDesc        tupdesc    = RelationGetDescr(indexRel);
     IndexBuildResult *result;
     double           reltuples  = 0.0;
@@ -504,7 +545,7 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
     result->heap_tuples  = reltuples;
     result->index_tuples = buildstate.indtuples;
 
-    PG_RETURN_POINTER(result);
+    return result;
 }
 
 /*
@@ -539,12 +580,12 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 /*
  *  zdbinsert() -- insert an index tuple into a zombodb.
  */
-Datum zdbinsert(PG_FUNCTION_ARGS) {
-    Relation           indexRel             = (Relation) PG_GETARG_POINTER(0);
-    Datum              *values              = (Datum *) PG_GETARG_POINTER(1);
-//    bool	   *isnull = (bool *) PG_GETARG_POINTER(2);
-    ItemPointer        ht_ctid              = (ItemPointer) PG_GETARG_POINTER(3);
-//    IndexUniqueCheck checkUnique = (IndexUniqueCheck) PG_GETARG_INT32(5);
+static bool zdbinsert(Relation indexRel,
+                      Datum *values,
+                      bool *isnull,
+                      ItemPointer heap_tid,
+                      Relation heapRelation,
+                      IndexUniqueCheck checkUnique) {
     TransactionId      currentTransactionId = GetCurrentTransactionId();
     ZDBIndexDescriptor *desc;
     bool isupdate = false;
@@ -561,18 +602,15 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
 		LAST_UPDATED_CTID = NULL;
     }
 
-    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, &old_ctid, currentTransactionId, GetCurrentCommandId(true), zdb_sequence++);
+    desc->implementation->batchInsertRow(desc, heap_tid, DatumGetTextP(values[1]), isupdate, &old_ctid, currentTransactionId, GetCurrentCommandId(true), zdb_sequence++);
 
-    PG_RETURN_BOOL(true);
+    return true;
 }
 
 /*
  *	zdbbuildempty() -- build an empty zombodb index in the initialization fork
  */
-Datum zdbbuildempty(PG_FUNCTION_ARGS) {
-//    Relation	index = (Relation) PG_GETARG_POINTER(0);
-
-    PG_RETURN_VOID();
+static void zdbbuildempty (Relation indexRel) {
 }
 
 Datum zdb_num_hits(PG_FUNCTION_ARGS) {
@@ -620,10 +658,8 @@ static void setup_scan(IndexScanDesc scan) {
 /*
  *  zdbgettuple() -- Get the next tuple in the scan.
  */
-Datum zdbgettuple(PG_FUNCTION_ARGS) {
-    IndexScanDesc scan       = (IndexScanDesc) PG_GETARG_POINTER(0);
+static bool zdbgettuple (IndexScanDesc scan, ScanDirection direction) {
     ZDBScanState  *scanstate = (ZDBScanState *) scan->opaque;
-//    ScanDirection dir = (ScanDirection) PG_GETARG_INT32(1);
     bool          haveMore;
 
     /* zdbtree indexes are never lossy */
@@ -639,35 +675,30 @@ Datum zdbgettuple(PG_FUNCTION_ARGS) {
         zdb_record_score(RelationGetRelid(scan->indexRelation), &scan->xs_ctup.t_self, score);
     }
 
-    PG_RETURN_BOOL(haveMore);
+    return haveMore;
 }
 
 /*
  *  zdbbeginscan() -- start a scan on a zombodb index
  */
-Datum zdbbeginscan(PG_FUNCTION_ARGS) {
-    Relation      rel       = (Relation) PG_GETARG_POINTER(0);
-    int           nkeys     = PG_GETARG_INT32(1);
-    int           norderbys = PG_GETARG_INT32(2);
+static IndexScanDesc zdbbeginscan (Relation indexRel, int nkeys, int norderbys) {
     IndexScanDesc scan;
 
     /* no order by operators allowed */
     Assert(norderbys == 0);
 
     /* get the scan */
-    scan = RelationGetIndexScan(rel, nkeys, norderbys);
+    scan = RelationGetIndexScan(indexRel, nkeys, norderbys);
 
     scan->opaque = (ZDBScanState *) palloc0(sizeof(ZDBScanState));
 
-    PG_RETURN_POINTER(scan);
+    return scan;
 }
 
 /*
  *  zdbrescan() -- rescan an index relation
  */
-Datum zdbrescan(PG_FUNCTION_ARGS) {
-    IndexScanDesc scan       = (IndexScanDesc) PG_GETARG_POINTER(0);
-    ScanKey       scankey    = (ScanKey) PG_GETARG_POINTER(1);
+static void zdbrescan (IndexScanDesc scan, ScanKey scankey, int nkeys, ScanKey orderbys, int norderbys) {
     ZDBScanState  *scanstate = (ZDBScanState *) scan->opaque;
     bool          changed    = false;
 
@@ -710,15 +741,12 @@ Datum zdbrescan(PG_FUNCTION_ARGS) {
     } else {
         scanstate->currhit = 0;
     }
-
-    PG_RETURN_VOID();
 }
 
 /*
  *  zdbendscan() -- close down a scan
  */
-Datum zdbendscan(PG_FUNCTION_ARGS) {
-    IndexScanDesc scan       = (IndexScanDesc) PG_GETARG_POINTER(0);
+static void zdbendscan (IndexScanDesc scan) {
     ZDBScanState  *scanstate = (ZDBScanState *) scan->opaque;
 
     if (scanstate) {
@@ -737,31 +765,6 @@ Datum zdbendscan(PG_FUNCTION_ARGS) {
         pfree(scanstate);
         scan->opaque = NULL;
     }
-    PG_RETURN_VOID();
-}
-
-/*
- *  zdbmarkpos() -- save current scan position
- */
-Datum zdbmarkpos(PG_FUNCTION_ARGS) {
-//    IndexScanDesc scan = (IndexScanDesc) PG_GETARG_POINTER(0);
-
-    // TODO:  remember where we are in the current scan
-    elog(NOTICE, "zdbmarkpos()");
-
-    PG_RETURN_VOID();
-}
-
-/*
- *  zdbrestrpos() -- restore scan to last saved position
- */
-Datum zdbrestrpos(PG_FUNCTION_ARGS) {
-//    IndexScanDesc scan = (IndexScanDesc) PG_GETARG_POINTER(0);
-
-    // TODO:  take us back to where we last markpos()'d
-    elog(NOTICE, "zdbrestrpos()");
-
-    PG_RETURN_VOID();
 }
 
 /*
@@ -846,6 +849,34 @@ typedef struct LVRelStats
 	TransactionId latestRemovedXid;
 	bool		lock_waiter_detected;
 } LVRelStats;
+#elif (PG_VERSION_NUM < 100000)
+typedef struct LVRelStats
+{
+    /* hasindex = true means two-pass strategy; false means one-pass */
+    bool            hasindex;
+    /* Overall statistics about rel */
+    BlockNumber old_rel_pages;      /* previous value of pg_class.relpages */
+    BlockNumber rel_pages;          /* total number of pages */
+    BlockNumber scanned_pages;      /* number of pages we examined */
+    BlockNumber pinskipped_pages;           /* # of pages we skipped due to a pin */
+    BlockNumber frozenskipped_pages;        /* # of frozen pages we skipped */
+    double          scanned_tuples; /* counts only tuples on scanned pages */
+    double          old_rel_tuples; /* previous value of pg_class.reltuples */
+    double          new_rel_tuples; /* new estimated total # of tuples */
+    double          new_dead_tuples;        /* new estimated total # of dead tuples */
+    BlockNumber pages_removed;
+    double          tuples_deleted;
+    BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+    /* List of TIDs of tuples we intend to delete */
+    /* NB: this list is ordered by TID address */
+    int                     num_dead_tuples;        /* current # of entries */
+    int                     max_dead_tuples;        /* # slots allocated in array */
+    ItemPointer dead_tuples;        /* array of ItemPointerData */
+    int                     num_index_scans;
+    TransactionId latestRemovedXid;
+    bool            lock_waiter_detected;
+} LVRelStats;
+
 #endif
 
 /*
@@ -855,11 +886,7 @@ typedef struct LVRelStats
  *
  * Result: a palloc'd struct containing statistical info for VACUUM displays.
  */
-Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
-    IndexVacuumInfo *info = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
-    IndexBulkDeleteResult *volatile stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
-//    IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
-    void                    *callback_state = (void *) PG_GETARG_POINTER(3);
+static IndexBulkDeleteResult *zdbbulkdelete (IndexVacuumInfo *info, IndexBulkDeleteResult *stats, IndexBulkDeleteCallback callback, void *callback_state) {
     Relation                indexRel        = info->index;
     ZDBIndexDescriptor      *desc;
     LVRelStats              *relstats;
@@ -873,7 +900,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 
     desc = alloc_index_descriptor(indexRel, false);
     if (desc->isShadow)
-        PG_RETURN_POINTER(stats);
+        return stats;
 
     relstats = (LVRelStats *) callback_state; /* XXX:  cast to our copy/paste of LVRelStats! */
 
@@ -887,7 +914,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 
     elog(zdbloglevel, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), relstats->num_dead_tuples, (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
 
-    PG_RETURN_POINTER(stats);
+    return stats;
 }
 
 /*
@@ -895,15 +922,13 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
  *
  * Result: a palloc'd struct containing statistical info for VACUUM displays.
  */
-Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
-    IndexVacuumInfo       *info    = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
-    IndexBulkDeleteResult *stats   = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
+static IndexBulkDeleteResult *zdbvacuumcleanup (IndexVacuumInfo *info, IndexBulkDeleteResult *stats) {
     Relation              indexRel = info->index;
     ZDBIndexDescriptor    *desc;
 
     /* No-op in ANALYZE ONLY mode */
     if (info->analyze_only)
-        PG_RETURN_POINTER(stats);
+        return stats;
 
     desc = alloc_index_descriptor(indexRel, false);
 
@@ -913,7 +938,7 @@ Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
     }
 
     if (desc->isShadow)
-        PG_RETURN_POINTER(stats);
+        return stats;
 
     /* Finally, vacuum the FSM */
     IndexFreeSpaceMapVacuum(info->index);
@@ -929,12 +954,10 @@ Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
             stats->num_index_tuples = info->num_heap_tuples;
     }
 
-    PG_RETURN_POINTER(stats);
+    return stats;
 }
 
-Datum zdboptions(PG_FUNCTION_ARGS) {
-    Datum                         reloptions = PG_GETARG_DATUM(0);
-    bool                          validate   = PG_GETARG_BOOL(1);
+static bytea *zdboptions (Datum reloptions, bool validate) {
     relopt_value                  *options;
     ZDBIndexOptions               *rdopts;
     int                           numoptions;
@@ -959,7 +982,7 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
 
     /* if none set, we're done */
     if (numoptions == 0)
-        PG_RETURN_NULL();
+        return NULL;
 
     rdopts = allocateReloptStruct(sizeof(ZDBIndexOptions), options, numoptions);
 
@@ -967,7 +990,7 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
 
     pfree(options);
 
-    PG_RETURN_BYTEA_P(rdopts);
+    return (bytea *) rdopts;
 }
 
 Datum zdbeventtrigger(PG_FUNCTION_ARGS) {
@@ -1010,14 +1033,7 @@ Datum zdbeventtrigger(PG_FUNCTION_ARGS) {
 }
 
 
-Datum zdbcostestimate(PG_FUNCTION_ARGS) {
-//	PlannerInfo  *root             = (PlannerInfo *) PG_GETARG_POINTER(0);
-    IndexPath    *path             = (IndexPath *) PG_GETARG_POINTER(1);
-//	double       loop_count        = PG_GETARG_FLOAT8(2);
-    Cost         *indexStartupCost = (Cost *) PG_GETARG_POINTER(3);
-    Cost         *indexTotalCost   = (Cost *) PG_GETARG_POINTER(4);
-    Selectivity  *indexSelectivity = (Selectivity *) PG_GETARG_POINTER(5);
-    double       *indexCorrelation = (double *) PG_GETARG_POINTER(6);
+static void zdbcostestimate (struct PlannerInfo *root, struct IndexPath *path, double loop_count, Cost *indexStartupCost, Cost *indexTotalCost, Selectivity *indexSelectivity, double *indexCorrelation) {
     IndexOptInfo *index            = path->indexinfo;
     ListCell     *lc;
     StringInfo   query             = makeStringInfo();
@@ -1057,7 +1073,10 @@ Datum zdbcostestimate(PG_FUNCTION_ARGS) {
     *indexSelectivity = Max(*indexSelectivity, 0);
 
     freeStringInfo(query);
-    PG_RETURN_VOID();
+}
+
+static bool zdbvalidate(Oid opclassoid) {
+    return true;
 }
 
 Datum zdbupdatetrigger(PG_FUNCTION_ARGS) {

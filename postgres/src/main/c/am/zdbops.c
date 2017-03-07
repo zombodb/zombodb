@@ -211,7 +211,7 @@ Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
         NameData amname;
 
         indexRel = RelationIdGetRelation(indexRelOid);
-        amname   = indexRel->rd_am->amname;
+        // amname   = {"FIXME"}; // indexRel->rd_am->amname;
         RelationClose(indexRel);
 
         if (strcmp("zombodb", amname.data) == 0) {
@@ -248,8 +248,9 @@ Oid zdb_determine_index_oid_by_heap(Oid heapRelOid) {
     foreach(lc, indexes) {
         Oid      indexRelOid = (Oid) lfirst_oid(lc);
         Relation indexRel    = RelationIdGetRelation(indexRelOid);
+        NameData amname; // = {"FIXME"}; // indexRel->rd_am->amname;
 
-        if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
+        if (strcmp("zombodb", amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
             zdbIndexRelId = indexRelOid;
 
         RelationClose(indexRel);
@@ -303,8 +304,9 @@ Datum zdb_determine_index(PG_FUNCTION_ARGS) {
             foreach(lc, indexes) {
                 Oid      indexRelOid = (Oid) lfirst_oid(lc);
                 Relation indexRel    = RelationIdGetRelation(indexRelOid);
+                NameData amname; // {"FIXME"}; // indexRel->rd_am->amname;
 
-                if (strcmp("zombodb", indexRel->rd_am->amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
+                if (strcmp("zombodb", amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
                     zdbIndexRelId = indexRelOid;
 
                 RelationClose(indexRel);
