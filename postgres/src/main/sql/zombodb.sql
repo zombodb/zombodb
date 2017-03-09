@@ -6,9 +6,10 @@ CREATE DOMAIN fulltext AS text;
 --
 -- convenience methods for index creation and querying
 --
-CREATE OR REPLACE FUNCTION zdb(record) RETURNS json LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_row_to_json';
+CREATE OR REPLACE FUNCTION zdb(record) RETURNS tid LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb', 'zdb_index_key';
+CREATE OR REPLACE FUNCTION zdb_to_json(record) RETURNS json LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb';
 CREATE OR REPLACE FUNCTION zdb_num_hits() RETURNS int8 AS '$libdir/plugins/zombodb' language c;
-CREATE OR REPLACE FUNCTION zdb_query_func(json, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 2147483647;
+CREATE OR REPLACE FUNCTION zdb_tid_query_func(tid, text) RETURNS bool LANGUAGE c IMMUTABLE STRICT AS '$libdir/plugins/zombodb' COST 1;
 CREATE OR REPLACE FUNCTION zdbsel(internal, oid, internal, integer) RETURNS float8 LANGUAGE c STRICT AS '$libdir/plugins/zombodb';
 
 --
@@ -494,16 +495,17 @@ CREATE OR REPLACE FUNCTION zdbamhandler(internal) RETURNS index_am_handler LANGU
 CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER zdbamhandler;
 
 CREATE OPERATOR ==> (
-    PROCEDURE = zdb_query_func,
+    PROCEDURE = zdb_tid_query_func,
     RESTRICT = zdbsel,
-    LEFTARG = json,
+    LEFTARG = tid,
     RIGHTARG = text
 );
 
-CREATE OPERATOR CLASS zombodb_json_ops DEFAULT FOR TYPE json USING zombodb AS
-    OPERATOR 1 ==>(json, text),
-    FUNCTION 1 zdb_query_func(json, text),
-    STORAGE json;
+CREATE OPERATOR CLASS zombodb_tid_ops DEFAULT FOR TYPE tid USING zombodb AS
+    OPERATOR 1 ==>(tid, text),
+    FUNCTION 1 zdb_tid_query_func(tid, text),
+    STORAGE tid;
+CREATE OPERATOR CLASS zombodb_json_ops DEFAULT FOR TYPE json USING zombodb AS STORAGE json;
 
 
 --

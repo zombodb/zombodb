@@ -374,7 +374,7 @@ Datum zdbamhandler(PG_FUNCTION_ARGS) {
     iam->amcanorderbyop = false;
     iam->amcanbackward = false;
     iam->amcanunique = false;
-    iam->amcanmulticol = false;
+    iam->amcanmulticol = true;
     iam->amoptionalkey = false;
     iam->amsearcharray = false;
     iam->amsearchnulls = false;
@@ -424,16 +424,13 @@ static IndexBuildResult *zdbbuild(Relation heapRel, Relation indexRel, struct In
         elog(ERROR, "Must set the 'url' or 'shadow' index option");
 
     if (tupdesc->natts != 2)
-        elog(ERROR, "Incorrect number of attributes on index %s", RelationGetRelationName(indexRel));
+        elog(ERROR, "Incorrect number of columns on index %s.  Must be two columns", RelationGetRelationName(indexRel));
 
-    switch (tupdesc->attrs[1]->atttypid) {
-        case JSONOID:
-            break;
+    if (tupdesc->attrs[0]->atttypid != TIDOID)
+        elog(ERROR, "Unsupported first index column type '%d'.  Must be of type 'ctid'", tupdesc->attrs[0]->atttypid);
 
-        default:
-            elog(ERROR, "Unsupported second index column type: %d", tupdesc->attrs[1]->atttypid);
-            break;
-    }
+    if (tupdesc->attrs[1]->atttypid != JSONOID)
+        elog(ERROR, "Unsupported second index column type '%d'.  Must be of type 'json'", tupdesc->attrs[0]->atttypid);
 
     buildstate.isUnique    = indexInfo->ii_Unique;
     buildstate.haveDead    = false;

@@ -15,19 +15,19 @@
  * limitations under the License.
  */
 #include "postgres.h"
+#include "access/htup_details.h"
 #include "executor/executor.h"
-#include "executor/spi.h"
-#include "access/xact.h"
 #include "catalog/indexing.h"
-#include "catalog/pg_constraint.h"
 #include "catalog/pg_type.h"
+#include "commands/defrem.h"
 #include "parser/parsetree.h"
+#include "utils/typcache.h"
+#include "utils/lsyscache.h"
 
 #if (PG_VERSION_NUM >= 90400)
 #include "rewrite/rewriteHandler.h"
 #endif
 
-#include "nodes/makefuncs.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/rel.h"
@@ -39,10 +39,10 @@
 PG_FUNCTION_INFO_V1(zdb_determine_index);
 PG_FUNCTION_INFO_V1(zdb_get_index_name);
 PG_FUNCTION_INFO_V1(zdb_get_url);
-PG_FUNCTION_INFO_V1(zdb_query_func);
 PG_FUNCTION_INFO_V1(zdb_tid_query_func);
 PG_FUNCTION_INFO_V1(zdb_table_ref_and_tid);
-PG_FUNCTION_INFO_V1(zdb_row_to_json);
+PG_FUNCTION_INFO_V1(zdb_to_json);
+PG_FUNCTION_INFO_V1(zdb_index_key);
 PG_FUNCTION_INFO_V1(zdb_internal_describe_nested_object);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_get_index_field_lists);
@@ -125,72 +125,28 @@ static FuncExpr *extract_zdb_funcExpr_from_view(Relation viewRel, Oid *heapRelOi
 }
 
 void validate_zdb_funcExpr(FuncExpr *funcExpr, Oid *heapRelOid) {
-    Node *a1, *a2;
+    Node *a1;
+    Var *var;
+    TypeCacheEntry *tce;
 
-    if (list_length(funcExpr->args) != 2)
+    if (list_length(funcExpr->args) != 1)
         elog(ERROR, "Incorrect number of arguments to the 'zdb' column function");
 
     a1 = linitial(funcExpr->args);
-    a2 = lsecond(funcExpr->args);
 
-	/*
-	 * possibly change 'a1' to point to something different
-	 */
-    if (IsA(a1, FuncExpr)) {
-        /*
-         * first argument is a function call, so evaluate the expression and use its return value.
-         * It's probably a double-cast like zdb('tablename'::text::regclass, ctid)
-         *
-         * If it isn't, we'll catch it below
-         */
-        a1 = (Node *) evaluate_expr((Expr *) a1, REGCLASSOID, 0, InvalidOid);
-    } else if (IsA(a1, RelabelType)) {
-		/*
-		 * first argument is a RelableType, so we just want to use its argument directly
-		 * if it's of type REGCLASSOID.
-		 *
-		 * It's probably a call like zdb(tbl.tableoid, tbl.ctid)
-		 */
-		RelabelType *rt = (RelabelType *) a1;
+    /*
+     * Assert that a1 is a composite type
+     */
+    if (!IsA(a1, Var))
+        elog(ERROR, "Argument to the 'zdb' function is not a plain variable");
 
-		if (rt->resulttype == REGCLASSOID)
-			a1 = (Node *) rt->arg;
-		else
-			elog(ERROR, "First argument of the 'zdb' column function is a RelabelType we don't understand: %d", rt->resulttype);
-	}
+    var = (Var *) a1;
+    if (!type_is_rowtype(var->vartype))
+        elog(ERROR, "Argument to the 'zdb' function is not a composite row type");
 
-	/*
-	 * now evaluate that a1 is still a thing we can deal with
-	 */
-	if (IsA(a1, Var)) {
-		Var *var = (Var *) a1;
-
-		switch (var->varno) {
-			case INNER_VAR:
-			case OUTER_VAR:
-				elog(ERROR, "Cannot determine index.  First argument of left side of operator is a Var type we don't understand");
-				break;
-
-			default: {
-				QueryDesc     *query  = linitial(CURRENT_QUERY_STACK);
-				RangeTblEntry *rentry = rt_fetch(var->varno, query->plannedstmt->rtable);
-				*heapRelOid = rentry->relid;
-			}
-		}
-	} else if (IsA(a1, Const)) {
-		Const *cnst = (Const *) a1;
-
-		if (cnst->consttype == REGCLASSOID)
-			*heapRelOid = (Oid) DatumGetObjectId(cnst->constvalue);
-		else
-			elog(ERROR, "First argument of the 'zdb' column function is not ::regclass, it is a %d", a1->type);
-	} else {
-		elog(ERROR, "Cannot determine index.  First argument of the 'zdb' column function is not a node type we understand: %d", a1->type);
-	}
-
-	/* validate 'a2' as well */
-	if (!IsA(a2, Var) || ((Var *) a2)->vartype != TIDOID)
-		elog(ERROR, "Second argument of the 'zdb' column function is not ::tid");
+    /* remember the heap relation to which this type belongs */
+    tce = lookup_type_cache(var->vartype, 0);
+    *heapRelOid = tce->typrelid;
 }
 
 Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
@@ -208,13 +164,13 @@ Oid zdb_determine_index_oid(FuncExpr *funcExpr, Oid heapRelOid) {
     foreach (lc, indexes) {
         Oid      indexRelOid = (Oid) lfirst_oid(lc);
         Relation indexRel;
-        NameData amname;
+        char     *amname;
 
         indexRel = RelationIdGetRelation(indexRelOid);
-        // amname   = {"FIXME"}; // indexRel->rd_am->amname;
+        amname = get_am_name(indexRel->rd_rel->relam);
         RelationClose(indexRel);
 
-        if (strcmp("zombodb", amname.data) == 0) {
+        if (strcmp("zombodb", amname) == 0) {
             Node *n = linitial(RelationGetIndexExpressions(indexRel));
 
             if (IsA(n, FuncExpr) && ((FuncExpr *) n)->funcid == funcExpr->funcid) {
@@ -248,9 +204,9 @@ Oid zdb_determine_index_oid_by_heap(Oid heapRelOid) {
     foreach(lc, indexes) {
         Oid      indexRelOid = (Oid) lfirst_oid(lc);
         Relation indexRel    = RelationIdGetRelation(indexRelOid);
-        NameData amname; // = {"FIXME"}; // indexRel->rd_am->amname;
+        char     *amname     = get_am_name(indexRel->rd_rel->relam);
 
-        if (strcmp("zombodb", amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
+        if (strcmp("zombodb", amname) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
             zdbIndexRelId = indexRelOid;
 
         RelationClose(indexRel);
@@ -304,9 +260,9 @@ Datum zdb_determine_index(PG_FUNCTION_ARGS) {
             foreach(lc, indexes) {
                 Oid      indexRelOid = (Oid) lfirst_oid(lc);
                 Relation indexRel    = RelationIdGetRelation(indexRelOid);
-                NameData amname; // {"FIXME"}; // indexRel->rd_am->amname;
+                char     *amname     = get_am_name(indexRel->rd_rel->relam);
 
-                if (strcmp("zombodb", amname.data) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
+                if (strcmp("zombodb", amname) == 0 && ZDBIndexOptionsGetShadow(indexRel) == NULL)
                     zdbIndexRelId = indexRelOid;
 
                 RelationClose(indexRel);
@@ -360,11 +316,6 @@ Datum zdb_get_url(PG_FUNCTION_ARGS) {
     PG_RETURN_TEXT_P(cstring_to_text(desc->url));
 }
 
-Datum zdb_query_func(PG_FUNCTION_ARGS) {
-    elog(ERROR, "operator '==>(json, text)' not supported");
-    PG_RETURN_BOOL(false);
-}
-
 Datum zdb_tid_query_func(PG_FUNCTION_ARGS) {
     return zdb_seqscan(fcinfo);
 }
@@ -373,10 +324,19 @@ Datum zdb_table_ref_and_tid(PG_FUNCTION_ARGS) {
     PG_RETURN_POINTER(PG_GETARG_POINTER(1));
 }
 
-Datum zdb_row_to_json(PG_FUNCTION_ARGS) {
+Datum zdb_to_json(PG_FUNCTION_ARGS) {
     Datum row = PG_GETARG_DATUM(0);
 
     PG_RETURN_DATUM(DirectFunctionCall1(row_to_json, row));
+}
+
+Datum zdb_index_key(PG_FUNCTION_ARGS) {
+    Datum		composite = PG_GETARG_DATUM(0);
+    HeapTupleHeader td;
+
+    td = DatumGetHeapTupleHeader(composite);
+
+    PG_RETURN_POINTER(&td->t_ctid);
 }
 
 Datum zdb_internal_describe_nested_object(PG_FUNCTION_ARGS) {
