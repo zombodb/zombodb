@@ -16,7 +16,7 @@ if [ -f "${TESTDIR}/sql/${TESTNAME}.sql" ] ; then
 	exit 1
 fi
 
-echo "SELECT assert(count(*), ${EXPECTED_COUNT}, '${TESTNAME}') FROM so_posts WHERE zdb('so_posts', ctid) ==> '${QUERY}';" > ${TESTDIR}/sql/${TESTNAME}.sql
+echo "SELECT assert(count(*), ${EXPECTED_COUNT}, '${TESTNAME}') FROM so_posts WHERE zdb(so_posts) ==> '${QUERY}';" > ${TESTDIR}/sql/${TESTNAME}.sql
 
 if [ ! -f "${TESTDIR}/expected/${TESTNAME}.out" ] ; then
     rm -f results/${TESTNAME}.out

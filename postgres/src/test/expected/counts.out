@@ -4,7 +4,7 @@ SELECT assert(count(*), 310546, 'count(*) from words') FROM words;
  t
 (1 row)
 
-SELECT assert(count(*), 310546, 'count(word:*) from words') FROM words WHERE zdb('words', ctid) ==> 'word:*';
+SELECT assert(count(*), 310546, 'count(word:*) from words') FROM words WHERE zdb(words) ==> 'word:*';
  assert 
 --------
  t
@@ -22,7 +22,7 @@ SELECT assert(count(*), 165240, 'count(*) from so_posts') FROM so_posts;
  t
 (1 row)
 
-SELECT assert(count(*), 165240, 'count(id:*) from so_posts') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
+SELECT assert(count(*), 165240, 'count(id:*) from so_posts') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
  assert 
 --------
  t
@@ -40,7 +40,7 @@ SELECT assert(count(*), 136990, 'count(*) from so_users') FROM so_users;
  t
 (1 row)
 
-SELECT assert(count(*), 136990, 'count(id:*) from so_users') FROM so_users WHERE zdb('so_users', ctid) ==> 'id:*';
+SELECT assert(count(*), 136990, 'count(id:*) from so_users') FROM so_users WHERE zdb(so_users) ==> 'id:*';
  assert 
 --------
  t

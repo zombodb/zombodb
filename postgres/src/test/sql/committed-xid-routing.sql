@@ -7,7 +7,7 @@ CREATE TABLE e_0010.tas_tbl
   CONSTRAINT idx_e_0010_tas_tbll_pkey PRIMARY KEY (pk_tas)
 );
 
-CREATE INDEX es_e_0010_tas_tbl ON e_0010.tas_tbl USING zombodb (zdb('e_0010.tas_tbl', ctid), zdb(tas_tbl.*))
+CREATE INDEX es_e_0010_tas_tbl ON e_0010.tas_tbl USING zombodb (zdb(tas_tbl), zdb_to_json(tas_tbl.*))
 WITH (url='http://localhost:9200/', replicas='0', shards='32');
 
 

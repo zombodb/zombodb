@@ -1,14 +1,14 @@
 SET datestyle TO 'iso, mdy';
 CREATE MATERIALIZED VIEW matview_test AS SELECT * FROM products;
 CREATE UNIQUE INDEX idxmatviewkey ON matview_test (id);
-CREATE INDEX idxmatview_test ON matview_test USING zombodb (zdb('matview_test', ctid), zdb(matview_test)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxmatview_test ON matview_test USING zombodb (zdb(matview_test), zdb_to_json(matview_test)) WITH (url='http://localhost:9200/');
 SELECT * FROM zdb_estimate_count('matview_test', 'id:*');
  zdb_estimate_count 
 --------------------
                   4
 (1 row)
 
-SELECT * FROM products WHERE zdb('matview_test', ctid) ==> 'box' ORDER BY id;
+SELECT * FROM products WHERE zdb(matview_test) ==> 'box' ORDER BY id;
  id | name |               keywords               |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued | availability_date 
 ----+------+--------------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------+-------------------
   4 | Box  | {wooden,box,"negative space",square} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t            | 2015-07-01

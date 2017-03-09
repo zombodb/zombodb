@@ -23,9 +23,9 @@ INSERT INTO client (first_name, last_name, city_id)
 VALUES ('John', 'Wick', 2);
 
 CREATE INDEX idxcity
-  ON city USING zombodb(zdb('city', city.ctid), zdb(city)) WITH (url='http://localhost:9200/');
+  ON city USING zombodb(zdb(city), zdb_to_json(city)) WITH (url='http://localhost:9200/');
 CREATE INDEX idxclient
-  ON client USING zombodb(zdb('client', client.ctid), zdb(client)) WITH (url='http://localhost:9200/');
+  ON client USING zombodb(zdb(client), zdb_to_json(client)) WITH (url='http://localhost:9200/');
 
 ALTER INDEX idxcity SET ( OPTIONS = 'id=<client.idxclient>city_id');
 ALTER INDEX idxclient SET ( OPTIONS = 'city_id=<city.idxcity>id');
@@ -34,7 +34,7 @@ CREATE VIEW find_me AS
   SELECT
     client.*,
     city.city_name,
-    zdb('client', client.ctid) AS zdb
+    zdb(client) AS zdb
   FROM client
     JOIN city ON client.city_id = city.id;
 

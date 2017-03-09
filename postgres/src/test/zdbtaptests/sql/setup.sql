@@ -51,7 +51,7 @@ CREATE TABLE unit_tests.data(
 , CONSTRAINT idx_unit_tests_data_pkey PRIMARY KEY (pk_data)
 );
 
-CREATE INDEX es_unit_tests_data ON unit_tests.data USING zombodb (zdb('unit_tests.data', ctid), zdb(data.*)) WITH (url=:zombodb_url, options='pk_data = <var.es_unit_tests_var>pk_var,pk_data = <vol.es_unit_tests_vol>pk_vol', shards='3', replicas='1');
+CREATE INDEX es_unit_tests_data ON unit_tests.data USING zombodb (zdb(data), zdb_to_json(data.*)) WITH (url=:zombodb_url, options='pk_data = <var.es_unit_tests_var>pk_var,pk_data = <vol.es_unit_tests_vol>pk_vol', shards='3', replicas='1');
 --**********************************************************************************************************************
 
 
@@ -92,7 +92,7 @@ CREATE TABLE unit_tests.var(
 , CONSTRAINT idx_unit_tests_var_pkey PRIMARY KEY (pk_var)
 );
 
-CREATE INDEX es_unit_tests_var ON unit_tests.var USING zombodb (zdb('unit_tests.var', ctid), zdb(var.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_var ON unit_tests.var USING zombodb (zdb(var), zdb_to_json(var.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
 --**********************************************************************************************************************
 
 
@@ -133,7 +133,7 @@ CREATE TABLE unit_tests.vol(
 , CONSTRAINT idx_unit_tests_vol_pkey PRIMARY KEY (pk_vol)
 );
 
-CREATE INDEX es_unit_tests_vol ON unit_tests.vol USING zombodb (zdb('unit_tests.vol', ctid), zdb(vol.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_vol ON unit_tests.vol USING zombodb (zdb(vol), zdb_to_json(vol.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
 --**********************************************************************************************************************
 
 -- TODO: RULES/TRIGGERS
@@ -236,7 +236,7 @@ CREATE VIEW unit_tests.consolidated_record_view AS
     , vol_varchar_2
     , vol_varchar_array_1
     , vol_varchar_array_2
-    , zdb('unit_tests.data', data.ctid) AS zdb
+    , zdb(data) AS zdb
   FROM unit_tests.data
   LEFT JOIN unit_tests.var ON data.pk_data = var.pk_var
   LEFT JOIN unit_tests.vol ON data.pk_data = vol.pk_vol;
@@ -273,9 +273,9 @@ ALTER TABLE unit_tests.data_same ADD PRIMARY KEY (id);
 ALTER TABLE unit_tests.var_same ADD PRIMARY KEY (id);
 ALTER TABLE unit_tests.vol_same ADD PRIMARY KEY (id);
 
-CREATE INDEX es_unit_tests_data_same ON unit_tests.data_same USING zombodb (zdb('unit_tests.data_same', ctid), zdb(data_same.*)) WITH (url=:zombodb_url, options='id = <var_same.es_unit_tests_var_same>id, id = <vol_same.es_unit_tests_vol_same>id', shards='3', replicas='1');
-CREATE INDEX es_unit_tests_var_same ON unit_tests.var_same USING zombodb (zdb('unit_tests.var_same', ctid), zdb(var_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
-CREATE INDEX es_unit_tests_vol_same ON unit_tests.vol_same USING zombodb (zdb('unit_tests.vol_same', ctid), zdb(vol_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_data_same ON unit_tests.data_same USING zombodb (zdb(data_same), zdb_to_json(data_same.*)) WITH (url=:zombodb_url, options='id = <var_same.es_unit_tests_var_same>id, id = <vol_same.es_unit_tests_vol_same>id', shards='3', replicas='1');
+CREATE INDEX es_unit_tests_var_same ON unit_tests.var_same USING zombodb (zdb(var_same), zdb_to_json(var_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_vol_same ON unit_tests.vol_same USING zombodb (zdb(vol_same), zdb_to_json(vol_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
 
 CREATE VIEW unit_tests.consolidated_record_view_same AS
   SELECT data_same.id
@@ -374,7 +374,7 @@ CREATE VIEW unit_tests.consolidated_record_view_same AS
     , vol_varchar_2
     , vol_varchar_array_1
     , vol_varchar_array_2
-    , zdb('unit_tests.data_same', data_same.ctid) AS zdb
+    , zdb(data_same) AS zdb
   FROM unit_tests.data_same
   LEFT JOIN unit_tests.var_same ON data_same.id = var_same.id
   LEFT JOIN unit_tests.vol_same ON data_same.id = vol_same.id;

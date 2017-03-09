@@ -7,11 +7,11 @@ SELECT zdb_define_mapping('multifield', 'display_name', '{
         "raw":   { "type": "string", "index": "not_analyzed" }
     }
 }');
-CREATE INDEX idxmultifield ON multifield USING zombodb (zdb('multifield', ctid), zdb(multifield)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxmultifield ON multifield USING zombodb (zdb(multifield), zdb_to_json(multifield)) WITH (url='http://localhost:9200/');
 
-SELECT display_name FROM multifield WHERE zdb('multifield', ctid) ==> 'display_name:robert';
+SELECT display_name FROM multifield WHERE zdb(multifield) ==> 'display_name:robert';
 
-SELECT display_name FROM multifield WHERE zdb('multifield', ctid) ==> 'display_name.raw:robert';
-SELECT display_name FROM multifield WHERE zdb('multifield', ctid) ==> 'display_name.raw:"Robert Cartaino"';
+SELECT display_name FROM multifield WHERE zdb(multifield) ==> 'display_name.raw:robert';
+SELECT display_name FROM multifield WHERE zdb(multifield) ==> 'display_name.raw:"Robert Cartaino"';
 
 DROP TABLE multifield;

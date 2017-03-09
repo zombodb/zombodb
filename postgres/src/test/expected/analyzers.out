@@ -72,10 +72,10 @@ INSERT INTO analyzers_test VALUES (
   , 'นี่คือการทดสอบ'
   , 'this is a test' -- fulltext_with_shingles
   );
-CREATE INDEX idxanalyzers_test ON analyzers_test USING zombodb (zdb('analyzers_test', ctid), zdb(analyzers_test)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxanalyzers_test ON analyzers_test USING zombodb (zdb(analyzers_test), zdb_to_json(analyzers_test)) WITH (url='http://localhost:9200/');
 SELECT
   attname,
-  (SELECT zdb('analyzers_test', ctid) ==> (attname || ':test') :: TEXT
+  (SELECT zdb(analyzers_test) ==> (attname || ':test') :: TEXT
    FROM analyzers_test) found
 FROM pg_attribute
 WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1 AND attname <> 'pkey'
@@ -202,7 +202,7 @@ FROM analyzers_test, (SELECT
                                              FROM analyzers_test) -> attname)) :: TEXT q
                       FROM pg_attribute
                       WHERE attrelid = 'analyzers_test' :: REGCLASS AND attnum >= 1 AND attname <> 'pkey') x
-WHERE zdb('analyzers_test', ctid) ==> q
+WHERE zdb(analyzers_test) ==> q
 ORDER BY attname;
         attname         |                    q                    
 ------------------------+-----------------------------------------

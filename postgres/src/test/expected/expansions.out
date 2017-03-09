@@ -540,14 +540,14 @@ select * from zdb_tally('so_posts', 'owner_display_name', '^.*', '(  #expand<par
  zaske                  |     1
 (266 rows)
 
-select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#expand<owner_display_name=<this.index>owner_display_name>(id:39338)' order by 1;
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<owner_display_name=<this.index>owner_display_name>(id:39338)' order by 1;
   id   | owner_display_name 
 -------+--------------------
  39338 | AMissico
  90183 | AMissico
 (2 rows)
 
-select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer)' order by 1;
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer)' order by 1;
    id   | owner_display_name 
 --------+--------------------
    2932 | 
@@ -736,7 +736,7 @@ select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#ex
  272560 | 
 (184 rows)
 
-select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer or owner_display_name:s*)' order by 1;
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer or owner_display_name:s*)' order by 1;
    id   |     owner_display_name     
 --------+----------------------------
     356 | Sergio
@@ -1701,7 +1701,7 @@ select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#ex
  272560 | 
 (960 rows)
 
-select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> 'body:(beer w/500 a)' order by 1;
+select id, owner_display_name from so_posts where zdb(so_posts) ==> 'body:(beer w/500 a)' order by 1;
    id   | owner_display_name 
 --------+--------------------
    2932 | 
@@ -1869,7 +1869,7 @@ select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> 'bod
  272560 | 
 (163 rows)
 
-select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#expand<parent_id=<this.index>parent_id>((beer w/500 a))' order by 1;
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<parent_id=<this.index>parent_id>((beer w/500 a))' order by 1;
    id   |    owner_display_name     
 --------+---------------------------
    2932 | 
@@ -3570,7 +3570,7 @@ select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#ex
  272560 | 
 (1696 rows)
 
-select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#expand<parent_id=<this.index>parent_id>((beer w/500 a))' order by 1;
+select id, owner_display_name from so_posts where zdb(so_posts) ==> '#expand<parent_id=<this.index>parent_id>((beer w/500 a))' order by 1;
    id   |    owner_display_name     
 --------+---------------------------
    2932 | 
@@ -5272,8 +5272,8 @@ select id, owner_display_name from so_posts where zdb('so_posts', ctid) ==> '#ex
 (1696 rows)
 
 select assert(
-    (select count(*) from so_posts where zdb('so_posts', ctid) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer or #expand<parent_id=<this.index>parent_id>(owner_display_name:s*))'),
-    (select count(*) from so_posts where zdb('so_posts', ctid) ==> '#expand<owner_display_name=<this.index>owner_display_name>(#expand<parent_id=<this.index>parent_id>(owner_display_name:s*) or beer)'),
+    (select count(*) from so_posts where zdb(so_posts) ==> '#expand<owner_display_name=<this.index>owner_display_name>(beer or #expand<parent_id=<this.index>parent_id>(owner_display_name:s*))'),
+    (select count(*) from so_posts where zdb(so_posts) ==> '#expand<owner_display_name=<this.index>owner_display_name>(#expand<parent_id=<this.index>parent_id>(owner_display_name:s*) or beer)'),
     'same'
 );
  assert 

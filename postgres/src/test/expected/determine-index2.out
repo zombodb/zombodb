@@ -11,8 +11,8 @@ CREATE TABLE public.mam_doc_sub (
 );
 INSERT INTO mam_doc (security) VALUES ('eric');
 INSERT INTO mam_doc_sub (fk_mam_doc, security) VALUES (1, 'mark');
-CREATE INDEX es_sub ON mam_doc_sub USING zombodb (zdb('public.mam_doc_sub':: REGCLASS, ctid), zdb(mam_doc_sub.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
-CREATE INDEX es_mam_doc ON mam_doc USING zombodb (zdb('public.mam_doc':: REGCLASS, ctid), zdb(mam_doc.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
+CREATE INDEX es_sub ON mam_doc_sub USING zombodb (zdb(mam_doc_sub), zdb_to_json(mam_doc_sub.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
+CREATE INDEX es_mam_doc ON mam_doc USING zombodb (zdb(mam_doc), zdb_to_json(mam_doc.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
 CREATE OR REPLACE FUNCTION zdb_mam_doc_to_sub(table_name REGCLASS, ctid tid)
   RETURNS tid AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid'
 LANGUAGE C IMMUTABLE STRICT

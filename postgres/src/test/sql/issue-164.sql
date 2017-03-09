@@ -13,10 +13,10 @@ insert into test_expand.var(pk_var, var_family_group, var_pets) values(1,1,'dogs
 insert into test_expand.var(pk_var, var_family_group, var_pets) values(2,1,'cats');
 insert into test_expand.var(pk_var, var_pets) values(3,'minions');
 
-CREATE INDEX es_test_expand_var ON test_expand.var USING zombodb (zdb('test_expand.var'::regclass, ctid), zdb(var.*))
+CREATE INDEX es_test_expand_var ON test_expand.var USING zombodb (zdb(var), zdb_to_json(var.*))
 	WITH (url='http://localhost:9200/', preference=_primary, shards='3', replicas='0');
 
-CREATE INDEX es_test_expand_data ON test_expand.data USING zombodb (zdb('test_expand.data'::regclass, ctid), zdb(data.*))
+CREATE INDEX es_test_expand_data ON test_expand.data USING zombodb (zdb(data), zdb_to_json(data.*))
 	WITH (url='http://localhost:9200/',options='pk_data = <var.es_test_expand_var>pk_var', preference=_primary, shards='3', replicas='0');
 
 CREATE OR REPLACE VIEW test_expand.consolidated_record_view AS  SELECT data.pk_data
@@ -24,7 +24,7 @@ CREATE OR REPLACE VIEW test_expand.consolidated_record_view AS  SELECT data.pk_d
 	,data.data_first_name
 	,var.var_family_group
 	,var.var_pets
-    ,zdb('test_expand.data'::regclass, data.ctid) AS zdb
+    ,zdb(data) AS zdb
    FROM test_expand.data
      LEFT JOIN test_expand.var ON data.pk_data = var.pk_var;
 

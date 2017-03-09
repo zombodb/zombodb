@@ -16,16 +16,16 @@ CREATE TABLE public.library_profile (
   CONSTRAINT idx_library_profile PRIMARY KEY (pk_library_profile)
 );
 
-CREATE INDEX es_documents ON documents USING zombodb (zdb('public.documents':: REGCLASS, ctid), zdb(documents.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
-CREATE INDEX es_docs_usage ON docs_usage USING zombodb (zdb('public.docs_usage':: REGCLASS, ctid), zdb(docs_usage.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
-CREATE INDEX es_library_profile ON library_profile USING zombodb (zdb('public.library_profile':: REGCLASS, ctid), zdb(library_profile.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
+CREATE INDEX es_documents ON documents USING zombodb (zdb(documents), zdb_to_json(documents.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
+CREATE INDEX es_docs_usage ON docs_usage USING zombodb (zdb(docs_usage), zdb_to_json(docs_usage.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
+CREATE INDEX es_library_profile ON library_profile USING zombodb (zdb(library_profile), zdb_to_json(library_profile.*)) WITH (url='http://localhost:9200/', replicas=1, shards=5);
 
-CREATE OR REPLACE FUNCTION zdb_to_docs_usage(table_name REGCLASS, ctid tid)
-  RETURNS tid AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid' LANGUAGE C IMMUTABLE STRICT COST 1;
+CREATE OR REPLACE FUNCTION zdb_to_docs_usage(record)
+  RETURNS tid AS '$libdir/plugins/zombodb', 'zdb_index_key' LANGUAGE C IMMUTABLE STRICT COST 1;
 
 CREATE INDEX es_idx_zdb_to_docs_usage
 ON public.documents
-USING zombodb (zdb_to_docs_usage('public.documents', ctid), zdb(documents.*))
+USING zombodb (zdb_to_docs_usage(documents), zdb(documents.*))
 WITH (shadow='es_documents',
   options='
             docs_usage_data:(pk_documents=<docs_usage.es_docs_usage>fk_documents),
@@ -45,7 +45,7 @@ CREATE OR REPLACE VIEW documents_master_view AS
            FROM docs_usage
            WHERE documents.pk_documents = docs_usage.fk_documents) du) AS usage_data,
 
-    zdb_to_docs_usage('public.documents' :: REGCLASS, documents.ctid)  AS zdb
+    zdb_to_docs_usage(documents)  AS zdb
   FROM public.documents;
 
 INSERT INTO documents (doc_stuff)

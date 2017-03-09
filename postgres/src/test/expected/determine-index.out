@@ -1,5 +1,5 @@
-CREATE VIEW so_posts_view_without_score AS SELECT ctid, *, zdb('so_posts', ctid) zdb FROM so_posts;
-CREATE VIEW so_posts_view_with_score AS SELECT ctid, zdb_score('so_posts', ctid), *, zdb('so_posts', ctid) zdb FROM so_posts;
+CREATE VIEW so_posts_view_without_score AS SELECT ctid, *, zdb(so_posts) zdb FROM so_posts;
+CREATE VIEW so_posts_view_with_score AS SELECT ctid, zdb_score('so_posts', ctid), *, zdb(so_posts) zdb FROM so_posts;
 CREATE VIEW so_posts_view_no_zdb AS SELECT * FROM so_posts;
 SELECT zdb_determine_index('so_posts')::regclass;
  zdb_determine_index 

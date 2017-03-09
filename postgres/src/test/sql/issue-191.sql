@@ -3,10 +3,10 @@ CREATE TABLE "Issue191" (
   "BobIsYourUncle" TEXT
 );
 
-CREATE VIEW "Issue191_View" AS SELECT *, zdb('"Issue191"', ctid) FROM "Issue191";
+CREATE VIEW "Issue191_View" AS SELECT *, zdb("Issue191") FROM "Issue191";
 
 CREATE INDEX idx_issue191
-  ON "Issue191" USING zombodb (zdb('"Issue191"', ctid), zdb("Issue191")) WITH (url='http://localhost:9200/');
+  ON "Issue191" USING zombodb (zdb("Issue191"), zdb_to_json("Issue191")) WITH (url='http://localhost:9200/');
 
 INSERT INTO "Issue191" ("BobIsYourUncle") VALUES ('abc');
 INSERT INTO "Issue191" ("BobIsYourUncle") VALUES ('def');

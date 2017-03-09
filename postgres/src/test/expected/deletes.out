@@ -14,7 +14,7 @@ SELECT assert(count(*), 162240, 'deleted 3k records from so_posts') FROM so_post
  t
 (1 row)
 
-SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
+SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
  assert 
 --------
  t
@@ -42,7 +42,7 @@ SELECT assert(count(*), 162240, 'actually deleted 3k records from so_posts') FRO
  t
 (1 row)
 
-SELECT assert(count(*), 162240, 'actually deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
+SELECT assert(count(*), 162240, 'actually deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
  assert 
 --------
  t
@@ -57,7 +57,7 @@ SELECT assert(count(*), 165240, 'restored deleted 3k records to so_posts') FROM 
  t
 (1 row)
 
-SELECT assert(count(*), 165240, 'restored deleted 3k records to so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
+SELECT assert(count(*), 165240, 'restored deleted 3k records to so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
  assert 
 --------
  t
@@ -91,7 +91,7 @@ SELECT assert(count(*), 162240, 'deleted 3k records from so_posts') FROM so_post
  t
 (1 row)
 
-SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
+SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
  assert 
 --------
  t
@@ -104,7 +104,7 @@ SELECT assert(count(*), 165240, 'aborted deleted 3k records to so_posts') FROM s
  t
 (1 row)
 
-SELECT assert(count(*), 165240, 'aborted deleted 3k records to so_posts (id:*)') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'id:*';
+SELECT assert(count(*), 165240, 'aborted deleted 3k records to so_posts (id:*)') FROM so_posts WHERE zdb(so_posts) ==> 'id:*';
  assert 
 --------
  t

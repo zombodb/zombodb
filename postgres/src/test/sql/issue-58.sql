@@ -8,21 +8,21 @@ CREATE TABLE c (
   id SERIAL8 PRIMARY KEY
 );
 
-CREATE INDEX idxc ON c USING zombodb(zdb('c', ctid), zdb(C)) WITH (url='http://localhost:9200/');
-CREATE OR REPLACE FUNCTION public.issue_58_func(table_name REGCLASS, ctid tid)
+CREATE INDEX idxc ON c USING zombodb(zdb(c), zdb_to_json(C)) WITH (url='http://localhost:9200/');
+CREATE OR REPLACE FUNCTION public.issue_58_func(record)
   RETURNS tid
 LANGUAGE C
 IMMUTABLE STRICT
-AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid';
+AS '$libdir/plugins/zombodb', 'zdb_index_key';
 
-CREATE INDEX idxc_shadow ON c USING zombodb(issue_58_func('c', ctid), zdb(C)) WITH (shadow='idxc');
+CREATE INDEX idxc_shadow ON c USING zombodb(issue_58_func(c), zdb_to_json(c)) WITH (shadow='idxc');
 
 CREATE VIEW issue_58_view AS
   SELECT
     a.id                       AS a_id,
     b.id                       AS b_id,
     c.id                       AS c_id,
-    issue_58_func('c', c.ctid) AS zdb
+    issue_58_func(c) AS zdb
   FROM a, b, C;
 
 set enable_seqscan to off;
@@ -34,4 +34,4 @@ DROP VIEW issue_58_view;
 DROP TABLE a;
 DROP TABLE b;
 DROP TABLE c;
-DROP FUNCTION issue_58_func( REGCLASS, tid );
+DROP FUNCTION issue_58_func(record);

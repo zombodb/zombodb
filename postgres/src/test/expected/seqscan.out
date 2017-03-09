@@ -1,15 +1,15 @@
 set enable_indexscan to off;
 set enable_bitmapscan to off;
-explain (costs off) select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by id;
+explain (costs off) select id, title from so_posts where zdb(so_posts) ==> 'beer' order by id;
                              QUERY PLAN                             
 --------------------------------------------------------------------
  Sort
    Sort Key: id
    ->  Seq Scan on so_posts
-         Filter: (zdb('so_posts'::regclass, ctid) ==> 'beer'::text)
+         Filter: (zdb(so_posts) ==> 'beer'::text)
 (4 rows)
 
-select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by id;
+select id, title from so_posts where zdb(so_posts) ==> 'beer' order by id;
    id   |                                                                 title                                                                  
 --------+----------------------------------------------------------------------------------------------------------------------------------------
    2932 | Why is free software good for programmers?
@@ -188,7 +188,7 @@ select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by i
  272560 | Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?
 (174 rows)
 
-explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id;
+explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb(so_posts) ==> 'beer' order by so_posts.id;
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Sort
@@ -198,10 +198,10 @@ explain (costs off) select so_posts.title, so_comments.user_display_name from so
          ->  Seq Scan on so_comments
          ->  Hash
                ->  Seq Scan on so_posts
-                     Filter: (zdb('so_posts'::regclass, ctid) ==> 'beer'::text)
+                     Filter: (zdb(so_posts) ==> 'beer'::text)
 (8 rows)
 
-select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id;
+select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb(so_posts) ==> 'beer' order by so_posts.id;
                                                                  title                                                                  | user_display_name 
 ----------------------------------------------------------------------------------------------------------------------------------------+-------------------
  Why is free software good for programmers?                                                                                             | 
@@ -617,14 +617,14 @@ select so_posts.title, so_comments.user_display_name from so_posts inner join so
  Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?                             | 
 (411 rows)
 
-explain (costs off) select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts', ctid) ==> 'wine';
+explain (costs off) select id from so_posts where zdb(so_posts) ==> 'beer' or zdb(so_posts) ==> 'wine';
                                                       QUERY PLAN                                                      
 ----------------------------------------------------------------------------------------------------------------------
  Seq Scan on so_posts
-   Filter: ((zdb('so_posts'::regclass, ctid) ==> 'beer'::text) OR (zdb('so_posts'::regclass, ctid) ==> 'wine'::text))
+   Filter: ((zdb(so_posts) ==> 'beer'::text) OR (zdb(so_posts) ==> 'wine'::text))
 (2 rows)
 
-select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts', ctid) ==> 'wine' order by id;
+select id from so_posts where zdb(so_posts) ==> 'beer' or zdb(so_posts) ==> 'wine' order by id;
    id   
 --------
    2932
@@ -853,7 +853,7 @@ select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts'
  273349
 (224 rows)
 
-explain (costs off) select id from so_posts where id in (select generate_series(1, 10000)) and zdb('so_posts', ctid) ==> 'java' order by id;
+explain (costs off) select id from so_posts where id in (select generate_series(1, 10000)) and zdb(so_posts) ==> 'java' order by id;
                                 QUERY PLAN                                
 --------------------------------------------------------------------------
  Sort
@@ -861,13 +861,13 @@ explain (costs off) select id from so_posts where id in (select generate_series(
    ->  Hash Join
          Hash Cond: (so_posts.id = (generate_series(1, 10000)))
          ->  Seq Scan on so_posts
-               Filter: (zdb('so_posts'::regclass, ctid) ==> 'java'::text)
+               Filter: (zdb(so_posts) ==> 'java'::text)
          ->  Hash
                ->  HashAggregate
                      ->  Result
 (9 rows)
 
-select id from so_posts where id in (select generate_series(1, 10000)) and zdb('so_posts', ctid) ==> 'java' order by id;
+select id from so_posts where id in (select generate_series(1, 10000)) and zdb(so_posts) ==> 'java' order by id;
   id  
 ------
    16
@@ -1104,7 +1104,7 @@ select id from so_posts where id in (select generate_series(1, 10000)) and zdb('
  9981
 (232 rows)
 
-explain (costs off) select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
+explain (costs off) select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb(so_posts) ==> words.word) x;
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Aggregate
@@ -1120,13 +1120,13 @@ explain (costs off) select count(*) from (with words as (select word from words 
                ->  Seq Scan on so_posts
 (11 rows)
 
-select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
+select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb(so_posts) ==> words.word) x;
  count 
 -------
    575
 (1 row)
 
-explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id;
+explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb(so_posts) ==> 'java' and zdb(so_comments) ==> 'java' order by so_posts.id;
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Sort
@@ -1134,31 +1134,31 @@ explain (costs off) select so_posts.title, so_comments.user_display_name from so
    ->  Hash Join
          Hash Cond: (so_comments.post_id = so_posts.id)
          ->  Seq Scan on so_comments
-               Filter: (zdb('so_comments'::regclass, ctid) ==> 'java'::text)
+               Filter: (zdb(so_comments) ==> 'java'::text)
          ->  Hash
                ->  Seq Scan on so_posts
-                     Filter: (zdb('so_posts'::regclass, ctid) ==> 'java'::text)
+                     Filter: (zdb(so_posts) ==> 'java'::text)
 (9 rows)
 
-select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb(so_posts) ==> 'java' and zdb(so_comments) ==> 'java' order by so_posts.id) x;
  count 
 -------
   5684
 (1 row)
 
-set enable_indexscan to on;  set enable_bitmapscan to off; set enable_seqscan to off; select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+set enable_indexscan to on;  set enable_bitmapscan to off; set enable_seqscan to off; select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb(so_posts) ==> 'java' and zdb(so_comments) ==> 'java' order by so_posts.id) x;
  count 
 -------
   5684
 (1 row)
 
-set enable_indexscan to off; set enable_bitmapscan to on;  set enable_seqscan to off; select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+set enable_indexscan to off; set enable_bitmapscan to on;  set enable_seqscan to off; select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb(so_posts) ==> 'java' and zdb(so_comments) ==> 'java' order by so_posts.id) x;
  count 
 -------
   5684
 (1 row)
 
-set enable_indexscan to off; set enable_bitmapscan to off; set enable_seqscan to on;  select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
+set enable_indexscan to off; set enable_bitmapscan to off; set enable_seqscan to on;  select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb(so_posts) ==> 'java' and zdb(so_comments) ==> 'java' order by so_posts.id) x;
  count 
 -------
   5684

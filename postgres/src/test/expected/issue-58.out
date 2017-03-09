@@ -7,7 +7,7 @@ CREATE TABLE b (
 CREATE TABLE c (
   id SERIAL8 PRIMARY KEY
 );
-CREATE INDEX idxc ON c USING zombodb(zdb('c', ctid), zdb(C)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxc ON c USING zombodb(zdb(c), zdb_to_json(C)) WITH (url='http://localhost:9200/');
 CREATE OR REPLACE FUNCTION public.issue_58_func(table_name REGCLASS, ctid tid)
   RETURNS tid
 LANGUAGE C

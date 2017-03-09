@@ -2,16 +2,16 @@ SET enable_indexscan TO OFF;
 SET enable_bitmapscan TO OFF;
 SET enable_seqscan TO OFF;
 SET enable_indexscan TO ON;
-explain (costs off) select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb('so_posts', ctid) ==> 'beer and title:*' order by zdb_score('so_posts', ctid) desc, id;
+explain (costs off) select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb(so_posts) ==> 'beer and title:*' order by zdb_score('so_posts', ctid) desc, id;
                                      QUERY PLAN                                     
 ------------------------------------------------------------------------------------
  Sort
    Sort Key: (zdb_score_internal('idxso_posts'::regclass, ctid)), id
    ->  Index Scan using idxso_posts on so_posts
-         Index Cond: (zdb('so_posts'::regclass, ctid) ==> 'beer and title:*'::text)
+         Index Cond: (zdb(so_posts) ==> 'beer and title:*'::text)
 (4 rows)
 
-select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb('so_posts', ctid) ==> 'beer and title:*' order by id, zdb_score('so_posts', ctid) desc;
+select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb(so_posts) ==> 'beer and title:*' order by id, zdb_score('so_posts', ctid) desc;
  ?column? |   id   |                                                                 title                                                                  
 ----------+--------+----------------------------------------------------------------------------------------------------------------------------------------
  t        |   2932 | Why is free software good for programmers?
@@ -39,16 +39,16 @@ select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zd
 
 SET enable_indexscan TO OFF;
 SET enable_bitmapscan TO ON;
-explain (costs off) select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb('so_posts', ctid) ==> 'beer and title:*' order by zdb_score('so_posts', ctid) desc, id;
+explain (costs off) select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb(so_posts) ==> 'beer and title:*' order by zdb_score('so_posts', ctid) desc, id;
                                      QUERY PLAN                                     
 ------------------------------------------------------------------------------------
  Sort
    Sort Key: (zdb_score_internal('idxso_posts'::regclass, ctid)), id
    ->  Index Scan using idxso_posts on so_posts
-         Index Cond: (zdb('so_posts'::regclass, ctid) ==> 'beer and title:*'::text)
+         Index Cond: (zdb(so_posts) ==> 'beer and title:*'::text)
 (4 rows)
 
-select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb('so_posts', ctid) ==> 'beer and title:*' order by id, zdb_score('so_posts', ctid) desc;
+select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb(so_posts) ==> 'beer and title:*' order by id, zdb_score('so_posts', ctid) desc;
  ?column? |   id   |                                                                 title                                                                  
 ----------+--------+----------------------------------------------------------------------------------------------------------------------------------------
  t        |   2932 | Why is free software good for programmers?
@@ -76,16 +76,16 @@ select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zd
 
 SET enable_bitmapscan TO OFF;
 SET enable_seqscan TO ON;
-explain (costs off) select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb('so_posts', ctid) ==> 'beer and title:*' order by zdb_score('so_posts', ctid) desc, id;
+explain (costs off) select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb(so_posts) ==> 'beer and title:*' order by zdb_score('so_posts', ctid) desc, id;
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Sort
    Sort Key: (zdb_score_internal('idxso_posts'::regclass, ctid)), id
    ->  Seq Scan on so_posts
-         Filter: (zdb('so_posts'::regclass, ctid) ==> 'beer and title:*'::text)
+         Filter: (zdb(so_posts) ==> 'beer and title:*'::text)
 (4 rows)
 
-select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb('so_posts', ctid) ==> 'beer and title:*' order by id, zdb_score('so_posts', ctid) desc;
+select zdb_score('so_posts', ctid) IS NOT NULL, id, title from so_posts where zdb(so_posts) ==> 'beer and title:*' order by id, zdb_score('so_posts', ctid) desc;
  ?column? |   id   |                                                                 title                                                                  
 ----------+--------+----------------------------------------------------------------------------------------------------------------------------------------
  t        |   2932 | Why is free software good for programmers?

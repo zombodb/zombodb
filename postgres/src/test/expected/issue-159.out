@@ -1,11 +1,11 @@
 set datestyle to 'iso, mdy';
 CREATE TABLE issue159 (pk_id bigint not null primary key, groupid text, has_att char);
-CREATE INDEX idxissue159 ON issue159 USING zombodb (zdb('issue159', ctid), zdb(issue159)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxissue159 ON issue159 USING zombodb (zdb(issue159), zdb_to_json(issue159)) WITH (url='http://localhost:9200/');
 INSERT INTO issue159 VALUES (239558, '0000003158/3492', 'A');
 INSERT INTO issue159 VALUES (239557, '0000003158/3492', 'Y');
 SELECT pk_id, groupid, has_att
 FROM issue159
-WHERE zdb('issue159', ctid) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) )) )'
+WHERE zdb(issue159) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) )) )'
 ORDER BY pk_id;
  pk_id  |     groupid     | has_att 
 --------+-----------------+---------
@@ -15,7 +15,7 @@ ORDER BY pk_id;
 
 SELECT pk_id, groupid, has_att
 FROM issue159
-WHERE zdb('issue159', ctid) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) #filter(has_att = A) )) )'
+WHERE zdb(issue159) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) #filter(has_att = A) )) )'
 ORDER BY pk_id;
  pk_id  |     groupid     | has_att 
 --------+-----------------+---------
@@ -24,7 +24,7 @@ ORDER BY pk_id;
 
 SELECT pk_id, groupid, has_att
 FROM issue159
-WHERE zdb('issue159', ctid) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) #filter(has_att = Y) )) )'
+WHERE zdb(issue159) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) #filter(has_att = Y) )) )'
 ORDER BY pk_id;
  pk_id  |     groupid     | has_att 
 --------+-----------------+---------
@@ -235,7 +235,7 @@ CREATE VIEW issue_159.consolidated_record_view AS
     vol.vol_varchar_2,
     vol.vol_varchar_array_1,
     vol.vol_varchar_array_2,
-    public.zdb('issue_159.data'::regclass, data.ctid) AS zdb
+    public.zdb(data) AS zdb
   FROM ((issue_159.data
     LEFT JOIN issue_159.var ON ((data.pk_data = var.pk_var)))
     LEFT JOIN issue_159.vol ON ((data.pk_data = vol.pk_vol)));
@@ -275,9 +275,9 @@ ALTER TABLE ONLY issue_159.var
   ADD CONSTRAINT idx_issue_159_var_pkey PRIMARY KEY (pk_var);
 ALTER TABLE ONLY issue_159.vol
   ADD CONSTRAINT idx_issue_159_vol_pkey PRIMARY KEY (pk_vol);
-CREATE INDEX es_issue_159_data ON issue_159.data USING zombodb (public.zdb('issue_159.data'::regclass, ctid), public.zdb(data.*)) WITH (url='http://127.0.0.1:9200/', options='pk_data = <var.es_issue_159_var>pk_var,pk_data = <vol.es_issue_159_vol>pk_vol', shards='3', replicas='1');
-CREATE INDEX es_issue_159_var ON issue_159.var USING zombodb (public.zdb('issue_159.var'::regclass, ctid), public.zdb(var.*)) WITH (url='http://127.0.0.1:9200/', shards='3', replicas='1');
-CREATE INDEX es_issue_159_vol ON issue_159.vol USING zombodb (public.zdb('issue_159.vol'::regclass, ctid), public.zdb(vol.*)) WITH (url='http://127.0.0.1:9200/', shards='3', replicas='1');
+CREATE INDEX es_issue_159_data ON issue_159.data USING zombodb (public.zdb(issue_159.data), public.zdb(data.*)) WITH (url='http://127.0.0.1:9200/', options='pk_data = <var.es_issue_159_var>pk_var,pk_data = <vol.es_issue_159_vol>pk_vol', shards='3', replicas='1');
+CREATE INDEX es_issue_159_var ON issue_159.var USING zombodb (public.zdb(issue_159.var), public.zdb(var.*)) WITH (url='http://127.0.0.1:9200/', shards='3', replicas='1');
+CREATE INDEX es_issue_159_vol ON issue_159.vol USING zombodb (public.zdb(issue_159.vol), public.zdb(vol.*)) WITH (url='http://127.0.0.1:9200/', shards='3', replicas='1');
 --correctly returns 1, 2, 3, 5, 9, 10
 SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<data_bigint_expand_group=<this.index>data_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:TRUE)) ) )' ORDER BY pk_data;
  pk_data 

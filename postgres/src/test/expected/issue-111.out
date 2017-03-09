@@ -1,4 +1,4 @@
-SELECT * FROM zdb_highlight('so_posts', 'title_and_tags:"with t*"', 'zdb(''so_posts'', ctid)==>''title_and_tags:"with"'' ORDER BY id LIMIT 10');
+SELECT * FROM zdb_highlight('so_posts', 'title_and_tags:"with t*"', 'zdb('so_posts')==>''title_and_tags:"with"'' ORDER BY id LIMIT 10');
  primaryKey | fieldName | arrayIndex |   term   |    type    | position | startOffset | endOffset |        clause         
 ------------+-----------+------------+----------+------------+----------+-------------+-----------+-----------------------
  1257       | title     |          0 | with     | <ALPHANUM> |        5 |          16 |        20 | title CONTAINS "null"

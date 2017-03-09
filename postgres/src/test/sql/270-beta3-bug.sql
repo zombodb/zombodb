@@ -20,9 +20,9 @@ insert into tas_people_text(fk_ppl, txt_full_text) values (1, 'some text'), (1, 
 
 
 --drop index public.es_tas_people_text;
-CREATE INDEX es_tas_people_text ON public.tas_people_text USING zombodb (zdb('public.tas_people_text', ctid), zdb(tas_people_text.*)) WITH (url='http://127.0.0.1:9200/', shards=4, replicas=1);
+CREATE INDEX es_tas_people_text ON public.tas_people_text USING zombodb (zdb(tas_people_text), zdb_to_json(tas_people_text.*)) WITH (url='http://127.0.0.1:9200/', shards=4, replicas=1);
 --drop index public.es_tas_people;
-CREATE INDEX es_tas_people ON public.tas_people USING zombodb (zdb('public.tas_people', ctid), zdb(tas_people.*)) WITH (url='http://127.0.0.1:9200/', options='pk_ppl = <tas_people_text.es_tas_people_text>fk_ppl', shards=4, replicas=1, always_resolve_joins=true);
+CREATE INDEX es_tas_people ON public.tas_people USING zombodb (zdb(tas_people), zdb_to_json(tas_people.*)) WITH (url='http://127.0.0.1:9200/', options='pk_ppl = <tas_people_text.es_tas_people_text>fk_ppl', shards=4, replicas=1, always_resolve_joins=true);
 
 --DROP VIEW public.tas_people_view;
 CREATE OR REPLACE VIEW public.tas_people_view AS
@@ -30,7 +30,7 @@ CREATE OR REPLACE VIEW public.tas_people_view AS
     ,ppl_fname
     ,ppl_lname
     ,txt_full_text
-    ,zdb('tas_people', tas_people.ctid) as zdb
+    ,zdb(tas_people) as zdb
   from tas_people
     left join tas_people_text on pk_ppl = fk_ppl;
 

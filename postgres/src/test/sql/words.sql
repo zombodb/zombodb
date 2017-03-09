@@ -11,7 +11,7 @@ FROM (SELECT
                     FROM words
                     ORDER BY random()
                     LIMIT 2500) list ON words.word = list.word
-      WHERE zdb('words', list.ctid) ==> ('word:"' || list.word || '"') :: TEXT
+      WHERE zdb(words) ==> ('word:"' || list.word || '"') :: TEXT
       GROUP BY words.word) x;
 
 SELECT zdb_estimate_count('words', '') = (SELECT count(*) FROM words);
