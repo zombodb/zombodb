@@ -331,10 +331,7 @@ Datum zdb_to_json(PG_FUNCTION_ARGS) {
 }
 
 Datum zdb_index_key(PG_FUNCTION_ARGS) {
-    Datum		composite = PG_GETARG_DATUM(0);
-    HeapTupleHeader td;
-
-    td = DatumGetHeapTupleHeader(composite);
+    HeapTupleHeader td = PG_GETARG_HEAPTUPLEHEADER_COPY(0);
 
     PG_RETURN_POINTER(&td->t_ctid);
 }
