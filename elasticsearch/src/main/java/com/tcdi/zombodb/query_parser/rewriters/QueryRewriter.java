@@ -158,12 +158,13 @@ public abstract class QueryRewriter {
         metadataManager = new IndexMetadataManager(client, indexName);
 
         final StringBuilder newQuery = new StringBuilder(input.length());
-
+        final Set<String> usedFields;
         try {
             arrayData = Utils.extractArrayData(input, newQuery);
 
             QueryParser parser = new QueryParser(new StringReader(newQuery.toString()));
             tree = parser.parse(metadataManager, true);
+            usedFields = parser.getUsedFieldnames();
         } catch (ParseException ioe) {
             throw new QueryRewriteException(ioe);
         }
@@ -181,13 +182,18 @@ public abstract class QueryRewriter {
             }
         }
 
-        performOptimizations(client);
+        Set<ASTIndexLink> usedLinks = new HashSet<>();
+        for (String field : usedFields) {
+            usedLinks.add(metadataManager.findField(field));
+        }
 
         if (!metadataManager.getMetadataForMyIndex().alwaysResolveJoins()) {
-            if (!hasJsonAggregate && canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
-                metadataManager.setMyIndex(metadataManager.getUsedIndexes().iterator().next());
+            if (!hasJsonAggregate && canDoSingleIndex && !hasAgg && usedLinks.size() == 1) {
+                metadataManager.setMyIndex(usedLinks.iterator().next());
             }
         }
+
+        performOptimizations(client);
     }
 
     /**
