@@ -42,4 +42,4 @@ PERL_MB_OPT="--install_base \"/root/perl5\""; export PERL_MB_OPT;
 PERL_MM_OPT="INSTALL_BASE=/root/perl5"; export PERL_MM_OPT;
 
 make installcheck
-sudo chown -R $HOST_USER:$HOST_USER regression* results > /dev/null 2>&1
+sudo chown -R $HOST_USER:$HOST_USER regression* results src/test/zdbtaptests/tests/expand-same.sql > /dev/null 2>&1
