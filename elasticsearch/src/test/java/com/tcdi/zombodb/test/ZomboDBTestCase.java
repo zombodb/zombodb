@@ -29,9 +29,7 @@ import org.elasticsearch.node.Node;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -54,7 +52,7 @@ public abstract class ZomboDBTestCase {
     public static void beforeClass() throws Exception {
         node = bootstrapElasticsearch();
 
-        for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users", "db.schema.so_comments.idxso_comments"}) {
+        for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users", "db.schema.so_comments.idxso_comments", "db.schema.main_ft.idxmain_ft", "db.schema.main_vol.idxmain_vol", "db.schema.main_other.idxmain_other", "db.schema.main_other.idxmain"}) {
             createIndex(indexName);
         }
     }
@@ -86,10 +84,17 @@ public abstract class ZomboDBTestCase {
     }
 
     private static void createIndex(String indexName) throws Exception {
-        String settings = resource(ZomboDBTestCase.class, indexName + "-mapping.json");
+        String settings = null;
+
+        try {
+            settings = resource(ZomboDBTestCase.class, indexName + "-mapping.json");
+        } catch (FileNotFoundException ioe) {
+            // ignore it -- lets us create shell indices
+        }
 
         CreateIndexRequestBuilder builder = new CreateIndexRequestBuilder(client().admin().indices(), indexName);
-        builder.setSource(settings);
+        if (settings != null)
+            builder.setSource(settings);
 
         CreateIndexResponse response = client().admin().indices().create(builder.request()).get();
         response.writeTo(new OutputStreamStreamOutput(System.out));
@@ -111,7 +116,10 @@ public abstract class ZomboDBTestCase {
     }
 
     protected static String resource(Class relativeTo, String name) throws Exception {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(relativeTo.getResourceAsStream(name), "UTF-8"))) {
+        InputStream data = relativeTo.getResourceAsStream(name);
+        if (data == null)
+            throw new FileNotFoundException(name);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(data, "UTF-8"))) {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
