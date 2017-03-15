@@ -20,40 +20,31 @@
 
 #include "miscadmin.h"
 #include "access/amapi.h"
-#include "access/heapam_xlog.h"
 #include "access/nbtree.h"
 #include "access/reloptions.h"
 #include "access/relscan.h"
-#include "access/transam.h"
 #include "access/xact.h"
 #include "catalog/dependency.h"
 #include "catalog/index.h"
 #include "catalog/pg_trigger.h"
-#include "commands/defrem.h"
 #include "commands/trigger.h"
 #include "commands/event_trigger.h"
 #include "commands/vacuum.h"
 #include "executor/executor.h"
 #include "executor/spi.h"
-#include "nodes/makefuncs.h"
 #include "nodes/relation.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
-#include "storage/procarray.h"
 #include "tcop/utility.h"
 #include "utils/builtins.h"
-#include "utils/int8.h"
 #include "utils/json.h"
-#include "utils/lsyscache.h"
 #include "utils/memutils.h"
-#include "utils/rel.h"
-#include "utils/snapmgr.h"
-#include "utils/tqual.h"
 
 #include "zdb_interface.h"
 #include "zdbops.h"
 #include "zdbam.h"
 #include "zdbseqscan.h"
+#include "zdbscan.h"
 
 
 PG_FUNCTION_INFO_V1(zdbamhandler);
@@ -332,6 +323,7 @@ void zdbam_init(void) {
         elog(ERROR, "zdbam_init:  Unable to initialize ZomboDB.  ExecutorEndHook already assigned");
 
     zdb_index_init();
+    zdb_initialize_custom_scan();
 
     prev_ExecutorStartHook = ExecutorStart_hook;
     prev_ExecutorEndHook   = ExecutorEnd_hook;
