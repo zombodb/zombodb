@@ -5076,5 +5076,25 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertDifferentJson("exact_field:[a,b,c]", "exact_field:[['a','b','c']]");
         assertDifferentJson("exact_field:[1,2,3,4,5]", "exact_field:[['1','2','3','4','5']]");
     }
+
+    @Test
+    public void testIssue195() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+        DocumentHighlighter highlighter;
+        List<AnalyzedField.Token> highlights;
+
+        data.put("exact_field", "the birds and the bees");
+        highlighter = new DocumentHighlighter(client(),
+                DEFAULT_INDEX_NAME,
+                "id",
+                data,
+                "exact_field:'the bees the birds'");
+        highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
+
+        assertEquals("[]",
+                new ObjectMapper().writeValueAsString(highlights));
+    }
 }
 
