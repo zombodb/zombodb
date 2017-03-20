@@ -60,7 +60,6 @@ public class IndexLinkOptimizer {
 
         ASTAggregate agg = tree.getAggregate();
         while (agg != null) {
-            metadataManager.addUsedIndex(metadataManager.findField(agg.getFieldname()));
             agg = agg.getSubAggregate();
         }
     }
@@ -68,16 +67,7 @@ public class IndexLinkOptimizer {
 
     private void assignIndexLinks(QueryParserNode root) {
         if (root == null || root.getChildren() == null || root.getChildren().isEmpty() || (root instanceof ASTExpansion && !((ASTExpansion) root).isGenerated())) {
-            if (root instanceof ASTExpansion)
-                metadataManager.addUsedIndex(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()));
             return;
-        }
-
-        if (root instanceof ASTExpansion && ((ASTExpansion) root).isGenerated()) {
-            ASTIndexLink left = metadataManager.findField(root.getIndexLink().getLeftFieldname());
-            ASTIndexLink right = metadataManager.findField(root.getIndexLink().getRightFieldname());
-            metadataManager.addUsedIndex(left);
-            metadataManager.addUsedIndex(right);
         }
 
         for (int i = 0, many = root.getChildren().size(); i < many; i++) {
@@ -97,8 +87,6 @@ public class IndexLinkOptimizer {
                     link = metadataManager.findField(fieldname);
                     child.setIndexLink(link);
                 }
-
-                metadataManager.addUsedIndex(link);
             }
 
             if (!(child instanceof ASTArray))
