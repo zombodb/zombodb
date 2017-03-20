@@ -42,7 +42,6 @@ public class IndexMetadataManager {
     private final List<IndexLinkAndMapping> mappings = new ArrayList<>();
     private final Map<String, ASTIndexLink> indexLinksByIndexName = new HashMap<>();
     private List<FieldAndIndexPair> allFields;
-    private Set<ASTIndexLink> usedIndexes = new HashSet<>();
     private final IndexRelationshipManager relationshipManager = new IndexRelationshipManager();
     private Map<ASTIndexLink, IndexMetadata> metadataCache = new HashMap<>();
 
@@ -67,14 +66,6 @@ public class IndexMetadataManager {
         // resolved starting with me
         mappings.remove(newMe);
         mappings.add(0, newMe);
-    }
-
-    public Set<ASTIndexLink> getUsedIndexes() {
-        return usedIndexes;
-    }
-
-    public void addUsedIndex(ASTIndexLink link) {
-        usedIndexes.add(link);
     }
 
     private boolean isNestedObjectFieldExternal(String fieldname) {
