@@ -75,8 +75,8 @@ static List *extract_zdb_clauses(Expr *expr, List *clauses) {
         OpExpr *op = (OpExpr *) expr;
 
         if (op->opno == zdb_operator_oid) {
-            clauses = lappend(clauses, op);
-            elog(NOTICE, "HERE");
+            clauses = lappend(clauses, copyObject(op));
+            elog(NOTICE, "HERE: %s", nodeToString(op));
         }
     } else if (IsA(expr, BoolExpr)) {
         BoolExpr *be = (BoolExpr *) expr;
@@ -99,10 +99,15 @@ static void zdb_custom_scan(PlannerInfo *root, RelOptInfo *rel, Index rti, Range
         prevPathlistHook(root, rel, rti, rte);
 
     if (zdb_operator_oid == InvalidOid) {
-        zdb_operator_oid = OpernameGetOprid(list_make1(makeString("==>")), JSONOID, TEXTOID);
-        if (zdb_operator_oid == InvalidOid)
-            elog(ERROR, "Unable to find ZomboDB operator ==>(json, text).  Is it on the search_path?");
+        zdb_operator_oid = OpernameGetOprid(list_make1(makeString("==>")), TIDOID, TEXTOID);
+        if (zdb_operator_oid == InvalidOid) {
+            return;  /* can't do anything because our operator doesn't exist */
+        }
     }
+
+    elog(NOTICE, "before: %s", nodeToString(rel));
+    RelOptInfo *relopt = make_one_rel(root, NIL);
+    elog(NOTICE, "after:  %s", relopt);
 
     foreach (lc, rel->baserestrictinfo) {
         Node *n = (Node *) lfirst(lc);
@@ -117,6 +122,7 @@ static void zdb_custom_scan(PlannerInfo *root, RelOptInfo *rel, Index rti, Range
     if (clauses != NIL) {
         CustomPath *cpath;
 
+        elog(NOTICE, "clauses: %s", nodeToString(clauses));
         cpath = makeNode(CustomPath);
         cpath->path.type       = T_CustomPath;
         cpath->path.pathtype   = T_CustomScan;
