@@ -158,7 +158,7 @@ Symbol | Description
 The list of keywords is very short: `with`, `and`, `or`, `not`, and `null`.  To use one of these as a search term, simply quote it.
 
 
-## Value Lists ([] and [[]])
+## Value Lists (`[]` and `[[]]`)
 
 ZomboDB supports searching for lists of values using an array-like syntax.  For example:
 
