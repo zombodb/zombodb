@@ -5096,5 +5096,35 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertEquals("[]",
                 new ObjectMapper().writeValueAsString(highlights));
     }
+
+    @Test
+    public void testIssue201() throws Exception {
+        assertAST("exact_field:(this and and that)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=that, index=db.schema.table.index)"
+        );
+        assertAST("exact_field:(this or or that)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=that, index=db.schema.table.index)"
+        );
+        assertAST("exact_field:(this not not that)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "         Not\n" +
+                        "            Not\n" +
+                        "               Word (fieldname=exact_field, operator=CONTAINS, value=that, index=db.schema.table.index)"
+        );
+    }
 }
 
