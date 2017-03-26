@@ -360,7 +360,7 @@ void Expression() : {}
 void OrExpression(): {}
 {
     (
-        AndExpression()  (LOOKAHEAD(2)  (<OR>|",") AndExpression() )*
+        AndExpression()  (LOOKAHEAD(2)  (<OR>|",")+ AndExpression() )*
     ) #Or(>1)
 }
 
@@ -368,7 +368,7 @@ void AndExpression() : {}
 {
     (
         /* optional <AND> makes it the default operator between words */
-        WithExpression() (LOOKAHEAD(2)  [<AND>|"&"] WithExpression() )*
+        WithExpression() (LOOKAHEAD(2)  (<AND>|"&")* WithExpression() )*
     ) #And(>1)
 }
 
@@ -376,7 +376,7 @@ void WithExpression() : {}
 {
     (
         /* optional <AND> makes it the default operator between words */
-        ProximityExpression() (LOOKAHEAD(2)  (<WITH>|"%") ProximityExpression() )*
+        ProximityExpression() (LOOKAHEAD(2)  (<WITH>|"%")+ ProximityExpression() )*
     ) #With(>1)
 }
 
