@@ -30,8 +30,8 @@ script:
   - git clone https://github.com/theory/pgtap.git
   - cd pgtap && make && sudo make install && cd ..
   - mvn clean install
-  - tar xzf postgres/src/main/docker/pg9.5/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
-  - cd curl-7.43.0
+  - tar xzf postgres/src/main/docker/pg9.5/zombodb-build-ubuntu_precise/curl-7.53.1.tar.gz
+  - cd curl-7.53.1
   - ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
   - make -j2 && sudo make install
   - sudo ldconfig && sudo ldconfig

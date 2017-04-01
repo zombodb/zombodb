@@ -11,10 +11,10 @@ RUN apt-get update -y --fix-missing
 RUN apt-get install -y --force-yes postgresql-server-dev-9.4
 RUN apt-get install -y gcc make build-essential libz-dev zlib1g-dev strace
 
-COPY curl-7.43.0.tar.gz /usr/local/src/
+COPY curl-7.53.1.tar.gz /usr/local/src/
 WORKDIR /usr/local/src/
-RUN tar xzf curl-7.43.0.tar.gz
-WORKDIR /usr/local/src/curl-7.43.0/
+RUN tar xzf curl-7.53.1.tar.gz
+WORKDIR /usr/local/src/curl-7.53.1/
 RUN ./configure --without-ssl \
    --disable-threaded-resolver \
    --disable-dict \
