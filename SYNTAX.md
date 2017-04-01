@@ -139,19 +139,18 @@ Combined with a field name, these operators allow more sophsicated searching opt
 
 Symbol | Description 
 ---    | ---      
-:      | field contains term
-=      | field contains term (same as : )
-<      | field contains terms less than value 
-<=     | field contains terms less than or equal to value
->      | field contains terms greater than value
->=     | field contains terms greater than or equal to value
-!=     | field does not contain term
-<>     | field does not contain term (same as != )
-/to/   | range query, in form of field:START /to/ END
-:~     | field contains terms matching a [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax).  Note that regular expression searches are always **case sensitive**.
-:@     | ["more like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html)
-:@~    | ["fuzzy like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-field-query.html)
-
+`:`      | field contains term
+`=`      | field contains term (same as : )
+`<`      | field contains terms less than value 
+`<=`     | field contains terms less than or equal to value
+`>`      | field contains terms greater than value
+`>=`     | field contains terms greater than or equal to value
+`!=`     | field does not contain term
+`<>`     | field does not contain term (same as != )
+`/to/`   | range query, in form of field:START /to/ END
+`:~`     | field contains terms matching a [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax).  Note that regular expression searches are always **case sensitive**.
+`:@`     | ["more like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html)
+`:@~`    | ["fuzzy like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-field-query.html)
 
 
 ### Keywords
@@ -159,7 +158,7 @@ Symbol | Description
 The list of keywords is very short: `with`, `and`, `or`, `not`, and `null`.  To use one of these as a search term, simply quote it.
 
 
-## Value Lists ([] and [[]])
+## Value Lists (`[]` and `[[]]`)
 
 ZomboDB supports searching for lists of values using an array-like syntax.  For example:
 
@@ -182,11 +181,12 @@ In either case, the only supported operators are equals and not equals, ie:
 
 There are three types of wildcards.  
 
+
 Symbol | Description
 ---    | ---
-?      | any character
-*      | zero or more characters
-~      | post-fix only ["fuzzy"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-fuzzy-query.html) match with default fuzz of 3
+`?`      | any character
+`*`      | zero or more characters
+`~`      | post-fix only ["fuzzy"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-fuzzy-query.html) match with default fuzz of 3
 
 The ```?``` and ```*``` wildcards can be applied anywhere within a term.  Left, middle, and right truncation is supported.  The ```~``` wildcard is post-fix only and its fuzziness factor can be adjusted.
 

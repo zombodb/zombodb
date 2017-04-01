@@ -71,12 +71,12 @@ RUN dpkg -i elasticsearch-2.4.4.deb
 RUN apt-get install -y -qq postgresql-9.5 postgresql-server-dev-9.5
 
 # custom libcurl req'd by ZomboDB to statically link against
-COPY config/curl-7.43.0.tar.gz /tmp/
-RUN cd /tmp/ && tar xzf /tmp/curl-7.43.0.tar.gz
-RUN cd /tmp/curl-7.43.0 && ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
-RUN cd /tmp/curl-7.43.0 && make -j2 && make install
+COPY config/curl-7.53.1.tar.gz /tmp/
+RUN cd /tmp/ && tar xzf /tmp/curl-7.53.1.tar.gz
+RUN cd /tmp/curl-7.53.1 && ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
+RUN cd /tmp/curl-7.53.1 && make -j2 && make install
 RUN ldconfig && ldconfig
-RUN rm -rf /tmp/curl-7.43.0*
+RUN rm -rf /tmp/curl-7.53.1*
 
 # bootstrap maven repo
 COPY config/maven-repo.tgz /tmp/

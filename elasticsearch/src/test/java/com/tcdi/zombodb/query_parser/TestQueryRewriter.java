@@ -5138,4 +5138,54 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertSameJson("exact_field:[a,b,c]", "exact_field:[['a','b','c']]");
         assertSameJson("exact_field:[1,2,3,4,5]", "exact_field:[['1','2','3','4','5']]");
     }
+
+    @Test
+    public void testIssue195() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+        DocumentHighlighter highlighter;
+        List<AnalyzedField.Token> highlights;
+
+        data.put("exact_field", "the birds and the bees");
+        highlighter = new DocumentHighlighter(client(),
+                DEFAULT_INDEX_NAME,
+                "id",
+                data,
+                "exact_field:'the bees the birds'");
+        highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
+
+        assertEquals("[]",
+                new ObjectMapper().writeValueAsString(highlights));
+    }
+
+    @Test
+    public void testIssue201() throws Exception {
+        assertAST("exact_field:(this and and that)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=that, index=db.schema.table.index)"
+        );
+        assertAST("exact_field:(this or or that)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=that, index=db.schema.table.index)"
+        );
+        assertAST("exact_field:(this not not that)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      And\n" +
+                        "         Word (fieldname=exact_field, operator=CONTAINS, value=this, index=db.schema.table.index)\n" +
+                        "         Not\n" +
+                        "            Not\n" +
+                        "               Word (fieldname=exact_field, operator=CONTAINS, value=that, index=db.schema.table.index)"
+        );
+    }
 }
