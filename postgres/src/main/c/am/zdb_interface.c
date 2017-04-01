@@ -39,7 +39,7 @@ relopt_kind RELOPT_KIND_ZDB;
 bool        zdb_batch_mode_guc;
 bool        zdb_ignore_visibility_guc;
 
-int zdbloglevel;
+int ZDB_LOG_LEVEL;
 static const struct config_enum_entry zdb_log_level_options[] = {
         {"debug", DEBUG2, true},
         {"debug5", DEBUG5, false},
@@ -146,7 +146,7 @@ void zdb_index_init(void) {
 
     DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
-    DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &zdbloglevel, DEBUG1, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
+    DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &ZDB_LOG_LEVEL, DEBUG1, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
