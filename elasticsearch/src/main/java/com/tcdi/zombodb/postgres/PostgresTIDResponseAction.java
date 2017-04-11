@@ -72,11 +72,13 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         byte[] data;
         int many;
         double ttl;
+        double sort;
 
-        private BinaryTIDResponse(byte[] data, int many, double ttl) {
+        private BinaryTIDResponse(byte[] data, int many, double ttl, double sort) {
             this.data = data;
             this.many = many;
             this.ttl = ttl;
+            this.sort = sort;
         }
     }
 
@@ -99,7 +101,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         QueryAndIndexPair query;
         int many = -1;
         long parseStart = 0, parseEnd = 0;
-        double buildTime = 0, searchTime = 0;
+        double buildTime = 0, searchTime = 0, sortTime = 0;
 
         try {
             parseStart = System.nanoTime();
@@ -129,6 +131,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             tids = buildBinaryResponse(client, response);
             many = tids.many;
             buildTime = tids.ttl;
+            sortTime = tids.sort;
 
             channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
         } catch (Throwable e) {
@@ -136,7 +139,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             throw e;
         } finally {
             long totalEnd = System.nanoTime();
-            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s)");
+            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s, sort=" + sortTime + ")");
         }
     }
 
@@ -241,10 +244,12 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         }
 
         Utils.encodeFloat(maxscore, results, maxscore_offset);
-
-        new TidArrayQuickSort().quickSort(results, first_byte, 0, many-1);
-
         long end = System.currentTimeMillis();
-        return new BinaryTIDResponse(results, many, (end - start) / 1000D);
+
+        long sortStart = System.currentTimeMillis();
+        new TidArrayQuickSort().quickSort(results, first_byte, 0, many-1);
+        long sortEnd = System.currentTimeMillis();
+
+        return new BinaryTIDResponse(results, many, (end - start) / 1000D, (sortEnd - sortStart)/1000D);
     }
 }
