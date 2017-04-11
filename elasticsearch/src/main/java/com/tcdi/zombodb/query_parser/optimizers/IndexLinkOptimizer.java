@@ -250,6 +250,13 @@ public class IndexLinkOptimizer {
                         container = new ASTOr(QueryParserTreeConstants.JJTOR);
                     else if (root instanceof ASTNot)
                         container = new ASTAnd(QueryParserTreeConstants.JJTAND);
+                    else if (root instanceof ASTArray) {
+                        container = new ASTArray(QueryParserTreeConstants.JJTARRAY);
+                        container.setFieldname(root.getFieldname());
+                        container.setBoost(root.getBoost());
+                        container.setIndexLink(root.getIndexLink());
+                        ((ASTArray) container).setAnd(((ASTArray) root).isAnd());
+                    }
                     else
                         throw new RuntimeException("Don't know about parent container type: " + root.getClass());
 

@@ -5126,5 +5126,57 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "               Word (fieldname=exact_field, operator=CONTAINS, value=that, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testIssue175_OR() throws Exception {
+        assertAST("#options(user_data:(owner_user_id=<so_users.idxso_users>id), comment_data:(id=<so_comments.idxso_comments>post_id)) " +
+                        "a OR b",
+                "QueryTree\n" +
+                        "   Options\n" +
+                        "      user_data:(owner_user_id=<db.schema.so_users.idxso_users>id)\n" +
+                        "         LeftField (value=owner_user_id)\n" +
+                        "         IndexName (value=db.schema.so_users.idxso_users)\n" +
+                        "         RightField (value=id)\n" +
+                        "      comment_data:(id=<db.schema.so_comments.idxso_comments>post_id)\n" +
+                        "         LeftField (value=id)\n" +
+                        "         IndexName (value=db.schema.so_comments.idxso_comments)\n" +
+                        "         RightField (value=post_id)\n" +
+                        "   Or\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=fulltext_field, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
+                        "      Or\n" +
+                        "         Expansion\n" +
+                        "            user_data:(owner_user_id=<db.schema.so_users.idxso_users>id)\n" +
+                        "               LeftField (value=owner_user_id)\n" +
+                        "               IndexName (value=db.schema.so_users.idxso_users)\n" +
+                        "               RightField (value=id)\n" +
+                        "            Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.so_users.idxso_users)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=b, index=db.schema.so_users.idxso_users)\n" +
+                        "         Expansion\n" +
+                        "            comment_data:(id=<db.schema.so_comments.idxso_comments>post_id)\n" +
+                        "               LeftField (value=id)\n" +
+                        "               IndexName (value=db.schema.so_comments.idxso_comments)\n" +
+                        "               RightField (value=post_id)\n" +
+                        "            Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.so_comments.idxso_comments)\n" +
+                        "               Word (fieldname=_all, operator=CONTAINS, value=b, index=db.schema.so_comments.idxso_comments)\n" +
+                        "         Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
+                        "            Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=_all, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
+                        "      Expansion\n" +
+                        "         user_data:(owner_user_id=<db.schema.so_users.idxso_users>id)\n" +
+                        "            LeftField (value=owner_user_id)\n" +
+                        "            IndexName (value=db.schema.so_users.idxso_users)\n" +
+                        "            RightField (value=id)\n" +
+                        "         Array (fieldname=body, operator=CONTAINS, index=db.schema.so_users.idxso_users) (OR)\n" +
+                        "            Word (fieldname=body, operator=CONTAINS, value=a, index=db.schema.so_users.idxso_users)\n" +
+                        "            Word (fieldname=body, operator=CONTAINS, value=b, index=db.schema.so_users.idxso_users)"
+        );
+    }
+
 }
 
