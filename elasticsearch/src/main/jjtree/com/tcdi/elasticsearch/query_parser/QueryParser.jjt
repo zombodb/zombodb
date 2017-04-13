@@ -81,16 +81,6 @@ public class QueryParser {
     public ASTQueryTree parse(IndexMetadataManager metadataManager, boolean optimize) throws ParseException {
         ASTQueryTree tree = parse0();
 
-        Collection<ASTLimit> limits = tree.getChildrenOfType(ASTLimit.class);
-        int i=0;
-        for (ASTLimit limit : limits) {
-            ((QueryParserNode) limit.parent).removeNode(limit);
-            ((QueryParserNode) limit.parent).renumber();
-
-            if (i++ == 0)
-                tree.jjtAddChild(limit, tree.jjtGetNumChildren());
-        }
-
         metadataManager.loadReferencedMappings(tree.getOptions());
 
         if (optimize)
