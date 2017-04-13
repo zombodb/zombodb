@@ -16,6 +16,7 @@
  */
 package com.tcdi.zombodb.postgres;
 
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -47,24 +48,29 @@ public class PostgresCountAction extends BaseRestHandler {
             QueryAndIndexPair query;
 
             query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true);
-            SearchRequestBuilder builder = new SearchRequestBuilder(client);
-            builder.setIndices(query.getIndexName());
-            builder.setTypes("data");
-            builder.setSize(0);
-            builder.setSearchType(SearchType.COUNT);
-            builder.setPreference(request.param("preference"));
-            builder.setQueryCache(false);
-            builder.setFetchSource(false);
-            builder.setTrackScores(false);
-            builder.setNoFields();
-            builder.setQuery(query.getQueryBuilder());
 
-            SearchResponse searchResponse = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).get();
+            if (query.hasLimit() && isSelectivityQuery) {
+                count = query.getLimit().getLimit();
+            } else {
+                SearchRequestBuilder builder = new SearchRequestBuilder(client);
+                builder.setIndices(query.getIndexName());
+                builder.setTypes("data");
+                builder.setSize(0);
+                builder.setSearchType(SearchType.COUNT);
+                builder.setPreference(request.param("preference"));
+                builder.setQueryCache(false);
+                builder.setFetchSource(false);
+                builder.setTrackScores(false);
+                builder.setNoFields();
+                builder.setQuery(query.getQueryBuilder());
 
-            if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
-                throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
+                SearchResponse searchResponse = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).get();
 
-            count = searchResponse.getHits().getTotalHits();
+                if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
+                    throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
+
+                count = searchResponse.getHits().getTotalHits();
+            }
 
             // and return that number as a string
             response = new BytesRestResponse(RestStatus.OK, String.valueOf(count));

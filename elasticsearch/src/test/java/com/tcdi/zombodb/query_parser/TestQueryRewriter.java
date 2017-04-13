@@ -5178,5 +5178,57 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testLimit() throws Exception {
+        assertAST("#limit(exact_field desc, 12, 42)",
+                "QueryTree\n" +
+                        "   Limit (index=db.schema.table.index)\n" +
+                        "      LimitFieldname (value=exact_field, index=db.schema.table.index)\n" +
+                        "      SortDirection (value=desc, index=db.schema.table.index)\n" +
+                        "      Number (value=12, index=db.schema.table.index)\n" +
+                        "      Number (value=42, index=db.schema.table.index)"
+        );
+
+        assertAST("(#limit(exact_field desc, 12, 42) a or b)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Or\n" +
+                        "         Word (fieldname=fulltext_field, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=_all, operator=CONTAINS, value=b, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=fulltext_field, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=_all, operator=CONTAINS, value=a, index=db.schema.table.index)\n" +
+                        "   Limit (index=db.schema.table.index)\n" +
+                        "      LimitFieldname (value=exact_field, index=db.schema.table.index)\n" +
+                        "      SortDirection (value=desc, index=db.schema.table.index)\n" +
+                        "      Number (value=12, index=db.schema.table.index)\n" +
+                        "      Number (value=42, index=db.schema.table.index)"
+        );
+
+        assertJson("(#limit(exact_fied desc, 12, 42) a or b)",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"should\" : [ {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"fulltext_field\" : \"b\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"_all\" : \"b\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"fulltext_field\" : \"a\"\n" +
+                        "      }\n" +
+                        "    }, {\n" +
+                        "      \"term\" : {\n" +
+                        "        \"_all\" : \"a\"\n" +
+                        "      }\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
 }
 
