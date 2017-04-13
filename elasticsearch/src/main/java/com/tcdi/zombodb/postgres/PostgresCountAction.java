@@ -16,7 +16,6 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -71,7 +70,7 @@ public class PostgresCountAction extends BaseRestHandler {
             response = new BytesRestResponse(RestStatus.OK, String.valueOf(count));
             channel.sendResponse(response);
         } catch (Throwable e) {
-//            if (logger.isDebugEnabled())
+            if (logger.isDebugEnabled())
                 logger.error("Error estimating records", e);
             throw new RuntimeException(e);
         } finally {
