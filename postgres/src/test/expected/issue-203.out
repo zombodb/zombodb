@@ -1,0 +1,30 @@
+select id, title from so_posts where zdb('so_posts', ctid) ==> '#limit(id asc, 0, 10) java and title:*' order by 1 asc;
+  id  |                                   title                                    
+------+----------------------------------------------------------------------------
+   16 | Do dynamic typed languages deserve all the criticism?
+  262 | Will Java still be relevant in 5 years?
+  368 | Why do people still say Java is slow?
+  370 | How old is "too old"?
+  663 | What should be the ideal computer science and engineering course topics?
+  667 | Writing a style guide, what are the best examples for breaking long lines?
+  812 | Measure of power other than Turing completeness
+ 1189 | What should I do to be language-agnostic?
+ 1257 | How do you deal with teachers teaching the wrong stuff?
+ 1674 | Suggestions for Programs to develop for learning
+(10 rows)
+
+select id, title from so_posts where zdb('so_posts', ctid) ==> '#limit(_score desc, 0, 10) beer and title:*' order by zdb_score('so_posts', ctid) desc;
+   id   |                                                                 title                                                                  
+--------+----------------------------------------------------------------------------------------------------------------------------------------
+  61392 | free as in free beer
+ 215682 | How to draw a class diagram where a class contains either 6 other classes or mupltie different
+   2932 | Why is free software good for programmers?
+  32956 | What are the common revenue models for free-software companies?
+ 121798 | What is the economic rationale for focusing on free, open source projects?
+ 213942 | If I try to monetize free software, what could possibly prevent someone from forking that software and creating a proprietary version?
+ 181140 | Am I allowed to create closed-source software with open-source code?
+ 187269 | Can I use the patented Octree algorithm in a public programming challenge?
+ 103203 | Rails data model - best practices question
+  36441 | Hobbyist programmer releasing software with a donate button
+(10 rows)
+
