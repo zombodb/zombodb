@@ -16,6 +16,7 @@
  */
 package com.tcdi.zombodb.postgres;
 
+import com.tcdi.zombodb.query_parser.ASTLimit;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.ActionFuture;
@@ -30,6 +31,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.sort.SortOrder;
 
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -111,15 +113,23 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             builder.setIndices(query.getIndexName());
             builder.setTypes("data");
-            builder.setSize(32768);
             builder.setScroll(TimeValue.timeValueMinutes(10));
-            builder.setSearchType(SearchType.SCAN);
             builder.setPreference(request.param("preference"));
             builder.setTrackScores(true);
             builder.setQueryCache(true);
             builder.setFetchSource(false);
             builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
+
+            if (query.hasLimit()) {
+                builder.setSearchType(SearchType.DEFAULT);
+                builder.addSort(query.getLimit().getFieldname(), "asc".equals(query.getLimit().getSortDirection()) ? SortOrder.ASC : SortOrder.DESC);
+                builder.setFrom(query.getLimit().getOffset());
+                builder.setSize(query.getLimit().getLimit());
+            } else {
+                builder.setSearchType(SearchType.SCAN);
+                builder.setSize(32768);
+            }
 
             long searchStart = System.currentTimeMillis();
             response = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).get();
@@ -128,7 +138,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             if (response.getTotalShards() != response.getSuccessfulShards())
                 throw new Exception(response.getTotalShards() - response.getSuccessfulShards() + " shards failed");
 
-            tids = buildBinaryResponse(client, response);
+            tids = buildBinaryResponse(client, response, query.hasLimit());
             many = tids.many;
             buildTime = tids.ttl;
             sortTime = tids.sort;
@@ -149,16 +159,19 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         try {
             QueryBuilder query;
+            ASTLimit limit;
 
             if (queryString != null && queryString.trim().length() > 0) {
                 QueryRewriter qr = QueryRewriter.Factory.create(client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex);
                 query = qr.rewriteQuery();
                 indexName = qr.getSearchIndexName();
+                limit = qr.getLimit();
             } else {
                 query = matchAllQuery();
+                limit = null;
             }
 
-            return new QueryAndIndexPair(query, indexName);
+            return new QueryAndIndexPair(query, indexName, limit);
         } catch (Exception e) {
             throw new RuntimeException(queryString, e);
         }
@@ -168,8 +181,8 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
      * All values are encoded in little-endian so that they can be directly
      * copied into memory on x86
      */
-    private BinaryTIDResponse buildBinaryResponse(Client client, SearchResponse searchResponse) throws Exception {
-        int many = (int) searchResponse.getHits().getTotalHits();
+    private BinaryTIDResponse buildBinaryResponse(Client client, SearchResponse searchResponse, boolean hasLimit) throws Exception {
+        int many = hasLimit ? searchResponse.getHits().getHits().length : (int) searchResponse.getHits().getTotalHits();
 
         long start = System.currentTimeMillis();
         byte[] results = new byte[1 + 8 + 4 + (many * 10)];    // NULL + totalhits + maxscore + (many * (sizeof(int4)+sizeof(int2)+sizeof(float4)))
@@ -186,20 +199,29 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         first_byte = offset;
 
         // kick off the first scroll request
-        ActionFuture<SearchResponse> future = client.searchScroll(new SearchScrollRequestBuilder(client)
-                .setScrollId(searchResponse.getScrollId())
-                .setScroll(TimeValue.timeValueMinutes(10))
-                .request()
-        );
+        ActionFuture<SearchResponse> future;
+
+        if (hasLimit)
+            future = null;
+        else
+            future = client.searchScroll(new SearchScrollRequestBuilder(client)
+                    .setScrollId(searchResponse.getScrollId())
+                    .setScroll(TimeValue.timeValueMinutes(10))
+                    .request()
+            );
+
         int cnt = 0;
         while (cnt < many) {
-            searchResponse = future.get();
+            if (future != null)
+                searchResponse = future.get();
 
             if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
                 throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
 
-            if (searchResponse.getHits().getHits().length == 0) {
-                throw new Exception("Underflow in buildBinaryResponse:  Expected " + many + ", got " + cnt);
+            if (future != null) {
+                if (searchResponse.getHits().getHits().length == 0) {
+                    throw new Exception("Underflow in buildBinaryResponse:  Expected " + many + ", got " + cnt);
+                }
             }
 
             if (cnt + searchResponse.getHits().getHits().length < many) {

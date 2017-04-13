@@ -96,7 +96,7 @@ public class IndexLinkOptimizer {
 
     private void injectASTExpansionNodes(ASTQueryTree tree) {
         for (QueryParserNode child : tree) {
-            if (child instanceof ASTOptions || child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
+            if (child instanceof ASTOptions || child instanceof ASTLimit || child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
                 continue;
             injectASTExpansionNodes(child);
         }

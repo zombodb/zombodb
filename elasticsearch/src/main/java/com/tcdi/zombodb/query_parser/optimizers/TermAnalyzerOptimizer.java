@@ -43,7 +43,7 @@ public class TermAnalyzerOptimizer {
     private boolean analyzeNodes(QueryParserNode root) {
         boolean changed = false;
 
-        if (root == null || root instanceof ASTOptions || root instanceof ASTFieldLists || root instanceof ASTAggregate)
+        if (root == null || root instanceof ASTOptions || root instanceof ASTLimit || root instanceof ASTFieldLists || root instanceof ASTAggregate)
             return false;
 
         if (root.isStringValue() && (root instanceof ASTWord || root instanceof ASTPhrase || root instanceof ASTFuzzy || root instanceof ASTPrefix || root instanceof ASTWildcard))
