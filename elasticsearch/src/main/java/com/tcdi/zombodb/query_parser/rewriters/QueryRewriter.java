@@ -214,6 +214,10 @@ public abstract class QueryRewriter {
         return metadataManager.describedNestedObject(fieldname);
     }
 
+    public ASTLimit getLimit() {
+        return tree.getLimit();
+    }
+
     public QueryBuilder rewriteQuery() {
         QueryBuilder qb = build(tree);
         queryRewritten = true;

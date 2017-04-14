@@ -15,15 +15,18 @@
  */
 package com.tcdi.zombodb.postgres;
 
+import com.tcdi.zombodb.query_parser.ASTLimit;
 import org.elasticsearch.index.query.QueryBuilder;
 
 class QueryAndIndexPair {
     private final QueryBuilder query;
     private final String indexName;
+    private final ASTLimit limit;
 
-    public QueryAndIndexPair(QueryBuilder query, String indexName) {
+    public QueryAndIndexPair(QueryBuilder query, String indexName, ASTLimit limit) {
         this.query = query;
         this.indexName = indexName;
+        this.limit = limit;
     }
 
     public QueryBuilder getQueryBuilder() {
@@ -32,5 +35,13 @@ class QueryAndIndexPair {
 
     public String getIndexName() {
         return indexName;
+    }
+
+    public boolean hasLimit() {
+        return limit != null;
+    }
+
+    public ASTLimit getLimit() {
+        return limit;
     }
 }

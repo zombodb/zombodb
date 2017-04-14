@@ -144,6 +144,7 @@ PARSER_END(QueryParser)
   | <EXTENDED_STATS: "#extended_stats" >
   | <SUGGEST: "#suggest" >
   | <OPTIONS: "#options" >
+  | <LIMIT: "#limit" >
   | <FIELDLISTS: "#field_lists" >
   | <EXPAND: "#expand" >
   | <FILTER: "#filter" >
@@ -288,6 +289,36 @@ void Options() : {}
     ) #Options
 }
 
+void Limit() : {}
+{
+    (
+        <LIMIT> "(" (LimitFieldname()) SortDirection() "," Number() "," Number() ")"
+    ) #Limit
+}
+
+void LimitFieldname() #LimitFieldname :
+{
+    String fieldname;
+}
+{
+    fieldname = Fieldname()
+    {
+        jjtThis.value = fieldname;
+    }
+}
+void SortDirection() #SortDirection :
+{
+    Token t;
+}
+{
+    t = <IDENTIFIER> {
+        if (!(t.image.equalsIgnoreCase("asc") || t.image.equalsIgnoreCase("desc")))
+            throw new ParseException ("Invalid sort direction");
+
+        jjtThis.value = t.image.toLowerCase();
+    }
+}
+
 void FieldLists() : {}
 {
     (
@@ -420,6 +451,7 @@ void UnaryExpression() :
           n = Not()
         | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
         | ("(" ")") // just ignore empty parens, ie:  ()
+        | Limit()
         | n = Expansion()
         | n = JsonQuery()
         | n = BoolQuery()

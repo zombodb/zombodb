@@ -32,6 +32,7 @@ public class QueryTreeOptimizer {
     }
 
     public void optimize() {
+        pullOutLimitNodes(tree);
         validateAndFixProximityChainFieldnames(tree);
         expandFieldLists(tree, tree.getFieldLists());
         expandAllField(tree, metadataManager.getMyIndex());
@@ -41,6 +42,18 @@ public class QueryTreeOptimizer {
 
         reduce(tree);
         convertGeneratedExpansionsToASTOr(tree);
+    }
+
+    private void pullOutLimitNodes(ASTQueryTree tree) {
+        Collection<ASTLimit> limits = tree.getChildrenOfType(ASTLimit.class);
+        int i=0;
+        for (ASTLimit limit : limits) {
+            ((QueryParserNode) limit.jjtGetParent()).removeNode(limit);
+            ((QueryParserNode) limit.jjtGetParent()).renumber();
+
+            if (i++ == 0)
+                tree.jjtAddChild(limit, tree.jjtGetNumChildren());
+        }
     }
 
     private void expandFieldLists(QueryParserNode root, Map<String, ASTFieldListEntry> fieldLists) {

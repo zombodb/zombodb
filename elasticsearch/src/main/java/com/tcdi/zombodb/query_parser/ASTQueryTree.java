@@ -23,6 +23,10 @@ public class ASTQueryTree extends com.tcdi.zombodb.query_parser.QueryParserNode 
         return null;
     }
 
+    public ASTLimit getLimit() {
+        return (ASTLimit) getChild(ASTLimit.class);
+    }
+
     public Map<String, ASTFieldListEntry> getFieldLists() {
         Map<String, ASTFieldListEntry> entries = new HashMap<>();
         for (QueryParserNode node : this) {
@@ -58,7 +62,7 @@ public class ASTQueryTree extends com.tcdi.zombodb.query_parser.QueryParserNode 
 
     public QueryParserNode getQueryNode() {
         for (QueryParserNode node : this)
-            if (!(node instanceof ASTAggregate) && !(node instanceof ASTOptions) && !(node instanceof ASTFieldLists) && !(node instanceof ASTSuggest) && !(node instanceof ASTVisibility))
+            if (!(node instanceof ASTAggregate) && !(node instanceof ASTOptions) && !(node instanceof ASTLimit) && !(node instanceof ASTFieldLists) && !(node instanceof ASTSuggest) && !(node instanceof ASTVisibility))
                 return node;
 
         return null;
