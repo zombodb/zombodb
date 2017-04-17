@@ -116,9 +116,9 @@ SELECT *
 
 ## Contact Information
 
-- [Eric Ridge](mailto:eebbrr@gmail.com)
+- [www.zombodb.com](http://www.zombodb.com/)
 - Google Group: [zombodb@googlegroups.com](mailto:zombodb@googlegroups.com)
-- Twitter:  [@zombodb](https://twitter.com/zombodb) or [@eeeebbbbrrrr](https://twitter.com/eeeebbbbrrrr)
+- Twitter:  [@zombodb](https://twitter.com/zombodb)
 - via github Issues and Pull Requests ;)
 
 
