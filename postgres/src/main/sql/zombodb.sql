@@ -130,7 +130,10 @@ CREATE VIEW zdb_index_stats AS
     pg_size_pretty(pg_total_relation_size(table_name))                                      AS pg_size,
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
-    settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas
+    settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
+    rest_get(url || index_name || '/data/_count') -> 'count'                                AS data_count,
+    rest_get(url || index_name || '/state/_count') -> 'count'                               AS state_count,
+    rest_get(url || index_name || '/committed/_count') -> 'count'                           AS xid_count
   FROM stats;
 
 CREATE VIEW zdb_index_stats_fast AS
@@ -155,7 +158,10 @@ CREATE VIEW zdb_index_stats_fast AS
     pg_size_pretty(pg_total_relation_size(table_name))                                      AS pg_size,
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
-    settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas
+    settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
+    rest_get(url || index_name || '/data/_count') -> 'count'                                AS data_count,
+    rest_get(url || index_name || '/state/_count') -> 'count'                               AS state_count,
+    rest_get(url || index_name || '/committed/_count') -> 'count'                           AS xid_count
   FROM stats;
 
 CREATE OR REPLACE FUNCTION zdb_internal_update_mapping(index_oid oid) RETURNS void STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
