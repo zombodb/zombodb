@@ -110,7 +110,6 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
             builder.setIndices(query.getIndexName());
             builder.setTypes("data");
-            builder.setScroll(TimeValue.timeValueMinutes(10));
             builder.setPreference(request.param("preference"));
             builder.setTrackScores(true);
             builder.setRequestCache(true);
@@ -125,6 +124,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
                 builder.setSize(query.getLimit().getLimit());
             } else {
                 builder.setSearchType(SearchType.SCAN);
+                builder.setScroll(TimeValue.timeValueMinutes(10));
                 builder.setSize(32768);
             }
 
