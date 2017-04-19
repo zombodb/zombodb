@@ -1,4 +1,4 @@
-# ZomboDB [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
+# [![ZomboDB](logo.png)](http://www.zombodb.com/) [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
 
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
 backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.5/static/indexam.html).
@@ -116,9 +116,9 @@ SELECT *
 
 ## Contact Information
 
-- [Eric Ridge](mailto:eebbrr@gmail.com)
+- [www.zombodb.com](http://www.zombodb.com/)
 - Google Group: [zombodb@googlegroups.com](mailto:zombodb@googlegroups.com)
-- Twitter:  [@zombodb](https://twitter.com/zombodb) or [@eeeebbbbrrrr](https://twitter.com/eeeebbbbrrrr)
+- Twitter:  [@zombodb](https://twitter.com/zombodb)
 - via github Issues and Pull Requests ;)
 
 
@@ -132,8 +132,7 @@ Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly
 
 Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and general ease of use.
 
-Two years later, it's been used in production systems for quite some time and is now open-source.
-
+ZomboDB was open-sourced in July 2015 and has been used in numerous production systems of various sizes and complexity.
 
 ## Credit and Thanks
 
