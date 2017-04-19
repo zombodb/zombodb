@@ -132,8 +132,7 @@ Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly
 
 Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and general ease of use.
 
-Two years later, it's been used in production systems for quite some time and is now open-source.
-
+ZomboDB was open-sourced in July 2015 and has been used in numerous production systems of various sizes and complexity.
 
 ## Credit and Thanks
 
