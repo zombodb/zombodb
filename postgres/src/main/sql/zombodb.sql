@@ -78,7 +78,7 @@ CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('AL
 --
 -- utility functions
 --
-CREATE OR REPLACE FUNCTION rest_get(url text) RETURNS json AS '$libdir/plugins/zombodb' language c;
+CREATE OR REPLACE FUNCTION zdb_es_direct_request(index_name regclass, http_method text, endpoint text) RETURNS text AS '$libdir/plugins/zombodb' language c IMMUTABLE STRICT;
 
 --
 -- index inspection functions
@@ -112,10 +112,11 @@ CREATE VIEW zdb_index_stats AS
   WITH stats AS (
       SELECT
         indrelid :: REGCLASS AS                                                                    table_name,
+        indexrelid::regclass,
         zdb_get_index_name(indexrelid)                                                             index_name,
         zdb_get_url(indexrelid)                                                                    url,
-        rest_get(zdb_get_url(indexrelid) || zdb_get_index_name(indexrelid) || '/_stats?pretty')    stats,
-        rest_get(zdb_get_url(indexrelid) || zdb_get_index_name(indexrelid) || '/_settings?pretty') settings
+        zdb_es_direct_request(indexrelid, 'GET', '/_stats')::json                                  stats,
+        zdb_es_direct_request(indexrelid, 'GET', '/_settings')::json                               settings
       FROM pg_index
       WHERE pg_get_indexdef(indexrelid) ILIKE '%zombodb%'
   )
@@ -131,19 +132,20 @@ CREATE VIEW zdb_index_stats AS
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
-    rest_get(url || index_name || '/data/_count') -> 'count'                                AS data_count,
-    rest_get(url || index_name || '/state/_count') -> 'count'                               AS state_count,
-    rest_get(url || index_name || '/committed/_count') -> 'count'                           AS xid_count
+    (zdb_es_direct_request(indexrelid, 'GET', '/data/_count')::json) -> 'count'             AS data_count,
+    (zdb_es_direct_request(indexrelid, 'GET', '/state/_count')::json) -> 'count'            AS state_count,
+    (zdb_es_direct_request(indexrelid, 'GET', '/committed/_count')::json) -> 'count'        AS xid_count
   FROM stats;
 
 CREATE VIEW zdb_index_stats_fast AS
   WITH stats AS (
       SELECT
         indrelid :: REGCLASS AS                                                                    table_name,
+        indexrelid::regclass,
         zdb_get_index_name(indexrelid)                                                             index_name,
         zdb_get_url(indexrelid)                                                                    url,
-        rest_get(zdb_get_url(indexrelid) || zdb_get_index_name(indexrelid) || '/_stats?pretty')    stats,
-        rest_get(zdb_get_url(indexrelid) || zdb_get_index_name(indexrelid) || '/_settings?pretty') settings
+        zdb_es_direct_request(indexrelid, 'GET', '/_stats')::json                                  stats,
+        zdb_es_direct_request(indexrelid, 'GET', '/_settings')::json                               settings
       FROM pg_index
       WHERE pg_get_indexdef(indexrelid) ILIKE '%zombodb%'
   )
@@ -159,9 +161,9 @@ CREATE VIEW zdb_index_stats_fast AS
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
-    rest_get(url || index_name || '/data/_count') -> 'count'                                AS data_count,
-    rest_get(url || index_name || '/state/_count') -> 'count'                               AS state_count,
-    rest_get(url || index_name || '/committed/_count') -> 'count'                           AS xid_count
+    (zdb_es_direct_request(indexrelid, 'GET', '/data/_count')::json) -> 'count'             AS data_count,
+    (zdb_es_direct_request(indexrelid, 'GET', '/state/_count')::json) -> 'count'            AS state_count,
+    (zdb_es_direct_request(indexrelid, 'GET', '/committed/_count')::json) -> 'count'        AS xid_count
   FROM stats;
 
 CREATE OR REPLACE FUNCTION zdb_internal_update_mapping(index_oid oid) RETURNS void STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
