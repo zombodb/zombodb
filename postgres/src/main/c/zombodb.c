@@ -59,7 +59,7 @@ Datum zdb_es_direct_request(PG_FUNCTION_ARGS) {
 
     desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
 
-    if (endpoint[0] != '/') {
+    if (endpoint[0] == '/') {
         /* user wants to hit the cluster itself */
         appendStringInfo(final_endpoint, "%s/%s", desc->url, endpoint);
     } else {
