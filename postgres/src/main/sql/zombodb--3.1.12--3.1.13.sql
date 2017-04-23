@@ -11,8 +11,8 @@ CREATE VIEW zdb_index_stats AS
         indexrelid::regclass,
         zdb_get_index_name(indexrelid)                                                             index_name,
         zdb_get_url(indexrelid)                                                                    url,
-        zdb_es_direct_request(indexrelid, 'GET', '/_stats')::json                                  stats,
-        zdb_es_direct_request(indexrelid, 'GET', '/_settings')::json                               settings
+        zdb_es_direct_request(indexrelid, 'GET', '_stats')::json                                  stats,
+        zdb_es_direct_request(indexrelid, 'GET', '_settings')::json                               settings
       FROM pg_index
       WHERE pg_get_indexdef(indexrelid) ILIKE '%zombodb%'
   )
@@ -28,9 +28,9 @@ CREATE VIEW zdb_index_stats AS
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
-    (zdb_es_direct_request(indexrelid, 'GET', '/data/_count')::json) -> 'count'             AS data_count,
-    (zdb_es_direct_request(indexrelid, 'GET', '/state/_count')::json) -> 'count'            AS state_count,
-    (zdb_es_direct_request(indexrelid, 'GET', '/committed/_count')::json) -> 'count'        AS xid_count
+    (zdb_es_direct_request(indexrelid, 'GET', 'data/_count')::json) -> 'count'             AS data_count,
+    (zdb_es_direct_request(indexrelid, 'GET', 'state/_count')::json) -> 'count'            AS state_count,
+    (zdb_es_direct_request(indexrelid, 'GET', 'committed/_count')::json) -> 'count'        AS xid_count
   FROM stats;
 
 CREATE VIEW zdb_index_stats_fast AS
@@ -40,8 +40,8 @@ CREATE VIEW zdb_index_stats_fast AS
         indexrelid::regclass,
         zdb_get_index_name(indexrelid)                                                             index_name,
         zdb_get_url(indexrelid)                                                                    url,
-        zdb_es_direct_request(indexrelid, 'GET', '/_stats')::json                                  stats,
-        zdb_es_direct_request(indexrelid, 'GET', '/_settings')::json                               settings
+        zdb_es_direct_request(indexrelid, 'GET', '_stats')::json                                  stats,
+        zdb_es_direct_request(indexrelid, 'GET', '_settings')::json                               settings
       FROM pg_index
       WHERE pg_get_indexdef(indexrelid) ILIKE '%zombodb%'
   )
@@ -57,7 +57,7 @@ CREATE VIEW zdb_index_stats_fast AS
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
-    (zdb_es_direct_request(indexrelid, 'GET', '/data/_count')::json) -> 'count'             AS data_count,
-    (zdb_es_direct_request(indexrelid, 'GET', '/state/_count')::json) -> 'count'            AS state_count,
-    (zdb_es_direct_request(indexrelid, 'GET', '/committed/_count')::json) -> 'count'        AS xid_count
+    (zdb_es_direct_request(indexrelid, 'GET', 'data/_count')::json) -> 'count'             AS data_count,
+    (zdb_es_direct_request(indexrelid, 'GET', 'state/_count')::json) -> 'count'            AS state_count,
+    (zdb_es_direct_request(indexrelid, 'GET', 'committed/_count')::json) -> 'count'        AS xid_count
   FROM stats;
