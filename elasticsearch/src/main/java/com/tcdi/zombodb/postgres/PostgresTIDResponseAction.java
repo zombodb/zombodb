@@ -156,7 +156,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
     public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean doFullFieldDataLookups, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
         String queryString = request.content().toUtf8();
         String indexName = request.param("index");
-System.err.println(queryString);
+
         try {
             QueryBuilder query;
             ASTLimit limit;
