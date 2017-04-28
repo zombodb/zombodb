@@ -47,7 +47,7 @@ public class PostgresCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true);
+            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true, true);
 
             if (query.hasLimit() && isSelectivityQuery) {
                 count = query.getLimit().getLimit();

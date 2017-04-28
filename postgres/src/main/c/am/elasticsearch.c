@@ -103,7 +103,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
     if (!zdb_ignore_visibility_guc && useInvisibilityMap) {
         Snapshot snapshot = GetActiveSnapshot();
 
-        appendStringInfo(baseQuery, "#visibility(%lu, %lu, %lu, [", convert_xid(GetCurrentTransactionId()), convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
+        appendStringInfo(baseQuery, "#visibility(%lu, %lu, %lu, [", convert_xid(GetCurrentTransactionIdIfAny()), convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
         if (snapshot->xcnt > 0) {
             for (i = 0; i < snapshot->xcnt; i++) {
                 if (i > 0) appendStringInfoChar(baseQuery, ',');

@@ -37,8 +37,8 @@ import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 public class SirenQueryRewriter extends QueryRewriter {
 
     @SuppressWarnings("unused") /* used via reflection */
-    public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
-        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex);
+    public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
     }
 
     @Override
