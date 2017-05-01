@@ -140,7 +140,7 @@ public abstract class QueryRewriter {
     protected final Client client;
     protected final String searchPreference;
     protected final boolean doFullFieldDataLookup;
-    private final boolean needVisibilityOnTopLevel;
+    private boolean needVisibilityOnTopLevel;
     protected final ASTQueryTree tree;
 
     protected boolean _isBuildingAggregate = false;
@@ -167,6 +167,8 @@ public abstract class QueryRewriter {
             QueryParser parser = new QueryParser(new StringReader(newQuery.toString()));
             tree = parser.parse(metadataManager, true);
             usedFields = parser.getUsedFieldnames();
+            if (tree.getLimit() != null)
+                this.needVisibilityOnTopLevel = true;
         } catch (ParseException ioe) {
             throw new QueryRewriteException(ioe);
         }
