@@ -33,8 +33,8 @@ import static org.elasticsearch.index.query.QueryBuilders.*;
 public class SirenQueryRewriter extends QueryRewriter {
 
     @SuppressWarnings("unused") /* used via reflection */
-    public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
-        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex);
+    public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
     }
 
     @Override
@@ -51,7 +51,10 @@ public class SirenQueryRewriter extends QueryRewriter {
             if (_isBuildingAggregate)
                 return matchAllQuery();
 
-            FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname()).path(link.getRightFieldname()).indices(link.getIndexName());
+            FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname())
+                    .path(link.getRightFieldname())
+                    .indices(link.getIndexName())
+                    .types("data");
             if (node.getFilterQuery() != null) {
                 if (_isBuildingAggregate)
                     return matchAllQuery();

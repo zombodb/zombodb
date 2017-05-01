@@ -104,7 +104,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, true, false);
+            query = buildJsonQueryFromRequestContent(client, request, true, false, false);
             parseEnd = System.nanoTime();
 
             SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
@@ -150,7 +150,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean doFullFieldDataLookups, boolean canDoSingleIndex) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean doFullFieldDataLookups, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
         String queryString = request.content().toUtf8();
         String indexName = request.param("index");
 
@@ -159,7 +159,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             ASTLimit limit;
 
             if (queryString != null && queryString.trim().length() > 0) {
-                QueryRewriter qr = QueryRewriter.Factory.create(client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex);
+                QueryRewriter qr = QueryRewriter.Factory.create(client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex, needVisibilityOnTopLevel);
                 query = qr.rewriteQuery();
                 indexName = qr.getSearchIndexName();
                 limit = qr.getLimit();
