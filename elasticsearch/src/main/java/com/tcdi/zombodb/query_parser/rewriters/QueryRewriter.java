@@ -27,12 +27,13 @@ import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
+import org.elasticsearch.action.admin.cluster.stats.ClusterStatsRequest;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 import org.elasticsearch.index.query.*;
+import org.elasticsearch.plugins.PluginInfo;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
@@ -59,26 +60,33 @@ import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 public abstract class QueryRewriter {
 
     public static class Factory {
-        private static boolean IS_SIREN_AVAILABLE;
-
-        static {
-            try {
-                IS_SIREN_AVAILABLE = Class.forName("solutions.siren.join.index.query.FilterJoinBuilder") != null;
-                Loggers.getLogger(QueryRewriter.Factory.class).info("[zombodb] Using SIREn for join resolution");
-            } catch (Exception e) {
-                IS_SIREN_AVAILABLE = false;
-                Loggers.getLogger(QueryRewriter.Factory.class).info("[zombodb] Using ZomboDB for join resolution");
-            }
-        }
+        private static boolean IS_SIREN_AVAILABLE = false;
+        private static boolean LOOKED_FOR_SIREN = false;
 
         public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+
+
+            synchronized (Factory.class) {
+                if (!LOOKED_FOR_SIREN) {
+                    for (PluginInfo pluginInfo : client.admin().cluster().clusterStats(new ClusterStatsRequest()).actionGet()
+                            .getNodesStats().getPlugins()) {
+                        if ("siren-join".equals(pluginInfo.getName())) {
+                            IS_SIREN_AVAILABLE = true;
+                            break;
+                        }
+                    }
+
+                    LOOKED_FOR_SIREN = true;
+                }
+            }
+
+
             if (IS_SIREN_AVAILABLE) {
                 try {
                     Class clazz = Class.forName("com.tcdi.zombodb.query_parser.rewriters.SirenQueryRewriter");
                     Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class, boolean.class);
                     return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
                 } catch (Exception e) {
-                    e.printStackTrace();
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
             } else {
@@ -985,23 +993,23 @@ public abstract class QueryRewriter {
 
                 final Iterable<Object> finalItr = itr;
                 TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
-                        @Override
-                        public Iterator<Object> iterator() {
-                            return finalItr.iterator();
-                        }
+                    @Override
+                    public Iterator<Object> iterator() {
+                        return finalItr.iterator();
+                    }
 
-                        @Override
-                        public int size() {
-                            return cnt;
-                        }
-                    });
+                    @Override
+                    public int size() {
+                        return cnt;
+                    }
+                });
 
                 if (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024) {
                     return boolQuery().filter(builder);
                 } else {
-                    if (cnt == minShouldMatch && minShouldMatch > 1){
+                    if (cnt == minShouldMatch && minShouldMatch > 1) {
                         BoolQueryBuilder fb = boolQuery();
-                        for (Iterator<Object> i = finalItr.iterator(); i.hasNext();){
+                        for (Iterator<Object> i = finalItr.iterator(); i.hasNext(); ) {
                             fb.must(termQuery(n.getFieldname(), i.next()));
                         }
                         return fb;
@@ -1294,16 +1302,29 @@ public abstract class QueryRewriter {
         if (visibility == null)
             return query;
 
-        return
-                boolQuery()
-                        .must(query)
-                        .mustNot(
+        return boolQuery()
+                .must(query)
+                .filter(
+                        notQuery(
                                 visibility("_prev_ctid")
                                         .myXid(visibility.getMyXid())
                                         .xmin(visibility.getXmin())
                                         .xmax(visibility.getXmax())
                                         .activeXids(visibility.getActiveXids())
                                         .query(query)
-                        );
+                        )
+                );
+
+//        return
+//                boolQuery()
+//                        .must(query)
+//                        .mustNot(
+//                                visibility("_prev_ctid")
+//                                        .myXid(visibility.getMyXid())
+//                                        .xmin(visibility.getXmin())
+//                                        .xmax(visibility.getXmax())
+//                                        .activeXids(visibility.getActiveXids())
+//                                        .query(query)
+//                        );
     }
 }

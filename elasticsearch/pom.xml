@@ -102,7 +102,17 @@
                 1.0 only for ES1.x
                 see https://github.com/sirensolutions/siren-join
             -->
-            <version>2.3.5</version>
+            <version>2.4.4</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.carrotsearch</groupId>
+                    <artifactId>hppc</artifactId>
+                </exclusion>
+            </exclusions>
             <scope>provided</scope>
         </dependency>
 

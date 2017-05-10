@@ -22,7 +22,8 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import solutions.siren.join.index.query.FilterJoinBuilder;
 
-import static org.elasticsearch.index.query.QueryBuilders.*;
+import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 
 /**
  * A {@link QueryRewriter} that resolves joins using SIREn:
@@ -70,7 +71,7 @@ public class SirenQueryRewriter extends QueryRewriter {
             if (!doFullFieldDataLookup)
                 fjb.maxTermsPerShard(1024);
 
-            return filteredQuery(matchAllQuery(), fjb);
+            return boolQuery().filter(fjb);
         }
     }
 }
