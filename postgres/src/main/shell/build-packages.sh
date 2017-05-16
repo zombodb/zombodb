@@ -1,4 +1,19 @@
 #! /bin/bash
+#
+# Copyright 2015-2017 ZomboDB, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 VERSION=$1
 BASE=`pwd`
@@ -6,7 +21,7 @@ DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise debian_jessie"
 POSTGRES_VERSIONS="9.3 9.4 9.5"
 
 echo "Archiving working directory tree"
-tar cf /tmp/zdb-build.tgz .
+tar czf /tmp/zdb-build.tgz --exclude ".git/**/*" .
 
 ##
 # compile ZomboDB for target distros
@@ -29,7 +44,7 @@ for POSTGRES_VERSION in ${POSTGRES_VERSIONS} ; do
         docker commit $CONTAINER_ID $DOCKER_IMAGE-inflight &> /dev/null
 
         echo "   copying archive"
-        cat /tmp/zdb-build.tgz | docker run -i -w /tmp/zdb-build/ $DOCKER_IMAGE-inflight tar xf -
+        cat /tmp/zdb-build.tgz | docker run -i -w /tmp/zdb-build/ $DOCKER_IMAGE-inflight tar xzf -
         CONTAINER_ID=$(docker ps -l | grep $DOCKER_IMAGE-inflight | awk '{print $1}')
         docker commit $CONTAINER_ID $DOCKER_IMAGE-inflight &> /dev/null
 
