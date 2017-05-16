@@ -771,7 +771,7 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
  * look directly at LVRelStats.dead_tuples instead of walking through
  * the index and asking about each and every tuple.
  */
-#if (PG_VERSION_NUM < 90400)
+#if (PG_VERSION_NUM < 90317)
 typedef struct LVRelStats
 {
     /* hasindex = true means two-pass strategy; false means one-pass */
@@ -795,7 +795,32 @@ typedef struct LVRelStats
     TransactionId latestRemovedXid;
     bool		lock_waiter_detected;
 } LVRelStats;
-#elif (PG_VERSION_NUM < 90500)
+#elif (PG_VERSION_NUM < 90400)
+typedef struct LVRelStats
+{
+    /* hasindex = true means two-pass strategy; false means one-pass */
+    bool            hasindex;
+    /* Overall statistics about rel */
+    BlockNumber old_rel_pages;      /* previous value of pg_class.relpages */
+    BlockNumber rel_pages;          /* total number of pages */
+    BlockNumber scanned_pages;      /* number of pages we examined */
+    BlockNumber     tupcount_pages; /* pages whose tuples we counted */
+    double          scanned_tuples; /* counts only tuples on tupcount_pages */
+    double          old_rel_tuples; /* previous value of pg_class.reltuples */
+    double          new_rel_tuples; /* new estimated total # of tuples */
+    BlockNumber pages_removed;
+    double          tuples_deleted;
+    BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+    /* List of TIDs of tuples we intend to delete */
+    /* NB: this list is ordered by TID address */
+    int                     num_dead_tuples;        /* current # of entries */
+    int                     max_dead_tuples;        /* # slots allocated in array */
+    ItemPointer dead_tuples;        /* array of ItemPointerData */
+    int                     num_index_scans;
+    TransactionId latestRemovedXid;
+    bool            lock_waiter_detected;
+} LVRelStats;
+#elif (PG_VERSION_NUM < 90412)
 typedef struct LVRelStats
 {
     /* hasindex = true means two-pass strategy; false means one-pass */
@@ -820,7 +845,33 @@ typedef struct LVRelStats
     TransactionId latestRemovedXid;
     bool		lock_waiter_detected;
 } LVRelStats;
-#elif (PG_VERSION_NUM < 90600)
+#elif (PG_VERSION_NUM < 90500)
+typedef struct LVRelStats
+{
+	/* hasindex = true means two-pass strategy; false means one-pass */
+	bool		hasindex;
+	/* Overall statistics about rel */
+	BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
+	BlockNumber rel_pages;		/* total number of pages */
+	BlockNumber scanned_pages;	/* number of pages we examined */
+	BlockNumber	tupcount_pages;	/* pages whose tuples we counted */
+	double		scanned_tuples; /* counts only tuples on tupcount_pages */
+	double		old_rel_tuples; /* previous value of pg_class.reltuples */
+	double		new_rel_tuples; /* new estimated total # of tuples */
+	double		new_dead_tuples;	/* new estimated total # of dead tuples */
+	BlockNumber pages_removed;
+	double		tuples_deleted;
+	BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+	/* List of TIDs of tuples we intend to delete */
+	/* NB: this list is ordered by TID address */
+	int			num_dead_tuples;	/* current # of entries */
+	int			max_dead_tuples;	/* # slots allocated in array */
+	ItemPointer dead_tuples;	/* array of ItemPointerData */
+	int			num_index_scans;
+	TransactionId latestRemovedXid;
+	bool		lock_waiter_detected;
+} LVRelStats;
+#elif (PG_VERSION_NUM < 90507)
 typedef struct LVRelStats
 {
 	/* hasindex = true means two-pass strategy; false means one-pass */
@@ -831,6 +882,33 @@ typedef struct LVRelStats
 	BlockNumber scanned_pages;	/* number of pages we examined */
 	BlockNumber pinskipped_pages;		/* # of pages we skipped due to a pin */
 	double		scanned_tuples; /* counts only tuples on scanned pages */
+	double		old_rel_tuples; /* previous value of pg_class.reltuples */
+	double		new_rel_tuples; /* new estimated total # of tuples */
+	double		new_dead_tuples;	/* new estimated total # of dead tuples */
+	BlockNumber pages_removed;
+	double		tuples_deleted;
+	BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
+	/* List of TIDs of tuples we intend to delete */
+	/* NB: this list is ordered by TID address */
+	int			num_dead_tuples;	/* current # of entries */
+	int			max_dead_tuples;	/* # slots allocated in array */
+	ItemPointer dead_tuples;	/* array of ItemPointerData */
+	int			num_index_scans;
+	TransactionId latestRemovedXid;
+	bool		lock_waiter_detected;
+} LVRelStats;
+#elif (PG_VERSION_NUM < 90600)
+typedef struct LVRelStats
+{
+	/* hasindex = true means two-pass strategy; false means one-pass */
+	bool		hasindex;
+	/* Overall statistics about rel */
+	BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
+	BlockNumber rel_pages;		/* total number of pages */
+	BlockNumber scanned_pages;	/* number of pages we examined */
+	BlockNumber pinskipped_pages;		/* # of pages we skipped due to a pin */
+	BlockNumber	tupcount_pages;	/* pages whose tuples we counted */
+	double		scanned_tuples; /* counts only tuples on tupcount_pages */
 	double		old_rel_tuples; /* previous value of pg_class.reltuples */
 	double		new_rel_tuples; /* new estimated total # of tuples */
 	double		new_dead_tuples;	/* new estimated total # of dead tuples */
