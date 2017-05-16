@@ -2798,7 +2798,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}",
                 qr("#range(page_count, '[{\"key\":\"first\", \"to\":100}, {\"from\":100, \"to\":150}, {\"from\":150}]')")
                         .rewriteAggregations()
-                        .toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string()
+                        .toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string().replaceAll("\r", "")
         );
     }
 
@@ -2821,7 +2821,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}",
                 qr("#range(date_field, '[{\"key\": \"early\", \"to\":\"2009-01-01 00:00:00\"}, {\"from\":\"2009-01-01 00:00:00\", \"to\":\"2010-01-01 00:00:00\"}, {\"from\":\"2010-01-01 00:00:00\"}]')")
                         .rewriteAggregations()
-                        .toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string());
+                        .toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string().replaceAll("\r", "")
+        );
     }
 
     @Test
@@ -4978,7 +4979,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    }\n" +
                         "  }\n" +
                         "}",
-                builder.toString()
+                builder.toString().replaceAll("\r", "")
         );
     }
 
