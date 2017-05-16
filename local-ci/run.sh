@@ -15,5 +15,16 @@
 # limitations under the License.
 #
 
-docker build --build-arg uid=`id -u` --build-arg user=`whoami` -t zdb-pg95-local-ci . || exit 1
-docker run --rm -m 6G --oom-kill-disable=true -v $(dirname `pwd`):/build/zombodb -w /build/zombodb zdb-pg95-local-ci
+DOCKER_IMAGE=zdb-pg95-local-ci
+
+echo "Archiving working tree"
+tar czf /tmp/work-tree.tgz --exclude ".git/**/*" ../
+mv /tmp/work-tree.tgz ./config/work-tree.tgz
+
+echo "Building docker image"
+docker build --build-arg uid=`id -u` --build-arg user=`whoami` -t $DOCKER_IMAGE . || exit 1
+
+echo "Running tests"
+docker run --rm -m 6G --oom-kill-disable=true -w /build/zombodb $DOCKER_IMAGE
+
+rm ./config/work-tree.tgz
