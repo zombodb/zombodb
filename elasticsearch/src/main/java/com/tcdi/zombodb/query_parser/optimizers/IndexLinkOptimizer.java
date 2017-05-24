@@ -309,8 +309,23 @@ public class IndexLinkOptimizer {
                     };
                     node.jjtAddChild(newLink, 0);
 
-                    if (!link.getIndexName().equals(metadataManager.getMyIndex().getIndexName())) {
-                        Stack<String> path = metadataManager.calculatePath(newLink, metadataManager.getMyIndex());
+                    //
+                    // find the nearest parent node that is an ASTExpansion
+                    // it is that node's ASTIndexLink that we need to expand against
+                    //
+                    ASTIndexLink parentLink = metadataManager.getMyIndex(); // assume our main index
+                    QueryParserNode tmp = (QueryParserNode) node.jjtGetParent();
+                    while (tmp != null) {
+                        if (tmp instanceof ASTExpansion) {
+                            // this is the ASTIndexLink that we need to target in this expansion
+                            parentLink = tmp.getIndexLink();
+                            break;
+                        }
+                        tmp = (QueryParserNode) tmp.jjtGetParent();
+                    }
+
+                    if (!link.getIndexName().equals(parentLink.getIndexName())) {
+                        Stack<String> path = metadataManager.calculatePath(newLink, parentLink);
                         if (path.size() == 2) {
                             String top = path.pop();
                             String bottom = path.pop();
