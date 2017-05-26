@@ -1,0 +1,26 @@
+SELECT * FROM zdb_dump_query('so_posts', 'id:*');
+    zdb_dump_query     
+-----------------------
+ {\r                  +
+   "match_all" : { }\r+
+ }
+(1 row)
+
+SELECT * FROM zdb_dump_query('so_users', 'beer');
+        zdb_dump_query         
+-------------------------------
+ {\r                          +
+   "bool" : {\r               +
+     "should" : [ {\r         +
+       "term" : {\r           +
+         "about_me" : "beer"\r+
+       }\r                    +
+     }, {\r                   +
+       "term" : {\r           +
+         "_all" : "beer"\r    +
+       }\r                    +
+     } ]\r                    +
+   }\r                        +
+ }
+(1 row)
+
