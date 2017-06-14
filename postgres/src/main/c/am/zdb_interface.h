@@ -204,7 +204,8 @@ typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char
 
 typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse);
 
-typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
+typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *toDelete);
+typedef char *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor);
 
 typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
@@ -248,6 +249,7 @@ struct ZDBIndexImplementation {
     ZDBFreeSearchResponse_function freeSearchResponse;
 
     ZDBBulkDelete_function bulkDelete;
+    ZDBVacuumSupport_function vacuumSupport;
 
     ZDBIndexBatchInsertRow_function    batchInsertRow;
     ZDBIndexBatchInsertFinish_function batchInsertFinish;

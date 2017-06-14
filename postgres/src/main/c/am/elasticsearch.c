@@ -805,19 +805,19 @@ static uint64 count_deleted_docs(ZDBIndexDescriptor *indexDescriptor) {
 	return (uint64) atoll(response->data);
 }
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
+void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers) {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
-	int        i;
+    ListCell *lc;
 
     appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
         appendStringInfo(endpoint, "&refresh=true");
     }
 
-    for (i=0; i<nitems; i++) {
-        ItemPointer item = &itemPointers[i];
+    foreach (lc, itemPointers) {
+        ItemPointer item = lfirst(lc);
 
         appendStringInfo(request, "{\"delete\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
@@ -849,6 +849,17 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer i
 
     freeStringInfo(endpoint);
     freeStringInfo(request);
+}
+
+char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor) {
+    StringInfo endpoint = makeStringInfo();
+    StringInfo response;
+
+    appendStringInfo(endpoint, "%s/%s/_zdbvacuum", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+
+    freeStringInfo(endpoint);
+    return response->data;
 }
 
 static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, uint64 sequence) {
