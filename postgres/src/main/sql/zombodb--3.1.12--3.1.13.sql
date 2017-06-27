@@ -1,3 +1,5 @@
+CREATE OR REPLACE FUNCTION zdbdeletetrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
+
 DROP VIEW zdb_index_stats;
 DROP VIEW zdb_index_stats_fast;
 DROP FUNCTION rest_get(text);

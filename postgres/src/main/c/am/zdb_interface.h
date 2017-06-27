@@ -152,6 +152,11 @@ typedef struct {
     float4     max_score;
 }                                     ZDBSearchResponse;
 
+typedef struct {
+    ZDBIndexDescriptor *desc;
+    List *ctids;
+} ZDBDeletedCtid;
+
 extern PGDLLEXPORT relopt_kind RELOPT_KIND_ZDB;
 extern PGDLLEXPORT bool        zdb_batch_mode_guc;
 extern PGDLLEXPORT bool        zdb_ignore_visibility_guc;
@@ -204,13 +209,15 @@ typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char
 
 typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse);
 
-typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *toDelete);
-typedef char *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor);
+typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *toDelete, bool isdeleted);
+typedef char *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor, char *type);
 
 typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
 
-typedef void (*ZDBMarkTransactionCommitted)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
+typedef void (*ZDBDeleteTuples_function)(ZDBIndexDescriptor *indexDescriptor, List *ctids);
+
+typedef void (*ZDBMarkTransactionCommitted_function)(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
 typedef void (*ZDBTransactionFinish_function)(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
@@ -254,7 +261,9 @@ struct ZDBIndexImplementation {
     ZDBIndexBatchInsertRow_function    batchInsertRow;
     ZDBIndexBatchInsertFinish_function batchInsertFinish;
 
-	ZDBMarkTransactionCommitted markTransactionCommitted;
+    ZDBDeleteTuples_function deleteTuples;
+
+	ZDBMarkTransactionCommitted_function markTransactionCommitted;
 
     ZDBTransactionFinish_function transactionFinish;
 };

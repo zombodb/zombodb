@@ -25,6 +25,8 @@ import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 
 import static com.tcdi.zombodb.postgres.PostgresTIDResponseAction.INVALID_BLOCK_NUMBER;
+import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
+import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -39,13 +41,32 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
 
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+        String index = request.param("index");
+        String type = request.param("type");
+
         SearchRequestBuilder search = new SearchRequestBuilder(client)
-                .setIndices(request.param("index"))
-                .setTypes("state")
+                .setIndices(index)
+                .setTypes(type)
                 .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
                 .setNoFields();
+
+        if ("data".equals(type)) {
+            long xmin = request.paramAsLong("xmin", 0);
+            long xmax = request.paramAsLong("xmax", 0);
+
+            search.setQuery(
+                    constantScoreQuery(
+                            boolQuery()
+                                    .should(
+                                            visibility("_prev_ctid").query(matchAllQuery()).myXid(-1).xmin(xmin).xmax(xmax)
+                                    )
+                                    .should(termQuery("_type", "state"))
+                    )
+            );
+            search.setTypes(type, "state");
+        }
 
         byte[] bytes = null;
         int total = 0, cnt = 0, offset = 0;
@@ -55,7 +76,7 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
                 response = client.execute(SearchAction.INSTANCE, search.request()).actionGet();
                 total = (int) response.getHits().getTotalHits();
 
-                bytes = new byte[8 + 6*total];
+                bytes = new byte[8 + 6 * total];
                 offset += Utils.encodeLong(total, bytes, offset);
             } else {
                 response = client.execute(SearchScrollAction.INSTANCE,

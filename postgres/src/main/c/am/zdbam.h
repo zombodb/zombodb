@@ -38,6 +38,7 @@ extern Datum zdboptions(PG_FUNCTION_ARGS);
 extern Datum zdbeventtrigger(PG_FUNCTION_ARGS);
 extern Datum zdbcostestimate(PG_FUNCTION_ARGS);
 extern Datum zdbupdatetrigger(PG_FUNCTION_ARGS);
+extern Datum zdbdeletetrigger(PG_FUNCTION_ARGS);
 
 extern Datum zdb_num_hits(PG_FUNCTION_ARGS);
 
