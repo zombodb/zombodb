@@ -121,15 +121,16 @@ public class IndexMetadata {
 
         Map properties = fields;
         for (int i = 0; properties != null && i < parts.length; i++) {
-            properties = ((Map) properties.get(parts[i]));
-            if (properties != null && i < parts.length - 1)
-                properties = (Map) properties.get("properties");
+            Map tmpproperties = ((Map) properties.get(parts[i]));
+            if (tmpproperties != null)
+                properties = tmpproperties;
         }
 
         if (properties == null)
             return "unknown";
 
-        return String.valueOf(properties.get("type"));
+        String type = String.valueOf(properties.get("type"));
+        return "null".equals(type) ? "unknown" : type;
     }
 
     public boolean getIncludeInAll(String fieldname) {

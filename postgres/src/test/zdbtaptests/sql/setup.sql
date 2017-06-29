@@ -379,6 +379,41 @@ CREATE VIEW unit_tests.consolidated_record_view_same AS
   LEFT JOIN unit_tests.var_same ON data_same.id = var_same.id
   LEFT JOIN unit_tests.vol_same ON data_same.id = vol_same.id;
 
+--create case table and populate
+CREATE TABLE unit_tests.case_name
+(
+  pk_cpm bigint NOT NULL,
+  cpm_name text,
+  CONSTRAINT idx_unit_tests_case_name PRIMARY KEY (pk_cpm)
+);
+
+CREATE INDEX es_unit_tests_case_name ON unit_tests.case_name USING zombodb (zdb('unit_tests.case_name'::regclass, ctid), zdb(case_name.*)) WITH (url='http://localhost:9200/', shards='3', replicas='1');
+
+ALTER INDEX unit_tests.es_unit_tests_data set (options='pk_data = <var.es_unit_tests_var>pk_var,pk_data = <vol.es_unit_tests_vol>pk_vol,data_bigint_array_2=<case_name.es_unit_tests_case_name>pk_cpm');
+
+INSERT INTO unit_tests.case_name(pk_cpm,cpm_name)
+values(1,'Smith, Bob'),(2,'Smith, Mary'),(3,'Jones, Mike'),(4,'Jones, Harry'),(5,'Jones, Sally'),(6,'Jones, UhOh');
+
+ALTER INDEX unit_tests.es_unit_tests_case_name SET (always_resolve_joins = true);
+SELECT zdb_update_mapping('unit_tests.case_name');
+
+--create shadow index and view
+CREATE OR REPLACE FUNCTION zdb_data_to_case(table_name regclass,ctid tid)
+  RETURNS tid AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid'
+LANGUAGE c IMMUTABLE STRICT
+COST 1;
+
+CREATE INDEX es_idx_data_to_case_shadow ON unit_tests.data USING zombodb (zdb_data_to_case('unit_tests.data', ctid), zdb(data.*))
+WITH (shadow='unit_tests.es_unit_tests_data', options='case_data:(data_bigint_array_2=<case_name.es_unit_tests_case_name>fk_jur_to_cpm)');
+
+CREATE OR REPLACE VIEW unit_tests.data_json_agg_view AS
+  select data.*,
+    ( SELECT json_agg(row_to_json(cpm.*)) AS json_agg FROM
+      ( SELECT case_name.*
+        FROM unit_tests.case_name WHERE case_name.pk_cpm = ANY(data.data_bigint_array_2)) cpm) AS case_data,
+    zdb_data_to_case('unit_tests.data'::regclass, data.ctid) AS zdb
+  FROM unit_tests.data;
+
 VACUUM ANALYZE unit_tests.data_same;
 VACUUM ANALYZE unit_tests.var_same;
 VACUUM ANALYZE unit_tests.vol_same;
