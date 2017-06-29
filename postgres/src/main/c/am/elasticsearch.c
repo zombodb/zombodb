@@ -877,6 +877,8 @@ char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, char *typ
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
+	if (response->len > 0 && response->data[0] == '{' && strstr(response->data, "error") != NULL)
+		elog(ERROR, "%s", response->data);
     return response->data;
 }
 
