@@ -74,6 +74,8 @@ PG_FUNCTION_INFO_V1(zdbdeletetrigger);
 
 PG_FUNCTION_INFO_V1(zdb_num_hits);
 
+PG_FUNCTION_INFO_V1(zdb_maybe_create_delete_trigger);
+
 /* Working state for zdbbuild and its callback */
 typedef struct {
     bool     isUnique;
@@ -351,6 +353,11 @@ static void create_trigger_dependency(Oid indexRelOid, Oid triggerOid) {
 static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
     StringInfo triggerSQL = makeStringInfo();
 
+	appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", heapRelOid, indexRelOid);
+	if (SPI_execute(triggerSQL->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
+		return;
+
+	resetStringInfo(triggerSQL);
     appendStringInfo(triggerSQL,
                      "CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
                              "       BEFORE UPDATE ON \"%s\".\"%s\" "
@@ -378,6 +385,11 @@ static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableN
 static void create_delete_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
     StringInfo triggerSQL = makeStringInfo();
 
+	appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d'", heapRelOid, indexRelOid);
+	if (SPI_execute(triggerSQL->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
+		return;	/* trigger already exists */
+
+	resetStringInfo(triggerSQL);
     appendStringInfo(triggerSQL,
                      "CREATE TRIGGER zzzzdb_tuple_delete_for_%d_using_%d"
                              "       BEFORE DELETE ON \"%s\".\"%s\" "
@@ -520,14 +532,8 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
             /* put a trigger on the table to forward UPDATEs and DELETEs into our code for ES xact synchronization */
             SPI_connect();
 
-            appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", RelationGetRelid(heapRel), RelationGetRelid(indexRel));
-            if (SPI_execute(triggerSQL->data, true, 0) == SPI_OK_SELECT && SPI_processed == 0)
-                create_update_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
-
-            resetStringInfo(triggerSQL);
-            appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d'", RelationGetRelid(heapRel), RelationGetRelid(indexRel));
-            if (SPI_execute(triggerSQL->data, true, 0) == SPI_OK_SELECT && SPI_processed == 0)
-                create_delete_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
+			create_update_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
+			create_delete_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
 
             pfree(triggerSQL->data);
             pfree(triggerSQL);
@@ -1112,4 +1118,17 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
 
     MemoryContextSwitchTo(tmpcxt);
     return PointerGetDatum(trigdata->tg_trigtuple);
+}
+
+Datum zdb_maybe_create_delete_trigger(PG_FUNCTION_ARGS) {
+	Oid indexOid = PG_GETARG_OID(0);
+	ZDBIndexDescriptor *desc;
+
+	desc = zdb_alloc_index_descriptor_by_index_oid(indexOid);
+
+	SPI_connect();
+	create_delete_trigger(desc->heapRelid, desc->schemaName, desc->tableName, indexOid);
+	SPI_finish();
+
+	PG_RETURN_VOID();
 }

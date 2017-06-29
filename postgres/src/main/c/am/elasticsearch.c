@@ -40,6 +40,33 @@
 #include "zdbseqscan.h"
 #include "zdb_interface.h"
 
+#define SECONDARY_TYPES_MAPPING \
+"      \"state\": {"\
+"          \"_source\": { \"enabled\": false },"\
+"          \"_routing\": { \"required\": true },"\
+"          \"_all\": { \"enabled\": false },"\
+"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
+"          \"date_detection\": false,"\
+"          \"properties\": { \"_ctid\":{\"type\":\"string\",\"index\":\"not_analyzed\"} }"\
+"      },"\
+"      \"deleted\": {"\
+"          \"_source\": { \"enabled\": false },"\
+"          \"_all\": { \"enabled\": false },"\
+"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
+"          \"properties\": {"\
+"              \"_deleting_xid\": { \"type\": \"long\", \"index\": \"not_analyzed\" }"\
+"          }"\
+"      },"\
+"      \"committed\": {"\
+"          \"_source\": { \"enabled\": false },"\
+"          \"_routing\": { \"required\": true },"\
+"          \"_all\": { \"enabled\": false },"\
+"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
+"          \"properties\": {"\
+"             \"_zdb_committed_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\" }"\
+"          }"\
+"      }"
+
 typedef struct {
     ZDBIndexDescriptor *indexDescriptor;
     MultiRestState     *rest;
@@ -187,31 +214,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
             "      },"
-			"      \"state\": {"
-			"          \"_source\": { \"enabled\": false },"
-			"          \"_routing\": { \"required\": true },"
-			"          \"_all\": { \"enabled\": false },"
-			"          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-			"          \"date_detection\": false,"
-			"          \"properties\": { \"_ctid\":{\"type\":\"string\",\"index\":\"not_analyzed\"} }"
-			"      },"
-            "      \"deleted\": {"
-            "          \"_source\": { \"enabled\": false },"
-            "          \"_all\": { \"enabled\": false },"
-            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-            "          \"properties\": {"
-            "              \"_deleting_xid\": { \"type\": \"long\", \"index\": \"not_analyzed\" }"
-            "          }"
-            "      },"
-            "      \"committed\": {"
-            "          \"_source\": { \"enabled\": false },"
-			"          \"_routing\": { \"required\": true },"
-            "          \"_all\": { \"enabled\": false },"
-            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
-            "          \"properties\": {"
-            "             \"_zdb_committed_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\" }"
-            "          }"
-            "      }"
+			SECONDARY_TYPES_MAPPING
             "   },"
             "   \"settings\": {"
             "      \"refresh_interval\": -1,"
@@ -316,7 +319,8 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"
-            "    }"
+            "    },"
+			SECONDARY_TYPES_MAPPING
             "}", pkey, indexDescriptor->alwaysResolveJoins ? "true" : "false", properties);
 
     appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);

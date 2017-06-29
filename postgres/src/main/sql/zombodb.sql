@@ -75,7 +75,6 @@ CREATE OR REPLACE FUNCTION zdbdeletetrigger() RETURNS trigger AS '$libdir/plugin
 CREATE OR REPLACE FUNCTION zdbeventtrigger() RETURNS event_trigger AS '$libdir/plugins/zombodb' language c;
 CREATE EVENT TRIGGER zdb_alter_table_trigger ON ddl_command_end WHEN TAG IN ('ALTER TABLE') EXECUTE PROCEDURE zdbeventtrigger();
 
-
 --
 -- utility functions
 --
