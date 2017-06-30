@@ -8,10 +8,11 @@ before_install:
   - ls -la /etc/init.d/
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
   - echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
+  - sudo apt-get remove -y elasicsearch
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
   - sudo apt-get install -y rpm
-  - sudo apt-get install -y elasticsearch
+  - sudo apt-get install -y elasticsearch-1.7
   - sudo apt-get purge -y postgresql-9.1
   - sudo apt-get purge -y postgresql-9.2
   - sudo apt-get purge -y postgresql-9.3
