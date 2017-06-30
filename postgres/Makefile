@@ -10,7 +10,7 @@ OBJS = $(shell find src/main/c -type f -name "*.c" | sed s/\\.c/.o/g)
 REGRESS = $(shell if [ "x${TEST}" != "x" ] ; then echo --use-existing ${TEST} ; else cat src/test/tests.list ; fi)
 REGRESS_OPTS = --inputdir=src/test
 
-PG_CPPFLAGS += -Isrc/main/c -I/usr/include
+PG_CPPFLAGS += -Isrc/main/c -I/usr/include -Wno-nullability-completeness
 UNAME=$(shell uname -s)
 WHOAMI=$(shell whoami)
 ifeq ($(IS_DOCKER),true)
