@@ -19,3 +19,4 @@ postgres/src/test/zdbtaptests/tests/expand-same.sql
 postgres/results
 postgres/regression.*
 cmake-build-debug/
+local-ci/config/work-tree.tgz

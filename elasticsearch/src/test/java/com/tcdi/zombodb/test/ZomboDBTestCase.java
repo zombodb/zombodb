@@ -137,11 +137,11 @@ public abstract class ZomboDBTestCase {
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
-        assertEquals(expectedJson.trim(), toJson(query));
+        assertEquals(expectedJson.replaceAll("\r", "").trim(), toJson(query));
     }
 
     protected void assertAST(String query, String expectedAST) throws Exception {
-        assertEquals(expectedAST.trim(), toAST(query));
+        assertEquals(expectedAST.replaceAll("\r", "").trim(), toAST(query));
     }
 
     protected void assertSameJson(String query1, String query2) throws Exception {
@@ -153,11 +153,11 @@ public abstract class ZomboDBTestCase {
     }
 
     protected String toJson(String query) {
-        return qr(query).rewriteQuery().toString().trim();
+        return qr(query).rewriteQuery().toString().replaceAll("\r", "").trim();
     }
 
     protected String toAST(String query) {
-        return qr(query).dumpAsString().trim();
+        return qr(query).dumpAsString().replaceAll("\r", "").trim();
     }
 
     protected void sortHighlightTokens(List<AnalyzedField.Token> highlights) {

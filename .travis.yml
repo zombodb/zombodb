@@ -12,6 +12,7 @@ before_install:
   - ls -la /etc/init.d/
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
   - echo "deb https://packages.elastic.co/elasticsearch/$ES/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-$ES.list
+  - sudo apt-get purge -y elasticsearch
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
   - sudo apt-get install -y rpm

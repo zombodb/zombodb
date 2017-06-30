@@ -46,6 +46,7 @@ public class ZombodbPlugin extends Plugin {
         module.addRestAction(RestTermlistAction.class);
         module.addRestAction(ZombodbBulkAction.class);
         module.addRestAction(ZombodbCommitXIDAction.class);
+        module.addRestAction(ZombodbVacuumSupportAction.class);
     }
 
     public void onModule(ActionModule module) {

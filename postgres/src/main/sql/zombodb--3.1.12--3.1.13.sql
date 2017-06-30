@@ -1,6 +1,17 @@
+CREATE OR REPLACE FUNCTION zdbdeletetrigger() RETURNS trigger AS '$libdir/plugins/zombodb' language c;
+
+/* apply delete trigger to existing tables with indexes */
+CREATE OR REPLACE FUNCTION zdb_maybe_create_delete_trigger(index regclass) RETURNS VOID AS '$libdir/plugins/zombodb' STRICT LANGUAGE c;
+select zdb_maybe_create_delete_trigger(oid) from pg_class where relam = (select oid from pg_am where amname = 'zombodb');
+DROP FUNCTION zdb_maybe_create_delete_trigger(regclass);
+
+
+/* update mappings for every table with an index */
+select zdb_update_mapping(indrelid) from pg_index where indexrelid in (select oid from pg_class where relam = (select oid from pg_am where amname = 'zombodb'));
+
 DROP VIEW zdb_index_stats;
 DROP VIEW zdb_index_stats_fast;
-DROP FUNCTION rest_get(text);
+DROP FUNCTION IF EXISTS rest_get(text);
 
 CREATE OR REPLACE FUNCTION zdb_es_direct_request(index_name regclass, http_method text, endpoint text) RETURNS text AS '$libdir/plugins/zombodb' language c IMMUTABLE STRICT;
 

@@ -1,9 +1,27 @@
 #! /bin/bash
+#
+# Copyright 2015-2017 ZomboDB, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 VERSION=$1
 BASE=`pwd`
 DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise debian_jessie"
 POSTGRES_VERSIONS="9.3 9.4 9.5"
+
+echo "Archiving working directory tree"
+tar czf /tmp/zdb-build.tgz --exclude ".git/**/*" .
 
 ##
 # compile ZomboDB for target distros
@@ -14,11 +32,31 @@ for POSTGRES_VERSION in ${POSTGRES_VERSIONS} ; do
 
         mkdir -p $BASE/target/pg${POSTGRES_VERSION}/${distro}
 
+        DOCKER_IMAGE=zombodb-build-${POSTGRES_VERSION}-${distro}
         cd src/main/docker/pg${POSTGRES_VERSION}/zombodb-build-${distro}
 
         echo "BUILDING: $distro, $POSTGRES_VERSION ****"
-        docker build --build-arg user=`whoami` --build-arg uid=`id -u` -t zombodb-build-${POSTGRES_VERSION}-${distro} . > $BASE/target/pg${POSTGRES_VERSION}/${distro}/docker-build.log
-        docker run --rm -v $BASE:/mnt -w /mnt -e DESTDIR=target/pg${POSTGRES_VERSION}/${distro} zombodb-build-${POSTGRES_VERSION}-${distro} make clean install &> $BASE/target/pg${POSTGRES_VERSION}/${distro}/compile.log
+        docker build --build-arg user=`whoami` --build-arg uid=`id -u` -t $DOCKER_IMAGE . > $BASE/target/pg${POSTGRES_VERSION}/${distro}/docker-build.log
+
+        echo "   making /tmp/zdb-build"
+        docker run -w /tmp/ $DOCKER_IMAGE mkdir -p /tmp/zdb-build/
+        CONTAINER_ID=$(docker ps -l | grep $DOCKER_IMAGE | awk '{print $1}')
+        docker commit $CONTAINER_ID $DOCKER_IMAGE-inflight &> /dev/null
+
+        echo "   copying archive"
+        cat /tmp/zdb-build.tgz | docker run -i -w /tmp/zdb-build/ $DOCKER_IMAGE-inflight tar xzf -
+        CONTAINER_ID=$(docker ps -l | grep $DOCKER_IMAGE-inflight | awk '{print $1}')
+        docker commit $CONTAINER_ID $DOCKER_IMAGE-inflight &> /dev/null
+
+        echo "   compiling zombodb"
+        (docker run -w /tmp/zdb-build -e DESTDIR=/tmp/target/pg${POSTGRES_VERSION}/${distro} $DOCKER_IMAGE-inflight \
+            make clean install &> $BASE/target/pg${POSTGRES_VERSION}/${distro}/compile.log) || exit 1
+        CONTAINER_ID=$(docker ps -l | grep $DOCKER_IMAGE-inflight | awk '{print $1}')
+        docker commit $CONTAINER_ID $DOCKER_IMAGE-inflight &> /dev/null
+
+        echo "   saving artifacts"
+        cd $BASE/target
+        docker run --rm -w /tmp/target $DOCKER_IMAGE-inflight tar cf - . | tar xf -
 
         # move the zombod.so into the plugins/ directory
         cd $BASE/target/pg${POSTGRES_VERSION}
@@ -43,3 +81,6 @@ for POSTGRES_VERSION in ${POSTGRES_VERSIONS} ; do
     done
 
 done
+
+echo "Removing all inflight docker images"
+docker rmi -f $(docker images | grep "inflight" | awk '{print $3}')

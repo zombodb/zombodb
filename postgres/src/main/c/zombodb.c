@@ -14,14 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <sys/time.h>
-#include <am/zdb_interface.h>
 
 #include "postgres.h"
 #include "fmgr.h"
 #include "utils/builtins.h"
 
 #include "am/zdbam.h"
+#include "am/zdb_interface.h"
 #include "util/curl_support.h"
 #include "rest/rest.h"
 
