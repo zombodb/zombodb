@@ -23,6 +23,7 @@ import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.optimizers.ArrayDataOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
+import com.tcdi.zombodb.query_parser.optimizers.QueryTreeOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;

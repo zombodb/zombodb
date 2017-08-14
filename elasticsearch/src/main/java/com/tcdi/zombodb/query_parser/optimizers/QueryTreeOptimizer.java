@@ -32,7 +32,14 @@ public class QueryTreeOptimizer {
     }
 
     public void optimize() {
-        pullOutLimitNodes(tree);
+        // NOTE:  pullOutOptionNodes() happens in QueryParser#parse()
+        pullOutNodesOfType(tree, ASTLimit.class, true);
+        pullOutNodesOfType(tree, ASTVisibility.class, true);
+        pullOutNodesOfType(tree, ASTAggregate.class, false);
+        pullOutNodesOfType(tree, ASTSuggest.class, true);
+        pullOutNodesOfType(tree, ASTOptions.class, true);
+        pullOutNodesOfType(tree, ASTFieldLists.class, true);
+        reduce(tree);
         validateAndFixProximityChainFieldnames(tree);
         expandFieldLists(tree, tree.getFieldLists());
         expandAllField(tree, metadataManager.getMyIndex());
@@ -44,15 +51,16 @@ public class QueryTreeOptimizer {
         convertGeneratedExpansionsToASTOr(tree);
     }
 
-    private void pullOutLimitNodes(ASTQueryTree tree) {
-        Collection<ASTLimit> limits = tree.getChildrenOfType(ASTLimit.class);
-        int i=0;
-        for (ASTLimit limit : limits) {
-            ((QueryParserNode) limit.jjtGetParent()).removeNode(limit);
-            ((QueryParserNode) limit.jjtGetParent()).renumber();
+    private void pullOutNodesOfType(ASTQueryTree tree, Class type, boolean recurse) {
+        Collection<QueryParserNode> nodes = tree.getChildrenOfType(type, recurse);
 
-            if (i++ == 0)
-                tree.jjtAddChild(limit, tree.jjtGetNumChildren());
+        for (QueryParserNode node : nodes) {
+            QueryParserNode parent = (QueryParserNode) node.jjtGetParent();
+
+            parent.removeNode(node);
+            parent.renumber();
+
+            tree.jjtInsertChild(node, 0);
         }
     }
 
@@ -189,13 +197,17 @@ public class QueryTreeOptimizer {
             return;
 
         QueryParserNode parent = (QueryParserNode) root.jjtGetParent();
-        for (int i = 0, many = root.getChildren().size(); i < many; i++) {
-            if (parent.getChild(i) == root) {
-                QueryParserNode child = (QueryParserNode) root.getChild(0);
-                parent.jjtAddChild(child, i);
-                child.jjtSetParent(parent);
-            }
+        switch (root.jjtGetNumChildren()) {
+            case 0:
+                parent.removeNode(root);
+                break;
+
+            case 1:
+                parent.replaceChild(root, root.getChildren().values().iterator().next());
+                break;
         }
+
+        parent.renumber();
     }
 
     private void mergeLiterals(QueryParserNode root) {
