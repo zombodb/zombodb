@@ -974,7 +974,7 @@ public abstract class QueryRewriter {
                     }
                 }
 
-                if (isNumber || (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024)) {
+                if ((isNumber && minShouldMatch == 1) || (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024)) {
                     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
                     return filteredQuery(matchAllQuery(), builder);
                 } else {
