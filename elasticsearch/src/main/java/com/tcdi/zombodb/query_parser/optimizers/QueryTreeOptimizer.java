@@ -189,7 +189,7 @@ public class QueryTreeOptimizer {
             rollupParentheticalGroups(child);
     }
 
-    private void reduce(QueryParserNode root) {
+    static void reduce(QueryParserNode root) {
         for (QueryParserNode child : root)
             reduce(child);
 

@@ -62,6 +62,8 @@ public class IndexLinkOptimizer {
         while (agg != null) {
             agg = agg.getSubAggregate();
         }
+
+        QueryTreeOptimizer.reduce(tree);
     }
 
 
@@ -225,11 +227,11 @@ public class IndexLinkOptimizer {
             total += mergeAdjacentExpansions(child);
         }
 
-        Map<ASTIndexLink, List<ASTExpansion>> sameExpansions = new HashMap<>();
+        Map<String, List<ASTExpansion>> sameExpansions = new HashMap<>();
         int cnt = 0;
         for (QueryParserNode child : root) {
             if (child instanceof ASTExpansion) {
-                ASTIndexLink key = child.getIndexLink();
+                String key = child.getIndexLink().toStringNoFieldname();
                 List<ASTExpansion> groups = sameExpansions.get(key);
                 if (groups == null)
                     sameExpansions.put(key, groups = new ArrayList<>());
@@ -241,8 +243,8 @@ public class IndexLinkOptimizer {
 
         if (cnt > 1) {
 
-            for (Map.Entry<ASTIndexLink, List<ASTExpansion>> entry : sameExpansions.entrySet()) {
-                if (entry.getValue().size() > 1) {
+            for (List<ASTExpansion> entry : sameExpansions.values()) {
+                if (entry.size() > 1) {
                     QueryParserNode container;
                     if (root instanceof ASTAnd)
                         container = new ASTAnd(QueryParserTreeConstants.JJTAND);
@@ -261,12 +263,12 @@ public class IndexLinkOptimizer {
                         throw new RuntimeException("Don't know about parent container type: " + root.getClass());
 
                     ASTExpansion newExpansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
-                    newExpansion.jjtAddChild(entry.getValue().get(0).getIndexLink(), 0);
-                    newExpansion.setGenerated(entry.getValue().get(0).isGenerated());
+                    newExpansion.jjtAddChild(entry.get(0).getIndexLink(), 0);
+                    newExpansion.setGenerated(entry.get(0).isGenerated());
                     newExpansion.jjtAddChild(container, 1);
 
                     int idx = 0;
-                    for (ASTExpansion existingExpansion : entry.getValue()) {
+                    for (ASTExpansion existingExpansion : entry) {
                         container.jjtAddChild(existingExpansion.getQuery(), container.jjtGetNumChildren());
 
                         if (idx == 0)
@@ -277,7 +279,7 @@ public class IndexLinkOptimizer {
                     }
 
                     root.renumber();
-                    if (entry.getValue().size() > 1)
+                    if (entry.size() > 1)
                         total++;
                 }
             }
