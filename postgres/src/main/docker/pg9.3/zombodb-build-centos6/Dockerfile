@@ -9,10 +9,10 @@ RUN yum install -y http://yum.postgresql.org/9.3/redhat/rhel-6-x86_64/pgdg-redha
 RUN yum install -y postgresql93-devel
 RUN yum install -y gcc make zlib-devel
 
-COPY curl-7.43.0.tar.gz /usr/local/src/
+COPY curl-7.53.1.tar.gz /usr/local/src/
 WORKDIR /usr/local/src/
-RUN tar xzf curl-7.43.0.tar.gz
-WORKDIR /usr/local/src/curl-7.43.0/
+RUN tar xzf curl-7.53.1.tar.gz
+WORKDIR /usr/local/src/curl-7.53.1/
 RUN ./configure --without-ssl \
    --disable-threaded-resolver \
    --disable-dict \

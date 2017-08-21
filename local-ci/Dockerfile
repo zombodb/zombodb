@@ -71,17 +71,12 @@ RUN apt-get install -y -qq elasticsearch
 RUN apt-get install -y -qq postgresql-9.5 postgresql-server-dev-9.5
 
 # custom libcurl req'd by ZomboDB to statically link against
-COPY config/curl-7.43.0.tar.gz /tmp/
-RUN cd /tmp/ && tar xzf /tmp/curl-7.43.0.tar.gz
-RUN cd /tmp/curl-7.43.0 && ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
-RUN cd /tmp/curl-7.43.0 && make -j2 && make install
+COPY config/curl-7.53.1.tar.gz /tmp/
+RUN cd /tmp/ && tar xzf /tmp/curl-7.53.1.tar.gz
+RUN cd /tmp/curl-7.53.1 && ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
+RUN cd /tmp/curl-7.53.1 && make -j2 && make install
 RUN ldconfig && ldconfig
-RUN rm -rf /tmp/curl-7.43.0*
-
-# bootstrap maven repo
-COPY config/maven-repo.tgz /tmp/
-RUN tar xzf /tmp/maven-repo.tgz
-RUN rm /tmp/maven-repo.tgz
+RUN rm -rf /tmp/curl-7.53.1*
 
 # install pg_prove
 RUN PATH="/root/perl5/bin${PATH:+:${PATH}}"; export PATH; \
@@ -98,9 +93,14 @@ RUN cd pgtap && make && make install
 
 # setup runtime env
 RUN mkdir /build/
-RUN mkdir /build/zombodb
 COPY config/build.sh /build/
 RUN chmod a+x /build/build.sh
+
+# copy in working tree tarball and unpack it
+RUN mkdir /build/zombodb
+COPY config/work-tree.tgz /build/zombodb
+RUN cd /build/zombodb && tar xzf work-tree.tgz
+RUN rm /build/zombodb/work-tree.tgz
 
 ARG user
 ARG uid

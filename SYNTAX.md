@@ -26,7 +26,8 @@ The ZomboDB query syntax provides support for searching (in no particular order)
 * Elasticsearch "bool" queries
 * Direct access to any Elasticsearch query via JSON
 * query expansion,
-* "more like this", and
+* "more like this",
+* limit/offset with sorting, and
 * more!
 
 ## Boolean Expressions and Operator Precedence
@@ -139,19 +140,18 @@ Combined with a field name, these operators allow more sophsicated searching opt
 
 Symbol | Description 
 ---    | ---      
-:      | field contains term
-=      | field contains term (same as : )
-<      | field contains terms less than value 
-<=     | field contains terms less than or equal to value
->      | field contains terms greater than value
->=     | field contains terms greater than or equal to value
-!=     | field does not contain term
-<>     | field does not contain term (same as != )
-/to/   | range query, in form of field:START /to/ END
-:~     | field contains terms matching a [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax).  Note that regular expression searches are always **case sensitive**.
-:@     | ["more like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html)
-:@~    | ["fuzzy like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-field-query.html)
-
+`:`      | field contains term
+`=`      | field contains term (same as : )
+`<`      | field contains terms less than value 
+`<=`     | field contains terms less than or equal to value
+`>`      | field contains terms greater than value
+`>=`     | field contains terms greater than or equal to value
+`!=`     | field does not contain term
+`<>`     | field does not contain term (same as != )
+`/to/`   | range query, in form of field:START /to/ END
+`:~`     | field contains terms matching a [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax).  Note that regular expression searches are always **case sensitive**.
+`:@`     | ["more like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html)
+`:@~`    | ["fuzzy like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-field-query.html)
 
 
 ### Keywords
@@ -159,7 +159,7 @@ Symbol | Description
 The list of keywords is very short: `with`, `and`, `or`, `not`, and `null`.  To use one of these as a search term, simply quote it.
 
 
-## Value Lists ([] and [[]])
+## Value Lists (`[]` and `[[]]`)
 
 ZomboDB supports searching for lists of values using an array-like syntax.  For example:
 
@@ -182,11 +182,12 @@ In either case, the only supported operators are equals and not equals, ie:
 
 There are three types of wildcards.  
 
+
 Symbol | Description
 ---    | ---
-?      | any character
-*      | zero or more characters
-~      | post-fix only ["fuzzy"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-fuzzy-query.html) match with default fuzz of 3
+`?`      | any character
+`*`      | zero or more characters
+`~`      | post-fix only ["fuzzy"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-fuzzy-query.html) match with default fuzz of 3
 
 The ```?``` and ```*``` wildcards can be applied anywhere within a term.  Left, middle, and right truncation is supported.  The ```~``` wildcard is post-fix only and its fuzziness factor can be adjusted.
 
@@ -394,4 +395,50 @@ contributor_data.location:TX WITH contributor_data.tags:nice
 The above also finds row #1, but behind the scenes it only matched the "Jane Doe" subelement, because it's the only element with a location of "TX" and a tag of "nice".
 
 The __WITH__ operator has the same semantics as __AND__ but requires both its left and right sides to be a nested object field reference or a parenthetical boolean expression, and all field references must be against the same nested object.
+
+
+## Limit/Offset with Sorting
+
+ZomboDB allows you to limit the number of rows that are returned from a text query, which is similar
+to Postgres' SQL-level `ORDER BY LIMIT OFFSET` clauses, but can be drastically more efficient
+because less data is being passed around between Elasticsearch and Postgres.
+
+The clause to use in a text query is:  
+```
+#limit(sort_field asc|desc, offset_val, limit_val)
+```
+
+A complete example is:
+
+```sql
+SELECT * 
+  FROM table 
+  WHERE zdb('table', ctid) ==> '#limit(author_name asc, 0, 10) beer,wine,cheese'
+ORDER BY author_name ASC;
+```
+
+This will return the first 10 rows, sorted by `author_name` for all documents that contain the words
+beer, wine, or cheese.
+
+Notice that the SQL query still has an `ORDER BY author_name ASC` clause.  This is because when ZomboDB
+returns results to Elasticsearch it returns them in heap page order (to make scanning the underlying table
+more efficient), so it's necessary to tell Postgres how you want it to order the resulting rows.  Another way 
+to look at it is that the SQL language doesn't guarantee any kind of ordering until you specify an `ORDER BY` 
+clause.
+
+The `sort_field` argument in the `#limit()` clause, however, causes ZomboDB to sort the documents by
+that field before returning the specified rows to Postgres.  This ensures that you get the correct 
+10 rows (in this example) that you want.
+
+Note that ZomboDB/Elasticsearch also has a hidden field named `_score` which you could use, for example,
+to quickly return the 50 most relevant documents to your query:
+
+```sql
+SELECT *
+  FROM table
+  WHERE zdb('table', ctid) ==> '#limit(_score desc, 0, 50) beer,wine,cheese'
+ORDER BY zdb_score('table', ctid) DESC;
+```
+
+Note that we had to order the result using the `zdb_score()` function (which is documented in [SQL-API.md](SQL-API.md)).
 

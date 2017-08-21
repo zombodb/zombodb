@@ -1,29 +1,4 @@
 QueryTree
-   Options
-      id=<db.schema.table.index>id
-         LeftField (value=id)
-         IndexName (value=db.schema.table.index)
-         RightField (value=id)
-      id=<db.schema.table.index>id
-         LeftField (value=id)
-         IndexName (value=db.schema.table.index)
-         RightField (value=id)
-      id=<db.schema.table.index>id
-         LeftField (value=id)
-         IndexName (value=db.schema.table.index)
-         RightField (value=id)
-      other:(left=<db.schema.table.index>right)
-         LeftField (value=left)
-         IndexName (value=db.schema.table.index)
-         RightField (value=right)
-   ExtendedStats (fieldname=custodian, operator=CONTAINS)
-   Tally (fieldname=subject, operator=CONTAINS)
-      Phrase (value=^.*)
-      Number (value=1000)
-      Word (value=_term)
-      SignificantTerms (fieldname=author, operator=CONTAINS)
-         Phrase (value=^.*)
-         Number (value=1000)
    FieldLists
       FieldListEntry (fieldname=field1)
          Array (index=db.schema.table.index) (OR)
@@ -43,6 +18,31 @@ QueryTree
             Word (value=d, index=db.schema.table.index)
             Word (value=e, index=db.schema.table.index)
             Word (value=f, index=db.schema.table.index)
+   Options
+      id=<db.schema.table.index>id
+         LeftField (value=id)
+         IndexName (value=db.schema.table.index)
+         RightField (value=id)
+      id=<db.schema.table.index>id
+         LeftField (value=id)
+         IndexName (value=db.schema.table.index)
+         RightField (value=id)
+      id=<db.schema.table.index>id
+         LeftField (value=id)
+         IndexName (value=db.schema.table.index)
+         RightField (value=id)
+      other:(left=<db.schema.table.index>right)
+         LeftField (value=left)
+         IndexName (value=db.schema.table.index)
+         RightField (value=right)
+   Tally (fieldname=subject, operator=CONTAINS)
+      Phrase (value=^.*)
+      Number (value=1000)
+      Word (value=_term)
+      SignificantTerms (fieldname=author, operator=CONTAINS)
+         Phrase (value=^.*)
+         Number (value=1000)
+   ExtendedStats (fieldname=custodian, operator=CONTAINS)
    Or
       And
          Expansion
@@ -707,10 +707,9 @@ QueryTree
                With
                   Word (fieldname=nested_field.fielda, operator=CONTAINS, value=beer, index=db.schema.table.index)
                   Word (fieldname=nested_field.fieldb, operator=CONTAINS, value=wine, index=db.schema.table.index)
-                  Or
-                     Array (fieldname=nested_field.fieldc, operator=CONTAINS, index=db.schema.table.index) (OR)
-                        Word (fieldname=nested_field.fieldc, operator=CONTAINS, value=food, index=db.schema.table.index)
-                        Word (fieldname=nested_field.fieldc, operator=CONTAINS, value=cheese, index=db.schema.table.index)
+                  Array (fieldname=nested_field.fieldc, operator=CONTAINS, index=db.schema.table.index) (OR)
+                     Word (fieldname=nested_field.fieldc, operator=CONTAINS, value=food, index=db.schema.table.index)
+                     Word (fieldname=nested_field.fieldc, operator=CONTAINS, value=cheese, index=db.schema.table.index)
                Proximity (fieldname=field, operator=CONTAINS, distance=123, ordered=false, index=db.schema.table.index)
                   Word (fieldname=field, operator=CONTAINS, value=a, index=db.schema.table.index)
                   Proximity (fieldname=field, operator=CONTAINS, distance=2, ordered=false, index=db.schema.table.index)

@@ -254,7 +254,7 @@ public class AnalyzedField {
         public void keep(ASTProximity proximity) {
             List<ProximityGroup> scratch = new ArrayList<>();
             keep(proximity, scratch);
-            int cnt = proximity.jjtGetNumChildren() / 2 + 1;
+            int cnt = proximity.getChildrenOfType(ASTWord.class).size() / 2 + 1;
             for (ProximityGroup pair : scratch) {
                 for (Token token : pair.tokens) {
                     if (token.shouldKeep() || pair.tokens.size() >= cnt)

@@ -8,6 +8,7 @@ before_install:
   - ls -la /etc/init.d/
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
   - echo "deb http://packages.elastic.co/elasticsearch/1.7/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
+  - sudo apt-get purge -y elasticsearch
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
   - sudo apt-get install -y rpm
@@ -30,8 +31,8 @@ script:
   - git clone https://github.com/theory/pgtap.git
   - cd pgtap && make && sudo make install && cd ..
   - mvn clean install
-  - tar xzf postgres/src/main/docker/pg9.5/zombodb-build-ubuntu_precise/curl-7.43.0.tar.gz
-  - cd curl-7.43.0
+  - tar xzf postgres/src/main/docker/pg9.5/zombodb-build-ubuntu_precise/curl-7.53.1.tar.gz
+  - cd curl-7.53.1
   - ./configure --without-librtmp --disable-ares --disable-threaded-resolver --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp
   - make -j2 && sudo make install
   - sudo ldconfig && sudo ldconfig

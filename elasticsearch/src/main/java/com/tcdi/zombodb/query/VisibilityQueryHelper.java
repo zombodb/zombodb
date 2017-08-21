@@ -23,7 +23,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.util.*;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.lucene.search.XConstantScoreQuery;
 import org.elasticsearch.search.internal.SearchContext;
 

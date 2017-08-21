@@ -93,6 +93,10 @@ public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode 
         getChild(1).value = prefix + "." + getChild(1).value;
     }
 
+    public String toStringNoFieldname() {
+        return getLeftFieldname() + "=<" + getIndexName() + ">" + getRightFieldname();
+    }
+
     @Override
     public boolean equals(Object obj) {
         return obj instanceof ASTIndexLink && this.toString().equals(obj.toString());
@@ -105,9 +109,7 @@ public class ASTIndexLink extends com.tcdi.zombodb.query_parser.QueryParserNode 
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append(getLeftFieldname()).append("=<").append(getIndexName()).append(">").append(getRightFieldname());
+        StringBuilder sb = new StringBuilder(toStringNoFieldname());
 
         if (hasFieldname()) {
             sb.insert(0, getFieldname() + ":(");

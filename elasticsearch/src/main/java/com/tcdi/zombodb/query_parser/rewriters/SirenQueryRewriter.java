@@ -37,8 +37,8 @@ import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 public class SirenQueryRewriter extends QueryRewriter {
 
     @SuppressWarnings("unused") /* used via reflection */
-    public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
-        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex);
+    public SirenQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
     }
 
     @Override
@@ -56,8 +56,11 @@ public class SirenQueryRewriter extends QueryRewriter {
             if (_isBuildingAggregate)
                 return matchAllQuery();
 
-            FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname()).path(link.getRightFieldname()).indices(link.getIndexName());
-            fjb.query(applyVisibility(build(node.getQuery()), link.getIndexName()));
+            FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname())
+                    .path(link.getRightFieldname())
+                    .indices(link.getIndexName())
+                    .query(applyVisibility(build(node.getQuery()), link.getIndexName()))
+                    .types("data");
 
             if (!doFullFieldDataLookup)
                 fjb.maxTermsPerShard(1024);

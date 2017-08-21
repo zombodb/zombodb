@@ -387,6 +387,11 @@ SELECT * FROM zdb_dump_query('test', 'subject:(this is a test)');
 >```
 >SELECT * FROM zdb_estimate_count('table', 'subject:meeting');
 >```
+>
+> If the query contains a `#limit()` clause (documented in [SYNTAX.md](SYNTAX.md)), the `#limit()`
+> will be ignored by `zdb_estimate_count()`.  In other words, `zdb_estimate_count()` will always
+> return the total number of rows that match the query, regardless of any applied limit.
+
 
 #### ```FUNCTION zdb_extended_stats(table_name regclass, fieldname text [, is_nested boolean], query text) RETURNS SET OF zdb_extended_stats_response```
 

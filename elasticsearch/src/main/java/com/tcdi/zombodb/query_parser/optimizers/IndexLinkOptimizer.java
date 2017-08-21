@@ -60,24 +60,16 @@ public class IndexLinkOptimizer {
 
         ASTAggregate agg = tree.getAggregate();
         while (agg != null) {
-            metadataManager.addUsedIndex(metadataManager.findField(agg.getFieldname()));
             agg = agg.getSubAggregate();
         }
+
+        QueryTreeOptimizer.reduce(tree);
     }
 
 
     private void assignIndexLinks(QueryParserNode root) {
         if (root == null || root.getChildren() == null || root.getChildren().isEmpty() || (root instanceof ASTExpansion && !((ASTExpansion) root).isGenerated())) {
-            if (root instanceof ASTExpansion)
-                metadataManager.addUsedIndex(metadataManager.getIndexLinkByIndexName(root.getIndexLink().getIndexName()));
             return;
-        }
-
-        if (root instanceof ASTExpansion && ((ASTExpansion) root).isGenerated()) {
-            ASTIndexLink left = metadataManager.findField(root.getIndexLink().getLeftFieldname());
-            ASTIndexLink right = metadataManager.findField(root.getIndexLink().getRightFieldname());
-            metadataManager.addUsedIndex(left);
-            metadataManager.addUsedIndex(right);
         }
 
         for (int i = 0, many = root.getChildren().size(); i < many; i++) {
@@ -97,8 +89,6 @@ public class IndexLinkOptimizer {
                     link = metadataManager.findField(fieldname);
                     child.setIndexLink(link);
                 }
-
-                metadataManager.addUsedIndex(link);
             }
 
             if (!(child instanceof ASTArray))
@@ -108,7 +98,7 @@ public class IndexLinkOptimizer {
 
     private void injectASTExpansionNodes(ASTQueryTree tree) {
         for (QueryParserNode child : tree) {
-            if (child instanceof ASTOptions || child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
+            if (child instanceof ASTOptions || child instanceof ASTLimit || child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
                 continue;
             injectASTExpansionNodes(child);
         }
@@ -237,11 +227,11 @@ public class IndexLinkOptimizer {
             total += mergeAdjacentExpansions(child);
         }
 
-        Map<ASTIndexLink, List<ASTExpansion>> sameExpansions = new HashMap<>();
+        Map<String, List<ASTExpansion>> sameExpansions = new HashMap<>();
         int cnt = 0;
         for (QueryParserNode child : root) {
             if (child instanceof ASTExpansion) {
-                ASTIndexLink key = child.getIndexLink();
+                String key = child.getIndexLink().toStringNoFieldname();
                 List<ASTExpansion> groups = sameExpansions.get(key);
                 if (groups == null)
                     sameExpansions.put(key, groups = new ArrayList<>());
@@ -253,8 +243,8 @@ public class IndexLinkOptimizer {
 
         if (cnt > 1) {
 
-            for (Map.Entry<ASTIndexLink, List<ASTExpansion>> entry : sameExpansions.entrySet()) {
-                if (entry.getValue().size() > 1) {
+            for (List<ASTExpansion> entry : sameExpansions.values()) {
+                if (entry.size() > 1) {
                     QueryParserNode container;
                     if (root instanceof ASTAnd)
                         container = new ASTAnd(QueryParserTreeConstants.JJTAND);
@@ -262,16 +252,23 @@ public class IndexLinkOptimizer {
                         container = new ASTOr(QueryParserTreeConstants.JJTOR);
                     else if (root instanceof ASTNot)
                         container = new ASTAnd(QueryParserTreeConstants.JJTAND);
+                    else if (root instanceof ASTArray) {
+                        container = new ASTArray(QueryParserTreeConstants.JJTARRAY);
+                        container.setFieldname(root.getFieldname());
+                        container.setBoost(root.getBoost());
+                        container.setIndexLink(root.getIndexLink());
+                        ((ASTArray) container).setAnd(((ASTArray) root).isAnd());
+                    }
                     else
                         throw new RuntimeException("Don't know about parent container type: " + root.getClass());
 
                     ASTExpansion newExpansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
-                    newExpansion.jjtAddChild(entry.getValue().get(0).getIndexLink(), 0);
-                    newExpansion.setGenerated(entry.getValue().get(0).isGenerated());
+                    newExpansion.jjtAddChild(entry.get(0).getIndexLink(), 0);
+                    newExpansion.setGenerated(entry.get(0).isGenerated());
                     newExpansion.jjtAddChild(container, 1);
 
                     int idx = 0;
-                    for (ASTExpansion existingExpansion : entry.getValue()) {
+                    for (ASTExpansion existingExpansion : entry) {
                         container.jjtAddChild(existingExpansion.getQuery(), container.jjtGetNumChildren());
 
                         if (idx == 0)
@@ -282,7 +279,7 @@ public class IndexLinkOptimizer {
                     }
 
                     root.renumber();
-                    if (entry.getValue().size() > 1)
+                    if (entry.size() > 1)
                         total++;
                 }
             }
@@ -314,8 +311,23 @@ public class IndexLinkOptimizer {
                     };
                     node.jjtAddChild(newLink, 0);
 
-                    if (!link.getIndexName().equals(metadataManager.getMyIndex().getIndexName())) {
-                        Stack<String> path = metadataManager.calculatePath(newLink, metadataManager.getMyIndex());
+                    //
+                    // find the nearest parent node that is an ASTExpansion
+                    // it is that node's ASTIndexLink that we need to expand against
+                    //
+                    ASTIndexLink parentLink = metadataManager.getMyIndex(); // assume our main index
+                    QueryParserNode tmp = (QueryParserNode) node.jjtGetParent();
+                    while (tmp != null) {
+                        if (tmp instanceof ASTExpansion) {
+                            // this is the ASTIndexLink that we need to target in this expansion
+                            parentLink = tmp.getIndexLink();
+                            break;
+                        }
+                        tmp = (QueryParserNode) tmp.jjtGetParent();
+                    }
+
+                    if (!link.getIndexName().equals(parentLink.getIndexName())) {
+                        Stack<String> path = metadataManager.calculatePath(newLink, parentLink);
                         if (path.size() == 2) {
                             String top = path.pop();
                             String bottom = path.pop();

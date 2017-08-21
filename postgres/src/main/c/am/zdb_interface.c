@@ -39,7 +39,7 @@ relopt_kind RELOPT_KIND_ZDB;
 bool        zdb_batch_mode_guc;
 bool        zdb_ignore_visibility_guc;
 
-int zdbloglevel;
+int ZDB_LOG_LEVEL;
 static const struct config_enum_entry zdb_log_level_options[] = {
         {"debug", DEBUG2, true},
         {"debug5", DEBUG5, false},
@@ -84,10 +84,13 @@ static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query,
 
 static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems);
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDelete, bool isdeleted);
+static char *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, char *type);
 
 static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
+
+static void wrapper_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids);
 
 static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid);
 
@@ -146,7 +149,7 @@ void zdb_index_init(void) {
 
     DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
-    DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &zdbloglevel, DEBUG1, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
+    DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &ZDB_LOG_LEVEL, DEBUG1, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
@@ -265,8 +268,10 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->highlight               = wrapper_highlight;
     desc->implementation->freeSearchResponse      = wrapper_freeSearchResponse;
     desc->implementation->bulkDelete              = wrapper_bulkDelete;
+    desc->implementation->vacuumSupport           = wrapper_vacuumSupport;
     desc->implementation->batchInsertRow          = wrapper_batchInsertRow;
     desc->implementation->batchInsertFinish       = wrapper_batchInsertFinish;
+    desc->implementation->deleteTuples            = wrapper_deleteTuples;
 	desc->implementation->markTransactionCommitted = wrapper_markTransactionCommitted;
     desc->implementation->transactionFinish       = wrapper_transactionFinish;
 
@@ -566,16 +571,27 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse) {
     MemoryContextSwitchTo(oldContext);
 }
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, ItemPointer itemPointers, int nitems) {
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDelete, bool isdeleted) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_bulkDelete", 512, 64, 64);
     MemoryContext oldContext = MemoryContextSwitchTo(me);
 
     Assert(!indexDescriptor->isShadow);
 
-    elasticsearch_bulkDelete(indexDescriptor, itemPointers, nitems);
+    elasticsearch_bulkDelete(indexDescriptor, toDelete, isdeleted);
 
     MemoryContextSwitchTo(oldContext);
     MemoryContextDelete(me);
+}
+
+static char *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, char *type) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    char *ctids;
+
+    ctids = elasticsearch_vacuumSupport(indexDescriptor, type);
+
+    MemoryContextSwitchTo(oldContext);
+
+    return ctids;
 }
 
 static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence) {
@@ -596,6 +612,18 @@ static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
     elasticsearch_batchInsertFinish(indexDescriptor);
 
     MemoryContextSwitchTo(oldContext);
+}
+
+static void wrapper_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids) {
+    MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_deleteTuples", 512, 64, 64);
+    MemoryContext oldContext = MemoryContextSwitchTo(me);
+
+    Assert(!indexDescriptor->isShadow);
+
+    elasticsearch_deleteTuples(indexDescriptor, ctids);
+
+    MemoryContextSwitchTo(oldContext);
+    MemoryContextDelete(me);
 }
 
 static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor, TransactionId xid) {

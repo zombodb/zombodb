@@ -59,7 +59,7 @@ public class Utils {
             if (ch == '\\') {
                 char next = i < len - 1 ? s.charAt(++i) : 0;
                 if (next == 0)
-                    throw new RuntimeException("Invalid escape sequence at end of string");
+                    break; // don't leave any dangling escape characters -- they're insignificant
 
                 sb.append(next);
             } else {

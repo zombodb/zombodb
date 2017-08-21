@@ -2,6 +2,8 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=false,NODE_PREFIX=AST,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.tcdi.zombodb.query_parser;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -51,6 +53,23 @@ public class SimpleNode implements Node {
         }
         children.put(i, n);
         n.jjtSetParent(this);
+    }
+
+    public void jjtInsertChild(Node n, int i) {
+        if (children == null) {
+            children = new TreeMap<>();
+        }
+
+        n.jjtSetParent(this);
+
+        List<Node> tmp = new ArrayList<>(children.values());
+        tmp.add(i, n);
+
+        int idx=0;
+        children = new TreeMap<>();
+        for (Node node : tmp) {
+            children.put(idx++, node);
+        }
     }
 
     public void replaceChild(Node oldNode, Node newNode) {

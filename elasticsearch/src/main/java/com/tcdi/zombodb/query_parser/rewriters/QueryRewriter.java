@@ -23,6 +23,7 @@ import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.optimizers.ArrayDataOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
+import com.tcdi.zombodb.query_parser.optimizers.QueryTreeOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
@@ -71,18 +72,18 @@ public abstract class QueryRewriter {
             }
         }
 
-        public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+        public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
             if (IS_SIREN_AVAILABLE) {
                 try {
                     Class clazz = Class.forName("com.tcdi.zombodb.query_parser.rewriters.SirenQueryRewriter");
-                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class);
-                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
+                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class, boolean.class);
+                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
                 } catch (Exception e) {
                     e.printStackTrace();
                     throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
                 }
             } else {
-                return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex);
+                return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
             }
         }
     }
@@ -140,6 +141,7 @@ public abstract class QueryRewriter {
     protected final Client client;
     protected final String searchPreference;
     protected final boolean doFullFieldDataLookup;
+    private boolean needVisibilityOnTopLevel;
     protected final ASTQueryTree tree;
 
     protected boolean _isBuildingAggregate = false;
@@ -150,20 +152,24 @@ public abstract class QueryRewriter {
     protected final IndexMetadataManager metadataManager;
     private boolean hasJsonAggregate = false;
 
-    public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex) {
+    public QueryRewriter(Client client, String indexName, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
         this.client = client;
         this.searchPreference = searchPreference;
         this.doFullFieldDataLookup = doFullFieldDataLookup;
+        this.needVisibilityOnTopLevel = needVisibilityOnTopLevel;
 
         metadataManager = new IndexMetadataManager(client, indexName);
 
         final StringBuilder newQuery = new StringBuilder(input.length());
-
+        final Set<String> usedFields;
         try {
             arrayData = Utils.extractArrayData(input, newQuery);
 
             QueryParser parser = new QueryParser(new StringReader(newQuery.toString()));
             tree = parser.parse(metadataManager, true);
+            usedFields = parser.getUsedFieldnames();
+            if (tree.getLimit() != null)
+                this.needVisibilityOnTopLevel = true;
         } catch (ParseException ioe) {
             throw new QueryRewriteException(ioe);
         }
@@ -181,13 +187,18 @@ public abstract class QueryRewriter {
             }
         }
 
-        performOptimizations(client);
+        Set<ASTIndexLink> usedLinks = new HashSet<>();
+        for (String field : usedFields) {
+            usedLinks.add(metadataManager.findField(field));
+        }
 
         if (!metadataManager.getMetadataForMyIndex().alwaysResolveJoins()) {
-            if (!hasJsonAggregate && canDoSingleIndex && !hasAgg && metadataManager.getUsedIndexes().size() == 1) {
-                metadataManager.setMyIndex(metadataManager.getUsedIndexes().iterator().next());
+            if (!hasJsonAggregate && canDoSingleIndex && !hasAgg && usedLinks.size() == 1) {
+                metadataManager.setMyIndex(usedLinks.iterator().next());
             }
         }
+
+        performOptimizations(client);
     }
 
     /**
@@ -208,6 +219,10 @@ public abstract class QueryRewriter {
         return metadataManager.describedNestedObject(fieldname);
     }
 
+    public ASTLimit getLimit() {
+        return tree.getLimit();
+    }
+
     public QueryBuilder rewriteQuery() {
         QueryBuilder qb = build(tree);
         queryRewritten = true;
@@ -215,7 +230,7 @@ public abstract class QueryRewriter {
         try {
             return applyVisibility(qb, getAggregateIndexName());
         } catch (Exception e) {
-            return applyVisibility(qb, getSearchIndexName());
+            return needVisibilityOnTopLevel ? applyVisibility(qb, getSearchIndexName()) : qb;
         }
     }
 
@@ -959,7 +974,7 @@ public abstract class QueryRewriter {
                     }
                 }
 
-                if (isNumber || (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024)) {
+                if ((isNumber && minShouldMatch == 1) || (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024)) {
                     TermsFilterBuilder builder = termsFilter(n.getFieldname(), itr).cache(true);
                     return filteredQuery(matchAllQuery(), builder);
                 } else {

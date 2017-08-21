@@ -10,14 +10,18 @@ OBJS = $(shell find src/main/c -type f -name "*.c" | sed s/\\.c/.o/g)
 REGRESS = $(shell if [ "x${TEST}" != "x" ] ; then echo --use-existing ${TEST} ; else cat src/test/tests.list ; fi)
 REGRESS_OPTS = --inputdir=src/test
 
-PG_CPPFLAGS += -Isrc/main/c -I/usr/include
+PG_CPPFLAGS += -Isrc/main/c -I/usr/include -Wno-nullability-completeness
 UNAME=$(shell uname -s)
 WHOAMI=$(shell whoami)
 ifeq ($(IS_DOCKER),true)
 	# if building in docker, statically link libcurl
 	SHLIB_LINK  += -Wl,-Bstatic -lcurl -Wl,-Bdynamic -lz -lrt
 else
-	SHLIB_LINK += -lcurl -lz -lrt
+	ifeq ($(UNAME),Darwin)
+		SHLIB_LINK += -lcurl -lz
+	else
+		SHLIB_LINK += -lcurl -lz -lrt
+	endif
 endif
 
 PG_CONFIG    = pg_config

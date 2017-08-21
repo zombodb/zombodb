@@ -1,4 +1,4 @@
-# ZomboDB [![[Build Status](https://travis-ci.org/zombodb/zombodb/branches)](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
+# [![ZomboDB](logo.png)](http://www.zombodb.com/) [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
 
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
 backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.5/static/indexam.html).
@@ -50,6 +50,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
 - [support](SIREn-SUPPORT.md) for [SIREn](http://siren.solutions/relational-joins-for-elasticsearch-the-siren-join-plugin/) to resolve index links
 - [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-field_names-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
+- limit/offset/sorting of fulltext queries by Elasticsearch
 - support for common Elasticsearch aggregations, including ability to nest
 - access to all of Elasticsearch's aggregations via direct JSON
 - extensive test suite
@@ -115,9 +116,9 @@ SELECT *
 
 ## Contact Information
 
-- [Eric Ridge](mailto:eebbrr@gmail.com)
+- [www.zombodb.com](http://www.zombodb.com/)
 - Google Group: [zombodb@googlegroups.com](mailto:zombodb@googlegroups.com)
-- Twitter:  [@zombodb](https://twitter.com/zombodb) or [@eeeebbbbrrrr](https://twitter.com/eeeebbbbrrrr)
+- Twitter:  [@zombodb](https://twitter.com/zombodb)
 - via github Issues and Pull Requests ;)
 
 
@@ -131,8 +132,7 @@ Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly
 
 Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and general ease of use.
 
-Two years later, it's been used in production systems for quite some time and is now open-source.
-
+ZomboDB was open-sourced in July 2015 and has been used in numerous production systems of various sizes and complexity.
 
 ## Credit and Thanks
 
@@ -155,4 +155,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-

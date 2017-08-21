@@ -81,6 +81,7 @@ public class QueryParser {
     public ASTQueryTree parse(IndexMetadataManager metadataManager, boolean optimize) throws ParseException {
         ASTQueryTree tree = parse0();
 
+        pullOutOptionsNodes(tree);
         metadataManager.loadReferencedMappings(tree.getOptions());
 
         if (optimize)
@@ -96,6 +97,19 @@ public class QueryParser {
         return usedFieldnames;
     }
 
+    private void pullOutOptionsNodes(ASTQueryTree tree) {
+        Collection<ASTOptions> opts = tree.getChildrenOfType(ASTOptions.class);
+
+        if (!opts.isEmpty()) {
+            ASTOptions option = opts.iterator().next();
+            QueryParserNode parent = (QueryParserNode) option.jjtGetParent();
+
+            parent.removeNode(option);
+            parent.renumber();
+
+            tree.jjtInsertChild(option, 0);
+        }
+    }
 }
 PARSER_END(QueryParser)
 
@@ -144,6 +158,7 @@ PARSER_END(QueryParser)
   | <EXTENDED_STATS: "#extended_stats" >
   | <SUGGEST: "#suggest" >
   | <OPTIONS: "#options" >
+  | <LIMIT: "#limit" >
   | <FIELDLISTS: "#field_lists" >
   | <EXPAND: "#expand" >
   | <FILTER: "#filter" >
@@ -195,7 +210,7 @@ private ASTQueryTree parse0() #QueryTree :
 {
 }
 {
-    ( Aggregations() | Options() | FieldLists() | Visibility() )* [ Expression() ] <EOF>
+    [ Expression() ] <EOF>
     {
         return jjtThis;
     }
@@ -288,6 +303,36 @@ void Options() : {}
     ) #Options
 }
 
+void Limit() : {}
+{
+    (
+        <LIMIT> "(" (LimitFieldname()) SortDirection() "," Number() "," Number() ")"
+    ) #Limit
+}
+
+void LimitFieldname() #LimitFieldname :
+{
+    String fieldname;
+}
+{
+    fieldname = Fieldname()
+    {
+        jjtThis.value = fieldname;
+    }
+}
+void SortDirection() #SortDirection :
+{
+    Token t;
+}
+{
+    t = <IDENTIFIER> {
+        if (!(t.image.equalsIgnoreCase("asc") || t.image.equalsIgnoreCase("desc")))
+            throw new ParseException ("Invalid sort direction");
+
+        jjtThis.value = t.image.toLowerCase();
+    }
+}
+
 void FieldLists() : {}
 {
     (
@@ -360,7 +405,7 @@ void Expression() : {}
 void OrExpression(): {}
 {
     (
-        AndExpression()  (LOOKAHEAD(2)  (<OR>|",") AndExpression() )*
+        AndExpression()  (LOOKAHEAD(2)  (<OR>|",")+ AndExpression() )*
     ) #Or(>1)
 }
 
@@ -368,7 +413,7 @@ void AndExpression() : {}
 {
     (
         /* optional <AND> makes it the default operator between words */
-        WithExpression() (LOOKAHEAD(2)  [<AND>|"&"] WithExpression() )*
+        WithExpression() (LOOKAHEAD(2)  (<AND>|"&")* WithExpression() )*
     ) #And(>1)
 }
 
@@ -376,7 +421,7 @@ void WithExpression() : {}
 {
     (
         /* optional <AND> makes it the default operator between words */
-        ProximityExpression() (LOOKAHEAD(2)  (<WITH>|"%") ProximityExpression() )*
+        ProximityExpression() (LOOKAHEAD(2)  (<WITH>|"%")+ ProximityExpression() )*
     ) #With(>1)
 }
 
@@ -420,6 +465,7 @@ void UnaryExpression() :
           n = Not()
         | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
         | ("(" ")") // just ignore empty parens, ie:  ()
+        | Limit() | Options() | Aggregations() | FieldLists() | Visibility()
         | n = Expansion()
         | n = JsonQuery()
         | n = BoolQuery()

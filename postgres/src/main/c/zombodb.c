@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include <sys/time.h>
+#include <am/zdb_interface.h>
 
 #include "postgres.h"
 #include "fmgr.h"
@@ -28,9 +29,9 @@
 PG_MODULE_MAGIC;
 #endif
 
-PG_FUNCTION_INFO_V1(rest_get);
+PG_FUNCTION_INFO_V1(zdb_es_direct_request);
 
-Datum rest_get(PG_FUNCTION_ARGS);
+Datum zdb_es_direct_request(PG_FUNCTION_ARGS);
 
 /*
  * Library initialization functions
@@ -48,11 +49,25 @@ void _PG_fini(void) {
     zdbam_fini();
 }
 
-Datum rest_get(PG_FUNCTION_ARGS) {
-    char *url = PG_ARGISNULL(0) ? NULL : GET_STR(PG_GETARG_TEXT_P(0));
+Datum zdb_es_direct_request(PG_FUNCTION_ARGS) {
+    Oid                indexrelid     = PG_GETARG_OID(0);
+    char               *method        = GET_STR(PG_GETARG_TEXT_P(1));
+    char               *endpoint      = GET_STR(PG_GETARG_TEXT_P(2));
+    ZDBIndexDescriptor *desc;
+    StringInfo         final_endpoint = makeStringInfo();
+    StringInfo         response;
 
-    if (url == NULL)
-        PG_RETURN_NULL();
+    desc = zdb_alloc_index_descriptor_by_index_oid(indexrelid);
 
-    PG_RETURN_TEXT_P(cstring_to_text(rest_call("GET", url, NULL, 1)->data));
+    if (endpoint[0] == '/') {
+        /* user wants to hit the cluster itself */
+        appendStringInfo(final_endpoint, "%s/%s", desc->url, endpoint);
+    } else {
+        /* user wants to hit the specific index */
+        appendStringInfo(final_endpoint, "%s/%s/%s", desc->url, desc->fullyQualifiedName, endpoint);
+    }
+    response = rest_call(method, final_endpoint->data, NULL, 0);
+    freeStringInfo(final_endpoint);
+
+    PG_RETURN_TEXT_P(cstring_to_text(response->data));
 }

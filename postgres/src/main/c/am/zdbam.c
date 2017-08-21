@@ -70,8 +70,11 @@ PG_FUNCTION_INFO_V1(zdboptions);
 PG_FUNCTION_INFO_V1(zdbeventtrigger);
 PG_FUNCTION_INFO_V1(zdbcostestimate);
 PG_FUNCTION_INFO_V1(zdbupdatetrigger);
+PG_FUNCTION_INFO_V1(zdbdeletetrigger);
 
 PG_FUNCTION_INFO_V1(zdb_num_hits);
+
+PG_FUNCTION_INFO_V1(zdb_maybe_create_delete_trigger);
 
 /* Working state for zdbbuild and its callback */
 typedef struct {
@@ -94,13 +97,6 @@ typedef struct {
     int                nqueries;
 } ZDBScanState;
 
-typedef struct {
-    IndexBulkDeleteCallback callback;
-    void                    *callback_state;
-    List                    *bulkDeleteList;
-    int                     many;
-} ZDBBulkDeleteState;
-
 static uint64 zdb_sequence = 0;
 
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state);
@@ -108,6 +104,8 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
 static ItemPointer LAST_UPDATED_CTID = NULL;
+
+static List *deletedCtids = NULL;
 
 /* For tracking/pushing changed tuples */
 static ExecutorStart_hook_type prev_ExecutorStartHook = NULL;
@@ -174,6 +172,18 @@ static void process_inserted_indexes(bool doit) {
     zdb_sequential_scan_support_cleanup();
 }
 
+static void process_deleted_tuples() {
+    ListCell *lc;
+
+    foreach (lc, deletedCtids) {
+        ZDBDeletedCtid *entry = (ZDBDeletedCtid *) lfirst(lc);
+
+        entry->desc->implementation->deleteTuples(entry->desc, entry->ctids);
+    }
+
+    deletedCtids = NULL;
+}
+
 static void xact_complete_cleanup(XactEvent event) {
 	List     *usedIndexes     = usedIndexesList;
 	ListCell *lc;
@@ -183,6 +193,8 @@ static void xact_complete_cleanup(XactEvent event) {
     indexesInsertedList       = NULL;
     CURRENT_QUERY_STACK       = NULL;
 	LAST_UPDATED_CTID         = NULL;
+    deletedCtids              = NULL;
+
     executorDepth             = 0;
     numHitsFound              = -1;
 	zdb_sequence			  = 0;
@@ -205,6 +217,8 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
     switch (event) {
         case XACT_EVENT_PRE_PREPARE:
         case XACT_EVENT_PRE_COMMIT: {
+
+            process_deleted_tuples();
 
             if (indexesInsertedList != NULL) {
                 ListCell *lc;
@@ -321,6 +335,86 @@ static void zdb_process_utility_hook (Node *parsetree, const char *queryString, 
     process_inserted_indexes(!zdb_batch_mode_guc);
 }
 
+static void create_trigger_dependency(Oid indexRelOid, Oid triggerOid) {
+    ObjectAddress indexAddress;
+    ObjectAddress triggerAddress;
+
+    indexAddress.classId = RelationRelationId;
+    indexAddress.objectId = indexRelOid;
+    indexAddress.objectSubId = 0;
+
+    triggerAddress.classId = TriggerRelationId;
+    triggerAddress.objectId = triggerOid;
+    triggerAddress.objectSubId = 0;
+
+    recordDependencyOn(&triggerAddress, &indexAddress, DEPENDENCY_INTERNAL);
+}
+
+static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
+    StringInfo triggerSQL = makeStringInfo();
+
+	appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", heapRelOid, indexRelOid);
+	if (SPI_execute(triggerSQL->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
+		return;
+
+	resetStringInfo(triggerSQL);
+    appendStringInfo(triggerSQL,
+                     "CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
+                             "       BEFORE UPDATE ON \"%s\".\"%s\" "
+                             "       FOR EACH ROW EXECUTE PROCEDURE zdbupdatetrigger();"
+                             "UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d';"
+                             "SELECT oid "
+                             "       FROM pg_trigger "
+                             "       WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'",
+                     heapRelOid, indexRelOid, schemaName, tableName, /* CREATE TRIGGER args */
+                     heapRelOid, indexRelOid, /* UPDATE pg_trigger args */
+                     heapRelOid, indexRelOid /* SELECT FROM pg_trigger args */
+    );
+
+    if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1) {
+        Oid triggerOid = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
+
+        create_trigger_dependency(indexRelOid, triggerOid);
+    } else {
+        elog(ERROR, "Cannot create update trigger");
+    }
+
+    freeStringInfo(triggerSQL);
+}
+
+static void create_delete_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
+    StringInfo triggerSQL = makeStringInfo();
+
+	appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d'", heapRelOid, indexRelOid);
+	if (SPI_execute(triggerSQL->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
+		return;	/* trigger already exists */
+
+	resetStringInfo(triggerSQL);
+    appendStringInfo(triggerSQL,
+                     "CREATE TRIGGER zzzzdb_tuple_delete_for_%d_using_%d"
+                             "       BEFORE DELETE ON \"%s\".\"%s\" "
+                             "       FOR EACH ROW EXECUTE PROCEDURE zdbdeletetrigger(%d);"
+                             "UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d';"
+                             "SELECT oid "
+                             "       FROM pg_trigger "
+                             "       WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d'",
+                     heapRelOid, indexRelOid, schemaName, tableName, /* CREATE TRIGGER args */
+                     indexRelOid, /* zdbdeletetrigger() args */
+                     heapRelOid, indexRelOid, /* UPDATE pg_trigger args */
+                     heapRelOid, indexRelOid /* SELECT FROM pg_trigger args */
+    );
+
+    if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1) {
+        Oid triggerOid = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
+
+        create_trigger_dependency(indexRelOid, triggerOid);
+    } else {
+        elog(ERROR, "Cannot create delete trigger");
+    }
+
+    freeStringInfo(triggerSQL);
+}
+
 void zdbam_init(void) {
     if (prev_ExecutorStartHook == zdb_executor_start_hook)
         elog(ERROR, "zdbam_init:  Unable to initialize ZomboDB.  ExecutorStartHook already assigned");
@@ -433,48 +527,13 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 
         if (heapRel->rd_rel->relkind != 'm')
         {
-            StringInfo triggerSQL;
+            StringInfo triggerSQL = makeStringInfo();
+
             /* put a trigger on the table to forward UPDATEs and DELETEs into our code for ES xact synchronization */
             SPI_connect();
 
-            triggerSQL = makeStringInfo();
-            appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", RelationGetRelid(heapRel), RelationGetRelid(indexRel));
-            if (SPI_execute(triggerSQL->data, true, 0) == SPI_OK_SELECT && SPI_processed == 0)
-            {
-                resetStringInfo(triggerSQL);
-                appendStringInfo(triggerSQL,
-                                 "CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
-                                         "       BEFORE UPDATE ON \"%s\".\"%s\" "
-                                         "       FOR EACH ROW EXECUTE PROCEDURE zdbupdatetrigger();"
-                                         "UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d';"
-                                         "SELECT oid "
-                                         "       FROM pg_trigger "
-                                         "       WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'",
-                                 RelationGetRelid(heapRel), RelationGetRelid(indexRel), buildstate.desc->schemaName, buildstate.desc->tableName,  /* CREATE TRIGGER args */
-                                 RelationGetRelid(heapRel), RelationGetRelid(indexRel), /* UPDATE pg_trigger args */
-                                 RelationGetRelid(heapRel), RelationGetRelid(indexRel) /* SELECT FROM pg_trigger args */
-                                );
-
-                if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1)
-                {
-                    ObjectAddress indexAddress;
-                    ObjectAddress triggerAddress;
-
-                    indexAddress.classId     = RelationRelationId;
-                    indexAddress.objectId    = RelationGetRelid(indexRel);
-                    indexAddress.objectSubId = 0;
-
-                    triggerAddress.classId     = TriggerRelationId;
-                    triggerAddress.objectId    = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
-                    triggerAddress.objectSubId = 0;
-
-                    recordDependencyOn(&triggerAddress, &indexAddress, DEPENDENCY_INTERNAL);
-                }
-                else
-                {
-                    elog(ERROR, "Cannot create trigger");
-                }
-            }
+			create_update_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
+			create_delete_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
 
             pfree(triggerSQL->data);
             pfree(triggerSQL);
@@ -765,90 +824,6 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
 }
 
 /*
- * lifted from various Postgres versions of vacuumlazy.c
- *
- * We do this so that vacuuming our remote Elasticsearch index can
- * look directly at LVRelStats.dead_tuples instead of walking through
- * the index and asking about each and every tuple.
- */
-#if (PG_VERSION_NUM < 90400)
-typedef struct LVRelStats
-{
-    /* hasindex = true means two-pass strategy; false means one-pass */
-    bool		hasindex;
-    /* Overall statistics about rel */
-    BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
-    BlockNumber rel_pages;		/* total number of pages */
-    BlockNumber scanned_pages;	/* number of pages we examined */
-    double		scanned_tuples; /* counts only tuples on scanned pages */
-    double		old_rel_tuples; /* previous value of pg_class.reltuples */
-    double		new_rel_tuples; /* new estimated total # of tuples */
-    BlockNumber pages_removed;
-    double		tuples_deleted;
-    BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
-    /* List of TIDs of tuples we intend to delete */
-    /* NB: this list is ordered by TID address */
-    int			num_dead_tuples;	/* current # of entries */
-    int			max_dead_tuples;	/* # slots allocated in array */
-    ItemPointer dead_tuples;	/* array of ItemPointerData */
-    int			num_index_scans;
-    TransactionId latestRemovedXid;
-    bool		lock_waiter_detected;
-} LVRelStats;
-#elif (PG_VERSION_NUM < 90500)
-typedef struct LVRelStats
-{
-    /* hasindex = true means two-pass strategy; false means one-pass */
-    bool		hasindex;
-    /* Overall statistics about rel */
-    BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
-    BlockNumber rel_pages;		/* total number of pages */
-    BlockNumber scanned_pages;	/* number of pages we examined */
-    double		scanned_tuples; /* counts only tuples on scanned pages */
-    double		old_rel_tuples; /* previous value of pg_class.reltuples */
-    double		new_rel_tuples; /* new estimated total # of tuples */
-    double		new_dead_tuples;	/* new estimated total # of dead tuples */
-    BlockNumber pages_removed;
-    double		tuples_deleted;
-    BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
-    /* List of TIDs of tuples we intend to delete */
-    /* NB: this list is ordered by TID address */
-    int			num_dead_tuples;	/* current # of entries */
-    int			max_dead_tuples;	/* # slots allocated in array */
-    ItemPointer dead_tuples;	/* array of ItemPointerData */
-    int			num_index_scans;
-    TransactionId latestRemovedXid;
-    bool		lock_waiter_detected;
-} LVRelStats;
-#elif (PG_VERSION_NUM < 90600)
-typedef struct LVRelStats
-{
-	/* hasindex = true means two-pass strategy; false means one-pass */
-	bool		hasindex;
-	/* Overall statistics about rel */
-	BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
-	BlockNumber rel_pages;		/* total number of pages */
-	BlockNumber scanned_pages;	/* number of pages we examined */
-	BlockNumber pinskipped_pages;		/* # of pages we skipped due to a pin */
-	double		scanned_tuples; /* counts only tuples on scanned pages */
-	double		old_rel_tuples; /* previous value of pg_class.reltuples */
-	double		new_rel_tuples; /* new estimated total # of tuples */
-	double		new_dead_tuples;	/* new estimated total # of dead tuples */
-	BlockNumber pages_removed;
-	double		tuples_deleted;
-	BlockNumber nonempty_pages; /* actually, last nonempty page + 1 */
-	/* List of TIDs of tuples we intend to delete */
-	/* NB: this list is ordered by TID address */
-	int			num_dead_tuples;	/* current # of entries */
-	int			max_dead_tuples;	/* # slots allocated in array */
-	ItemPointer dead_tuples;	/* array of ItemPointerData */
-	int			num_index_scans;
-	TransactionId latestRemovedXid;
-	bool		lock_waiter_detected;
-} LVRelStats;
-#endif
-
-/*
  * Bulk deletion of all index entries pointing to a set of heap tuples.
  * The set of target tuples is specified via a callback routine that tells
  * whether any given heap tuple (identified by ItemPointer) is being deleted.
@@ -856,14 +831,18 @@ typedef struct LVRelStats
  * Result: a palloc'd struct containing statistical info for VACUUM displays.
  */
 Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
+    static char *types[] = {"data", "deleted"};
     IndexVacuumInfo *info = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
     IndexBulkDeleteResult *volatile stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
-//    IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
+    IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
     void                    *callback_state = (void *) PG_GETARG_POINTER(3);
     Relation                indexRel        = info->index;
     ZDBIndexDescriptor      *desc;
-    LVRelStats              *relstats;
     struct timeval          tv1, tv2;
+    char *deletedCtids;
+    uint64 cntDeletedCtids, i=0;
+    List *toDelete = NULL;
+    int z;
 
     gettimeofday(&tv1, NULL);
 
@@ -875,17 +854,37 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     if (desc->isShadow)
         PG_RETURN_POINTER(stats);
 
-    relstats = (LVRelStats *) callback_state; /* XXX:  cast to our copy/paste of LVRelStats! */
+    for (z=0; z<2; z++) {
+        deletedCtids = desc->implementation->vacuumSupport(desc, types[z]);
+        memcpy(&cntDeletedCtids, deletedCtids, sizeof(uint64));
 
-    desc->implementation->bulkDelete(desc, relstats->dead_tuples, relstats->num_dead_tuples);
+        for (i = 0; i < cntDeletedCtids; i++) {
+            ItemPointer ctid = palloc(sizeof(ItemPointerData));
+            BlockNumber blockno;
+            OffsetNumber offno;
+
+            memcpy(&blockno, deletedCtids + sizeof(uint64) + (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))),
+                   sizeof(BlockNumber));
+            memcpy(&offno, deletedCtids + sizeof(uint64) + sizeof(BlockNumber) +
+                           (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(OffsetNumber));
+            ItemPointerSet(ctid, blockno, offno);
+
+            if (z==1 || callback(ctid, callback_state))
+                toDelete = lappend(toDelete, ctid);
+            else
+                pfree(ctid);
+        }
+
+        desc->implementation->bulkDelete(desc, toDelete, z == 1);
+    }
 
     stats->num_pages        = 1;
     stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
-    stats->tuples_removed   = relstats->num_dead_tuples;
+    stats->tuples_removed   = list_length(toDelete);;
 
     gettimeofday(&tv2, NULL);
 
-    elog(zdbloglevel, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), relstats->num_dead_tuples, (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
+    elog(ZDB_LOG_LEVEL, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), list_length(toDelete), (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
 
     PG_RETURN_POINTER(stats);
 }
@@ -1077,4 +1076,59 @@ Datum zdbupdatetrigger(PG_FUNCTION_ARGS) {
 		LAST_UPDATED_CTID = palloc(sizeof(ItemPointerData));
 	memcpy(LAST_UPDATED_CTID, &trigdata->tg_trigtuple->t_self, sizeof(ItemPointerData));
     return PointerGetDatum(trigdata->tg_newtuple);
+}
+
+Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
+    MemoryContext tmpcxt;
+    TriggerData *trigdata = (TriggerData *) fcinfo->context;
+    Oid indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
+    ZDBDeletedCtid *entry = NULL;
+    ItemPointer ctid;
+    ListCell *lc;
+
+    /* make sure it's called as a trigger at all */
+    if (!CALLED_AS_TRIGGER(fcinfo))
+        elog(ERROR, "zdbdeletetrigger: not called by trigger manager");
+
+    if (!(TRIGGER_FIRED_BY_DELETE(trigdata->tg_event)))
+        elog(ERROR, "zdbupdatetrigger: can only be fired for UPDATE triggers");
+
+    if (TRIGGER_FIRED_AFTER(trigdata->tg_event))
+        elog(ERROR, "zdbupdatetrigger: can only be fired as a BEFORE trigger");
+
+    tmpcxt = MemoryContextSwitchTo(TopTransactionContext);
+
+    ctid = palloc0(sizeof(ItemPointerData));
+    foreach (lc, deletedCtids) {
+        entry = (ZDBDeletedCtid *) lfirst(lc);
+        if (entry->desc->indexRelid == indexRelId)
+            break;
+    }
+
+    if (entry == NULL) {
+        Relation indexRel = RelationIdGetRelation(indexRelId);
+        entry = palloc0(sizeof(ZDBDeletedCtid));
+        entry->desc = alloc_index_descriptor(indexRel, false);
+        deletedCtids = lappend(deletedCtids, entry);
+        RelationClose(indexRel);
+    }
+
+    ItemPointerCopy(&trigdata->tg_trigtuple->t_self, ctid);
+    entry->ctids = lappend(entry->ctids, ctid);
+
+    MemoryContextSwitchTo(tmpcxt);
+    return PointerGetDatum(trigdata->tg_trigtuple);
+}
+
+Datum zdb_maybe_create_delete_trigger(PG_FUNCTION_ARGS) {
+	Oid indexOid = PG_GETARG_OID(0);
+	ZDBIndexDescriptor *desc;
+
+	desc = zdb_alloc_index_descriptor_by_index_oid(indexOid);
+
+	SPI_connect();
+	create_delete_trigger(desc->heapRelid, desc->schemaName, desc->tableName, indexOid);
+	SPI_finish();
+
+	PG_RETURN_VOID();
 }
