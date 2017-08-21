@@ -15,6 +15,8 @@
  */
 package com.tcdi.zombodb.query_parser.metadata;
 
+import com.tcdi.zombodb.query_parser.ASTIndexLink;
+
 import java.util.*;
 
 public class IndexRelationshipManager {
@@ -28,16 +30,20 @@ public class IndexRelationshipManager {
 
     }
 
-    public boolean relationshipsDefined() {
+    boolean relationshipsDefined() {
         return cnt > 0;
     }
 
-    public void addRelationship(String sourceIndex, String sourceField, String destinationIndex, String destinationField) {
-        Dijkstra.Vertex source = d.vertex(sourceIndex);
-        Dijkstra.Vertex dest = d.vertex(destinationIndex);
+    public void addRelationship(ASTIndexLink source, String sourceField, ASTIndexLink destination, String destinationField) {
+        addRelationship(source.getFieldname(), source.getIndexName(), sourceField, destination.getFieldname(), destination.getIndexName(), destinationField);
+    }
 
-        Dijkstra.Vertex srcField = d.vertex(sourceIndex + ":" + sourceField);
-        Dijkstra.Vertex destField = d.vertex(destinationIndex + ":" + destinationField);
+    private void addRelationship(String sourceName, String sourceIndex, String sourceField, String destinationName, String destinationIndex, String destinationField) {
+        Dijkstra.Vertex source = d.vertex(sourceName, sourceIndex);
+        Dijkstra.Vertex dest = d.vertex(destinationName, destinationIndex);
+
+        Dijkstra.Vertex srcField = d.vertex(sourceName, sourceIndex + ":" + sourceField);
+        Dijkstra.Vertex destField = d.vertex(destinationName, destinationIndex + ":" + destinationField);
 
         // source links to dest via the source and dest fields
         source.add(srcField, 1).add(destField, 1).add(dest, 2);
@@ -49,17 +55,16 @@ public class IndexRelationshipManager {
         cnt++;
     }
 
-    public List<String> calcPath(String sourceIndex, String destinationIndex) {
-        List<Dijkstra.Vertex> path = d.getShortestPathTo(sourceIndex, destinationIndex);
-        List<String> pathAsStrings = new ArrayList<>(path.size());
-        for (Dijkstra.Vertex p : path)
-            pathAsStrings.add(p.toString());
-        return pathAsStrings;
+    public List<Dijkstra.NamedIndex> calcPath(ASTIndexLink source, ASTIndexLink destination) {
+        return calcPath(source.getFieldname(), source.getIndexName(), destination.getFieldname(), destination.getIndexName());
     }
 
-    public boolean areFieldsEquivalent(String a, String b) {
-        Set<String> equiv = equivalencies.get(a);
-        return equiv != null && equiv.contains(b);
+    private List<Dijkstra.NamedIndex> calcPath(String sourceName, String sourceIndex, String destinationName, String destinationIndex) {
+        List<Dijkstra.Vertex> path = d.getShortestPathTo(sourceName, sourceIndex, destinationName, destinationIndex);
+        List<Dijkstra.NamedIndex> pathAsStrings = new ArrayList<>(path.size());
+        for (Dijkstra.Vertex p : path)
+            pathAsStrings.add(p.getName());
+        return pathAsStrings;
     }
 
     private void addEquivalency(Dijkstra.Vertex srcField, Dijkstra.Vertex destField) {

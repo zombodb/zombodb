@@ -1528,19 +1528,12 @@
                     }
                   }
                 }, {
-                  "filtered" : {
-                    "query" : {
-                      "match_all" : { }
-                    },
-                    "filter" : {
-                      "missing" : {
-                        "field" : "fulltext_field"
-                      }
-                    }
+                  "terms" : {
+                    "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99", null ]
                   }
                 }, {
                   "terms" : {
-                    "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99", "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
+                    "fulltext_field" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                   }
                 } ]
               }
@@ -1558,19 +1551,12 @@
                     }
                   }
                 }, {
-                  "filtered" : {
-                    "query" : {
-                      "match_all" : { }
-                    },
-                    "filter" : {
-                      "missing" : {
-                        "field" : "_all"
-                      }
-                    }
+                  "terms" : {
+                    "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99", null ]
                   }
                 }, {
                   "terms" : {
-                    "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99", "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
+                    "_all" : [ "1", "2", "3", "beer", "foo", "blah", true, "123.99" ]
                   }
                 } ]
               }

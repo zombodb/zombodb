@@ -25,17 +25,21 @@ import java.util.*;
  */
 public class Dijkstra {
     public class Vertex implements Comparable<Vertex>, Iterable<Edge> {
-        private final String name;
+        private final NamedIndex name;
         private final List<Edge> adjacencies = new ArrayList<>();
         private double minDistance = Double.POSITIVE_INFINITY;
         private Vertex previous;
 
-        private Vertex(String argName) {
+        private Vertex(NamedIndex argName) {
             name = argName;
         }
 
-        public String toString() {
+        public NamedIndex getName() {
             return name;
+        }
+
+        public String toString() {
+            return name.toString();
         }
 
         @Override
@@ -57,9 +61,9 @@ public class Dijkstra {
             return new ArrayList<>(adjacencies).iterator();
         }
 
-        public Vertex add(String name, double weight) {
+        public Vertex add(String name, String index, double weight) {
             Edge e;
-            add(e = edge(name, weight));
+            add(e = edge(name, index, weight));
             return e.target;
         }
 
@@ -80,10 +84,6 @@ public class Dijkstra {
             return e.target;
         }
 
-        public List<Edge> adjacencies() {
-            return adjacencies;
-        }
-
         private void reset() {
             minDistance = Double.POSITIVE_INFINITY;
             previous = null;
@@ -93,9 +93,9 @@ public class Dijkstra {
         }
     }
 
-    public class Edge {
-        public final Vertex target;
-        public final double weight;
+    class Edge {
+        final Vertex target;
+        final double weight;
 
         private Edge(Vertex argTarget, double argWeight) {
             target = argTarget;
@@ -108,17 +108,43 @@ public class Dijkstra {
         }
     }
 
-    private final Map<String, Vertex> verticies = new HashMap<>();
+    public class NamedIndex {
+        public final String name;
+        public final String index;
 
-    public Vertex vertex(String name) {
-        Vertex v = verticies.get(name);
+        NamedIndex(String name, String index) {
+            this.name = name;
+            this.index = index;
+        }
+
+        @Override
+        public int hashCode() {
+            return toString().hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return name + "@" + index;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj != null && obj instanceof NamedIndex && obj.toString().equals(this.toString());
+        }
+    }
+
+    private final Map<NamedIndex, Vertex> verticies = new HashMap<>();
+
+    Vertex vertex(String name, String index) {
+        NamedIndex ni = new NamedIndex(name, index);
+        Vertex v = verticies.get(ni);
         if (v == null)
-            verticies.put(name, v = new Vertex(name));
+            verticies.put(ni, v = new Vertex(ni));
         return v;
     }
 
-    public Edge edge(String name, double weight) {
-        return new Edge(vertex(name), weight);
+    private Edge edge(String name, String index, double weight) {
+        return new Edge(vertex(name, index), weight);
     }
 
     private void computePaths(Vertex source) {
@@ -149,14 +175,16 @@ public class Dijkstra {
         }
     }
 
-    public List<Vertex> getShortestPathTo(String source, String destination) {
+    List<Vertex> getShortestPathTo(String sourceName, String sourceIndex, String destinationName, String destinationIndex) {
+        NamedIndex source = new NamedIndex(sourceName, sourceIndex);
+        NamedIndex destination = new NamedIndex(destinationName, destinationIndex);
         if (!verticies.containsKey(source))
-            throw new RuntimeException("No such source vertex: " + source);
+            throw new RuntimeException("No such source vertex: " + sourceIndex);
         else if (!verticies.containsKey(destination))
-            throw new RuntimeException("No such destination vertex: " + destination);
-        computePaths(vertex(source));
+            throw new RuntimeException("No such destination vertex: " + destinationIndex);
+        computePaths(vertex(sourceName, sourceIndex));
 
-        Vertex dest = vertex(destination);
+        Vertex dest = vertex(destinationName, destinationIndex);
         List<Vertex> path = new ArrayList<>();
         for (Vertex vertex = dest; vertex != null; vertex = vertex.previous)
             path.add(vertex);
