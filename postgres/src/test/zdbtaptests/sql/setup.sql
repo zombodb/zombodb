@@ -387,7 +387,7 @@ CREATE TABLE unit_tests.case_name
   CONSTRAINT idx_unit_tests_case_name PRIMARY KEY (pk_cpm)
 );
 
-CREATE INDEX es_unit_tests_case_name ON unit_tests.case_name USING zombodb (zdb('unit_tests.case_name'::regclass, ctid), zdb(case_name.*)) WITH (url='http://localhost:9200/', shards='3', replicas='1');
+CREATE INDEX es_unit_tests_case_name ON unit_tests.case_name USING zombodb (zdb('unit_tests.case_name'::regclass, ctid), zdb(case_name.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
 
 ALTER INDEX unit_tests.es_unit_tests_data set (options='pk_data = <var.es_unit_tests_var>pk_var,pk_data = <vol.es_unit_tests_vol>pk_vol,data_bigint_array_2=<case_name.es_unit_tests_case_name>pk_cpm');
 
