@@ -1532,31 +1532,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field<>(one & two & three)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must\" : [ {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must_not\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"exact_field\" : \"one\"\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ]\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must_not\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"exact_field\" : \"two\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must_not\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"exact_field\" : \"three\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
@@ -1567,31 +1547,12 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("exact_field<>(one , two , three)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must_not\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"exact_field\" : \"one\"\n" +
-                        "          }\n" +
-                        "        }\n" +
+                        "    \"must_not\" : {\n" +
+                        "      \"terms\" : {\n" +
+                        "        \"exact_field\" : [ \"one\", \"two\", \"three\" ],\n" +
+                        "        \"minimum_should_match\" : \"3\"\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must_not\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"exact_field\" : \"two\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must_not\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"exact_field\" : \"three\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    }\n" +
                         "  }\n" +
                         "}"
         );
