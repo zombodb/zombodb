@@ -50,9 +50,17 @@ BEGIN;
 DELETE FROM gc.cv_data
 WHERE pk_data_id IN ('3', '4');
 COMMIT;
-VACUUM gc.cv_data;
+VACUUM FULL gc.cv_data;
+VACUUM FULL gc.cv_var;
+VACUUM FULL gc.cv_vol;
+BEGIN;
+DELETE FROM gc.cv_var WHERE pk_var_id = 5;
+DELETE FROM gc.cv_vol WHERE pk_vol_id = 5;
+COMMIT;
 VACUUM gc.cv_var;
 VACUUM gc.cv_vol;
+-- should cause a DocumentAlreadyExists ERROR from Elasticsearch if #224 is bugged
+INSERT INTO gc.cv_vol (pk_vol_id) VALUES (5);
 DROP SCHEMA gc CASCADE;
 NOTICE:  drop cascades to 3 other objects
 DETAIL:  drop cascades to table gc.cv_data
