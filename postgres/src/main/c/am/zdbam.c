@@ -1091,10 +1091,10 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
         elog(ERROR, "zdbdeletetrigger: not called by trigger manager");
 
     if (!(TRIGGER_FIRED_BY_DELETE(trigdata->tg_event)))
-        elog(ERROR, "zdbupdatetrigger: can only be fired for UPDATE triggers");
+        elog(ERROR, "zdbdeletetrigger: can only be fired for DELETE triggers");
 
     if (TRIGGER_FIRED_AFTER(trigdata->tg_event))
-        elog(ERROR, "zdbupdatetrigger: can only be fired as a BEFORE trigger");
+        elog(ERROR, "zdbdeletetrigger: can only be fired as a BEFORE trigger");
 
     tmpcxt = MemoryContextSwitchTo(TopTransactionContext);
 
@@ -1103,6 +1103,7 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
         entry = (ZDBDeletedCtid *) lfirst(lc);
         if (entry->desc->indexRelid == indexRelId)
             break;
+        entry = NULL;
     }
 
     if (entry == NULL) {
@@ -1112,6 +1113,8 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
         deletedCtids = lappend(deletedCtids, entry);
         RelationClose(indexRel);
     }
+
+    Assert(entry->desc->indexRelid == indexRelId);
 
     ItemPointerCopy(&trigdata->tg_trigtuple->t_self, ctid);
     entry->ctids = lappend(entry->ctids, ctid);
