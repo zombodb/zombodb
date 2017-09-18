@@ -42,14 +42,16 @@ class ZomboDBVisibilityQuery extends Query {
     private final long myXid;
     private final long xmin;
     private final long xmax;
+    private final boolean all;
     private final Set<Long> activeXids;
 
-    ZomboDBVisibilityQuery(Query query, String fieldname, long myXid, long xmin, long xmax, Set<Long> activeXids) {
+    ZomboDBVisibilityQuery(Query query, String fieldname, long myXid, long xmin, long xmax, boolean all, Set<Long> activeXids) {
         this.query = query;
         this.fieldname = fieldname;
         this.myXid = myXid;
         this.xmin = xmin;
         this.xmax = xmax;
+        this.all = all;
         this.activeXids = activeXids;
     }
 
@@ -68,7 +70,7 @@ class ZomboDBVisibilityQuery extends Query {
             @Override
             public DocIdSet getDocIdSet(AtomicReaderContext context, Bits acceptDocs) throws IOException {
                 if (visibilityBitSets == null)
-                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, activeXids, searcher, updatedCtids);
+                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, all, activeXids, searcher, updatedCtids);
                 return visibilityBitSets.get(context.ord);
             }
         }
@@ -84,7 +86,7 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public String toString(String field) {
-        return "visibility(" + fieldname + ", query=" + query + ", myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", active=" + ArrayUtils.toString(activeXids) + ")";
+        return "visibility(" + fieldname + ", query=" + query + ", myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", all=" + all + ", active=" + ArrayUtils.toString(activeXids) + ")";
     }
 
     @Override
@@ -95,6 +97,7 @@ class ZomboDBVisibilityQuery extends Query {
         hash = hash * 31 + (int)(myXid ^ (myXid >>> 32));
         hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
         hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
+        hash = hash * 31 + (all?1:0);
         hash = hash * 31 + ArrayUtils.toString(activeXids).hashCode();
         return hash;
     }
@@ -112,6 +115,7 @@ class ZomboDBVisibilityQuery extends Query {
                 this.myXid == eq.myXid &&
                 this.xmin == eq.xmin &&
                 this.xmax == eq.xmax &&
+                this.all == eq.all &&
                 ArrayUtils.isEquals(this.activeXids, eq.activeXids);
     }
 }

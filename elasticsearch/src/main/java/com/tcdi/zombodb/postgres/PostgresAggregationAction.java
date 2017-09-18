@@ -54,7 +54,7 @@ public class PostgresAggregationAction extends BaseRestHandler {
             SearchRequestBuilder builder = new SearchRequestBuilder(client);
             String input = request.content().toUtf8();
             final QueryRewriter rewriter = QueryRewriter.Factory.create(client, request.param("index"), request.param("preference"), input, true, true, true);
-            QueryBuilder qb = rewriter.rewriteQuery();
+            QueryBuilder qb = rewriter.rewriteQuery(true);
             AbstractAggregationBuilder ab = rewriter.rewriteAggregations();
             SuggestBuilder.SuggestionBuilder tsb = rewriter.rewriteSuggestions();
 

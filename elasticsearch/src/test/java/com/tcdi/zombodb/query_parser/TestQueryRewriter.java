@@ -4892,7 +4892,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "  }\n" +
                 "}) beer,wine,cheese");
         SearchRequestBuilder builder = new SearchRequestBuilder(client());
-        builder.setQuery(qr.rewriteQuery());
+        builder.setQuery(qr.rewriteQuery(false));
         builder.addAggregation(qr.rewriteAggregations());
 
         assertEquals(

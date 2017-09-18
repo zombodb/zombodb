@@ -60,7 +60,7 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
                     constantScoreQuery(
                             boolQuery()
                                     .should(
-                                            visibility("_prev_ctid").query(matchAllQuery()).myXid(-1).xmin(xmin).xmax(xmax)
+                                            visibility("_prev_ctid").query(matchAllQuery()).myXid(-1).xmin(xmin).xmax(xmax).all(true)
                                     )
                                     .should(termQuery("_type", "state"))
                     )

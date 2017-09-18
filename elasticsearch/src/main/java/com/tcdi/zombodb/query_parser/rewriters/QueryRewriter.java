@@ -223,14 +223,14 @@ public abstract class QueryRewriter {
         return tree.getLimit();
     }
 
-    public QueryBuilder rewriteQuery() {
+    public QueryBuilder rewriteQuery(boolean all) {
         QueryBuilder qb = build(tree);
         queryRewritten = true;
 
         try {
-            return applyVisibility(qb, getAggregateIndexName());
+            return applyVisibility(qb, getAggregateIndexName(), all);
         } catch (Exception e) {
-            return needVisibilityOnTopLevel ? applyVisibility(qb, getSearchIndexName()) : qb;
+            return needVisibilityOnTopLevel ? applyVisibility(qb, getSearchIndexName(), all) : qb;
         }
     }
 
@@ -735,7 +735,7 @@ public abstract class QueryRewriter {
             BoolQueryBuilder bqb = boolQuery();
             bqb.must(expansionBuilder);
             bqb.must(build(filterQuery));
-            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName());
+            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName(), true);
         }
         return expansionBuilder;
     }
@@ -1266,7 +1266,7 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyVisibility(QueryBuilder query, final String indexName) {
+    public QueryBuilder applyVisibility(QueryBuilder query, final String indexName, boolean all) {
         ASTVisibility visibility = tree.getVisibility();
 
         if (visibility == null)
@@ -1280,6 +1280,7 @@ public abstract class QueryRewriter {
                                         .myXid(visibility.getMyXid())
                                         .xmin(visibility.getXmin())
                                         .xmax(visibility.getXmax())
+                                        .all(all)
                                         .activeXids(visibility.getActiveXids())
                                         .query(query)
                         );

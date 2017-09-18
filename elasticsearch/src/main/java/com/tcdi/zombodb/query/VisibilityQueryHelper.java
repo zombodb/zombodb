@@ -20,6 +20,7 @@ import org.apache.lucene.queries.TermFilter;
 import org.apache.lucene.queries.TermsFilter;
 import org.apache.lucene.search.FieldCache;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.util.*;
@@ -65,10 +66,10 @@ final class VisibilityQueryHelper {
         return updatedCtids;
     }
 
-    static Map<Integer, FixedBitSet> determineVisibility(final Query query, final String field, final long myXid, final long xmin, final long xmax, final Set<Long> activeXids, IndexSearcher searcher, List<BytesRef> updatedCtids) throws IOException {
+    static Map<Integer, FixedBitSet> determineVisibility(final Query query, final String field, final long myXid, final long xmin, final long xmax, final boolean all, final Set<Long> activeXids, IndexSearcher searcher, List<BytesRef> updatedCtids) throws IOException {
         final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
 
-        if (updatedCtids.size() == 0)
+        if (!all && updatedCtids.size() == 0)
             return visibilityBitSets;
 
         //
@@ -79,7 +80,9 @@ final class VisibilityQueryHelper {
 
         final Map<BytesRef, List<VisibilityInfo>> map = new HashMap<>();
         searcher.search(
-                new XConstantScoreQuery(SearchContext.current().filterCache().cache(new TermsFilter(field, updatedCtids))),
+                all ?
+                        new MatchAllDocsQuery() :
+                        new XConstantScoreQuery(SearchContext.current().filterCache().cache(new TermsFilter(field, updatedCtids))),
                 new ZomboDBTermsCollector(field) {
                     private SortedDocValues prevCtids;
                     private SortedNumericDocValues xids;
@@ -89,6 +92,8 @@ final class VisibilityQueryHelper {
 
                     @Override
                     public void collect(int doc) throws IOException {
+                        if (xids == null)
+                            return;
                         xids.setDocument(doc);
                         sequence.setDocument(doc);
 

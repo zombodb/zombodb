@@ -59,7 +59,7 @@ public class SirenQueryRewriter extends QueryRewriter {
             FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname())
                     .path(link.getRightFieldname())
                     .indices(link.getIndexName())
-                    .query(applyVisibility(build(node.getQuery()), link.getIndexName()))
+                    .query(applyVisibility(build(node.getQuery()), link.getIndexName(), true))
                     .types("data");
 
             if (!doFullFieldDataLookup)

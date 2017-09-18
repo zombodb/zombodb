@@ -152,7 +152,7 @@ public abstract class ZomboDBTestCase {
     }
 
     protected String toJson(String query) {
-        return qr(query).rewriteQuery().toString().replaceAll("\r", "").trim();
+        return qr(query).rewriteQuery(false).toString().replaceAll("\r", "").trim();
     }
 
     protected String toAST(String query) {

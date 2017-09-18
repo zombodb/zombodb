@@ -93,7 +93,7 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
             srb.setIndices(md.getIndexName());
             srb.setTypes("data");
             if (md.getPkey() != null) srb.addFieldDataField(md.getPkey());
-            srb.setQuery(QueryRewriter.Factory.create(client, md.getIndexName(), md.getPreference(), md.getQuery(), true, false, true).rewriteQuery());
+            srb.setQuery(QueryRewriter.Factory.create(client, md.getIndexName(), md.getPreference(), md.getQuery(), true, false, true).rewriteQuery(true));
 
             msearchBuilder.add(srb);
         }

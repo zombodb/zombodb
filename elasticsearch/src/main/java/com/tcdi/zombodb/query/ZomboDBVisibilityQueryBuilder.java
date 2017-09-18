@@ -32,6 +32,7 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
     private boolean haveXmin;
     private boolean haveXmax;
     private long xmax;
+    private boolean all = false;
     private long[] activeXids;
 
     public ZomboDBVisibilityQueryBuilder(String name) {
@@ -61,6 +62,11 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
         return this;
     }
 
+    public ZomboDBVisibilityQueryBuilder all(boolean all) {
+        this.all = all;
+        return this;
+    }
+
     public ZomboDBVisibilityQueryBuilder query(QueryBuilder query) {
         this.query = query;
         return this;
@@ -79,6 +85,8 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
             builder.field("xmax", xmax);
         if (activeXids != null && activeXids.length > 0)
             builder.field("active_xids", activeXids);
+        if (all)
+            builder.field("all", true);
         if (query != null) {
             builder.field("query");
             query.toXContent(builder, params);

@@ -45,6 +45,7 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
         long myXid = -1;
         long xmin = -1;
         long xmax = -1;
+        boolean all = false;
         Set<Long> activeXids = new HashSet<>();
 
         String currentFieldName = null;
@@ -74,6 +75,8 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
                     xmin = parser.longValue();
                 } else if ("xmax".equals(currentFieldName)) {
                     xmax = parser.longValue();
+                } else if ("all".equals(currentFieldName)) {
+                    all = parser.booleanValue();
                 } else {
                     throw new QueryParsingException(parseContext.index(), "[zdb visibility] query does not support [" + currentFieldName + "]");
                 }
@@ -87,6 +90,6 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
         else if (xmin == -1)
             throw new QueryParsingException(parseContext.index(), "[zdb visibility] missing [xmin]");
 
-        return new ZomboDBVisibilityQuery(query, fieldname, myXid, xmin, xmax, activeXids);
+        return new ZomboDBVisibilityQuery(query, fieldname, myXid, xmin, xmax, all, activeXids);
     }
 }
