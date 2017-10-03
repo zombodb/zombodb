@@ -17,7 +17,7 @@
 
 VERSION=$1
 BASE=`pwd`
-DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise debian_jessie"
+DISTROS="centos6 centos7 ubuntu_trusty ubuntu_precise ubuntu_xenial debian_jessie"
 POSTGRES_VERSIONS="9.3 9.4 9.5"
 
 echo "Archiving working directory tree"
