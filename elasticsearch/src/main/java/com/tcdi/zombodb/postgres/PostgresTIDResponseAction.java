@@ -115,7 +115,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setTypes("data");
             builder.setPreference(request.param("preference"));
             builder.setTrackScores(true);
-            builder.setQueryCache(false);
+            builder.setQueryCache(true);
             builder.setFetchSource(false);
             builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
