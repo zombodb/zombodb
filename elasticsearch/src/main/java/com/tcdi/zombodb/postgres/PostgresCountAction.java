@@ -24,6 +24,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
+import org.elasticsearch.search.SearchHit;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -47,7 +48,7 @@ public class PostgresCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true, true, true);
+            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true, true, false);
 
             if (query.hasLimit() && isSelectivityQuery) {
                 count = query.getLimit().getLimit();
@@ -58,7 +59,7 @@ public class PostgresCountAction extends BaseRestHandler {
                 builder.setSize(0);
                 builder.setSearchType(SearchType.COUNT);
                 builder.setPreference(request.param("preference"));
-                builder.setQueryCache(false);
+                builder.setQueryCache(true);
                 builder.setFetchSource(false);
                 builder.setTrackScores(false);
                 builder.setNoFields();

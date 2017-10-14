@@ -1,43 +1,38 @@
 package com.tcdi.zombodb.postgres;
 
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.delete.DeleteRequestBuilder;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.index.VersionType;
 import org.elasticsearch.rest.*;
-import org.elasticsearch.search.SearchHit;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
-import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
-public class ZombodbCommitXIDAction extends BaseRestHandler {
-
+public class ZombodbDeleteTuplesAction extends BaseRestHandler {
     private ClusterService clusterService;
 
     @Inject
-    public ZombodbCommitXIDAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
+    public ZombodbDeleteTuplesAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
         super(settings, controller, client);
 
         this.clusterService = clusterService;
 
-        controller.registerHandler(POST, "/{index}/_zdbxid", this);
+        controller.registerHandler(POST, "/{index}/_zdb_delete_tuples", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest rest, RestChannel channel, Client client) throws Exception {
-        String index = rest.param("index");
-        boolean refresh = rest.paramAsBoolean("refresh", false);
+    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+        String index = request.param("index");
+        boolean refresh = request.paramAsBoolean("refresh", false);
         GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
         int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
         String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
@@ -45,24 +40,38 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
         BulkRequest bulkRequest = Requests.bulkRequest();
         bulkRequest.refresh(refresh);
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(rest.content().streamInput()));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
         while ((line = reader.readLine()) != null) {
-            Long xid = Long.valueOf(line);
+            String[] split = line.split("[:]");
+            String ctid = split[0];
+            long xid = Long.valueOf(split[1]);
 
-            // delete the previously-assumed-to-be-aborted transaction id
-            // from all shards because the transaction is committing now
             for (String routing : routingTable) {
+                // broadcast the deleted document ctid to every shard
                 bulkRequest.add(
-                        new DeleteRequestBuilder(client)
+                        new IndexRequestBuilder(client)
+                                .setIndex(index)
+                                .setType("deleted")
+                                .setRouting(routing)
+                                .setVersionType(VersionType.FORCE)
+                                .setVersion(xid)
+                                .setId(ctid)
+                                .setSource("_deleting_xid", xid, "_zdb_deleted_ctid", ctid)
+                                .request()
+                );
+
+                // and broadcast the deleting xid to every shard as an aborted transaction
+                bulkRequest.add(
+                        new IndexRequestBuilder(client)
                                 .setIndex(index)
                                 .setType("aborted")
                                 .setRouting(routing)
                                 .setId(String.valueOf(xid))
+                                .setSource("_zdb_xid", xid)
                                 .request()
                 );
             }
-
         }
 
         BulkResponse response = client.bulk(bulkRequest).actionGet();

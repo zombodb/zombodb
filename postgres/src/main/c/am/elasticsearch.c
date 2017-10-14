@@ -41,29 +41,31 @@
 #include "zdb_interface.h"
 
 #define SECONDARY_TYPES_MAPPING \
-"      \"state\": {"\
+"      \"updated\": {"\
 "          \"_source\": { \"enabled\": false },"\
-"          \"_routing\": { \"required\": true },"\
 "          \"_all\": { \"enabled\": false },"\
 "          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
-"          \"date_detection\": false,"\
-"          \"properties\": { \"_ctid\":{\"type\":\"string\",\"index\":\"not_analyzed\"} }"\
+"          \"properties\": {"\
+"              \"_updating_xid\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
+"              \"_zdb_updated_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
+"          }"\
 "      },"\
 "      \"deleted\": {"\
 "          \"_source\": { \"enabled\": false },"\
 "          \"_all\": { \"enabled\": false },"\
 "          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
 "          \"properties\": {"\
-"              \"_deleting_xid\": { \"type\": \"long\", \"index\": \"not_analyzed\" }"\
+"              \"_deleting_xid\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
+"              \"_zdb_deleted_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
 "      },"\
-"      \"committed\": {"\
+"      \"aborted\": {"\
 "          \"_source\": { \"enabled\": false },"\
 "          \"_routing\": { \"required\": true },"\
 "          \"_all\": { \"enabled\": false },"\
 "          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
 "          \"properties\": {"\
-"             \"_zdb_committed_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\" }"\
+"             \"_zdb_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
 "      }"
 
@@ -128,7 +130,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
         appendStringInfo(baseQuery, "#field_lists(%s) ", desc->fieldLists);
 
     if (!zdb_ignore_visibility_guc && useInvisibilityMap) {
-        Snapshot snapshot = GetActiveSnapshot();
+        Snapshot snapshot = GetTransactionSnapshot();
 
         appendStringInfo(baseQuery, "#visibility(%lu, %lu, %lu, [", convert_xid(GetCurrentTransactionIdIfAny()), convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
         if (snapshot->xcnt > 0) {
@@ -817,26 +819,21 @@ static uint64 count_deleted_docs(ZDBIndexDescriptor *indexDescriptor) {
 	return (uint64) atoll(response->data);
 }
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, bool isdeleted) {
+void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDataDelete, List *toUpdatedDelete) {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
     ListCell *lc;
 
-    if (isdeleted)
-        appendStringInfo(endpoint, "%s/%s/_bulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    else
-        appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
         appendStringInfo(endpoint, "&refresh=true");
     }
 
-    foreach (lc, itemPointers) {
+    foreach (lc, toDataDelete) {
         ItemPointer item = lfirst(lc);
 
         appendStringInfo(request, "{\"delete\":{\"_type\":\"data\",\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
-        if (isdeleted)
-            appendStringInfo(request, "{\"delete\":{\"_type\":\"deleted\",\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
         if (request->len >= indexDescriptor->batch_size) {
             response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
@@ -868,18 +865,48 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPoi
     freeStringInfo(request);
 }
 
-char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, char *type) {
+char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
     Snapshot snapshot = GetActiveSnapshot();
 
-    appendStringInfo(endpoint, "%s/%s/_zdbvacuum?type=%s&xmin=%lu&xmax=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, type, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
+    appendStringInfo(endpoint, "%s/%s/_zdbvacuum?xmin=%lu&xmax=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
+	if (snapshot->xcnt > 0) {
+		int i;
+		appendStringInfo(endpoint, "&active=");
+		for (i = 0; i < snapshot->xcnt; i++) {
+			if (i > 0) appendStringInfoChar(endpoint, ',');
+			appendStringInfo(endpoint, "%lu", convert_xid(snapshot->xip[i]));
+		}
+	}
+
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
 	if (response->len > 0 && response->data[0] == '{' && strstr(response->data, "error") != NULL)
 		elog(ERROR, "%s", response->data);
     return response->data;
+}
+
+void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+    Snapshot snapshot = GetActiveSnapshot();
+
+    appendStringInfo(endpoint, "%s/%s/_zdbvacuum_cleanup?xmin=%lu&xmax=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
+    if (snapshot->xcnt > 0) {
+        int i;
+        appendStringInfo(endpoint, "&active=");
+        for (i = 0; i < snapshot->xcnt; i++) {
+            if (i > 0) appendStringInfoChar(endpoint, ',');
+            appendStringInfo(endpoint, "%lu", convert_xid(snapshot->xip[i]));
+        }
+    }
+	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+
+	freeStringInfo(endpoint);
+	if (response->len > 0 && response->data[0] == '{' && strstr(response->data, "error") != NULL)
+		elog(ERROR, "%s", response->data);
 }
 
 static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, uint64 sequence) {
@@ -1041,7 +1068,7 @@ void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids
     ListCell *lc;
     uint64 xid = convert_xid(GetCurrentTransactionId());
 
-    appendStringInfo(endpoint, "%s/%s/deleted/_bulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_zdb_delete_tuples", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
         appendStringInfo(endpoint, "?refresh=true");
     }
@@ -1049,8 +1076,7 @@ void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids
     foreach (lc, ctids) {
         ItemPointer ctid = (ItemPointer) lfirst(lc);
 
-        appendStringInfo(request, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid));
-        appendStringInfo(request, "{\"_deleting_xid\":%lu}\n", xid);
+        appendStringInfo(request, "%d-%d:%lu\n", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid), xid);
     }
 
     response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);

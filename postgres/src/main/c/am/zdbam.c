@@ -218,8 +218,6 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
         case XACT_EVENT_PRE_PREPARE:
         case XACT_EVENT_PRE_COMMIT: {
 
-            process_deleted_tuples();
-
             if (indexesInsertedList != NULL) {
                 ListCell *lc;
 
@@ -272,7 +270,8 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags) {
 static void zdb_executor_end_hook(QueryDesc *queryDesc) {
     if (executorDepth == 0) {
         process_inserted_indexes(!zdb_batch_mode_guc);
-    }
+		process_deleted_tuples();
+	}
 
     if (prev_ExecutorEndHook == zdb_executor_end_hook)
         elog(ERROR, "zdb_executor_end_hook: Somehow prev_ExecutorEndHook was set to zdb_executor_end_hook");
@@ -831,7 +830,6 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
  * Result: a palloc'd struct containing statistical info for VACUUM displays.
  */
 Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
-    static char *types[] = {"data", "deleted"};
     IndexVacuumInfo *info = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
     IndexBulkDeleteResult *volatile stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
     IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
@@ -841,8 +839,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     struct timeval          tv1, tv2;
     char *deletedCtids;
     uint64 cntDeletedCtids, i=0;
-    List *toDelete = NULL;
-    int z;
+    List *toDataDelete = NULL;
 
     gettimeofday(&tv1, NULL);
 
@@ -854,37 +851,33 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     if (desc->isShadow)
         PG_RETURN_POINTER(stats);
 
-    for (z=0; z<2; z++) {
-        deletedCtids = desc->implementation->vacuumSupport(desc, types[z]);
-        memcpy(&cntDeletedCtids, deletedCtids, sizeof(uint64));
+	deletedCtids = desc->implementation->vacuumSupport(desc);
+	memcpy(&cntDeletedCtids, deletedCtids, sizeof(uint64));
 
-        for (i = 0; i < cntDeletedCtids; i++) {
-            ItemPointer ctid = palloc(sizeof(ItemPointerData));
-            BlockNumber blockno;
-            OffsetNumber offno;
+	for (i = 0; i < cntDeletedCtids; i++) {
+		ItemPointer ctid = palloc(sizeof(ItemPointerData));
+		BlockNumber blockno;
+		OffsetNumber offno;
 
-            memcpy(&blockno, deletedCtids + sizeof(uint64) + (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))),
-                   sizeof(BlockNumber));
-            memcpy(&offno, deletedCtids + sizeof(uint64) + sizeof(BlockNumber) +
-                           (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(OffsetNumber));
-            ItemPointerSet(ctid, blockno, offno);
+		memcpy(&blockno, deletedCtids + sizeof(uint64) + (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))),
+			   sizeof(BlockNumber));
+		memcpy(&offno, deletedCtids + sizeof(uint64) + sizeof(BlockNumber) +
+					   (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(OffsetNumber));
+		ItemPointerSet(ctid, blockno, offno);
 
-            if (z==1 || callback(ctid, callback_state))
-                toDelete = lappend(toDelete, ctid);
-            else
-                pfree(ctid);
-        }
+		if (callback(ctid, callback_state))
+			toDataDelete = lappend(toDataDelete, ctid);
+	}
 
-        desc->implementation->bulkDelete(desc, toDelete, z == 1);
-    }
+	desc->implementation->bulkDelete(desc, toDataDelete, NULL);
 
     stats->num_pages        = 1;
     stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
-    stats->tuples_removed   = list_length(toDelete);;
+    stats->tuples_removed   = list_length(toDataDelete);;
 
     gettimeofday(&tv2, NULL);
 
-    elog(ZDB_LOG_LEVEL, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), list_length(toDelete), (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
+    elog(ZDB_LOG_LEVEL, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), list_length(toDataDelete), (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
 
     PG_RETURN_POINTER(stats);
 }
@@ -905,6 +898,8 @@ Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
         PG_RETURN_POINTER(stats);
 
     desc = alloc_index_descriptor(indexRel, false);
+
+	desc->implementation->vacuumCleanup(desc);
 
     if (stats == NULL) {
         stats = (IndexBulkDeleteResult *) palloc0(sizeof(IndexBulkDeleteResult));
@@ -1109,7 +1104,7 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
     if (entry == NULL) {
         Relation indexRel = RelationIdGetRelation(indexRelId);
         entry = palloc0(sizeof(ZDBDeletedCtid));
-        entry->desc = alloc_index_descriptor(indexRel, false);
+        entry->desc = alloc_index_descriptor(indexRel, true);
         deletedCtids = lappend(deletedCtids, entry);
         RelationClose(indexRel);
     }

@@ -42,31 +42,25 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String index = request.param("index");
-        String type = request.param("type");
 
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)
-                .setTypes(type)
+                .setTypes("data")
                 .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
                 .setNoFields();
 
-        if ("data".equals(type)) {
-            long xmin = request.paramAsLong("xmin", 0);
-            long xmax = request.paramAsLong("xmax", 0);
-
-            search.setQuery(
-                    constantScoreQuery(
-                            boolQuery()
-                                    .should(
-                                            visibility("_prev_ctid").query(matchAllQuery()).myXid(-1).xmin(xmin).xmax(xmax).all(true)
-                                    )
-                                    .should(termQuery("_type", "state"))
-                    )
-            );
-            search.setTypes(type, "state");
-        }
+        long xmin = request.paramAsLong("xmin", 0);
+        long xmax = request.paramAsLong("xmax", 0);
+        String[] active = request.paramAsStringArray("active", new String[] {"0"});
+        search.setQuery(
+                boolQuery()
+                        .must(rangeQuery("_xid").lt(xmin))
+                        .mustNot(rangeQuery("_xid").gte(xmax))
+                        .mustNot(termsQuery("_xid", active))
+                        .must(visibility("_prev_ctid").query(matchAllQuery()).myXid(-1).xmin(xmin).xmax(xmax).all(true))
+        );
 
         byte[] bytes = null;
         int total = 0, cnt = 0, offset = 0;
@@ -75,7 +69,7 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
             if (response == null) {
                 response = client.execute(SearchAction.INSTANCE, search.request()).actionGet();
                 total = (int) response.getHits().getTotalHits();
-
+                System.err.println("total=" + total);
                 bytes = new byte[8 + 6 * total];
                 offset += Utils.encodeLong(total, bytes, offset);
             } else {

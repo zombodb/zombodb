@@ -14,19 +14,19 @@ INSERT INTO "Issue191" ("BobIsYourUncle") VALUES ('def');
 --
 -- one field from each of table and view
 --
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, ARRAY [ARRAY['BobIsYourUncle']], '');
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, ARRAY [ARRAY['BobIsYourUncle']], '');
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, ARRAY [ARRAY['BobIsYourUncle']], '');
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, ARRAY [ARRAY['BobIsYourUncle']], '');
 
 --
 -- two fields from each of table and view
 --
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, ARRAY [ARRAY['ID', 'BobIsYourUncle']], '');
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, ARRAY [ARRAY['ID', 'BobIsYourUncle']], '');
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, ARRAY [ARRAY['ID', 'BobIsYourUncle']], '');
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, ARRAY [ARRAY['ID', 'BobIsYourUncle']], '');
 
 --
 -- all fields from each of table and view
 --
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, NULL, '');
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, NULL, '');
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, NULL, '');
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, NULL, '');
 
 DROP TABLE "Issue191" CASCADE;

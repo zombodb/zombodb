@@ -20,8 +20,8 @@ SELECT assert(count(*), 162240, 'deleted 3k records from so_posts (id:*)') FROM 
  t
 (1 row)
 
--- ES will still see deleted rows via zdb_estimate_count
-SELECT assert(zdb_estimate_count('so_posts', 'id:*'), 165240, 'make sure ES still sees deleted rows');
+-- ES shouldn't still see deleted rows via zdb_estimate_count
+SELECT assert(zdb_estimate_count('so_posts', 'id:*'), 162240, 'make sure ES still sees deleted rows');
  assert 
 --------
  t

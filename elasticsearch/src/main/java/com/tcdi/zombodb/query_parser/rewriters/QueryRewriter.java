@@ -23,7 +23,6 @@ import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.optimizers.ArrayDataOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
-import com.tcdi.zombodb.query_parser.optimizers.QueryTreeOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
@@ -735,7 +734,7 @@ public abstract class QueryRewriter {
             BoolQueryBuilder bqb = boolQuery();
             bqb.must(expansionBuilder);
             bqb.must(build(filterQuery));
-            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName(), true);
+            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName(), false);
         }
         return expansionBuilder;
     }
@@ -1275,7 +1274,18 @@ public abstract class QueryRewriter {
         return
                 boolQuery()
                         .must(query)
-                        .mustNot(
+                        .must(constantScoreQuery(
+                                boolQuery()
+                                        .should(termQuery("_xid", visibility.getMyXid()))
+                                        .should(
+                                                boolQuery()
+                                                        .must(rangeQuery("_xid").lt(visibility.getXmin()))
+                                                        .mustNot(rangeQuery("_xid").gte(visibility.getXmax()))
+                                                        .mustNot(termsQuery("_xid", visibility.getActiveXids()))
+                                        )
+                                )
+                        )
+                        .mustNot(constantScoreQuery(
                                 visibility("_prev_ctid")
                                         .myXid(visibility.getMyXid())
                                         .xmin(visibility.getXmin())
@@ -1283,6 +1293,7 @@ public abstract class QueryRewriter {
                                         .all(all)
                                         .activeXids(visibility.getActiveXids())
                                         .query(query)
+                                )
                         );
     }
 }

@@ -15,17 +15,21 @@
  */
 package com.tcdi.zombodb.query;
 
+import org.apache.lucene.util.BytesRef;
+
 class VisibilityInfo {
     final int readerOrd;
     final int maxdoc;
     final int docid;
-    public final long xid;
-    public final long sequence;
+    final BytesRef id;
+    final long xid;
+    final long sequence;
 
-    VisibilityInfo(int readerOrd, int maxdoc, int docid, long xid, long sequence) {
+    VisibilityInfo(int readerOrd, int maxdoc, int docid, BytesRef id, long xid, long sequence) {
         this.readerOrd = readerOrd;
         this.maxdoc = maxdoc;
         this.docid = docid;
+        this.id = id;
         this.xid = xid;
         this.sequence = sequence;
     }

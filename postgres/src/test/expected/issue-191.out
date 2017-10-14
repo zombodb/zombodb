@@ -10,46 +10,46 @@ INSERT INTO "Issue191" ("BobIsYourUncle") VALUES ('def');
 --
 -- one field from each of table and view
 --
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, ARRAY [ARRAY['BobIsYourUncle']], '');
- table_name | user_identifier | query | total | score |                                      row_data                                      
-------------+-----------------+-------+-------+-------+------------------------------------------------------------------------------------
- "Issue191" |                 |       |     2 | {1,1} | [{"BobIsYourUncle":"abc","ctid":"(0,1)"}, {"BobIsYourUncle":"def","ctid":"(0,2)"}]
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, ARRAY [ARRAY['BobIsYourUncle']], '');
+ table_name | user_identifier | query | total |                                      row_data                                      
+------------+-----------------+-------+-------+------------------------------------------------------------------------------------
+ "Issue191" |                 |       |     2 | [{"BobIsYourUncle":"abc","ctid":"(0,1)"}, {"BobIsYourUncle":"def","ctid":"(0,2)"}]
 (1 row)
 
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, ARRAY [ARRAY['BobIsYourUncle']], '');
-   table_name    | user_identifier | query | total | score |                                     row_data                                     
------------------+-----------------+-------+-------+-------+----------------------------------------------------------------------------------
- "Issue191_View" |                 |       |     2 | {1,1} | [{"_zdb_pkey":1,"BobIsYourUncle":"abc"}, {"_zdb_pkey":2,"BobIsYourUncle":"def"}]
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, ARRAY [ARRAY['BobIsYourUncle']], '');
+   table_name    | user_identifier | query | total |                                     row_data                                     
+-----------------+-----------------+-------+-------+----------------------------------------------------------------------------------
+ "Issue191_View" |                 |       |     2 | [{"_zdb_pkey":1,"BobIsYourUncle":"abc"}, {"_zdb_pkey":2,"BobIsYourUncle":"def"}]
 (1 row)
 
 --
 -- two fields from each of table and view
 --
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, ARRAY [ARRAY['ID', 'BobIsYourUncle']], '');
- table_name | user_identifier | query | total | score |                                             row_data                                             
-------------+-----------------+-------+-------+-------+--------------------------------------------------------------------------------------------------
- "Issue191" |                 |       |     2 | {1,1} | [{"ID":1,"BobIsYourUncle":"abc","ctid":"(0,1)"}, {"ID":2,"BobIsYourUncle":"def","ctid":"(0,2)"}]
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, ARRAY [ARRAY['ID', 'BobIsYourUncle']], '');
+ table_name | user_identifier | query | total |                                             row_data                                             
+------------+-----------------+-------+-------+--------------------------------------------------------------------------------------------------
+ "Issue191" |                 |       |     2 | [{"ID":1,"BobIsYourUncle":"abc","ctid":"(0,1)"}, {"ID":2,"BobIsYourUncle":"def","ctid":"(0,2)"}]
 (1 row)
 
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, ARRAY [ARRAY['ID', 'BobIsYourUncle']], '');
-   table_name    | user_identifier | query | total | score |                                            row_data                                            
------------------+-----------------+-------+-------+-------+------------------------------------------------------------------------------------------------
- "Issue191_View" |                 |       |     2 | {1,1} | [{"_zdb_pkey":1,"ID":1,"BobIsYourUncle":"abc"}, {"_zdb_pkey":2,"ID":2,"BobIsYourUncle":"def"}]
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, ARRAY [ARRAY['ID', 'BobIsYourUncle']], '');
+   table_name    | user_identifier | query | total |                                            row_data                                            
+-----------------+-----------------+-------+-------+------------------------------------------------------------------------------------------------
+ "Issue191_View" |                 |       |     2 | [{"_zdb_pkey":1,"ID":1,"BobIsYourUncle":"abc"}, {"_zdb_pkey":2,"ID":2,"BobIsYourUncle":"def"}]
 (1 row)
 
 --
 -- all fields from each of table and view
 --
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, NULL, '');
- table_name | user_identifier | query | total | score |                                             row_data                                             
-------------+-----------------+-------+-------+-------+--------------------------------------------------------------------------------------------------
- "Issue191" |                 |       |     2 | {1,1} | [{"ID":1,"BobIsYourUncle":"abc","ctid":"(0,1)"}, {"ID":2,"BobIsYourUncle":"def","ctid":"(0,2)"}]
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191"'], NULL, NULL, '');
+ table_name | user_identifier | query | total |                                             row_data                                             
+------------+-----------------+-------+-------+--------------------------------------------------------------------------------------------------
+ "Issue191" |                 |       |     2 | [{"ID":1,"BobIsYourUncle":"abc","ctid":"(0,1)"}, {"ID":2,"BobIsYourUncle":"def","ctid":"(0,2)"}]
 (1 row)
 
-SELECT * FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, NULL, '');
-   table_name    | user_identifier | query | total | score |                                                          row_data                                                          
------------------+-----------------+-------+-------+-------+----------------------------------------------------------------------------------------------------------------------------
- "Issue191_View" |                 |       |     2 | {1,1} | [{"_zdb_pkey":1,"ID":1,"BobIsYourUncle":"abc","zdb":"(0,1)"}, {"_zdb_pkey":2,"ID":2,"BobIsYourUncle":"def","zdb":"(0,2)"}]
+SELECT table_name, user_identifier, query, total, row_data FROM zdb_multi_search(ARRAY ['public."Issue191_View"'], NULL, NULL, '');
+   table_name    | user_identifier | query | total |                                                          row_data                                                          
+-----------------+-----------------+-------+-------+----------------------------------------------------------------------------------------------------------------------------
+ "Issue191_View" |                 |       |     2 | [{"_zdb_pkey":1,"ID":1,"BobIsYourUncle":"abc","zdb":"(0,1)"}, {"_zdb_pkey":2,"ID":2,"BobIsYourUncle":"def","zdb":"(0,2)"}]
 (1 row)
 
 DROP TABLE "Issue191" CASCADE;

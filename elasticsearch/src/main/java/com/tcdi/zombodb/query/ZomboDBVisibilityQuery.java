@@ -60,23 +60,21 @@ class ZomboDBVisibilityQuery extends Query {
         class VisFilter extends Filter {
             private Map<Integer, FixedBitSet> visibilityBitSets = null;
             private final IndexSearcher searcher;
-            private final List<BytesRef> updatedCtids;
 
-            private VisFilter(IndexSearcher searcher, List<BytesRef> updatedCtids) {
+            private VisFilter(IndexSearcher searcher) {
                 this.searcher = searcher;
-                this.updatedCtids = updatedCtids;
             }
 
             @Override
             public DocIdSet getDocIdSet(AtomicReaderContext context, Bits acceptDocs) throws IOException {
                 if (visibilityBitSets == null)
-                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, all, activeXids, searcher, updatedCtids);
+                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, all, activeXids, searcher);
                 return visibilityBitSets.get(context.ord);
             }
         }
 
         IndexSearcher searcher = new IndexSearcher(reader);
-        return new XConstantScoreQuery(new VisFilter(searcher, VisibilityQueryHelper.findUpdatedCtids(searcher)));
+        return new XConstantScoreQuery(new VisFilter(searcher));
     }
 
     @Override
