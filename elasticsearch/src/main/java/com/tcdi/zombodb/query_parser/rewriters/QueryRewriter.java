@@ -1274,22 +1274,13 @@ public abstract class QueryRewriter {
         return
                 boolQuery()
                         .must(query)
-                        .must(constantScoreQuery(
-                                boolQuery()
-                                        .should(termQuery("_xid", visibility.getMyXid()))
-                                        .must(rangeQuery("_xid").lt(visibility.getXmin()))
-                                        .mustNot(rangeQuery("_xid").gte(visibility.getXmax()))
-                                        .mustNot(termsQuery("_xid", visibility.getActiveXids()))
-                                )
-                        )
                         .mustNot(constantScoreQuery(
-                                visibility("_prev_ctid")
+                                visibility()
                                         .myXid(visibility.getMyXid())
                                         .xmin(visibility.getXmin())
                                         .xmax(visibility.getXmax())
-                                        .all(all)
+                                        .commandId(visibility.getCommandId())
                                         .activeXids(visibility.getActiveXids())
-                                        .query(query)
                                 )
                         );
     }

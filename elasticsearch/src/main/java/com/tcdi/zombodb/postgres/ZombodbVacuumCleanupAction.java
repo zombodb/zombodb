@@ -1,11 +1,10 @@
 package com.tcdi.zombodb.postgres;
 
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.bulk.BulkShardRequest;
-import org.elasticsearch.action.count.CountRequestBuilder;
-import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.search.*;
@@ -24,7 +23,6 @@ import java.util.List;
 
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
-import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZombodbVacuumCleanupAction extends BaseRestHandler {
 
@@ -47,7 +45,9 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
         String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
         long xmin = request.paramAsLong("xmin", 0);
         long xmax = request.paramAsLong("xmax", 0);
-        String[] active = request.paramAsStringArray("active", new String[] {"0"});
+        String[] active = request.paramAsStringArray("active", new String[]{"0"});
+
+        client.admin().indices().refresh(new RefreshRequestBuilder(client.admin().indices()).setIndices(index).request()).actionGet();
 
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)
@@ -58,9 +58,9 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                 .setSize(10000)
                 .setQuery(
                         boolQuery()
-                        .must(rangeQuery("_zdb_xid").lt(xmin))
-                        .mustNot(rangeQuery("_zdb_xid").gte(xmax))
-                        .mustNot(termsQuery("_zdb_xid", active))
+                                .must(rangeQuery("_zdb_xid").lt(xmin))
+                                .mustNot(rangeQuery("_zdb_xid").gte(xmax))
+                                .mustNot(termsQuery("_zdb_xid", active))
                 )
                 .setNoFields();
 
@@ -82,36 +82,21 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
             for (SearchHit hit : response.getHits()) {
                 long xid = Long.valueOf(hit.id());
 
-                SearchResponse dataRows = client.search(
-                        new SearchRequestBuilder(client)
-                                .setIndices(index)
-                                .setTypes("data")
-                                .setSearchType(SearchType.COUNT)
-                                .setSize(0)
-                                .setQuery(termQuery("_xid", xid))
-                                .request()
-                ).actionGet();
+                deleteDataByXid(client, index, xid, deleteRequests);
 
-//                if (dataRows.getHits().totalHits() == 0) {
-                    // we have no rows with this aborted transaction id
-                    // so queue up a delete for the transaction
-                    // and then look for and queue up deletes for rows in 'updated' and 'deleted'
-                    // that are part of this aborted transaction too
-
-                    for (String routing : routingTable) {
-                        deleteRequests.add(
-                                new DeleteRequestBuilder(client)
-                                        .setIndex(index)
-                                        .setType("aborted")
-                                        .setRouting(routing)
-                                        .setId(String.valueOf(xid))
-                                        .request()
-                        );
-                    }
-
-                    findDocsOfType(client, routingTable, index, "updated", "_updating_xid", xid, deleteRequests);
-                    findDocsOfType(client, routingTable, index, "deleted", "_deleting_xid", xid, deleteRequests);
-//                }
+                //
+                // broadcast a delete for this "aborted" xid across all shards
+                //
+                for (String routing : routingTable) {
+                    deleteRequests.add(
+                            new DeleteRequestBuilder(client)
+                                    .setIndex(index)
+                                    .setType("aborted")
+                                    .setRouting(routing)
+                                    .setId(String.valueOf(xid))
+                                    .request()
+                    );
+                }
 
 
                 cnt++;
@@ -138,13 +123,13 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
         }
     }
 
-    private void findDocsOfType(Client client, String[] routingTable, String index, String type, String fieldname, long xid, List<DeleteRequest> deleteRequests) {
+    private void deleteDataByXid(Client client, String index, long xid, List<DeleteRequest> deleteRequests) {
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)
-                .setTypes(type)
+                .setTypes("data", "xmax")
                 .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
-                .setQuery(termQuery(fieldname, xid))
+                .setQuery(boolQuery().should(termQuery("_xmin", xid)).should(termQuery("_xmax", xid)))
                 .setSize(10000);
         SearchResponse response = null;
 
@@ -162,15 +147,31 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
             }
 
             for (SearchHit hit : response.getHits()) {
-                for (String routing : routingTable) {
-                    deleteRequests.add(
-                            new DeleteRequestBuilder(client)
-                                    .setIndex(index)
-                                    .setType(type)
-                                    .setRouting(routing)
-                                    .setId(hit.id())
-                            .request()
-                    );
+                switch (hit.type()) {
+                    case "xmax":
+                        deleteRequests.add(
+                                new DeleteRequestBuilder(client)
+                                        .setIndex(index)
+                                        .setType("xmax")
+                                        .setRouting(hit.id())
+                                        .setId(hit.id())
+                                        .request()
+                        );
+                        break;
+
+                    case "data":
+                        deleteRequests.add(
+                                new DeleteRequestBuilder(client)
+                                        .setIndex(index)
+                                        .setType("data")
+                                        .setRouting(hit.id())
+                                        .setId(hit.id())
+                                        .request()
+                        );
+                        break;
+
+                    default:
+                        throw new RuntimeException("Unexpected type: " + hit.type());
                 }
                 cnt++;
             }

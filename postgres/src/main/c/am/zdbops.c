@@ -493,8 +493,16 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
     appendStringInfo(result, "{\"is_anonymous\": %s,", isAnonymous ? "true" : "false");
     appendStringInfo(result, "\"properties\": {");
 
-    appendStringInfo(result, "\"_xid\": {"
+    appendStringInfo(result, "\"_xmin\": {"
             "\"type\":\"long\","
+            "\"fielddata\": {\"format\": \"doc_values\"},"
+            "\"include_in_all\":\"false\","
+            "\"norms\": {\"enabled\":false},"
+            "\"index\": \"not_analyzed\""
+            "},");
+
+    appendStringInfo(result, "\"_cmin\": {"
+            "\"type\":\"integer\","
             "\"fielddata\": {\"format\": \"doc_values\"},"
             "\"include_in_all\":\"false\","
             "\"norms\": {\"enabled\":false},"

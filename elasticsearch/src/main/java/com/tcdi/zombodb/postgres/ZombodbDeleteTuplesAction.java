@@ -4,7 +4,6 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
@@ -41,7 +40,6 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
         boolean refresh = request.paramAsBoolean("refresh", false);
         GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
         int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
-        String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
         Set<Number> xids = new HashSet<>();
         List<ActionRequest> trackingRequests = new ArrayList<>();
         BulkRequest bulkRequest = Requests.bulkRequest();
@@ -54,24 +52,21 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
             String[] split = line.split("[:]");
             String ctid = split[0];
             long xid = Long.valueOf(split[1]);
+            int cmax = Integer.valueOf(split[2]);
 
-            for (String routing : routingTable) {
-                // broadcast the deleted document ctid to every shard
-                bulkRequest.add(
-                        new IndexRequestBuilder(client)
-                                .setIndex(index)
-                                .setType("deleted")
-                                .setRouting(routing)
-                                .setOpType(IndexRequest.OpType.CREATE)
-                                .setVersionType(VersionType.FORCE)
-                                .setVersion(xid)
-                                .setId(ctid)
-                                .setSource("_deleting_xid", xid, "_zdb_deleted_ctid", ctid)
-                                .request()
-                );
+            ZombodbBulkAction.markXidsAsAborted(client, clusterService, index, shards, trackingRequests, xids, xid);
 
-                ZombodbBulkAction.markXidsAsAborted(client, clusterService, index, shards, trackingRequests, xids, xid);
-            }
+            bulkRequest.add(
+                    new IndexRequestBuilder(client)
+                            .setIndex(index)
+                            .setType("xmax")
+                            .setVersionType(VersionType.FORCE)
+                            .setVersion(xid)
+                            .setRouting(ctid)
+                            .setId(ctid)
+                            .setSource("_xmax", xid, "_cmax", cmax)
+                            .request()
+            );
         }
 
         bulkRequest.add(trackingRequests);

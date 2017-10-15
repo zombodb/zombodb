@@ -23,35 +23,27 @@ import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.elasticsearch.common.lang3.ArrayUtils;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.lucene.search.XConstantScoreQuery;
-import org.elasticsearch.search.internal.SearchContext;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 class ZomboDBVisibilityQuery extends Query {
 
-    private final Query query;
-    private final String fieldname;
     private final long myXid;
     private final long xmin;
     private final long xmax;
-    private final boolean all;
+    private final int commandid;
     private final Set<Long> activeXids;
 
-    ZomboDBVisibilityQuery(Query query, String fieldname, long myXid, long xmin, long xmax, boolean all, Set<Long> activeXids) {
-        this.query = query;
-        this.fieldname = fieldname;
+    ZomboDBVisibilityQuery(long myXid, long xmin, long xmax, int commandid, Set<Long> activeXids) {
         this.myXid = myXid;
         this.xmin = xmin;
         this.xmax = xmax;
-        this.all = all;
+        this.commandid = commandid;
         this.activeXids = activeXids;
     }
 
@@ -68,7 +60,7 @@ class ZomboDBVisibilityQuery extends Query {
             @Override
             public DocIdSet getDocIdSet(AtomicReaderContext context, Bits acceptDocs) throws IOException {
                 if (visibilityBitSets == null)
-                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(query, fieldname, myXid, xmin, xmax, all, activeXids, searcher);
+                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(myXid, xmin, xmax, commandid, activeXids, searcher);
                 return visibilityBitSets.get(context.ord);
             }
         }
@@ -84,18 +76,16 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public String toString(String field) {
-        return "visibility(" + fieldname + ", query=" + query + ", myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", all=" + all + ", active=" + ArrayUtils.toString(activeXids) + ")";
+        return "visibility(myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", commandid=" + commandid + ", active=" + ArrayUtils.toString(activeXids) + ")";
     }
 
     @Override
     public int hashCode() {
         int hash = super.hashCode();
-        hash = hash * 31 + query.hashCode();
-        hash = hash * 31 + fieldname.hashCode();
         hash = hash * 31 + (int)(myXid ^ (myXid >>> 32));
         hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
         hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
-        hash = hash * 31 + (all?1:0);
+        hash = hash * 31 + (commandid);
         hash = hash * 31 + ArrayUtils.toString(activeXids).hashCode();
         return hash;
     }
@@ -108,12 +98,11 @@ class ZomboDBVisibilityQuery extends Query {
         assert obj instanceof ZomboDBVisibilityQuery;
         ZomboDBVisibilityQuery eq = (ZomboDBVisibilityQuery) obj;
 
-        return this.query.equals(eq.query) &&
-                this.fieldname.equals(eq.fieldname) &&
+        return
                 this.myXid == eq.myXid &&
                 this.xmin == eq.xmin &&
                 this.xmax == eq.xmax &&
-                this.all == eq.all &&
+                this.commandid == eq.commandid &&
                 ArrayUtils.isEquals(this.activeXids, eq.activeXids);
     }
 }

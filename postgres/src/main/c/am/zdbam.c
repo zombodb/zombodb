@@ -178,7 +178,7 @@ static void process_deleted_tuples() {
     foreach (lc, deletedCtids) {
         ZDBDeletedCtid *entry = (ZDBDeletedCtid *) lfirst(lc);
 
-        entry->desc->implementation->deleteTuples(entry->desc, entry->ctids);
+        entry->desc->implementation->deleteTuples(entry->desc, entry->deleted);
     }
 
     deletedCtids = NULL;
@@ -1078,8 +1078,8 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
     TriggerData *trigdata = (TriggerData *) fcinfo->context;
     Oid indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
     ZDBDeletedCtid *entry = NULL;
-    ItemPointer ctid;
     ListCell *lc;
+	ZDBDeletedCtidAndCommand *deleted;
 
     /* make sure it's called as a trigger at all */
     if (!CALLED_AS_TRIGGER(fcinfo))
@@ -1093,7 +1093,6 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
 
     tmpcxt = MemoryContextSwitchTo(TopTransactionContext);
 
-    ctid = palloc0(sizeof(ItemPointerData));
     foreach (lc, deletedCtids) {
         entry = (ZDBDeletedCtid *) lfirst(lc);
         if (entry->desc->indexRelid == indexRelId)
@@ -1111,8 +1110,10 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
 
     Assert(entry->desc->indexRelid == indexRelId);
 
-    ItemPointerCopy(&trigdata->tg_trigtuple->t_self, ctid);
-    entry->ctids = lappend(entry->ctids, ctid);
+	deleted = palloc(sizeof(ZDBDeletedCtidAndCommand));
+    ItemPointerCopy(&trigdata->tg_trigtuple->t_self, &deleted->ctid);
+	deleted->commandid = GetCurrentCommandId(true);
+    entry->deleted = lappend(entry->deleted, deleted);
 
     MemoryContextSwitchTo(tmpcxt);
     return PointerGetDatum(trigdata->tg_trigtuple);

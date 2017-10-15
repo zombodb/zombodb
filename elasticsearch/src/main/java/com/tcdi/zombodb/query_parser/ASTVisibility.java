@@ -26,8 +26,11 @@ class ASTVisibility extends com.tcdi.zombodb.query_parser.QueryParserNode {
     return Long.valueOf(getChild(2).getEscapedValue());
   }
 
+  public int getCommandId() {
+    return Integer.valueOf(getChild(3).getEscapedValue());
+  }
   public long[] getActiveXids() {
-    ASTArray array = (ASTArray) getChild(3);
+    ASTArray array = (ASTArray) getChild(4);
     if (array == null)
       return new long[0];
     long[] xids = new long[array.jjtGetNumChildren()];

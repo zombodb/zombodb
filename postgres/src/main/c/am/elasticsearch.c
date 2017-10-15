@@ -41,22 +41,14 @@
 #include "zdb_interface.h"
 
 #define SECONDARY_TYPES_MAPPING \
-"      \"updated\": {"\
+"      \"xmax\": {"\
 "          \"_source\": { \"enabled\": false },"\
+"          \"_routing\": { \"required\": true },"\
 "          \"_all\": { \"enabled\": false },"\
 "          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
 "          \"properties\": {"\
-"              \"_updating_xid\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
-"              \"_zdb_updated_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
-"          }"\
-"      },"\
-"      \"deleted\": {"\
-"          \"_source\": { \"enabled\": false },"\
-"          \"_all\": { \"enabled\": false },"\
-"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
-"          \"properties\": {"\
-"              \"_deleting_xid\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
-"              \"_zdb_deleted_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
+"              \"_xmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
+"              \"_cmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
 "      },"\
 "      \"aborted\": {"\
@@ -132,7 +124,7 @@ static StringInfo buildQuery(ZDBIndexDescriptor *desc, char **queries, int nquer
     if (!zdb_ignore_visibility_guc && useInvisibilityMap) {
         Snapshot snapshot = GetTransactionSnapshot();
 
-        appendStringInfo(baseQuery, "#visibility(%lu, %lu, %lu, [", convert_xid(GetCurrentTransactionIdIfAny()), convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
+        appendStringInfo(baseQuery, "#visibility(%lu, %lu, %lu, %u, [", convert_xid(GetCurrentTransactionIdIfAny()), convert_xid(snapshot->xmin), convert_xid(snapshot->xmax), GetCurrentCommandId(false));
         if (snapshot->xcnt > 0) {
             for (i = 0; i < snapshot->xcnt; i++) {
                 if (i > 0) appendStringInfoChar(baseQuery, ',');
@@ -870,7 +862,7 @@ char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo response;
     Snapshot snapshot = GetActiveSnapshot();
 
-    appendStringInfo(endpoint, "%s/%s/_zdbvacuum?xmin=%lu&xmax=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
+    appendStringInfo(endpoint, "%s/%s/_zdbvacuum?xmin=%lu&xmax=%lu&commandid=%u", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax), GetCurrentCommandId(false));
 	if (snapshot->xcnt > 0) {
 		int i;
 		appendStringInfo(endpoint, "&active=");
@@ -893,7 +885,7 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 	StringInfo response;
     Snapshot snapshot = GetActiveSnapshot();
 
-    appendStringInfo(endpoint, "%s/%s/_zdbvacuum_cleanup?xmin=%lu&xmax=%lu", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax));
+    appendStringInfo(endpoint, "%s/%s/_zdbvacuum_cleanup?xmin=%lu&xmax=%lu&commandid=%u", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax), GetCurrentCommandId(false));
     if (snapshot->xcnt > 0) {
         int i;
         appendStringInfo(endpoint, "&active=");
@@ -923,7 +915,8 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
         bulk->len--;
 
     /* ...append our transaction id to the json */
-    appendStringInfo(bulk, ",\"_xid\":%lu", convert_xid(xmin));
+    appendStringInfo(bulk, ",\"_xmin\":%lu", convert_xid(xmin));
+    appendStringInfo(bulk, ",\"_cmin\":%u", GetCurrentCommandId(true));
 
 	/* and the sequence number */
 	appendStringInfo(bulk, ",\"_zdb_seq\":%lu", sequence);
@@ -1074,9 +1067,9 @@ void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids
     }
 
     foreach (lc, ctids) {
-        ItemPointer ctid = (ItemPointer) lfirst(lc);
+        ZDBDeletedCtidAndCommand *deleted = (ZDBDeletedCtidAndCommand *) lfirst(lc);
 
-        appendStringInfo(request, "%d-%d:%lu\n", ItemPointerGetBlockNumber(ctid), ItemPointerGetOffsetNumber(ctid), xid);
+        appendStringInfo(request, "%d-%d:%lu:%u\n", ItemPointerGetBlockNumber(&deleted->ctid), ItemPointerGetOffsetNumber(&deleted->ctid), xid, deleted->commandid);
     }
 
     response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);

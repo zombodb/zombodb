@@ -5,19 +5,13 @@ import org.elasticsearch.action.WriteConsistencyLevel;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.bulk.BulkShardRequest;
+import org.elasticsearch.action.bulk.*;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
@@ -35,8 +29,6 @@ import org.elasticsearch.rest.*;
 import java.io.IOException;
 import java.util.*;
 
-import static org.elasticsearch.index.query.QueryBuilders.idsQuery;
-import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 import static org.elasticsearch.rest.RestStatus.OK;
 
@@ -170,35 +162,19 @@ public class ZombodbBulkAction extends BaseRestHandler {
     }
 
     private List<ActionRequest> handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
-        GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
-        int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
-        String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
-
         List<ActionRequest> trackingRequests = new ArrayList<>();
 
         for (ActionRequest ar : requests) {
             DeleteRequest doc = (DeleteRequest) ar;
 
-            for (String routing : routingTable) {
-                trackingRequests.add(
-                        new DeleteRequestBuilder(client)
-                                .setIndex(defaultIndex)
-                                .setType("updated")
-                                .setRouting(routing)
-                                .setId(doc.id())
-                                .request()
-                );
-                trackingRequests.add(
-                        new DeleteRequestBuilder(client)
-                                .setIndex(defaultIndex)
-                                .setType("deleted")
-                                .setRouting(routing)
-                                .setId(doc.id())
-                                .request()
-                );
-            }
-
-            doc.routing(doc.id());
+            trackingRequests.add(
+                    new DeleteRequestBuilder(client)
+                            .setIndex(defaultIndex)
+                            .setType("xmax")
+                            .setRouting(doc.id())
+                            .setId(doc.id())
+                            .request()
+            );
         }
 
         return trackingRequests;
@@ -207,7 +183,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
     private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
         GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
         int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
-        String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
 
         List<ActionRequest> trackingRequests = new ArrayList<>();
         Set<Number> xids = new HashSet<>();
@@ -216,35 +191,35 @@ public class ZombodbBulkAction extends BaseRestHandler {
             IndexRequest doc = (IndexRequest) ar;
             Map<String, Object> data = doc.sourceAsMap();
             String prev_ctid = (String) data.get("_prev_ctid");
-            Number xid = (Number) data.get("_xid");
+            Number xid = (Number) data.get("_xmin");
 
             markXidsAsAborted(client, clusterService, defaultIndex, shards, trackingRequests, xids, xid);
 
             if (prev_ctid != null) {
                 // we are inserting a new doc that replaces a previous doc (an UPDATE)
                 // so broadcast that ctid to all shards
+                Number cmin = (Number) data.get("_cmin");
 
-                for (String routing : routingTable) {
-                    trackingRequests.add(
-                            new IndexRequestBuilder(client)
-                                    .setIndex(defaultIndex)
-                                    .setType("updated")
-                                    .setRouting(routing)
-                                    .setId(prev_ctid)
-                                    .setOpType(IndexRequest.OpType.CREATE)
-                                    .setVersionType(VersionType.FORCE)
-                                    .setVersion(xid.longValue())
-                                    .setSource("_zdb_updated_ctid", doc.id(), "_updating_xid", xid)
-                                    .request()
-                    );
-                }
+                trackingRequests.add(
+                        new IndexRequestBuilder(client)
+                                .setIndex(defaultIndex)
+                                .setType("xmax")
+                                .setVersionType(VersionType.FORCE)
+                                .setVersion(xid.longValue())
+                                .setRouting(prev_ctid)
+                                .setId(prev_ctid)
+                                .setSource("_xmax", xid, "_cmax", cmin)
+                                .request()
+                );
             }
 
             // every doc with an "_id" that is a ctid needs a version
+            // and that version must be *larger* than the document that might
+            // have previously occupied this "_id" value -- the Postgres transaction id (xid)
+            // works just fine for this as it's always increasing
             doc.opType(IndexRequest.OpType.CREATE);
             doc.version(xid.longValue());
             doc.versionType(VersionType.FORCE);
-            // also needs routing, which we just default to be the document's _id
             doc.routing(doc.id());
         }
 
@@ -254,37 +229,23 @@ public class ZombodbBulkAction extends BaseRestHandler {
     static void markXidsAsAborted(Client client, ClusterService clusterService, String defaultIndex, int shards, List<ActionRequest> trackingRequests, Set<Number> xids, Number xid) {
         if (!xids.contains(xid)) {
             String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
-            if (!doesAbortedXidExist(client, defaultIndex, routingTable, xid.longValue())) {
-                // add the xid for this record to each shard in the "aborted" type
-                // if the transaction commits, then ZombodbCommitXIDAction will be called and
-                // they'll be deleted
-                for (String routing : routingTable) {
-                    trackingRequests.add(
-                            new IndexRequestBuilder(client)
-                                    .setIndex(defaultIndex)
-                                    .setType("aborted")
-                                    .setRouting(routing)
-                                    .setId(String.valueOf(xid))
-                                    .setOpType(IndexRequest.OpType.CREATE)
-                                    .setSource("_zdb_xid", xid)
-                                    .request()
-                    );
-                }
-                xids.add(xid);
+            // add the xid for this record to each shard in the "aborted" type
+            // if the transaction commits, then ZombodbCommitXIDAction will be called and
+            // they'll be deleted
+            for (String routing : routingTable) {
+                trackingRequests.add(
+                        new IndexRequestBuilder(client)
+                                .setIndex(defaultIndex)
+                                .setType("aborted")
+                                .setRouting(routing)
+                                .setId(String.valueOf(xid))
+                                .setSource("_zdb_xid", xid)
+                                .request()
+                );
             }
-        }
-    }
 
-    private static boolean doesAbortedXidExist(Client client, String index, String[] routingTable, long xid) {
-        SearchRequestBuilder search = new SearchRequestBuilder(client)
-                .setIndices(index)
-                .setTypes("aborted")
-                .setRouting(routingTable[0])
-                .setSearchType(SearchType.COUNT)
-                .setSize(0)
-                .setQuery(termQuery("_zdb_xid", xid));
-        SearchResponse response = client.search(search.request()).actionGet();
-        return response.getHits().getTotalHits() > 0;
+            xids.add(xid);
+        }
     }
 
     private String lookupPkeyFieldname(Client client, String index) {

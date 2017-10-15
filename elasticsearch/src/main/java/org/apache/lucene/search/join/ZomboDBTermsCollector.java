@@ -20,7 +20,7 @@ package org.apache.lucene.search.join;
  * that ZomboDB can implement
  */
 public abstract class ZomboDBTermsCollector extends TermsCollector {
-    protected ZomboDBTermsCollector(String field) {
-        super(field);
+    protected ZomboDBTermsCollector() {
+        super(null);
     }
 }

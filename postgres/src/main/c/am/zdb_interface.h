@@ -153,8 +153,13 @@ typedef struct {
 }                                     ZDBSearchResponse;
 
 typedef struct {
+	ItemPointerData ctid;
+	CommandId commandid;
+} ZDBDeletedCtidAndCommand;
+
+typedef struct {
     ZDBIndexDescriptor *desc;
-    List *ctids;
+	List *deleted;
 } ZDBDeletedCtid;
 
 extern PGDLLEXPORT relopt_kind RELOPT_KIND_ZDB;
