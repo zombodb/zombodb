@@ -42,6 +42,12 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String index = request.param("index");
+        long xmin = request.paramAsLong("xmin", 0);
+        long xmax = request.paramAsLong("xmax", 0);
+        String[] tmp = request.paramAsStringArray("active", new String[]{"0"});
+        long[] active = new long[tmp.length];
+        for (int i = 0; i < tmp.length; i++)
+            active[i] = Long.valueOf(tmp[i]);
 
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)
@@ -49,12 +55,8 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
                 .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
-                .setNoFields();
-
-        long xmin = request.paramAsLong("xmin", 0);
-        long xmax = request.paramAsLong("xmax", 0);
-        String[] active = request.paramAsStringArray("active", new String[] {"0"});
-        search.setQuery(
+                .setNoFields()
+                .setQuery(
                 boolQuery()
                         .must(rangeQuery("_xid").lt(xmin))
                         .mustNot(rangeQuery("_xid").gte(xmax))

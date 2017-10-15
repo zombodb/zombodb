@@ -1,8 +1,10 @@
 package com.tcdi.zombodb.postgres;
 
+import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
@@ -14,6 +16,10 @@ import org.elasticsearch.rest.*;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -36,12 +42,14 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
         GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
         int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
         String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
-
+        Set<Number> xids = new HashSet<>();
+        List<ActionRequest> trackingRequests = new ArrayList<>();
         BulkRequest bulkRequest = Requests.bulkRequest();
         bulkRequest.refresh(refresh);
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
+
         while ((line = reader.readLine()) != null) {
             String[] split = line.split("[:]");
             String ctid = split[0];
@@ -54,6 +62,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                                 .setIndex(index)
                                 .setType("deleted")
                                 .setRouting(routing)
+                                .setOpType(IndexRequest.OpType.CREATE)
                                 .setVersionType(VersionType.FORCE)
                                 .setVersion(xid)
                                 .setId(ctid)
@@ -61,18 +70,11 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                                 .request()
                 );
 
-                // and broadcast the deleting xid to every shard as an aborted transaction
-                bulkRequest.add(
-                        new IndexRequestBuilder(client)
-                                .setIndex(index)
-                                .setType("aborted")
-                                .setRouting(routing)
-                                .setId(String.valueOf(xid))
-                                .setSource("_zdb_xid", xid)
-                                .request()
-                );
+                ZombodbBulkAction.markXidsAsAborted(client, clusterService, index, shards, trackingRequests, xids, xid);
             }
         }
+
+        bulkRequest.add(trackingRequests);
 
         BulkResponse response = client.bulk(bulkRequest).actionGet();
         if (response.hasFailures())

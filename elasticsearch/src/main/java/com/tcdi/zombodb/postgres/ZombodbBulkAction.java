@@ -218,7 +218,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             String prev_ctid = (String) data.get("_prev_ctid");
             Number xid = (Number) data.get("_xid");
 
-            markXidsAsAborted(client, defaultIndex, shards, trackingRequests, xids, xid);
+            markXidsAsAborted(client, clusterService, defaultIndex, shards, trackingRequests, xids, xid);
 
             if (prev_ctid != null) {
                 // we are inserting a new doc that replaces a previous doc (an UPDATE)
@@ -231,6 +231,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                     .setType("updated")
                                     .setRouting(routing)
                                     .setId(prev_ctid)
+                                    .setOpType(IndexRequest.OpType.CREATE)
                                     .setVersionType(VersionType.FORCE)
                                     .setVersion(xid.longValue())
                                     .setSource("_zdb_updated_ctid", doc.id(), "_updating_xid", xid)
@@ -240,6 +241,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             }
 
             // every doc with an "_id" that is a ctid needs a version
+            doc.opType(IndexRequest.OpType.CREATE);
             doc.version(xid.longValue());
             doc.versionType(VersionType.FORCE);
             // also needs routing, which we just default to be the document's _id
@@ -249,25 +251,40 @@ public class ZombodbBulkAction extends BaseRestHandler {
         return trackingRequests;
     }
 
-    private void markXidsAsAborted(Client client, String defaultIndex, int shards, List<ActionRequest> trackingRequests, Set<Number> xids, Number xid) {
+    static void markXidsAsAborted(Client client, ClusterService clusterService, String defaultIndex, int shards, List<ActionRequest> trackingRequests, Set<Number> xids, Number xid) {
         if (!xids.contains(xid)) {
-            // add the xid for this record to each shard in the "aborted" type
-            // if the transaction commits, then ZombodbCommitXIDAction will be called and
-            // they'll be deleted
             String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
-            for (String routing : routingTable) {
-                trackingRequests.add(
-                        new IndexRequestBuilder(client)
-                                .setIndex(defaultIndex)
-                                .setType("aborted")
-                                .setRouting(routing)
-                                .setId(String.valueOf(xid))
-                                .setSource("_zdb_xid", xid)
-                                .request()
-                );
+            if (!doesAbortedXidExist(client, defaultIndex, routingTable, xid.longValue())) {
+                // add the xid for this record to each shard in the "aborted" type
+                // if the transaction commits, then ZombodbCommitXIDAction will be called and
+                // they'll be deleted
+                for (String routing : routingTable) {
+                    trackingRequests.add(
+                            new IndexRequestBuilder(client)
+                                    .setIndex(defaultIndex)
+                                    .setType("aborted")
+                                    .setRouting(routing)
+                                    .setId(String.valueOf(xid))
+                                    .setOpType(IndexRequest.OpType.CREATE)
+                                    .setSource("_zdb_xid", xid)
+                                    .request()
+                    );
+                }
+                xids.add(xid);
             }
-            xids.add(xid);
         }
+    }
+
+    private static boolean doesAbortedXidExist(Client client, String index, String[] routingTable, long xid) {
+        SearchRequestBuilder search = new SearchRequestBuilder(client)
+                .setIndices(index)
+                .setTypes("aborted")
+                .setRouting(routingTable[0])
+                .setSearchType(SearchType.COUNT)
+                .setSize(0)
+                .setQuery(termQuery("_zdb_xid", xid));
+        SearchResponse response = client.search(search.request()).actionGet();
+        return response.getHits().getTotalHits() > 0;
     }
 
     private String lookupPkeyFieldname(Client client, String index) {

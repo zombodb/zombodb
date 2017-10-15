@@ -92,7 +92,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                                 .request()
                 ).actionGet();
 
-                if (dataRows.getHits().totalHits() == 0) {
+//                if (dataRows.getHits().totalHits() == 0) {
                     // we have no rows with this aborted transaction id
                     // so queue up a delete for the transaction
                     // and then look for and queue up deletes for rows in 'updated' and 'deleted'
@@ -111,7 +111,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
 
                     findDocsOfType(client, routingTable, index, "updated", "_updating_xid", xid, deleteRequests);
                     findDocsOfType(client, routingTable, index, "deleted", "_deleting_xid", xid, deleteRequests);
-                }
+//                }
 
 
                 cnt++;

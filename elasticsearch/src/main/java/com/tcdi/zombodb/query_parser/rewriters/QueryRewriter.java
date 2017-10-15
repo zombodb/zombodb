@@ -1277,12 +1277,9 @@ public abstract class QueryRewriter {
                         .must(constantScoreQuery(
                                 boolQuery()
                                         .should(termQuery("_xid", visibility.getMyXid()))
-                                        .should(
-                                                boolQuery()
-                                                        .must(rangeQuery("_xid").lt(visibility.getXmin()))
-                                                        .mustNot(rangeQuery("_xid").gte(visibility.getXmax()))
-                                                        .mustNot(termsQuery("_xid", visibility.getActiveXids()))
-                                        )
+                                        .must(rangeQuery("_xid").lt(visibility.getXmin()))
+                                        .mustNot(rangeQuery("_xid").gte(visibility.getXmax()))
+                                        .mustNot(termsQuery("_xid", visibility.getActiveXids()))
                                 )
                         )
                         .mustNot(constantScoreQuery(
