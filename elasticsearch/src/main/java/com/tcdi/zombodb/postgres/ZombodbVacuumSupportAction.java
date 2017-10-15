@@ -74,7 +74,6 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
             if (response == null) {
                 response = client.execute(SearchAction.INSTANCE, search.request()).actionGet();
                 total = (int) response.getHits().getTotalHits();
-                System.err.println("total=" + total);
                 bytes = new byte[8 + 6 * total];
                 offset += Utils.encodeLong(total, bytes, offset);
             } else {
