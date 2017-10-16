@@ -13,9 +13,6 @@ import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
@@ -27,13 +24,11 @@ import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.VersionType;
 import org.elasticsearch.rest.*;
-import org.elasticsearch.search.SearchHit;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 import static org.elasticsearch.rest.RestStatus.OK;
 
@@ -60,10 +55,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
         boolean refresh = request.paramAsBoolean("refresh", false);
         boolean isdelete = false;
 
-        String replicationType = request.param("replication");
-        if (replicationType != null) {
-            bulkRequest.replicationType(ReplicationType.fromString(replicationType));
-        }
         String consistencyLevel = request.param("consistency");
         if (consistencyLevel != null) {
             bulkRequest.consistencyLevel(WriteConsistencyLevel.fromString(consistencyLevel));
@@ -77,9 +68,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
             isdelete = bulkRequest.requests().get(0) instanceof DeleteRequest;
 
             if (isdelete) {
-                trackingRequests = handleDeleteRequests(client, bulkRequest.requests(), defaultIndex, defaultType);
+                trackingRequests = handleDeleteRequests(client, bulkRequest.requests(), defaultIndex);
             } else {
-                trackingRequests = handleIndexRequests(client, bulkRequest.requests(), defaultIndex, defaultType);
+                trackingRequests = handleIndexRequests(client, bulkRequest.requests(), defaultIndex);
             }
         }
 
@@ -88,10 +79,10 @@ public class ZombodbBulkAction extends BaseRestHandler {
         if (isdelete) {
             response = client.bulk(bulkRequest).actionGet();
             if (!response.hasFailures()) {
-                response = processTrackingRequests(request, client, trackingRequests, true);
+                response = processTrackingRequests(request, client, trackingRequests);
             }
         } else {
-            response = processTrackingRequests(request, client, trackingRequests, true);
+            response = processTrackingRequests(request, client, trackingRequests);
             if (!response.hasFailures()) {
                 response = client.bulk(bulkRequest).actionGet();
             }
@@ -100,44 +91,14 @@ public class ZombodbBulkAction extends BaseRestHandler {
         channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
     }
 
-    private List<ActionRequest> cleanupXmax(Client client, BulkResponse deleteResponses) {
-        List<ActionRequest> trackingRequests = new ArrayList<>();
-
-        for (BulkItemResponse response : deleteResponses.getItems()) {
-            DeleteResponse dr = response.getResponse();
-            if (!dr.isFound()) {
-                SearchResponse search = client.search(
-                        new SearchRequestBuilder(client)
-                                .setIndices(dr.getIndex())
-                                .setTypes(dr.getType())
-                                .setQuery(termQuery("_replacement_ctid", dr.getId()))
-                                .request()
-                ).actionGet();
-
-                for (SearchHit hit : search.getHits()) {
-                    trackingRequests.add(
-                            new DeleteRequestBuilder(client)
-                                    .setIndex(hit.getIndex())
-                                    .setType("xmax")
-                                    .setRouting(hit.id())
-                                    .setId(hit.id())
-                                    .request()
-                    );
-                }
-            }
-        }
-
-        return trackingRequests;
-    }
-
-    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests, boolean refresh) {
+    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests) {
         if (trackingRequests.isEmpty())
             return new BulkResponse(new BulkItemResponse[0], 0);
 
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(refresh);
+        bulkRequest.refresh(true);
         bulkRequest.requests().addAll(trackingRequests);
 
         return client.bulk(bulkRequest).actionGet();
@@ -197,7 +158,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         return new BytesRestResponse(OK, builder);
     }
 
-    private List<ActionRequest> handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
+    private List<ActionRequest> handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
 
         for (ActionRequest ar : requests) {
@@ -218,7 +179,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         return trackingRequests;
     }
 
-    private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
+    private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
         int cnt=0;
         for (ActionRequest ar : requests) {
