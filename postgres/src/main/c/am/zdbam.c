@@ -24,6 +24,7 @@
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/transam.h"
+#include "access/visibilitymap.h"
 #include "access/xact.h"
 #include "catalog/dependency.h"
 #include "catalog/index.h"
@@ -589,7 +590,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	if (!found && TransactionIdDidCommit(xmax))
 		hash_search(buildstate->committedXids, &xmax, HASH_ENTER, &found);
 
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), zdb_sequence++);
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), -1);
 
     buildstate->indtuples++;
 }
@@ -835,11 +836,12 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
     void                    *callback_state = (void *) PG_GETARG_POINTER(3);
     Relation                indexRel        = info->index;
+    Relation                heapRel;
     ZDBIndexDescriptor      *desc;
     struct timeval          tv1, tv2;
-    char *deletedCtids;
-    uint64 cntDeletedCtids, i=0;
-    List *toDataDelete = NULL;
+    List *ctidsToDelete = NULL;
+    BlockNumber blockno;
+	BlockNumber numOfBlocks;
 
     gettimeofday(&tv1, NULL);
 
@@ -851,33 +853,48 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     if (desc->isShadow)
         PG_RETURN_POINTER(stats);
 
-	deletedCtids = desc->implementation->vacuumSupport(desc);
-	memcpy(&cntDeletedCtids, deletedCtids, sizeof(uint64));
+    heapRel = RelationIdGetRelation(desc->heapRelid);
+	numOfBlocks = RelationGetNumberOfBlocks(heapRel);
+    for (blockno=0; blockno<numOfBlocks; blockno++) {
+		Buffer        vmap_buff = InvalidBuffer;
 
-	for (i = 0; i < cntDeletedCtids; i++) {
-		ItemPointer ctid = palloc(sizeof(ItemPointerData));
-		BlockNumber blockno;
-		OffsetNumber offno;
+		CHECK_FOR_INTERRUPTS();
 
-		memcpy(&blockno, deletedCtids + sizeof(uint64) + (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))),
-			   sizeof(BlockNumber));
-		memcpy(&offno, deletedCtids + sizeof(uint64) + sizeof(BlockNumber) +
-					   (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(OffsetNumber));
-		ItemPointerSet(ctid, blockno, offno);
+		if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
+			for (OffsetNumber offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
+				ItemPointer ctid = palloc(sizeof(ItemPointerData));
 
-		if (callback(ctid, callback_state))
-			toDataDelete = lappend(toDataDelete, ctid);
-	}
+				ItemPointerSet(ctid, blockno, offno);
 
-	desc->implementation->bulkDelete(desc, toDataDelete, NULL);
+				if (callback(ctid, callback_state)) {
+					ctidsToDelete = lappend(ctidsToDelete, ctid);
+					stats->tuples_removed++;
+
+					if (((int) stats->tuples_removed % 10000 == 0) {
+						desc->implementation->bulkDelete(desc, ctidsToDelete, NULL);
+						list_free_deep(ctidsToDelete);
+						ctidsToDelete = NULL;
+					}
+				} else {
+					pfree(ctid);
+				}
+			}
+		}
+
+		if (BufferIsValid(vmap_buff))
+			ReleaseBuffer(vmap_buff);
+
+    }
+	RelationClose(heapRel);
+
+	desc->implementation->bulkDelete(desc, ctidsToDelete, NULL);
 
     stats->num_pages        = 1;
     stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
-    stats->tuples_removed   = list_length(toDataDelete);;
 
     gettimeofday(&tv2, NULL);
 
-    elog(ZDB_LOG_LEVEL, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), list_length(toDataDelete), (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
+    elog(ZDB_LOG_LEVEL, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), list_length(ctidsToDelete), (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
 
     PG_RETURN_POINTER(stats);
 }

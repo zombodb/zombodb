@@ -218,7 +218,7 @@ typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List
 typedef char *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBVacuumCleanup_function)(ZDBIndexDescriptor *indexDescriptor);
 
-typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence);
+typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, int64 sequence);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
 
 typedef void (*ZDBDeleteTuples_function)(ZDBIndexDescriptor *indexDescriptor, List *ctids);

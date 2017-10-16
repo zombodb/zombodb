@@ -38,9 +38,6 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String index = request.param("index");
         boolean refresh = request.paramAsBoolean("refresh", false);
-        GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
-        int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
-        Set<Number> xids = new HashSet<>();
         List<ActionRequest> trackingRequests = new ArrayList<>();
         BulkRequest bulkRequest = Requests.bulkRequest();
         bulkRequest.refresh(refresh);
@@ -54,8 +51,6 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
             long xid = Long.valueOf(split[1]);
             int cmax = Integer.valueOf(split[2]);
 
-            ZombodbBulkAction.markXidsAsAborted(client, clusterService, index, shards, trackingRequests, xids, xid);
-
             bulkRequest.add(
                     new IndexRequestBuilder(client)
                             .setIndex(index)
@@ -64,7 +59,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                             .setVersion(xid)
                             .setRouting(ctid)
                             .setId(ctid)
-                            .setSource("_xmax", xid, "_cmax", cmax)
+                            .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid)
                             .request()
             );
         }

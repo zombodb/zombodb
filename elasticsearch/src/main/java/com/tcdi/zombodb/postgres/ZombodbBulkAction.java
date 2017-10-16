@@ -2,22 +2,23 @@ package com.tcdi.zombodb.postgres;
 
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.WriteConsistencyLevel;
-import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
-import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
-import org.elasticsearch.action.bulk.*;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
+import org.elasticsearch.action.bulk.BulkItemResponse;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.*;
 import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.cluster.ClusterService;
-import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -25,10 +26,13 @@ import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.VersionType;
 import org.elasticsearch.rest.*;
+import org.elasticsearch.search.SearchHit;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
+import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 import static org.elasticsearch.rest.RestStatus.OK;
 
@@ -52,8 +56,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
         String defaultIndex = request.param("index");
         String defaultType = request.param("type");
         String defaultRouting = request.param("routing");
+        boolean refresh = request.paramAsBoolean("refresh", false);
         boolean isdelete = false;
-        String pkeyFieldname = lookupPkeyFieldname(client, defaultIndex);
 
         String replicationType = request.param("replication");
         if (replicationType != null) {
@@ -64,7 +68,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             bulkRequest.consistencyLevel(WriteConsistencyLevel.fromString(consistencyLevel));
         }
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(request.paramAsBoolean("refresh", bulkRequest.refresh()));
+        bulkRequest.refresh(refresh);
         bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, true);
 
         List<ActionRequest> trackingRequests = new ArrayList<>();
@@ -82,26 +86,64 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
         if (isdelete) {
             bulkRequest.refresh(false);
+            System.err.println ("Vacuum deleting " + bulkRequest.requests().size() + " docs");
             response = client.bulk(bulkRequest).actionGet();
-            if (!response.hasFailures())
-                response = processTrackingRequests(request, client, trackingRequests);
+            System.err.println ("   response=" + response.getItems().length);
+            if (!response.hasFailures()) {
+                response = processTrackingRequests(request, client, trackingRequests, false);
+                if (!response.hasFailures()) {
+                    response = processTrackingRequests(request, client, cleanupXmax(client, response), false);
+                }
+            }
+            client.admin().indices().refresh(new RefreshRequestBuilder(client.admin().indices()).setIndices(defaultIndex).request()).actionGet();
         } else {
-            response = processTrackingRequests(request, client, trackingRequests);
-            if (!response.hasFailures())
+            response = processTrackingRequests(request, client, trackingRequests, true);
+            if (!response.hasFailures()) {
                 response = client.bulk(bulkRequest).actionGet();
+            }
         }
 
         channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
     }
 
-    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests) {
+    private List<ActionRequest> cleanupXmax(Client client, BulkResponse deleteResponses) {
+        List<ActionRequest> trackingRequests = new ArrayList<>();
+
+        for (BulkItemResponse response : deleteResponses.getItems()) {
+            DeleteResponse dr = response.getResponse();
+            if (!dr.isFound()) {
+                SearchResponse search = client.search(
+                        new SearchRequestBuilder(client)
+                                .setIndices(dr.getIndex())
+                                .setTypes(dr.getType())
+                                .setQuery(termQuery("_replacement_ctid", dr.getId()))
+                                .request()
+                ).actionGet();
+
+                for (SearchHit hit : search.getHits()) {
+                    trackingRequests.add(
+                            new DeleteRequestBuilder(client)
+                                    .setIndex(hit.getIndex())
+                                    .setType("xmax")
+                                    .setRouting(hit.id())
+                                    .setId(hit.id())
+                                    .request()
+                    );
+                }
+            }
+        }
+
+        return trackingRequests;
+    }
+
+    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests, boolean refresh) {
         if (trackingRequests.isEmpty())
             return new BulkResponse(new BulkItemResponse[0], 0);
 
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(request.paramAsBoolean("refresh", false));
+        bulkRequest.refresh(refresh);
         bulkRequest.requests().addAll(trackingRequests);
 
         return client.bulk(bulkRequest).actionGet();
@@ -175,29 +217,24 @@ public class ZombodbBulkAction extends BaseRestHandler {
                             .setId(doc.id())
                             .request()
             );
+
+            doc.routing(doc.id());
         }
 
         return trackingRequests;
     }
 
     private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
-        GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
-        int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
-
         List<ActionRequest> trackingRequests = new ArrayList<>();
-        Set<Number> xids = new HashSet<>();
-
         for (ActionRequest ar : requests) {
             IndexRequest doc = (IndexRequest) ar;
             Map<String, Object> data = doc.sourceAsMap();
             String prev_ctid = (String) data.get("_prev_ctid");
             Number xid = (Number) data.get("_xmin");
-
-            markXidsAsAborted(client, clusterService, defaultIndex, shards, trackingRequests, xids, xid);
+            Number sequence = (Number) data.get("_zdb_seq");
 
             if (prev_ctid != null) {
                 // we are inserting a new doc that replaces a previous doc (an UPDATE)
-                // so broadcast that ctid to all shards
                 Number cmin = (Number) data.get("_cmin");
 
                 trackingRequests.add(
@@ -208,7 +245,21 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setVersion(xid.longValue())
                                 .setRouting(prev_ctid)
                                 .setId(prev_ctid)
-                                .setSource("_xmax", xid, "_cmax", cmin)
+                                .setSource("_xmax", xid, "_cmax", cmin, "_replacement_ctid", doc.id())
+                                .request()
+                );
+            }
+
+            if (sequence.longValue() > -1) {
+                trackingRequests.add(
+                        new IndexRequestBuilder(client)
+                                .setIndex(defaultIndex)
+                                .setType("hints")
+                                .setVersionType(VersionType.FORCE)
+                                .setVersion(xid.longValue())
+                                .setRouting(doc.id())
+                                .setId(doc.id())
+                                .setSource("_hint_ctid", doc.id())
                                 .request()
                 );
             }
@@ -224,39 +275,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
         }
 
         return trackingRequests;
-    }
-
-    static void markXidsAsAborted(Client client, ClusterService clusterService, String defaultIndex, int shards, List<ActionRequest> trackingRequests, Set<Number> xids, Number xid) {
-        if (!xids.contains(xid)) {
-            String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
-            // add the xid for this record to each shard in the "aborted" type
-            // if the transaction commits, then ZombodbCommitXIDAction will be called and
-            // they'll be deleted
-            for (String routing : routingTable) {
-                trackingRequests.add(
-                        new IndexRequestBuilder(client)
-                                .setIndex(defaultIndex)
-                                .setType("aborted")
-                                .setRouting(routing)
-                                .setId(String.valueOf(xid))
-                                .setSource("_zdb_xid", xid)
-                                .request()
-                );
-            }
-
-            xids.add(xid);
-        }
-    }
-
-    private String lookupPkeyFieldname(Client client, String index) {
-        GetMappingsResponse mappings = client.admin().indices().getMappings(new GetMappingsRequest().indices(index).types("data")).actionGet();
-        MappingMetaData mmd = mappings.getMappings().get(index).get("data");
-
-        try {
-            return (String) ((Map) mmd.getSourceAsMap().get("_meta")).get("primary_key");
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-        }
     }
 
     private static final class Fields {

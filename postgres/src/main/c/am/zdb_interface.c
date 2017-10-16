@@ -88,7 +88,7 @@ static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toData
 static char *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor);
 static void wrapper_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor);
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence);
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, int64 sequence);
 static void wrapper_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 static void wrapper_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids);
@@ -604,7 +604,7 @@ static void wrapper_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 	MemoryContextSwitchTo(oldContext);
 }
 
-static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence) {
+static void wrapper_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, int64 sequence) {
     MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
     Assert(!indexDescriptor->isShadow);

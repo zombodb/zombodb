@@ -4,6 +4,7 @@ import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
+import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.cluster.ClusterService;
@@ -45,15 +46,14 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
         while ((line = reader.readLine()) != null) {
             Long xid = Long.valueOf(line);
 
-            // delete the previously-assumed-to-be-aborted transaction id
-            // from all shards because the transaction is committing now
             for (String routing : routingTable) {
                 bulkRequest.add(
-                        new DeleteRequestBuilder(client)
+                        new IndexRequestBuilder(client)
                                 .setIndex(index)
-                                .setType("aborted")
+                                .setType("committed")
                                 .setRouting(routing)
                                 .setId(String.valueOf(xid))
+                                .setSource("_zdb_xid", xid)
                                 .request()
                 );
             }

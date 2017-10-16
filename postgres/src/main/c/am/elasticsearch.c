@@ -48,10 +48,20 @@
 "          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
 "          \"properties\": {"\
 "              \"_xmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
-"              \"_cmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
+"              \"_cmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
+"              \"_replacement_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
 "      },"\
-"      \"aborted\": {"\
+"      \"hints\": {"\
+"          \"_source\": { \"enabled\": false },"\
+"          \"_routing\": { \"required\": true },"\
+"          \"_all\": { \"enabled\": false },"\
+"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
+"          \"properties\": {"\
+"              \"_hint_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
+"          }"\
+"      },"\
+"      \"committed\": {"\
 "          \"_source\": { \"enabled\": false },"\
 "          \"_routing\": { \"required\": true },"\
 "          \"_all\": { \"enabled\": false },"\
@@ -901,7 +911,7 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 		elog(ERROR, "%s", response->data);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, uint64 sequence) {
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, int64 sequence) {
     /* the data */
     appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
 
@@ -919,7 +929,7 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
     appendStringInfo(bulk, ",\"_cmin\":%u", GetCurrentCommandId(true));
 
 	/* and the sequence number */
-	appendStringInfo(bulk, ",\"_zdb_seq\":%lu", sequence);
+	appendStringInfo(bulk, ",\"_zdb_seq\":%ld", sequence);
 
 	if (isupdate)
 		appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));
@@ -946,7 +956,7 @@ static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
 }
 
 void
-elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, uint64 sequence) {
+elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, int64 sequence) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
     bool fast_path = false;
 

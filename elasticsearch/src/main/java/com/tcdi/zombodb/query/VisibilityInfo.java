@@ -22,15 +22,15 @@ class VisibilityInfo {
     final int maxdoc;
     final int docid;
     final BytesRef id;
-    final long xid;
+    final long xmin;
     final int cmin;
 
-    VisibilityInfo(int readerOrd, int maxdoc, int docid, BytesRef id, long xid, int cmin) {
+    VisibilityInfo(int readerOrd, int maxdoc, int docid, BytesRef id, long xmin, int cmin) {
         this.readerOrd = readerOrd;
         this.maxdoc = maxdoc;
         this.docid = docid;
         this.id = id;
-        this.xid = xid;
+        this.xmin = xmin;
         this.cmin = cmin;
     }
 }

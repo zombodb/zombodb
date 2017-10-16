@@ -27,6 +27,8 @@ import org.elasticsearch.search.SearchHit;
 
 import static com.tcdi.zombodb.postgres.PostgresTIDResponseAction.INVALID_BLOCK_NUMBER;
 import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
+import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -60,11 +62,18 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
                 .setSize(10000)
                 .setNoFields()
                 .setQuery(
-                        visibility()
-                                .xmin(xmin)
-                                .xmax(xmax)
-                                .commandId(commandid)
-                                .activeXids(active)
+                        boolQuery()
+                                .mustNot(
+                                        boolQuery()
+                                                .must(matchAllQuery())
+                                                .mustNot(
+                                                        visibility()
+                                                                .xmin(xmin)
+                                                                .xmax(xmax)
+                                                                .commandId(commandid)
+                                                                .activeXids(active)
+                                                )
+                                ) 
                 );
 
         byte[] bytes = null;
@@ -85,25 +94,24 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
             }
 
             for (SearchHit hit : response.getHits()) {
-                String id;
                 int blockno;
                 char rowno;
 
-                try {
-                    id = hit.id();
+                for (String id : new String[]{hit.id()}) { //, hit.field("_replacement_ctid").value()}) {
+                    try {
+                        int dash = id.indexOf('-', 1);
+                        blockno = Integer.parseInt(id.substring(0, dash), 10);
+                        rowno = (char) Integer.parseInt(id.substring(dash + 1), 10);
+                    } catch (Exception nfe) {
+                        logger.warn("hit.id()=/" + hit.id() + "/ is not in the proper format.  Defaulting to INVALID_BLOCK_NUMBER");
+                        blockno = INVALID_BLOCK_NUMBER;
+                        rowno = 0;
+                    }
 
-                    int dash = id.indexOf('-', 1);
-                    blockno = Integer.parseInt(id.substring(0, dash), 10);
-                    rowno = (char) Integer.parseInt(id.substring(dash + 1), 10);
-                } catch (Exception nfe) {
-                    logger.warn("hit.id()=/" + hit.id() + "/ is not in the proper format.  Defaulting to INVALID_BLOCK_NUMBER");
-                    blockno = INVALID_BLOCK_NUMBER;
-                    rowno = 0;
+                    offset += Utils.encodeInteger(blockno, bytes, offset);
+                    offset += Utils.encodeCharacter(rowno, bytes, offset);
+                    cnt++;
                 }
-
-                offset += Utils.encodeInteger(blockno, bytes, offset);
-                offset += Utils.encodeCharacter(rowno, bytes, offset);
-                cnt++;
             }
 
             if (cnt == total)
