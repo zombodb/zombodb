@@ -780,7 +780,8 @@ typedef struct LVRelStats
     BlockNumber old_rel_pages;	/* previous value of pg_class.relpages */
     BlockNumber rel_pages;		/* total number of pages */
     BlockNumber scanned_pages;	/* number of pages we examined */
-    double		scanned_tuples; /* counts only tuples on scanned pages */
+    BlockNumber	tupcount_pages;	/* pages whose tuples we counted */
+    double		scanned_tuples; /* counts only tuples on tupcount_pages */
     double		old_rel_tuples; /* previous value of pg_class.reltuples */
     double		new_rel_tuples; /* new estimated total # of tuples */
     BlockNumber pages_removed;
