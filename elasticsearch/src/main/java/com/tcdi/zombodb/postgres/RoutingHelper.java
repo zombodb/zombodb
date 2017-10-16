@@ -28,7 +28,7 @@ public class RoutingHelper {
             String routing = String.valueOf(i);
 
             int cnt=0;
-            while ( (operationRouting.indexShards(clusterState, index, "committed", routing, null).shardId()).id() != i)
+            while ( (operationRouting.indexShards(clusterState, index, "aborted", routing, null).shardId()).id() != i)
                 routing = String.valueOf(i + ++cnt);
             routingTable[i] = routing;
         }

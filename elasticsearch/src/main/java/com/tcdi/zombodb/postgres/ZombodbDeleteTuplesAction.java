@@ -44,12 +44,31 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
+        int cnt = 0;
 
         while ((line = reader.readLine()) != null) {
             String[] split = line.split("[:]");
             String ctid = split[0];
             long xid = Long.valueOf(split[1]);
             int cmax = Integer.valueOf(split[2]);
+
+            if (cnt == 0) {
+                GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
+                int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
+                String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
+
+                for (String routing : routingTable) {
+                    trackingRequests.add(
+                            new IndexRequestBuilder(client)
+                                    .setIndex(index)
+                                    .setType("aborted")
+                                    .setRouting(routing)
+                                    .setId(String.valueOf(xid))
+                                    .setSource("_zdb_xid", xid)
+                                    .request()
+                    );
+                }
+            }
 
             bulkRequest.add(
                     new IndexRequestBuilder(client)
@@ -62,6 +81,8 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                             .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid)
                             .request()
             );
+
+            cnt++;
         }
 
         bulkRequest.add(trackingRequests);

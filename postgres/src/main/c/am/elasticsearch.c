@@ -52,16 +52,7 @@
 "              \"_replacement_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
 "      },"\
-"      \"hints\": {"\
-"          \"_source\": { \"enabled\": false },"\
-"          \"_routing\": { \"required\": true },"\
-"          \"_all\": { \"enabled\": false },"\
-"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
-"          \"properties\": {"\
-"              \"_hint_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
-"          }"\
-"      },"\
-"      \"committed\": {"\
+"      \"aborted\": {"\
 "          \"_source\": { \"enabled\": false },"\
 "          \"_routing\": { \"required\": true },"\
 "          \"_all\": { \"enabled\": false },"\

@@ -18,22 +18,48 @@ package com.tcdi.zombodb.query;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queries.TermFilter;
 import org.apache.lucene.queries.TermsFilter;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.FieldCache;
+import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.NumericRangeFilter;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
 import org.elasticsearch.common.lucene.search.AndFilter;
-import org.elasticsearch.common.lucene.search.MatchAllDocsFilter;
 import org.elasticsearch.common.lucene.search.OrFilter;
 import org.elasticsearch.common.lucene.search.XConstantScoreQuery;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 final class VisibilityQueryHelper {
+
+    private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids, final List<BytesRef> abortedXidsAsBytes) throws IOException {
+        searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "aborted"))),
+                new ZomboDBTermsCollector() {
+                    SortedNumericDocValues _zdb_xid;
+
+                    @Override
+                    public void collect(int doc) throws IOException {
+                        _zdb_xid.setDocument(doc);
+
+                        long xid = _zdb_xid.valueAt(0);
+                        BytesRefBuilder builder = new BytesRefBuilder();
+                        NumericUtils.longToPrefixCoded(xid, 0, builder);
+
+                        abortedXids.add(xid);
+                        abortedXidsAsBytes.add(builder.get());
+                    }
+
+                    @Override
+                    public void setNextReader(AtomicReaderContext context) throws IOException {
+                        _zdb_xid = context.reader().getSortedNumericDocValues("_zdb_xid");
+                    }
+                }
+        );
+    }
 
     private static void collectMaxes(IndexSearcher searcher, final Map<BytesRef, Long> xmax, final Map<BytesRef, Integer> cmax) throws IOException {
         searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
@@ -65,40 +91,19 @@ final class VisibilityQueryHelper {
         );
     }
 
-    private static void collectHints(IndexSearcher searcher, final List<BytesRef> hints) throws IOException {
-        searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "hints"))),
-                new ZomboDBTermsCollector() {
-                    BinaryDocValues _uid;
-
-                    @Override
-                    public void collect(int doc) throws IOException {
-                        String id = _uid.get(doc).utf8ToString();
-                        String data_uid = "data#" + id.split("[#]")[1];
-
-                        hints.add(new BytesRef(data_uid));
-                    }
-
-                    @Override
-                    public void setNextReader(AtomicReaderContext context) throws IOException {
-                        _uid = FieldCache.DEFAULT.getTerms(context.reader(), "_uid", false);
-                    }
-                }
-        );
-    }
-
-
     static Map<Integer, FixedBitSet> determineVisibility(final long myXid, final long myXmin, final long myXmax, final int myCommand, final Set<Long> activeXids, IndexSearcher searcher) throws IOException {
         final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
         final Map<BytesRef, Long> newXmaxes = new HashMap<>();
         final Map<BytesRef, Integer> newCmaxes = new HashMap<>();
-        final List<BytesRef> hintCtids = new ArrayList<>();
-        collectMaxes(searcher, newXmaxes, newCmaxes);
-        collectHints(searcher, hintCtids);
+        final Set<Long> abortedXids = new HashSet<>();
+        final List<BytesRef> abortedXidsAsBytes = new ArrayList<>();
 
+        collectAbortedXids(searcher, abortedXids, abortedXidsAsBytes);
+        collectMaxes(searcher, newXmaxes, newCmaxes);
 
         final List<BytesRef> activeXidsAsBytes = new ArrayList<>(activeXids.size());
-        final List<BytesRef> ctids = new ArrayList<>(newXmaxes.keySet());
-        final List<VisibilityInfo> visibilityList = new ArrayList<>(ctids.size());
+        final List<BytesRef> ctidsWithXmax = new ArrayList<>(newXmaxes.keySet());
+        final List<VisibilityInfo> visibilityList = new ArrayList<>(ctidsWithXmax.size());
         final List<Filter> filters = new ArrayList<>();
 
         for (Long xid : activeXids) {
@@ -107,12 +112,13 @@ final class VisibilityQueryHelper {
             activeXidsAsBytes.add(builder.toBytesRef());
         }
 
-        if (!ctids.isEmpty())
-            filters.add(new TermsFilter("_uid", ctids));
+        if (!ctidsWithXmax.isEmpty())
+            filters.add(new TermsFilter("_uid", ctidsWithXmax));
         if (!activeXids.isEmpty())
             filters.add(new TermsFilter("_xmin", activeXidsAsBytes));
-        if (!hintCtids.isEmpty())
-            filters.add(new TermsFilter("_uid", hintCtids));
+        if (!abortedXids.isEmpty())
+            filters.add(new TermsFilter("_xmin", abortedXidsAsBytes));
+        filters.add(NumericRangeFilter.newLongRange("_xmin", myXmin, null, true, true));
 
         searcher.search(new XConstantScoreQuery(
                         new AndFilter(
@@ -153,18 +159,14 @@ final class VisibilityQueryHelper {
         );
 
         if (visibilityList.size() > 0) {
-            Terms committedXidsTerms = MultiFields.getFields(searcher.getIndexReader()).terms("_zdb_xid");
-            TermsEnum committedXidsEnum = committedXidsTerms == null ? null : committedXidsTerms.iterator(null);
-
-            InvisibilityMarker im = new InvisibilityMarker(visibilityBitSets);
-            for (VisibilityInfo vi : visibilityList) {
+           for (VisibilityInfo vi : visibilityList) {
                 long xmin = vi.xmin;
                 int cmin = vi.cmin;
                 Long xmax = newXmaxes.get(vi.id);
                 Integer cmax = newCmaxes.get(vi.id);
 
-                boolean xmin_is_committed = xmin < myXmax && !(xmin >= myXmax) && !activeXids.contains(xmin) && isCommitted(committedXidsEnum, xmin);
-                boolean xmax_is_committed = xmax != null && xmax < myXmax && !(xmax >= myXmax) && !activeXids.contains(xmax) && isCommitted(committedXidsEnum, xmax);
+                boolean xmin_is_committed = xmin < myXmax && !(xmin >= myXmax) && !activeXids.contains(xmin) && !abortedXids.contains(xmin);
+                boolean xmax_is_committed = xmax != null && xmax < myXmax && !(xmax >= myXmax) && !activeXids.contains(xmax) && !abortedXids.contains(xmax);
 
                 if (
                         !(
@@ -174,60 +176,15 @@ final class VisibilityQueryHelper {
                         )
                         ) {
                     // it's not visible to us
-                    im.setVisibilityInfo(vi);
-                    im.invisible();
+                    FixedBitSet visibilityBitset = visibilityBitSets.get(vi.readerOrd);
+                    if (visibilityBitset == null)
+                        visibilityBitSets.put(vi.readerOrd, visibilityBitset = new FixedBitSet(vi.maxdoc));
+                    visibilityBitset.set(vi.docid);
                     continue;
                 }
-
-                if (activeXids.contains(xmin))
-                    System.err.println ("xmin active: " + xmin + ", xmax=" + xmax + "; myXid=" + myXid + ", myXmin=" + myXmin + ", myXmax=" + myXmax + ", min_is_committed=" + xmin_is_committed + ", max_is_committed=" + xmax_is_committed);
             }
         }
 
         return visibilityBitSets;
     }
-
-    static class InvisibilityMarker {
-        Map<Integer, FixedBitSet> visibilityBitSets;
-        VisibilityInfo vi;
-
-        InvisibilityMarker(Map<Integer, FixedBitSet> visibilityBitSets) {
-            this.visibilityBitSets = visibilityBitSets;
-            this.vi = vi;
-        }
-
-        void invisible() {
-            FixedBitSet visibilityBitset = visibilityBitSets.get(vi.readerOrd);
-            if (visibilityBitset == null)
-                visibilityBitSets.put(vi.readerOrd, visibilityBitset = new FixedBitSet(vi.maxdoc));
-            visibilityBitset.set(vi.docid);
-        }
-
-        void setVisibilityInfo(VisibilityInfo visibilityInfo) {
-            this.vi = visibilityInfo;
-        }
-    }
-
-    private static final ConcurrentSkipListSet<Long> KNOWN_COMMITTED_XIDS = new ConcurrentSkipListSet<>();
-
-    private static boolean isCommitted(TermsEnum termsEnum, Long xid) throws IOException {
-        if (xid == null)
-            return false;
-
-        if (termsEnum == null)
-            return false;
-
-        if (KNOWN_COMMITTED_XIDS.contains(xid))
-            return true;
-
-        BytesRefBuilder builder = new BytesRefBuilder();
-        NumericUtils.longToPrefixCoded(xid, 0, builder);
-        boolean isCommitted = termsEnum.seekExact(builder.get());
-
-        if (isCommitted)
-            KNOWN_COMMITTED_XIDS.add(xid);
-
-        return isCommitted;
-    }
-
 }

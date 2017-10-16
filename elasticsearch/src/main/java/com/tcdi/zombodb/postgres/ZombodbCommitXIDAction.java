@@ -48,12 +48,11 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
 
             for (String routing : routingTable) {
                 bulkRequest.add(
-                        new IndexRequestBuilder(client)
+                        new DeleteRequestBuilder(client)
                                 .setIndex(index)
-                                .setType("committed")
+                                .setType("aborted")
                                 .setRouting(routing)
                                 .setId(String.valueOf(xid))
-                                .setSource("_zdb_xid", xid)
                                 .request()
                 );
             }

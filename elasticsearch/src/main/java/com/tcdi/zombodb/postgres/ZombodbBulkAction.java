@@ -2,7 +2,7 @@ package com.tcdi.zombodb.postgres;
 
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.WriteConsistencyLevel;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -13,7 +13,8 @@ import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.search.*;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
@@ -32,7 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.elasticsearch.index.query.QueryBuilders.*;
+import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 import static org.elasticsearch.rest.RestStatus.OK;
 
@@ -85,17 +86,10 @@ public class ZombodbBulkAction extends BaseRestHandler {
         BulkResponse response;
 
         if (isdelete) {
-            bulkRequest.refresh(false);
-            System.err.println ("Vacuum deleting " + bulkRequest.requests().size() + " docs");
             response = client.bulk(bulkRequest).actionGet();
-            System.err.println ("   response=" + response.getItems().length);
             if (!response.hasFailures()) {
-                response = processTrackingRequests(request, client, trackingRequests, false);
-                if (!response.hasFailures()) {
-                    response = processTrackingRequests(request, client, cleanupXmax(client, response), false);
-                }
+                response = processTrackingRequests(request, client, trackingRequests, true);
             }
-            client.admin().indices().refresh(new RefreshRequestBuilder(client.admin().indices()).setIndices(defaultIndex).request()).actionGet();
         } else {
             response = processTrackingRequests(request, client, trackingRequests, true);
             if (!response.hasFailures()) {
@@ -226,6 +220,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
     private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex, String defaultType) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
+        int cnt=0;
         for (ActionRequest ar : requests) {
             IndexRequest doc = (IndexRequest) ar;
             Map<String, Object> data = doc.sourceAsMap();
@@ -250,18 +245,22 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 );
             }
 
-            if (sequence.longValue() > -1) {
-                trackingRequests.add(
-                        new IndexRequestBuilder(client)
-                                .setIndex(defaultIndex)
-                                .setType("hints")
-                                .setVersionType(VersionType.FORCE)
-                                .setVersion(xid.longValue())
-                                .setRouting(doc.id())
-                                .setId(doc.id())
-                                .setSource("_hint_ctid", doc.id())
-                                .request()
-                );
+            if (cnt == 0 && sequence.longValue() > -1) {
+                GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
+                int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
+                String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
+
+                for (String routing : routingTable) {
+                    trackingRequests.add(
+                            new IndexRequestBuilder(client)
+                                    .setIndex(defaultIndex)
+                                    .setType("aborted")
+                                    .setRouting(routing)
+                                    .setId(String.valueOf(xid))
+                                    .setSource("_zdb_xid", xid)
+                                    .request()
+                    );
+                }
             }
 
             // every doc with an "_id" that is a ctid needs a version
@@ -272,6 +271,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
             doc.version(xid.longValue());
             doc.versionType(VersionType.FORCE);
             doc.routing(doc.id());
+
+            cnt++;
         }
 
         return trackingRequests;
