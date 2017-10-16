@@ -870,7 +870,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 					ctidsToDelete = lappend(ctidsToDelete, ctid);
 					stats->tuples_removed++;
 
-					if (((int) stats->tuples_removed % 10000 == 0) {
+					if (((int) stats->tuples_removed) % 10000 == 0) {
 						desc->implementation->bulkDelete(desc, ctidsToDelete, NULL);
 						list_free_deep(ctidsToDelete);
 						ctidsToDelete = NULL;
