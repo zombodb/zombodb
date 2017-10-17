@@ -882,7 +882,7 @@ static char *confirm_aborted_xids(ZDBIndexDescriptor *indexDescriptor, uint64 *n
 }
 
 void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
-	TransactionId oldestXmin = GetOldestXmin(false, true);
+	TransactionId oldestXmin = GetOldestXmin(false, false);
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request = makeStringInfo();
 	StringInfo response;

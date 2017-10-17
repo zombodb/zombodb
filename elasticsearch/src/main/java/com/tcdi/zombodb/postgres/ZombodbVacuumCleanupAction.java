@@ -27,8 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 import static com.tcdi.zombodb.postgres.ZombodbBulkAction.buildResponse;
-import static org.elasticsearch.index.query.QueryBuilders.*;
-import static org.elasticsearch.rest.RestRequest.Method.GET;
+import static org.elasticsearch.index.query.QueryBuilders.termsQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZombodbVacuumCleanupAction extends BaseRestHandler {
@@ -51,23 +50,31 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
         BufferedReader br = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
 
-        while ( (line = br.readLine()) != null) {
+        while ((line = br.readLine()) != null) {
             xids.add(Long.valueOf(line));
         }
 
-        BulkRequest bulkRequest = new BulkRequest();
-        BulkResponse response;
+        if (!xids.isEmpty()) {
+            List<ActionRequest> trackingRequests;
 
-        bulkRequest.refresh(request.paramAsBoolean("refresh", false));
-        bulkRequest.requests().addAll(cleanupXmax(client, index, xids));
+            trackingRequests = cleanupXmax(client, index, xids);
+            filterXids(client, index, xids, trackingRequests);
 
-        if (bulkRequest.requests().size() > 0) {
-            response = client.bulk(bulkRequest).actionGet();
+            BulkRequest bulkRequest = new BulkRequest();
+            BulkResponse response;
 
-            channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
-        } else {
-            channel.sendResponse(buildResponse(new BulkResponse(new BulkItemResponse[0], 0), JsonXContent.contentBuilder()));
+            bulkRequest.refresh(request.paramAsBoolean("refresh", false));
+            bulkRequest.requests().addAll(trackingRequests);
+
+            if (bulkRequest.requests().size() > 0) {
+                response = client.bulk(bulkRequest).actionGet();
+
+                channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
+                return;
+            }
         }
+
+        channel.sendResponse(buildResponse(new BulkResponse(new BulkItemResponse[0], 0), JsonXContent.contentBuilder()));
     }
 
     private List<ActionRequest> cleanupXmax(Client client, String index, Set<Long> xids) {
@@ -104,7 +111,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                     trackingRequests.add(
                             new DeleteRequestBuilder(client)
                                     .setIndex(index)
-                                    .setType("xmax")
+                                    .setType(hit.getType())
                                     .setRouting(hit.id())
                                     .setId(hit.id())
                                     .request()
@@ -134,6 +141,53 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
         }
 
         return trackingRequests;
+    }
+
+    private void filterXids(Client client, String index, Set<Long> xids, List<ActionRequest> trackingRequests) {
+        SearchRequestBuilder search = new SearchRequestBuilder(client)
+                .setIndices(index)
+                .setTypes("data")
+                .setSearchType(SearchType.SCAN)
+                .setScroll(TimeValue.timeValueMinutes(10))
+                .setSize(10000)
+                .addFieldDataField("_xmin")
+                .setQuery(termsQuery("_xmin", xids));
+
+        int total = 0, cnt = 0;
+        SearchResponse response = null;
+        while (true) {
+            if (response == null) {
+                response = client.execute(SearchAction.INSTANCE, search.request()).actionGet();
+                total = (int) response.getHits().getTotalHits();
+            } else {
+                response = client.execute(SearchScrollAction.INSTANCE,
+                        new SearchScrollRequestBuilder(client)
+                                .setScrollId(response.getScrollId())
+                                .setScroll(TimeValue.timeValueMinutes(10))
+                                .request()).actionGet();
+            }
+
+            for (SearchHit hit : response.getHits()) {
+                long xid = ((Number) hit.field("_xmin").value()).longValue();
+
+                if (xids.contains(xid)) {
+                    trackingRequests.add(
+                            new DeleteRequestBuilder(client)
+                                    .setIndex(index)
+                                    .setType(hit.type())
+                                    .setRouting(hit.id())
+                                    .setId(hit.id())
+                                    .request()
+                    );
+                }
+
+                cnt++;
+            }
+
+            if (cnt == total)
+                break;
+        }
+
     }
 }
 
