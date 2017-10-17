@@ -871,7 +871,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 					stats->tuples_removed++;
 
 					if (((int) stats->tuples_removed) % 10000 == 0) {
-						desc->implementation->bulkDelete(desc, ctidsToDelete, NULL);
+						desc->implementation->bulkDelete(desc, ctidsToDelete);
 						list_free_deep(ctidsToDelete);
 						ctidsToDelete = NULL;
 					}
@@ -887,7 +887,7 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     }
 	RelationClose(heapRel);
 
-	desc->implementation->bulkDelete(desc, ctidsToDelete, NULL);
+	desc->implementation->bulkDelete(desc, ctidsToDelete);
 
     stats->num_pages        = 1;
     stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");

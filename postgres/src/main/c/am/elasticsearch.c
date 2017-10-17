@@ -23,9 +23,11 @@
 #include "access/genam.h"
 #include "access/heapam.h"
 #include "access/htup_details.h"
+#include "access/transam.h"
 #include "access/xact.h"
 #include "storage/bufmgr.h"
 #include "storage/lmgr.h"
+#include "storage/procarray.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/lsyscache.h"
@@ -812,7 +814,7 @@ static uint64 count_deleted_docs(ZDBIndexDescriptor *indexDescriptor) {
 	return (uint64) atoll(response->data);
 }
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDataDelete, List *toUpdatedDelete) {
+void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete) {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
@@ -823,7 +825,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDataD
         appendStringInfo(endpoint, "&refresh=true");
     }
 
-    foreach (lc, toDataDelete) {
+    foreach (lc, ctidsToDelete) {
         ItemPointer item = lfirst(lc);
 
         appendStringInfo(request, "{\"delete\":{\"_type\":\"data\",\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
@@ -859,43 +861,52 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDataD
 }
 
 char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor) {
+	elog(ERROR, "unsupported operation");
+	return NULL;
+}
+
+static char *confirm_aborted_xids(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
-    Snapshot snapshot = GetActiveSnapshot();
 
-    appendStringInfo(endpoint, "%s/%s/_zdbvacuum?xmin=%lu&xmax=%lu&commandid=%u", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax), GetCurrentCommandId(false));
-	if (snapshot->xcnt > 0) {
-		int i;
-		appendStringInfo(endpoint, "&active=");
-		for (i = 0; i < snapshot->xcnt; i++) {
-			if (i > 0) appendStringInfoChar(endpoint, ',');
-			appendStringInfo(endpoint, "%lu", convert_xid(snapshot->xip[i]));
-		}
-	}
+    appendStringInfo(endpoint, "%s/%s/_zdbabortedxids", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
-	if (response->len > 0 && response->data[0] == '{' && strstr(response->data, "error") != NULL)
+	if (response->len > 0 && response->data[0] != 0)
 		elog(ERROR, "%s", response->data);
-    return response->data;
+
+	memcpy(nitems, response->data + 1, sizeof(uint64));
+    return response->data + 1 + sizeof(uint64);
 }
 
 void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
+	TransactionId oldestXmin = GetOldestXmin(false, true);
 	StringInfo endpoint = makeStringInfo();
+	StringInfo request = makeStringInfo();
 	StringInfo response;
-    Snapshot snapshot = GetActiveSnapshot();
+	uint64 nitems;
+	char *xids;
+	uint64 i;
 
-    appendStringInfo(endpoint, "%s/%s/_zdbvacuum_cleanup?xmin=%lu&xmax=%lu&commandid=%u", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax), GetCurrentCommandId(false));
-    if (snapshot->xcnt > 0) {
-        int i;
-        appendStringInfo(endpoint, "&active=");
-        for (i = 0; i < snapshot->xcnt; i++) {
-            if (i > 0) appendStringInfoChar(endpoint, ',');
-            appendStringInfo(endpoint, "%lu", convert_xid(snapshot->xip[i]));
-        }
-    }
-	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+    appendStringInfo(endpoint, "%s/%s/_zdbvacuum_cleanup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
+		appendStringInfo(endpoint, "?refresh=true");
+	}
+
+	xids = confirm_aborted_xids(indexDescriptor, &nitems);
+	for (i=0; i<nitems; i++) {
+		uint64 xid;
+
+		memcpy(&xid, xids + (i*sizeof(uint64)), sizeof(uint64));
+
+		if (TransactionIdPrecedes((TransactionId) xid, oldestXmin) && TransactionIdDidAbort((TransactionId) xid) && !TransactionIdIsInProgress((TransactionId) xid)) {
+			appendStringInfo(request, "%lu\n", xid);
+		}
+	}
+
+	response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
 	freeStringInfo(endpoint);
 	if (response->len > 0 && response->data[0] == '{' && strstr(response->data, "error") != NULL)

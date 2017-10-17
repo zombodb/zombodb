@@ -214,7 +214,7 @@ typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char
 
 typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse);
 
-typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *toDataDelete, List *toUpdatedDelete);
+typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete);
 typedef char *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBVacuumCleanup_function)(ZDBIndexDescriptor *indexDescriptor);
 

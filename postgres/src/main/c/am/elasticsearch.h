@@ -53,7 +53,7 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, 
 
 void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDataDelete, List *toUpdatedDelete);
+void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete);
 char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor);
 

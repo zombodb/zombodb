@@ -84,7 +84,7 @@ static char *wrapper_highlight(ZDBIndexDescriptor *indexDescriptor, char *query,
 
 static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDataDelete, List *toUpdatedDelete);
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete);
 static char *wrapper_vacuumSupport(ZDBIndexDescriptor *indexDescriptor);
 static void wrapper_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor);
 
@@ -573,13 +573,13 @@ static void wrapper_freeSearchResponse(ZDBSearchResponse *searchResponse) {
     MemoryContextSwitchTo(oldContext);
 }
 
-static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *toDataDelete, List *toUpdatedDelete) {
+static void wrapper_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_bulkDelete", 512, 64, 64);
     MemoryContext oldContext = MemoryContextSwitchTo(me);
 
     Assert(!indexDescriptor->isShadow);
 
-    elasticsearch_bulkDelete(indexDescriptor, toDataDelete, toUpdatedDelete);
+    elasticsearch_bulkDelete(indexDescriptor, ctidsToDelete);
 
     MemoryContextSwitchTo(oldContext);
     MemoryContextDelete(me);

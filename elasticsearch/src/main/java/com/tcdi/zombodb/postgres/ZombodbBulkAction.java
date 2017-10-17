@@ -48,7 +48,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
     @Override
     public void handleRequest(final RestRequest request, final RestChannel channel, final Client client) throws Exception {
         BulkRequest bulkRequest = Requests.bulkRequest();
-        bulkRequest.listenerThreaded(false);
+        BulkResponse response;
+
         String defaultIndex = request.param("index");
         String defaultType = request.param("type");
         String defaultRouting = request.param("routing");
@@ -59,6 +60,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
         if (consistencyLevel != null) {
             bulkRequest.consistencyLevel(WriteConsistencyLevel.fromString(consistencyLevel));
         }
+
+        bulkRequest.listenerThreaded(false);
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
         bulkRequest.refresh(refresh);
         bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, true);
@@ -74,19 +77,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
             }
         }
 
-        BulkResponse response;
+        bulkRequest.requests().addAll(trackingRequests);
 
-        if (isdelete) {
-            response = client.bulk(bulkRequest).actionGet();
-            if (!response.hasFailures()) {
-                response = processTrackingRequests(request, client, trackingRequests);
-            }
-        } else {
-            response = processTrackingRequests(request, client, trackingRequests);
-            if (!response.hasFailures()) {
-                response = client.bulk(bulkRequest).actionGet();
-            }
-        }
+        response = client.bulk(bulkRequest).actionGet();
 
         channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
     }
@@ -98,7 +91,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(true);
+        bulkRequest.refresh(request.paramAsBoolean("refresh", false));
         bulkRequest.requests().addAll(trackingRequests);
 
         return client.bulk(bulkRequest).actionGet();
