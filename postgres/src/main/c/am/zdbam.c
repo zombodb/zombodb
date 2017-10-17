@@ -861,7 +861,9 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 		CHECK_FOR_INTERRUPTS();
 
 		if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
-			for (OffsetNumber offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
+			OffsetNumber offno;
+
+			for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
 				ItemPointer ctid = palloc(sizeof(ItemPointerData));
 
 				ItemPointerSet(ctid, blockno, offno);
