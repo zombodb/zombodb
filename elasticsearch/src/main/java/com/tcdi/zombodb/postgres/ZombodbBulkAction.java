@@ -1,5 +1,7 @@
 package com.tcdi.zombodb.postgres;
 
+import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.WriteConsistencyLevel;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
@@ -25,6 +27,7 @@ import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.VersionType;
 import org.elasticsearch.rest.*;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -175,6 +178,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
     private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
         int cnt=0;
+        byte[] bytes = new byte[6];
+        ByteArrayDataOutput out = new ByteArrayDataOutput();
         for (ActionRequest ar : requests) {
             IndexRequest doc = (IndexRequest) ar;
             Map<String, Object> data = doc.sourceAsMap();
@@ -182,9 +187,25 @@ public class ZombodbBulkAction extends BaseRestHandler {
             Number xid = (Number) data.get("_xmin");
             Number sequence = (Number) data.get("_zdb_seq");
 
+            try {
+                String[] split = doc.id().split("-");
+                out.reset(bytes);
+                out.writeVInt(Integer.parseInt(split[0]));
+                out.writeVInt(Integer.parseInt(split[1]));
+                data.put("_zdb_encoded_ctid", BytesRef.deepCopyOf(new BytesRef(bytes, 0, out.getPosition())));
+                doc.source(data);
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+
+
             if (prev_ctid != null) {
                 // we are inserting a new doc that replaces a previous doc (an UPDATE)
+                String[] parts = prev_ctid.split("-");
                 Number cmin = (Number) data.get("_cmin");
+                int blockno = Integer.parseInt(parts[0]);
+                int offno = Integer.parseInt(parts[1]);
+                BytesRef quick_lookup = encodeXminData(xid.longValue(), cmin.intValue(), blockno, offno);
 
                 trackingRequests.add(
                         new IndexRequestBuilder(client)
@@ -194,7 +215,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setVersion(xid.longValue())
                                 .setRouting(prev_ctid)
                                 .setId(prev_ctid)
-                                .setSource("_xmax", xid, "_cmax", cmin, "_replacement_ctid", doc.id())
+                                .setSource("_xmax", xid, "_cmax", cmin, "_replacement_ctid", doc.id(), "_zdb_quick_lookup", quick_lookup)
                                 .request()
                 );
             }
@@ -230,6 +251,20 @@ public class ZombodbBulkAction extends BaseRestHandler {
         }
 
         return trackingRequests;
+    }
+
+    static BytesRef encodeXminData(long xid, int cmin, int blockno, int offno) {
+        try {
+            byte[] quick_lookup = new byte[4 + 2 + 8 + 4];  // blockno + offno + xmax + cmax
+            ByteArrayDataOutput out = new ByteArrayDataOutput(quick_lookup);
+            out.writeVInt(blockno);
+            out.writeVInt(offno);
+            out.writeVLong(xid);
+            out.writeVInt(cmin);
+            return new BytesRef(quick_lookup, 0, out.getPosition());
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
     }
 
     private static final class Fields {

@@ -1,5 +1,6 @@
 package com.tcdi.zombodb.postgres;
 
+import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -47,10 +48,14 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
         int cnt = 0;
 
         while ((line = reader.readLine()) != null) {
-            String[] split = line.split("[:]");
+            String[] split = line.split(":");
             String ctid = split[0];
             long xid = Long.valueOf(split[1]);
             int cmax = Integer.valueOf(split[2]);
+            split = ctid.split("-");
+            int blockno = Integer.parseInt(split[0]);
+            int offno = Integer.parseInt(split[1]);
+            BytesRef quick_lookup = ZombodbBulkAction.encodeXminData(xid, cmax, blockno, offno);
 
             if (cnt == 0) {
                 GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
@@ -78,7 +83,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                             .setVersion(xid)
                             .setRouting(ctid)
                             .setId(ctid)
-                            .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid)
+                            .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid, "_zdb_quick_lookup", quick_lookup)
                             .request()
             );
 

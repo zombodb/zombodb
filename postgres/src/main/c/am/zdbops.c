@@ -524,6 +524,21 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             "\"include_in_all\":\"false\","
             "\"norms\": {\"enabled\":false},"
             "\"index\": \"not_analyzed\""
+            "},");
+
+    appendStringInfo(result, "\"_zdb_encoded_ctid\": {"
+            "\"type\":\"binary\","
+            "\"doc_values\": true,"
+            "\"compress\":false,"
+            "\"compress_threshold\": 18"\
+            "},");
+
+    appendStringInfo(result, "\"_zdb_blockno\": {"
+            "\"type\":\"integer\","
+            "\"fielddata\": {\"format\": \"doc_values\"},"
+            "\"include_in_all\":\"false\","
+            "\"norms\": {\"enabled\":false},"
+            "\"index\": \"not_analyzed\""
             "}");
 
     for (i = 0; i < tupdesc->natts; i++) {
