@@ -199,7 +199,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 );
             }
 
-            if (cnt == 0 && sequence.longValue() > -1) {
+            if (sequence.longValue() == 0) {
                 GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
                 int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
                 String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
