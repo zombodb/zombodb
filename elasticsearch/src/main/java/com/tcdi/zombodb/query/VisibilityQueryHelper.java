@@ -55,22 +55,25 @@ final class VisibilityQueryHelper {
         private final int hash;
 
 
-        private HeapTuple(BytesRef bytes, ByteArrayDataInput in) {
-            in.reset(bytes.bytes);
-
+        private HeapTuple(BytesRef bytes, boolean isxmin, ByteArrayDataInput in) {
             // lucene prefixes binary terms with a header of two variable length ints.
             // because we know how our binary data is constructed we can blindly
             // assume that the header length is 2 bytes.  1 byte for the number of items
-            // and 1 byte for the first/only item's byte length that we don't need
-            in.setPosition(2);
+            // and 1 byte for the first/only item's byte length, neither of which we need
+            in.reset(bytes.bytes, 2, bytes.length-2);
 
             blockno = in.readVInt();
             offno = in.readVInt();
             if (in.getPosition() < bytes.length) {
                 // more bytes, so we also have xmax and cmax to read
-                xmax = in.readVLong();
-                cmax = in.readVInt();
-                hasMax = true;
+                if (isxmin) {
+                    xmin = in.readVLong();
+                    cmin = in.readVInt();
+                } else {
+                    xmax = in.readVLong();
+                    cmax = in.readVInt();
+                    hasMax = true;
+                }
             }
 
             hash = blockno + (31 * offno);
@@ -83,6 +86,7 @@ final class VisibilityQueryHelper {
 
         @Override
         public boolean equals(Object obj) {
+            assert(obj instanceof HeapTuple);
             HeapTuple other = (HeapTuple) obj;
             return this.blockno == other.blockno && this.offno == other.offno;
         }
@@ -94,7 +98,6 @@ final class VisibilityQueryHelper {
     }
 
     private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids, final List<BytesRef> abortedXidsAsBytes) throws IOException {
-        long start = System.currentTimeMillis();
         searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "aborted"))),
                 new ZomboDBTermsCollector() {
                     SortedNumericDocValues _zdb_xid;
@@ -117,34 +120,44 @@ final class VisibilityQueryHelper {
                     }
                 }
         );
-        long end = System.currentTimeMillis();
-        System.err.println("collectAbortedXids: " + ((end - start) / 1000D) + "s");
     }
 
     private static void collectMaxes(IndexSearcher searcher, final Map<HeapTuple, HeapTuple> tuples, final IntSet dirtyBlocks) throws IOException {
         long start = System.currentTimeMillis();
 
-        searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
-                new ZomboDBTermsCollector() {
-                    BinaryDocValues _zdb_quick_lookup;
-                    ByteArrayDataInput in = new ByteArrayDataInput();
+        abstract class Collector extends ZomboDBTermsCollector {
+            ByteArrayDataInput in = new ByteArrayDataInput();
+            BinaryDocValues _zdb_encoded_tuple;
 
-                    @Override
-                    public void collect(int doc) throws IOException {
-                        HeapTuple ctid = new HeapTuple(_zdb_quick_lookup.get(doc), in);
-                        tuples.put(ctid, ctid);
+            @Override
+            public void setNextReader(AtomicReaderContext context) throws IOException {
+                _zdb_encoded_tuple = context.reader().getBinaryDocValues("_zdb_encoded_tuple");
+            }
+        }
 
-                        if (dirtyBlocks != null) {
+        if (dirtyBlocks != null) {
+            searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
+                    new Collector() {
+                        @Override
+                        public void collect(int doc) throws IOException {
+                            HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), false, in);
+                            tuples.put(ctid, ctid);
                             dirtyBlocks.add(ctid.blockno);
                         }
                     }
-
-                    @Override
-                    public void setNextReader(AtomicReaderContext context) throws IOException {
-                        _zdb_quick_lookup = context.reader().getBinaryDocValues("_zdb_quick_lookup");
+            );
+        } else {
+            searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
+                    new Collector() {
+                        @Override
+                        public void collect(int doc) throws IOException {
+                            HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), false, in);
+                            tuples.put(ctid, ctid);
+                        }
                     }
-                }
-        );
+            );
+        }
+
         long end = System.currentTimeMillis();
         System.err.println("collectMaxes: " + ((end - start) / 1000D) + "s, size=" + tuples.size());
     }
@@ -164,9 +177,9 @@ final class VisibilityQueryHelper {
                 xmax_cnt += terms.getDocCount();
         }
 
-        final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
         final boolean just_get_everything = xmax_cnt >= doccnt/3;
-        final IntSet dirtyBlocks = just_get_everything ? null : new IntScatterSet(32768);
+
+        final IntSet dirtyBlocks = just_get_everything ? null : new IntScatterSet();
         final List<HeapTuple> tuples = new ArrayList<>();
         final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>(xmax_cnt);
 
@@ -224,47 +237,38 @@ final class VisibilityQueryHelper {
                 ),
                 new ZomboDBTermsCollector() {
                     private final ByteArrayDataInput in = new ByteArrayDataInput();
-                    private BinaryDocValues _zdb_encoded_ctid;
-                    private SortedNumericDocValues _xmin;
-                    private SortedNumericDocValues _cmin;
+                    private BinaryDocValues _zdb_encoded_tuple;
                     private int ord;
                     private int maxdoc;
 
                     @Override
                     public void collect(int doc) throws IOException {
-                        _xmin.setDocument(doc);
-                        _cmin.setDocument(doc);
+                        HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), true, in);
 
-                        long xmin = _xmin.valueAt(0);
-                        int cmin = (int) _cmin.valueAt(0);
-
-                        boolean need_to_examine = xmin >= myXmin || abortedXids.contains(xmin) || activeXids.contains(xmin);
-
-                        HeapTuple ctid = new HeapTuple(_zdb_encoded_ctid.get(doc), in);
                         HeapTuple existingCtid = modifiedTuples.get(ctid);
                         if (existingCtid == null) {
-                            if (!need_to_examine)
-                                return;
+                            boolean known_invisible = ctid.xmin >= myXmin || abortedXids.contains(ctid.xmin) || activeXids.contains(ctid.xmin);
+                            if (!known_invisible)
+                                return;     // we don't need to examine this one -- it's known visible to us
 
+                            // wasn't part of our "xmax" lookups, so the doc hasn't been updated/deleted yet
+                            //
                             // add to external list of tuples that don't have xmax data
-                            // this avoids a HashMap.put() call, in this tight loop which
-                            // is a good thing
+                            // this avoids a HashMap.put() call, which in this tight loop is a good thing
                             tuples.add(existingCtid = ctid);
                         }
 
                         existingCtid.readerOrd = ord;
                         existingCtid.maxdoc = maxdoc;
                         existingCtid.docid = doc;
-                        existingCtid.xmin = xmin;
-                        existingCtid.cmin = cmin;
+                        existingCtid.xmin = ctid.xmin;
+                        existingCtid.cmin = ctid.cmin;
                         cnt[0]++;
                     }
 
                     @Override
                     public void setNextReader(AtomicReaderContext context) throws IOException {
-                        _zdb_encoded_ctid = context.reader().getBinaryDocValues("_zdb_encoded_ctid");
-                        _xmin = context.reader().getSortedNumericDocValues("_xmin");
-                        _cmin = context.reader().getSortedNumericDocValues("_cmin");
+                        _zdb_encoded_tuple = context.reader().getBinaryDocValues("_zdb_encoded_tuple");
                         ord = context.ord;
                         maxdoc = context.reader().maxDoc();
                     }
@@ -273,6 +277,7 @@ final class VisibilityQueryHelper {
         long end = System.currentTimeMillis();
         System.err.println("ttl to find " + cnt[0] + " docs: " + ((end - start) / 1000D) + "s");
 
+        final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
         for (Iterable<HeapTuple> iterable : new Iterable[] { modifiedTuples.keySet(), tuples}) {
             for (HeapTuple ctid : iterable) {
                 long xmin = ctid.xmin;
@@ -280,6 +285,7 @@ final class VisibilityQueryHelper {
                 boolean xmax_is_null = !ctid.hasMax;
                 long xmax = -1;
                 long cmax = -1;
+
                 if (!xmax_is_null) {
                     xmax = ctid.xmax;
                     cmax = ctid.cmax;

@@ -19,6 +19,7 @@ import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.cluster.ClusterService;
+import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -85,19 +86,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
         response = client.bulk(bulkRequest).actionGet();
 
         channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
-    }
-
-    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests) {
-        if (trackingRequests.isEmpty())
-            return new BulkResponse(new BulkItemResponse[0], 0);
-
-        BulkRequest bulkRequest;
-        bulkRequest = Requests.bulkRequest();
-        bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(request.paramAsBoolean("refresh", false));
-        bulkRequest.requests().addAll(trackingRequests);
-
-        return client.bulk(bulkRequest).actionGet();
     }
 
     static RestResponse buildResponse(BulkResponse response, XContentBuilder builder) throws Exception {
@@ -177,45 +165,55 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
     private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex) {
         List<ActionRequest> trackingRequests = new ArrayList<>();
-        int cnt=0;
-        byte[] bytes = new byte[6];
-        ByteArrayDataOutput out = new ByteArrayDataOutput();
+
         for (ActionRequest ar : requests) {
             IndexRequest doc = (IndexRequest) ar;
             Map<String, Object> data = doc.sourceAsMap();
             String prev_ctid = (String) data.get("_prev_ctid");
-            Number xid = (Number) data.get("_xmin");
+            Number xmin = (Number) data.get("_xmin");
+            Number cmin = (Number) data.get("_cmin");
             Number sequence = (Number) data.get("_zdb_seq");
 
-            try {
-                String[] split = doc.id().split("-");
-                out.reset(bytes);
-                out.writeVInt(Integer.parseInt(split[0]));
-                out.writeVInt(Integer.parseInt(split[1]));
-                data.put("_zdb_encoded_ctid", BytesRef.deepCopyOf(new BytesRef(bytes, 0, out.getPosition())));
-                doc.source(data);
-            } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
-            }
+            {
+                // encode a few things into one binary field
+                // and then add that field to the json source of this document
+                String[] parts = doc.id().split("-");
+                int blockno = Integer.parseInt(parts[0]);
+                int offno = Integer.parseInt(parts[1]);
+                BytesRef encodedTuple = encodeTuple(xmin.longValue(), cmin.intValue(), blockno, offno);
 
+                // re-create the source as a byte array.
+                // this is much faster than using doc.source(Map<String, Object>)
+                byte[] source = doc.source().toBytes();
+                int start = 0;
+                int len = source.length;
+
+                // backup to the last closing bracket
+                while (source[start + --len] != '}') ;
+
+                byte[] valueBytes = (",\"_zdb_encoded_tuple\":\"" + Base64.encodeBytes(encodedTuple.bytes) + "\"}").getBytes();
+                byte[] dest = new byte[len + valueBytes.length];
+                System.arraycopy(source, start, dest, 0, len);
+                System.arraycopy(valueBytes, 0, dest, len, valueBytes.length);
+                doc.source(dest);
+            }
 
             if (prev_ctid != null) {
                 // we are inserting a new doc that replaces a previous doc (an UPDATE)
                 String[] parts = prev_ctid.split("-");
-                Number cmin = (Number) data.get("_cmin");
                 int blockno = Integer.parseInt(parts[0]);
                 int offno = Integer.parseInt(parts[1]);
-                BytesRef quick_lookup = encodeXminData(xid.longValue(), cmin.intValue(), blockno, offno);
+                BytesRef encodedTuple = encodeTuple(xmin.longValue(), cmin.intValue(), blockno, offno);
 
                 trackingRequests.add(
                         new IndexRequestBuilder(client)
                                 .setIndex(defaultIndex)
                                 .setType("xmax")
                                 .setVersionType(VersionType.FORCE)
-                                .setVersion(xid.longValue())
+                                .setVersion(xmin.longValue())
                                 .setRouting(prev_ctid)
                                 .setId(prev_ctid)
-                                .setSource("_xmax", xid, "_cmax", cmin, "_replacement_ctid", doc.id(), "_zdb_quick_lookup", quick_lookup)
+                                .setSource("_xmax", xmin, "_cmax", cmin, "_replacement_ctid", doc.id(), "_zdb_encoded_tuple", encodedTuple)
                                 .request()
                 );
             }
@@ -231,8 +229,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                     .setIndex(defaultIndex)
                                     .setType("aborted")
                                     .setRouting(routing)
-                                    .setId(String.valueOf(xid))
-                                    .setSource("_zdb_xid", xid)
+                                    .setId(String.valueOf(xmin))
+                                    .setSource("_zdb_xid", xmin)
                                     .request()
                     );
                 }
@@ -243,25 +241,23 @@ public class ZombodbBulkAction extends BaseRestHandler {
             // have previously occupied this "_id" value -- the Postgres transaction id (xid)
             // works just fine for this as it's always increasing
             doc.opType(IndexRequest.OpType.CREATE);
-            doc.version(xid.longValue());
+            doc.version(xmin.longValue());
             doc.versionType(VersionType.FORCE);
             doc.routing(doc.id());
-
-            cnt++;
         }
 
         return trackingRequests;
     }
 
-    static BytesRef encodeXminData(long xid, int cmin, int blockno, int offno) {
+    static BytesRef encodeTuple(long xid, int cmin, int blockno, int offno) {
         try {
-            byte[] quick_lookup = new byte[4 + 2 + 8 + 4];  // blockno + offno + xmax + cmax
-            ByteArrayDataOutput out = new ByteArrayDataOutput(quick_lookup);
+            byte[] tuple = new byte[4 + 2 + 8 + 4];  // blockno + offno + xmax + cmax
+            ByteArrayDataOutput out = new ByteArrayDataOutput(tuple);
             out.writeVInt(blockno);
             out.writeVInt(offno);
             out.writeVLong(xid);
             out.writeVInt(cmin);
-            return new BytesRef(quick_lookup, 0, out.getPosition());
+            return new BytesRef(tuple, 0, out.getPosition());
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
         }

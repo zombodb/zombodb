@@ -526,7 +526,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             "\"index\": \"not_analyzed\""
             "},");
 
-    appendStringInfo(result, "\"_zdb_encoded_ctid\": {"
+    appendStringInfo(result, "\"_zdb_encoded_tuple\": {"
             "\"type\":\"binary\","
             "\"doc_values\": true,"
             "\"compress\":false,"

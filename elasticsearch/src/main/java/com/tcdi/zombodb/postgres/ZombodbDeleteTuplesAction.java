@@ -17,9 +17,7 @@ import org.elasticsearch.rest.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -55,7 +53,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
             split = ctid.split("-");
             int blockno = Integer.parseInt(split[0]);
             int offno = Integer.parseInt(split[1]);
-            BytesRef quick_lookup = ZombodbBulkAction.encodeXminData(xid, cmax, blockno, offno);
+            BytesRef encodedTuple = ZombodbBulkAction.encodeTuple(xid, cmax, blockno, offno);
 
             if (cnt == 0) {
                 GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
@@ -83,7 +81,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                             .setVersion(xid)
                             .setRouting(ctid)
                             .setId(ctid)
-                            .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid, "_zdb_quick_lookup", quick_lookup)
+                            .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid, "_zdb_encoded_tuple", encodedTuple)
                             .request()
             );
 
