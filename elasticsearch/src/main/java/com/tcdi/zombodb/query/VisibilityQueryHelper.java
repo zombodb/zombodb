@@ -48,9 +48,9 @@ final class VisibilityQueryHelper {
         private int cmax;
         private boolean hasMax;
 
-        private int readerOrd;
-        private int maxdoc;
-        private int docid;
+        private int readerOrd = -1;
+        private int maxdoc = -1;
+        private int docid = -1;
 
         private final int hash;
 
@@ -123,8 +123,6 @@ final class VisibilityQueryHelper {
     }
 
     private static void collectMaxes(IndexSearcher searcher, final Map<HeapTuple, HeapTuple> tuples, final IntSet dirtyBlocks) throws IOException {
-        long start = System.currentTimeMillis();
-
         abstract class Collector extends ZomboDBTermsCollector {
             ByteArrayDataInput in = new ByteArrayDataInput();
             BinaryDocValues _zdb_encoded_tuple;
@@ -157,9 +155,6 @@ final class VisibilityQueryHelper {
                     }
             );
         }
-
-        long end = System.currentTimeMillis();
-        System.err.println("collectMaxes: " + ((end - start) / 1000D) + "s, size=" + tuples.size());
     }
 
     static Map<Integer, FixedBitSet> determineVisibility(final long myXid, final long myXmin, final long myXmax, final int myCommand, final Set<Long> activeXids, IndexSearcher searcher) throws IOException {
@@ -225,8 +220,6 @@ final class VisibilityQueryHelper {
             filters.add(NumericRangeFilter.newLongRange("_xmin", myXmin, null, true, true));
         }
 
-        long start = System.currentTimeMillis();
-        final int[] cnt = new int[1];
         searcher.search(new XConstantScoreQuery(
                         new AndFilter(
                                 Arrays.asList(
@@ -258,12 +251,12 @@ final class VisibilityQueryHelper {
                             tuples.add(existingCtid = ctid);
                         }
 
+                        existingCtid.xmin = ctid.xmin;
+                        existingCtid.cmin = ctid.cmin;
+
                         existingCtid.readerOrd = ord;
                         existingCtid.maxdoc = maxdoc;
                         existingCtid.docid = doc;
-                        existingCtid.xmin = ctid.xmin;
-                        existingCtid.cmin = ctid.cmin;
-                        cnt[0]++;
                     }
 
                     @Override
@@ -274,12 +267,18 @@ final class VisibilityQueryHelper {
                     }
                 }
         );
-        long end = System.currentTimeMillis();
-        System.err.println("ttl to find " + cnt[0] + " docs: " + ((end - start) / 1000D) + "s");
 
         final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
         for (Iterable<HeapTuple> iterable : new Iterable[] { modifiedTuples.keySet(), tuples}) {
             for (HeapTuple ctid : iterable) {
+                if (ctid.docid == -1) {
+                    // we initially found this document in "xmax", but we didn't
+                    // find it in "data" just up above.
+                    //
+                    // It must have been deleted by a vacuum between when we found it
+                    // and then searched for it again
+                    continue;
+                }
                 long xmin = ctid.xmin;
                 int cmin = ctid.cmin;
                 boolean xmax_is_null = !ctid.hasMax;
