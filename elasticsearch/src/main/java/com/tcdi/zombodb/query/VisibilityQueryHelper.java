@@ -46,11 +46,6 @@ final class VisibilityQueryHelper {
         private int cmin;
         private long xmax;
         private int cmax;
-        private boolean hasMax;
-
-        private int readerOrd = -1;
-        private int maxdoc = -1;
-        private int docid = -1;
 
         private final int hash;
 
@@ -72,7 +67,6 @@ final class VisibilityQueryHelper {
                 } else {
                     xmax = in.readVLong();
                     cmax = in.readVInt();
-                    hasMax = true;
                 }
             }
 
@@ -175,7 +169,6 @@ final class VisibilityQueryHelper {
         final boolean just_get_everything = xmax_cnt >= doccnt/3;
 
         final IntSet dirtyBlocks = just_get_everything ? null : new IntScatterSet();
-        final List<HeapTuple> tuples = new ArrayList<>();
         final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>(xmax_cnt);
 
         collectMaxes(searcher, modifiedTuples, dirtyBlocks);
@@ -220,6 +213,7 @@ final class VisibilityQueryHelper {
             filters.add(NumericRangeFilter.newLongRange("_xmin", myXmin, null, true, true));
         }
 
+        final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
         searcher.search(new XConstantScoreQuery(
                         new AndFilter(
                                 Arrays.asList(
@@ -231,83 +225,59 @@ final class VisibilityQueryHelper {
                 new ZomboDBTermsCollector() {
                     private final ByteArrayDataInput in = new ByteArrayDataInput();
                     private BinaryDocValues _zdb_encoded_tuple;
-                    private int ord;
+                    private int contextOrd;
                     private int maxdoc;
 
                     @Override
                     public void collect(int doc) throws IOException {
                         HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), true, in);
+                        HeapTuple ctidWithXmax = modifiedTuples.get(ctid);
 
-                        HeapTuple existingCtid = modifiedTuples.get(ctid);
-                        if (existingCtid == null) {
+                        if (ctidWithXmax == null) {
                             boolean known_invisible = ctid.xmin >= myXmin || abortedXids.contains(ctid.xmin) || activeXids.contains(ctid.xmin);
                             if (!known_invisible)
                                 return;     // we don't need to examine this one -- it's known visible to us
 
                             // wasn't part of our "xmax" lookups, so the doc hasn't been updated/deleted yet
-                            //
-                            // add to external list of tuples that don't have xmax data
-                            // this avoids a HashMap.put() call, which in this tight loop is a good thing
-                            tuples.add(existingCtid = ctid);
                         }
 
-                        existingCtid.xmin = ctid.xmin;
-                        existingCtid.cmin = ctid.cmin;
+                        long xmin = ctid.xmin;
+                        int cmin = ctid.cmin;
+                        boolean xmax_is_null = ctidWithXmax == null;
+                        long xmax = -1;
+                        long cmax = -1;
 
-                        existingCtid.readerOrd = ord;
-                        existingCtid.maxdoc = maxdoc;
-                        existingCtid.docid = doc;
+                        if (!xmax_is_null) {
+                            xmax = ctidWithXmax.xmax;
+                            cmax = ctidWithXmax.cmax;
+                        }
+
+                        boolean xmin_is_committed = xmin < myXmax && !(xmin >= myXmax) && !activeXids.contains(xmin) && !abortedXids.contains(xmin);
+                        boolean xmax_is_committed = !xmax_is_null && xmax < myXmax && !(xmax >= myXmax) && !activeXids.contains(xmax) && !abortedXids.contains(xmax);
+
+                        if (
+                                !(
+                                        (xmin == myXid && cmin < myCommand && (xmax_is_null || (xmax == myXid && cmax >= myCommand)))
+                                                ||
+                                        (xmin_is_committed && (xmax_is_null || (xmax == myXid && cmax >= myCommand) || (xmax != myXid && !xmax_is_committed)))
+                                )
+                                ) {
+                            // it's not visible to us
+                            FixedBitSet visibilityBitset = visibilityBitSets.get(contextOrd);
+                            if (visibilityBitset == null)
+                                visibilityBitSets.put(contextOrd, visibilityBitset = new FixedBitSet(maxdoc));
+                            visibilityBitset.set(doc);
+                        }
                     }
 
                     @Override
                     public void setNextReader(AtomicReaderContext context) throws IOException {
                         _zdb_encoded_tuple = context.reader().getBinaryDocValues("_zdb_encoded_tuple");
-                        ord = context.ord;
+                        contextOrd = context.ord;
                         maxdoc = context.reader().maxDoc();
                     }
                 }
         );
-
-        final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
-        for (Iterable<HeapTuple> iterable : new Iterable[] { modifiedTuples.keySet(), tuples}) {
-            for (HeapTuple ctid : iterable) {
-                if (ctid.docid == -1) {
-                    // we initially found this document in "xmax", but we didn't
-                    // find it in "data" just up above.
-                    //
-                    // It must have been deleted by a vacuum between when we found it
-                    // and then searched for it again
-                    continue;
-                }
-                long xmin = ctid.xmin;
-                int cmin = ctid.cmin;
-                boolean xmax_is_null = !ctid.hasMax;
-                long xmax = -1;
-                long cmax = -1;
-
-                if (!xmax_is_null) {
-                    xmax = ctid.xmax;
-                    cmax = ctid.cmax;
-                }
-
-                boolean xmin_is_committed = xmin < myXmax && !(xmin >= myXmax) && !activeXids.contains(xmin) && !abortedXids.contains(xmin);
-                boolean xmax_is_committed = !xmax_is_null && xmax < myXmax && !(xmax >= myXmax) && !activeXids.contains(xmax) && !abortedXids.contains(xmax);
-
-                if (
-                        !(
-                                (xmin == myXid && cmin < myCommand && (xmax_is_null || (xmax == myXid && cmax >= myCommand)))
-                                        ||
-                                (xmin_is_committed && (xmax_is_null || (xmax == myXid && cmax >= myCommand) || (xmax != myXid && !xmax_is_committed)))
-                        )
-                        ) {
-                    // it's not visible to us
-                    FixedBitSet visibilityBitset = visibilityBitSets.get(ctid.readerOrd);
-                    if (visibilityBitset == null)
-                        visibilityBitSets.put(ctid.readerOrd, visibilityBitset = new FixedBitSet(ctid.maxdoc));
-                    visibilityBitset.set(ctid.docid);
-                }
-            }
-        }
 
         return visibilityBitSets;
     }
