@@ -37,9 +37,8 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String index = request.param("index");
         boolean refresh = request.paramAsBoolean("refresh", false);
-        List<ActionRequest> trackingRequests = new ArrayList<>();
-        BulkRequest bulkRequest = Requests.bulkRequest();
-        bulkRequest.refresh(refresh);
+        List<ActionRequest> xmaxRequests = new ArrayList<>();
+        List<ActionRequest> abortedRequests = new ArrayList<>();
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
@@ -61,7 +60,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                 String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
 
                 for (String routing : routingTable) {
-                    trackingRequests.add(
+                    abortedRequests.add(
                             new IndexRequestBuilder(client)
                                     .setIndex(index)
                                     .setType("aborted")
@@ -73,7 +72,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                 }
             }
 
-            bulkRequest.add(
+            xmaxRequests.add(
                     new IndexRequestBuilder(client)
                             .setIndex(index)
                             .setType("xmax")
@@ -88,11 +87,16 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
             cnt++;
         }
 
-        bulkRequest.add(trackingRequests);
+        BulkResponse response;
+        for (List<ActionRequest> requests : new List[] { abortedRequests, xmaxRequests }){
+            BulkRequest bulkRequest = Requests.bulkRequest();
+            bulkRequest.refresh(refresh);
+            bulkRequest.add(requests);
 
-        BulkResponse response = client.bulk(bulkRequest).actionGet();
-        if (response.hasFailures())
-            throw new RuntimeException(response.buildFailureMessage());
+            response = client.bulk(bulkRequest).actionGet();
+            if (response.hasFailures())
+                throw new RuntimeException(response.buildFailureMessage());
+        }
 
         channel.sendResponse(new BytesRestResponse(RestStatus.OK, String.valueOf("ok")));
     }

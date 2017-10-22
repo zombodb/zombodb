@@ -59,6 +59,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         String defaultRouting = request.param("routing");
         boolean refresh = request.paramAsBoolean("refresh", false);
         boolean isdelete = false;
+        int requestNumber = request.paramAsInt("request_no", -1);
 
         String consistencyLevel = request.param("consistency");
         if (consistencyLevel != null) {
@@ -70,22 +71,57 @@ public class ZombodbBulkAction extends BaseRestHandler {
         bulkRequest.refresh(refresh);
         bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, true);
 
-        List<ActionRequest> trackingRequests = new ArrayList<>();
+        List<ActionRequest> xmaxRequests = new ArrayList<>();
+        List<ActionRequest> abortedRequests = new ArrayList<>();
         if (!bulkRequest.requests().isEmpty()) {
             isdelete = bulkRequest.requests().get(0) instanceof DeleteRequest;
 
             if (isdelete) {
-                trackingRequests = handleDeleteRequests(client, bulkRequest.requests(), defaultIndex);
+                handleDeleteRequests(client, bulkRequest.requests(), defaultIndex, xmaxRequests);
             } else {
-                trackingRequests = handleIndexRequests(client, bulkRequest.requests(), defaultIndex);
+                handleIndexRequests(client, bulkRequest.requests(), defaultIndex, requestNumber, xmaxRequests, abortedRequests);
             }
         }
 
-        bulkRequest.requests().addAll(trackingRequests);
 
-        response = client.bulk(bulkRequest).actionGet();
+        if (isdelete) {
+            // when deleting, we need to delete the "data" docs first
+            // otherwise VisibilityQueryHelper might think "data" docs don't have an "xmax" when they really do
+            response = client.bulk(bulkRequest).actionGet();
+
+            if (!response.hasFailures()) {
+                // then we can delete from "xmax"
+                response = processTrackingRequests(request, client, xmaxRequests);
+            }
+        } else {
+            // when inserting, we first need to add the "aborted" docs
+            response = processTrackingRequests(request, client, abortedRequests);
+
+            if (!response.hasFailures()) {
+                // then we need to add the "xmax" docs
+                // otherwise VisibilityQueryHelper might think "data" docs don't have an "xmax" when they really do
+                response = processTrackingRequests(request, client, xmaxRequests);
+
+                if (!response.hasFailures()) {
+                    // then we can insert into "data"
+                    response = client.bulk(bulkRequest).actionGet();
+                }
+            }
+        }
 
         channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
+    }
+
+    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests) {
+        if (trackingRequests.isEmpty())
+            return new BulkResponse(new BulkItemResponse[0], 0);
+
+        BulkRequest bulkRequest;
+        bulkRequest = Requests.bulkRequest();
+        bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
+        bulkRequest.refresh(request.paramAsBoolean("refresh", false));
+        bulkRequest.requests().addAll(trackingRequests);
+        return client.bulk(bulkRequest).actionGet();
     }
 
     static RestResponse buildResponse(BulkResponse response, XContentBuilder builder) throws Exception {
@@ -142,13 +178,12 @@ public class ZombodbBulkAction extends BaseRestHandler {
         return new BytesRestResponse(OK, builder);
     }
 
-    private List<ActionRequest> handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex) {
-        List<ActionRequest> trackingRequests = new ArrayList<>();
+    private void handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex, List<ActionRequest> xmaxRequests) {
 
         for (ActionRequest ar : requests) {
             DeleteRequest doc = (DeleteRequest) ar;
 
-            trackingRequests.add(
+            xmaxRequests.add(
                     new DeleteRequestBuilder(client)
                             .setIndex(defaultIndex)
                             .setType("xmax")
@@ -159,20 +194,18 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
             doc.routing(doc.id());
         }
-
-        return trackingRequests;
     }
 
-    private List<ActionRequest> handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex) {
-        List<ActionRequest> trackingRequests = new ArrayList<>();
+    private void handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex, int requestNumber, List<ActionRequest> xmaxRequests, List<ActionRequest> abortedRequests) {
 
+        int cnt = 0;
         for (ActionRequest ar : requests) {
             IndexRequest doc = (IndexRequest) ar;
             Map<String, Object> data = doc.sourceAsMap();
             String prev_ctid = (String) data.get("_prev_ctid");
             Number xmin = (Number) data.get("_xmin");
             Number cmin = (Number) data.get("_cmin");
-            Number sequence = (Number) data.get("_zdb_seq");
+            Number sequence = (Number) data.get("_zdb_seq");    // -1 means an index build (CREATE INDEX)
 
             {
                 // encode a few things into one binary field
@@ -205,7 +238,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 int offno = Integer.parseInt(parts[1]);
                 BytesRef encodedTuple = encodeTuple(xmin.longValue(), cmin.intValue(), blockno, offno);
 
-                trackingRequests.add(
+                xmaxRequests.add(
                         new IndexRequestBuilder(client)
                                 .setIndex(defaultIndex)
                                 .setType("xmax")
@@ -218,13 +251,28 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 );
             }
 
-            if (sequence.longValue() == 0) {
+            if (sequence.intValue() > -1) {
+                // delete a possible existing xmax value for this doc
+                // but only if we're in an index build (ie, CREATE INDEX)
+                xmaxRequests.add(
+                        new DeleteRequestBuilder(client)
+                                .setIndex(defaultIndex)
+                                .setType("xmax")
+                                .setRouting(doc.id())
+                                .setId(doc.id())
+                                .request()
+                );
+            }
+
+            // only add the "aborted" xid entry if this is the first
+            // record in what might be a batch of inserts from one statement
+            if (requestNumber == 0 && cnt == 0 && sequence.intValue() > -1) {
                 GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
                 int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
                 String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
 
                 for (String routing : routingTable) {
-                    trackingRequests.add(
+                    abortedRequests.add(
                             new IndexRequestBuilder(client)
                                     .setIndex(defaultIndex)
                                     .setType("aborted")
@@ -244,9 +292,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
             doc.version(xmin.longValue());
             doc.versionType(VersionType.FORCE);
             doc.routing(doc.id());
-        }
 
-        return trackingRequests;
+            cnt++;
+        }
     }
 
     static BytesRef encodeTuple(long xid, int cmin, int blockno, int offno) {

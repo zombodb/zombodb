@@ -116,7 +116,6 @@ int rest_multi_perform(MultiRestState *state) {
 void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEntry *postData, int compressionLevel) {
     int i;
 
-//elog(NOTICE, "%s %s", method, url);
     if (state->available == 0) {
         int still_running;
 
@@ -293,7 +292,6 @@ StringInfo rest_call(char *method, char *url, StringInfo postData, int compressi
     StringInfo response = makeStringInfo();
     CURLcode   ret;
     int64      response_code;
-//    elog(NOTICE, "%s %s", method, url);
 
     GLOBAL_CURL_INSTANCE = curl_easy_init();
 

@@ -52,9 +52,10 @@ final class VisibilityQueryHelper {
 
         private HeapTuple(BytesRef bytes, boolean isxmin, ByteArrayDataInput in) {
             // lucene prefixes binary terms with a header of two variable length ints.
-            // because we know how our binary data is constructed we can blindly
-            // assume that the header length is 2 bytes.  1 byte for the number of items
-            // and 1 byte for the first/only item's byte length, neither of which we need
+            // because we know how our binary data is constructed (it could never be
+            // more than 18 bytes) we can blindly assume that the header length is 2 bytes.
+            // 1 byte for the number of items and 1 byte for the first/only item's byte
+            // length, neither of which we need
             in.reset(bytes.bytes, 2, bytes.length-2);
 
             blockno = in.readVInt();
@@ -87,7 +88,7 @@ final class VisibilityQueryHelper {
 
         @Override
         public int compareTo(HeapTuple other) {
-            return this.blockno < other.offno ? -1 : this.blockno > offno ? 1 : this.offno - other.offno;
+            return this.blockno < other.blockno ? -1 : this.blockno > other.blockno ? 1 : this.offno - other.offno;
         }
     }
 
@@ -245,15 +246,15 @@ final class VisibilityQueryHelper {
                         int cmin = ctid.cmin;
                         boolean xmax_is_null = ctidWithXmax == null;
                         long xmax = -1;
-                        long cmax = -1;
+                        int cmax = -1;
 
                         if (!xmax_is_null) {
                             xmax = ctidWithXmax.xmax;
                             cmax = ctidWithXmax.cmax;
                         }
 
-                        boolean xmin_is_committed = xmin < myXmax && !(xmin >= myXmax) && !activeXids.contains(xmin) && !abortedXids.contains(xmin);
-                        boolean xmax_is_committed = !xmax_is_null && xmax < myXmax && !(xmax >= myXmax) && !activeXids.contains(xmax) && !abortedXids.contains(xmax);
+                        boolean xmin_is_committed = !(xmin >= myXmax) && !activeXids.contains(xmin) && !abortedXids.contains(xmin);
+                        boolean xmax_is_committed = !xmax_is_null && !(xmax >= myXmax) && !activeXids.contains(xmax) && !abortedXids.contains(xmax);
 
                         if (
                                 !(

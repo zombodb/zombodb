@@ -183,7 +183,7 @@ void interface_transaction_cleanup(void);
 * Defines what an index implementation looks like
 */
 typedef void (*ZDBCreateNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
+typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 typedef char *(*ZDBDumpQuery_function)(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 

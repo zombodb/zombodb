@@ -55,7 +55,7 @@ static const struct config_enum_entry zdb_log_level_options[] = {
 };
 
 static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
+static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
 static void wrapper_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 static char *wrapper_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
@@ -342,13 +342,13 @@ static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shar
     MemoryContextDelete(me);
 }
 
-static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids) {
+static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
     MemoryContext me         = AllocSetContextCreate(TopTransactionContext, "wrapper_finalizeNewIndex", 512, 64, 64);
     MemoryContext oldContext = MemoryContextSwitchTo(me);
 
     Assert(!indexDescriptor->isShadow);
 
-    elasticsearch_finalizeNewIndex(indexDescriptor, committedXids);
+    elasticsearch_finalizeNewIndex(indexDescriptor);
 
     MemoryContextSwitchTo(oldContext);
     MemoryContextDelete(me);

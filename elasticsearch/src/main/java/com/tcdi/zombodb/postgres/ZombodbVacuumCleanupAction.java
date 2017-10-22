@@ -55,40 +55,44 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
         }
 
         if (!xids.isEmpty()) {
-            List<ActionRequest> trackingRequests;
+            List<ActionRequest> xmaxRequests = new ArrayList<>();
+            List<ActionRequest> abortedRequests = new ArrayList<>();
 
-            trackingRequests = cleanupXmax(client, index, xids);
-            filterXids(client, index, xids, trackingRequests);
+            filterXidsByDataXmin(client, index, xids);
+            cleanupXmax(client, index, xids, xmaxRequests, abortedRequests);
 
-            BulkRequest bulkRequest = new BulkRequest();
-            BulkResponse response;
+            for (List<ActionRequest> requests : new List[]{xmaxRequests, abortedRequests}) {
+                if (!requests.isEmpty()) {
+                    BulkRequest bulkRequest = new BulkRequest();
+                    BulkResponse response;
 
-            bulkRequest.refresh(request.paramAsBoolean("refresh", false));
-            bulkRequest.requests().addAll(trackingRequests);
+                    bulkRequest.refresh(request.paramAsBoolean("refresh", false));
+                    bulkRequest.requests().addAll(requests);
 
-            if (bulkRequest.requests().size() > 0) {
-                response = client.bulk(bulkRequest).actionGet();
-
-                channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
-                return;
+                    response = client.bulk(bulkRequest).actionGet();
+                    if (response.hasFailures()) {
+                        channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
+                        return;
+                    }
+                }
             }
         }
 
         channel.sendResponse(buildResponse(new BulkResponse(new BulkItemResponse[0], 0), JsonXContent.contentBuilder()));
     }
 
-    private List<ActionRequest> cleanupXmax(Client client, String index, Set<Long> xids) {
+    private void cleanupXmax(Client client, String index, Set<Long> xids, List<ActionRequest> xmaxRequests, List<ActionRequest> abortedRequests) {
         GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
         int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
         String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
 
-        List<ActionRequest> trackingRequests = new ArrayList<>();
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("xmax")
                 .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
+                .addFieldDataField("_xmax")
                 .setQuery(termsQuery("_xmax", xids));
 
         if (!xids.isEmpty()) {
@@ -107,11 +111,14 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                 }
 
                 for (SearchHit hit : response.getHits()) {
+                    Number xmax = hit.field("_xmax").value();
 
-                    trackingRequests.add(
+                    xids.remove(xmax.longValue());
+
+                    xmaxRequests.add(
                             new DeleteRequestBuilder(client)
                                     .setIndex(index)
-                                    .setType(hit.getType())
+                                    .setType("xmax")
                                     .setRouting(hit.id())
                                     .setId(hit.id())
                                     .request()
@@ -125,8 +132,9 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
             }
 
             for (Long xid : xids) {
+
                 for (String routing : routingTable) {
-                    trackingRequests.add(
+                    abortedRequests.add(
                             new DeleteRequestBuilder(client)
                                     .setIndex(index)
                                     .setType("aborted")
@@ -140,10 +148,9 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
             }
         }
 
-        return trackingRequests;
     }
 
-    private void filterXids(Client client, String index, Set<Long> xids, List<ActionRequest> trackingRequests) {
+    private void filterXidsByDataXmin(Client client, String index, Set<Long> xids) {
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("data")
@@ -168,18 +175,9 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
             }
 
             for (SearchHit hit : response.getHits()) {
-                long xid = ((Number) hit.field("_xmin").value()).longValue();
+                long xmin = ((Number) hit.field("_xmin").value()).longValue();
 
-                if (xids.contains(xid)) {
-                    trackingRequests.add(
-                            new DeleteRequestBuilder(client)
-                                    .setIndex(index)
-                                    .setType(hit.type())
-                                    .setRouting(hit.id())
-                                    .setId(hit.id())
-                                    .request()
-                    );
-                }
+                xids.remove(xmin);
 
                 cnt++;
             }
@@ -190,4 +188,3 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
 
     }
 }
-

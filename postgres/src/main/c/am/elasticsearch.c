@@ -240,32 +240,17 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
     freeStringInfo(endpoint);
 }
 
-void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids) {
-	HASH_SEQ_STATUS seq;
-	TransactionId *xid;
+void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo endpoint      = makeStringInfo();
-	StringInfo request       = makeStringInfo();
     StringInfo indexSettings = makeStringInfo();
     StringInfo response;
     Relation   indexRel;
 
-	/*
-	 * push out all committed transaction ids to ES
-	 */
-	hash_seq_init(&seq, committedXids);
-	while ( (xid = hash_seq_search(&seq)) != NULL) {
-		uint64 convertedXid = convert_xid(*xid);
 
-		if (request->len > 0)
-			appendStringInfoChar(request, '\n');
-		appendStringInfo(request, "%lu", convertedXid);
-	}
-    if (request->len > 0) {
-        appendStringInfo(endpoint, "%s/%s/_zdbxid?refresh=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-        response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
-        checkForBulkError(response, "bulk committed xid");
-    }
-    freeStringInfo(request);
+	/* first refresh the index */
+	appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+	checkForRefreshError(response);
 
 	/*
 	 * set various index settings to make it live
@@ -984,7 +969,7 @@ elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ct
         StringInfo endpoint = makeStringInfo();
 
         /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-        appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+        appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default&request_no=%d", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests);
 
         /* send the request to index this batch */
         rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, indexDescriptor->compressionLevel);
@@ -1014,7 +999,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
-            appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+            appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default&request_no=%d", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests);
 
             if (batch->nrequests == 0) {
 				/*

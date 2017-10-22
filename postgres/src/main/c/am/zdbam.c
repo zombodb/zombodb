@@ -86,7 +86,6 @@ typedef struct {
     double indtuples;
 
     ZDBIndexDescriptor *desc;
-	HTAB *committedXids;
 } ZDBBuildState;
 
 typedef struct {
@@ -494,7 +493,6 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
     buildstate.indtuples   = 0;
     buildstate.desc        = alloc_index_descriptor(indexRel, false);
     buildstate.desc->logit = true;
-	buildstate.committedXids = NULL;
 
     if (!buildstate.desc->isShadow) {
 		HASHCTL hashctl;
@@ -503,8 +501,6 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 		hashctl.keysize = sizeof(TransactionId);
 		hashctl.hcxt = TopTransactionContext;
 		hashctl.hash = tag_hash;
-
-		buildstate.committedXids = hash_create("committed xids", 1024, &hashctl, HASH_CONTEXT | HASH_FUNCTION | HASH_ELEM);
 
         /* drop the existing index */
         buildstate.desc->implementation->dropIndex(buildstate.desc);
@@ -523,7 +519,7 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
         buildstate.desc->implementation->batchInsertFinish(buildstate.desc);
 
         /* reset the settings to reasonable values for production use */
-        buildstate.desc->implementation->finalizeNewIndex(buildstate.desc, buildstate.committedXids);
+        buildstate.desc->implementation->finalizeNewIndex(buildstate.desc);
 
         if (heapRel->rd_rel->relkind != 'm')
         {
@@ -572,23 +568,12 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state) {
     ZDBBuildState      *buildstate = (ZDBBuildState *) state;
     ZDBIndexDescriptor *desc       = buildstate->desc;
-	TransactionId xmin, xmax;
-	bool found;
+	TransactionId xmin;
 
     if (HeapTupleIsHeapOnly(htup))
         elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
 
 	xmin = HeapTupleHeaderGetXmin(htup->t_data);
-	xmax = HeapTupleHeaderGetRawXmax(htup->t_data);
-
-
-	hash_search(buildstate->committedXids, &xmin, HASH_FIND, &found);
-	if (!found && (TransactionIdDidCommit(xmin) || xmin == GetCurrentTransactionId()))
-		hash_search(buildstate->committedXids, &xmin, HASH_ENTER, &found);
-
-	hash_search(buildstate->committedXids, &xmax, HASH_FIND, &found);
-	if (!found && TransactionIdDidCommit(xmax))
-		hash_search(buildstate->committedXids, &xmax, HASH_ENTER, &found);
 
     desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), -1);
 
@@ -869,10 +854,15 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
 				ItemPointerSet(ctid, blockno, offno);
 
 				if (callback(ctid, callback_state)) {
+					/* tuple is dead and can be removed from the index */
 					ctidsToDelete = lappend(ctidsToDelete, ctid);
 					stats->tuples_removed++;
 
 					if (((int) stats->tuples_removed) % 10000 == 0) {
+						/*
+						 * push this set of 10k deleted tuples out to elasticsearch
+						 * just to avoid keeping too much in memory at once
+						 */
 						desc->implementation->bulkDelete(desc, ctidsToDelete);
 						list_free_deep(ctidsToDelete);
 						ctidsToDelete = NULL;
@@ -918,7 +908,7 @@ Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
 
     desc = alloc_index_descriptor(indexRel, false);
 
-	desc->implementation->vacuumCleanup(desc);
+//	desc->implementation->vacuumCleanup(desc);
 
     if (stats == NULL) {
         stats = (IndexBulkDeleteResult *) palloc0(sizeof(IndexBulkDeleteResult));
