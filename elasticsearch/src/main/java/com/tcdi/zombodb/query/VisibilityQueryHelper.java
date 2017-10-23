@@ -40,58 +40,6 @@ import java.util.*;
 
 final class VisibilityQueryHelper {
 
-    private static class HeapTuple implements Comparable<HeapTuple> {
-        private int blockno, offno;
-        private long xmin;
-        private int cmin;
-        private long xmax;
-        private int cmax;
-
-        private final int hash;
-
-
-        private HeapTuple(BytesRef bytes, boolean isxmin, ByteArrayDataInput in) {
-            // lucene prefixes binary terms with a header of two variable length ints.
-            // because we know how our binary data is constructed (it could never be
-            // more than 18 bytes) we can blindly assume that the header length is 2 bytes.
-            // 1 byte for the number of items and 1 byte for the first/only item's byte
-            // length, neither of which we need
-            in.reset(bytes.bytes, 2, bytes.length-2);
-
-            blockno = in.readVInt();
-            offno = in.readVInt();
-            if (in.getPosition() < bytes.length) {
-                // more bytes, so we also have xmax and cmax to read
-                if (isxmin) {
-                    xmin = in.readVLong();
-                    cmin = in.readVInt();
-                } else {
-                    xmax = in.readVLong();
-                    cmax = in.readVInt();
-                }
-            }
-
-            hash = blockno + (31 * offno);
-        }
-
-        @Override
-        public int hashCode() {
-            return hash;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            assert(obj instanceof HeapTuple);
-            HeapTuple other = (HeapTuple) obj;
-            return this.blockno == other.blockno && this.offno == other.offno;
-        }
-
-        @Override
-        public int compareTo(HeapTuple other) {
-            return this.blockno < other.blockno ? -1 : this.blockno > other.blockno ? 1 : this.offno - other.offno;
-        }
-    }
-
     private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids, final List<BytesRef> abortedXidsAsBytes) throws IOException {
         searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "aborted"))),
                 new ZomboDBTermsCollector() {
