@@ -908,7 +908,7 @@ Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
 
     desc = alloc_index_descriptor(indexRel, false);
 
-//	desc->implementation->vacuumCleanup(desc);
+	desc->implementation->vacuumCleanup(desc);
 
     if (stats == NULL) {
         stats = (IndexBulkDeleteResult *) palloc0(sizeof(IndexBulkDeleteResult));

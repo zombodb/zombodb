@@ -40,7 +40,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
 
         this.clusterService = clusterService;
 
-        controller.registerHandler(POST, "/{index}/_zdbvacuum_cleanup", this);
+        controller.registerHandler(POST, "/{index}/_zdbvacuumcleanup", this);
     }
 
     @Override
@@ -113,12 +113,23 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                 for (SearchHit hit : response.getHits()) {
                     Number xmax = hit.field("_xmax").value();
 
-                    xids.remove(xmax.longValue());
-
+                    // we can delete this "xmax" entry because its _xmax transaction
+                    // is known to be aborted by Postgres.  As such, its corresponding
+                    // "data" doc is going to be visible to all transactions
                     xmaxRequests.add(
                             new DeleteRequestBuilder(client)
                                     .setIndex(index)
                                     .setType("xmax")
+                                    // it's imperative we set the version here to the same version
+                                    // we used when we created this doc (the xid that created it)
+                                    // because it's possible that between right here and when
+                                    // the cluster performs this individual DeleteRequest, Postgres
+                                    // will have decided to re-use this tuple (hit.id) and that
+                                    // that tuple was also modified (DELETEd or UPDATEd), which gives
+                                    // it a new xmax value with a higher version number.  So then
+                                    // having this DeleteRequest actually complete would be deleting something
+                                    // that isn't what we currently think it is.
+                                    .setVersion(xmax.longValue())
                                     .setRouting(hit.id())
                                     .setId(hit.id())
                                     .request()
@@ -131,8 +142,9 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                     break;
             }
 
+            // whatever xids we have remaining are guaranteed aborted
+            // and unreferenced so we can remove them
             for (Long xid : xids) {
-
                 for (String routing : routingTable) {
                     abortedRequests.add(
                             new DeleteRequestBuilder(client)
@@ -143,8 +155,6 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                                     .request()
                     );
                 }
-
-
             }
         }
 
@@ -174,9 +184,13 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                                 .request()).actionGet();
             }
 
+            // any xid that is referenced as an _xmin in "data"
+            // can't be cleaned up yet.  (auto)VACUUM will eventually
+            // delete both the "data" doc and its corresponding "xmax" doc
             for (SearchHit hit : response.getHits()) {
                 long xmin = ((Number) hit.field("_xmin").value()).longValue();
 
+                // so remove the xid from our set
                 xids.remove(xmin);
 
                 cnt++;
