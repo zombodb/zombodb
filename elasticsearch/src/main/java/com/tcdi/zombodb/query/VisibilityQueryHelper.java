@@ -40,6 +40,49 @@ import java.util.*;
 
 final class VisibilityQueryHelper {
 
+    /**
+     * helper class for figuring out how many _xmin and _xmax values
+     * our shard has
+     */
+    private static class XminXmaxCounts {
+        private IndexSearcher searcher;
+        private int doccnt;
+        private int xmaxcnt;
+
+        XminXmaxCounts(IndexSearcher searcher) {
+            this.searcher = searcher;
+        }
+
+        int getDoccnt() {
+            return doccnt;
+        }
+
+        int getXmaxcnt() {
+            return xmaxcnt;
+        }
+
+        XminXmaxCounts invoke() throws IOException {
+            doccnt = 0;
+            xmaxcnt = 0;
+            for (AtomicReaderContext context : searcher.getIndexReader().leaves()) {
+                Terms terms;
+
+                terms = context.reader().terms("_xmin");
+                if (terms != null)
+                    doccnt += terms.getDocCount();
+
+                terms = context.reader().terms("_xmax");
+                if (terms != null)
+                    xmaxcnt += terms.getDocCount();
+            }
+            return this;
+        }
+    }
+
+    /**
+     * collect all the _zdb_xid values in the "aborted" type as both a set of Longs and as a list of BytesRef
+     * for filtering in #determineVisibility
+     */
     private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids, final List<BytesRef> abortedXidsAsBytes) throws IOException {
         searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "aborted"))),
                 new ZomboDBTermsCollector() {
@@ -65,6 +108,13 @@ final class VisibilityQueryHelper {
         );
     }
 
+    /**
+     * Collect all the "xmax" docs that exist in the shard we're running on.
+     *
+     * Depending on the state of the table, there can potentially be thousands or even millions
+     * of these that we have to process, so we try really hard to limit the amount of work we
+     * need to do for each one
+     */
     private static void collectMaxes(IndexSearcher searcher, final Map<HeapTuple, HeapTuple> tuples, final IntSet dirtyBlocks) throws IOException {
         abstract class Collector extends ZomboDBTermsCollector {
             ByteArrayDataInput in = new ByteArrayDataInput();
@@ -101,24 +151,14 @@ final class VisibilityQueryHelper {
     }
 
     static Map<Integer, FixedBitSet> determineVisibility(final long myXid, final long myXmin, final long myXmax, final int myCommand, final Set<Long> activeXids, IndexSearcher searcher) throws IOException {
-        int doccnt = 0;
-        int xmax_cnt = 0;
-        for (AtomicReaderContext context : searcher.getIndexReader().leaves()) {
-            Terms terms;
+        XminXmaxCounts xminXmaxCounts = new XminXmaxCounts(searcher).invoke();
+        int xmaxcnt = xminXmaxCounts.getXmaxcnt();
+        int doccnt = xminXmaxCounts.getDoccnt();
 
-            terms = context.reader().terms("_xmin");
-            if (terms != null)
-                doccnt += terms.getDocCount();
-
-            terms = context.reader().terms("_xmax");
-            if (terms != null)
-                xmax_cnt += terms.getDocCount();
-        }
-
-        final boolean just_get_everything = xmax_cnt >= doccnt/3;
+        final boolean just_get_everything = xmaxcnt >= doccnt/3;
 
         final IntSet dirtyBlocks = just_get_everything ? null : new IntOpenHashSet();
-        final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>(xmax_cnt);
+        final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>(xmaxcnt);
 
         collectMaxes(searcher, modifiedTuples, dirtyBlocks);
 
@@ -162,6 +202,12 @@ final class VisibilityQueryHelper {
             filters.add(NumericRangeFilter.newLongRange("_xmin", myXmin, null, true, true));
         }
 
+        //
+        // find all "data" docs that we think we might need to examine for visibility
+        // given the set of filters above, this is likely to be over-inclusive
+        // but that's okay because it's cheaper to find and examine more docs
+        // than it is to use TermsFilters with very long lists of _ids
+        //
         final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
         searcher.search(new XConstantScoreQuery(
                         new AndFilter(
@@ -179,9 +225,10 @@ final class VisibilityQueryHelper {
 
                     @Override
                     public void collect(int doc) throws IOException {
-                        HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), true, in);
-                        HeapTuple ctidWithXmax = modifiedTuples.get(ctid);
+                        HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), true, in);  // from "data"
+                        HeapTuple ctidWithXmax = modifiedTuples.get(ctid);  // from "xmax"
 
+                        // get all the xmin/xmax, cmin/cmax values we need to determine visibility below
                         long xmin = ctid.xmin;
                         int cmin = ctid.cmin;
                         boolean xmax_is_null = ctidWithXmax == null;
@@ -193,16 +240,55 @@ final class VisibilityQueryHelper {
                             cmax = ctidWithXmax.cmax;
                         }
 
+                        // we can only consider transactions as committed or aborted if they're not outside
+                        // our current snapshot's xmax (myXmax) and aren't otherwise considered active or aborted in some way
+
                         boolean xmin_is_committed = !(xmin >= myXmax) && !activeXids.contains(xmin) && !abortedXids.contains(xmin);
                         boolean xmax_is_committed = !xmax_is_null && !(xmax >= myXmax) && !activeXids.contains(xmax) && !abortedXids.contains(xmax);
 
+
+                        //
+                        // the logic below is taken from Postgres 9.3's "tqual.c#HeapTupleSatifiesNow()"
+                        //
+
+                        /*
+                         * HeapTupleSatisfiesNow
+                         *		True iff heap tuple is valid "now".
+                         *
+                         *	Here, we consider the effects of:
+                         *		all committed transactions (as of the current instant)
+                         *		previous commands of this transaction
+                         *
+                         * Note we do _not_ include changes made by the current command.  This
+                         * solves the "Halloween problem" wherein an UPDATE might try to re-update
+                         * its own output tuples, http://en.wikipedia.org/wiki/Halloween_Problem.
+                         *
+                         * Note:
+                         *		Assumes heap tuple is valid.
+                         *
+                         * The satisfaction of "now" requires the following:
+                         *
+                         * ((Xmin == my-transaction &&				inserted by the current transaction
+                         *	 Cmin < my-command &&					before this command, and
+                         *	 (Xmax is null ||						the row has not been deleted, or
+                         *	  (Xmax == my-transaction &&			it was deleted by the current transaction
+                         *	   Cmax >= my-command)))				but not before this command,
+                         * ||										or
+                         *	(Xmin is committed &&					the row was inserted by a committed transaction, and
+                         *		(Xmax is null ||					the row has not been deleted, or
+                         *		 (Xmax == my-transaction &&			the row is being deleted by this transaction
+                         *		  Cmax >= my-command) ||			but it's not deleted "yet", or
+                         *		 (Xmax != my-transaction &&			the row was deleted by another transaction
+                         *		  Xmax is not committed))))			that has not been committed
+                         *
+                         */
                         if (
                                 !(
                                         (xmin == myXid && cmin < myCommand && (xmax_is_null || (xmax == myXid && cmax >= myCommand)))
                                                 ||
                                         (xmin_is_committed && (xmax_is_null || (xmax == myXid && cmax >= myCommand) || (xmax != myXid && !xmax_is_committed)))
                                 )
-                                ) {
+                            ) {
                             // it's not visible to us
                             FixedBitSet visibilityBitset = visibilityBitSets.get(contextOrd);
                             if (visibilityBitset == null)
