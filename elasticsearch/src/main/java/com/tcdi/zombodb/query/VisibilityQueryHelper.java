@@ -15,9 +15,6 @@
  */
 package com.tcdi.zombodb.query;
 
-import com.carrotsearch.hppc.IntScatterSet;
-import com.carrotsearch.hppc.IntSet;
-import com.carrotsearch.hppc.cursors.IntCursor;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queries.TermFilter;
 import org.apache.lucene.queries.TermsFilter;
@@ -30,6 +27,9 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
+import org.elasticsearch.common.hppc.IntOpenHashSet;
+import org.elasticsearch.common.hppc.IntSet;
+import org.elasticsearch.common.hppc.cursors.IntCursor;
 import org.elasticsearch.common.lucene.search.AndFilter;
 import org.elasticsearch.common.lucene.search.MatchAllDocsFilter;
 import org.elasticsearch.common.lucene.search.OrFilter;
@@ -169,7 +169,7 @@ final class VisibilityQueryHelper {
 
         final boolean just_get_everything = xmax_cnt >= doccnt/3;
 
-        final IntSet dirtyBlocks = just_get_everything ? null : new IntScatterSet();
+        final IntSet dirtyBlocks = just_get_everything ? null : new IntOpenHashSet();
         final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>(xmax_cnt);
 
         collectMaxes(searcher, modifiedTuples, dirtyBlocks);
@@ -233,14 +233,6 @@ final class VisibilityQueryHelper {
                     public void collect(int doc) throws IOException {
                         HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), true, in);
                         HeapTuple ctidWithXmax = modifiedTuples.get(ctid);
-
-                        if (ctidWithXmax == null) {
-                            boolean known_invisible = ctid.xmin >= myXmin || abortedXids.contains(ctid.xmin) || activeXids.contains(ctid.xmin);
-                            if (!known_invisible)
-                                return;     // we don't need to examine this one -- it's known visible to us
-
-                            // wasn't part of our "xmax" lookups, so the doc hasn't been updated/deleted yet
-                        }
 
                         long xmin = ctid.xmin;
                         int cmin = ctid.cmin;
