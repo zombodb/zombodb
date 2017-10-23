@@ -9,7 +9,7 @@
 FROM java:7
 
 ENV ES_PKG_NAME elasticsearch-1.7.5
-ENV ZOMBODB_VER 3.1.15
+ENV ZOMBODB_VER 3.2.0
 
 # Install Elasticsearch.
 RUN \
