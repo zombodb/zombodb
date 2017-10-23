@@ -1,5 +1,5 @@
-DROP VIEW zdb_index_stats;
-DROP VIEW zdb_index_stats_fast;
+DROP VIEW IF EXISTS zdb_index_stats;
+DROP VIEW IF EXISTS zdb_index_stats_fast;
 
 CREATE VIEW zdb_index_stats AS
   WITH stats AS (
