@@ -43,8 +43,16 @@ public class ZombodbGetXidVacuumCandidatesAction extends BaseRestHandler {
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String index = request.param("index");
 
+        // we need to refresh the entire index first so that we're sure to see docs
+        // that were created in ABORTed transactions while "zombodb.batch_mode = on"
+        // otherwise it's possible we'll miss a transaction id and the we won't
+        // agree with Postgres
         client.admin().indices().refresh(new RefreshRequestBuilder(client.admin().indices()).setIndices(index).request()).actionGet();
 
+        // the transaction ids we can consider for vacuuming are simply
+        // all the _zdb_xid values in the "aborted" type
+        // Some of these xids may still be in-progress, but that's okay
+        // because Postgres will decide for us which ones are really aborted
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("aborted")

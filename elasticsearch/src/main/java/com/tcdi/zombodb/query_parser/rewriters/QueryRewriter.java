@@ -222,14 +222,14 @@ public abstract class QueryRewriter {
         return tree.getLimit();
     }
 
-    public QueryBuilder rewriteQuery(boolean all) {
+    public QueryBuilder rewriteQuery() {
         QueryBuilder qb = build(tree);
         queryRewritten = true;
 
         try {
-            return applyVisibility(qb, getAggregateIndexName(), all);
+            return applyVisibility(qb);
         } catch (Exception e) {
-            return needVisibilityOnTopLevel ? applyVisibility(qb, getSearchIndexName(), all) : qb;
+            return needVisibilityOnTopLevel ? applyVisibility(qb) : qb;
         }
     }
 
@@ -734,7 +734,7 @@ public abstract class QueryRewriter {
             BoolQueryBuilder bqb = boolQuery();
             bqb.must(expansionBuilder);
             bqb.must(build(filterQuery));
-            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName(), false);
+            expansionBuilder = applyVisibility(bqb);
         }
         return expansionBuilder;
     }
@@ -1265,7 +1265,7 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyVisibility(QueryBuilder query, final String indexName, boolean all) {
+    public QueryBuilder applyVisibility(QueryBuilder query) {
         ASTVisibility visibility = tree.getVisibility();
 
         if (visibility == null)
