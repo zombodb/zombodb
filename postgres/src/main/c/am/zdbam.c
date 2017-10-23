@@ -896,7 +896,7 @@ Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
     desc = alloc_index_descriptor(indexRel, false);
 
 	desc->implementation->vacuumCleanup(desc);
-	elog(LOG, "[zombodb vacuum] cleanup");
+
     if (stats == NULL) {
         stats = (IndexBulkDeleteResult *) palloc0(sizeof(IndexBulkDeleteResult));
         stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
