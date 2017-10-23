@@ -30,18 +30,20 @@ import java.util.Set;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 
-public class ZombodbAbortedXidsAction extends BaseRestHandler {
+public class ZombodbGetXidVacuumCandidatesAction extends BaseRestHandler {
 
     @Inject
-    public ZombodbAbortedXidsAction(Settings settings, RestController controller, Client client) {
+    public ZombodbGetXidVacuumCandidatesAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
 
-        controller.registerHandler(GET, "/{index}/_zdbabortedxids", this);
+        controller.registerHandler(GET, "/{index}/_zdbxidvacuumcandidates", this);
     }
 
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String index = request.param("index");
+
+        client.admin().indices().refresh(new RefreshRequestBuilder(client.admin().indices()).setIndices(index).request()).actionGet();
 
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)

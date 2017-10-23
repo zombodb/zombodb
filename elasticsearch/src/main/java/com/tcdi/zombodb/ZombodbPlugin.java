@@ -47,7 +47,8 @@ public class ZombodbPlugin extends AbstractPlugin {
         module.addRestAction(ZombodbBulkAction.class);
         module.addRestAction(ZombodbCommitXIDAction.class);
         module.addRestAction(ZombodbDeleteTuplesAction.class);
-        module.addRestAction(ZombodbAbortedXidsAction.class);
+        module.addRestAction(ZombodbGetXidVacuumCandidatesAction.class);
+        module.addRestAction(ZombodbVacuumSupportAction.class);
         module.addRestAction(ZombodbVacuumCleanupAction.class);
     }
 

@@ -821,12 +821,11 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
     void                    *callback_state = (void *) PG_GETARG_POINTER(3);
     Relation                indexRel        = info->index;
-    Relation                heapRel;
     ZDBIndexDescriptor      *desc;
     struct timeval          tv1, tv2;
     List *ctidsToDelete = NULL;
-    BlockNumber blockno;
-	BlockNumber numOfBlocks;
+    uint64 nctids, i;
+    char *ctids;
 
     gettimeofday(&tv1, NULL);
 
@@ -838,46 +837,34 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     if (desc->isShadow)
         PG_RETURN_POINTER(stats);
 
-    heapRel = RelationIdGetRelation(desc->heapRelid);
-	numOfBlocks = RelationGetNumberOfBlocks(heapRel);
-    for (blockno=0; blockno<numOfBlocks; blockno++) {
-		Buffer        vmap_buff = InvalidBuffer;
+    ctids = desc->implementation->vacuumSupport(desc);
+    memcpy (&nctids, ctids, sizeof(uint64));
+    ctids += sizeof(uint64);
 
-		CHECK_FOR_INTERRUPTS();
+    for (i=0; i<nctids; i++) {
+        BlockNumber blockno;
+        OffsetNumber offno;
+        ItemPointer ctid = palloc(sizeof(ItemPointerData));
 
-		if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
-			OffsetNumber offno;
+        memcpy(&blockno, ctids, sizeof(BlockNumber));
+        memcpy(&offno, ctids + sizeof(BlockNumber), sizeof(OffsetNumber));
+        ctids += sizeof(BlockNumber) + sizeof(OffsetNumber);
 
-			for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
-				ItemPointer ctid = palloc(sizeof(ItemPointerData));
-
-				ItemPointerSet(ctid, blockno, offno);
-
-				if (callback(ctid, callback_state)) {
-					/* tuple is dead and can be removed from the index */
-					ctidsToDelete = lappend(ctidsToDelete, ctid);
-					stats->tuples_removed++;
-
-					if (((int) stats->tuples_removed) % 10000 == 0) {
-						/*
-						 * push this set of 10k deleted tuples out to elasticsearch
-						 * just to avoid keeping too much in memory at once
-						 */
-						desc->implementation->bulkDelete(desc, ctidsToDelete);
-						list_free_deep(ctidsToDelete);
-						ctidsToDelete = NULL;
-					}
-				} else {
-					pfree(ctid);
-				}
-			}
-		}
-
-		if (BufferIsValid(vmap_buff))
-			ReleaseBuffer(vmap_buff);
-
+        ItemPointerSet(ctid, blockno, offno);
+        if (callback(ctid, callback_state)) {
+            ctidsToDelete = lappend(ctidsToDelete, ctid);
+            stats->tuples_removed++;
+            if (((int) stats->tuples_removed) % 10000 == 0) {
+                /*
+                 * push this set of 10k deleted tuples out to elasticsearch
+                 * just to avoid keeping too much in memory at once
+                 */
+                desc->implementation->bulkDelete(desc, ctidsToDelete);
+                list_free_deep(ctidsToDelete);
+                ctidsToDelete = NULL;
+            }
+        }
     }
-	RelationClose(heapRel);
 
 	desc->implementation->bulkDelete(desc, ctidsToDelete);
 
@@ -909,7 +896,7 @@ Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
     desc = alloc_index_descriptor(indexRel, false);
 
 	desc->implementation->vacuumCleanup(desc);
-
+	elog(LOG, "[zombodb vacuum] cleanup");
     if (stats == NULL) {
         stats = (IndexBulkDeleteResult *) palloc0(sizeof(IndexBulkDeleteResult));
         stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");

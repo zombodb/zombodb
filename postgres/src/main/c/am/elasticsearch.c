@@ -848,15 +848,33 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
 }
 
 char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor) {
-	elog(ERROR, "unsupported operation");
-	return NULL;
+	StringInfo endpoint = makeStringInfo();
+	StringInfo response;
+	Snapshot snapshot = GetActiveSnapshot();
+
+	appendStringInfo(endpoint, "%s/%s/_zdbvacuum?xmin=%lu&xmax=%lu&commandid=%u", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax), GetCurrentCommandId(false));
+	if (snapshot->xcnt > 0) {
+		int i;
+		appendStringInfo(endpoint, "&active=");
+		for (i = 0; i < snapshot->xcnt; i++) {
+			if (i > 0) appendStringInfoChar(endpoint, ',');
+			appendStringInfo(endpoint, "%lu", convert_xid(snapshot->xip[i]));
+		}
+	}
+
+	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+
+	freeStringInfo(endpoint);
+	if (response->len > 0 && response->data[0] == '{' && strstr(response->data, "error") != NULL)
+		elog(ERROR, "%s", response->data);
+	return response->data;
 }
 
 static char *confirm_aborted_xids(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_zdbabortedxids", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s/%s/_zdbxidvacuumcandidates", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
@@ -869,7 +887,6 @@ static char *confirm_aborted_xids(ZDBIndexDescriptor *indexDescriptor, uint64 *n
 }
 
 void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
-	TransactionId oldestXmin = GetOldestXmin(false, false);
 	StringInfo endpoint = makeStringInfo();
 	StringInfo request = makeStringInfo();
 	StringInfo response;
@@ -888,7 +905,7 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 
 		memcpy(&xid, xids + (i*sizeof(uint64)), sizeof(uint64));
 
-		if (TransactionIdPrecedes((TransactionId) xid, oldestXmin) && !TransactionIdDidCommit((TransactionId) xid) && !TransactionIdIsInProgress((TransactionId) xid)) {
+		if (/* TransactionIdPrecedes((TransactionId) xid, oldestXmin) && */ !TransactionIdDidCommit((TransactionId) xid) && !TransactionIdIsInProgress((TransactionId) xid)) {
 			appendStringInfo(request, "%lu\n", xid);
 		}
 	}
