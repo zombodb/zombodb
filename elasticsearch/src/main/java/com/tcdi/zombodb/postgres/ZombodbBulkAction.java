@@ -246,7 +246,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                                 .setVersion(xmin.longValue())
                                 .setRouting(prev_ctid)
                                 .setId(prev_ctid)
-                                .setSource("_xmax", xmin, "_cmax", cmin, "_replacement_ctid", doc.id(), "_zdb_encoded_tuple", encodedTuple)
+                                .setSource("_xmax", xmin, "_cmax", cmin, "_replacement_ctid", doc.id(), "_zdb_encoded_tuple", encodedTuple, "_zdb_reason", "U")
                                 .request()
                 );
             }

@@ -80,7 +80,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                             .setVersion(xid)
                             .setRouting(ctid)
                             .setId(ctid)
-                            .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid, "_zdb_encoded_tuple", encodedTuple)
+                            .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid, "_zdb_encoded_tuple", encodedTuple, "_zdb_reason", "D")
                             .request()
             );
 

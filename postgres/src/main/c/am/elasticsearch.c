@@ -52,7 +52,8 @@
 "              \"_xmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
 "              \"_cmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
 "              \"_replacement_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
-"              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true, \"compress\":false, \"compress_threshold\": 18 }"\
+"              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true, \"compress\":false, \"compress_threshold\": 18 },"\
+"              \"_zdb_reason\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
 "      },"\
 "      \"aborted\": {"\
@@ -876,7 +877,7 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 	char *xids;
 	uint64 i;
 
-    appendStringInfo(endpoint, "%s/%s/_zdbvacuum_cleanup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s/%s/_zdbvacuumcleanup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
 		appendStringInfo(endpoint, "?refresh=true");
 	}
@@ -887,7 +888,7 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 
 		memcpy(&xid, xids + (i*sizeof(uint64)), sizeof(uint64));
 
-		if (TransactionIdPrecedes((TransactionId) xid, oldestXmin) && TransactionIdDidAbort((TransactionId) xid) && !TransactionIdIsInProgress((TransactionId) xid)) {
+		if (TransactionIdPrecedes((TransactionId) xid, oldestXmin) && !TransactionIdDidCommit((TransactionId) xid) && !TransactionIdIsInProgress((TransactionId) xid)) {
 			appendStringInfo(request, "%lu\n", xid);
 		}
 	}
