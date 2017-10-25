@@ -51,13 +51,6 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
         for (int i = 0; i < tmp.length; i++)
             active[i] = Long.valueOf(tmp[i]);
 
-        // similar to ZombodbGetXidVacuumCandidatesAction, we need to force a refresh
-        // so we can find all the docs that we think are invisible to us
-        // docs from ABORTed transactions when "zombodb.batch_mode = on" could
-        // be hidden from us without the fresh and as such would cause our index
-        // to become inconsistent with Postgres, post-vacuum
-        client.admin().indices().refresh(new RefreshRequestBuilder(client.admin().indices()).setIndices(index).request()).actionGet();
-
         // return the ctid (_id) of every document we think might be invisible to us
         // based on the current state of the underlying index
         SearchRequestBuilder search = new SearchRequestBuilder(client)
