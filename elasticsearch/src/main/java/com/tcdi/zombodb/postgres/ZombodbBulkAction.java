@@ -125,53 +125,79 @@ public class ZombodbBulkAction extends BaseRestHandler {
     }
 
     static RestResponse buildResponse(BulkResponse response, XContentBuilder builder) throws Exception {
+        int errorCnt = 0;
         builder.startObject();
         if (response.hasFailures()) {
-            builder.field(Fields.TOOK, response.getTookInMillis());
-            builder.field(Fields.ERRORS, response.hasFailures());
             builder.startArray(Fields.ITEMS);
-            for (BulkItemResponse itemResponse : response) {
-                builder.startObject();
-                builder.startObject(itemResponse.getOpType());
-                builder.field(Fields._INDEX, itemResponse.getIndex());
-                builder.field(Fields._TYPE, itemResponse.getType());
-                builder.field(Fields._ID, itemResponse.getId());
-                long version = itemResponse.getVersion();
-                if (version != -1) {
-                    builder.field(Fields._VERSION, itemResponse.getVersion());
-                }
+            main_loop: for (BulkItemResponse itemResponse : response) {
                 if (itemResponse.isFailed()) {
-                    builder.field(Fields.STATUS, itemResponse.getFailure().getStatus().getStatus());
-                    builder.field(Fields.ERROR, itemResponse.getFailure().getMessage());
-                } else {
-                    if (itemResponse.getResponse() instanceof DeleteResponse) {
-                        DeleteResponse deleteResponse = itemResponse.getResponse();
-                        if (deleteResponse.isFound()) {
-                            builder.field(Fields.STATUS, RestStatus.OK.getStatus());
-                        } else {
-                            builder.field(Fields.STATUS, RestStatus.NOT_FOUND.getStatus());
-                        }
-                        builder.field(Fields.FOUND, deleteResponse.isFound());
-                    } else if (itemResponse.getResponse() instanceof IndexResponse) {
-                        IndexResponse indexResponse = itemResponse.getResponse();
-                        if (indexResponse.isCreated()) {
-                            builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
-                        } else {
-                            builder.field(Fields.STATUS, RestStatus.OK.getStatus());
-                        }
-                    } else if (itemResponse.getResponse() instanceof UpdateResponse) {
-                        UpdateResponse updateResponse = itemResponse.getResponse();
-                        if (updateResponse.isCreated()) {
-                            builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
-                        } else {
-                            builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+
+                    // handle failure conditions that we know are
+                    // okay/expected as if they never happened
+                    BulkItemResponse.Failure failure = itemResponse.getFailure();
+
+                    switch (failure.getStatus()) {
+                        case CONFLICT:
+                            if (failure.getMessage().contains("VersionConflictEngineException")) {
+                                if ("xmax".equals(itemResponse.getType())) {
+                                    if ("delete".equals(itemResponse.getOpType())) {
+                                        // this is a version conflict error where we tried to delete
+                                        // an old xmax doc, which is perfectly acceptable
+                                        continue main_loop;
+                                    }
+                                }
+                            }
+                            break;
+
+                        default:
+                            errorCnt++;
+                            break;
+                    }
+
+                    builder.startObject();
+                    builder.startObject(itemResponse.getOpType());
+                    builder.field(Fields._INDEX, itemResponse.getIndex());
+                    builder.field(Fields._TYPE, itemResponse.getType());
+                    builder.field(Fields._ID, itemResponse.getId());
+                    long version = itemResponse.getVersion();
+                    if (version != -1) {
+                        builder.field(Fields._VERSION, itemResponse.getVersion());
+                    }
+                    if (itemResponse.isFailed()) {
+                        builder.field(Fields.STATUS, itemResponse.getFailure().getStatus().getStatus());
+                        builder.field(Fields.ERROR, itemResponse.getFailure().getMessage());
+                    } else {
+                        if (itemResponse.getResponse() instanceof DeleteResponse) {
+                            DeleteResponse deleteResponse = itemResponse.getResponse();
+                            if (deleteResponse.isFound()) {
+                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                            } else {
+                                builder.field(Fields.STATUS, RestStatus.NOT_FOUND.getStatus());
+                            }
+                            builder.field(Fields.FOUND, deleteResponse.isFound());
+                        } else if (itemResponse.getResponse() instanceof IndexResponse) {
+                            IndexResponse indexResponse = itemResponse.getResponse();
+                            if (indexResponse.isCreated()) {
+                                builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
+                            } else {
+                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                            }
+                        } else if (itemResponse.getResponse() instanceof UpdateResponse) {
+                            UpdateResponse updateResponse = itemResponse.getResponse();
+                            if (updateResponse.isCreated()) {
+                                builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
+                            } else {
+                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                            }
                         }
                     }
+                    builder.endObject();
+                    builder.endObject();
                 }
-                builder.endObject();
-                builder.endObject();
             }
             builder.endArray();
+            builder.field(Fields.TOOK, response.getTookInMillis());
+            builder.field(Fields.ERRORS, errorCnt > 0);
         }
         builder.endObject();
 

@@ -819,7 +819,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
 
         if (request->len >= indexDescriptor->batch_size) {
             response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
-            checkForBulkError(response, "delete");
+            checkForBulkError(response, "zombodb vacuum");
 
             resetStringInfo(request);
             freeStringInfo(response);
@@ -828,7 +828,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
 
     if (request->len > 0) {
         response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
-        checkForBulkError(response, "delete");
+        checkForBulkError(response, "zombodb vacuum");
     }
 
 	if (indexDescriptor->optimizeAfter > 0) {
