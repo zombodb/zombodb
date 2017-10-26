@@ -17,7 +17,6 @@ package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
-import org.elasticsearch.action.admin.indices.refresh.RefreshResponse;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -26,57 +25,43 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 
-import static com.tcdi.zombodb.postgres.PostgresTIDResponseAction.INVALID_BLOCK_NUMBER;
-import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
-import static org.elasticsearch.rest.RestRequest.Method.GET;
-import static org.elasticsearch.rest.RestRequest.Method.POST;
+import java.util.HashSet;
+import java.util.Set;
 
-public class ZombodbVacuumSupportAction extends BaseRestHandler {
+import static org.elasticsearch.rest.RestRequest.Method.GET;
+
+public class ZombodbGetXidVacuumCandidatesAction extends BaseRestHandler {
 
     @Inject
-    public ZombodbVacuumSupportAction(Settings settings, RestController controller, Client client) {
+    public ZombodbGetXidVacuumCandidatesAction(Settings settings, RestController controller, Client client) {
         super(settings, controller, client);
-        controller.registerHandler(GET, "/{index}/_zdbvacuum", this);
-        controller.registerHandler(POST, "/{index}/_zdbvacuum", this);
+
+        controller.registerHandler(GET, "/{index}/_zdbxidvacuumcandidates", this);
     }
 
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String index = request.param("index");
-        long xmin = request.paramAsLong("xmin", 0);
-        long xmax = request.paramAsLong("xmax", 0);
-        int commandid = request.paramAsInt("commandid", -1);
-        String[] tmp = request.paramAsStringArray("active", new String[]{"0"});
-        long[] active = new long[tmp.length];
-        for (int i = 0; i < tmp.length; i++)
-            active[i] = Long.valueOf(tmp[i]);
 
-        // return the ctid (_id) of every document we think might be invisible to us
-        // based on the current state of the underlying index
+        // the transaction ids we can consider for vacuuming are simply
+        // all the _zdb_xid values in the "aborted" type
+        // Some of these xids may still be in-progress, but that's okay
+        // because Postgres will decide for us which ones are really aborted
         SearchRequestBuilder search = new SearchRequestBuilder(client)
                 .setIndices(index)
-                .setTypes("data")
+                .setTypes("aborted")
                 .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
-                .setNoFields()
-                .setQuery(
-                        visibility()
-                                .xmin(xmin)
-                                .xmax(xmax)
-                                .commandId(commandid)
-                                .activeXids(active)
-                );
+                .addFieldDataField("_zdb_xid");
 
-        byte[] bytes = null;
-        int total = 0, cnt = 0, offset = 0;
+        Set<Long> xids = new HashSet<>();
+        int total = 0, cnt = 0;
         SearchResponse response = null;
         while (true) {
             if (response == null) {
                 response = client.execute(SearchAction.INSTANCE, search.request()).actionGet();
                 total = (int) response.getHits().getTotalHits();
-                bytes = new byte[8 + 6 * total];
-                offset += Utils.encodeLong(total, bytes, offset);
             } else {
                 response = client.execute(SearchScrollAction.INSTANCE,
                         new SearchScrollRequestBuilder(client)
@@ -86,29 +71,21 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
             }
 
             for (SearchHit hit : response.getHits()) {
-                String id;
-                int blockno;
-                char rowno;
+                Number xid = hit.field("_zdb_xid").value();
+                xids.add(xid.longValue());
 
-                try {
-                    id = hit.id();
-
-                    int dash = id.indexOf('-', 1);
-                    blockno = Integer.parseInt(id.substring(0, dash), 10);
-                    rowno = (char) Integer.parseInt(id.substring(dash + 1), 10);
-                } catch (Exception nfe) {
-                    logger.warn("hit.id()=/" + hit.id() + "/ is not in the proper format.  Defaulting to INVALID_BLOCK_NUMBER");
-                    blockno = INVALID_BLOCK_NUMBER;
-                    rowno = 0;
-                }
-
-                offset += Utils.encodeInteger(blockno, bytes, offset);
-                offset += Utils.encodeCharacter(rowno, bytes, offset);
                 cnt++;
             }
 
             if (cnt == total)
                 break;
+        }
+
+        byte[] bytes = new byte[1 + 8 + 8 * xids.size()];
+        int offset = 1; // first byte is null to indicate binary response
+        offset += Utils.encodeLong(xids.size(), bytes, offset);
+        for (Long xid : xids) {
+            offset += Utils.encodeLong(xid, bytes, offset);
         }
 
         channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", bytes));

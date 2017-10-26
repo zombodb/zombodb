@@ -17,26 +17,22 @@ package com.tcdi.zombodb.query;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.BaseQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
 
 import java.io.IOException;
-import java.util.Collection;
 
 public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
 
-    private QueryBuilder query;
-    private final String fieldname;
     private long myXid;
     private boolean haveMyXid;
     private long xmin;
+    private int commandid;
     private boolean haveXmin;
     private boolean haveXmax;
+    private boolean haveCommandid;
     private long xmax;
-    private boolean all = false;
     private long[] activeXids;
 
-    public ZomboDBVisibilityQueryBuilder(String name) {
-        fieldname = name;
+    public ZomboDBVisibilityQueryBuilder() {
     }
 
     public ZomboDBVisibilityQueryBuilder myXid(long myXid) {
@@ -57,25 +53,20 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
         return this;
     }
 
+    public ZomboDBVisibilityQueryBuilder commandId(int commandid) {
+        this.commandid = commandid;
+        haveCommandid = true;
+        return this;
+    }
+
     public ZomboDBVisibilityQueryBuilder activeXids(long[] xids) {
         activeXids = xids;
-        return this;
-    }
-
-    public ZomboDBVisibilityQueryBuilder all(boolean all) {
-        this.all = all;
-        return this;
-    }
-
-    public ZomboDBVisibilityQueryBuilder query(QueryBuilder query) {
-        this.query = query;
         return this;
     }
 
     @Override
     protected void doXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(ZomboDBVisibilityQueryParser.NAME);
-        builder.field("name", fieldname);
 
         if (haveMyXid)
             builder.field("myxid", myXid);
@@ -83,14 +74,10 @@ public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
             builder.field("xmin", xmin);
         if (haveXmax)
             builder.field("xmax", xmax);
+        if (haveCommandid)
+            builder.field("commandid", commandid);
         if (activeXids != null && activeXids.length > 0)
             builder.field("active_xids", activeXids);
-        if (all)
-            builder.field("all", true);
-        if (query != null) {
-            builder.field("query");
-            query.toXContent(builder, params);
-        }
         builder.endObject();
     }
 }

@@ -16,7 +16,6 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -47,7 +46,7 @@ public class PostgresCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true, true, true);
+            query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true, true);
 
             if (query.hasLimit() && isSelectivityQuery) {
                 count = query.getLimit().getLimit();
@@ -58,7 +57,7 @@ public class PostgresCountAction extends BaseRestHandler {
                 builder.setSize(0);
                 builder.setSearchType(SearchType.COUNT);
                 builder.setPreference(request.param("preference"));
-                builder.setQueryCache(false);
+                builder.setQueryCache(true);
                 builder.setFetchSource(false);
                 builder.setTrackScores(false);
                 builder.setNoFields();

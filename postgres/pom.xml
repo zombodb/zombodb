@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.tcdi.elasticsearch</groupId>
         <artifactId>zombodb-parent</artifactId>
-        <version>3.1.15</version>
+        <version>3.2.0</version>
     </parent>
 
     <artifactId>zombodb</artifactId>
@@ -256,6 +256,27 @@
                                     </dataSet>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>xenial_pg93</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jdeb</goal>
+                                </goals>
+                                <configuration>
+                                    <deb>${project.build.directory}/${project.artifactId}_xenial_pg93-${project.version}_amd64.deb
+                                    </deb>
+                                    <dataSet>
+                                        <data>
+                                            <src>${project.build.directory}/pg9.3/ubuntu_xenial/</src>
+                                            <type>directory</type>
+                                            <mapper>
+                                                <type>perm</type>
+                                                <prefix>/</prefix>
+                                            </mapper>
+                                        </data>
+                                    </dataSet>
+                                </configuration>
+                            </execution>
 
                             <execution>
                                 <id>jessie_pg93</id>
@@ -322,6 +343,27 @@
                                 </configuration>
                             </execution>
                             <execution>
+                                <id>xenial_pg94</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jdeb</goal>
+                                </goals>
+                                <configuration>
+                                    <deb>${project.build.directory}/${project.artifactId}_xenial_pg94-${project.version}_amd64.deb
+                                    </deb>
+                                    <dataSet>
+                                        <data>
+                                            <src>${project.build.directory}/pg9.4/ubuntu_xenial/</src>
+                                            <type>directory</type>
+                                            <mapper>
+                                                <type>perm</type>
+                                                <prefix>/</prefix>
+                                            </mapper>
+                                        </data>
+                                    </dataSet>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>jessie_pg94</id>
                                 <phase>package</phase>
                                 <goals>
@@ -376,6 +418,27 @@
                                     <dataSet>
                                         <data>
                                             <src>${project.build.directory}/pg9.5/ubuntu_trusty/</src>
+                                            <type>directory</type>
+                                            <mapper>
+                                                <type>perm</type>
+                                                <prefix>/</prefix>
+                                            </mapper>
+                                        </data>
+                                    </dataSet>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>xenial_pg95</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jdeb</goal>
+                                </goals>
+                                <configuration>
+                                    <deb>${project.build.directory}/${project.artifactId}_xenial_pg95-${project.version}_amd64.deb
+                                    </deb>
+                                    <dataSet>
+                                        <data>
+                                            <src>${project.build.directory}/pg9.5/ubuntu_xenial/</src>
                                             <type>directory</type>
                                             <mapper>
                                                 <type>perm</type>

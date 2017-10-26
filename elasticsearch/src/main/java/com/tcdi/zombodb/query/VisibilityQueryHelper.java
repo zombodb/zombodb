@@ -18,167 +18,294 @@ package com.tcdi.zombodb.query;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queries.TermFilter;
 import org.apache.lucene.queries.TermsFilter;
-import org.apache.lucene.search.FieldCache;
+import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.search.NumericRangeFilter;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
-import org.apache.lucene.util.*;
+import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.NumericUtils;
+import org.elasticsearch.common.hppc.IntOpenHashSet;
+import org.elasticsearch.common.hppc.IntSet;
+import org.elasticsearch.common.hppc.cursors.IntCursor;
+import org.elasticsearch.common.lucene.search.AndFilter;
+import org.elasticsearch.common.lucene.search.MatchAllDocsFilter;
+import org.elasticsearch.common.lucene.search.OrFilter;
 import org.elasticsearch.common.lucene.search.XConstantScoreQuery;
-import org.elasticsearch.search.internal.SearchContext;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 final class VisibilityQueryHelper {
 
-    private static final ConcurrentSkipListSet<Long> KNOWN_COMMITTED_XIDS = new ConcurrentSkipListSet<>();
+    /**
+     * helper class for figuring out how many _xmin and _xmax values
+     * our shard has
+     */
+    private static class XminXmaxCounts {
+        private IndexSearcher searcher;
+        private int doccnt;
+        private int xmaxcnt;
 
-    static List<BytesRef> findUpdatedCtids(IndexSearcher searcher) throws IOException {
-        final List<BytesRef> updatedCtids = new ArrayList<>();
+        XminXmaxCounts(IndexSearcher searcher) {
+            this.searcher = searcher;
+        }
 
-        //
-        // search the "state" type and collect a distinct set of all the _ctids
-        // these represent the records in the index that have been updated
-        // used below to determine visibility
-        //
-        // We use XConstantScoreQuery here so that we exclude deleted docs
-        //
+        int getDoccnt() {
+            return doccnt;
+        }
 
-        searcher.search(new XConstantScoreQuery(SearchContext.current().filterCache().cache(new TermFilter(new Term("_type", "state")))),
-                new ZomboDBTermsCollector("_ctid") {
-                    SortedDocValues ctids;
+        int getXmaxcnt() {
+            return xmaxcnt;
+        }
+
+        XminXmaxCounts invoke() throws IOException {
+            doccnt = 0;
+            xmaxcnt = 0;
+            for (AtomicReaderContext context : searcher.getIndexReader().leaves()) {
+                Terms terms;
+
+                terms = context.reader().terms("_xmin");
+                if (terms != null)
+                    doccnt += terms.getDocCount();
+
+                terms = context.reader().terms("_xmax");
+                if (terms != null)
+                    xmaxcnt += terms.getDocCount();
+            }
+            return this;
+        }
+    }
+
+    /**
+     * collect all the _zdb_xid values in the "aborted" type as both a set of Longs and as a list of BytesRef
+     * for filtering in #determineVisibility
+     */
+    private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids, final List<BytesRef> abortedXidsAsBytes) throws IOException {
+        searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "aborted"))),
+                new ZomboDBTermsCollector() {
+                    SortedNumericDocValues _zdb_xid;
 
                     @Override
                     public void collect(int doc) throws IOException {
-                        updatedCtids.add(BytesRef.deepCopyOf(ctids.get(doc)));
+                        _zdb_xid.setDocument(doc);
+
+                        long xid = _zdb_xid.valueAt(0);
+                        BytesRefBuilder builder = new BytesRefBuilder();
+                        NumericUtils.longToPrefixCoded(xid, 0, builder);
+
+                        abortedXids.add(xid);
+                        abortedXidsAsBytes.add(builder.get());
                     }
 
                     @Override
                     public void setNextReader(AtomicReaderContext context) throws IOException {
-                        ctids = FieldCache.DEFAULT.getTermsIndex(context.reader(), "_ctid");
+                        _zdb_xid = context.reader().getSortedNumericDocValues("_zdb_xid");
                     }
                 }
         );
-
-        Collections.sort(updatedCtids);
-        return updatedCtids;
     }
 
-    static Map<Integer, FixedBitSet> determineVisibility(final Query query, final String field, final long myXid, final long xmin, final long xmax, final boolean all, final Set<Long> activeXids, IndexSearcher searcher, List<BytesRef> updatedCtids) throws IOException {
+    /**
+     * Collect all the "xmax" docs that exist in the shard we're running on.
+     *
+     * Depending on the state of the table, there can potentially be thousands or even millions
+     * of these that we have to process, so we try really hard to limit the amount of work we
+     * need to do for each one
+     */
+    private static void collectMaxes(IndexSearcher searcher, final Map<HeapTuple, HeapTuple> tuples, final IntSet dirtyBlocks) throws IOException {
+        abstract class Collector extends ZomboDBTermsCollector {
+            ByteArrayDataInput in = new ByteArrayDataInput();
+            BinaryDocValues _zdb_encoded_tuple;
+
+            @Override
+            public void setNextReader(AtomicReaderContext context) throws IOException {
+                _zdb_encoded_tuple = context.reader().getBinaryDocValues("_zdb_encoded_tuple");
+            }
+        }
+
+        if (dirtyBlocks != null) {
+            searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
+                    new Collector() {
+                        @Override
+                        public void collect(int doc) throws IOException {
+                            HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), false, in);
+                            tuples.put(ctid, ctid);
+                            dirtyBlocks.add(ctid.blockno);
+                        }
+                    }
+            );
+        } else {
+            searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
+                    new Collector() {
+                        @Override
+                        public void collect(int doc) throws IOException {
+                            HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), false, in);
+                            tuples.put(ctid, ctid);
+                        }
+                    }
+            );
+        }
+    }
+
+    static Map<Integer, FixedBitSet> determineVisibility(final long myXid, final long myXmin, final long myXmax, final int myCommand, final Set<Long> activeXids, IndexSearcher searcher) throws IOException {
+        XminXmaxCounts xminXmaxCounts = new XminXmaxCounts(searcher).invoke();
+        int xmaxcnt = xminXmaxCounts.getXmaxcnt();
+        int doccnt = xminXmaxCounts.getDoccnt();
+
+        final boolean just_get_everything = xmaxcnt >= doccnt/3;
+
+        final IntSet dirtyBlocks = just_get_everything ? null : new IntOpenHashSet();
+        final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>(xmaxcnt);
+
+        collectMaxes(searcher, modifiedTuples, dirtyBlocks);
+
+        final Set<Long> abortedXids = new HashSet<>();
+        final List<BytesRef> abortedXidsAsBytes = new ArrayList<>();
+
+        collectAbortedXids(searcher, abortedXids, abortedXidsAsBytes);
+
+        final List<Filter> filters = new ArrayList<>();
+        if (just_get_everything) {
+            // if the number of docs with xmax values is at least 1/3 of the total docs
+            // just go ahead and ask for everything.  This is much faster than asking
+            // lucene to parse and lookup tens of thousands (or millions!) of individual
+            // _uid values
+            filters.add(new MatchAllDocsFilter());
+        } else {
+            // just look at all the docs on the blocks we've identified as dirty
+            if (!dirtyBlocks.isEmpty()) {
+                BytesRefBuilder builder = new BytesRefBuilder();
+                List<BytesRef> tmp = new ArrayList<>();
+                for (IntCursor blockNumber : dirtyBlocks) {
+                    NumericUtils.intToPrefixCoded(blockNumber.value, 0, builder);
+                    tmp.add(builder.toBytesRef());
+                }
+                filters.add(new TermsFilter("_zdb_blockno", tmp));
+            }
+
+            // we also need to examine docs that might be aborted or inflight on non-dirty pages
+
+            final List<BytesRef> activeXidsAsBytes = new ArrayList<>(activeXids.size());
+            for (Long xid : activeXids) {
+                BytesRefBuilder builder = new BytesRefBuilder();
+                NumericUtils.longToPrefixCoded(xid, 0, builder);
+                activeXidsAsBytes.add(builder.toBytesRef());
+            }
+
+            if (!activeXids.isEmpty())
+                filters.add(new TermsFilter("_xmin", activeXidsAsBytes));
+            if (!abortedXids.isEmpty())
+                filters.add(new TermsFilter("_xmin", abortedXidsAsBytes));
+            filters.add(NumericRangeFilter.newLongRange("_xmin", myXmin, null, true, true));
+        }
+
+        //
+        // find all "data" docs that we think we might need to examine for visibility
+        // given the set of filters above, this is likely to be over-inclusive
+        // but that's okay because it's cheaper to find and examine more docs
+        // than it is to use TermsFilters with very long lists of _ids
+        //
         final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
-
-        if (!all && updatedCtids.size() == 0)
-            return visibilityBitSets;
-
-        //
-        // build a map of {@link VisibilityInfo} objects by each _prev_ctid
-        //
-        // We use XConstantScoreQuery here so that we exclude deleted docs
-        //
-
-        final Map<BytesRef, List<VisibilityInfo>> map = new HashMap<>();
-        searcher.search(
-                all ?
-                        new MatchAllDocsQuery() :
-                        new XConstantScoreQuery(SearchContext.current().filterCache().cache(new TermsFilter(field, updatedCtids))),
-                new ZomboDBTermsCollector(field) {
-                    private SortedDocValues prevCtids;
-                    private SortedNumericDocValues xids;
-                    private SortedNumericDocValues sequence;
-                    private int ord;
+        searcher.search(new XConstantScoreQuery(
+                        new AndFilter(
+                                Arrays.asList(
+                                        new TermFilter(new Term("_type", "data")),
+                                        new OrFilter(filters)
+                                )
+                        )
+                ),
+                new ZomboDBTermsCollector() {
+                    private final ByteArrayDataInput in = new ByteArrayDataInput();
+                    private BinaryDocValues _zdb_encoded_tuple;
+                    private int contextOrd;
                     private int maxdoc;
 
                     @Override
                     public void collect(int doc) throws IOException {
-                        if (xids == null)
-                            return;
-                        xids.setDocument(doc);
-                        sequence.setDocument(doc);
+                        HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), true, in);  // from "data"
+                        HeapTuple ctidWithXmax = modifiedTuples.get(ctid);  // from "xmax"
 
-                        long xid = xids.valueAt(0);
-                        long seq = sequence.valueAt(0);
-                        BytesRef prevCtid = prevCtids.get(doc);
+                        // get all the xmin/xmax, cmin/cmax values we need to determine visibility below
+                        long xmin = ctid.xmin;
+                        int cmin = ctid.cmin;
+                        boolean xmax_is_null = ctidWithXmax == null;
+                        long xmax = -1;
+                        int cmax = -1;
 
-                        List<VisibilityInfo> matchingDocs = map.get(prevCtid);
+                        if (!xmax_is_null) {
+                            xmax = ctidWithXmax.xmax;
+                            cmax = ctidWithXmax.cmax;
+                        }
 
-                        if (matchingDocs == null)
-                            map.put(BytesRef.deepCopyOf(prevCtid), matchingDocs = new ArrayList<>());
-                        matchingDocs.add(new VisibilityInfo(ord, maxdoc, doc, xid, seq));
+                        // we can only consider transactions as committed or aborted if they're not outside
+                        // our current snapshot's xmax (myXmax) and aren't otherwise considered active or aborted in some way
+
+                        boolean xmin_is_committed = !(xmin >= myXmax) && !activeXids.contains(xmin) && !abortedXids.contains(xmin);
+                        boolean xmax_is_committed = !xmax_is_null && !(xmax >= myXmax) && !activeXids.contains(xmax) && !abortedXids.contains(xmax);
+
+
+                        //
+                        // the logic below is taken from Postgres 9.3's "tqual.c#HeapTupleSatifiesNow()"
+                        //
+
+                        /*
+                         * HeapTupleSatisfiesNow
+                         *		True iff heap tuple is valid "now".
+                         *
+                         *	Here, we consider the effects of:
+                         *		all committed transactions (as of the current instant)
+                         *		previous commands of this transaction
+                         *
+                         * Note we do _not_ include changes made by the current command.  This
+                         * solves the "Halloween problem" wherein an UPDATE might try to re-update
+                         * its own output tuples, http://en.wikipedia.org/wiki/Halloween_Problem.
+                         *
+                         * Note:
+                         *		Assumes heap tuple is valid.
+                         *
+                         * The satisfaction of "now" requires the following:
+                         *
+                         * ((Xmin == my-transaction &&				inserted by the current transaction
+                         *	 Cmin < my-command &&					before this command, and
+                         *	 (Xmax is null ||						the row has not been deleted, or
+                         *	  (Xmax == my-transaction &&			it was deleted by the current transaction
+                         *	   Cmax >= my-command)))				but not before this command,
+                         * ||										or
+                         *	(Xmin is committed &&					the row was inserted by a committed transaction, and
+                         *		(Xmax is null ||					the row has not been deleted, or
+                         *		 (Xmax == my-transaction &&			the row is being deleted by this transaction
+                         *		  Cmax >= my-command) ||			but it's not deleted "yet", or
+                         *		 (Xmax != my-transaction &&			the row was deleted by another transaction
+                         *		  Xmax is not committed))))			that has not been committed
+                         *
+                         */
+                        if (
+                                !(
+                                        (xmin == myXid && cmin < myCommand && (xmax_is_null || (xmax == myXid && cmax >= myCommand)))
+                                                ||
+                                        (xmin_is_committed && (xmax_is_null || (xmax == myXid && cmax >= myCommand) || (xmax != myXid && !xmax_is_committed)))
+                                )
+                            ) {
+                            // it's not visible to us
+                            FixedBitSet visibilityBitset = visibilityBitSets.get(contextOrd);
+                            if (visibilityBitset == null)
+                                visibilityBitSets.put(contextOrd, visibilityBitset = new FixedBitSet(maxdoc));
+                            visibilityBitset.set(doc);
+                        }
                     }
 
                     @Override
                     public void setNextReader(AtomicReaderContext context) throws IOException {
-                        prevCtids = FieldCache.DEFAULT.getTermsIndex(context.reader(), field);
-                        xids = context.reader().getSortedNumericDocValues("_xid");
-                        sequence = context.reader().getSortedNumericDocValues("_zdb_seq");
-                        ord = context.ord;
+                        _zdb_encoded_tuple = context.reader().getBinaryDocValues("_zdb_encoded_tuple");
+                        contextOrd = context.ord;
                         maxdoc = context.reader().maxDoc();
                     }
                 }
         );
 
-        if (map.isEmpty())
-            return visibilityBitSets;
-
-        //
-        // pick out the first VisibilityInfo for each document that is visible & committed
-        // and build a FixedBitSet for each reader 'ord' that contains visible
-        // documents.  A map of these (key'd on reader ord) is what we return.
-        //
-
-        BytesRefBuilder bytesRefBuilder = new BytesRefBuilder() {
-            /* overloaded to avoid making a copy of the byte array */
-            @Override
-            public BytesRef toBytesRef() {
-                return new BytesRef(this.bytes(), 0, this.length());
-            }
-        };
-
-        Terms committedXidsTerms = MultiFields.getFields(searcher.getIndexReader()).terms("_zdb_committed_xid");
-        TermsEnum committedXidsEnum = committedXidsTerms == null ? null : committedXidsTerms.iterator(null);
-        for (List<VisibilityInfo> visibility : map.values()) {
-            CollectionUtil.introSort(visibility, new Comparator<VisibilityInfo>() {
-                @Override
-                public int compare(VisibilityInfo o1, VisibilityInfo o2) {
-                    int cmp = Long.compare(o2.xid, o1.xid);
-                    return cmp == 0 ? Long.compare(o2.sequence, o1.sequence) : cmp;
-                }
-            });
-
-            boolean foundVisible = false;
-            for (VisibilityInfo mapping : visibility) {
-
-                if (foundVisible || mapping.xid > xmax || activeXids.contains(mapping.xid) || (mapping.xid != myXid && !isCommitted(committedXidsEnum, mapping.xid, bytesRefBuilder))) {
-                    // document is not visible to us
-                    FixedBitSet visibilityBitset = visibilityBitSets.get(mapping.readerOrd);
-                    if (visibilityBitset == null)
-                        visibilityBitSets.put(mapping.readerOrd, visibilityBitset = new FixedBitSet(mapping.maxdoc));
-                    visibilityBitset.set(mapping.docid);
-                } else {
-                    foundVisible = true;
-                }
-            }
-        }
-
         return visibilityBitSets;
-    }
-
-    private static boolean isCommitted(TermsEnum termsEnum, long xid, BytesRefBuilder builder) throws IOException {
-        if (KNOWN_COMMITTED_XIDS.contains(xid))
-            return true;
-
-        if (termsEnum == null)
-            return false;
-
-        NumericUtils.longToPrefixCoded(xid, 0, builder);
-        boolean isCommitted = termsEnum.seekExact(builder.toBytesRef());
-
-        if (isCommitted)
-            KNOWN_COMMITTED_XIDS.add(xid);
-
-        builder.clear();
-        return isCommitted;
     }
 }

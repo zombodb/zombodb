@@ -24,6 +24,7 @@
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/transam.h"
+#include "access/visibilitymap.h"
 #include "access/xact.h"
 #include "catalog/dependency.h"
 #include "catalog/index.h"
@@ -85,7 +86,6 @@ typedef struct {
     double indtuples;
 
     ZDBIndexDescriptor *desc;
-	HTAB *committedXids;
 } ZDBBuildState;
 
 typedef struct {
@@ -178,7 +178,7 @@ static void process_deleted_tuples() {
     foreach (lc, deletedCtids) {
         ZDBDeletedCtid *entry = (ZDBDeletedCtid *) lfirst(lc);
 
-        entry->desc->implementation->deleteTuples(entry->desc, entry->ctids);
+        entry->desc->implementation->deleteTuples(entry->desc, entry->deleted);
     }
 
     deletedCtids = NULL;
@@ -217,8 +217,6 @@ static void zdbam_xact_callback(XactEvent event, void *arg) {
     switch (event) {
         case XACT_EVENT_PRE_PREPARE:
         case XACT_EVENT_PRE_COMMIT: {
-
-            process_deleted_tuples();
 
             if (indexesInsertedList != NULL) {
                 ListCell *lc;
@@ -272,7 +270,8 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags) {
 static void zdb_executor_end_hook(QueryDesc *queryDesc) {
     if (executorDepth == 0) {
         process_inserted_indexes(!zdb_batch_mode_guc);
-    }
+		process_deleted_tuples();
+	}
 
     if (prev_ExecutorEndHook == zdb_executor_end_hook)
         elog(ERROR, "zdb_executor_end_hook: Somehow prev_ExecutorEndHook was set to zdb_executor_end_hook");
@@ -494,7 +493,6 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
     buildstate.indtuples   = 0;
     buildstate.desc        = alloc_index_descriptor(indexRel, false);
     buildstate.desc->logit = true;
-	buildstate.committedXids = NULL;
 
     if (!buildstate.desc->isShadow) {
 		HASHCTL hashctl;
@@ -503,8 +501,6 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 		hashctl.keysize = sizeof(TransactionId);
 		hashctl.hcxt = TopTransactionContext;
 		hashctl.hash = tag_hash;
-
-		buildstate.committedXids = hash_create("committed xids", 1024, &hashctl, HASH_CONTEXT | HASH_FUNCTION | HASH_ELEM);
 
         /* drop the existing index */
         buildstate.desc->implementation->dropIndex(buildstate.desc);
@@ -523,7 +519,7 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
         buildstate.desc->implementation->batchInsertFinish(buildstate.desc);
 
         /* reset the settings to reasonable values for production use */
-        buildstate.desc->implementation->finalizeNewIndex(buildstate.desc, buildstate.committedXids);
+        buildstate.desc->implementation->finalizeNewIndex(buildstate.desc);
 
         if (heapRel->rd_rel->relkind != 'm')
         {
@@ -572,25 +568,14 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, bool *isnull, bool tupleIsAlive, void *state) {
     ZDBBuildState      *buildstate = (ZDBBuildState *) state;
     ZDBIndexDescriptor *desc       = buildstate->desc;
-	TransactionId xmin, xmax;
-	bool found;
+	TransactionId xmin;
 
     if (HeapTupleIsHeapOnly(htup))
         elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
 
 	xmin = HeapTupleHeaderGetXmin(htup->t_data);
-	xmax = HeapTupleHeaderGetRawXmax(htup->t_data);
 
-
-	hash_search(buildstate->committedXids, &xmin, HASH_FIND, &found);
-	if (!found && (TransactionIdDidCommit(xmin) || xmin == GetCurrentTransactionId()))
-		hash_search(buildstate->committedXids, &xmin, HASH_ENTER, &found);
-
-	hash_search(buildstate->committedXids, &xmax, HASH_FIND, &found);
-	if (!found && TransactionIdDidCommit(xmax))
-		hash_search(buildstate->committedXids, &xmax, HASH_ENTER, &found);
-
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), zdb_sequence++);
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), -1);
 
     buildstate->indtuples++;
 }
@@ -831,18 +816,17 @@ Datum zdbrestrpos(PG_FUNCTION_ARGS) {
  * Result: a palloc'd struct containing statistical info for VACUUM displays.
  */
 Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
-    static char *types[] = {"data", "deleted"};
     IndexVacuumInfo *info = (IndexVacuumInfo *) PG_GETARG_POINTER(0);
     IndexBulkDeleteResult *volatile stats = (IndexBulkDeleteResult *) PG_GETARG_POINTER(1);
     IndexBulkDeleteCallback callback        = (IndexBulkDeleteCallback) PG_GETARG_POINTER(2);
     void                    *callback_state = (void *) PG_GETARG_POINTER(3);
     Relation                indexRel        = info->index;
+    Relation                heapRel;
     ZDBIndexDescriptor      *desc;
     struct timeval          tv1, tv2;
-    char *deletedCtids;
-    uint64 cntDeletedCtids, i=0;
-    List *toDelete = NULL;
-    int z;
+    List *ctidsToDelete = NULL;
+    BlockNumber blockno;
+    BlockNumber numOfBlocks;
 
     gettimeofday(&tv1, NULL);
 
@@ -854,37 +838,57 @@ Datum zdbbulkdelete(PG_FUNCTION_ARGS) {
     if (desc->isShadow)
         PG_RETURN_POINTER(stats);
 
-    for (z=0; z<2; z++) {
-        deletedCtids = desc->implementation->vacuumSupport(desc, types[z]);
-        memcpy(&cntDeletedCtids, deletedCtids, sizeof(uint64));
+    heapRel = RelationIdGetRelation(desc->heapRelid);
+    numOfBlocks = RelationGetNumberOfBlocks(heapRel);
+    for (blockno=0; blockno<numOfBlocks; blockno++) {
+        Buffer        vmap_buff = InvalidBuffer;
 
-        for (i = 0; i < cntDeletedCtids; i++) {
-            ItemPointer ctid = palloc(sizeof(ItemPointerData));
-            BlockNumber blockno;
+        CHECK_FOR_INTERRUPTS();
+
+        if (!visibilitymap_test(heapRel, blockno, &vmap_buff)) {
             OffsetNumber offno;
 
-            memcpy(&blockno, deletedCtids + sizeof(uint64) + (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))),
-                   sizeof(BlockNumber));
-            memcpy(&offno, deletedCtids + sizeof(uint64) + sizeof(BlockNumber) +
-                           (i * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(OffsetNumber));
-            ItemPointerSet(ctid, blockno, offno);
+            for (offno = FirstOffsetNumber; offno <= MaxOffsetNumber; offno++) {
+                ItemPointerData ctid;
 
-            if (z==1 || callback(ctid, callback_state))
-                toDelete = lappend(toDelete, ctid);
-            else
-                pfree(ctid);
+                ItemPointerSet(&ctid, blockno, offno);
+
+                if (callback(&ctid, callback_state)) {
+                    ItemPointer tmp = palloc(sizeof(ItemPointerData));
+
+                    ItemPointerSet(tmp, ItemPointerGetBlockNumber(&ctid), ItemPointerGetOffsetNumber(&ctid));
+
+                    /* tuple is dead and can be removed from the index */
+                    ctidsToDelete = lappend(ctidsToDelete, tmp);
+                    stats->tuples_removed++;
+
+                    if (((int) stats->tuples_removed) % 10000 == 0) {
+                        /*
+						 * push this set of 10k deleted tuples out to elasticsearch
+						 * just to avoid keeping too much in memory at once
+						 */
+                        desc->implementation->bulkDelete(desc, ctidsToDelete);
+                        list_free_deep(ctidsToDelete);
+                        ctidsToDelete = NULL;
+                    }
+                }
+            }
         }
 
-        desc->implementation->bulkDelete(desc, toDelete, z == 1);
+        if (BufferIsValid(vmap_buff))
+            ReleaseBuffer(vmap_buff);
+
     }
+    RelationClose(heapRel);
+
+    desc->implementation->bulkDelete(desc, ctidsToDelete);
 
     stats->num_pages        = 1;
     stats->num_index_tuples = desc->implementation->estimateSelectivity(desc, "");
-    stats->tuples_removed   = list_length(toDelete);;
 
     gettimeofday(&tv2, NULL);
 
-    elog(ZDB_LOG_LEVEL, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), list_length(toDelete), (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
+    elog(ZDB_LOG_LEVEL, "[zombodb vacuum status] index=%s, num_removed=%d, num_index_tuples=%lu, ttl=%fs", RelationGetRelationName(indexRel), list_length(ctidsToDelete), (uint64) stats->num_index_tuples, TO_SECONDS(tv1, tv2));
 
     PG_RETURN_POINTER(stats);
 }
@@ -905,6 +909,8 @@ Datum zdbvacuumcleanup(PG_FUNCTION_ARGS) {
         PG_RETURN_POINTER(stats);
 
     desc = alloc_index_descriptor(indexRel, false);
+
+	desc->implementation->vacuumCleanup(desc);
 
     if (stats == NULL) {
         stats = (IndexBulkDeleteResult *) palloc0(sizeof(IndexBulkDeleteResult));
@@ -1083,8 +1089,8 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
     TriggerData *trigdata = (TriggerData *) fcinfo->context;
     Oid indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
     ZDBDeletedCtid *entry = NULL;
-    ItemPointer ctid;
     ListCell *lc;
+	ZDBDeletedCtidAndCommand *deleted;
 
     /* make sure it's called as a trigger at all */
     if (!CALLED_AS_TRIGGER(fcinfo))
@@ -1098,7 +1104,6 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
 
     tmpcxt = MemoryContextSwitchTo(TopTransactionContext);
 
-    ctid = palloc0(sizeof(ItemPointerData));
     foreach (lc, deletedCtids) {
         entry = (ZDBDeletedCtid *) lfirst(lc);
         if (entry->desc->indexRelid == indexRelId)
@@ -1109,15 +1114,17 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
     if (entry == NULL) {
         Relation indexRel = RelationIdGetRelation(indexRelId);
         entry = palloc0(sizeof(ZDBDeletedCtid));
-        entry->desc = alloc_index_descriptor(indexRel, false);
+        entry->desc = alloc_index_descriptor(indexRel, true);
         deletedCtids = lappend(deletedCtids, entry);
         RelationClose(indexRel);
     }
 
     Assert(entry->desc->indexRelid == indexRelId);
 
-    ItemPointerCopy(&trigdata->tg_trigtuple->t_self, ctid);
-    entry->ctids = lappend(entry->ctids, ctid);
+	deleted = palloc(sizeof(ZDBDeletedCtidAndCommand));
+    ItemPointerCopy(&trigdata->tg_trigtuple->t_self, &deleted->ctid);
+	deleted->commandid = GetCurrentCommandId(true);
+    entry->deleted = lappend(entry->deleted, deleted);
 
     MemoryContextSwitchTo(tmpcxt);
     return PointerGetDatum(trigdata->tg_trigtuple);

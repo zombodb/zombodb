@@ -153,8 +153,13 @@ typedef struct {
 }                                     ZDBSearchResponse;
 
 typedef struct {
+	ItemPointerData ctid;
+	CommandId commandid;
+} ZDBDeletedCtidAndCommand;
+
+typedef struct {
     ZDBIndexDescriptor *desc;
-    List *ctids;
+	List *deleted;
 } ZDBDeletedCtid;
 
 extern PGDLLEXPORT relopt_kind RELOPT_KIND_ZDB;
@@ -178,7 +183,7 @@ void interface_transaction_cleanup(void);
 * Defines what an index implementation looks like
 */
 typedef void (*ZDBCreateNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
+typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 typedef char *(*ZDBDumpQuery_function)(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
@@ -209,10 +214,11 @@ typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char
 
 typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse);
 
-typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *toDelete, bool isdeleted);
-typedef char *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor, char *type);
+typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete);
+typedef char *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor);
+typedef void (*ZDBVacuumCleanup_function)(ZDBIndexDescriptor *indexDescriptor);
 
-typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, uint64 sequence);
+typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, int64 sequence);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
 
 typedef void (*ZDBDeleteTuples_function)(ZDBIndexDescriptor *indexDescriptor, List *ctids);
@@ -257,6 +263,7 @@ struct ZDBIndexImplementation {
 
     ZDBBulkDelete_function bulkDelete;
     ZDBVacuumSupport_function vacuumSupport;
+	ZDBVacuumCleanup_function vacuumCleanup;
 
     ZDBIndexBatchInsertRow_function    batchInsertRow;
     ZDBIndexBatchInsertFinish_function batchInsertFinish;

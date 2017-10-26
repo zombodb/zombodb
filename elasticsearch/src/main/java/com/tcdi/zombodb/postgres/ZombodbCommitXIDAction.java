@@ -3,28 +3,23 @@ package com.tcdi.zombodb.postgres;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.cluster.ClusterService;
-import org.elasticsearch.cluster.ClusterState;
-import org.elasticsearch.cluster.routing.operation.OperationRouting;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.netty.util.internal.ConcurrentHashMap;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.rest.*;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.Map;
 
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZombodbCommitXIDAction extends BaseRestHandler {
 
     private ClusterService clusterService;
-    private Map<String, String[]> routingTablesByIndex = new ConcurrentHashMap<>();
 
     @Inject
     public ZombodbCommitXIDAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
@@ -41,7 +36,7 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
         boolean refresh = rest.paramAsBoolean("refresh", false);
         GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
         int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
-        String[] routingTable = bruteForceRoutingValuesForShards(index, shards);
+        String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
 
         BulkRequest bulkRequest = Requests.bulkRequest();
         bulkRequest.refresh(refresh);
@@ -51,14 +46,13 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
         while ((line = reader.readLine()) != null) {
             Long xid = Long.valueOf(line);
 
-            for (int i=0; i<shards; i++) {
+            for (String routing : routingTable) {
                 bulkRequest.add(
-                        new IndexRequestBuilder(client)
+                        new DeleteRequestBuilder(client)
                                 .setIndex(index)
-                                .setType("committed")
-                                .setRouting(routingTable[i])
+                                .setType("aborted")
+                                .setRouting(routing)
                                 .setId(String.valueOf(xid))
-                                .setSource("_zdb_committed_xid", xid)
                                 .request()
                 );
             }
@@ -70,29 +64,5 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
             throw new RuntimeException(response.buildFailureMessage());
 
         channel.sendResponse(new BytesRestResponse(RestStatus.OK, String.valueOf("ok")));
-    }
-
-    private String[] bruteForceRoutingValuesForShards(String index, int shards) {
-        String key = index+"."+shards;
-        String[] routingTable = routingTablesByIndex.get(key);
-
-        if (routingTable != null)
-            return routingTable;
-
-        ClusterState clusterState = clusterService.state();
-        OperationRouting operationRouting = clusterService.operationRouting();
-
-        routingTable = new String[shards];
-        for (int i=0; i<shards; i++) {
-            String routing = String.valueOf(i);
-
-            int cnt=0;
-            while ( (operationRouting.indexShards(clusterState, index, "committed", routing, null).shardId()).id() != i)
-                routing = String.valueOf(i + ++cnt);
-            routingTable[i] = routing;
-        }
-
-        routingTablesByIndex.put(key, routingTable);
-        return routingTable;
     }
 }

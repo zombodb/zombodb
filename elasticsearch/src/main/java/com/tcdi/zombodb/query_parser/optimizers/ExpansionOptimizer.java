@@ -159,7 +159,7 @@ public class ExpansionOptimizer {
                 .shardSize(!doFullFieldDataLookup ? 1024 : 0)
                 .size(!doFullFieldDataLookup ? 1024 : 0);
 
-        QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery), link.getIndexName(), true);
+        QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery));
 
         SearchRequestBuilder builder = new SearchRequestBuilder(client)
                 .setSize(0)
