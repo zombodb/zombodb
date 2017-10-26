@@ -197,7 +197,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
             }
             builder.endArray();
             builder.field(Fields.TOOK, response.getTookInMillis());
-            builder.field(Fields.ERRORS, errorCnt > 0);
+            if (errorCnt > 0) {
+                builder.field(Fields.ERRORS, true);
+            }
         }
         builder.endObject();
 
