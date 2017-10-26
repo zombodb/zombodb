@@ -27,6 +27,7 @@ import com.tcdi.zombodb.query_parser.optimizers.IndexLinkOptimizer;
 import com.tcdi.zombodb.query_parser.optimizers.TermAnalyzerOptimizer;
 import com.tcdi.zombodb.query_parser.utils.EscapingStringTokenizer;
 import com.tcdi.zombodb.query_parser.utils.Utils;
+import org.apache.lucene.queryparser.xml.builders.TermsFilterBuilder;
 import org.elasticsearch.action.admin.cluster.stats.ClusterStatsRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -235,9 +236,9 @@ public abstract class QueryRewriter {
         queryRewritten = true;
 
         try {
-            return applyVisibility(qb, getAggregateIndexName());
+            return applyVisibility(qb);
         } catch (Exception e) {
-            return needVisibilityOnTopLevel ? applyVisibility(qb, getSearchIndexName()) : qb;
+            return needVisibilityOnTopLevel ? applyVisibility(qb) : qb;
         }
     }
 
@@ -753,7 +754,7 @@ public abstract class QueryRewriter {
             BoolQueryBuilder bqb = boolQuery();
             bqb.must(expansionBuilder);
             bqb.must(build(filterQuery));
-            expansionBuilder = applyVisibility(bqb, node.getIndexLink().getIndexName());
+            expansionBuilder = applyVisibility(bqb);
         }
         return expansionBuilder;
     }
@@ -1296,35 +1297,21 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyVisibility(QueryBuilder query, final String indexName) {
+    public QueryBuilder applyVisibility(QueryBuilder query) {
         ASTVisibility visibility = tree.getVisibility();
 
         if (visibility == null)
             return query;
 
-        return boolQuery()
-                .must(query)
-                .filter(
-                        notQuery(
-                                visibility("_prev_ctid")
+        return
+                boolQuery()
+                        .must(query)
+                        .mustNot(constantScoreQuery(
+                                visibility()
                                         .myXid(visibility.getMyXid())
                                         .xmin(visibility.getXmin())
                                         .xmax(visibility.getXmax())
-                                        .activeXids(visibility.getActiveXids())
-                                        .query(query)
-                        )
-                );
-
-//        return
-//                boolQuery()
-//                        .must(query)
-//                        .mustNot(
-//                                visibility("_prev_ctid")
-//                                        .myXid(visibility.getMyXid())
-//                                        .xmin(visibility.getXmin())
-//                                        .xmax(visibility.getXmax())
-//                                        .activeXids(visibility.getActiveXids())
-//                                        .query(query)
-//                        );
+                                        .commandId(visibility.getCommandId())
+                                        .activeXids(visibility.getActiveXids())));
     }
 }

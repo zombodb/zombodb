@@ -81,6 +81,7 @@ public class QueryParser {
     public ASTQueryTree parse(IndexMetadataManager metadataManager, boolean optimize) throws ParseException {
         ASTQueryTree tree = parse0();
 
+        pullOutOptionsNodes(tree);
         metadataManager.loadReferencedMappings(tree.getOptions());
 
         if (optimize)
@@ -96,6 +97,19 @@ public class QueryParser {
         return usedFieldnames;
     }
 
+    private void pullOutOptionsNodes(ASTQueryTree tree) {
+        Collection<ASTOptions> opts = tree.getChildrenOfType(ASTOptions.class);
+
+        if (!opts.isEmpty()) {
+            ASTOptions option = opts.iterator().next();
+            QueryParserNode parent = (QueryParserNode) option.jjtGetParent();
+
+            parent.removeNode(option);
+            parent.renumber();
+
+            tree.jjtInsertChild(option, 0);
+        }
+    }
 }
 PARSER_END(QueryParser)
 
@@ -196,7 +210,7 @@ private ASTQueryTree parse0() #QueryTree :
 {
 }
 {
-    ( Aggregations() | Options() | FieldLists() | Visibility() )* [ Expression() ] <EOF>
+    [ Expression() ] <EOF>
     {
         return jjtThis;
     }
@@ -338,7 +352,7 @@ void FieldListEntry() #FieldListEntry :
 
 void Visibility() #Visibility : {}
 {
-    <VISIBILITY> "(" Number() /* current xid */ "," Number() /* xmin */ "," Number() /* xmax */ "," Array() /* snapshot.xips */ ")"
+    <VISIBILITY> "(" Number() /* current xid */ "," Number() /* xmin */ "," Number() /* xmax */ "," Number() /* current command id */ "," Array() /* snapshot.xips */ ")"
 }
 
 void IndexLink() #IndexLink :
@@ -451,7 +465,7 @@ void UnaryExpression() :
           n = Not()
         | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
         | ("(" ")") // just ignore empty parens, ie:  ()
-        | Limit()
+        | Limit() | Options() | Aggregations() | FieldLists() | Visibility()
         | n = Expansion()
         | n = JsonQuery()
         | n = BoolQuery()

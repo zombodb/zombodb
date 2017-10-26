@@ -198,16 +198,22 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
     }
 
     public <T> Collection<T> getChildrenOfType(Class<T> t) {
-        return getChildrenOfType(this, t, new ArrayList<T>());
+        return getChildrenOfType(this, t, new ArrayList<T>(), true);
     }
 
-    private <T> List<T> getChildrenOfType(QueryParserNode node, Class t, List<T> list) {
+    public <T> Collection<T> getChildrenOfType(Class<T> t, boolean recurse) {
+        return getChildrenOfType(this, t, new ArrayList<T>(), recurse);
+    }
+
+    private <T> List<T> getChildrenOfType(QueryParserNode node, Class t, List<T> list, boolean recurse) {
         for (QueryParserNode child : node) {
-            if (child.getClass().isAssignableFrom(t))
+            boolean found = t.isAssignableFrom(child.getClass());
+
+            if (found)
                 list.add((T) child);
 
-            // recurse
-            getChildrenOfType(child, t, list);
+            if (!found || recurse)
+                getChildrenOfType(child, t, list, recurse);
         }
         return list;
     }

@@ -16,6 +16,8 @@
 package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.utils.Utils;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
+import org.elasticsearch.action.admin.indices.refresh.RefreshResponse;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -26,7 +28,6 @@ import org.elasticsearch.search.SearchHit;
 
 import static com.tcdi.zombodb.postgres.PostgresTIDResponseAction.INVALID_BLOCK_NUMBER;
 import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
-import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -42,31 +43,30 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String index = request.param("index");
-        String type = request.param("type");
+        long xmin = request.paramAsLong("xmin", 0);
+        long xmax = request.paramAsLong("xmax", 0);
+        int commandid = request.paramAsInt("commandid", -1);
+        String[] tmp = request.paramAsStringArray("active", new String[]{"0"});
+        long[] active = new long[tmp.length];
+        for (int i = 0; i < tmp.length; i++)
+            active[i] = Long.valueOf(tmp[i]);
 
-        SearchRequestBuilder search = new SearchRequestBuilder(client, SearchAction.INSTANCE)
+        // return the ctid (_id) of every document we think might be invisible to us
+        // based on the current state of the underlying index
+        SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
-                .setTypes(type)
+                .setTypes("data")
                 .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
-                .setNoFields();
-
-        if ("data".equals(type)) {
-            long xmin = request.paramAsLong("xmin", 0);
-            long xmax = request.paramAsLong("xmax", 0);
-
-            search.setQuery(
-                    constantScoreQuery(
-                            boolQuery()
-                                    .should(
-                                            visibility("_prev_ctid").query(matchAllQuery()).myXid(-1).xmin(xmin).xmax(xmax)
-                                    )
-                                    .should(termQuery("_type", "state"))
-                    )
-            );
-            search.setTypes(type, "state");
-        }
+                .setNoFields()
+                .setQuery(
+                        visibility()
+                                .xmin(xmin)
+                                .xmax(xmax)
+                                .commandId(commandid)
+                                .activeXids(active)
+                );
 
         byte[] bytes = null;
         int total = 0, cnt = 0, offset = 0;
@@ -75,12 +75,11 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
             if (response == null) {
                 response = client.execute(SearchAction.INSTANCE, search.request()).actionGet();
                 total = (int) response.getHits().getTotalHits();
-
                 bytes = new byte[8 + 6 * total];
                 offset += Utils.encodeLong(total, bytes, offset);
             } else {
                 response = client.execute(SearchScrollAction.INSTANCE,
-                        new SearchScrollRequestBuilder(client, SearchScrollAction.INSTANCE)
+                        SearchScrollAction.INSTANCE.newRequestBuilder(client)
                                 .setScrollId(response.getScrollId())
                                 .setScroll(TimeValue.timeValueMinutes(10))
                                 .request()).actionGet();

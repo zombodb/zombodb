@@ -23,6 +23,11 @@ import org.apache.lucene.search.SimpleCollector;
  */
 public abstract class ZomboDBTermsCollector extends SimpleCollector {
     protected ZomboDBTermsCollector() {
+        super();
+    }
 
+    @Override
+    public boolean needsScores() {
+        return false;
     }
 }

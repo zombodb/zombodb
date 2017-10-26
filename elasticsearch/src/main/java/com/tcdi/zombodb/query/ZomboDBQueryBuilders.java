@@ -17,7 +17,7 @@ package com.tcdi.zombodb.query;
 
 public class ZomboDBQueryBuilders {
 
-    public static ZomboDBVisibilityQueryBuilder visibility(String field) {
-        return new ZomboDBVisibilityQueryBuilder(field);
+    public static ZomboDBVisibilityQueryBuilder visibility() {
+        return new ZomboDBVisibilityQueryBuilder();
     }
 }

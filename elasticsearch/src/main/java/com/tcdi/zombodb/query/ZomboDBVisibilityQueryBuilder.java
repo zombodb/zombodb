@@ -22,18 +22,17 @@ import java.io.IOException;
 
 public class ZomboDBVisibilityQueryBuilder extends QueryBuilder {
 
-    private QueryBuilder query;
-    private final String fieldname;
     private long myXid;
     private boolean haveMyXid;
     private long xmin;
+    private int commandid;
     private boolean haveXmin;
     private boolean haveXmax;
+    private boolean haveCommandid;
     private long xmax;
     private long[] activeXids;
 
-    public ZomboDBVisibilityQueryBuilder(String name) {
-        fieldname = name;
+    public ZomboDBVisibilityQueryBuilder() {
     }
 
     public ZomboDBVisibilityQueryBuilder myXid(long myXid) {
@@ -54,20 +53,20 @@ public class ZomboDBVisibilityQueryBuilder extends QueryBuilder {
         return this;
     }
 
-    public ZomboDBVisibilityQueryBuilder activeXids(long[] xids) {
-        activeXids = xids;
+    public ZomboDBVisibilityQueryBuilder commandId(int commandid) {
+        this.commandid = commandid;
+        haveCommandid = true;
         return this;
     }
 
-    public ZomboDBVisibilityQueryBuilder query(QueryBuilder query) {
-        this.query = query;
+    public ZomboDBVisibilityQueryBuilder activeXids(long[] xids) {
+        activeXids = xids;
         return this;
     }
 
     @Override
     protected void doXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(ZomboDBVisibilityQueryParser.NAME);
-        builder.field("name", fieldname);
 
         if (haveMyXid)
             builder.field("myxid", myXid);
@@ -75,12 +74,10 @@ public class ZomboDBVisibilityQueryBuilder extends QueryBuilder {
             builder.field("xmin", xmin);
         if (haveXmax)
             builder.field("xmax", xmax);
+        if (haveCommandid)
+            builder.field("commandid", commandid);
         if (activeXids != null && activeXids.length > 0)
             builder.field("active_xids", activeXids);
-        if (query != null) {
-            builder.field("query");
-            query.toXContent(builder, params);
-        }
         builder.endObject();
     }
 }

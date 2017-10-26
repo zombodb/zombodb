@@ -202,7 +202,7 @@ public class IndexMetadataManager {
         return myIndex;
     }
 
-    private ASTIndexLink findFieldForLink(String fieldname) {
+    private ASTIndexLink findLinkForField(String fieldname) {
         if (fieldname.contains(".")) {
             String prefix = fieldname.substring(0, fieldname.indexOf('.'));
             ASTIndexLink link = getExternalIndexLink(prefix);
@@ -288,19 +288,22 @@ public class IndexMetadataManager {
         }
     }
 
-    public Stack<String> calculatePath(ASTIndexLink source, ASTIndexLink dest) {
+    public Stack<Dijkstra.NamedIndex> calculatePath(ASTIndexLink source, ASTIndexLink dest) {
         if (!relationshipManager.relationshipsDefined()) {
             for (IndexLinkAndMapping ilm : mappings) {
                 ASTIndexLink link = ilm.link;
                 String leftFieldname = link.getLeftFieldname();
                 if (leftFieldname.contains("."))
                     leftFieldname = leftFieldname.substring(leftFieldname.indexOf(".") + 1);
-                relationshipManager.addRelationship(findFieldForLink(link.getLeftFieldname()).getIndexName(), leftFieldname, link.getIndexName(), link.getRightFieldname());
+                relationshipManager.addRelationship(
+                        findLinkForField(link.getLeftFieldname()), leftFieldname,
+                        link, link.getRightFieldname()
+                );
             }
         }
 
-        Stack<String> stack = new Stack<>();
-        List<String> path = relationshipManager.calcPath(source.getIndexName(), dest.getIndexName());
+        Stack<Dijkstra.NamedIndex> stack = new Stack<>();
+        List<Dijkstra.NamedIndex> path = relationshipManager.calcPath(source, dest);
 
         if (path.size() > 1) {
             // trim the top off the path list
@@ -310,15 +313,10 @@ public class IndexMetadataManager {
             Collections.reverse(path);
 
             // and turn into a stack for use by the caller
-            for (String p : path)
+            for (Dijkstra.NamedIndex p : path)
                 stack.push(p);
         }
 
         return stack;
     }
-
-    public boolean areFieldPathsEquivalent(String a, String b) {
-        return relationshipManager.areFieldsEquivalent(a, b);
-    }
-
 }

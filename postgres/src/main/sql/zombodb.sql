@@ -132,9 +132,9 @@ CREATE VIEW zdb_index_stats AS
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
-    (zdb_es_direct_request(indexrelid, 'GET', 'data/_count')::json) -> 'count'             AS data_count,
-    (zdb_es_direct_request(indexrelid, 'GET', 'state/_count')::json) -> 'count'            AS state_count,
-    (zdb_es_direct_request(indexrelid, 'GET', 'committed/_count')::json) -> 'count'        AS xid_count
+    (zdb_es_direct_request(indexrelid, 'GET', 'data/_count') :: JSON) -> 'count'            AS data_count,
+    (zdb_es_direct_request(indexrelid, 'GET', 'xmax/_count') :: JSON) -> 'count'            AS xmax_count,
+    (zdb_es_direct_request(indexrelid, 'GET', 'aborted/_count') :: JSON) -> 'count'         AS aborted_count
   FROM stats;
 
 CREATE VIEW zdb_index_stats_fast AS
@@ -161,9 +161,9 @@ CREATE VIEW zdb_index_stats_fast AS
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
-    (zdb_es_direct_request(indexrelid, 'GET', 'data/_count')::json) -> 'count'             AS data_count,
-    (zdb_es_direct_request(indexrelid, 'GET', 'state/_count')::json) -> 'count'            AS state_count,
-    (zdb_es_direct_request(indexrelid, 'GET', 'committed/_count')::json) -> 'count'        AS xid_count
+    (zdb_es_direct_request(indexrelid, 'GET', 'data/_count') :: JSON) -> 'count'            AS data_count,
+    (zdb_es_direct_request(indexrelid, 'GET', 'xmax/_count') :: JSON) -> 'count'            AS xmax_count,
+    (zdb_es_direct_request(indexrelid, 'GET', 'aborted/_count') :: JSON) -> 'count'         AS aborted_count
   FROM stats;
 
 CREATE OR REPLACE FUNCTION zdb_internal_update_mapping(index_oid oid) RETURNS void STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';

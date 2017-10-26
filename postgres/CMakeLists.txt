@@ -28,4 +28,4 @@ set(SOURCE_FILES
 
 include_directories(src/main/c /usr/local/src/pg93/src/include /usr/local/src/pg93/src/backend)
 
-add_executable(postgres ${SOURCE_FILES})
+add_library(zombodb OBJECT ${SOURCE_FILES})

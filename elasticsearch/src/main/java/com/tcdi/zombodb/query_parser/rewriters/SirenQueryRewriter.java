@@ -55,17 +55,18 @@ public class SirenQueryRewriter extends QueryRewriter {
             FilterJoinBuilder fjb = new FilterJoinBuilder(link.getLeftFieldname())
                     .path(link.getRightFieldname())
                     .indices(link.getIndexName())
+                    .query(applyVisibility(build(node.getQuery())))
                     .types("data");
             if (node.getFilterQuery() != null) {
                 if (_isBuildingAggregate)
                     return matchAllQuery();
 
                 BoolQueryBuilder bqb = boolQuery();
-                bqb.must(applyVisibility(build(node.getQuery()), link.getIndexName()));
+                bqb.must(applyVisibility(build(node.getQuery())));
                 bqb.must(build(node.getFilterQuery()));
                 fjb.query(bqb);
             } else {
-                fjb.query(applyVisibility(build(node.getQuery()), link.getIndexName()));
+                fjb.query(applyVisibility(build(node.getQuery())));
             }
 
             if (!doFullFieldDataLookup)

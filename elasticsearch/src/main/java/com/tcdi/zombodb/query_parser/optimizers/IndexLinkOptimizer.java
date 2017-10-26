@@ -17,6 +17,7 @@
 package com.tcdi.zombodb.query_parser.optimizers;
 
 import com.tcdi.zombodb.query_parser.*;
+import com.tcdi.zombodb.query_parser.metadata.Dijkstra;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.search.SearchAction;
@@ -63,6 +64,8 @@ public class IndexLinkOptimizer {
         while (agg != null) {
             agg = agg.getSubAggregate();
         }
+
+        QueryTreeOptimizer.reduce(tree);
     }
 
 
@@ -133,16 +136,16 @@ public class IndexLinkOptimizer {
                 tmp = (QueryParserNode) tmp.jjtGetParent();
             if (tmp != null)
                 parentLink = tmp.getIndexLink();
-            Stack<String> paths = metadataManager.calculatePath(link, parentLink);
+            Stack<Dijkstra.NamedIndex> paths = metadataManager.calculatePath(link, parentLink);
 
             if (link.hasFieldname())
                 stripPath(root, link.getFieldname());
 
             while (!paths.empty()) {
-                String current = paths.pop();
-                String next = paths.empty() ? null : paths.peek();
+                Dijkstra.NamedIndex current = paths.pop();
+                Dijkstra.NamedIndex next = paths.empty() ? null : paths.peek();
 
-                if (next != null && !next.contains(":")) {
+                if (next != null && !next.index.contains(":")) {
                     // consume entries that are simply index names
                     paths.pop();
 
@@ -152,23 +155,23 @@ public class IndexLinkOptimizer {
 
                         current = paths.pop();
                         next = paths.empty() ? null : paths.peek();
-                    } while (next != null && !next.contains(":"));
+                    } while (next != null && !next.index.contains(":"));
                 }
 
                 ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
                 String indexName;
                 String alias = null;
 
-                indexName = current.substring(0, current.indexOf(':'));
+                indexName = current.index.substring(0, current.index.indexOf(':'));
                 if (next != null) {
-                    leftFieldname = next.substring(next.indexOf(':') + 1);
-                    rightFieldname = current.substring(current.indexOf(':') + 1);
+                    leftFieldname = next.index.substring(next.index.indexOf(':') + 1);
+                    rightFieldname = current.index.substring(current.index.indexOf(':') + 1);
                 } else {
                     if (last == null)
                         throw new IllegalStateException("Failed to build a proper expansion tree");
 
                     rightFieldname = leftFieldname;
-                    leftFieldname = current.substring(current.indexOf(':') + 1);
+                    leftFieldname = current.index.substring(current.index.indexOf(':') + 1);
                     indexName = lastExpansion.getIndexLink().getIndexName();
                     alias = lastExpansion.getIndexLink().getAlias();
                 }
@@ -226,11 +229,11 @@ public class IndexLinkOptimizer {
             total += mergeAdjacentExpansions(child);
         }
 
-        Map<ASTIndexLink, List<ASTExpansion>> sameExpansions = new HashMap<>();
+        Map<String, List<ASTExpansion>> sameExpansions = new HashMap<>();
         int cnt = 0;
         for (QueryParserNode child : root) {
             if (child instanceof ASTExpansion) {
-                ASTIndexLink key = child.getIndexLink();
+                String key = child.getIndexLink().toStringNoFieldname();
                 List<ASTExpansion> groups = sameExpansions.get(key);
                 if (groups == null)
                     sameExpansions.put(key, groups = new ArrayList<>());
@@ -242,8 +245,8 @@ public class IndexLinkOptimizer {
 
         if (cnt > 1) {
 
-            for (Map.Entry<ASTIndexLink, List<ASTExpansion>> entry : sameExpansions.entrySet()) {
-                if (entry.getValue().size() > 1) {
+            for (List<ASTExpansion> entry : sameExpansions.values()) {
+                if (entry.size() > 1) {
                     QueryParserNode container;
                     if (root instanceof ASTAnd)
                         container = new ASTAnd(QueryParserTreeConstants.JJTAND);
@@ -262,12 +265,12 @@ public class IndexLinkOptimizer {
                         throw new RuntimeException("Don't know about parent container type: " + root.getClass());
 
                     ASTExpansion newExpansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
-                    newExpansion.jjtAddChild(entry.getValue().get(0).getIndexLink(), 0);
-                    newExpansion.setGenerated(entry.getValue().get(0).isGenerated());
+                    newExpansion.jjtAddChild(entry.get(0).getIndexLink(), 0);
+                    newExpansion.setGenerated(entry.get(0).isGenerated());
                     newExpansion.jjtAddChild(container, 1);
 
                     int idx = 0;
-                    for (ASTExpansion existingExpansion : entry.getValue()) {
+                    for (ASTExpansion existingExpansion : entry) {
                         container.jjtAddChild(existingExpansion.getQuery(), container.jjtGetNumChildren());
 
                         if (idx == 0)
@@ -278,7 +281,7 @@ public class IndexLinkOptimizer {
                     }
 
                     root.renumber();
-                    if (entry.getValue().size() > 1)
+                    if (entry.size() > 1)
                         total++;
                 }
             }
@@ -326,13 +329,13 @@ public class IndexLinkOptimizer {
                     }
 
                     if (!link.getIndexName().equals(parentLink.getIndexName())) {
-                        Stack<String> path = metadataManager.calculatePath(newLink, parentLink);
+                        Stack<Dijkstra.NamedIndex> path = metadataManager.calculatePath(newLink, parentLink);
                         if (path.size() == 2) {
-                            String top = path.pop();
-                            String bottom = path.pop();
-                            String leftFieldname = bottom.split("[:]")[1];
-                            String rightFieldname = top.split("[:]")[1];
-                            String indexName = top.split("[:]")[0];
+                            Dijkstra.NamedIndex top = path.pop();
+                            Dijkstra.NamedIndex bottom = path.pop();
+                            String leftFieldname = bottom.index.split("[:]")[1];
+                            String rightFieldname = top.index.split("[:]")[1];
+                            String indexName = top.index.split("[:]")[0];
 
                             ASTIndexLink intermediateLink = ASTIndexLink.create(leftFieldname, indexName, null, rightFieldname);
                             ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
@@ -377,7 +380,7 @@ public class IndexLinkOptimizer {
         //
         queryCnt = estimateCount(expansion, true);
 
-        if (queryCnt > totalCnt / 2) {
+        if (queryCnt < totalCnt && queryCnt > totalCnt / 2) {
             //
             // and if the expansion is going to return more than 1/2 the database
             // invert it on the inner side of the expansion

@@ -59,7 +59,7 @@ public class Utils {
             if (ch == '\\') {
                 char next = i < len - 1 ? s.charAt(++i) : 0;
                 if (next == 0)
-                    throw new RuntimeException("Invalid escape sequence at end of string");
+                    break; // don't leave any dangling escape characters -- they're insignificant
 
                 sb.append(next);
             } else {
@@ -358,10 +358,10 @@ public class Utils {
                 case '[':
                     if (nextChar == '[' && !inArrayData) {
                         output.append(input.substring(blockStart, i));
-                        blockStart=-1;
+                        blockStart = -1;
                         inArrayData = true;
                         i++;
-                        arrStart = i+1;  // plus one to skip the double brackets at start of array: [[
+                        arrStart = i + 1;  // plus one to skip the double brackets at start of array: [[
                     }
                     break;
                 case ']':
@@ -568,10 +568,28 @@ public class Utils {
     }
 
     public static int decodeInteger(byte[] buffer, int offset) {
-        return ((buffer[offset+3]) << 24) +
+        return ((buffer[offset + 3]) << 24) +
                 ((buffer[offset + 2] & 0xFF) << 16) +
                 ((buffer[offset + 1] & 0xFF) << 8) +
                 ((buffer[offset + 0] & 0xFF));
     }
+
+    public static char decodeCharacter(byte[] buffer, int offset) {
+        return (char) (((buffer[offset + 1] & 0xFF) << 8) +
+                ((buffer[offset + 0] & 0xFF)));
+    }
+
+
+    public static long decodeLong(byte[] buffer, int offset) {
+        return (long) buffer[offset] & 0xFF |
+                ((long) buffer[offset + 1] << 8L) & 0xFF |
+                ((long) buffer[offset + 2] << 16L) & 0xFF |
+                ((long) buffer[offset + 3] << 24L) & 0xFF |
+                ((long) buffer[offset + 4] << 32L) & 0xFF |
+                ((long) buffer[offset + 5] << 40L) & 0xFF |
+                ((long) buffer[offset + 6] << 48L) & 0xFF |
+                ((long) buffer[offset + 7] << 56L) & 0xFF;
+    }
+
 
 }

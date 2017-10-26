@@ -133,6 +133,11 @@ public class IndexMetadata {
         Map properties = fields;
         for (int i = 0; properties != null && i < parts.length; i++) {
             Map tmpproperties = ((Map) properties.get(parts[i]));
+            if (tmpproperties != null) {
+                if (tmpproperties.containsKey("properties"))
+                    tmpproperties = (Map) tmpproperties.get("properties");
+            }
+
             if (tmpproperties != null)
                 properties = tmpproperties;
         }

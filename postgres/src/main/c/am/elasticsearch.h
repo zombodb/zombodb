@@ -19,7 +19,7 @@
 #include "zdb_interface.h"
 
 void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shards, char *fieldProperties);
-void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor, HTAB *committedXids);
+void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
@@ -53,10 +53,11 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, 
 
 void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
-void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *itemPointers, bool isdeleted);
-char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor, char *type);
+void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete);
+char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor);
+void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor);
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, uint64 sequence);
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, int64 sequence);
 void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids);
