@@ -226,7 +226,7 @@ void Tally() #Tally :
     FieldnameRef fn;
 }
 {
-    ( <TALLY> "(" (fn = TrackedFieldnameReference()) "," (Word()|Phrase()) "," Number() "," (Word()|Phrase()) [LOOKAHEAD(2) "," Number()] [ "," Aggregations() ] ")" )
+    ( <TALLY> "(" (fn = TrackedFieldnameReference()) "," (Word()|Phrase()|Prefix()|Wildcard()) "," Number() "," (Word()|Phrase()) [LOOKAHEAD(2) "," Number()] [ "," Aggregations() ] ")" )
     {
         jjtThis.setIsNested(fn.nested);
         jjtThis.fieldname = fn.fieldName;
