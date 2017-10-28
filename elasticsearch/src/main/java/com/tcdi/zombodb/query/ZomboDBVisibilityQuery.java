@@ -15,11 +15,9 @@
  */
 package com.tcdi.zombodb.query;
 
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
-import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.FixedBitSet;
 
 import java.io.IOException;
@@ -43,43 +41,16 @@ class ZomboDBVisibilityQuery extends Query {
     }
 
     @Override
-    public Query rewrite(final IndexReader reader) throws IOException {
-        class VisFilter extends Filter {
-            private Map<Integer, FixedBitSet> visibilityBitSets = null;
-            private final IndexSearcher searcher;
+    public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
+        final Map<Integer, FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(myXid, xmin, xmax, commandid, activeXids, searcher);
 
-            private VisFilter(IndexSearcher searcher) {
-                this.searcher = searcher;
-            }
-
+        return new ConstantScoreWeight(this) {
             @Override
-            public DocIdSet getDocIdSet(LeafReaderContext context, Bits acceptDocs) throws IOException {
-                if (visibilityBitSets == null)
-                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(myXid, xmin, xmax, commandid, activeXids, searcher);
-                final FixedBitSet bitset = visibilityBitSets.get(context.ord);
-                if (bitset == null)
-                    return null;
-                else
-                    return new DocIdSet() {
-                        @Override
-                        public DocIdSetIterator iterator() throws IOException {
-                            return new BitSetIterator(bitset, bitset.length());
-                        }
-
-                        @Override
-                        public long ramBytesUsed() {
-                            return 0;
-                        }
-                    };
+            public Scorer scorer(LeafReaderContext context) throws IOException {
+                FixedBitSet bitset = visibilityBitSets.get(context.ord);
+                return bitset == null ? null : new ConstantScoreScorer(this, 0, new BitDocIdSet(bitset).iterator());
             }
-            @Override
-            public String toString(String field) {
-                return "Visibility Filter";
-            }
-        }
-
-        IndexSearcher searcher = new IndexSearcher(reader);
-        return new ConstantScoreQuery(new VisFilter(searcher));
+        };
     }
 
     @Override

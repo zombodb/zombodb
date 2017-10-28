@@ -53,12 +53,11 @@
 "          \"_all\": { \"enabled\": false, \"analyzer\": \"phrase\" },"\
 "          \"_routing\": { \"required\": true },"\
 "          \"_all\": { \"enabled\": false },"\
-"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
 "          \"properties\": {"\
 "              \"_xmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
 "              \"_cmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
 "              \"_replacement_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
-"              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true, \"compress\":false, \"compress_threshold\": 18 },"\
+"              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true },"\
 "              \"_zdb_reason\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
 "      },"\

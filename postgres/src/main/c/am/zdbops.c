@@ -525,9 +525,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
 
     appendStringInfo(result, "\"_zdb_encoded_tuple\": {"
             "\"type\":\"binary\","
-            "\"doc_values\": true,"
-            "\"compress\":false,"
-            "\"compress_threshold\": 18"\
+            "\"doc_values\": true"
             "},");
 
     appendStringInfo(result, "\"_zdb_blockno\": {"

@@ -203,9 +203,12 @@ final class VisibilityQueryHelper {
         // than it is to use TermsFilters with very long lists of _ids
         //
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
-        builder.add(new TermsQuery(new Term("_type", "data")), BooleanClause.Occur.MUST);
+        BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
+
         for (Query q : filters)
-            builder.add(q, BooleanClause.Occur.SHOULD);
+            builder2.add(q, BooleanClause.Occur.SHOULD);
+        builder.add(new TermsQuery(new Term("_type", "data")), BooleanClause.Occur.MUST);
+        builder.add(builder2.build(), BooleanClause.Occur.MUST);
 
         final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
         searcher.search(new ConstantScoreQuery(builder.build()),
