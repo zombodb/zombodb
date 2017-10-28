@@ -16,6 +16,7 @@
  */
 package com.tcdi.zombodb.query_parser.rewriters;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.QueryParser;
@@ -106,8 +107,11 @@ public abstract class QueryRewriter {
 
     /**
      * Container for range aggregation spec
+     *
+     * The class and its members *must* be public so that
+     * ObjectMapper can instantiate them
      */
-    static class RangeSpecEntry {
+    public static class RangeSpecEntry {
         public String key;
         public Double from;
         public Double to;
@@ -115,8 +119,11 @@ public abstract class QueryRewriter {
 
     /**
      * Container for date range aggregation spec
+     *
+     * The class and its members *must* be public so that
+     * ObjectMapper can instantiate them
      */
-    static class DateRangeSpecEntry {
+    public static class DateRangeSpecEntry {
         public String key;
         public String from;
         public String to;
@@ -338,7 +345,7 @@ public abstract class QueryRewriter {
             ab = nested("nested").path(agg.getNestedPath())
                     .subAggregation(
                             filter("filter")
-                                    .filter(queryFilter(build(tree)))
+                                    .filter(build(tree))
                                     .subAggregation(ab).subAggregation(missing("missing").field(getAggregateFieldName(agg)))
                     );
         }
@@ -389,6 +396,7 @@ public abstract class QueryRewriter {
             DateHistogramBuilder dhb = dateHistogram(agg.getFieldname())
                     .field(getAggregateFieldName(agg) + DateSuffix)
                     .order(stringToDateHistogramOrder(agg.getSortOrder()))
+                    .minDocCount(1)
                     .offset(intervalOffset);
 
             switch (interval) {
@@ -444,7 +452,7 @@ public abstract class QueryRewriter {
         return new AbstractAggregationBuilder("zdb_json", null) {
             @Override
             public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-                Map<String, Object> agg = new ObjectMapper().readValue(node.getEscapedValue(), Map.class);
+                Map<String, Object> agg = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).readValue(node.getEscapedValue(), Map.class);
                 for (Map.Entry<String, Object> entry : agg.entrySet()) {
                     builder.field(entry.getKey());
                     builder.value(entry.getValue());
@@ -467,7 +475,7 @@ public abstract class QueryRewriter {
 
     private static <T> T createRangeSpec(Class<T> type, String value) {
         try {
-            ObjectMapper om = new ObjectMapper();
+            ObjectMapper om = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
             return om.readValue(value, type);
         } catch (IOException ioe) {
             throw new QueryRewriteException("Problem decoding range spec: " + value, ioe);
@@ -683,7 +691,7 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(withNestedPath, fb);
             else
-                return nestedQuery(withNestedPath, fb);
+                return boolQuery().filter(nestedQuery(withNestedPath, fb));
         } else {
             return fb;
         }
@@ -989,22 +997,26 @@ public abstract class QueryRewriter {
                     });
                     return constantScoreQuery(builder);
                 } else {
-                    final Iterable<Object> finalItr = itr;
-                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
-                        @Override
-                        public Iterator<Object> iterator() {
-                            return finalItr.iterator();
-                        }
+                    if (minShouldMatch > 1) {
+                        BoolQueryBuilder bool = boolQuery();
+                        for (Object o : itr)
+                            bool.must(termQuery(n.getFieldname(), o));
+                        return bool;
+                    } else {
+                        final Iterable<Object> finalItr = itr;
 
-                        @Override
-                        public int size() {
-                            return cnt;
-                        }
-                    });
+                        return termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+                            @Override
+                            public Iterator<Object> iterator() {
+                                return finalItr.iterator();
+                            }
 
-                    if (minShouldMatch > 1)
-                        builder.minimumShouldMatch(String.valueOf(minShouldMatch));
-                    return builder;
+                            @Override
+                            public int size() {
+                                return cnt;
+                            }
+                        });
+                    }
                 }
             }
         });
