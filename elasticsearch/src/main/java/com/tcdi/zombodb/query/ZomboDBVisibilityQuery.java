@@ -41,12 +41,14 @@ class ZomboDBVisibilityQuery extends Query {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
-        final Map<Integer, FixedBitSet> visibilityBitSets = VisibilityQueryHelper.determineVisibility(myXid, xmin, xmax, commandid, activeXids, searcher);
-
+    public Weight createWeight(final IndexSearcher searcher, boolean needsScores) throws IOException {
         return new ConstantScoreWeight(this) {
+            Map<Integer, FixedBitSet> visibilityBitSets;
+
             @Override
             public Scorer scorer(LeafReaderContext context) throws IOException {
+                if (visibilityBitSets == null)
+                    visibilityBitSets = VisibilityQueryHelper.determineVisibility(myXid, xmin, xmax, commandid, activeXids, searcher);
                 FixedBitSet bitset = visibilityBitSets.get(context.ord);
                 return bitset == null ? null : new ConstantScoreScorer(this, 0, new BitDocIdSet(bitset).iterator());
             }
