@@ -66,7 +66,7 @@ Not to suggest that these things are impossible, but there's a small set of non-
 Product       | Version 
 ---           | ---      
 Postgres      | 9.3, 9.4, 9.5
-Elasticsearch | 2.4.5 only
+Elasticsearch | 2.4.6
 
 For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
 

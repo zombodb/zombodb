@@ -129,7 +129,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             }
 
             long searchStart = System.currentTimeMillis();
-            response = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).get();
+            response = client.search(builder.request()).get();
             searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 
             if (response.getTotalShards() != response.getSuccessfulShards())

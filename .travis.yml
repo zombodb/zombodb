@@ -23,8 +23,8 @@ before_install:
   - sudo apt-get install -y postgresql-9.5 postgresql-server-dev-9.5
   - sudo ls -lad /usr/share/postgresql/*
   - sudo apt-get install -y maven
-  - sudo wget --no-check-certificate https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.4.5/elasticsearch-2.4.5.deb
-  - sudo dpkg -i elasticsearch-2.4.5.deb
+  - sudo wget --no-check-certificate https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.4.6/elasticsearch-2.4.6.deb
+  - sudo dpkg -i elasticsearch-2.4.6.deb
 
 script:
   - sudo /etc/init.d/postgresql stop 9.5

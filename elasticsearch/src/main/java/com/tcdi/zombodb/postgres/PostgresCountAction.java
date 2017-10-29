@@ -63,7 +63,7 @@ public class PostgresCountAction extends BaseRestHandler {
                 builder.setNoFields();
                 builder.setQuery(query.getQueryBuilder());
 
-                SearchResponse searchResponse = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).get();
+                SearchResponse searchResponse = client.search(builder.request()).get();
 
                 if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
                     throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");

@@ -61,31 +61,8 @@ import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 public abstract class QueryRewriter {
 
     public static class Factory {
-        private static boolean IS_SIREN_AVAILABLE;
-
-        static {
-            try {
-                IS_SIREN_AVAILABLE = Class.forName("solutions.siren.join.index.query.FilterJoinBuilder") != null;
-                Loggers.getLogger(QueryRewriter.Factory.class).info("[zombodb] Using SIREn for join resolution");
-            } catch (Exception e) {
-                IS_SIREN_AVAILABLE = false;
-                Loggers.getLogger(QueryRewriter.Factory.class).info("[zombodb] Using ZomboDB for join resolution");
-            }
-        }
-
         public static QueryRewriter create(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-            if (IS_SIREN_AVAILABLE) {
-                try {
-                    Class clazz = Class.forName("com.tcdi.zombodb.query_parser.rewriters.SirenQueryRewriter");
-                    Constructor ctor = clazz.getConstructor(Client.class, String.class, String.class, String.class, boolean.class, boolean.class, boolean.class);
-                    return (QueryRewriter) ctor.newInstance(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException("Unable to construct SIREn-compatible QueryRewriter", e);
-                }
-            } else {
-                return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
-            }
+            return new ZomboDBQueryRewriter(client, indexName, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
         }
     }
 
