@@ -39,7 +39,7 @@ RUN apt-get install -y apt-transport-https
 RUN apt-get install -y -qq wget
 
 # elasticsearch
-RUN wget --no-check-certificate https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.4.4/elasticsearch-2.4.4.deb
+RUN wget --no-check-certificate https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.4.5/elasticsearch-2.4.5.deb
 
 # postgres
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
@@ -67,7 +67,7 @@ RUN apt-get install -y -qq libz-dev
 RUN apt-get install -y -qq maven
 
 # stack
-RUN dpkg -i elasticsearch-2.4.4.deb
+RUN dpkg -i elasticsearch-2.4.5.deb
 RUN apt-get install -y -qq postgresql-9.5 postgresql-server-dev-9.5
 
 # custom libcurl req'd by ZomboDB to statically link against
