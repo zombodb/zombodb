@@ -23,7 +23,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
    - [Index Management](INDEX-MANAGEMENT.md), [Index Options](INDEX-OPTIONS.md), and [Type Mapping](TYPE-MAPPING.md)
    - [Query Syntax](SYNTAX.md)  
    - [SQL-level API](SQL-API.md)  
-   - [v3.1.0 Release Notes](https://github.com/zombodb/zombodb/releases/tag/v3.1.0)
+   - [v3.2.0 Release Notes](https://github.com/zombodb/zombodb/releases/tag/v3.2.0)
 
 ## Features
 
