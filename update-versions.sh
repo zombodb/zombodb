@@ -7,7 +7,7 @@ if [ "${OLD}" == "" ] || [ "${NEW}" == "" ] ; then
 	echo Usage: ./update-versions.sh OLDVER NEWVER
 	exit 1
 fi
-for f in `find . -name pom.xml` elasticsearch/src/main/resources/es-plugin.properties postgres/zombodb.control docker/postgres/Dockerfile docker/elasticsearch/Dockerfile .gitignore ; do
+for f in `find . -name pom.xml` elasticsearch/src/main/resources/plugin-descriptor.properties postgres/zombodb.control docker/postgres/Dockerfile docker/elasticsearch/Dockerfile .gitignore ; do
 	echo Processing: $f
 	sed -i.bak s/${OLD}/${NEW}/g $f
 done

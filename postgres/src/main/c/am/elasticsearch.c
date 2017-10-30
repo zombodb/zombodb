@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <stdlib.h>
 #include "postgres.h"
 
 #include "fmgr.h"
@@ -42,25 +41,30 @@
 #include "zdbseqscan.h"
 #include "zdb_interface.h"
 
+/*
+ * an Elasticsearch 2.x limit for the number of docs that can be returned by a SearchRequest.
+ * ZDB issues SearchRequests during indexing and vacuum so we need to control it here.
+ */
+#define MAX_DOCS_PER_REQUEST 10000
+
 #define SECONDARY_TYPES_MAPPING \
 "      \"xmax\": {"\
 "          \"_source\": { \"enabled\": false },"\
+"          \"_all\": { \"enabled\": false, \"analyzer\": \"phrase\" },"\
 "          \"_routing\": { \"required\": true },"\
 "          \"_all\": { \"enabled\": false },"\
-"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
 "          \"properties\": {"\
 "              \"_xmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
 "              \"_cmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
 "              \"_replacement_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
-"              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true, \"compress\":false, \"compress_threshold\": 18 },"\
+"              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true },"\
 "              \"_zdb_reason\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
 "      },"\
 "      \"aborted\": {"\
 "          \"_source\": { \"enabled\": false },"\
+"          \"_all\": { \"enabled\": false, \"analyzer\": \"phrase\" },"\
 "          \"_routing\": { \"required\": true },"\
-"          \"_all\": { \"enabled\": false },"\
-"          \"_field_names\": { \"index\": \"no\", \"store\": false },"\
 "          \"properties\": {"\
 "             \"_zdb_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
 "          }"\
@@ -208,7 +212,6 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_source\": { \"enabled\": false },"
             "          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
@@ -299,7 +302,6 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "   \"data\": {"
             "      \"_source\": { \"enabled\": false },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "      \"_field_names\": { \"index\": \"no\", \"store\": false },"
             "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"
@@ -806,6 +808,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
     ListCell *lc;
+    int i=0;
 
 	appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
@@ -817,13 +820,14 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
 
         appendStringInfo(request, "{\"delete\":{\"_type\":\"data\",\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(item), ItemPointerGetOffsetNumber(item));
 
-        if (request->len >= indexDescriptor->batch_size) {
+        if (request->len >= indexDescriptor->batch_size || i%MAX_DOCS_PER_REQUEST == 0) {
             response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
             checkForBulkError(response, "zombodb vacuum");
 
             resetStringInfo(request);
             freeStringInfo(response);
         }
+        i++;
     }
 
     if (request->len > 0) {
@@ -983,7 +987,7 @@ elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ct
         fast_path = batch->rest->available > before && batch->nrecs >= (batch->nprocessed/batch->nrequests) - 250;
     }
 
-    if (fast_path || batch->bulk->buff->len >= indexDescriptor->batch_size) {
+    if (fast_path || batch->bulk->buff->len >= indexDescriptor->batch_size || batch->nrecs%MAX_DOCS_PER_REQUEST == 0) {
         StringInfo endpoint = makeStringInfo();
 
         /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */

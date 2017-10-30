@@ -15,17 +15,10 @@
  */
 package com.tcdi.zombodb.query;
 
-import org.apache.lucene.index.AtomicReaderContext;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.*;
+import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.FixedBitSet;
-import org.elasticsearch.common.lang3.ArrayUtils;
-import org.elasticsearch.common.lucene.search.XConstantScoreQuery;
 
 import java.io.IOException;
 import java.util.Map;
@@ -48,35 +41,23 @@ class ZomboDBVisibilityQuery extends Query {
     }
 
     @Override
-    public Query rewrite(final IndexReader reader) throws IOException {
-        class VisFilter extends Filter {
-            private Map<Integer, FixedBitSet> visibilityBitSets = null;
-            private final IndexSearcher searcher;
-
-            private VisFilter(IndexSearcher searcher) {
-                this.searcher = searcher;
-            }
+    public Weight createWeight(final IndexSearcher searcher, boolean needsScores) throws IOException {
+        return new ConstantScoreWeight(this) {
+            Map<Integer, FixedBitSet> visibilityBitSets;
 
             @Override
-            public DocIdSet getDocIdSet(AtomicReaderContext context, Bits acceptDocs) throws IOException {
+            public Scorer scorer(LeafReaderContext context) throws IOException {
                 if (visibilityBitSets == null)
                     visibilityBitSets = VisibilityQueryHelper.determineVisibility(myXid, xmin, xmax, commandid, activeXids, searcher);
-                return visibilityBitSets.get(context.ord);
+                FixedBitSet bitset = visibilityBitSets.get(context.ord);
+                return bitset == null ? null : new ConstantScoreScorer(this, 0, new BitDocIdSet(bitset).iterator());
             }
-        }
-
-        IndexSearcher searcher = new IndexSearcher(reader);
-        return new XConstantScoreQuery(new VisFilter(searcher));
-    }
-
-    @Override
-    public void extractTerms(Set<Term> terms) {
-
+        };
     }
 
     @Override
     public String toString(String field) {
-        return "visibility(myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", commandid=" + commandid + ", active=" + ArrayUtils.toString(activeXids) + ")";
+        return "visibility(myXid=" + myXid + ", xmin=" + xmin + ", xmax=" + xmax + ", commandid=" + commandid + ", active=" + activeXids + ")";
     }
 
     @Override
@@ -86,7 +67,7 @@ class ZomboDBVisibilityQuery extends Query {
         hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
         hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));
         hash = hash * 31 + (commandid);
-        hash = hash * 31 + ArrayUtils.toString(activeXids).hashCode();
+        hash = hash * 31 + activeXids.hashCode();
         return hash;
     }
 
@@ -103,6 +84,6 @@ class ZomboDBVisibilityQuery extends Query {
                 this.xmin == eq.xmin &&
                 this.xmax == eq.xmax &&
                 this.commandid == eq.commandid &&
-                ArrayUtils.isEquals(this.activeXids, eq.activeXids);
+                this.activeXids.containsAll(eq.activeXids) && this.activeXids.size() == eq.activeXids.size();
     }
 }

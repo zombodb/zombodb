@@ -57,6 +57,7 @@ http.compression: true
 
 http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
+index.max_result_window: 10000000
 ```
 
 The bulk threadpool must be increased because ZomboDB multiplexes against the `_bulk` endpoint.

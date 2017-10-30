@@ -1,7 +1,8 @@
 #! /bin/bash
 
 cat << DONE >> /etc/elasticsearch/elasticsearch.yml
-script.disable_dynamic: false
+script.inline: on
+script.indexed: on
 threadpool.bulk.queue_size: 1024
 threadpool.bulk.size: 12
 http.max_content_length: 1024mb

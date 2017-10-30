@@ -525,9 +525,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
 
     appendStringInfo(result, "\"_zdb_encoded_tuple\": {"
             "\"type\":\"binary\","
-            "\"doc_values\": true,"
-            "\"compress\":false,"
-            "\"compress_threshold\": 18"\
+            "\"doc_values\": true"
             "},");
 
     appendStringInfo(result, "\"_zdb_blockno\": {"
@@ -560,7 +558,8 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
         /* otherwise, build a mapping based on the field type */
         typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(tupdesc->attrs[i]->atttypid)));
         appendStringInfo(result, "\"%s\": {", name);
-        appendStringInfo(result, "\"store\":false,");
+        bool is_json = (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0);
+        if (!is_json) appendStringInfo(result, "\"store\":false,");
 
         if (strcmp("fulltext", typename) == 0) {
             /* phrase-indexed field */
@@ -570,13 +569,12 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"analyzer\": \"fulltext\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");
-
-        } else if (strcmp("fulltext_with_shingles", typename) == 0) {
+		} else if (strcmp("fulltext_with_shingles", typename) == 0) {
             /* phrase-indexed field */
             appendStringInfo(result, "\"type\": \"string\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"index_analyzer\": \"fulltext_with_shingles\",");
+            appendStringInfo(result, "\"analyzer\": \"fulltext_with_shingles\",");
             appendStringInfo(result, "\"search_analyzer\": \"fulltext_with_shingles_search\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");
@@ -588,7 +586,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"analyzer\": \"phrase\",");
             appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
             appendStringInfo(result, "\"norms\": {\"enabled\":true}");
-
         } else if (strcmp("date", typename) == 0 || strcmp("date[]", typename) == 0) {
             /* date field */
             appendStringInfo(result, "\"type\": \"string\",");
@@ -598,7 +595,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"fields\": {"
                     "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"}"
                     "}");
-
         } else if (strcmp("timestamp", typename) == 0 || strcmp("timestamp without time zone", typename) == 0 ||
                    strcmp("timestamp[]", typename) == 0 || strcmp("timestamp without time zone[]", typename) == 0) {
             /* timestamp field */
@@ -624,7 +620,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}"
 #endif
                     "}");
-
         } else if (strcmp("timestamp with time zone", typename) == 0 ||
                    strcmp("timestamp with time zone[]", typename) == 0) {
             /* timestamp field */
@@ -650,7 +645,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}"
 #endif
                     "}");
-
         } else if (strcmp("time", typename) == 0 || strcmp("time[]", typename) == 0 ||
                    strcmp("time without time zone", typename) == 0 ||
                    strcmp("time without time zone[]", typename) == 0) {
@@ -677,7 +671,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}"
 #endif
                     "}");
-
         } else if (strcmp("time with time zone", typename) == 0 || strcmp("time with time zone[]", typename) == 0) {
             /* time field */
             appendStringInfo(result, "\"type\": \"string\",");
@@ -702,7 +695,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}"
 #endif
                     "}");
-
         } else if (strcmp("smallint", typename) == 0 || strcmp("integer", typename) == 0 ||
                    strcmp("smallint[]", typename) == 0 || strcmp("integer[]", typename) == 0) {
             /* integer field */
@@ -759,14 +751,11 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"index_options\": \"docs\",");
             appendStringInfo(result, "\"ignore_above\":32000,");
             appendStringInfo(result, "\"analyzer\": \"exact\"");
-
-        } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
+        } else if (is_json) {
             /* json field */
             appendStringInfo(result, "\"type\": \"nested\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
             appendStringInfo(result, "\"include_in_parent\":true,");
             appendStringInfo(result, "\"include_in_root\":true,");
-            appendStringInfo(result, "\"ignore_above\":32000,");
             appendStringInfo(result, "\"include_in_all\":true");
 
         } else {

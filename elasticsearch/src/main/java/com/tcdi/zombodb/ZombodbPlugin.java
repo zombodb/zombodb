@@ -21,14 +21,14 @@ import com.tcdi.zombodb.query.ZomboDBVisibilityQueryParser;
 import org.elasticsearch.action.ActionModule;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.indices.query.IndicesQueriesModule;
-import org.elasticsearch.plugins.AbstractPlugin;
+import org.elasticsearch.indices.IndicesModule;
+import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.rest.RestModule;
 import org.xbib.elasticsearch.action.termlist.TermlistAction;
 import org.xbib.elasticsearch.action.termlist.TransportTermlistAction;
 import org.xbib.elasticsearch.rest.action.termlist.RestTermlistAction;
 
-public class ZombodbPlugin extends AbstractPlugin {
+public class ZombodbPlugin extends Plugin {
 
     @Inject
     public ZombodbPlugin(Settings settings) {
@@ -56,8 +56,8 @@ public class ZombodbPlugin extends AbstractPlugin {
         module.registerAction(TermlistAction.INSTANCE, TransportTermlistAction.class);
     }
 
-    public void onModule(IndicesQueriesModule module) {
-        module.addQuery(ZomboDBVisibilityQueryParser.class);
+    public void onModule(IndicesModule module) {
+        module.registerQueryParser(ZomboDBVisibilityQueryParser.class);
     }
 
     @Override

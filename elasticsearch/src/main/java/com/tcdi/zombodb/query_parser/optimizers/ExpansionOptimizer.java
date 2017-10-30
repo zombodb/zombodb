@@ -20,6 +20,7 @@ import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.ActionFuture;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -161,11 +162,11 @@ public class ExpansionOptimizer {
 
         QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery));
 
-        SearchRequestBuilder builder = new SearchRequestBuilder(client)
+        SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE)
                 .setSize(0)
                 .setSearchType(SearchType.COUNT)
                 .setQuery(query)
-                .setQueryCache(true)
+                .setRequestCache(true)
                 .setIndices(link.getIndexName())
                 .setTypes("data")
                 .setTrackScores(false)

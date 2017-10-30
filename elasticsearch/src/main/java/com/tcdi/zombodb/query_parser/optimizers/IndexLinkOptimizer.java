@@ -20,6 +20,7 @@ import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.metadata.Dijkstra;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
@@ -403,12 +404,12 @@ public class IndexLinkOptimizer {
     }
 
     private long estimateCount(ASTExpansion expansion, boolean useQuery) {
-        SearchRequestBuilder builder = new SearchRequestBuilder(client);
+        SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
         builder.setIndices(expansion.getIndexLink().getIndexName());
         builder.setTypes("data");
         builder.setSize(0);
         builder.setSearchType(SearchType.COUNT);
-        builder.setQueryCache(true);
+        builder.setRequestCache(true);
         builder.setFetchSource(false);
         builder.setTrackScores(false);
         builder.setNoFields();

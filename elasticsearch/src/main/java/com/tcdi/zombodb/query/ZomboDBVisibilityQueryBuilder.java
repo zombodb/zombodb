@@ -16,11 +16,11 @@
 package com.tcdi.zombodb.query;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.index.query.BaseQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
 
 import java.io.IOException;
 
-public class ZomboDBVisibilityQueryBuilder extends BaseQueryBuilder {
+public class ZomboDBVisibilityQueryBuilder extends QueryBuilder {
 
     private long myXid;
     private boolean haveMyXid;

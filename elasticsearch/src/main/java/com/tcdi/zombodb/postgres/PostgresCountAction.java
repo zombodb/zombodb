@@ -16,6 +16,7 @@
  */
 package com.tcdi.zombodb.postgres;
 
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -47,23 +48,22 @@ public class PostgresCountAction extends BaseRestHandler {
             QueryAndIndexPair query;
 
             query = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, !isSelectivityQuery, true, true);
-
             if (query.hasLimit() && isSelectivityQuery) {
                 count = query.getLimit().getLimit();
             } else {
-                SearchRequestBuilder builder = new SearchRequestBuilder(client);
+                SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
                 builder.setIndices(query.getIndexName());
                 builder.setTypes("data");
                 builder.setSize(0);
                 builder.setSearchType(SearchType.COUNT);
                 builder.setPreference(request.param("preference"));
-                builder.setQueryCache(true);
+                builder.setRequestCache(true);
                 builder.setFetchSource(false);
                 builder.setTrackScores(false);
                 builder.setNoFields();
                 builder.setQuery(query.getQueryBuilder());
 
-                SearchResponse searchResponse = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).get();
+                SearchResponse searchResponse = client.search(builder.request()).get();
 
                 if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
                     throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
