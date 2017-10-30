@@ -93,7 +93,7 @@ Not to suggest that these things are impossible, but there's a small set of non-
 Product       | Version 
 ---           | ---      
 Postgres      | 9.3, 9.4, 9.5
-Elasticsearch | 1.7.1+ (not 2.0)
+Elasticsearch | 1.7.x or 2.5.6+
 
 For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
 
