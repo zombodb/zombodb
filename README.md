@@ -66,7 +66,7 @@ Not to suggest that these things are impossible, but there's a small set of non-
 
 Please visit [www.zombodb.com/releases/](https://www.zombodb.com/releases) to download.
 
-If you want to integrate with some kind of CI or deployment system, you can intuit the pattern for versions from the Elasticsearch plugin and Postgres extension download links, but i'll be something like:
+If you want to integrate with some kind of CI or deployment system, you can intuit the pattern for versions from the Elasticsearch plugin and Postgres extension download links, but it'll be something like:
 
 ```
 https://www.zombodb.com/releases/VERSION/zombodb-es-plugin-VERSION.zip
