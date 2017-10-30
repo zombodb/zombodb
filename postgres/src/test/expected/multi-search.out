@@ -1,7 +1,0 @@
-select table_name, user_identifier, query, total from zdb_multi_search(ARRAY['so_posts', 'so_users'], ARRAY['a', 'b'], 'java javascript');
- table_name | user_identifier |      query      | total 
-------------+-----------------+-----------------+-------
- so_posts   | a               | java javascript |  1182
- so_users   | b               | java javascript |  1310
-(2 rows)
-
