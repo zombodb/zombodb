@@ -1,5 +1,7 @@
 # [![ZomboDB](logo.png)](http://www.zombodb.com/) [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
 
+(This branch is for Elasticsearch 1.7.x)
+
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
 backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.5/static/indexam.html).
 
@@ -61,12 +63,25 @@ Not to suggest that these things are impossible, but there's a small set of non-
 - interoperability with various Postgres replication schemes is unknown
 - Postgres [HOT](https://github.com/postgres/postgres/blob/master/src/backend/access/heap/README.HOT) update chains are not supported (necessitates a `VACUUM FULL` if a HOT-updated row is found)
 
+## Downloading
+
+Please visit [www.zombodb.com/releases/](https://www.zombodb.com/releases) to download.
+
+If you want to integrate with some kind of CI or deployment system, you can intuit the pattern for versions from the Elasticsearch plugin and Postgres extension download links, but i'll be something like:
+
+```
+https://www.zombodb.com/releases/VERSION/zombodb-es-plugin-VERSION.zip
+https://www.zombodb.com/releases/VERSION/zombodb_trusty_pg95-VERSION_amd64.deb
+```
+
+For the Postgres extension binaries, you'll need to use the one that's for your Postgres + Linux distro combination -- the example above is for Postgres 9.5 on Ubuntu Trusty.
+
 ## What you need
 
 Product       | Version 
 ---           | ---      
 Postgres      | 9.3, 9.4, 9.5
-Elasticsearch | 1.7.1+ (not 2.0)
+Elasticsearch | 1.7.1+
 
 For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
 
