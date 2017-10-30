@@ -13,12 +13,16 @@
 package org.xbib.elasticsearch.plugin.termlist;
 
 import com.tcdi.zombodb.test.ZomboDBTestCase;
+import org.elasticsearch.action.admin.indices.create.CreateIndexAction;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
+import org.elasticsearch.action.index.IndexAction;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.xbib.elasticsearch.action.termlist.TermlistRequestBuilder;
+import org.xbib.elasticsearch.action.termlist.TermlistAction;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,6 +31,7 @@ import java.util.*;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
+@Ignore
 public class TestTermListPlugin extends ZomboDBTestCase {
 
     @Test
@@ -36,25 +41,25 @@ public class TestTermListPlugin extends ZomboDBTestCase {
                 .startObject("properties")
                 .startObject("content")
                 .field("type", "string")
-                .field("analzyer", "german")
+                .field("analyzer", "german")
                 .endObject()
                 .endObject()
                 .endObject();
-        CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client().admin().indices())
+        CreateIndexRequestBuilder createIndexRequestBuilder = new CreateIndexRequestBuilder(client(), CreateIndexAction.INSTANCE)
                 .setIndex("test")
                 .addMapping("docs", builder);
         createIndexRequestBuilder.execute().actionGet();
         for (int i = 0; i < 10; i++) {
             String content = join(makeList(), " ");
             //logger.info("{} -> {}", i, content);
-            IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client())
+            IndexRequestBuilder indexRequestBuilder = new IndexRequestBuilder(client(), IndexAction.INSTANCE)
                     .setIndex("test")
                     .setType("docs")
                     .setId(Integer.toString(i))
                     .setSource("content", content);
             indexRequestBuilder.setRefresh(true).execute().actionGet();
         }
-        TermlistRequestBuilder termlistRequestBuilder = new TermlistRequestBuilder(client());
+        TermlistRequestBuilder termlistRequestBuilder = new TermlistRequestBuilder(client(), TermlistAction.INSTANCE);
         termlistRequestBuilder.execute().actionGet();
     }
 

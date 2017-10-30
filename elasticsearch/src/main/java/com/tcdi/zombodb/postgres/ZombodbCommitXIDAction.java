@@ -3,6 +3,7 @@ package com.tcdi.zombodb.postgres;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteAction;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
@@ -48,7 +49,7 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
 
             for (String routing : routingTable) {
                 bulkRequest.add(
-                        new DeleteRequestBuilder(client)
+                        DeleteAction.INSTANCE.newRequestBuilder(client)
                                 .setIndex(index)
                                 .setType("aborted")
                                 .setRouting(routing)

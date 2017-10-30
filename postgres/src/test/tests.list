@@ -84,6 +84,7 @@ schema
 issue-132
 issue-134
 tableoid
+issue-148
 issue-141
 aliases
 committed-xid-routing

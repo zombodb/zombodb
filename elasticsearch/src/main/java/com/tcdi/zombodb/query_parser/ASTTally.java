@@ -14,7 +14,15 @@ class ASTTally extends ASTAggregate {
 
 
   public String getStem() {
-    return String.valueOf(getChild(0).getValue());
+    QueryParserNode node = getChild(0);
+    String stem = String.valueOf(node.getValue());
+    if (stem.startsWith("^"))
+      stem = stem.substring(1);
+
+    if (node instanceof ASTPrefix)
+      stem += "*";
+
+    return stem;
   }
 
   public int getMaxTerms() {

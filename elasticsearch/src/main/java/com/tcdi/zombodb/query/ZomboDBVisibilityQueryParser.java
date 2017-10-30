@@ -65,15 +65,15 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
                 } else if ("commandid".equals(currentFieldName)) {
                     commandid = parser.intValue();
                 } else {
-                    throw new QueryParsingException(parseContext.index(), "[zdb visibility] query does not support [" + currentFieldName + "]");
+                    throw new QueryParsingException(parseContext, "[zdb visibility] query does not support [" + currentFieldName + "]");
                 }
             }
         }
 
         if (xmin == -1)
-            throw new QueryParsingException(parseContext.index(), "[zdb visibility] missing [xmin]");
+            throw new QueryParsingException(parseContext, "[zdb visibility] missing [xmin]");
         else if (xmax == -1)
-            throw new QueryParsingException(parseContext.index(), "[zdb visibility] missing [xmax]");
+            throw new QueryParsingException(parseContext, "[zdb visibility] missing [xmax]");
 
         return new ZomboDBVisibilityQuery(myXid, xmin, xmax, commandid, activeXids);
     }

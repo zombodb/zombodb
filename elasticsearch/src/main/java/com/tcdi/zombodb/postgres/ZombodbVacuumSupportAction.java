@@ -53,7 +53,7 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
 
         // return the ctid (_id) of every document we think might be invisible to us
         // based on the current state of the underlying index
-        SearchRequestBuilder search = new SearchRequestBuilder(client)
+        SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("data")
                 .setSearchType(SearchType.SCAN)
@@ -79,7 +79,7 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
                 offset += Utils.encodeLong(total, bytes, offset);
             } else {
                 response = client.execute(SearchScrollAction.INSTANCE,
-                        new SearchScrollRequestBuilder(client)
+                        SearchScrollAction.INSTANCE.newRequestBuilder(client)
                                 .setScrollId(response.getScrollId())
                                 .setScroll(TimeValue.timeValueMinutes(10))
                                 .request()).actionGet();

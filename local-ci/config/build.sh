@@ -17,11 +17,14 @@
 
 export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
 
+
 mvn clean install
 
-/usr/share/elasticsearch/bin/plugin -i zombodb -u file:///build/zombodb/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+/usr/share/elasticsearch/bin/plugin install file:///build/zombodb/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
 /etc/init.d/elasticsearch start
 
+sleep 10
+tail -n 1000 /var/log/e*
 mvn clean
 
 cd postgres

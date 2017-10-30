@@ -47,7 +47,7 @@ public class ZombodbGetXidVacuumCandidatesAction extends BaseRestHandler {
         // all the _zdb_xid values in the "aborted" type
         // Some of these xids may still be in-progress, but that's okay
         // because Postgres will decide for us which ones are really aborted
-        SearchRequestBuilder search = new SearchRequestBuilder(client)
+        SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("aborted")
                 .setSearchType(SearchType.SCAN)
@@ -64,7 +64,7 @@ public class ZombodbGetXidVacuumCandidatesAction extends BaseRestHandler {
                 total = (int) response.getHits().getTotalHits();
             } else {
                 response = client.execute(SearchScrollAction.INSTANCE,
-                        new SearchScrollRequestBuilder(client)
+                        SearchScrollAction.INSTANCE.newRequestBuilder(client)
                                 .setScrollId(response.getScrollId())
                                 .setScroll(TimeValue.timeValueMinutes(10))
                                 .request()).actionGet();

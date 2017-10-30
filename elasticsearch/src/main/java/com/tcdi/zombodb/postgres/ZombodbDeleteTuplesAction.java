@@ -20,6 +20,7 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexAction;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
@@ -76,7 +77,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
 
                 for (String routing : routingTable) {
                     abortedRequests.add(
-                            new IndexRequestBuilder(client)
+                            IndexAction.INSTANCE.newRequestBuilder(client)
                                     .setIndex(index)
                                     .setType("aborted")
                                     .setRouting(routing)
@@ -88,7 +89,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
             }
 
             xmaxRequests.add(
-                    new IndexRequestBuilder(client)
+                    IndexAction.INSTANCE.newRequestBuilder(client)
                             .setIndex(index)
                             .setType("xmax")
                             .setVersionType(VersionType.FORCE)

@@ -13,6 +13,7 @@
  */
 package org.xbib.elasticsearch.rest.action.termlist;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.Strings;
@@ -32,7 +33,7 @@ import static org.elasticsearch.rest.action.support.RestActions.buildBroadcastSh
 
 public class RestTermlistAction extends BaseRestHandler {
 
-    static class TermListDescriptor {
+    public static class TermListDescriptor {
         public String fieldname;
         public String prefix;
         public String startAt;
@@ -45,9 +46,10 @@ public class RestTermlistAction extends BaseRestHandler {
         controller.registerHandler(POST, "/{index}/_zdbtermlist", this);
     }
 
-    public void handleRequest(final RestRequest request, final RestChannel channel, final Client client) {
+    @Override
+    protected void handleRequest(final RestRequest request, final RestChannel channel, final Client client) {
         try {
-            final TermListDescriptor descriptor = new ObjectMapper().readValue(request.content().toUtf8(), TermListDescriptor.class);
+            final TermListDescriptor descriptor = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).readValue(request.content().toUtf8(), TermListDescriptor.class);
             TermlistRequest termlistRequest = new TermlistRequest(Strings.splitStringByCommaToArray(request.param("index")));
             termlistRequest.setFieldname(descriptor.fieldname);
             termlistRequest.setPrefix(descriptor.prefix);
@@ -59,7 +61,7 @@ public class RestTermlistAction extends BaseRestHandler {
                 @Override
                 public RestResponse buildResponse(TermlistResponse response, XContentBuilder builder) throws Exception {
                     builder.startObject();
-                    buildBroadcastShardsHeader(builder, response);
+                    buildBroadcastShardsHeader(builder, request, response);
                     builder.field("took", (System.nanoTime() - t0) / 1000000);
                     builder.field("numdocs", response.getNumDocs());
                     builder.field("numterms", response.getTermlist().size());

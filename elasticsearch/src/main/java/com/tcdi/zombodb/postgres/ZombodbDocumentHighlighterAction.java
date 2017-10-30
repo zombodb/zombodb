@@ -16,6 +16,7 @@
  */
 package com.tcdi.zombodb.postgres;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.highlight.DocumentHighlighter;
@@ -43,7 +44,8 @@ public class ZombodbDocumentHighlighterAction extends BaseRestHandler {
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         BytesRestResponse response;
-        ObjectMapper om = new ObjectMapper();
+        ObjectMapper om = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
+
         Map<String, Object> input;
         String queryString;
         String primaryKeyFieldname;
@@ -67,7 +69,7 @@ public class ZombodbDocumentHighlighterAction extends BaseRestHandler {
                 tokens.addAll(highlighter.highlight());
             }
 
-            response = new BytesRestResponse(RestStatus.OK, "application/text", new ObjectMapper().writeValueAsString(tokens));
+            response = new BytesRestResponse(RestStatus.OK, "application/text", new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).writeValueAsString(tokens));
             channel.sendResponse(response);
         } catch (Exception e) {
             e.printStackTrace();

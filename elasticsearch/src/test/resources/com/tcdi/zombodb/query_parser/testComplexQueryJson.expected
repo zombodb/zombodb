@@ -24,25 +24,29 @@
             }, {
               "regexp" : {
                 "field" : {
-                  "value" : "^.*"
+                  "value" : "^.*",
+                  "flags_value" : 65535
                 }
               }
             }, {
-              "filtered" : {
-                "query" : {
-                  "match_all" : { }
-                },
+              "constant_score" : {
                 "filter" : {
                   "terms" : {
-                    "subject" : [ "a", "b", "c", "d" ],
-                    "_cache" : true
+                    "subject" : [ "a", "b", "c", "d" ]
                   }
                 }
               }
             }, {
-              "terms" : {
-                "fileextension" : [ "pdf", "pdf" ],
-                "minimum_should_match" : "2"
+              "bool" : {
+                "must" : [ {
+                  "term" : {
+                    "fileextension" : "pdf"
+                  }
+                }, {
+                  "term" : {
+                    "fileextension" : "pdf"
+                  }
+                } ]
               }
             }, {
               "term" : {
@@ -851,14 +855,9 @@
             } ]
           }
         }, {
-          "filtered" : {
-            "query" : {
-              "match_all" : { }
-            },
-            "filter" : {
-              "script" : {
-                "script" : " doc['id'].value > 1024 "
-              }
+          "script" : {
+            "script" : {
+              "inline" : " doc['id'].value > 1024 "
             }
           }
         }, {
@@ -980,24 +979,17 @@
         "must" : [ {
           "bool" : {
             "must" : [ {
-              "filtered" : {
-                "query" : {
-                  "match_all" : { }
-                },
+              "constant_score" : {
                 "filter" : {
                   "terms" : {
-                    "title" : [ 1, 2, 3, 4, 5 ],
-                    "_cache" : true
+                    "title" : [ 1, 2, 3, 4, 5 ]
                   }
                 }
               }
             }, {
-              "filtered" : {
-                "query" : {
-                  "match_all" : { }
-                },
-                "filter" : {
-                  "missing" : {
+              "bool" : {
+                "must_not" : {
+                  "exists" : {
                     "field" : "field"
                   }
                 }
@@ -1517,12 +1509,9 @@
             "should" : [ {
               "bool" : {
                 "should" : [ {
-                  "filtered" : {
-                    "query" : {
-                      "match_all" : { }
-                    },
-                    "filter" : {
-                      "missing" : {
+                  "bool" : {
+                    "must_not" : {
+                      "exists" : {
                         "field" : "fulltext_field"
                       }
                     }
@@ -1540,12 +1529,9 @@
             }, {
               "bool" : {
                 "should" : [ {
-                  "filtered" : {
-                    "query" : {
-                      "match_all" : { }
-                    },
-                    "filter" : {
-                      "missing" : {
+                  "bool" : {
+                    "must_not" : {
+                      "exists" : {
                         "field" : "_all"
                       }
                     }
@@ -1703,9 +1689,16 @@
                         "path" : "review_data"
                       }
                     }, {
-                      "terms" : {
-                        "field" : [ "drink", "food" ],
-                        "minimum_should_match" : "2"
+                      "bool" : {
+                        "must" : [ {
+                          "term" : {
+                            "field" : "drink"
+                          }
+                        }, {
+                          "term" : {
+                            "field" : "food"
+                          }
+                        } ]
                       }
                     }, {
                       "nested" : {

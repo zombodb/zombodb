@@ -9,9 +9,11 @@ import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.bulk.BulkShardRequest;
+import org.elasticsearch.action.delete.DeleteAction;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.index.IndexAction;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
@@ -66,10 +68,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
             bulkRequest.consistencyLevel(WriteConsistencyLevel.fromString(consistencyLevel));
         }
 
-        bulkRequest.listenerThreaded(false);
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
         bulkRequest.refresh(refresh);
-        bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, true);
+        bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, null, true);
 
         List<ActionRequest> xmaxRequests = new ArrayList<>();
         List<ActionRequest> abortedRequests = new ArrayList<>();
@@ -82,7 +83,6 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 handleIndexRequests(client, bulkRequest.requests(), defaultIndex, requestNumber, xmaxRequests, abortedRequests);
             }
         }
-
 
         if (isdelete) {
             // when deleting, we need to delete the "data" docs first
@@ -212,7 +212,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             DeleteRequest doc = (DeleteRequest) ar;
 
             xmaxRequests.add(
-                    new DeleteRequestBuilder(client)
+                    DeleteAction.INSTANCE.newRequestBuilder(client)
                             .setIndex(defaultIndex)
                             .setType("xmax")
                             .setRouting(doc.id())
@@ -267,7 +267,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 BytesRef encodedTuple = encodeTuple(xmin.longValue(), cmin.intValue(), blockno, offno);
 
                 xmaxRequests.add(
-                        new IndexRequestBuilder(client)
+                        IndexAction.INSTANCE.newRequestBuilder(client)
                                 .setIndex(defaultIndex)
                                 .setType("xmax")
                                 .setVersionType(VersionType.FORCE)
@@ -283,7 +283,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 // delete a possible existing xmax value for this doc
                 // but only if we're in an index build (ie, CREATE INDEX)
                 xmaxRequests.add(
-                        new DeleteRequestBuilder(client)
+                        DeleteAction.INSTANCE.newRequestBuilder(client)
                                 .setIndex(defaultIndex)
                                 .setType("xmax")
                                 .setRouting(doc.id())
@@ -301,7 +301,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
                 for (String routing : routingTable) {
                     abortedRequests.add(
-                            new IndexRequestBuilder(client)
+                            IndexAction.INSTANCE.newRequestBuilder(client)
                                     .setIndex(defaultIndex)
                                     .setType("aborted")
                                     .setRouting(routing)

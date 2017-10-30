@@ -15,25 +15,19 @@
  */
 package com.tcdi.zombodb.query;
 
+import com.carrotsearch.hppc.IntHashSet;
+import com.carrotsearch.hppc.IntSet;
+import com.carrotsearch.hppc.cursors.IntCursor;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queries.TermFilter;
-import org.apache.lucene.queries.TermsFilter;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.NumericRangeFilter;
+import org.apache.lucene.queries.TermsQuery;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
-import org.elasticsearch.common.hppc.IntOpenHashSet;
-import org.elasticsearch.common.hppc.IntSet;
-import org.elasticsearch.common.hppc.cursors.IntCursor;
-import org.elasticsearch.common.lucene.search.AndFilter;
-import org.elasticsearch.common.lucene.search.MatchAllDocsFilter;
-import org.elasticsearch.common.lucene.search.OrFilter;
-import org.elasticsearch.common.lucene.search.XConstantScoreQuery;
 
 import java.io.IOException;
 import java.util.*;
@@ -64,7 +58,7 @@ final class VisibilityQueryHelper {
         XminXmaxCounts invoke() throws IOException {
             doccnt = 0;
             xmaxcnt = 0;
-            for (AtomicReaderContext context : searcher.getIndexReader().leaves()) {
+            for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
                 Terms terms;
 
                 terms = context.reader().terms("_xmin");
@@ -84,7 +78,7 @@ final class VisibilityQueryHelper {
      * for filtering in #determineVisibility
      */
     private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids, final List<BytesRef> abortedXidsAsBytes) throws IOException {
-        searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "aborted"))),
+        searcher.search(new ConstantScoreQuery(new TermFilter(new Term("_type", "aborted"))),
                 new ZomboDBTermsCollector() {
                     SortedNumericDocValues _zdb_xid;
 
@@ -101,7 +95,7 @@ final class VisibilityQueryHelper {
                     }
 
                     @Override
-                    public void setNextReader(AtomicReaderContext context) throws IOException {
+                    protected void doSetNextReader(LeafReaderContext context) throws IOException {
                         _zdb_xid = context.reader().getSortedNumericDocValues("_zdb_xid");
                     }
                 }
@@ -121,13 +115,13 @@ final class VisibilityQueryHelper {
             BinaryDocValues _zdb_encoded_tuple;
 
             @Override
-            public void setNextReader(AtomicReaderContext context) throws IOException {
+            protected void doSetNextReader(LeafReaderContext context) throws IOException {
                 _zdb_encoded_tuple = context.reader().getBinaryDocValues("_zdb_encoded_tuple");
             }
         }
 
         if (dirtyBlocks != null) {
-            searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
+            searcher.search(new ConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
                     new Collector() {
                         @Override
                         public void collect(int doc) throws IOException {
@@ -138,7 +132,7 @@ final class VisibilityQueryHelper {
                     }
             );
         } else {
-            searcher.search(new XConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
+            searcher.search(new ConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
                     new Collector() {
                         @Override
                         public void collect(int doc) throws IOException {
@@ -157,7 +151,7 @@ final class VisibilityQueryHelper {
 
         final boolean just_get_everything = xmaxcnt >= doccnt/3;
 
-        final IntSet dirtyBlocks = just_get_everything ? null : new IntOpenHashSet();
+        final IntSet dirtyBlocks = just_get_everything ? null : new IntHashSet();
         final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>(xmaxcnt);
 
         collectMaxes(searcher, modifiedTuples, dirtyBlocks);
@@ -167,13 +161,13 @@ final class VisibilityQueryHelper {
 
         collectAbortedXids(searcher, abortedXids, abortedXidsAsBytes);
 
-        final List<Filter> filters = new ArrayList<>();
+        final List<Query> filters = new ArrayList<>();
         if (just_get_everything) {
             // if the number of docs with xmax values is at least 1/3 of the total docs
             // just go ahead and ask for everything.  This is much faster than asking
             // lucene to parse and lookup tens of thousands (or millions!) of individual
             // _uid values
-            filters.add(new MatchAllDocsFilter());
+            filters.add(new MatchAllDocsQuery());
         } else {
             // just look at all the docs on the blocks we've identified as dirty
             if (!dirtyBlocks.isEmpty()) {
@@ -183,7 +177,7 @@ final class VisibilityQueryHelper {
                     NumericUtils.intToPrefixCoded(blockNumber.value, 0, builder);
                     tmp.add(builder.toBytesRef());
                 }
-                filters.add(new TermsFilter("_zdb_blockno", tmp));
+                filters.add(new TermsQuery("_zdb_blockno", tmp));
             }
 
             // we also need to examine docs that might be aborted or inflight on non-dirty pages
@@ -196,10 +190,10 @@ final class VisibilityQueryHelper {
             }
 
             if (!activeXids.isEmpty())
-                filters.add(new TermsFilter("_xmin", activeXidsAsBytes));
+                filters.add(new TermsQuery("_xmin", activeXidsAsBytes));
             if (!abortedXids.isEmpty())
-                filters.add(new TermsFilter("_xmin", abortedXidsAsBytes));
-            filters.add(NumericRangeFilter.newLongRange("_xmin", myXmin, null, true, true));
+                filters.add(new TermsQuery("_xmin", abortedXidsAsBytes));
+            filters.add(NumericRangeQuery.newLongRange("_xmin", myXmin, null, true, true));
         }
 
         //
@@ -208,15 +202,16 @@ final class VisibilityQueryHelper {
         // but that's okay because it's cheaper to find and examine more docs
         // than it is to use TermsFilters with very long lists of _ids
         //
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+        BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
+
+        for (Query q : filters)
+            builder2.add(q, BooleanClause.Occur.SHOULD);
+        builder.add(new TermsQuery(new Term("_type", "data")), BooleanClause.Occur.MUST);
+        builder.add(builder2.build(), BooleanClause.Occur.MUST);
+
         final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
-        searcher.search(new XConstantScoreQuery(
-                        new AndFilter(
-                                Arrays.asList(
-                                        new TermFilter(new Term("_type", "data")),
-                                        new OrFilter(filters)
-                                )
-                        )
-                ),
+        searcher.search(new ConstantScoreQuery(builder.build()),
                 new ZomboDBTermsCollector() {
                     private final ByteArrayDataInput in = new ByteArrayDataInput();
                     private BinaryDocValues _zdb_encoded_tuple;
@@ -298,10 +293,15 @@ final class VisibilityQueryHelper {
                     }
 
                     @Override
-                    public void setNextReader(AtomicReaderContext context) throws IOException {
+                    protected void doSetNextReader(LeafReaderContext context) throws IOException {
                         _zdb_encoded_tuple = context.reader().getBinaryDocValues("_zdb_encoded_tuple");
                         contextOrd = context.ord;
                         maxdoc = context.reader().maxDoc();
+                    }
+
+                    @Override
+                    public boolean needsScores() {
+                        return false;
                     }
                 }
         );

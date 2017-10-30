@@ -20,6 +20,7 @@ import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteAction;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
@@ -101,7 +102,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
         int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
         String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
 
-        SearchRequestBuilder search = new SearchRequestBuilder(client)
+        SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("xmax")
                 .setSearchType(SearchType.SCAN)
@@ -119,7 +120,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                     total = (int) response.getHits().getTotalHits();
                 } else {
                     response = client.execute(SearchScrollAction.INSTANCE,
-                            new SearchScrollRequestBuilder(client)
+                            SearchScrollAction.INSTANCE.newRequestBuilder(client)
                                     .setScrollId(response.getScrollId())
                                     .setScroll(TimeValue.timeValueMinutes(10))
                                     .request()).actionGet();
@@ -132,7 +133,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                     // is known to be aborted by Postgres.  As such, its corresponding
                     // "data" doc is going to be visible to all transactions
                     xmaxRequests.add(
-                            new DeleteRequestBuilder(client)
+                            DeleteAction.INSTANCE.newRequestBuilder(client)
                                     .setIndex(index)
                                     .setType("xmax")
                                     // it's imperative we set the version here to the same version
@@ -162,7 +163,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
             for (Long xid : xids) {
                 for (String routing : routingTable) {
                     abortedRequests.add(
-                            new DeleteRequestBuilder(client)
+                            DeleteAction.INSTANCE.newRequestBuilder(client)
                                     .setIndex(index)
                                     .setType("aborted")
                                     .setRouting(routing)
@@ -176,7 +177,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
     }
 
     private void filterXidsByDataXmin(Client client, String index, Set<Long> xids) {
-        SearchRequestBuilder search = new SearchRequestBuilder(client)
+        SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("data")
                 .setSearchType(SearchType.SCAN)
@@ -193,7 +194,7 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                 total = (int) response.getHits().getTotalHits();
             } else {
                 response = client.execute(SearchScrollAction.INSTANCE,
-                        new SearchScrollRequestBuilder(client)
+                        SearchScrollAction.INSTANCE.newRequestBuilder(client)
                                 .setScrollId(response.getScrollId())
                                 .setScroll(TimeValue.timeValueMinutes(10))
                                 .request()).actionGet();

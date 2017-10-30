@@ -20,10 +20,7 @@ import com.tcdi.zombodb.query_parser.ASTLimit;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchScrollRequestBuilder;
-import org.elasticsearch.action.search.SearchType;
+import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -110,12 +107,12 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             query = buildJsonQueryFromRequestContent(client, request, true, false, false);
             parseEnd = System.nanoTime();
 
-            SearchRequestBuilder builder = new SearchRequestBuilder(client);
+            SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
             builder.setIndices(query.getIndexName());
             builder.setTypes("data");
             builder.setPreference(request.param("preference"));
             builder.setTrackScores(true);
-            builder.setQueryCache(true);
+            builder.setRequestCache(true);
             builder.setFetchSource(false);
             builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
@@ -132,7 +129,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             }
 
             long searchStart = System.currentTimeMillis();
-            response = client.execute(DynamicSearchActionHelper.getSearchAction(), builder.request()).get();
+            response = client.search(builder.request()).get();
             searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 
             if (response.getTotalShards() != response.getSuccessfulShards())
@@ -204,7 +201,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         if (hasLimit)
             future = null;
         else
-            future = client.searchScroll(new SearchScrollRequestBuilder(client)
+            future = client.searchScroll(new SearchScrollRequestBuilder(client, SearchScrollAction.INSTANCE)
                     .setScrollId(searchResponse.getScrollId())
                     .setScroll(TimeValue.timeValueMinutes(10))
                     .request()
@@ -227,10 +224,9 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             if (cnt + searchResponse.getHits().getHits().length < many) {
                 // go ahead and do the next scroll request
                 // while we walk the hits of this chunk
-                future = client.searchScroll(new SearchScrollRequestBuilder(client)
+                future = client.searchScroll(new SearchScrollRequestBuilder(client, SearchScrollAction.INSTANCE)
                         .setScrollId(searchResponse.getScrollId())
                         .setScroll(TimeValue.timeValueMinutes(10))
-                        .listenerThreaded(true)
                         .request()
                 );
             }

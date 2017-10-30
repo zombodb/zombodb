@@ -18,7 +18,7 @@ package com.tcdi.zombodb.postgres;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
-import org.elasticsearch.cluster.routing.operation.OperationRouting;
+import org.elasticsearch.cluster.routing.OperationRouting;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
