@@ -2,6 +2,22 @@
 
 (This branch is for Elasticsearch 2.4.6)
 
+## Upgrading from v3.x and ES 1.7?
+
+If you are upgrading from a previous version of ZomboDB, that likely means you're also upgrading from ES 1.7.
+
+In short, ZomboDB doesn't provide a migration process from ES 1.7 to ES 2.4.6.  You'll need to drop all of your `USING zombodb` indexes, manually delete all the indexes from your ES 1.7 cluster, upgrade your ES cluster to 2.4.6, upgrade the ZomboDB Postgres extension to v4.0.x and then re-create all your `USING zombodb` indexes.
+
+If you require assistance with this process, please don't hesitate to [contact ZomboDB, LLC](https://www.zombodb.com/services/).
+
+## What's Different with ES 2.4.6+ Support?
+
+In general, everything is the same.  All SQL-level syntax is the same, along with ZomboDB's query language syntax.  Basically, whatever the benefits of Elasticsearch 2.4.6, in terms of performance and general cluster management, are now available to you with ZomboDB.
+
+It is important to note that ZomboDB v4 removes support for the SIREn plugin as the developers of that plugin have abandonded it.  We are working on a clean-room implementation that provides similar functionality and performance for a near-future ZomboDB version.
+
+## About ZomboDB
+
 ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
 backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.5/static/indexam.html).
 
