@@ -64,13 +64,13 @@ Not to suggest that these things are impossible, but there's a small set of non-
 
 ## Downloading
 
-Please visit [zombodb.com/releases/](https://zombodb.com/releases) to download.
+Please visit [www.zombodb.com/releases/](https://www.zombodb.com/releases) to download.
 
 If you want to integrate with some kind of CI or deployment system, you can intuit the pattern for versions from the Elasticsearch plugin and Postgres extension download links, but i'll be something like:
 
 ```
-https://zombodb.com/releases/VERSION/zombodb-es-plugin-VERSION.zip
-https://zombodb.com/releases/VERSION/zombodb_trusty_pg95-VERSION_amd64.deb
+https://www.zombodb.com/releases/VERSION/zombodb-es-plugin-VERSION.zip
+https://www.zombodb.com/releases/VERSION/zombodb_trusty_pg95-VERSION_amd64.deb
 ```
 
 For the Postgres extension binaries, you'll need to use the one that's for your Postgres + Linux distro combination -- the example above is for Postgres 9.5 on Ubuntu Trusty.
