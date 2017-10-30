@@ -1,7 +1,34 @@
 # [![ZomboDB](logo.png)](http://www.zombodb.com/) [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
 
-ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes  
-backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.5/static/indexam.html).
+ZomboDB is a Postgres extension that enables efficient full-text searching via the use of indexes backed by Elasticsearch.  In order to achieve this, ZomboDB implements Postgres' [Access Method API](http://www.postgresql.org/docs/9.5/static/indexam.html).
+
+## What am I Reading?
+
+This is the `master` branch of ZomboDB.  It simply serves as a landing page to learn about ZomboDB.  Documentation is availble here and within each version branch.
+
+ZomboDB is currently tracking two released version series concurrently.  ZomboDB `v3.2.x` supports Elasticsearch 1.7, and `v4.0.x` supports Elasticsearch 2.4.6+.
+
+If you're interested in ES 2.4 support, switch to [`master-es2.4`](https://github.com/zombodb/zombodb/tree/master-es2.4).  Otherwise, you must be looking for ES 1.7 support, which is on the [`master-es1.7`](https://github.com/zombodb/zombodb/tree/master-es1.7) branch.
+
+If you just want to download the latest version for your ES+PG+Linux stack, please visit [www.zombodb.com/releases](https://www.zombodb.com/releases).
+
+
+## Versioning Practices
+
+ZomboDB will continue to support ES 1.7 under the `v3.x` versioning scheme, and ES 2.4 under the `v4.x` scheme.
+
+Going forward, ZomboDB will follow, at least, the major version number of Elasticsearch.  So when ZomboDB gets ES 5 support, it'll be as `v5.x`.  The same will be true of ES 6 support.
+
+Support for Elasticsearch 1.7 will continue for the foreseeable future, and all bugfixes, regardless of which version they're reported against, will be fixed for all supported versions of Elasticsearch (where applicable).
+
+
+## Releases
+
+Historically, release artifacts have been published here on Github.  Going forward, release artifacts will only be available on [https://www.zombodb.com/releases](https://www.zombodb.com/releases).
+
+Release notes will continue to be published here on Github, just not downloadable binaries.
+
+## More Information
 
 In practical terms, a ZomboDB index appears to Postgres as no different than a standard btree index.  As such, standard SQL commands are fully supported, including `SELECT`, `BEGIN`, `COMMIT`, `ABORT`, `INSERT`, `UPDATE`, `DELETE`, `COPY`, and `VACUUM`.
 
