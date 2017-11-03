@@ -59,8 +59,8 @@ script:
 
 after_failure:
   - sudo cat regression.diffs
+  - sudo cat /var/log/postgresql/*.log
   - sudo cat ~/elasticsearch-5.6.3/logs/*.log
-  - sudo cat /var/log/elasticsearch/*.log
   - df -h
   - ps auwwx
   - sudo dmesg
