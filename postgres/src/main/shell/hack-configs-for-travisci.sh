@@ -1,10 +1,6 @@
 #! /bin/bash
 
 cat << DONE >> /etc/elasticsearch/elasticsearch.yml
-script.inline: on
-script.indexed: on
-threadpool.bulk.queue_size: 1024
-threadpool.bulk.size: 12
 http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 DONE

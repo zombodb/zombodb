@@ -2,7 +2,7 @@ language: java
 
 env:
   matrix:
-    - ES=2.x
+    - ES=5.6
 
 sudo: required
 dist: trusty
@@ -54,6 +54,7 @@ script:
   - cat /etc/postgresql/9.5/main/postgresql.conf
 #  - sudo -u postgres createuser -s travis
   - sudo sleep 10
+  - curl localhost:9200/
   - make installcheck
 
 after_failure:
