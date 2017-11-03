@@ -51,7 +51,7 @@ public class AnalyzedField {
         private ProximityGroup group = null;
 
         public Token(Object primaryKey, String fieldName, int arrayIndex, AnalyzeResponse.AnalyzeToken token) {
-            super(token.getTerm(), token.getPosition()+1, token.getStartOffset(), token.getEndOffset(), token.getType(), null);
+            super(token.getTerm(), token.getPosition()+1, token.getStartOffset(), token.getEndOffset(), 0, token.getType(), null);
             this.primaryKey = primaryKey;
             this.fieldName = fieldName;
             this.arrayIndex = arrayIndex;

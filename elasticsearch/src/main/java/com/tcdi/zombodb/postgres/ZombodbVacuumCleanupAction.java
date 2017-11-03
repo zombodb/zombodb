@@ -16,15 +16,17 @@
 package com.tcdi.zombodb.postgres;
 
 import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteAction;
-import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.search.*;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.cluster.ClusterService;
+import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
@@ -36,6 +38,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.SearchHit;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -51,8 +54,8 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
     private final ClusterService clusterService;
 
     @Inject
-    public ZombodbVacuumCleanupAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
-        super(settings, controller, client);
+    public ZombodbVacuumCleanupAction(Settings settings, RestController controller, ClusterService clusterService) {
+        super(settings);
 
         this.clusterService = clusterService;
 
@@ -60,8 +63,9 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         String index = request.param("index");
+        boolean refresh = request.paramAsBoolean("refresh", false);
         Set<Long> xids = new HashSet<>();
         BufferedReader br = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
@@ -71,41 +75,39 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
         }
 
         if (!xids.isEmpty()) {
-            List<ActionRequest> xmaxRequests = new ArrayList<>();
-            List<ActionRequest> abortedRequests = new ArrayList<>();
+            List<DocWriteRequest> xmaxRequests = new ArrayList<>();
+            List<DocWriteRequest> abortedRequests = new ArrayList<>();
 
             filterXidsByDataXmin(client, index, xids);
             cleanupXmax(client, index, xids, xmaxRequests, abortedRequests);
 
-            for (List<ActionRequest> requests : new List[]{xmaxRequests, abortedRequests}) {
+            for (List<DocWriteRequest> requests : new List[]{xmaxRequests, abortedRequests}) {
                 if (!requests.isEmpty()) {
                     BulkRequest bulkRequest = new BulkRequest();
                     BulkResponse response;
 
-                    bulkRequest.refresh(request.paramAsBoolean("refresh", false));
+                    bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
                     bulkRequest.requests().addAll(requests);
 
                     response = client.bulk(bulkRequest).actionGet();
                     if (response.hasFailures()) {
-                        channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
-                        return;
+                        return channel -> buildResponse(response, JsonXContent.contentBuilder());
                     }
                 }
             }
         }
 
-        channel.sendResponse(buildResponse(new BulkResponse(new BulkItemResponse[0], 0), JsonXContent.contentBuilder()));
+        return channel -> channel.sendResponse(buildResponse(new BulkResponse(new BulkItemResponse[0], 0), JsonXContent.contentBuilder()));
     }
 
-    private void cleanupXmax(Client client, String index, Set<Long> xids, List<ActionRequest> xmaxRequests, List<ActionRequest> abortedRequests) {
+    private void cleanupXmax(Client client, String index, Set<Long> xids, List<DocWriteRequest> xmaxRequests, List<DocWriteRequest> abortedRequests) {
         GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
         int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
-        String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
+        String[] routingTable = RoutingHelper.getRoutingTable(clusterService, index, shards);
 
         SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("xmax")
-                .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
                 .addFieldDataField("_xmax")
@@ -180,7 +182,6 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
         SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("data")
-                .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
                 .addFieldDataField("_xmin")
@@ -216,5 +217,10 @@ public class ZombodbVacuumCleanupAction extends BaseRestHandler {
                 break;
         }
 
+    }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

@@ -2,28 +2,37 @@ CREATE TABLE issue_214 (id SERIAL PRIMARY KEY, name TEXT);
 CREATE INDEX idx_zdb_foo ON issue_214 USING zombodb(zdb('issue_214', ctid), zdb(issue_214)) WITH (url="http://localhost:9200/");
 INSERT INTO issue_214 (name) VALUES ('a!a');
 SELECT * FROM zdb_dump_query('issue_214', '_all:a\!*');
-      zdb_dump_query      
---------------------------
- {                       +
-   "span_near" : {       +
-     "clauses" : [ {     +
-       "span_term" : {   +
-         "_all" : {      +
-           "value" : "a" +
-         }               +
-       }                 +
-     }, {                +
-       "span_multi" : {  +
-         "match" : {     +
-           "wildcard" : {+
-             "_all" : "*"+
-           }             +
-         }               +
-       }                 +
-     } ],                +
-     "slop" : 0,         +
-     "in_order" : true   +
-   }                     +
+          zdb_dump_query           
+-----------------------------------
+ {                                +
+   "span_near" : {                +
+     "clauses" : [                +
+       {                          +
+         "span_term" : {          +
+           "_all" : {             +
+             "value" : "a",       +
+             "boost" : 1.0        +
+           }                      +
+         }                        +
+       },                         +
+       {                          +
+         "span_multi" : {         +
+           "match" : {            +
+             "wildcard" : {       +
+               "_all" : {         +
+                 "wildcard" : "*",+
+                 "boost" : 1.0    +
+               }                  +
+             }                    +
+           },                     +
+           "boost" : 1.0          +
+         }                        +
+       }                          +
+     ],                           +
+     "slop" : 0,                  +
+     "in_order" : true,           +
+     "boost" : 1.0                +
+   }                              +
  }
 (1 row)
 
@@ -40,12 +49,15 @@ SELECT * FROM issue_214 WHERE zdb('issue_214', ctid) ==> '_all:a\!*';
 (1 row)
 
 SELECT * FROM zdb_dump_query('issue_214', 'name:a\!*');
-  zdb_dump_query   
--------------------
- {                +
-   "prefix" : {   +
-     "name" : "a!"+
-   }              +
+    zdb_dump_query     
+-----------------------
+ {                    +
+   "prefix" : {       +
+     "name" : {       +
+       "value" : "a!",+
+       "boost" : 1.0  +
+     }                +
+   }                  +
  }
 (1 row)
 

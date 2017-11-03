@@ -293,6 +293,8 @@ StringInfo rest_call(char *method, char *url, StringInfo postData, int compressi
     CURLcode   ret;
     int64      response_code;
 
+//elog(NOTICE, "%s %s\n%s", method, url, postData != NULL ? postData->data : "NULL");
+
     GLOBAL_CURL_INSTANCE = curl_easy_init();
 
     if (GLOBAL_CURL_INSTANCE) {
@@ -349,6 +351,7 @@ StringInfo rest_call(char *method, char *url, StringInfo postData, int compressi
     if (response_code < 200 || (response_code >= 300 && response_code != 404)) {
         elog(ERROR, "rc=%ld; %s", response_code, response->data);
     }
+//elog(NOTICE, "%s", response->data);
 
     pfree(errorbuff);
     if (compressed_data != NULL)

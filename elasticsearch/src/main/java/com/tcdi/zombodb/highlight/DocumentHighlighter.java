@@ -42,14 +42,18 @@ public class DocumentHighlighter {
         }
     };
 
-    public DocumentHighlighter(Client client, String indexName, String primaryKeyFieldname, Map<String, Object> documentData, String queryString) throws ParseException {
+    public DocumentHighlighter(Client client, String indexName, String primaryKeyFieldname, Map<String, Object> documentData, String queryString) throws RuntimeException {
         StringBuilder newQuery = new StringBuilder(queryString.length());
         Utils.extractArrayData(queryString, newQuery);
         QueryParser parser = new QueryParser(new StringReader(newQuery.toString().toLowerCase()));
 
         this.client = client;
         this.metadataManager = new IndexMetadataManager(client, indexName);
-        this.query = parser.parse(metadataManager, true);
+        try {
+            this.query = parser.parse(metadataManager, true);
+        } catch (ParseException pe) {
+            throw new RuntimeException(pe);
+        }
 
         analyzeFields(parser, indexName, primaryKeyFieldname, documentData);
     }

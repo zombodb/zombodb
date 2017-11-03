@@ -2,8 +2,8 @@ package com.tcdi.zombodb.postgres;
 
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.util.BytesRef;
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.WriteConsistencyLevel;
+import org.elasticsearch.action.DocWriteRequest;
+import org.elasticsearch.action.DocWriteResponse;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -11,27 +11,27 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.delete.DeleteAction;
 import org.elasticsearch.action.delete.DeleteRequest;
-import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexAction;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.cluster.ClusterService;
-import org.elasticsearch.common.Base64;
+import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.VersionType;
 import org.elasticsearch.rest.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -43,8 +43,8 @@ public class ZombodbBulkAction extends BaseRestHandler {
     private ClusterService clusterService;
 
     @Inject
-    public ZombodbBulkAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
-        super(settings, controller, client);
+    public ZombodbBulkAction(Settings settings, RestController controller, ClusterService clusterService) {
+        super(settings);
 
         this.clusterService = clusterService;
 
@@ -52,28 +52,22 @@ public class ZombodbBulkAction extends BaseRestHandler {
     }
 
     @Override
-    public void handleRequest(final RestRequest request, final RestChannel channel, final Client client) throws Exception {
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         BulkRequest bulkRequest = Requests.bulkRequest();
         BulkResponse response;
 
         String defaultIndex = request.param("index");
         String defaultType = request.param("type");
-        String defaultRouting = request.param("routing");
         boolean refresh = request.paramAsBoolean("refresh", false);
         boolean isdelete = false;
         int requestNumber = request.paramAsInt("request_no", -1);
 
-        String consistencyLevel = request.param("consistency");
-        if (consistencyLevel != null) {
-            bulkRequest.consistencyLevel(WriteConsistencyLevel.fromString(consistencyLevel));
-        }
-
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(refresh);
-        bulkRequest.add(request.content(), defaultIndex, defaultType, defaultRouting, null, null, true);
+        bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
+        bulkRequest.add(request.content(), defaultIndex, defaultType);
 
-        List<ActionRequest> xmaxRequests = new ArrayList<>();
-        List<ActionRequest> abortedRequests = new ArrayList<>();
+        List<DocWriteRequest> xmaxRequests = new ArrayList<>();
+        List<DocWriteRequest> abortedRequests = new ArrayList<>();
         if (!bulkRequest.requests().isEmpty()) {
             isdelete = bulkRequest.requests().get(0) instanceof DeleteRequest;
 
@@ -109,17 +103,19 @@ public class ZombodbBulkAction extends BaseRestHandler {
             }
         }
 
-        channel.sendResponse(buildResponse(response, JsonXContent.contentBuilder()));
+        BulkResponse finalResponse = response;
+        return channel -> channel.sendResponse(buildResponse(finalResponse, JsonXContent.contentBuilder()));
     }
 
-    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<ActionRequest> trackingRequests) {
+    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<DocWriteRequest> trackingRequests) {
         if (trackingRequests.isEmpty())
             return new BulkResponse(new BulkItemResponse[0], 0);
+        boolean refresh = request.paramAsBoolean("refresh", false);
 
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
-        bulkRequest.refresh(request.paramAsBoolean("refresh", false));
+        bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
         bulkRequest.requests().addAll(trackingRequests);
         return client.bulk(bulkRequest).actionGet();
     }
@@ -128,7 +124,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
         int errorCnt = 0;
         builder.startObject();
         if (response.hasFailures()) {
-            builder.startArray(Fields.ITEMS);
+            builder.startArray("items");
             main_loop: for (BulkItemResponse itemResponse : response) {
                 if (itemResponse.isFailed()) {
 
@@ -155,39 +151,40 @@ public class ZombodbBulkAction extends BaseRestHandler {
                     }
 
                     builder.startObject();
-                    builder.startObject(itemResponse.getOpType());
-                    builder.field(Fields._INDEX, itemResponse.getIndex());
-                    builder.field(Fields._TYPE, itemResponse.getType());
-                    builder.field(Fields._ID, itemResponse.getId());
+                    builder.startObject(itemResponse.getOpType().name());
+                    builder.field("_index", itemResponse.getIndex());
+                    builder.field("_type", itemResponse.getType());
+                    builder.field("_id", itemResponse.getId());
                     long version = itemResponse.getVersion();
                     if (version != -1) {
-                        builder.field(Fields._VERSION, itemResponse.getVersion());
+                        builder.field("_version", itemResponse.getVersion());
                     }
                     if (itemResponse.isFailed()) {
-                        builder.field(Fields.STATUS, itemResponse.getFailure().getStatus().getStatus());
-                        builder.field(Fields.ERROR, itemResponse.getFailure().getMessage());
+                        builder.field("status", itemResponse.getFailure().getStatus().getStatus());
+                        builder.field("error", itemResponse.getFailure().getMessage());
                     } else {
                         if (itemResponse.getResponse() instanceof DeleteResponse) {
                             DeleteResponse deleteResponse = itemResponse.getResponse();
-                            if (deleteResponse.isFound()) {
-                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                            if (deleteResponse.getResult() == DocWriteResponse.Result.DELETED) {
+                                builder.field("status", RestStatus.OK.getStatus());
+                                builder.field("found", true);
                             } else {
-                                builder.field(Fields.STATUS, RestStatus.NOT_FOUND.getStatus());
+                                builder.field("status", RestStatus.NOT_FOUND.getStatus());
+                                builder.field("found", false);
                             }
-                            builder.field(Fields.FOUND, deleteResponse.isFound());
                         } else if (itemResponse.getResponse() instanceof IndexResponse) {
                             IndexResponse indexResponse = itemResponse.getResponse();
-                            if (indexResponse.isCreated()) {
-                                builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
+                            if (indexResponse.getResult() == DocWriteResponse.Result.CREATED) {
+                                builder.field("status", RestStatus.CREATED.getStatus());
                             } else {
-                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                                builder.field("status", RestStatus.OK.getStatus());
                             }
                         } else if (itemResponse.getResponse() instanceof UpdateResponse) {
                             UpdateResponse updateResponse = itemResponse.getResponse();
-                            if (updateResponse.isCreated()) {
-                                builder.field(Fields.STATUS, RestStatus.CREATED.getStatus());
+                            if (updateResponse.getResult() == DocWriteResponse.Result.CREATED) {
+                                builder.field("status", RestStatus.CREATED.getStatus());
                             } else {
-                                builder.field(Fields.STATUS, RestStatus.OK.getStatus());
+                                builder.field("status", RestStatus.OK.getStatus());
                             }
                         }
                     }
@@ -196,9 +193,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
                 }
             }
             builder.endArray();
-            builder.field(Fields.TOOK, response.getTookInMillis());
+            builder.field("took", response.getTookInMillis());
             if (errorCnt > 0) {
-                builder.field(Fields.ERRORS, true);
+                builder.field("errors", true);
             }
         }
         builder.endObject();
@@ -206,10 +203,9 @@ public class ZombodbBulkAction extends BaseRestHandler {
         return new BytesRestResponse(OK, builder);
     }
 
-    private void handleDeleteRequests(Client client, List<ActionRequest> requests, String defaultIndex, List<ActionRequest> xmaxRequests) {
+    private void handleDeleteRequests(Client client, List<DocWriteRequest> requests, String defaultIndex, List<DocWriteRequest> xmaxRequests) {
 
-        for (ActionRequest ar : requests) {
-            DeleteRequest doc = (DeleteRequest) ar;
+        for (DocWriteRequest doc : requests) {
 
             xmaxRequests.add(
                     DeleteAction.INSTANCE.newRequestBuilder(client)
@@ -224,10 +220,10 @@ public class ZombodbBulkAction extends BaseRestHandler {
         }
     }
 
-    private void handleIndexRequests(Client client, List<ActionRequest> requests, String defaultIndex, int requestNumber, List<ActionRequest> xmaxRequests, List<ActionRequest> abortedRequests) {
+    private void handleIndexRequests(Client client, List<DocWriteRequest> requests, String defaultIndex, int requestNumber, List<DocWriteRequest> xmaxRequests, List<DocWriteRequest> abortedRequests) {
 
         int cnt = 0;
-        for (ActionRequest ar : requests) {
+        for (DocWriteRequest ar : requests) {
             IndexRequest doc = (IndexRequest) ar;
             Map<String, Object> data = doc.sourceAsMap();
             String prev_ctid = (String) data.get("_prev_ctid");
@@ -245,14 +241,14 @@ public class ZombodbBulkAction extends BaseRestHandler {
 
                 // re-create the source as a byte array.
                 // this is much faster than using doc.source(Map<String, Object>)
-                byte[] source = doc.source().toBytes();
+                byte[] source = BytesReference.toBytes(doc.source());
                 int start = 0;
                 int len = source.length;
 
                 // backup to the last closing bracket
                 while (source[start + --len] != '}') ;
 
-                byte[] valueBytes = (",\"_zdb_encoded_tuple\":\"" + Base64.encodeBytes(encodedTuple.bytes) + "\"}").getBytes();
+                byte[] valueBytes = (",\"_zdb_encoded_tuple\":\"" + Base64.getEncoder().encodeToString(encodedTuple.bytes) + "\"}").getBytes();
                 byte[] dest = new byte[len + valueBytes.length];
                 System.arraycopy(source, start, dest, 0, len);
                 System.arraycopy(valueBytes, 0, dest, len, valueBytes.length);
@@ -297,7 +293,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             if (requestNumber == 0 && cnt == 0 && sequence.intValue() > -1) {
                 GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
                 int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
-                String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, defaultIndex, shards);
+                String[] routingTable = RoutingHelper.getRoutingTable(clusterService, defaultIndex, shards);
 
                 for (String routing : routingTable) {
                     abortedRequests.add(
@@ -316,7 +312,7 @@ public class ZombodbBulkAction extends BaseRestHandler {
             // and that version must be *larger* than the document that might
             // have previously occupied this "_id" value -- the Postgres transaction id (xid)
             // works just fine for this as it's always increasing
-            doc.opType(IndexRequest.OpType.CREATE);
+            doc.opType(IndexRequest.OpType.INDEX);
             doc.version(xmin.longValue());
             doc.versionType(VersionType.FORCE);
             doc.routing(doc.id());
@@ -338,18 +334,4 @@ public class ZombodbBulkAction extends BaseRestHandler {
             throw new RuntimeException(ioe);
         }
     }
-
-    private static final class Fields {
-        static final XContentBuilderString ITEMS = new XContentBuilderString("items");
-        static final XContentBuilderString ERRORS = new XContentBuilderString("errors");
-        static final XContentBuilderString _INDEX = new XContentBuilderString("_index");
-        static final XContentBuilderString _TYPE = new XContentBuilderString("_type");
-        static final XContentBuilderString _ID = new XContentBuilderString("_id");
-        static final XContentBuilderString STATUS = new XContentBuilderString("status");
-        static final XContentBuilderString ERROR = new XContentBuilderString("error");
-        static final XContentBuilderString TOOK = new XContentBuilderString("took");
-        static final XContentBuilderString _VERSION = new XContentBuilderString("_version");
-        static final XContentBuilderString FOUND = new XContentBuilderString("found");
-    }
-
 }

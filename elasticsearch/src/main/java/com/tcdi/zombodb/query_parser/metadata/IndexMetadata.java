@@ -48,18 +48,14 @@ public class IndexMetadata {
 
     public IndexMetadata(ASTIndexLink link, MappingMetaData mmd) {
         this.link = link;
-        try {
-            Map meta = (Map) mmd.getSourceAsMap().get("_meta");
+        Map meta = (Map) mmd.getSourceAsMap().get("_meta");
 
-            fields = (Map) mmd.getSourceAsMap().get("properties");
-            fields.put("_all", (Map) mmd.getSourceAsMap().get("_all"));
-            pullUpMultiFields();
+        fields = (Map) mmd.getSourceAsMap().get("properties");
+        fields.put("_all", (Map) mmd.getSourceAsMap().get("_all"));
+        pullUpMultiFields();
 
-            pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
-            alwaysResolveJoins = meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins")));
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-        }
+        pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
+        alwaysResolveJoins = meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins")));
     }
 
     public ASTIndexLink getLink() {
@@ -108,6 +104,8 @@ public class IndexMetadata {
         if ("_all".equals(fieldname))
             return "string";
         String type = getFieldProperty(fieldname, "type");
+        if ("text".equals(type) || "keyword".equals(type))
+            return "string";
         return type == null ? "unknown" : type;
     }
 
@@ -165,6 +163,9 @@ public class IndexMetadata {
         if (analyzer == null)
             analyzer = (String) fieldInfo.get("analyzer");
 
+        if (analyzer == null)
+            analyzer = (String) fieldInfo.get("normalizer");
+
         return analyzer;
     }
 
@@ -176,6 +177,9 @@ public class IndexMetadata {
         String analyzer = (String) fieldInfo.get("index_analyzer");
         if (analyzer == null)
             analyzer = (String) fieldInfo.get("analyzer");
+
+        if (analyzer == null)
+            analyzer = (String) fieldInfo.get("normalizer");
 
         return analyzer;
     }

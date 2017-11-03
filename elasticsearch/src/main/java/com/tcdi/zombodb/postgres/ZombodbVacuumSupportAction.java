@@ -20,11 +20,14 @@ import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
 import org.elasticsearch.action.admin.indices.refresh.RefreshResponse;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
+
+import java.io.IOException;
 
 import static com.tcdi.zombodb.postgres.PostgresTIDResponseAction.INVALID_BLOCK_NUMBER;
 import static com.tcdi.zombodb.query.ZomboDBQueryBuilders.visibility;
@@ -34,14 +37,14 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 public class ZombodbVacuumSupportAction extends BaseRestHandler {
 
     @Inject
-    public ZombodbVacuumSupportAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public ZombodbVacuumSupportAction(Settings settings, RestController controller) {
+        super(settings);
         controller.registerHandler(GET, "/{index}/_zdbvacuum", this);
         controller.registerHandler(POST, "/{index}/_zdbvacuum", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         String index = request.param("index");
         long xmin = request.paramAsLong("xmin", 0);
         long xmax = request.paramAsLong("xmax", 0);
@@ -56,10 +59,8 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
         SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("data")
-                .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
-                .setNoFields()
                 .setQuery(
                         visibility()
                                 .xmin(xmin)
@@ -111,6 +112,12 @@ public class ZombodbVacuumSupportAction extends BaseRestHandler {
                 break;
         }
 
-        channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", bytes));
+        byte[] finalBytes = bytes;
+        return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", finalBytes));
+    }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

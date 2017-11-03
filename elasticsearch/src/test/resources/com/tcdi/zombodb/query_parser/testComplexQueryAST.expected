@@ -553,8 +553,12 @@ QueryTree
                   Fuzzy (fieldname=fulltext_field, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
                   Fuzzy (fieldname=_all, operator=CONTAINS, value=fuzzy, fuzz=1, index=db.schema.table.index)
          Or
+            Expansion
+               id=<db.schema.table.index>id
+               Or
+                  Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
+                  Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
             Or
-               Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
                Expansion
                   other:(left=<db.schema.table.index>right)
                      LeftField (value=left)
@@ -569,7 +573,6 @@ QueryTree
                      Word (fieldname=fulltext_field, operator=CONTAINS, value=blah, index=db.schema.table.index)
                      Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
                      Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                     Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
                Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)
                   Number (fieldname=fulltext_field, operator=CONTAINS, value=1, index=db.schema.table.index)
                   Number (fieldname=fulltext_field, operator=CONTAINS, value=2, index=db.schema.table.index)
@@ -580,7 +583,6 @@ QueryTree
                   Boolean (fieldname=fulltext_field, operator=CONTAINS, value=true, index=db.schema.table.index)
                   Number (fieldname=fulltext_field, operator=CONTAINS, value=123.99, index=db.schema.table.index)
             Or
-               Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
                Expansion
                   other:(left=<db.schema.table.index>right)
                      LeftField (value=left)
@@ -595,7 +597,6 @@ QueryTree
                      Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
                      Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
                      Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
-                     Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
                Array (fieldname=_all, operator=CONTAINS, index=db.schema.table.index) (OR)
                   Number (fieldname=_all, operator=CONTAINS, value=1, index=db.schema.table.index)
                   Number (fieldname=_all, operator=CONTAINS, value=2, index=db.schema.table.index)
@@ -605,6 +606,14 @@ QueryTree
                   Word (fieldname=_all, operator=CONTAINS, value=blah, index=db.schema.table.index)
                   Boolean (fieldname=_all, operator=CONTAINS, value=true, index=db.schema.table.index)
                   Number (fieldname=_all, operator=CONTAINS, value=123.99, index=db.schema.table.index)
+            Expansion
+               other:(left=<db.schema.table.index>right)
+                  LeftField (value=left)
+                  IndexName (value=db.schema.table.index)
+                  RightField (value=right)
+               Or
+                  Null (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index)
+                  Null (fieldname=_all, operator=CONTAINS, index=db.schema.table.index)
       And
          Expansion
             id=<db.schema.table.index>id

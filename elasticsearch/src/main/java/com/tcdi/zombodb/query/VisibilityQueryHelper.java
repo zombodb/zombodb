@@ -19,13 +19,10 @@ import com.carrotsearch.hppc.IntHashSet;
 import com.carrotsearch.hppc.IntSet;
 import com.carrotsearch.hppc.cursors.IntCursor;
 import org.apache.lucene.index.*;
-import org.apache.lucene.queries.TermFilter;
-import org.apache.lucene.queries.TermsQuery;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.join.ZomboDBTermsCollector;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
 
@@ -78,7 +75,7 @@ final class VisibilityQueryHelper {
      * for filtering in #determineVisibility
      */
     private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids, final List<BytesRef> abortedXidsAsBytes) throws IOException {
-        searcher.search(new ConstantScoreQuery(new TermFilter(new Term("_type", "aborted"))),
+        searcher.search(new ConstantScoreQuery(new TermQuery(new Term("_type", "aborted"))),
                 new ZomboDBTermsCollector() {
                     SortedNumericDocValues _zdb_xid;
 
@@ -87,11 +84,11 @@ final class VisibilityQueryHelper {
                         _zdb_xid.setDocument(doc);
 
                         long xid = _zdb_xid.valueAt(0);
-                        BytesRefBuilder builder = new BytesRefBuilder();
-                        NumericUtils.longToPrefixCoded(xid, 0, builder);
+                        byte[] bytes = new byte[8];
+                        NumericUtils.longToSortableBytes(xid, bytes, 0);
 
                         abortedXids.add(xid);
-                        abortedXidsAsBytes.add(builder.get());
+                        abortedXidsAsBytes.add(new BytesRef(bytes));
                     }
 
                     @Override
@@ -121,7 +118,7 @@ final class VisibilityQueryHelper {
         }
 
         if (dirtyBlocks != null) {
-            searcher.search(new ConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
+            searcher.search(new ConstantScoreQuery(new TermQuery(new Term("_type", "xmax"))),
                     new Collector() {
                         @Override
                         public void collect(int doc) throws IOException {
@@ -132,7 +129,7 @@ final class VisibilityQueryHelper {
                     }
             );
         } else {
-            searcher.search(new ConstantScoreQuery(new TermFilter(new Term("_type", "xmax"))),
+            searcher.search(new ConstantScoreQuery(new TermQuery(new Term("_type", "xmax"))),
                     new Collector() {
                         @Override
                         public void collect(int doc) throws IOException {
@@ -171,29 +168,32 @@ final class VisibilityQueryHelper {
         } else {
             // just look at all the docs on the blocks we've identified as dirty
             if (!dirtyBlocks.isEmpty()) {
-                BytesRefBuilder builder = new BytesRefBuilder();
                 List<BytesRef> tmp = new ArrayList<>();
                 for (IntCursor blockNumber : dirtyBlocks) {
-                    NumericUtils.intToPrefixCoded(blockNumber.value, 0, builder);
-                    tmp.add(builder.toBytesRef());
+                    byte[] bytes = new byte[4];
+                    NumericUtils.intToSortableBytes(blockNumber.value, bytes, 0);
+                    tmp.add(new BytesRef(bytes));
                 }
-                filters.add(new TermsQuery("_zdb_blockno", tmp));
+                filters.add(new TermInSetQuery("_zdb_blockno", tmp));
             }
 
             // we also need to examine docs that might be aborted or inflight on non-dirty pages
 
             final List<BytesRef> activeXidsAsBytes = new ArrayList<>(activeXids.size());
             for (Long xid : activeXids) {
-                BytesRefBuilder builder = new BytesRefBuilder();
-                NumericUtils.longToPrefixCoded(xid, 0, builder);
-                activeXidsAsBytes.add(builder.toBytesRef());
+                byte[] bytes = new byte[8];
+                NumericUtils.longToSortableBytes(xid, bytes, 0);
+                activeXidsAsBytes.add(new BytesRef(bytes));
             }
 
             if (!activeXids.isEmpty())
-                filters.add(new TermsQuery("_xmin", activeXidsAsBytes));
+                filters.add(new TermInSetQuery("_xmin", activeXidsAsBytes));
             if (!abortedXids.isEmpty())
-                filters.add(new TermsQuery("_xmin", abortedXidsAsBytes));
-            filters.add(NumericRangeQuery.newLongRange("_xmin", myXmin, null, true, true));
+                filters.add(new TermInSetQuery("_xmin", abortedXidsAsBytes));
+
+            byte[] bytes = new byte[8];
+            NumericUtils.longToSortableBytes(myXmin, bytes, 0);
+            filters.add(new TermRangeQuery("_xmin", new BytesRef(bytes), null, true, true));
         }
 
         //
@@ -207,7 +207,7 @@ final class VisibilityQueryHelper {
 
         for (Query q : filters)
             builder2.add(q, BooleanClause.Occur.SHOULD);
-        builder.add(new TermsQuery(new Term("_type", "data")), BooleanClause.Occur.MUST);
+        builder.add(new TermQuery(new Term("_type", "data")), BooleanClause.Occur.MUST);
         builder.add(builder2.build(), BooleanClause.Occur.MUST);
 
         final Map<Integer, FixedBitSet> visibilityBitSets = new HashMap<>();
@@ -220,6 +220,8 @@ final class VisibilityQueryHelper {
 
                     @Override
                     public void collect(int doc) throws IOException {
+                        if (_zdb_encoded_tuple == null)
+                            return;
                         HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), true, in);  // from "data"
                         HeapTuple ctidWithXmax = modifiedTuples.get(ctid);  // from "xmax"
 

@@ -17,84 +17,67 @@
 package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
-import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestController;
-import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.action.support.RestStatusToXContentListener;
-import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
+import org.elasticsearch.rest.*;
+import org.elasticsearch.rest.action.RestStatusToXContentListener;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilder;
+import org.elasticsearch.search.suggest.SuggestionBuilder;
+
+import java.io.IOException;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
+import static org.elasticsearch.rest.action.RestActions.buildBroadcastShardsHeader;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.missing;
 
 
 public class PostgresAggregationAction extends BaseRestHandler {
 
     @Inject
-    public PostgresAggregationAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public PostgresAggregationAction(Settings settings, RestController controller) {
+        super(settings);
         controller.registerHandler(GET, "/{index}/_pgagg", this);
         controller.registerHandler(POST, "/{index}/_pgagg", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
-        try {
-            final long start = System.currentTimeMillis();
-            SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
-            String input = request.content().toUtf8();
-            final QueryRewriter rewriter = QueryRewriter.Factory.create(client, request.param("index"), request.param("preference"), input, true, true, true);
-            QueryBuilder qb = rewriter.rewriteQuery();
-            AbstractAggregationBuilder ab = rewriter.rewriteAggregations();
-            SuggestBuilder.SuggestionBuilder tsb = rewriter.rewriteSuggestions();
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
+        final long start = System.currentTimeMillis();
+        SearchRequestBuilder builder = SearchAction.INSTANCE.newRequestBuilder(client);
+        String input = request.content().utf8ToString();
+        final QueryRewriter rewriter = QueryRewriter.Factory.create(request, client, request.param("index"), request.param("preference"), input, true, true, true);
+        QueryBuilder qb = rewriter.rewriteQuery();
+        AggregationBuilder ab = rewriter.rewriteAggregations();
+        SuggestionBuilder sb = rewriter.rewriteSuggestions();
 
-            builder.setIndices(rewriter.getAggregateIndexName());
-            builder.setTypes("data");
-            builder.setQuery(qb);
+        builder.setIndices(rewriter.getAggregateIndexName());
+        builder.setTypes("data");
+        builder.setQuery(qb);
 
-            if (ab != null) {
-                builder.addAggregation(ab);
-                if (!rewriter.hasJsonAggregate() && !rewriter.isAggregateNested()) {
-                    builder.addAggregation(missing("missing").field(rewriter.getAggregateFieldName()));
-                }
-            } else if (tsb != null) {
-                builder.addSuggestion(tsb);
+        if (ab != null) {
+            builder.addAggregation(ab);
+            if (!rewriter.hasJsonAggregate() && !rewriter.isAggregateNested()) {
+                builder.addAggregation(missing("missing").field(rewriter.getAggregateFieldName()));
             }
-
-            builder.setSize(0);
-            builder.setNoFields();
-            builder.setSearchType(SearchType.COUNT);
-            builder.setPreference(request.param("preference"));
-            builder.setRequestCache(true);
-
-            final ActionListener<SearchResponse> delegate = new RestStatusToXContentListener<>(channel);
-            client.search(builder.request(), new ActionListener<SearchResponse>() {
-                @Override
-                public void onResponse(SearchResponse searchResponse) {
-                    delegate.onResponse(searchResponse);
-                    long end = System.currentTimeMillis();
-                    logger.info("Aggregated results for " + rewriter.getAggregateIndexName() + " in " + ((end - start) / 1000D) + " seconds.");
-                }
-
-                @Override
-                public void onFailure(Throwable throwable) {
-                    delegate.onFailure(throwable);
-                }
-            });
-        } catch (Exception ee) {
-            logger.error("Error performing aggregate", ee);
-            throw ee;
+        } else if (sb != null) {
+            builder.suggest(new SuggestBuilder().addSuggestion(sb.field(), sb));
         }
+
+        builder.setSize(0);
+        builder.setPreference(request.param("preference"));
+        builder.setRequestCache(true);
+
+        return channel -> client.search(builder.request(), new RestStatusToXContentListener<>(channel));
+    }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

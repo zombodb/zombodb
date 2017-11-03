@@ -16,19 +16,22 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import com.tcdi.zombodb.query_parser.ASTLimit;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.common.CheckedConsumer;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
+
+import java.io.IOException;
 
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -85,15 +88,15 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
 
     @Inject
-    public PostgresTIDResponseAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public PostgresTIDResponseAction(Settings settings, RestController controller) {
+        super(settings);
         controller.registerHandler(GET, "/{index}/_pgtid", this);
         controller.registerHandler(POST, "/{index}/_pgtid", this);
     }
 
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         long totalStart = System.nanoTime();
         SearchResponse response;
         BinaryTIDResponse tids;
@@ -114,7 +117,6 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setTrackScores(true);
             builder.setRequestCache(true);
             builder.setFetchSource(false);
-            builder.setNoFields();
             builder.setQuery(query.getQueryBuilder());
 
             if (query.hasLimit()) {
@@ -123,27 +125,20 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
                 builder.setFrom(query.getLimit().getOffset());
                 builder.setSize(query.getLimit().getLimit());
             } else {
-                builder.setSearchType(SearchType.SCAN);
                 builder.setScroll(TimeValue.timeValueMinutes(10));
-                builder.setSize(32768);
+                builder.setSize(10000);
             }
 
             long searchStart = System.currentTimeMillis();
-            response = client.search(builder.request()).get();
+            response = client.search(builder.request()).actionGet();
             searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
-
-            if (response.getTotalShards() != response.getSuccessfulShards())
-                throw new Exception(response.getTotalShards() - response.getSuccessfulShards() + " shards failed");
 
             tids = buildBinaryResponse(client, response, query.hasLimit());
             many = tids.many;
             buildTime = tids.ttl;
             sortTime = tids.sort;
 
-            channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
-        } catch (Throwable e) {
-            logger.error("Problem building response", e);
-            throw e;
+            return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
         } finally {
             long totalEnd = System.nanoTime();
             logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s, sort=" + sortTime + ")");
@@ -151,24 +146,16 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
     }
 
     public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean doFullFieldDataLookups, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-        String queryString = request.content().toUtf8();
+        String queryString = request.content().utf8ToString();
         String indexName = request.param("index");
 
         try {
-            QueryBuilder query;
-            ASTLimit limit;
-
             if (queryString != null && queryString.trim().length() > 0) {
-                QueryRewriter qr = QueryRewriter.Factory.create(client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex, needVisibilityOnTopLevel);
-                query = qr.rewriteQuery();
-                indexName = qr.getSearchIndexName();
-                limit = qr.getLimit();
+                QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex, needVisibilityOnTopLevel);
+                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getSearchIndexName(), qr.getLimit());
             } else {
-                query = matchAllQuery();
-                limit = null;
+                return new QueryAndIndexPair(matchAllQuery(), indexName, null);
             }
-
-            return new QueryAndIndexPair(query, indexName, limit);
         } catch (Exception e) {
             throw new RuntimeException(queryString, e);
         }
@@ -178,7 +165,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
      * All values are encoded in little-endian so that they can be directly
      * copied into memory on x86
      */
-    private BinaryTIDResponse buildBinaryResponse(Client client, SearchResponse searchResponse, boolean hasLimit) throws Exception {
+    private BinaryTIDResponse buildBinaryResponse(Client client, SearchResponse searchResponse, boolean hasLimit) {
         int many = hasLimit ? searchResponse.getHits().getHits().length : (int) searchResponse.getHits().getTotalHits();
 
         long start = System.currentTimeMillis();
@@ -196,11 +183,9 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         first_byte = offset;
 
         // kick off the first scroll request
-        ActionFuture<SearchResponse> future;
+        ActionFuture<SearchResponse> future = null;
 
-        if (hasLimit)
-            future = null;
-        else
+        if (searchResponse.getHits().getHits().length == 0)
             future = client.searchScroll(new SearchScrollRequestBuilder(client, SearchScrollAction.INSTANCE)
                     .setScrollId(searchResponse.getScrollId())
                     .setScroll(TimeValue.timeValueMinutes(10))
@@ -210,14 +195,14 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         int cnt = 0;
         while (cnt < many) {
             if (future != null)
-                searchResponse = future.get();
+                searchResponse = future.actionGet();
 
             if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
-                throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
+                throw new RuntimeException(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
 
             if (future != null) {
                 if (searchResponse.getHits().getHits().length == 0) {
-                    throw new Exception("Underflow in buildBinaryResponse:  Expected " + many + ", got " + cnt);
+                    throw new RuntimeException("Underflow in buildBinaryResponse:  Expected " + many + ", got " + cnt);
                 }
             }
 
@@ -269,5 +254,10 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         long sortEnd = System.currentTimeMillis();
 
         return new BinaryTIDResponse(results, many, (end - start) / 1000D, (sortEnd - sortStart)/1000D);
+    }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

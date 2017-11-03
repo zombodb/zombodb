@@ -17,12 +17,13 @@
 package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.rest.*;
 
+import java.io.IOException;
 import java.util.Map;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -31,21 +32,24 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 public class PostgresMappingAction extends BaseRestHandler {
 
     @Inject
-    public PostgresMappingAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public PostgresMappingAction(Settings settings, RestController controller) {
+        super(settings);
         controller.registerHandler(GET, "/{index}/_pgmapping/{fieldname}", this);
         controller.registerHandler(POST, "/{index}/_pgmapping/{fieldname}", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
-        BytesRestResponse response;
-
-        QueryRewriter rewriter = QueryRewriter.Factory.create(client, request.param("index"), request.param("preference"), request.content().toUtf8(), true, false, false);
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
+        QueryRewriter rewriter = QueryRewriter.Factory.create(request, client, request.param("index"), request.param("preference"), request.content().utf8ToString(), true, false, false);
         rewriter.rewriteQuery();
         Map<String, ?> properties = rewriter.describedNestedObject(request.param("fieldname"));
 
-        response = new BytesRestResponse(RestStatus.OK, "application/json", JsonXContent.contentBuilder().map(properties).bytes());
-        channel.sendResponse(response);
+        return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/json", JsonXContent.contentBuilder().map(properties).bytes()));
     }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
+    }
+
 }

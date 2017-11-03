@@ -16,16 +16,24 @@
  */
 package com.tcdi.zombodb.postgres;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.tcdi.zombodb.highlight.AnalyzedField;
 import com.tcdi.zombodb.highlight.DocumentHighlighter;
-import org.elasticsearch.client.Client;
+import com.tcdi.zombodb.query_parser.utils.Utils;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
 
+import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,24 +43,21 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 public class ZombodbDocumentHighlighterAction extends BaseRestHandler {
 
     @Inject
-    public ZombodbDocumentHighlighterAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public ZombodbDocumentHighlighterAction(Settings settings, RestController controller) {
+        super(settings);
         controller.registerHandler(GET, "/{index}/_zdbhighlighter", this);
         controller.registerHandler(POST, "/{index}/_zdbhighlighter", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
-        BytesRestResponse response;
-        ObjectMapper om = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
-
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         Map<String, Object> input;
         String queryString;
         String primaryKeyFieldname;
         String fieldLists;
         List<Map<String, Object>> documents;
 
-        input = om.readValue(request.content().streamInput(), Map.class);
+        input = Utils.jsonToObject(request.content().streamInput(), Map.class);
         queryString = input.get("query").toString();
         fieldLists = input.containsKey("field_lists") ? input.get("field_lists").toString() : null;
         primaryKeyFieldname = input.get("primary_key").toString();
@@ -61,19 +66,13 @@ public class ZombodbDocumentHighlighterAction extends BaseRestHandler {
         if (fieldLists != null)
             queryString = "#field_lists(" + fieldLists + ") " + queryString;
 
-        try {
-            List<AnalyzedField.Token> tokens = new ArrayList<>();
+        List<AnalyzedField.Token> tokens = new ArrayList<>();
 
-            for (Map<String, Object> document : documents) {
-                DocumentHighlighter highlighter = new DocumentHighlighter(client, request.param("index"), primaryKeyFieldname, document, queryString);
-                tokens.addAll(highlighter.highlight());
-            }
-
-            response = new BytesRestResponse(RestStatus.OK, "application/text", new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).writeValueAsString(tokens));
-            channel.sendResponse(response);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
+        for (Map<String, Object> document : documents) {
+            DocumentHighlighter highlighter = new DocumentHighlighter(client, request.param("index"), primaryKeyFieldname, document, queryString);
+            tokens.addAll(highlighter.highlight());
         }
+
+        return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/text", Utils.objectToJson(tokens)));
     }
 }

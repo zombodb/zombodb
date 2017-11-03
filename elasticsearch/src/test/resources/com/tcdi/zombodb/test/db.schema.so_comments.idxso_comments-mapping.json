@@ -1,63 +1,5 @@
 {
   "mappings": {
-    "xact": {
-      "_meta": {
-        "primary_key": "id"
-      },
-      "date_detection": false,
-      "_all": {
-        "enabled": false,
-        "analyzer": "phrase"
-      },
-      "_field_names": {
-        "enabled": false,
-        "type": "_field_names"
-      },
-      "properties": {
-        "_cmax": {
-          "type": "integer",
-          "fielddata": {
-            "format": "disabled"
-          }
-        },
-        "_cmin": {
-          "type": "integer",
-          "fielddata": {
-            "format": "disabled"
-          }
-        },
-        "_partial": {
-          "type": "boolean",
-          "fielddata": {
-            "format": "disabled"
-          }
-        },
-        "_xmax": {
-          "type": "integer",
-          "fielddata": {
-            "format": "disabled"
-          }
-        },
-        "_xmax_is_committed": {
-          "type": "boolean",
-          "fielddata": {
-            "format": "disabled"
-          }
-        },
-        "_xmin": {
-          "type": "integer",
-          "fielddata": {
-            "format": "disabled"
-          }
-        },
-        "_xmin_is_committed": {
-          "type": "boolean",
-          "fielddata": {
-            "format": "disabled"
-          }
-        }
-      }
-    },
     "data": {
       "_meta": {
         "primary_key": "id"
@@ -83,9 +25,6 @@
       "properties": {
         "comment_text": {
           "type": "string",
-          "norms": {
-            "enabled": false
-          },
           "index_options": "docs",
           "analyzer": "exact"
         },
@@ -120,9 +59,6 @@
         },
         "user_display_name": {
           "type": "string",
-          "norms": {
-            "enabled": false
-          },
           "index_options": "docs",
           "analyzer": "exact"
         },

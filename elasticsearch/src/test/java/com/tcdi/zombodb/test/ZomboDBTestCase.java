@@ -15,7 +15,11 @@
  */
 package com.tcdi.zombodb.test;
 
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.tcdi.zombodb.highlight.AnalyzedField;
+import com.tcdi.zombodb.query_parser.QueryParserConstants;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -25,8 +29,12 @@ import org.elasticsearch.action.admin.indices.refresh.RefreshAction;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.io.stream.OutputStreamStreamOutput;
-import org.elasticsearch.common.logging.log4j.LogConfigurator;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.env.Environment;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.node.Node;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -35,8 +43,8 @@ import java.io.*;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
-import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -71,17 +79,16 @@ public abstract class ZomboDBTestCase {
                 .put("path.home", HOME.getAbsolutePath())
                 .put("path.conf", CONFIG.getAbsolutePath())
                 .put("path.logs", LOGS.getAbsolutePath())
+                .put("transport.type", "local")
                 .build();
 
-        // make sure ES' logging system knows where to find our custom logging.xml
-        LogConfigurator.configure(settings, true);
+        Environment env = new Environment(settings);
+
+//        // make sure ES' logging system knows where to find our custom logging.xml
+//        LogConfigurator.configure(env);
 
         // startup a standalone node to use for tests
-        return nodeBuilder()
-                .settings(settings)
-                .local(true)
-                // .loadConfigSettings(false)
-                .node();
+        return new Node(settings).start();
     }
 
     private static void createIndex(String indexName) throws Exception {
@@ -108,7 +115,7 @@ public abstract class ZomboDBTestCase {
     }
 
     @AfterClass
-    public static void afterClass() {
+    public static void afterClass() throws IOException {
         try {
             node.close();
         } finally {
@@ -133,11 +140,15 @@ public abstract class ZomboDBTestCase {
 
 
     protected QueryRewriter qr(String query) {
-        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, query, null, true, false, false) { /* anonymous implementation */ };
+        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, node.injector().getInstance(NamedXContentRegistry.class), query, null, true, false, false) { /* anonymous implementation */ };
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
-        assertEquals(expectedJson.replaceAll("\r", "").trim(), toJson(query));
+        String userJsonQuery = toJson(query);
+        assertEquals(
+                reparseViaQueryBuilder(expectedJson),
+                reparseViaQueryBuilder(userJsonQuery)
+        );
     }
 
     protected void assertAST(String query, String expectedAST) throws Exception {
@@ -145,7 +156,7 @@ public abstract class ZomboDBTestCase {
     }
 
     protected void assertSameJson(String query1, String query2) throws Exception {
-        assertEquals(toJson(query1), toJson(query2));
+        assertEquals(reparseViaQueryBuilder(toJson(query1)), reparseViaQueryBuilder(toJson(query2)));
     }
 
     protected void assertDifferentJson(String query1, String query2) throws Exception {
@@ -153,7 +164,42 @@ public abstract class ZomboDBTestCase {
     }
 
     protected String toJson(String query) {
-        return qr(query).rewriteQuery().toString().replaceAll("\r", "").trim();
+        return qr(query).rewriteQuery().toString();
+    }
+
+    protected String reparseViaQueryBuilder(String s) {
+        if (s == null || s.trim().length() == 0)
+            return "";
+
+        try {
+            NamedXContentRegistry registry = node.injector().getInstance(NamedXContentRegistry.class);
+            QueryParseContext context = new QueryParseContext(JsonXContent.jsonXContent.createParser(registry, s));
+            return context.parseInnerQueryBuilder().orElse(null).toString();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+    }
+
+    private void cleanJson(Map m) {
+        Object boost = m.get("boost");
+        if (boost instanceof Number && ((Number) boost).floatValue() != 0.0f)
+            m.remove("boost");
+        m.remove("disable_coord");
+        m.remove("adjust_pure_negative");
+        for (Object value : m.values()) {
+            if (value instanceof Map)
+                cleanJson((Map) value);
+            else if (value instanceof List)
+                cleanJson((List) value);
+        }
+    }
+
+    private void cleanJson(List values) {
+        for (Object value : values)
+            if (value instanceof Map)
+                cleanJson((Map) value);
+            else if (value instanceof List)
+                cleanJson((List) value);
     }
 
     protected String toAST(String query) {

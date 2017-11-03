@@ -15,19 +15,21 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
-import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.search.*;
-import org.elasticsearch.client.Client;
+import com.tcdi.zombodb.query_parser.utils.Utils;
+import org.elasticsearch.action.search.MultiSearchAction;
+import org.elasticsearch.action.search.MultiSearchRequestBuilder;
+import org.elasticsearch.action.search.SearchAction;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.action.support.RestToXContentListener;
+import org.elasticsearch.rest.action.RestToXContentListener;
+
+import java.io.IOException;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -74,17 +76,17 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
     }
 
     @Inject
-    public ZombodbMultiSearchAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public ZombodbMultiSearchAction(Settings settings, RestController controller) {
+        super(settings);
         controller.registerHandler(GET, "/{index}/_zdbmsearch", this);
         controller.registerHandler(POST, "/{index}/_zdbmsearch", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
-        final long start = System.currentTimeMillis();
-        final ZDBMultiSearchDescriptor[] descriptors = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS).readValue(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
+        ZDBMultiSearchDescriptor[] descriptors = Utils.jsonToObject(request.content().streamInput(), ZDBMultiSearchDescriptor[].class);
         MultiSearchRequestBuilder msearchBuilder = new MultiSearchRequestBuilder(client, MultiSearchAction.INSTANCE);
+        String index = request.param("index");  // appease Elasticsearch request parameter usage checking
 
         for (ZDBMultiSearchDescriptor md : descriptors) {
             SearchRequestBuilder srb = new SearchRequestBuilder(client, SearchAction.INSTANCE);
@@ -92,24 +94,15 @@ public class ZombodbMultiSearchAction extends BaseRestHandler {
             srb.setIndices(md.getIndexName());
             srb.setTypes("data");
             if (md.getPkey() != null) srb.addFieldDataField(md.getPkey());
-            srb.setQuery(QueryRewriter.Factory.create(client, md.getIndexName(), md.getPreference(), md.getQuery(), true, false, true).rewriteQuery());
+            srb.setQuery(QueryRewriter.Factory.create(request, client, md.getIndexName(), md.getPreference(), md.getQuery(), true, false, true).rewriteQuery());
 
             msearchBuilder.add(srb);
         }
+        return channel -> client.multiSearch(msearchBuilder.request(), new RestToXContentListener<>(channel));
+    }
 
-        final ActionListener<MultiSearchResponse> defaultListener = new RestToXContentListener<>(channel);
-        client.multiSearch(msearchBuilder.request(), new ActionListener<MultiSearchResponse>() {
-            @Override
-            public void onResponse(MultiSearchResponse items) {
-                long end = System.currentTimeMillis();
-                logger.info("Searched " + descriptors.length + " indexes in " + ((end - start) / 1000D) + " seconds");
-                defaultListener.onResponse(items);
-            }
-
-            @Override
-            public void onFailure(Throwable e) {
-                defaultListener.onFailure(e);
-            }
-        });
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

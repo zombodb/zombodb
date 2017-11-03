@@ -17,20 +17,23 @@ package com.tcdi.zombodb.postgres;
 
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexAction;
-import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.cluster.ClusterService;
+import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.VersionType;
 import org.elasticsearch.rest.*;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,8 +44,8 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
     private ClusterService clusterService;
 
     @Inject
-    public ZombodbDeleteTuplesAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
-        super(settings, controller, client);
+    public ZombodbDeleteTuplesAction(Settings settings, RestController controller, ClusterService clusterService) {
+        super(settings);
 
         this.clusterService = clusterService;
 
@@ -50,11 +53,11 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         String index = request.param("index");
         boolean refresh = request.paramAsBoolean("refresh", false);
-        List<ActionRequest> xmaxRequests = new ArrayList<>();
-        List<ActionRequest> abortedRequests = new ArrayList<>();
+        List<DocWriteRequest> xmaxRequests = new ArrayList<>();
+        List<DocWriteRequest> abortedRequests = new ArrayList<>();
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
@@ -73,7 +76,7 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
             if (cnt == 0) {
                 GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
                 int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
-                String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
+                String[] routingTable = RoutingHelper.getRoutingTable(clusterService, index, shards);
 
                 for (String routing : routingTable) {
                     abortedRequests.add(
@@ -104,9 +107,9 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
         }
 
         BulkResponse response;
-        for (List<ActionRequest> requests : new List[] { abortedRequests, xmaxRequests }){
+        for (List<DocWriteRequest> requests : new List[] { abortedRequests, xmaxRequests }){
             BulkRequest bulkRequest = Requests.bulkRequest();
-            bulkRequest.refresh(refresh);
+            bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
             bulkRequest.add(requests);
 
             response = client.bulk(bulkRequest).actionGet();
@@ -114,6 +117,11 @@ public class ZombodbDeleteTuplesAction extends BaseRestHandler {
                 throw new RuntimeException(response.buildFailureMessage());
         }
 
-        channel.sendResponse(new BytesRestResponse(RestStatus.OK, String.valueOf("ok")));
+        return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, String.valueOf("ok")));
+    }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

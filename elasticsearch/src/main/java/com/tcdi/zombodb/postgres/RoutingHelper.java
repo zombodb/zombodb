@@ -15,10 +15,9 @@
  */
 package com.tcdi.zombodb.postgres;
 
-import org.elasticsearch.client.Client;
-import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.routing.OperationRouting;
+import org.elasticsearch.cluster.service.ClusterService;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RoutingHelper {
     private static Map<String, String[]> ROUTING_TABLE = new ConcurrentHashMap<>();
 
-    public static String[] getRoutingTable(Client client, ClusterService clusterService, String index, int shards) {
+    public static String[] getRoutingTable(ClusterService clusterService, String index, int shards) {
         String key = index+"."+shards;
 
         String[] routingTable = ROUTING_TABLE.get(key);
@@ -42,7 +41,7 @@ public class RoutingHelper {
             String routing = String.valueOf(i);
 
             int cnt=0;
-            while ( (operationRouting.indexShards(clusterState, index, "aborted", routing, null).shardId()).id() != i)
+            while ( (operationRouting.indexShards(clusterState, index, "aborted", routing).shardId()).id() != i)
                 routing = String.valueOf(i + ++cnt);
             routingTable[i] = routing;
         }

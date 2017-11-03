@@ -408,11 +408,9 @@ public class IndexLinkOptimizer {
         builder.setIndices(expansion.getIndexLink().getIndexName());
         builder.setTypes("data");
         builder.setSize(0);
-        builder.setSearchType(SearchType.COUNT);
         builder.setRequestCache(true);
         builder.setFetchSource(false);
         builder.setTrackScores(false);
-        builder.setNoFields();
         if (useQuery)
             builder.setQuery(rewriter.build(expansion.getQuery()));
 

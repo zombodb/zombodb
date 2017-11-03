@@ -16,13 +16,19 @@
  */
 package com.tcdi.zombodb.query_parser.utils;
 
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.io.stream.StreamInput;
 
+import java.io.IOException;
 import java.io.StringReader;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -591,5 +597,40 @@ public class Utils {
                 ((long) buffer[offset + 7] << 56L) & 0xFF;
     }
 
+    public static <T> T jsonToObject(String json, Class<T> type) {
+        ObjectMapper om = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
 
+        return AccessController.doPrivileged((PrivilegedAction<T>) () -> {
+            try {
+                return om.readValue(json, type);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+
+    public static <T> T jsonToObject(StreamInput streamInput, Class<T> type) {
+        ObjectMapper om = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
+
+        return AccessController.doPrivileged((PrivilegedAction<T>) () -> {
+            try {
+                return om.readValue(streamInput, type);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public static String objectToJson(Object obj) {
+        ObjectMapper om = new ObjectMapper().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
+
+        return AccessController.doPrivileged((PrivilegedAction<String>) () -> {
+            try {
+                return om.writeValueAsString(obj);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
 }

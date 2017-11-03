@@ -154,7 +154,7 @@ public class IndexMetadataManager {
         return link;
     }
 
-    public Map<String, ?> describedNestedObject(String fieldname) throws Exception {
+    public Map<String, ?> describedNestedObject(String fieldname) {
         ASTIndexLink link = findField(fieldname);
         if (link == null)
             return null;

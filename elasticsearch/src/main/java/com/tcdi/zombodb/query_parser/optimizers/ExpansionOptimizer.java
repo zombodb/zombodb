@@ -27,9 +27,11 @@ import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 
 import java.util.*;
+
+import static org.elasticsearch.search.aggregations.AggregationBuilders.terms;
 
 public class ExpansionOptimizer {
     private final QueryRewriter rewriter;
@@ -155,16 +157,15 @@ public class ExpansionOptimizer {
             return notNull;
         }
 
-        TermsBuilder termsBuilder = new TermsBuilder(rightFieldname)
+        TermsAggregationBuilder termsBuilder = terms(rightFieldname)
                 .field(rightFieldname)
-                .shardSize(!doFullFieldDataLookup ? 1024 : 0)
-                .size(!doFullFieldDataLookup ? 1024 : 0);
+                .shardSize(!doFullFieldDataLookup ? 1024 : Integer.MAX_VALUE)
+                .size(!doFullFieldDataLookup ? 1024 : Integer.MAX_VALUE);
 
         QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery));
 
         SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE)
                 .setSize(0)
-                .setSearchType(SearchType.COUNT)
                 .setQuery(query)
                 .setRequestCache(true)
                 .setIndices(link.getIndexName())
@@ -185,7 +186,7 @@ public class ExpansionOptimizer {
             array.setExternalValues(new Iterable<Object>() {
                 @Override
                 public Iterator<Object> iterator() {
-                    final Iterator<Terms.Bucket> buckets = agg.getBuckets().iterator();
+                    final Iterator<? extends Terms.Bucket> buckets = agg.getBuckets().iterator();
                     return new Iterator<Object>() {
                         @Override
                         public boolean hasNext() {

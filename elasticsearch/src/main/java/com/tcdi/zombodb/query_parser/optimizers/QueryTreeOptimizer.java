@@ -43,6 +43,7 @@ public class QueryTreeOptimizer {
         validateAndFixProximityChainFieldnames(tree);
         expandFieldLists(tree, tree.getFieldLists());
         expandAllField(tree, metadataManager.getMyIndex());
+        pullOutNullsFromArrays(tree);
         rollupParentheticalGroups(tree);
         mergeLiterals(tree);
         mergeArrays(tree);
@@ -208,6 +209,40 @@ public class QueryTreeOptimizer {
         }
 
         parent.renumber();
+    }
+
+    private void pullOutNullsFromArrays(QueryParserNode root) {
+        if (root == null)
+            return;
+
+        boolean didNullPullUp = false;
+        for (QueryParserNode child : root) {
+            if (child instanceof ASTNull && root instanceof ASTArray) {
+                QueryParserNode parent = (QueryParserNode) root.jjtGetParent();
+
+                root.removeNode(child);
+                root.renumber();
+
+                if (!didNullPullUp) {
+                    if (((ASTArray) root).isAnd()) {
+                        ASTAnd and = new ASTAnd(QueryParserTreeConstants.JJTAND);
+                        and.jjtAddChild(child, 0);
+                        and.jjtAddChild(root, 1);
+                        parent.replaceChild(root, and);
+                        didNullPullUp = true;
+                    } else {
+                        ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
+                        or.jjtAddChild(child, 0);
+                        or.jjtAddChild(root, 1);
+                        parent.replaceChild(root, or);
+                        didNullPullUp = true;
+                    }
+                }
+
+            } else {
+                pullOutNullsFromArrays(child);
+            }
+        }
     }
 
     private void mergeLiterals(QueryParserNode root) {

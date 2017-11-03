@@ -15,26 +15,26 @@
  */
 package com.tcdi.zombodb.query;
 
-import org.apache.lucene.search.Query;
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryParser;
-import org.elasticsearch.index.query.QueryParsingException;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
-public class ZomboDBVisibilityQueryParser implements QueryParser {
-    public static String NAME = "zombodb_visibility";
+public class ZomboDBVisibilityQueryParser implements QueryParser<ZomboDBVisibilityQueryBuilder>, Writeable.Reader<ZomboDBVisibilityQueryBuilder> {
 
     @Override
-    public String[] names() {
-        return new String[]{NAME};
+    public ZomboDBVisibilityQueryBuilder read(StreamInput in) throws IOException {
+        return new ZomboDBVisibilityQueryBuilder(in);
     }
 
     @Override
-    public Query parse(QueryParseContext parseContext) throws IOException, QueryParsingException {
+    public Optional<ZomboDBVisibilityQueryBuilder> fromXContent(QueryParseContext parseContext) throws IOException {
         XContentParser parser = parseContext.parser();
 
         long myXid = -1;
@@ -65,16 +65,21 @@ public class ZomboDBVisibilityQueryParser implements QueryParser {
                 } else if ("commandid".equals(currentFieldName)) {
                     commandid = parser.intValue();
                 } else {
-                    throw new QueryParsingException(parseContext, "[zdb visibility] query does not support [" + currentFieldName + "]");
+                    throw new RuntimeException("[zdb visibility] query does not support [" + currentFieldName + "]");
                 }
             }
         }
 
         if (xmin == -1)
-            throw new QueryParsingException(parseContext, "[zdb visibility] missing [xmin]");
+            throw new RuntimeException("[zdb visibility] missing [xmin]");
         else if (xmax == -1)
-            throw new QueryParsingException(parseContext, "[zdb visibility] missing [xmax]");
+            throw new RuntimeException("[zdb visibility] missing [xmax]");
 
-        return new ZomboDBVisibilityQuery(myXid, xmin, xmax, commandid, activeXids);
+        long[] activeXidsArray = new long[activeXids.size()];
+        int i = 0;
+        for (Long l : activeXids)
+            activeXidsArray[i++] = l;
+
+        return Optional.of(new ZomboDBVisibilityQueryBuilder(myXid, xmin, xmax, commandid, activeXidsArray));
     }
 }

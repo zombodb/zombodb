@@ -19,12 +19,14 @@ import com.tcdi.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -33,14 +35,14 @@ import static org.elasticsearch.rest.RestRequest.Method.GET;
 public class ZombodbGetXidVacuumCandidatesAction extends BaseRestHandler {
 
     @Inject
-    public ZombodbGetXidVacuumCandidatesAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public ZombodbGetXidVacuumCandidatesAction(Settings settings, RestController controller) {
+        super(settings);
 
         controller.registerHandler(GET, "/{index}/_zdbxidvacuumcandidates", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         String index = request.param("index");
 
         // the transaction ids we can consider for vacuuming are simply
@@ -50,7 +52,6 @@ public class ZombodbGetXidVacuumCandidatesAction extends BaseRestHandler {
         SearchRequestBuilder search = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(index)
                 .setTypes("aborted")
-                .setSearchType(SearchType.SCAN)
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
                 .addFieldDataField("_zdb_xid");
@@ -88,6 +89,6 @@ public class ZombodbGetXidVacuumCandidatesAction extends BaseRestHandler {
             offset += Utils.encodeLong(xid, bytes, offset);
         }
 
-        channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", bytes));
+        return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", bytes));
     }
 }

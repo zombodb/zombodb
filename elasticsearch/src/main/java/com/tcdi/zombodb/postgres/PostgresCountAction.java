@@ -21,9 +21,12 @@ import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
+
+import java.io.IOException;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -31,14 +34,14 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 public class PostgresCountAction extends BaseRestHandler {
 
     @Inject
-    public PostgresCountAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public PostgresCountAction(Settings settings, RestController controller) {
+        super(settings);
         controller.registerHandler(GET, "/{index}/_pgcount", this);
         controller.registerHandler(POST, "/{index}/_pgcount", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         long start = System.currentTimeMillis();
         long count = -1;
 
@@ -55,32 +58,28 @@ public class PostgresCountAction extends BaseRestHandler {
                 builder.setIndices(query.getIndexName());
                 builder.setTypes("data");
                 builder.setSize(0);
-                builder.setSearchType(SearchType.COUNT);
                 builder.setPreference(request.param("preference"));
                 builder.setRequestCache(true);
                 builder.setFetchSource(false);
                 builder.setTrackScores(false);
-                builder.setNoFields();
                 builder.setQuery(query.getQueryBuilder());
 
-                SearchResponse searchResponse = client.search(builder.request()).get();
-
-                if (searchResponse.getTotalShards() != searchResponse.getSuccessfulShards())
-                    throw new Exception(searchResponse.getTotalShards() - searchResponse.getSuccessfulShards() + " shards failed");
+                SearchResponse searchResponse = client.search(builder.request()).actionGet();
 
                 count = searchResponse.getHits().getTotalHits();
             }
 
             // and return that number as a string
-            response = new BytesRestResponse(RestStatus.OK, String.valueOf(count));
-            channel.sendResponse(response);
-        } catch (Throwable e) {
-            if (logger.isDebugEnabled())
-                logger.error("Error estimating records", e);
-            throw new RuntimeException(e);
+            long finalCount = count;
+            return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, String.valueOf(finalCount)));
         } finally {
             long end = System.currentTimeMillis();
             logger.info("Estimated " + count + " records in " + ((end - start) / 1000D) + " seconds.");
         }
+    }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

@@ -17,14 +17,16 @@ package com.tcdi.zombodb.query_parser.rewriters;
 
 import com.tcdi.zombodb.query_parser.optimizers.ExpansionOptimizer;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.common.xcontent.XContentParser;
 
 /**
  * ZomboDB's stock {@link QueryRewriter} that resolves joins during construction
  */
 public class ZomboDBQueryRewriter extends QueryRewriter {
 
-    public ZomboDBQueryRewriter(Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-        super(client, indexName, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
+    public ZomboDBQueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+        super(client, indexName, contentRegistry, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
     }
 
     @Override

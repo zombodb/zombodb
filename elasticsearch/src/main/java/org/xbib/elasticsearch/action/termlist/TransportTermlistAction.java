@@ -21,16 +21,15 @@ import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.DefaultShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.TransportBroadcastAction;
-import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.cluster.block.ClusterBlockLevel;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.routing.GroupShardsIterator;
 import org.elasticsearch.cluster.routing.ShardRouting;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.engine.Engine;
@@ -41,14 +40,13 @@ import org.elasticsearch.transport.TransportService;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.Supplier;
 
 /**
  * Termlist index/indices action.
  */
 public class TransportTermlistAction
         extends TransportBroadcastAction<TermlistRequest, TermlistResponse, ShardTermlistRequest, ShardTermlistResponse> {
-
-    private final static ESLogger logger = ESLoggerFactory.getLogger(TransportTermlistAction.class.getName());
 
     private final IndicesService indicesService;
 
@@ -59,8 +57,18 @@ public class TransportTermlistAction
                                    IndexNameExpressionResolver indexNameExpressionResolver,
                                    IndicesService indicesService) {
         super(settings, TermlistAction.NAME, threadPool, clusterService, transportService, actionFilters,
-              indexNameExpressionResolver, TermlistRequest.class, ShardTermlistRequest.class,
-              ThreadPool.Names.GENERIC);
+                indexNameExpressionResolver, new Supplier<TermlistRequest>() {
+                    @Override
+                    public TermlistRequest get() {
+                        return new TermlistRequest();
+                    }
+                }, new Supplier<ShardTermlistRequest>() {
+                    @Override
+                    public ShardTermlistRequest get() {
+                        return new ShardTermlistRequest();
+                    }
+                },
+                ThreadPool.Names.GENERIC);
         this.indicesService = indicesService;
     }
 
@@ -115,7 +123,7 @@ public class TransportTermlistAction
 
     @Override
     protected ShardTermlistRequest newShardRequest(int numShards, ShardRouting shard, TermlistRequest request) {
-        return new ShardTermlistRequest(shard.getIndex(), shard.shardId(), request);
+        return new ShardTermlistRequest(shard.getIndexName(), shard.shardId(), request);
     }
 
     @Override
@@ -143,8 +151,8 @@ public class TransportTermlistAction
 
     @Override
     protected ShardTermlistResponse shardOperation(ShardTermlistRequest request) throws ElasticsearchException {
-        IndexShard indexShard = indicesService.indexServiceSafe(request.getIndex()).shardSafe(request.shardId().id());
-        try (Engine.Searcher searcher = indexShard.engine().acquireSearcher("zdbtermlist")) {
+        IndexShard indexShard = indicesService.indexServiceSafe(request.shardId().getIndex()).getShard(request.shardId().id());
+        try (Engine.Searcher searcher = indexShard.acquireSearcher("zdbtermlist")) {
             String startAt = request.getRequest().getStartAt();
             BytesRef prefix = request.getRequest().hasUsableTermPrefix() ? new BytesRef(Strings.toUTF8Bytes(startAt == null ? request.getRequest().getPrefix() : startAt)) : null;
             IndexReader reader = searcher.reader();

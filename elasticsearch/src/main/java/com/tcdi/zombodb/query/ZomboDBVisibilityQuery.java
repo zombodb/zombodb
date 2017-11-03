@@ -21,6 +21,8 @@ import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.FixedBitSet;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,12 +34,14 @@ class ZomboDBVisibilityQuery extends Query {
     private final int commandid;
     private final Set<Long> activeXids;
 
-    ZomboDBVisibilityQuery(long myXid, long xmin, long xmax, int commandid, Set<Long> activeXids) {
+    ZomboDBVisibilityQuery(long myXid, long xmin, long xmax, int commandid, long[] activeXids) {
         this.myXid = myXid;
         this.xmin = xmin;
         this.xmax = xmax;
         this.commandid = commandid;
-        this.activeXids = activeXids;
+        this.activeXids = new HashSet<>();
+        for (long xid : activeXids)
+            this.activeXids.add(xid);
     }
 
     @Override
@@ -62,7 +66,7 @@ class ZomboDBVisibilityQuery extends Query {
 
     @Override
     public int hashCode() {
-        int hash = super.hashCode();
+        int hash = 0;
         hash = hash * 31 + (int)(myXid ^ (myXid >>> 32));
         hash = hash * 31 + (int)(xmin ^ (xmin >>> 32));
         hash = hash * 31 + (int)(xmax ^ (xmax >>> 32));

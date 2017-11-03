@@ -15,47 +15,63 @@
  */
 package com.tcdi.zombodb.query;
 
+import org.apache.lucene.search.Query;
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.AbstractQueryBuilder;
+import org.elasticsearch.index.query.QueryShardContext;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 
-public class ZomboDBVisibilityQueryBuilder extends QueryBuilder {
+public class ZomboDBVisibilityQueryBuilder extends AbstractQueryBuilder<ZomboDBVisibilityQueryBuilder> {
+    public static final String NAME = "visibility";
 
     private long myXid;
-    private boolean haveMyXid;
     private long xmin;
     private int commandid;
-    private boolean haveXmin;
-    private boolean haveXmax;
-    private boolean haveCommandid;
     private long xmax;
     private long[] activeXids;
 
     public ZomboDBVisibilityQueryBuilder() {
+
+    }
+
+    public ZomboDBVisibilityQueryBuilder(StreamInput in) throws IOException {
+        myXid = in.readLong();
+        xmin = in.readLong();
+        xmax = in.readLong();
+        commandid = in.readInt();
+        activeXids = in.readLongArray();
+    }
+
+    public ZomboDBVisibilityQueryBuilder(long myXid, long xmin, long xmax, int commandid, long[] activeXids) {
+        this.myXid = myXid;
+        this.xmin = xmin;
+        this.xmax = xmax;
+        this.commandid = commandid;
+        this.activeXids = activeXids;
     }
 
     public ZomboDBVisibilityQueryBuilder myXid(long myXid) {
         this.myXid = myXid;
-        haveMyXid = true;
         return this;
     }
 
     public ZomboDBVisibilityQueryBuilder xmin(long xmin) {
         this.xmin = xmin;
-        haveXmin = true;
         return this;
     }
 
     public ZomboDBVisibilityQueryBuilder xmax(long xmax) {
         this.xmax = xmax;
-        haveXmax = true;
         return this;
     }
 
     public ZomboDBVisibilityQueryBuilder commandId(int commandid) {
         this.commandid = commandid;
-        haveCommandid = true;
         return this;
     }
 
@@ -65,19 +81,47 @@ public class ZomboDBVisibilityQueryBuilder extends QueryBuilder {
     }
 
     @Override
-    protected void doXContent(XContentBuilder builder, Params params) throws IOException {
-        builder.startObject(ZomboDBVisibilityQueryParser.NAME);
+    protected void doWriteTo(StreamOutput out) throws IOException {
+        out.writeLong(myXid);
+        out.writeLong(xmin);
+        out.writeLong(xmax);
+        out.writeInt(commandid);
+        out.writeLongArray(activeXids);
+    }
 
-        if (haveMyXid)
-            builder.field("myxid", myXid);
-        if (haveXmin)
-            builder.field("xmin", xmin);
-        if (haveXmax)
-            builder.field("xmax", xmax);
-        if (haveCommandid)
-            builder.field("commandid", commandid);
-        if (activeXids != null && activeXids.length > 0)
-            builder.field("active_xids", activeXids);
+    @Override
+    protected Query doToQuery(QueryShardContext context) throws IOException {
+        return new ZomboDBVisibilityQuery(myXid, xmin, xmax, commandid, activeXids);
+    }
+
+    @Override
+    protected boolean doEquals(ZomboDBVisibilityQueryBuilder other) {
+        return Objects.equals(myXid, other.myXid) &&
+                Objects.equals(xmin, other.xmin) &&
+                Objects.equals(xmax, other.xmax) &&
+                Objects.equals(commandid, other.commandid) &&
+                Arrays.equals(activeXids, other.activeXids);
+    }
+
+    @Override
+    protected int doHashCode() {
+        return Objects.hash(myXid, xmin, xmax, commandid, activeXids);
+    }
+
+    @Override
+    public String getWriteableName() {
+        return NAME;
+    }
+
+    @Override
+    protected void doXContent(XContentBuilder builder, Params params) throws IOException {
+        builder.startObject(NAME);
+
+        builder.field("myxid", myXid);
+        builder.field("xmin", xmin);
+        builder.field("xmax", xmax);
+        builder.field("commandid", commandid);
+        builder.field("active_xids", activeXids);
         builder.endObject();
     }
 }

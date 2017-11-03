@@ -17,43 +17,46 @@ package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.ExceptionsHelper;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.rest.*;
+
+import java.io.IOException;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZombodbQueryAction extends BaseRestHandler {
     @Inject
-    public ZombodbQueryAction(Settings settings, RestController controller, Client client) {
-        super(settings, controller, client);
+    public ZombodbQueryAction(Settings settings, RestController controller) {
+        super(settings);
         controller.registerHandler(GET, "/{index}/_zdbquery", this);
         controller.registerHandler(POST, "/{index}/_zdbquery", this);
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         String query = request.param("q");
         BytesRestResponse response;
 
         if (query == null)
-            query = request.content().toUtf8();
+            query = request.content().utf8ToString();
 
         if (query != null && query.trim().length() > 0) {
             try {
                 QueryRewriter qr;
                 String json;
 
-                qr = QueryRewriter.Factory.create(client, request.param("index"), request.param("preference"), query, true, false, false);
+                qr = QueryRewriter.Factory.create(request, client, request.param("index"), request.param("preference"), query, true, false, false);
                 json = qr.rewriteQuery().toString();
 
                 response = new BytesRestResponse(RestStatus.OK, "application/json", json);
             } catch (Exception e) {
                 logger.error("Error building query", e);
-                XContentBuilder builder = channel.newBuilder();
+                XContentBuilder builder = XContentBuilder.builder(JsonXContent.jsonXContent);
                 builder.startObject();
                 builder.field("error", ExceptionsHelper.stackTrace(e));
                 builder.endObject();
@@ -63,6 +66,12 @@ public class ZombodbQueryAction extends BaseRestHandler {
             response = new BytesRestResponse(RestStatus.OK, "application/json", "{ \"match_all\": {} }");
         }
 
-        channel.sendResponse(response);
+        BytesRestResponse finalResponse = response;
+        return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, finalResponse.contentType(), finalResponse.content()));
+    }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

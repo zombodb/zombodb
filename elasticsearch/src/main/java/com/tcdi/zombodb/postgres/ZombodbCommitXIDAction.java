@@ -4,16 +4,17 @@ import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteAction;
-import org.elasticsearch.action.delete.DeleteRequestBuilder;
-import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.cluster.ClusterService;
+import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -23,8 +24,8 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
     private ClusterService clusterService;
 
     @Inject
-    public ZombodbCommitXIDAction(Settings settings, RestController controller, Client client, ClusterService clusterService) {
-        super(settings, controller, client);
+    public ZombodbCommitXIDAction(Settings settings, RestController controller, ClusterService clusterService) {
+        super(settings);
 
         this.clusterService = clusterService;
 
@@ -32,17 +33,17 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
     }
 
     @Override
-    protected void handleRequest(RestRequest rest, RestChannel channel, Client client) throws Exception {
-        String index = rest.param("index");
-        boolean refresh = rest.paramAsBoolean("refresh", false);
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
+        String index = request.param("index");
+        boolean refresh = request.paramAsBoolean("refresh", false);
         GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(index).request()).actionGet();
         int shards = Integer.parseInt(indexSettings.getSetting(index, "index.number_of_shards"));
-        String[] routingTable = RoutingHelper.getRoutingTable(client, clusterService, index, shards);
+        String[] routingTable = RoutingHelper.getRoutingTable(clusterService, index, shards);
 
         BulkRequest bulkRequest = Requests.bulkRequest();
-        bulkRequest.refresh(refresh);
+        bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(rest.content().streamInput()));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
         while ((line = reader.readLine()) != null) {
             Long xid = Long.valueOf(line);
@@ -64,6 +65,11 @@ public class ZombodbCommitXIDAction extends BaseRestHandler {
         if (response.hasFailures())
             throw new RuntimeException(response.buildFailureMessage());
 
-        channel.sendResponse(new BytesRestResponse(RestStatus.OK, String.valueOf("ok")));
+        return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, String.valueOf("ok")));
+    }
+
+    @Override
+    public boolean supportsPlainText() {
+        return true;
     }
 }

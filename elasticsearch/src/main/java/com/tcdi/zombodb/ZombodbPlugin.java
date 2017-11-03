@@ -17,56 +17,84 @@
 package com.tcdi.zombodb;
 
 import com.tcdi.zombodb.postgres.*;
+import com.tcdi.zombodb.query.ZomboDBVisibilityQueryBuilder;
 import com.tcdi.zombodb.query.ZomboDBVisibilityQueryParser;
-import org.elasticsearch.action.ActionModule;
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
+import org.elasticsearch.cluster.node.DiscoveryNodes;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.settings.ClusterSettings;
+import org.elasticsearch.common.settings.IndexScopedSettings;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.indices.IndicesModule;
+import org.elasticsearch.common.settings.SettingsFilter;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.Plugin;
-import org.elasticsearch.rest.RestModule;
+import org.elasticsearch.plugins.SearchPlugin;
+import org.elasticsearch.rest.RestController;
+import org.elasticsearch.rest.RestHandler;
+import org.elasticsearch.script.ScriptService;
+import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.watcher.ResourceWatcherService;
 import org.xbib.elasticsearch.action.termlist.TermlistAction;
 import org.xbib.elasticsearch.action.termlist.TransportTermlistAction;
 import org.xbib.elasticsearch.rest.action.termlist.RestTermlistAction;
 
-public class ZombodbPlugin extends Plugin {
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
-    @Inject
-    public ZombodbPlugin(Settings settings) {
+public class ZombodbPlugin extends Plugin implements ActionPlugin, SearchPlugin {
+
+    private ClusterService clusterService;
+
+    public ZombodbPlugin() {
         // noop
     }
 
-    public void onModule(RestModule module) {
-        module.addRestAction(PostgresTIDResponseAction.class);
-        module.addRestAction(PostgresAggregationAction.class);
-        module.addRestAction(PostgresCountAction.class);
-        module.addRestAction(PostgresMappingAction.class);
-        module.addRestAction(ZombodbQueryAction.class);
-        module.addRestAction(ZombodbDocumentHighlighterAction.class);
-        module.addRestAction(ZombodbMultiSearchAction.class);
-        module.addRestAction(RestTermlistAction.class);
-        module.addRestAction(ZombodbBulkAction.class);
-        module.addRestAction(ZombodbCommitXIDAction.class);
-        module.addRestAction(ZombodbDeleteTuplesAction.class);
-        module.addRestAction(ZombodbGetXidVacuumCandidatesAction.class);
-        module.addRestAction(ZombodbVacuumSupportAction.class);
-        module.addRestAction(ZombodbVacuumCleanupAction.class);
-    }
-
-    public void onModule(ActionModule module) {
-        module.registerAction(TermlistAction.INSTANCE, TransportTermlistAction.class);
-    }
-
-    public void onModule(IndicesModule module) {
-        module.registerQueryParser(ZomboDBVisibilityQueryParser.class);
+    @Override
+    public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService, ScriptService scriptService, NamedXContentRegistry xContentRegistry) {
+        this.clusterService = clusterService;
+        return super.createComponents(client, clusterService, threadPool, resourceWatcherService, scriptService, xContentRegistry);
     }
 
     @Override
-    public String name() {
-        return "Zombodb";
+    public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings, IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter, IndexNameExpressionResolver indexNameExpressionResolver, java.util.function.Supplier<DiscoveryNodes> nodesInCluster) {
+        return Arrays.asList(
+                new PostgresTIDResponseAction(settings, restController),
+                new PostgresAggregationAction(settings, restController),
+                new PostgresCountAction(settings, restController),
+                new PostgresMappingAction(settings, restController),
+                new ZombodbQueryAction(settings, restController),
+                new ZombodbDocumentHighlighterAction(settings, restController),
+                new ZombodbMultiSearchAction(settings, restController),
+                new RestTermlistAction(settings, restController),
+                new ZombodbBulkAction(settings, restController, clusterService),
+                new ZombodbCommitXIDAction(settings, restController, clusterService),
+                new ZombodbDeleteTuplesAction(settings, restController, clusterService),
+                new ZombodbGetXidVacuumCandidatesAction(settings, restController),
+                new ZombodbVacuumSupportAction(settings, restController),
+                new ZombodbVacuumCleanupAction(settings, restController, clusterService)
+
+        );
     }
 
     @Override
-    public String description() {
-        return "ZomboDB support plugin";
+    public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
+        return Collections.singletonList(
+                new ActionHandler<>(TermlistAction.INSTANCE, TransportTermlistAction.class)
+        );
+    }
+
+    @Override
+    public List<QuerySpec<?>> getQueries() {
+        return Collections.singletonList(
+                new QuerySpec<>("visibility", new ZomboDBVisibilityQueryParser(), new ZomboDBVisibilityQueryParser())
+        );
     }
 }

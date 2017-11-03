@@ -26,6 +26,7 @@ import com.tcdi.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.junit.Test;
 
@@ -33,6 +34,7 @@ import java.io.StringReader;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -318,10 +320,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testSimplePhrase() throws Exception {
         assertJson("phrase_field:(\"this is a phrase\")",
                 "{\n" +
-                        "  \"match\" : {\n" +
+                        "  \"match_phrase\" : {\n" +
                         "    \"phrase_field\" : {\n" +
                         "      \"query\" : \"this is a phrase\",\n" +
-                        "      \"type\" : \"phrase\"\n" +
+                        "      \"slop\" : 0,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  }\n" +
                         "}"
@@ -333,21 +336,29 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("_all:'\\* this phrase has \\?escaped\\~ wildcards\\*'",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"fulltext_field\" : {\n" +
-                        "          \"query\" : \"* this phrase has ?escaped~ wildcards*\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
+                        "    \"should\" : [\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"fulltext_field\" : {\n" +
+                        "            \"query\" : \"* this phrase has ?escaped~ wildcards*\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"_all\" : {\n" +
+                        "            \"query\" : \"* this phrase has ?escaped~ wildcards*\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
                         "        }\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"_all\" : {\n" +
-                        "          \"query\" : \"* this phrase has ?escaped~ wildcards*\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}");
     }
@@ -407,10 +418,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testPhraseWithEscapedFuzzyCharacters() throws Exception {
         assertJson("phrase_field:'Here\\~ is\\~ fuzzy\\~ words'",
                 "{\n" +
-                        "  \"match\" : {\n" +
+                        "  \"match_phrase\" : {\n" +
                         "    \"phrase_field\" : {\n" +
                         "      \"query\" : \"Here~ is~ fuzzy~ words\",\n" +
-                        "      \"type\" : \"phrase\"\n" +
+                        "      \"slop\" : 0,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  }\n" +
                         "}");
@@ -481,11 +493,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testPhraseWithSlop() throws Exception {
         assertJson("phrase_field:'some phrase containing slop'~2",
                 "{\n" +
-                        "  \"match\" : {\n" +
+                        "  \"match_phrase\" : {\n" +
                         "    \"phrase_field\" : {\n" +
                         "      \"query\" : \"some phrase containing slop\",\n" +
-                        "      \"type\" : \"phrase\",\n" +
-                        "      \"slop\" : 2\n" +
+                        "      \"slop\" : 2,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  }\n" +
                         "}");
@@ -710,10 +722,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson(
                 "phrase_field:'c-note'",
                 "{\n" +
-                        "  \"match\" : {\n" +
+                        "  \"match_phrase\" : {\n" +
                         "    \"phrase_field\" : {\n" +
                         "      \"query\" : \"c-note\",\n" +
-                        "      \"type\" : \"phrase\"\n" +
+                        "      \"slop\" : 0,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  }\n" +
                         "}"
@@ -902,10 +915,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testCVSIX_2551_subjectsStarsSymbol002() throws Exception {
         assertJson("( phrase_field : \"Qwerty \\*FREE Samples\\*\" )",
                 "{\n" +
-                        "  \"match\" : {\n" +
+                        "  \"match_phrase\" : {\n" +
                         "    \"phrase_field\" : {\n" +
                         "      \"query\" : \"Qwerty *FREE Samples*\",\n" +
-                        "      \"type\" : \"phrase\"\n" +
+                        "      \"slop\" : 0,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  }\n" +
                         "}"
@@ -917,21 +931,29 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("( phrase_field: \"cut-over\" OR phrase_field: \"get-prices\" )",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"cut-over\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
+                        "    \"should\" : [\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"query\" : \"cut-over\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"query\" : \"get-prices\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
                         "        }\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"get-prices\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -2310,10 +2332,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void test_CVSIX_2770_phrase() throws Exception {
         assertJson("phrase_field = \"\\\"NOTES:KARO\\?\\?\\?\\?\\?\\?\\?\"  ",
                 "{\n" +
-                        "  \"match\" : {\n" +
+                        "  \"match_phrase\" : {\n" +
                         "    \"phrase_field\" : {\n" +
                         "      \"query\" : \"\\\"NOTES:KARO???????\",\n" +
-                        "      \"type\" : \"phrase\"\n" +
+                        "      \"slop\" : 0,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  }\n" +
                         "}"
@@ -2336,21 +2359,29 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("\"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\"",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"fulltext_field\" : {\n" +
-                        "          \"query\" : \"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
+                        "    \"should\" : [\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"fulltext_field\" : {\n" +
+                        "            \"query\" : \"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"_all\" : {\n" +
+                        "            \"query\" : \"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
                         "        }\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"_all\" : {\n" +
-                        "          \"query\" : \"xxxx17.0000000001.0000000001.0000000001.M.00.0000000-0000000\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -2747,9 +2778,9 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
     @Test
     public void testCVSIX_2748() {
-        Utils.convertToProximity("field", Arrays.asList(new AnalyzeResponse.AnalyzeToken("you", 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("not", 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("i", 0, 0, 0, null, Collections.EMPTY_MAP)));
-        Utils.convertToProximity("field", Arrays.asList(new AnalyzeResponse.AnalyzeToken("you", 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("and", 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("i", 0, 0, 0, null, Collections.EMPTY_MAP)));
-        Utils.convertToProximity("field", Arrays.asList(new AnalyzeResponse.AnalyzeToken("you", 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("or", 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("i", 0, 0, 0, null, Collections.EMPTY_MAP)));
+        Utils.convertToProximity("field", Arrays.asList(new AnalyzeResponse.AnalyzeToken("you", 0, 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("not", 0, 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("i", 0, 0, 0, 0, null, Collections.EMPTY_MAP)));
+        Utils.convertToProximity("field", Arrays.asList(new AnalyzeResponse.AnalyzeToken("you", 0, 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("and", 0, 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("i", 0, 0, 0, 0, null, Collections.EMPTY_MAP)));
+        Utils.convertToProximity("field", Arrays.asList(new AnalyzeResponse.AnalyzeToken("you", 0, 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("or", 0, 0, 0, 0, null, Collections.EMPTY_MAP), new AnalyzeResponse.AnalyzeToken("i", 0, 0, 0, 0, null, Collections.EMPTY_MAP)));
     }
 
     @Test
@@ -2794,18 +2825,24 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     @Test
     public void testIssue_37_RangeAggregateParsing() throws Exception {
         assertEquals("testIssue_37_RangeAggregateParsing",
-                "\n\"page_count\"{\n" +
+                "\n" +
+                        "\"page_count\"{\n" +
                         "  \"range\" : {\n" +
                         "    \"field\" : \"page_count\",\n" +
-                        "    \"ranges\" : [ {\n" +
-                        "      \"key\" : \"first\",\n" +
-                        "      \"to\" : 100.0\n" +
-                        "    }, {\n" +
-                        "      \"from\" : 100.0,\n" +
-                        "      \"to\" : 150.0\n" +
-                        "    }, {\n" +
-                        "      \"from\" : 150.0\n" +
-                        "    } ]\n" +
+                        "    \"ranges\" : [\n" +
+                        "      {\n" +
+                        "        \"key\" : \"first\",\n" +
+                        "        \"to\" : 100.0\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"from\" : 100.0,\n" +
+                        "        \"to\" : 150.0\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"from\" : 150.0\n" +
+                        "      }\n" +
+                        "    ],\n" +
+                        "    \"keyed\" : false\n" +
                         "  }\n" +
                         "}",
                 qr("#range(page_count, '[{\"key\":\"first\", \"to\":100}, {\"from\":100, \"to\":150}, {\"from\":150}]')")
@@ -2817,23 +2854,29 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     @Test
     public void testIssue_46_DateRangeAggregateParsing() throws Exception {
         assertEquals("testIssue_99_DateRangeAggregateParsing",
-                "\n\"date_field\"{\n" +
+                "\n" +
+                        "\"date_field\"{\n" +
                         "  \"date_range\" : {\n" +
                         "    \"field\" : \"date_field.date\",\n" +
-                        "    \"ranges\" : [ {\n" +
-                        "      \"key\" : \"early\",\n" +
-                        "      \"to\" : \"2009-01-01 00:00:00\"\n" +
-                        "    }, {\n" +
-                        "      \"from\" : \"2009-01-01 00:00:00\",\n" +
-                        "      \"to\" : \"2010-01-01 00:00:00\"\n" +
-                        "    }, {\n" +
-                        "      \"from\" : \"2010-01-01 00:00:00\"\n" +
-                        "    } ]\n" +
+                        "    \"ranges\" : [\n" +
+                        "      {\n" +
+                        "        \"key\" : \"early\",\n" +
+                        "        \"to\" : \"2009-01-01 00:00:00\"\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"from\" : \"2009-01-01 00:00:00\",\n" +
+                        "        \"to\" : \"2010-01-01 00:00:00\"\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"from\" : \"2010-01-01 00:00:00\"\n" +
+                        "      }\n" +
+                        "    ],\n" +
+                        "    \"keyed\" : false\n" +
                         "  }\n" +
                         "}",
                 qr("#range(date_field, '[{\"key\": \"early\", \"to\":\"2009-01-01 00:00:00\"}, {\"from\":\"2009-01-01 00:00:00\", \"to\":\"2010-01-01 00:00:00\"}, {\"from\":\"2010-01-01 00:00:00\"}]')")
                         .rewriteAggregations()
-                        .toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string().replaceAll("\r", "")
+                        .toXContent(JsonXContent.contentBuilder().prettyPrint(), null).string()
         );
     }
 
@@ -3136,110 +3179,198 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "phrase_field:literal_term phrase_field:'quoted_term' extact_field:prefix* phrase_field:*wild*card* phrase_field:fuzzy~ phrase_field:'phrase value' phrase_field:'phrase with *wildcard*' ",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must\" : [ {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must\" : [ {\n" +
-                        "          \"wildcard\" : {\n" +
-                        "            \"exact_field\" : \"phrase with *wildcard*\"\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"exact_field\" : \"literal_term\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"exact_field\" : \"quoted_term\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"exact_field\" : \"phrase value\"\n" +
-                        "              }\n" +
-                        "            } ]\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"prefix\" : {\n" +
-                        "        \"extact_field\" : \"prefix\"\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"wildcard\" : {\n" +
-                        "        \"exact_field\" : \"*wild*card*\"\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"fuzzy\" : {\n" +
-                        "        \"exact_field\" : {\n" +
-                        "          \"value\" : \"fuzzy\",\n" +
-                        "          \"prefix_length\" : 3\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must\" : [ {\n" +
-                        "          \"match\" : {\n" +
-                        "            \"phrase_field\" : {\n" +
-                        "              \"query\" : \"phrase value\",\n" +
-                        "              \"type\" : \"phrase\"\n" +
-                        "            }\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_near\" : {\n" +
-                        "            \"clauses\" : [ {\n" +
-                        "              \"span_term\" : {\n" +
-                        "                \"phrase_field\" : {\n" +
-                        "                  \"value\" : \"phrase\"\n" +
+                        "    \"must\" : [\n" +
+                        "      {\n" +
+                        "        \"bool\" : {\n" +
+                        "          \"must\" : [\n" +
+                        "            {\n" +
+                        "              \"wildcard\" : {\n" +
+                        "                \"exact_field\" : {\n" +
+                        "                  \"wildcard\" : \"phrase with *wildcard*\",\n" +
+                        "                  \"boost\" : 1.0\n" +
                         "                }\n" +
                         "              }\n" +
-                        "            }, {\n" +
-                        "              \"span_term\" : {\n" +
-                        "                \"phrase_field\" : {\n" +
-                        "                  \"value\" : \"with\"\n" +
-                        "                }\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"span_multi\" : {\n" +
-                        "                \"match\" : {\n" +
-                        "                  \"wildcard\" : {\n" +
-                        "                    \"phrase_field\" : \"*wildcard*\"\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"must\" : [\n" +
+                        "                  {\n" +
+                        "                    \"term\" : {\n" +
+                        "                      \"exact_field\" : {\n" +
+                        "                        \"value\" : \"literal_term\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  },\n" +
+                        "                  {\n" +
+                        "                    \"term\" : {\n" +
+                        "                      \"exact_field\" : {\n" +
+                        "                        \"value\" : \"quoted_term\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  },\n" +
+                        "                  {\n" +
+                        "                    \"term\" : {\n" +
+                        "                      \"exact_field\" : {\n" +
+                        "                        \"value\" : \"phrase value\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
                         "                  }\n" +
+                        "                ],\n" +
+                        "                \"disable_coord\" : false,\n" +
+                        "                \"adjust_pure_negative\" : true,\n" +
+                        "                \"boost\" : 1.0\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          ],\n" +
+                        "          \"disable_coord\" : false,\n" +
+                        "          \"adjust_pure_negative\" : true,\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"prefix\" : {\n" +
+                        "          \"extact_field\" : {\n" +
+                        "            \"value\" : \"prefix\",\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"wildcard\" : {\n" +
+                        "          \"exact_field\" : {\n" +
+                        "            \"wildcard\" : \"*wild*card*\",\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"fuzzy\" : {\n" +
+                        "          \"exact_field\" : {\n" +
+                        "            \"value\" : \"fuzzy\",\n" +
+                        "            \"fuzziness\" : \"AUTO\",\n" +
+                        "            \"prefix_length\" : 3,\n" +
+                        "            \"max_expansions\" : 50,\n" +
+                        "            \"transpositions\" : false,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"bool\" : {\n" +
+                        "          \"must\" : [\n" +
+                        "            {\n" +
+                        "              \"match_phrase\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"query\" : \"phrase value\",\n" +
+                        "                  \"slop\" : 0,\n" +
+                        "                  \"boost\" : 1.0\n" +
                         "                }\n" +
                         "              }\n" +
-                        "            } ],\n" +
-                        "            \"slop\" : 0,\n" +
-                        "            \"in_order\" : true\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"phrase_field\" : \"literal_term\"\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"span_near\" : {\n" +
+                        "                \"clauses\" : [\n" +
+                        "                  {\n" +
+                        "                    \"span_term\" : {\n" +
+                        "                      \"phrase_field\" : {\n" +
+                        "                        \"value\" : \"phrase\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  },\n" +
+                        "                  {\n" +
+                        "                    \"span_term\" : {\n" +
+                        "                      \"phrase_field\" : {\n" +
+                        "                        \"value\" : \"with\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  },\n" +
+                        "                  {\n" +
+                        "                    \"span_multi\" : {\n" +
+                        "                      \"match\" : {\n" +
+                        "                        \"wildcard\" : {\n" +
+                        "                          \"phrase_field\" : {\n" +
+                        "                            \"wildcard\" : \"*wildcard*\",\n" +
+                        "                            \"boost\" : 1.0\n" +
+                        "                          }\n" +
+                        "                        }\n" +
+                        "                      },\n" +
+                        "                      \"boost\" : 1.0\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                ],\n" +
+                        "                \"slop\" : 0,\n" +
+                        "                \"in_order\" : true,\n" +
+                        "                \"boost\" : 1.0\n" +
                         "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"phrase_field\" : \"quoted_term\"\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"must\" : [\n" +
+                        "                  {\n" +
+                        "                    \"term\" : {\n" +
+                        "                      \"phrase_field\" : {\n" +
+                        "                        \"value\" : \"literal_term\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  },\n" +
+                        "                  {\n" +
+                        "                    \"term\" : {\n" +
+                        "                      \"phrase_field\" : {\n" +
+                        "                        \"value\" : \"quoted_term\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                ],\n" +
+                        "                \"disable_coord\" : false,\n" +
+                        "                \"adjust_pure_negative\" : true,\n" +
+                        "                \"boost\" : 1.0\n" +
                         "              }\n" +
-                        "            } ]\n" +
+                        "            }\n" +
+                        "          ],\n" +
+                        "          \"disable_coord\" : false,\n" +
+                        "          \"adjust_pure_negative\" : true,\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"prefix\" : {\n" +
+                        "          \"extact_field\" : {\n" +
+                        "            \"value\" : \"prefix\",\n" +
+                        "            \"boost\" : 1.0\n" +
                         "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"prefix\" : {\n" +
-                        "        \"extact_field\" : \"prefix\"\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"wildcard\" : {\n" +
-                        "        \"phrase_field\" : \"*wild*card*\"\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"fuzzy\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"fuzzy\",\n" +
-                        "          \"prefix_length\" : 3\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"wildcard\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"wildcard\" : \"*wild*card*\",\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"fuzzy\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"value\" : \"fuzzy\",\n" +
+                        "            \"fuzziness\" : \"AUTO\",\n" +
+                        "            \"prefix_length\" : 3,\n" +
+                        "            \"max_expansions\" : 50,\n" +
+                        "            \"transpositions\" : false,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
                         "        }\n" +
                         "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -3288,64 +3419,81 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("phrase_field:(term^1.0 field:term^2.0 a^3.0 w/2 b^4.0 'some phrase'^5 fuzzy~^6 wildcard*^7)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must\" : [ {\n" +
-                        "      \"term\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"term\",\n" +
+                        "    \"must\" : [\n" +
+                        "      {\n" +
+                        "        \"term\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"value\" : \"term\",\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"term\" : {\n" +
+                        "          \"field\" : {\n" +
+                        "            \"value\" : \"term\",\n" +
+                        "            \"boost\" : 2.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [\n" +
+                        "            {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"a\",\n" +
+                        "                  \"boost\" : 3.0\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"b\",\n" +
+                        "                  \"boost\" : 4.0\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          ],\n" +
+                        "          \"slop\" : 2,\n" +
+                        "          \"in_order\" : false,\n" +
                         "          \"boost\" : 1.0\n" +
                         "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"term\" : {\n" +
-                        "        \"field\" : {\n" +
-                        "          \"value\" : \"term\",\n" +
-                        "          \"boost\" : 2.0\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"span_near\" : {\n" +
-                        "        \"clauses\" : [ {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"phrase_field\" : {\n" +
-                        "              \"value\" : \"a\",\n" +
-                        "              \"boost\" : 3.0\n" +
-                        "            }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"query\" : \"some phrase\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 5.0\n" +
                         "          }\n" +
-                        "        }, {\n" +
-                        "          \"span_term\" : {\n" +
-                        "            \"phrase_field\" : {\n" +
-                        "              \"value\" : \"b\",\n" +
-                        "              \"boost\" : 4.0\n" +
-                        "            }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"fuzzy\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"value\" : \"fuzzy\",\n" +
+                        "            \"fuzziness\" : \"AUTO\",\n" +
+                        "            \"prefix_length\" : 3,\n" +
+                        "            \"max_expansions\" : 50,\n" +
+                        "            \"transpositions\" : false,\n" +
+                        "            \"boost\" : 6.0\n" +
                         "          }\n" +
-                        "        } ],\n" +
-                        "        \"slop\" : 2,\n" +
-                        "        \"in_order\" : false\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"some phrase\",\n" +
-                        "          \"type\" : \"phrase\",\n" +
-                        "          \"boost\" : 5.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"prefix\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"value\" : \"wildcard\",\n" +
+                        "            \"boost\" : 7.0\n" +
+                        "          }\n" +
                         "        }\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"fuzzy\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"value\" : \"fuzzy\",\n" +
-                        "          \"boost\" : 6.0,\n" +
-                        "          \"prefix_length\" : 3\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"prefix\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"prefix\" : \"wildcard\",\n" +
-                        "          \"boost\" : 7.0\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -3438,10 +3586,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testJapaneseCharacters() throws Exception {
         assertJson("phrase_field:物質の総称である。",
                 "{\n" +
-                        "  \"match\" : {\n" +
+                        "  \"match_phrase\" : {\n" +
                         "    \"phrase_field\" : {\n" +
                         "      \"query\" : \"物質の総称である。\",\n" +
-                        "      \"type\" : \"phrase\"\n" +
+                        "      \"slop\" : 0,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  }\n" +
                         "}"
@@ -3478,33 +3627,54 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("phrase_field:(asdflkj234-132asdfuj asiodfja;sdf #487adqerydfskf0230 &@#$23)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must\" : [ {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"asdflkj234-132asdfuj\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
+                        "    \"must\" : [\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"query\" : \"asdflkj234-132asdfuj\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"query\" : \"asiodfja;sdf\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"bool\" : {\n" +
+                        "          \"must\" : [\n" +
+                        "            {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"487adqerydfskf0230\",\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"23\",\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          ],\n" +
+                        "          \"disable_coord\" : false,\n" +
+                        "          \"adjust_pure_negative\" : true,\n" +
+                        "          \"boost\" : 1.0\n" +
                         "        }\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"asiodfja;sdf\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must\" : [ {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"phrase_field\" : \"487adqerydfskf0230\"\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"phrase_field\" : \"23\"\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -3666,10 +3836,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testCzech() throws Exception {
         assertJson("czech_field:'toto je test'",
                 "{\n" +
-                        "  \"match\" : {\n" +
+                        "  \"match_phrase\" : {\n" +
                         "    \"czech_field\" : {\n" +
                         "      \"query\" : \"toto je test\",\n" +
-                        "      \"type\" : \"phrase\"\n" +
+                        "      \"slop\" : 0,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  }\n" +
                         "}"
@@ -3692,8 +3863,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         highlights = highlighter.highlight();
         sortHighlightTokens(highlights);
 
-        assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"non\",\"startOffset\":8,\"endOffset\":11,\"position\":2,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"},{\"term\":\"programmers\",\"startOffset\":12,\"endOffset\":23,\"position\":3,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\"}]",
-                new ObjectMapper().writeValueAsString(highlights));
+        assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"non\",\"startOffset\":8,\"endOffset\":11,\"position\":2,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"programmers\",\"startOffset\":12,\"endOffset\":23,\"position\":3,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false}]",
+                Utils.objectToJson(highlights));
     }
 
     @Test
@@ -3717,8 +3888,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
             highlights = highlighter.highlight();
             sortHighlightTokens(highlights);
 
-            assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"" + s + "getting\\\"\"}]",
-                    new ObjectMapper().writeValueAsString(highlights));
+            assertEquals("[{\"term\":\"getting\",\"startOffset\":0,\"endOffset\":7,\"position\":1,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"" + s + "getting\\\"\",\"fragment\":false}]",
+                    Utils.objectToJson(highlights));
         }
     }
 
@@ -3863,8 +4034,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         highlights = highlighter.highlight();
         sortHighlightTokens(highlights);
 
-        assertEquals("[{\"term\":\"a\",\"startOffset\":0,\"endOffset\":1,\"position\":1,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"a\\\"\"},{\"term\":\"b\",\"startOffset\":2,\"endOffset\":3,\"position\":2,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"b\\\"\"},{\"term\":\"c\",\"startOffset\":4,\"endOffset\":5,\"position\":3,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"c\\\"\"},{\"term\":\"d\",\"startOffset\":6,\"endOffset\":7,\"position\":4,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"d\\\"\"}]",
-                new ObjectMapper().writeValueAsString(highlights));
+        assertEquals("[{\"term\":\"a\",\"startOffset\":0,\"endOffset\":1,\"position\":1,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"a\\\"\",\"fragment\":false},{\"term\":\"b\",\"startOffset\":2,\"endOffset\":3,\"position\":2,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"b\\\"\",\"fragment\":false},{\"term\":\"c\",\"startOffset\":4,\"endOffset\":5,\"position\":3,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"c\\\"\",\"fragment\":false},{\"term\":\"d\",\"startOffset\":6,\"endOffset\":7,\"position\":4,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"d\\\"\",\"fragment\":false}]",
+                Utils.objectToJson(highlights));
     }
 
     @Test
@@ -3883,8 +4054,8 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         highlights = highlighter.highlight();
         sortHighlightTokens(highlights);
 
-        assertEquals("[{\"term\":\"attorneys\",\"startOffset\":0,\"endOffset\":9,\"position\":1,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\"},{\"term\":\"general\",\"startOffset\":15,\"endOffset\":22,\"position\":3,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\"},{\"term\":\"networks\",\"startOffset\":43,\"endOffset\":51,\"position\":8,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\"}]",
-                new ObjectMapper().writeValueAsString(highlights));
+        assertEquals("[{\"term\":\"attorneys\",\"startOffset\":0,\"endOffset\":9,\"position\":1,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"general\",\"startOffset\":15,\"endOffset\":22,\"position\":3,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"networks\",\"startOffset\":43,\"endOffset\":51,\"position\":8,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"_all CONTAINS \\\"null\\\"\",\"fragment\":false}]",
+                Utils.objectToJson(highlights));
     }
 
     @Test
@@ -4076,25 +4247,37 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson(q,
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"This is a mIxEDcAsE PHRASE\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
+                        "    \"should\" : [\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"query\" : \"This is a mIxEDcAsE PHRASE\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"query\" : \"12/31/1999\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"terms\" : {\n" +
+                        "          \"phrase_field\" : [\n" +
+                        "            \"unknown\"\n" +
+                        "          ],\n" +
+                        "          \"boost\" : 1.0\n" +
                         "        }\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"match\" : {\n" +
-                        "        \"phrase_field\" : {\n" +
-                        "          \"query\" : \"12/31/1999\",\n" +
-                        "          \"type\" : \"phrase\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"terms\" : {\n" +
-                        "        \"phrase_field\" : [ \"unknown\" ]\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -4835,13 +5018,13 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
         qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50)");
         assertEquals(
-                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}}}",
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":{\"_term\":\"asc\"}}}",
                 qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
         );
 
         qr = qr("#tally(field, \"^.*\", 5000, \"term\", 50, #tally(field, \"^.*\", 5000, \"term\"))");
         assertEquals(
-                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"order\":{\"_term\":\"asc\"}},\"aggregations\":{\"field\":{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":0,\"order\":{\"_term\":\"asc\"}}}}}",
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":50,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":{\"_term\":\"asc\"}},\"aggregations\":{\"field\":{\"terms\":{\"field\":\"field\",\"size\":5000,\"shard_size\":2147483647,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":{\"_term\":\"asc\"}}}}}",
                 qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
         );
     }
@@ -4900,41 +5083,82 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testIssue143_Json() throws Exception {
         assertJson(
                 "subject:(beer or wine and cheese) and ({" +
-                        "\"match_all\":{}" +
+                        "\"term\":{\"some_field\": \"some_value\"}" +
                         "}) not subject:pickles",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must\" : [ {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"should\" : [ {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"subject\" : \"beer\"\n" +
-                        "          }\n" +
-                        "        }, {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
+                        "    \"must\" : [\n" +
+                        "      {\n" +
+                        "        \"bool\" : {\n" +
+                        "          \"should\" : [\n" +
+                        "            {\n" +
                         "              \"term\" : {\n" +
-                        "                \"subject\" : \"wine\"\n" +
+                        "                \"subject\" : {\n" +
+                        "                  \"value\" : \"beer\",\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
                         "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"subject\" : \"cheese\"\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"bool\" : {\n" +
+                        "                \"must\" : [\n" +
+                        "                  {\n" +
+                        "                    \"term\" : {\n" +
+                        "                      \"subject\" : {\n" +
+                        "                        \"value\" : \"wine\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  },\n" +
+                        "                  {\n" +
+                        "                    \"term\" : {\n" +
+                        "                      \"subject\" : {\n" +
+                        "                        \"value\" : \"cheese\",\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                ],\n" +
+                        "                \"disable_coord\" : false,\n" +
+                        "                \"adjust_pure_negative\" : true,\n" +
+                        "                \"boost\" : 1.0\n" +
                         "              }\n" +
-                        "            } ]\n" +
-                        "          }\n" +
-                        "        } ]\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"match_all\" : { }\n" +
-                        "    }, {\n" +
-                        "      \"bool\" : {\n" +
-                        "        \"must_not\" : {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"subject\" : \"pickles\"\n" +
+                        "            }\n" +
+                        "          ],\n" +
+                        "          \"disable_coord\" : false,\n" +
+                        "          \"adjust_pure_negative\" : true,\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"term\" : {\n" +
+                        "          \"some_field\" : {\n" +
+                        "            \"value\" : \"some_value\",\n" +
+                        "            \"boost\" : 1.0\n" +
                         "          }\n" +
                         "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"bool\" : {\n" +
+                        "          \"must_not\" : [\n" +
+                        "            {\n" +
+                        "              \"term\" : {\n" +
+                        "                \"subject\" : {\n" +
+                        "                  \"value\" : \"pickles\",\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          ],\n" +
+                        "          \"disable_coord\" : false,\n" +
+                        "          \"adjust_pure_negative\" : true,\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
                         "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -4973,35 +5197,70 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "{\n" +
                         "  \"query\" : {\n" +
                         "    \"bool\" : {\n" +
-                        "      \"should\" : [ {\n" +
-                        "        \"terms\" : {\n" +
-                        "          \"fulltext_field\" : [ \"beer\", \"wine\", \"cheese\" ]\n" +
+                        "      \"should\" : [\n" +
+                        "        {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"fulltext_field\" : [\n" +
+                        "              \"beer\",\n" +
+                        "              \"wine\",\n" +
+                        "              \"cheese\"\n" +
+                        "            ],\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"terms\" : {\n" +
+                        "            \"_all\" : [\n" +
+                        "              \"beer\",\n" +
+                        "              \"wine\",\n" +
+                        "              \"cheese\"\n" +
+                        "            ],\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
                         "        }\n" +
-                        "      }, {\n" +
-                        "        \"terms\" : {\n" +
-                        "          \"_all\" : [ \"beer\", \"wine\", \"cheese\" ]\n" +
-                        "        }\n" +
-                        "      } ]\n" +
+                        "      ],\n" +
+                        "      \"disable_coord\" : false,\n" +
+                        "      \"adjust_pure_negative\" : true,\n" +
+                        "      \"boost\" : 1.0\n" +
                         "    }\n" +
                         "  },\n" +
                         "  \"aggregations\" : {\n" +
                         "    \"top-tags\" : {\n" +
                         "      \"terms\" : {\n" +
                         "        \"field\" : \"tags\",\n" +
-                        "        \"size\" : 3\n" +
+                        "        \"size\" : 3,\n" +
+                        "        \"min_doc_count\" : 1,\n" +
+                        "        \"shard_min_doc_count\" : 0,\n" +
+                        "        \"show_term_doc_count_error\" : false,\n" +
+                        "        \"order\" : [\n" +
+                        "          {\n" +
+                        "            \"_count\" : \"desc\"\n" +
+                        "          },\n" +
+                        "          {\n" +
+                        "            \"_term\" : \"asc\"\n" +
+                        "          }\n" +
+                        "        ]\n" +
                         "      },\n" +
-                        "      \"aggs\" : {\n" +
+                        "      \"aggregations\" : {\n" +
                         "        \"top_tag_hits\" : {\n" +
                         "          \"top_hits\" : {\n" +
-                        "            \"sort\" : [ {\n" +
-                        "              \"last_activity_date\" : {\n" +
-                        "                \"order\" : \"desc\"\n" +
-                        "              }\n" +
-                        "            } ],\n" +
+                        "            \"from\" : 0,\n" +
+                        "            \"size\" : 1,\n" +
+                        "            \"version\" : false,\n" +
+                        "            \"explain\" : false,\n" +
                         "            \"_source\" : {\n" +
-                        "              \"include\" : [ \"title\" ]\n" +
+                        "              \"includes\" : [\n" +
+                        "                \"title\"\n" +
+                        "              ],\n" +
+                        "              \"excludes\" : [ ]\n" +
                         "            },\n" +
-                        "            \"size\" : 1\n" +
+                        "            \"sort\" : [\n" +
+                        "              {\n" +
+                        "                \"last_activity_date\" : {\n" +
+                        "                  \"order\" : \"desc\"\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            ]\n" +
                         "          }\n" +
                         "        }\n" +
                         "      }\n" +
@@ -5124,7 +5383,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         sortHighlightTokens(highlights);
 
         assertEquals("[]",
-                new ObjectMapper().writeValueAsString(highlights));
+                Utils.objectToJson(highlights));
     }
 
     @Test
@@ -5264,6 +5523,56 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      Or\n" +
                         "         Word (fieldname=fulltext_field, operator=CONTAINS, value=foo, index=db.schema.table.index)\n" +
                         "         Word (fieldname=_all, operator=CONTAINS, value=foo, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testES563DoesntAllowNullInTermsQuery() throws Exception {
+        try {
+            reparseViaQueryBuilder("{\"terms\": {\"field\": [\"a\", null, \"c\" } }");
+            fail("query parsed correctly when it shouldn't have");
+        } catch (ParsingException pe) {
+            assertTrue(pe.getMessage().contains("No value specified for terms query"));
+        }
+    }
+
+    @Test
+    public void testPullOutNullsFromArrays() throws Exception {
+        assertJson("field:[a,b, null, c]",
+                "{\n" +
+                        "  \"bool\" : {\n" +
+                        "    \"should\" : [\n" +
+                        "      {\n" +
+                        "        \"bool\" : {\n" +
+                        "          \"must_not\" : [\n" +
+                        "            {\n" +
+                        "              \"exists\" : {\n" +
+                        "                \"field\" : \"field\",\n" +
+                        "                \"boost\" : 1.0\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          ],\n" +
+                        "          \"disable_coord\" : false,\n" +
+                        "          \"adjust_pure_negative\" : true,\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"terms\" : {\n" +
+                        "          \"field\" : [\n" +
+                        "            \"a\",\n" +
+                        "            \"b\",\n" +
+                        "            \"c\"\n" +
+                        "          ],\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
+                        "  }\n" +
+                        "}"
         );
     }
 
