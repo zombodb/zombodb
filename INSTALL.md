@@ -41,9 +41,18 @@ ZomboDB's Elasticsearch plugin needs to be installed on all nodes of your Elasti
 
 [Download](https://github.com/zombodb/zombodb/releases/latest) the latest release `.zip` file and use Elasticsearch's plugin utility to install ZomboDB:
 
+For Elasticsearch 1.7:
+
 ```
 # cd $ES_HOME
 # sudo bin/plugin -i zombodb -u file:///path/to/zombodb-plugin-X.X.X.zip
+```
+
+For Elasticsearch 2.4.6:
+
+```
+# cd $ES_HOME
+# sudo bin/plugin install file:///path/to/zombodb-plugin-X.X.X.zip
 ```
 
 There are a few configuration settings that **must** be set in `elasticsearch.yml`:
