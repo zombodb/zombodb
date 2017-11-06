@@ -65,16 +65,6 @@ public abstract class QueryRewriter {
     public static class Factory {
         public static QueryRewriter create(RestRequest restRequest, Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
             return new ZomboDBQueryRewriter(client, indexName, restRequest.getXContentRegistry(), searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
-
-//                QueryRewriter[] rewriter = new QueryRewriter[0];
-//                restRequest.withContentOrSourceParamParserOrNull(new CheckedConsumer<XContentParser, IOException>() {
-//                    @Override
-//                    public void accept(XContentParser xContentParser) throws IOException {
-//                        rewriter[0] = new ZomboDBQueryRewriter(client, indexName, xContentParser, searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
-//                    }
-//                });
-//
-//                return rewriter[0];
         }
     }
 
