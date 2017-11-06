@@ -51,6 +51,7 @@ PG_FUNCTION_INFO_V1(zdb_internal_multi_search);
 PG_FUNCTION_INFO_V1(zdb_internal_analyze_text);
 PG_FUNCTION_INFO_V1(zdb_internal_update_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_dump_query);
+PG_FUNCTION_INFO_V1(zdb_internal_profile_query);
 
 #if (PG_VERSION_NUM < 90400)
 
@@ -481,6 +482,19 @@ Datum zdb_internal_dump_query(PG_FUNCTION_ARGS) {
     desc = zdb_alloc_index_descriptor_by_index_oid(indexRel);
 
     jsonQuery = desc->implementation->dumpQuery(desc, userQuery);
+
+    PG_RETURN_TEXT_P(CStringGetTextDatum(jsonQuery));
+}
+
+Datum zdb_internal_profile_query(PG_FUNCTION_ARGS) {
+    Oid                indexRel   = PG_GETARG_OID(0);
+    char               *userQuery = GET_STR(PG_GETARG_TEXT_P(1));
+    ZDBIndexDescriptor *desc;
+    char               *jsonQuery;
+
+    desc = zdb_alloc_index_descriptor_by_index_oid(indexRel);
+
+    jsonQuery = desc->implementation->profileQuery(desc, userQuery);
 
     PG_RETURN_TEXT_P(CStringGetTextDatum(jsonQuery));
 }

@@ -203,6 +203,11 @@ CREATE OR REPLACE FUNCTION zdb_dump_query(table_name regclass, user_query text) 
   SELECT zdb_internal_dump_query(zdb_determine_index(table_name), user_query);
 $$;
 
+CREATE OR REPLACE FUNCTION zdb_internal_profile_query(index_oid oid, user_query text) RETURNS text STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_profile_query(table_name regclass, user_query text) RETURNS text STRICT IMMUTABLE LANGUAGE sql AS $$
+  SELECT zdb_internal_profile_query(zdb_determine_index(table_name), user_query);
+$$;
+
 CREATE TYPE zdb_tally_order AS ENUM ('count', 'term', 'reverse_count', 'reverse_term');
 CREATE TYPE zdb_tally_response AS (term text, count bigint);
 CREATE OR REPLACE FUNCTION zdb_internal_tally(type_oid oid, fieldname text, stem text, query text, max_terms bigint, sort_order text, shard_size int) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';

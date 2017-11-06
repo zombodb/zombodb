@@ -366,7 +366,7 @@ thai
 > `table_name`:  The name of a table with a ZomboDB index  
 > `query`: a full text query
 > 
-> returns the Elasticsearch QueryDSL that would be executed, fully resolved with index links
+> returns the Elasticsearch QueryDSL that would be executed, fully resolved with index links, but does not include ZomboDB's "visibility" query
 > 
 > Example:
 > 
@@ -386,6 +386,28 @@ thai
 >  }
 > (1 row)
 > ```
+
+
+#### `FUNCTION zdb_profile_query(table_name regclass, query text) RETURNS text`
+
+> `table_name`:  The name of a table with a ZomboDB index  
+> `query`: a full text query
+> 
+> Uses Elasticsearch's `profile API` to return metrics on query execution times.  Fully resolves all index links and includes ZomboDB's "visibility" query.
+> 
+> This is useful for understanding where a query spends its time during execution
+> 
+> Example:
+> 
+> ```sql
+> SELECT * FROM zdb_profile_query('test', 'subject:(this is a test)');
+>                    zdb_profile_query                   
+> ----------------------------------------------------
+>   ... example output suppressed.
+> (1 row)
+> ```
+> 
+> To understand the output for this query, see [Elasticsearch's Profile API Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-profile.html).
 
 
 #### `FUNCTION zdb_estimate_count(table_name regclass, query text) RETURNS bigint`

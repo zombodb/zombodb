@@ -363,6 +363,24 @@ char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQue
     return response->data;
 }
 
+char *elasticsearch_profileQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery) {
+    StringInfo query;
+    StringInfo endpoint           = makeStringInfo();
+    StringInfo response;
+
+    appendStringInfo(endpoint, "%s%s/_zdbquery?profile=true&pretty=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    if (indexDescriptor->searchPreference != NULL)
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
+
+    query    = buildQuery(indexDescriptor, &userQuery, 1, true);
+    response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
+
+    freeStringInfo(query);
+    freeStringInfo(endpoint);
+
+    return response->data;
+}
+
 void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response = NULL;

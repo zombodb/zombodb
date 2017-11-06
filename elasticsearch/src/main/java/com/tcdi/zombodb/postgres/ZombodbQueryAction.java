@@ -17,15 +17,20 @@ package com.tcdi.zombodb.postgres;
 
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.ExceptionsHelper;
+import org.elasticsearch.action.search.SearchAction;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.rest.*;
+import org.elasticsearch.rest.action.RestStatusToXContentListener;
 
 import java.io.IOException;
 
+import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
@@ -39,35 +44,34 @@ public class ZombodbQueryAction extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-        String query = request.param("q");
-        BytesRestResponse response;
+        String index = request.param("index");
+        String preference = request.param("preference");
+        boolean profile = request.paramAsBoolean("profile", false);
 
-        if (query == null)
-            query = request.content().utf8ToString();
+        try {
+            QueryAndIndexPair queryAndIndex = PostgresTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, true, true);
 
-        if (query != null && query.trim().length() > 0) {
-            try {
-                QueryRewriter qr;
-                String json;
-
-                qr = QueryRewriter.Factory.create(request, client, request.param("index"), request.param("preference"), query, true, false, false);
-                json = qr.rewriteQuery().toString();
-
-                response = new BytesRestResponse(RestStatus.OK, "application/json", json);
-            } catch (Exception e) {
-                logger.error("Error building query", e);
-                XContentBuilder builder = XContentBuilder.builder(JsonXContent.jsonXContent);
-                builder.startObject();
-                builder.field("error", ExceptionsHelper.stackTrace(e));
-                builder.endObject();
-                response = new BytesRestResponse(RestStatus.INTERNAL_SERVER_ERROR, builder);
+            if (profile) {
+                return channel -> SearchAction.INSTANCE.newRequestBuilder(client)
+                        .setProfile(true)
+                        .setIndices(index)
+                        .setTypes("data")
+                        .setSize(0)
+                        .setPreference(preference)
+                        .setQuery(queryAndIndex.getQueryBuilder()).execute(new RestStatusToXContentListener<>(channel));
+            } else {
+                XContentBuilder builder = XContentBuilder.builder(JsonXContent.jsonXContent).prettyPrint();
+                queryAndIndex.getQueryBuilder().toXContent(builder, null);
+                return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
             }
-        } else {
-            response = new BytesRestResponse(RestStatus.OK, "application/json", "{ \"match_all\": {} }");
+        } catch (Exception e) {
+            logger.error("Error building query", e);
+            XContentBuilder builder = XContentBuilder.builder(JsonXContent.jsonXContent).prettyPrint();
+            builder.startObject();
+            builder.field("error", ExceptionsHelper.stackTrace(e));
+            builder.endObject();
+            return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
         }
-
-        BytesRestResponse finalResponse = response;
-        return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, finalResponse.contentType(), finalResponse.content()));
     }
 
     @Override

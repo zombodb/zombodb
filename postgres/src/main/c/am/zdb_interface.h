@@ -186,6 +186,7 @@ typedef void (*ZDBCreateNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, 
 typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 typedef char *(*ZDBDumpQuery_function)(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
+typedef char *(*ZDBProfileQuery_function)(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
 typedef void (*ZDBDropIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBRefreshIndex_function)(ZDBIndexDescriptor *indexDescriptor);
@@ -235,6 +236,7 @@ struct ZDBIndexImplementation {
     ZDBFinalizeNewIndex_function finalizeNewIndex;
     ZDBUpdateMapping_function    updateMapping;
     ZDBDumpQuery_function        dumpQuery;
+	ZDBProfileQuery_function     profileQuery;
 
     ZDBDropIndex_function    dropIndex;
 
