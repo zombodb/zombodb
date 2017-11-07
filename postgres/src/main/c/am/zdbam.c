@@ -657,7 +657,7 @@ static void setup_scan(IndexScanDesc scan) {
     scanstate->queries         = queries;
     scanstate->nqueries        = scan->numberOfKeys;
     scanstate->indexDescriptor = desc;
-    scanstate->hits            = desc->implementation->searchIndex(desc, queries, scan->numberOfKeys, &scanstate->nhits, wantsScores);
+    scanstate->hits            = desc->implementation->searchIndex(desc, queries, scan->numberOfKeys, &scanstate->nhits, wantsScores, true);
     scanstate->hasScores       = wantsScores;
     scanstate->currhit         = 0;
 

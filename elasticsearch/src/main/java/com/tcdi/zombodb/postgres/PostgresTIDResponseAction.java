@@ -93,6 +93,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         boolean wantScores = request.paramAsBoolean("scores", true);
+        boolean needSort = request.paramAsBoolean("sort", true);
         long totalStart = System.nanoTime();
         SearchResponse response;
         BinaryTIDResponse tids;
@@ -134,7 +135,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             response = client.search(builder.request()).actionGet();
             searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 
-            tids = buildBinaryResponse(client, response, query.hasLimit(), wantScores);
+            tids = buildBinaryResponse(client, response, query.hasLimit(), wantScores, needSort);
             many = tids.many;
             buildTime = tids.ttl;
             sortTime = tids.sort;
@@ -166,7 +167,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
      * All values are encoded in little-endian so that they can be directly
      * copied into memory on x86
      */
-    private BinaryTIDResponse buildBinaryResponse(Client client, SearchResponse searchResponse, boolean hasLimit, boolean wantScores) {
+    private BinaryTIDResponse buildBinaryResponse(Client client, SearchResponse searchResponse, boolean hasLimit, boolean wantScores, boolean needSort) {
         int many = hasLimit ? searchResponse.getHits().getHits().length : (int) searchResponse.getHits().getTotalHits();
 
         long start = System.currentTimeMillis();
@@ -236,9 +237,17 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         long end = System.currentTimeMillis();
 
-        long sortStart = System.currentTimeMillis();
-        new TidArrayQuickSort().quickSort(results, first_byte, 0, many-1, wantScores ? 10 : 6);
-        long sortEnd = System.currentTimeMillis();
+        long sortStart, sortEnd;
+
+        if (needSort) {
+            sortStart = System.currentTimeMillis();
+            new TidArrayQuickSort().quickSort(results, first_byte, 0, many - 1, wantScores ? 10 : 6);
+            sortEnd = System.currentTimeMillis();
+        } else {
+            /* so that we log a sort time of -1.0, indicating we didn't do it */
+            sortStart = 1000;
+            sortEnd = 0;
+        }
 
         return new BinaryTIDResponse(results, many, (end - start) / 1000D, (sortEnd - sortStart)/1000D);
     }

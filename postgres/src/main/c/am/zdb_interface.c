@@ -67,7 +67,7 @@ static void wrapper_dropIndex(ZDBIndexDescriptor *indexDescriptor);
 static uint64            wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 static uint64            wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 static uint64            wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
-static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores);
+static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores, bool needSort);
 
 static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order, int shard_size);
 static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);
@@ -440,11 +440,11 @@ static uint64 wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, c
     return cnt;
 }
 
-static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores) {
+static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores, bool needSort) {
     MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
     ZDBSearchResponse *results;
 
-    results = elasticsearch_searchIndex(indexDescriptor, queries, nqueries, nhits, wantScores);
+    results = elasticsearch_searchIndex(indexDescriptor, queries, nqueries, nhits, wantScores, needSort);
 
     MemoryContextSwitchTo(oldContext);
     return results;

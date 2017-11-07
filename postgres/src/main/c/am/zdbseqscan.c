@@ -199,7 +199,7 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
         bool               wantScores = current_query_wants_scores();
 
         desc     = zdb_alloc_index_descriptor_by_index_oid(key.indexRelOid);
-        response = desc->implementation->searchIndex(desc, &query, 1, &nhits, wantScores);
+        response = desc->implementation->searchIndex(desc, &query, 1, &nhits, wantScores, false);
 
         entry = hash_search(SEQUENTIAL_SCANS, &key, HASH_ENTER, &found);
         entry->one_hit = NULL;

@@ -464,7 +464,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 }
 
 
-ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores) {
+ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores, bool needSort) {
     StringInfo        query;
     StringInfo        endpoint           = makeStringInfo();
     StringInfo        response;
@@ -473,7 +473,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     bool              useInvisibilityMap = strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
 	int               expected_bytes_len;
 
-    appendStringInfo(endpoint, "%s%s/_pgtid?scores=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, wantScores ? "true" : "false");
+    appendStringInfo(endpoint, "%s%s/_pgtid?scores=%s&sort=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, wantScores ? "true" : "false", needSort ? "true" : "false");
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
