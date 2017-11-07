@@ -107,3 +107,4 @@ issue-210
 issue-224
 issue-226
 zdb_profile_query
+default_row_estimate

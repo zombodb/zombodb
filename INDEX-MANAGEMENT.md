@@ -36,18 +36,44 @@ The `WITH` settings are:
 
 ### Operational Settings
 - `preference` **optional**:  The Elasticsearch [search preference](https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-preference.html) to use.  The default is `null`, meaning no search preference is used.
+
+
 - `compression_level` **optional**:  ZomboDB can use "deflate" compression when communicating with Elasticsearch via HTTP.  The default compression level is zero (ie, disabled), but a value between `1` and `9` will enable compression.  If you enable compression, you also need to set `http.compression: true` in `elasticsearch.yml` for each node in your cluster.
+
+
 - `bulk_concurrency` **optional**:  Specifies the maximum number of concurrent HTTP requests, per Postgres backend, to use when making "batch" changes, which include CREATE INDEX/REINDEX, INSERT, UPDATE, COPY statements.  The default is `12` and allowed values are in the set `[1..1024]`
+
+
 - `batch_size` **optional**:  Specifies the size, in bytes, for batch POST data.  Affects CREATE INDEX/REINDEX, INSERT, UPDATE, COPY, and VACUUM statements.  The default is `8388608` bytes (8MB) and allowed values are `[1k..1Gb]`.  Note that ZomboDB will potentially consume `batch_size * bulk_concurrency` bytes of memory during any given statement, **per backend connection**.
+
+
 - `refresh_interval` **optional**:  This setting directly relates to Elasticsearch's [`index.refresh_interval`](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/setup-configuration.html#configuration-index-settings).  The default value is `-1`, meaning ZomboDB will control index refreshes such that modified rows are always immediately visible.  If a time delay is okay, change this setting to something like `5s` for five seconds.  This can help improve single-record INSERT/UPDATE performance at the expense of when the rows are actually searchable.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.    
+
+
 - `ignore_visibility` **optional**:  Controls, on a per-index level, if queries that require row visibility information to be MVCC-correct should honor it.  The default for `ignore_visibility` is `false`, meaning all queries are MVCC-correct.  Set this to `true` if you don't need exact values for aggregates and `zdb_estimate_count()`.
+
+
 - `optimize_after` **optional**:  An integer value that represents the number of deleted documents in the Elasticsearch index after which ZomboDB shoud expunge deleted documents.  The default is zero, meaning never do this (i.e., let Elasticsearch manage it on its own segment merge schedule), but specifying a value can help keep performance in check for tables that experience high UPDATE/DELETE loads.
+
+
+- `default_row_estimate` **optional**:  An integer value that ZomboDB will use during query planning as the number of rows returned by any query using this index.  The default value is set to the value of the "GUC" named `zombodb.default_row_estimate` (which defaults to `2500`).  A value of `-1` will cause ZomboDB to ask Elasticsearch directly how many rows are likely to be returned.  This will always generate a query plan that's tailored to the exact query, at the cost of an additional round-trip (and "_count" search) to Elasticsearch per query.  `2500` was chosen as the default as it doesn't disrupt the plans any of ZomboDB's unit tests at the time this option was implemented.  See below for the "GUC" named `zombodb.force_row_estimation` that can be used on a per-transaction basis to force ZomboDB to ask Elasticsearch on a query-by-query basis.
 
 ### Per-session Settings
 
 - `zombodb.batch_mode`:  This is a boolean "GUC" that controls how ZomboDB sends index changes to Elasticsearch.  The default for `zombodb.batch_mode` is `false` which means that ZomboDB sends index changes to ES on a per-statement level and flushes the remote Elasticsearch index at the end of each statement.  Setting this to `true` will cause ZomboDB to batch index changes through the life of the transaction, and the final set of changes won't be available for search until `COMMIT`.  When set to `true`, ZomboDB delays flushing the index until transaction `COMMIT`.  This can be changed interactively by issuing `SET zombodb.batch_mode = true;`
+
+
 - `zombodb.ignore_visibility`:  This is a boolean "GUC" that controls if ZomboDB will honor MVCC visibility rules.  The default is `false` meaning it will, but you can `SET zombodb.ignore_visibility = true;` if you don't mind having dead/invisible rows counted in aggregates and `zdb_estimate_count()`.  This is similiar to the index-level setting of the same name, but can be controlled per session.
+
+
+- `zombodb.default_row_estimate`:  This is an integer "GUC" that supports values in the range of `[1, INT_MAX]` that is used as the number of rows returned by a `SELECT` query against a ZomboDB index that doesn't have a specific setting for `default_row_estimate` (see above).  The default is `2500`.
+
+
+- `zombodb.force_row_estimation`:  A boolean "GUC" that when set to `true` will cause ZomboDB to query Elasticsearch during query planning to estimate the number of rows that will be returned for a `SELECT` query.  This "GUC" can be set in `postgresql.conf` or per-session or per-transaction so you can control how ZomboDB estimates query selectivity on a per-query basis, if necessary
+
+
 - `zombodb.log_level`:  This is an enumerated "GUC" that controls ZomboDB's Postgres logging level.  It supports the same set of values that Postgres' other log levels support, and its default value is `DEBUG1`.  Possible values are:
+
 ```
       values in order of decreasing detail:
         debug5
@@ -58,9 +84,10 @@ The `WITH` settings are:
         info
         notice
         warning
-	log
+	    log
 ```
-    This setting can be changed per-session or in `postgresql.conf` for all sessions.
+
+This setting can be changed per-session or in `postgresql.conf` for all sessions.
     
 ## DROP INDEX
 

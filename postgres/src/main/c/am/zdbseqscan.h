@@ -50,5 +50,6 @@ extern Datum zdb_seqscan(PG_FUNCTION_ARGS);
 extern void  zdb_sequential_scan_support_cleanup(void);
 extern Datum zdbsel(PG_FUNCTION_ARGS);
 extern bool current_query_wants_scores(void);
+extern uint64 get_row_estimate(ZDBIndexDescriptor *desc, Relation heapRel, char *query);
 
 #endif

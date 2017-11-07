@@ -963,6 +963,7 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
                                                 {"compression_level",    RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, compressionLevel)},
                                                 {"alias",                RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, aliasOffset)},
                                                 {"optimize_after",       RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, optimizeAfter)},
+                                                {"default_row_estimate", RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, defaultRowEstimate)},
     };
 
     options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB, &numoptions);
@@ -1053,9 +1054,12 @@ Datum zdbcostestimate(PG_FUNCTION_ARGS) {
     }
 
     if (query->len > 0) {
-        ZDBIndexDescriptor *desc = zdb_alloc_index_descriptor_by_index_oid(index->indexoid);
+        ZDBIndexDescriptor *desc   = zdb_alloc_index_descriptor_by_index_oid(index->indexoid);
+        Relation           heapRel = RelationIdGetRelation(desc->heapRelid);
 
-        nhits = desc->implementation->estimateSelectivity(desc, query->data);
+        nhits = get_row_estimate(desc, heapRel, query->data);
+
+        RelationClose(heapRel);
     }
 
     *indexStartupCost = (Cost) 0;

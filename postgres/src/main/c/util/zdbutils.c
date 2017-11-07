@@ -388,4 +388,3 @@ uint64 lookup_pkey(Oid heapRelOid, char *pkeyFieldname, ItemPointer ctid) {
 
     return DatumGetInt64(pkey);
 }
-

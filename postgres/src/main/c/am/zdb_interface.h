@@ -49,6 +49,7 @@ typedef struct {
     int   compressionLevel;
     int   aliasOffset;
     int   optimizeAfter;
+	int   defaultRowEstimate;
 } ZDBIndexOptions;
 
 #define ZDBIndexOptionsGetUrl(relation) \
@@ -103,6 +104,9 @@ typedef struct {
 #define ZDBIndexOptionsGetOptimizeAfter(relation) \
     ((uint64) ((relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->optimizeAfter : 0))
 
+#define ZDBIndexOptionsGetDefaultRowEstimate(relation) \
+    ((int) ((relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->defaultRowEstimate : 0))
+
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
@@ -130,6 +134,7 @@ typedef struct {
     int  batch_size;
     int  compressionLevel;
     bool ignoreVisibility;
+	int  defaultRowEstimate;
 
     char *fieldLists;
 
@@ -160,6 +165,8 @@ typedef struct {
 extern PGDLLEXPORT relopt_kind RELOPT_KIND_ZDB;
 extern PGDLLEXPORT bool        zdb_batch_mode_guc;
 extern PGDLLEXPORT bool        zdb_ignore_visibility_guc;
+extern PGDLLEXPORT bool        zdb_force_row_estimates_guc;
+extern PGDLLEXPORT int         zdb_default_row_estimate_guc;
 extern PGDLLEXPORT int         ZDB_LOG_LEVEL;
 
 void               zdb_index_init(void);

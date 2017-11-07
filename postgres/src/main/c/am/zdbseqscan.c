@@ -299,8 +299,9 @@ Datum zdbsel(PG_FUNCTION_ARGS) {
 
             heapRel     = RelationIdGetRelation(heapRelOid);
             desc        = zdb_alloc_index_descriptor_by_index_oid(determine_index_oid((Node *) funcExpr));
-            nhits       = desc->implementation->estimateSelectivity(desc, query);
-            selectivity = ((float8) nhits) / heapRel->rd_rel->reltuples;
+
+			nhits       = get_row_estimate(desc, heapRel, query);
+			selectivity = ((float8) nhits) / heapRel->rd_rel->reltuples;
 
             RelationClose(heapRel);
         }
@@ -331,4 +332,23 @@ bool current_query_wants_scores(void) {
      */
     appendStringInfo(find, "{FUNCEXPR :funcid %d ", zdb_score_oid);
     return strstr(str, find->data) != 0;
+}
+
+uint64 get_row_estimate(ZDBIndexDescriptor *desc, Relation heapRel, char *query) {
+	uint64 estimate;
+
+	if (zdb_force_row_estimates_guc || desc->defaultRowEstimate == -1) {
+		/* go to the remote index and estimate */
+		estimate = desc->implementation->estimateSelectivity(desc, query);
+	} else {
+		/* use the default value specified on the local PG index */
+		estimate     = Max(1, (uint64) desc->defaultRowEstimate);
+
+		/* unless it's greater than the number of tuples we think we have */
+		if (estimate > heapRel->rd_rel->reltuples)
+			estimate = 1;
+	}
+
+	/* make sure it's always at least 1 */
+	return Max(1, estimate);
 }

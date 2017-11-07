@@ -38,6 +38,8 @@
 relopt_kind RELOPT_KIND_ZDB;
 bool        zdb_batch_mode_guc;
 bool        zdb_ignore_visibility_guc;
+bool        zdb_force_row_estimates_guc;
+int         zdb_default_row_estimate_guc;
 
 int ZDB_LOG_LEVEL;
 static const struct config_enum_entry zdb_log_level_options[] = {
@@ -132,6 +134,12 @@ static List *allocated_descriptors = NULL;
 void zdb_index_init(void) {
     RELOPT_KIND_ZDB = add_reloption_kind();
 
+    DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
+    DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
+    DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &ZDB_LOG_LEVEL, DEBUG1, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
+    DefineCustomBoolVariable("zombodb.force_row_estimation", "If true, SELECT statements will always get a row estimate from Elasticsearch, regardless of index settings", NULL, &zdb_force_row_estimates_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
+    DefineCustomIntVariable("zombodb.default_row_estimates", "The default row estimate ZDB should use for all indexes without an explicit option", NULL, &zdb_default_row_estimate_guc, 2500, 1, INT_MAX, PGC_USERSET, 0, NULL, NULL, NULL);
+
     add_string_reloption(RELOPT_KIND_ZDB, "url", "Server URL and port", NULL, validate_url);
     add_string_reloption(RELOPT_KIND_ZDB, "shadow", "A zombodb index to which this one should shadow", NULL, validate_shadow);
     add_string_reloption(RELOPT_KIND_ZDB, "options", "Comma-separated list of options to pass to underlying index", NULL, validate_options);
@@ -147,10 +155,7 @@ void zdb_index_init(void) {
     add_int_reloption(RELOPT_KIND_ZDB, "compression_level", "0-9 value to indicate the level of HTTP compression", 0, 0, 9);
 	add_string_reloption(RELOPT_KIND_ZDB, "alias", "The Elasticsearch Alias to which this index should belong", NULL, validate_alias);
     add_int_reloption(RELOPT_KIND_ZDB, "optimize_after", "After how many deleted docs should ZDB _optimize the ES index?", 0, 0, INT32_MAX);
-
-    DefineCustomBoolVariable("zombodb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL, &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
-    DefineCustomBoolVariable("zombodb.ignore_visibility", "If true, visibility information will be ignored for all queries", NULL, &zdb_ignore_visibility_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
-    DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &ZDB_LOG_LEVEL, DEBUG1, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
+    add_int_reloption(RELOPT_KIND_ZDB, "default_row_estimate", "Estimate the average number of rows returned by a ZDB query", zdb_default_row_estimate_guc, -1, INT32_MAX);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
@@ -193,6 +198,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->fieldLists         = ZDBIndexOptionsGetFieldLists(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetFieldLists(indexRel));
     desc->alwaysResolveJoins = ZDBIndexOptionsAlwaysResolveJoins(indexRel);
     desc->optimizeAfter      = ZDBIndexOptionsGetOptimizeAfter(indexRel);
+    desc->defaultRowEstimate = ZDBIndexOptionsGetDefaultRowEstimate(indexRel);
 
     heapTupDesc = RelationGetDescr(heapRel);
     for (i = 0; i < heapTupDesc->natts; i++) {
