@@ -36,7 +36,7 @@ static int    sequential_scan_key_match(const void *key1, const void *key2, Size
 static void   *sequential_scan_key_copy(void *d, const void *s, Size keysize);
 
 static void initialize_sequential_scan_cache(void);
-static Oid  determine_index_oid(Node *funcExpr);
+static Oid  determine_index_oid(Node *node);
 
 typedef struct SequentialScanIndexRef {
     Oid funcOid;
