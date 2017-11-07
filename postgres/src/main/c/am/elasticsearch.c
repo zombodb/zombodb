@@ -879,28 +879,6 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
     freeStringInfo(request);
 }
 
-char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor) {
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response;
-	Snapshot snapshot = GetActiveSnapshot();
-
-	appendStringInfo(endpoint, "%s%s/_zdbvacuum?xmin=%lu&xmax=%lu&commandid=%u", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax), GetCurrentCommandId(false));
-	if (snapshot->xcnt > 0) {
-		int i;
-		appendStringInfo(endpoint, "&active=");
-		for (i = 0; i < snapshot->xcnt; i++) {
-			if (i > 0) appendStringInfoChar(endpoint, ',');
-			appendStringInfo(endpoint, "%lu", convert_xid(snapshot->xip[i]));
-		}
-	}
-
-	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
-
-	freeStringInfo(endpoint);
-	if (response->len > 0 && response->data[0] == '{' && strstr(response->data, "error") != NULL)
-		elog(ERROR, "%s", response->data);
-	return response->data;
-}
 
 static char *confirm_aborted_xids(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems) {
     StringInfo endpoint = makeStringInfo();

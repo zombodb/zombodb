@@ -78,7 +78,6 @@ public class ZombodbPlugin extends Plugin implements ActionPlugin, SearchPlugin 
                 new ZombodbCommitXIDAction(settings, restController, clusterService),
                 new ZombodbDeleteTuplesAction(settings, restController, clusterService),
                 new ZombodbGetXidVacuumCandidatesAction(settings, restController),
-                new ZombodbVacuumSupportAction(settings, restController),
                 new ZombodbVacuumCleanupAction(settings, restController, clusterService)
 
         );
