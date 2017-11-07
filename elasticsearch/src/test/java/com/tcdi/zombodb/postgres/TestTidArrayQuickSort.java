@@ -15,32 +15,38 @@ public class TestTidArrayQuickSort {
 
     @Test
     public void testIt_WithScores() throws Exception {
+        int size = 10;
         for (int many=0; many<5000; many++) {
-            byte[] array = sort(many, 10);
+            byte[] array = gen_data(many, size);
 
             for (int i=1; i<many; i++) {
-                int prev = Utils.decodeInteger(array, 13 + (i-1)*10);
-                int curr = Utils.decodeInteger(array, 13 + i*10);
-                assertTrue("many=" + many + "; size=" + 10 + "; prev=" + prev + ", curr=" + curr, prev <= curr);
+                int prev = Utils.decodeInteger(array, 13 + (i-1)*size);
+                int curr = Utils.decodeInteger(array, 13 + i*size);
+                assertTrue("many=" + many + "; size=" + size + "; prev=" + prev + ", curr=" + curr, prev <= curr);
+                assertTrue("many=" + many + "; size=" + size + "; prev=" + prev + ", curr=" + curr, prev >= 32768);
+                assertTrue("many=" + many + "; size=" + size + "; prev=" + prev + ", curr=" + curr, curr >= 32768);
             }
         }
     }
 
     @Test
     public void testIt_WithoutScores() throws Exception {
+        int size = 6;
         for (int many=0; many<5000; many++) {
-            byte[] array = sort(many, 6);
+            byte[] array = gen_data(many, size);
 
             for (int i=1; i<many; i++) {
-                int prev = Utils.decodeInteger(array, 9 + (i-1)*6);
-                int curr = Utils.decodeInteger(array, 9 + i*6);
-                assertTrue("many=" + many + "; size=" + 6 + "; prev=" + prev + ", curr=" + curr, prev <= curr);
+                int prev = Utils.decodeInteger(array, 9 + (i-1)*size);
+                int curr = Utils.decodeInteger(array, 9 + i*size);
+                assertTrue("many=" + many + "; size=" + size + "; prev=" + prev + ", curr=" + curr, prev <= curr);
+                assertTrue("many=" + many + "; size=" + size + "; prev=" + prev + ", curr=" + curr, prev >= 32768);
+                assertTrue("many=" + many + "; size=" + size + "; prev=" + prev + ", curr=" + curr, curr >= 32768);
             }
         }
     }
 
-    private byte[] sort(int many, int size) {
-        byte[] array = new byte[1 + 8 + 4 + (many * size)];    // NULL + totalhits + maxscore + (many * (sizeof(int4)+sizeof(int2)+sizeof(float4)))
+    private byte[] gen_data(int many, int size) {
+        byte[] array = new byte[1 + 8 + (size == 10 ? 4 : 0) + (many * size)];    // NULL + totalhits + maxscore + (many * (sizeof(int4)+sizeof(int2)+sizeof(float4)))
         int offset = 0;
 
         array[0] = 0;
@@ -48,13 +54,13 @@ public class TestTidArrayQuickSort {
         offset += Utils.encodeLong(many, array, offset);
 
         if (size == 10)
-            offset += Utils.encodeFloat(32768, array, offset); // max_score
+            offset += Utils.encodeFloat(1, array, offset); // max_score
 
         int first_byte = offset;
         for (int i=0; i<many; i++) {
-            int blockno = rnd.nextInt();
-            char offno = (char) rnd.nextInt();
-            float score = rnd.nextFloat();
+            int blockno = 32768 + (Math.abs(rnd.nextInt()) % 32768);
+            char offno = (char) + Math.abs(rnd.nextInt());
+            float score = Math.abs(rnd.nextFloat());
 
             offset += Utils.encodeInteger(blockno, array, offset);
             offset += Utils.encodeCharacter(offno, array, offset);

@@ -471,6 +471,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     ZDBSearchResponse *hits;
     ZDBScore          max_score;
     bool              useInvisibilityMap = strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
+	int               expected_bytes_len;
 
     appendStringInfo(endpoint, "%s%s/_pgtid?scores=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, wantScores ? "true" : "false");
     if (indexDescriptor->searchPreference != NULL)
@@ -482,8 +483,9 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     if (response->data[0] != '\0')
         elog(ERROR, "%s", response->data);
 
-    if (response->len < 1 + sizeof(uint64) + sizeof(float4)) /* bounds checking on data returned from ES */
-        elog(ERROR, "Elasticsearch didn't return enough data");
+    /* make sure we at least have enough data to represent the number of rows returned and the max score (if required) */
+    if (response->len < 1 + sizeof(uint64) + (wantScores ? sizeof(float4) : 0))
+        elog(ERROR, "Elasticsearch didn't return enough header data");
 
     /* get the number of hits and max score from the response data */
     memcpy(nhits, response->data + 1, sizeof(uint64));
@@ -493,13 +495,16 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     }
 
     /* and make sure we have the specified number of hits in the response data */
-    if (response->len != 1 + sizeof(uint64) + sizeof(float4) + (*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber) +
-                                                                          sizeof(float4)))) /* more bounds checking */
-        elog(ERROR, "Elasticsearch says there's %ld hits, but didn't return all of them, len=%d", *nhits, response->len);
+	expected_bytes_len = 1 +	/* initial byte to indicate binary or json response */
+			sizeof(uint64) + 	/* number of hits */
+			(wantScores ? sizeof(float4) : 0) +	/* the max score, if we wanted scores */
+			(*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber) + (wantScores ? sizeof(float4) : 0))); /* size per row, with or without scores */
+    if (response->len != expected_bytes_len) /* more bounds checking */
+        elog(ERROR, "Elasticsearch says there's %ld hits, but didn't return the correct number of bytes, expected=%d, received=%d", *nhits, expected_bytes_len, response->len);
 
     hits = palloc(sizeof(ZDBSearchResponse));
     hits->httpResponse = response;
-    hits->hits         = (response->data + 1 + sizeof(uint64) + (wantScores ? sizeof(float4) : 0));
+	hits->hits         = (response->data + 1 + sizeof(uint64) + (wantScores ? sizeof(float4) : 0));
     hits->total_hits   = *nhits;
     hits->max_score    = max_score.fscore;
 

@@ -170,7 +170,12 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         int many = hasLimit ? searchResponse.getHits().getHits().length : (int) searchResponse.getHits().getTotalHits();
 
         long start = System.currentTimeMillis();
-        byte[] results = new byte[1 + 8 + 4 + (many * 10)];    // NULL + totalhits + maxscore + (many * (sizeof(int4)+sizeof(int2)+sizeof(float4)))
+        byte[] results = new byte[
+                1 +                             // always NULL
+                8 +                             // number of hits
+                (wantScores ? 4 : 0) +          // max score, if we want scores
+                (many * (wantScores ? 10 : 6))  // size per row, with or without scores sizeof(BlockNumber) + sizeof(OffsetNumber) + ?sizeOf(float4)
+        ];
         int offset = 0, first_byte;
 
         results[0] = 0;
