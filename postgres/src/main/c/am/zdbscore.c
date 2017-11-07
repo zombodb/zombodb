@@ -130,7 +130,7 @@ Datum zdb_score_internal(PG_FUNCTION_ARGS) {
 
     score = zdb_lookup_score(index_relid, ctid);
     if (score == NULL)
-        PG_RETURN_NULL();
+        elog(ERROR, "scores were not detected as necessary for this query");
 
     PG_RETURN_FLOAT4(score->fscore);
 }

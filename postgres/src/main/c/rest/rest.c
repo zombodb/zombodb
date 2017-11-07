@@ -34,6 +34,9 @@
 #include "rest.h"
 
 
+static CURL *GLOBAL_CURL_INSTANCE = NULL;
+static char *CURL_ERROR_BUFF      = NULL;
+
 static size_t curl_write_func(char *ptr, size_t size, size_t nmemb, void *userdata);
 static int    curl_progress_func(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
@@ -144,7 +147,6 @@ void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEnt
             state->postDatas[i] = postData;
             response = state->responses[i] = makeStringInfo();
 
-            curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
             curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
             curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* ... to go here so we can detect a ^C within postgres */
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "zombodb");
@@ -155,6 +157,8 @@ void rest_multi_call(MultiRestState *state, char *method, char *url, PostDataEnt
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
             curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
             curl_easy_setopt(curl, CURLOPT_PATH_AS_IS, 1L);
+			curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
 
             curl_easy_setopt(curl, CURLOPT_URL, url);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
@@ -287,55 +291,56 @@ void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast)
 }
 
 StringInfo rest_call(char *method, char *url, StringInfo postData, int compressionLevel) {
-    char *errorbuff = (char *) palloc0(CURL_ERROR_SIZE);
     char *compressed_data = NULL;
     StringInfo response = makeStringInfo();
     CURLcode   ret;
     int64      response_code;
 
-//elog(NOTICE, "%s %s\n%s", method, url, postData != NULL ? postData->data : "NULL");
+    if (GLOBAL_CURL_INSTANCE == NULL) {
+        GLOBAL_CURL_INSTANCE = curl_easy_init();
 
-    GLOBAL_CURL_INSTANCE = curl_easy_init();
+        if (GLOBAL_CURL_INSTANCE == NULL)
+            elog(ERROR, "Unable to initialize global curl instance");
 
-    if (GLOBAL_CURL_INSTANCE) {
+        CURL_ERROR_BUFF = (char *) palloc0(CURL_ERROR_SIZE);
+
+        /* these are all the curl options we want set every time we use it */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_SHARE, GLOBAL_CURL_SHARED_STATE);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_FORBID_REUSE, 1L);   /* reusing connections doesn't make sense because libcurl objects are freed at xact end */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback) curl_progress_func);   /* to go here so we can detect a ^C within postgres */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_USERAGENT, "zombodb for PostgreSQL");
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_MAXREDIRS, 0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEFUNCTION, curl_write_func);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_FAILONERROR, 0);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_ERRORBUFFER, errorbuff);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_NOSIGNAL, 1);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_PATH_AS_IS, 1L);
-
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_URL, url);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_CUSTOMREQUEST, method);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEDATA, response);
-
-        if (postData != NULL && compressionLevel > 0) {
-            struct curl_slist *list = NULL;
-            uint64 len;
-
-            compressed_data = do_compression(postData, compressionLevel, &len);
-
-            list = curl_slist_append(list, "Content-Encoding: deflate");
-            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTPHEADER, list);
-            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, len);
-            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, compressed_data);
-        } else {
-            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
-            curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
-        }
-
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (postData && postData->data) ? 1 : 0);
-        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TCP_NODELAY, 1L);
-    } else {
-        elog(ERROR, "Unable to initialize libcurl");
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_TCP_KEEPALIVE, 1L);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_ERRORBUFFER, CURL_ERROR_BUFF);
     }
+
+    curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_URL, url);
+    curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_CUSTOMREQUEST, method);
+    curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_WRITEDATA, response);
+
+    if (postData != NULL && compressionLevel > 0) {
+        struct curl_slist *list = NULL;
+        uint64 len;
+
+        compressed_data = do_compression(postData, compressionLevel, &len);
+
+        list = curl_slist_append(list, "Content-Encoding: deflate");
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_HTTPHEADER, list);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, len);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, compressed_data);
+    } else {
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
+        curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+    }
+
+    curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_POST, (strcmp(method, "POST") == 0) || (postData && postData->data) ? 1 : 0);
 
     ret = curl_easy_perform(GLOBAL_CURL_INSTANCE);
 
@@ -344,21 +349,16 @@ StringInfo rest_call(char *method, char *url, StringInfo postData, int compressi
 
     if (ret != 0) {
         /* curl messed up */
-        elog(ERROR, "libcurl error-code: %s(%d); message: %s; req=-X%s %s ", curl_easy_strerror(ret), ret, errorbuff, method, url);
+        elog(ERROR, "libcurl error-code: %s(%d); message: %s; req=-X%s %s ", curl_easy_strerror(ret), ret, CURL_ERROR_BUFF, method, url);
     }
 
     curl_easy_getinfo(GLOBAL_CURL_INSTANCE, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code < 200 || (response_code >= 300 && response_code != 404)) {
         elog(ERROR, "rc=%ld; %s", response_code, response->data);
     }
-//elog(NOTICE, "%s", response->data);
 
-    pfree(errorbuff);
     if (compressed_data != NULL)
         pfree(compressed_data);
-
-    curl_easy_cleanup(GLOBAL_CURL_INSTANCE);
-    GLOBAL_CURL_INSTANCE = NULL;
 
     return response;
 }

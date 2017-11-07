@@ -65,7 +65,7 @@ static void wrapper_dropIndex(ZDBIndexDescriptor *indexDescriptor);
 static uint64            wrapper_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 static uint64            wrapper_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 static uint64            wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
-static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
+static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores);
 
 static char *wrapper_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order, int shard_size);
 static char *wrapper_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);
@@ -172,23 +172,18 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         }
     }
 
-    heapRel = relation_open(indexRel->rd_index->indrelid, AccessShareLock);
+    heapRel = RelationIdGetRelation(indexRel->rd_index->indrelid);
 
-    desc = palloc0(sizeof(ZDBIndexDescriptor));
+    desc = palloc(sizeof(ZDBIndexDescriptor));
 
     /* these all come from the actual index */
     desc->indexRelid   = RelationGetRelid(indexRel);
     desc->heapRelid    = RelationGetRelid(heapRel);
     desc->isShadow     = ZDBIndexOptionsGetShadow(indexRel) != NULL;
-    desc->logit        = false;
     desc->databaseName = pstrdup(get_database_name(MyDatabaseId));
     desc->schemaName   = pstrdup(get_namespace_name(RelationGetNamespace(heapRel)));
     desc->tableName    = pstrdup(RelationGetRelationName(heapRel));
 	desc->options	   = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
-
-    desc->pkeyFieldname = lookup_primary_key(desc->schemaName, desc->tableName, false);
-	if (desc->pkeyFieldname != NULL)
-		desc->pkeyFieldname = pstrdup(desc->pkeyFieldname);
 
     desc->searchPreference   = ZDBIndexOptionsGetSearchPreference(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetSearchPreference(indexRel));
     desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel) ? pstrdup("-1") : pstrdup(ZDBIndexOptionsGetRefreshInterval(indexRel));
@@ -215,14 +210,14 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         if (shadowRelid == InvalidOid)
             elog(ERROR, "No such shadow index: %s", ZDBIndexOptionsGetShadow(indexRel));
 
-        shadowRel = relation_open(shadowRelid, AccessShareLock);
+        shadowRel = RelationIdGetRelation(shadowRelid);
         desc->shards    = ZDBIndexOptionsGetNumberOfShards(shadowRel);
         desc->indexName = pstrdup(RelationGetRelationName(shadowRel));
         desc->url       = ZDBIndexOptionsGetUrl(shadowRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(shadowRel));
 
         desc->compressionLevel  = ZDBIndexOptionsGetCompressionLevel(shadowRel);
 
-        relation_close(shadowRel, AccessShareLock);
+        RelationClose(shadowRel);
     } else {
         /* or just from the actual index if we're not a shadow */
         desc->shards    = ZDBIndexOptionsGetNumberOfShards(indexRel);
@@ -232,18 +227,12 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         desc->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
     }
 
-	desc->advisory_mutex = (int64) string_hash(desc->indexName, strlen(desc->indexName));
-
 	appendStringInfo(scratch, "%s.%s.%s.%s", desc->databaseName, desc->schemaName, desc->tableName, desc->indexName);
 	desc->fullyQualifiedName = pstrdup(str_tolower(scratch->data, (size_t) scratch->len, DEFAULT_COLLATION_OID));
 
-    resetStringInfo(scratch);
-    appendStringInfo(scratch, "%s.%s", get_namespace_name(RelationGetNamespace(heapRel)), RelationGetRelationName(heapRel));
-    desc->qualifiedTableName = pstrdup(scratch->data);
-
 	desc->alias = ZDBIndexOptionsGetAlias(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetAlias(indexRel));
 
-    desc->implementation                          = palloc0(sizeof(ZDBIndexImplementation));
+    desc->implementation                          = palloc(sizeof(ZDBIndexImplementation));
     desc->implementation->_last_selectivity_query = NULL;
 
     desc->implementation->createNewIndex          = wrapper_createNewIndex;
@@ -279,10 +268,10 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 
     allocated_descriptors = lappend(allocated_descriptors, desc);
 
-    relation_close(heapRel, AccessShareLock);
-    MemoryContextSwitchTo(oldContext);
+	freeStringInfo(scratch);
 
-    freeStringInfo(scratch);
+    RelationClose(heapRel);
+    MemoryContextSwitchTo(oldContext);
 
     return desc;
 }
@@ -445,11 +434,11 @@ static uint64 wrapper_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, c
     return cnt;
 }
 
-static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits) {
+static ZDBSearchResponse *wrapper_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores) {
     MemoryContext     oldContext = MemoryContextSwitchTo(TopTransactionContext);
     ZDBSearchResponse *results;
 
-    results = elasticsearch_searchIndex(indexDescriptor, queries, nqueries, nhits);
+    results = elasticsearch_searchIndex(indexDescriptor, queries, nqueries, nhits, wantScores);
 
     MemoryContextSwitchTo(oldContext);
     return results;

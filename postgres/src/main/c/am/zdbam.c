@@ -37,6 +37,7 @@
 #include "executor/spi.h"
 #include "nodes/makefuncs.h"
 #include "nodes/relation.h"
+#include "parser/parse_func.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
@@ -93,6 +94,7 @@ typedef struct {
     uint64             nhits;
     uint64             currhit;
     ZDBSearchResponse  *hits;
+    bool               hasScores;
     char               **queries;
     int                nqueries;
 } ZDBScanState;
@@ -492,7 +494,6 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
     buildstate.heapRel     = heapRel;
     buildstate.indtuples   = 0;
     buildstate.desc        = alloc_index_descriptor(indexRel, false);
-    buildstate.desc->logit = true;
 
     if (!buildstate.desc->isShadow) {
 		HASHCTL hashctl;
@@ -571,7 +572,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	TransactionId xmin;
 
     if (HeapTupleIsHeapOnly(htup))
-        elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
+        elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL <tablename>; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)));
 
 	xmin = HeapTupleHeaderGetXmin(htup->t_data);
 
@@ -624,10 +625,11 @@ Datum zdb_num_hits(PG_FUNCTION_ARGS) {
 }
 
 static void setup_scan(IndexScanDesc scan) {
-    ZDBScanState       *scanstate = (ZDBScanState *) scan->opaque;
-    ZDBIndexDescriptor *desc      = alloc_index_descriptor(scan->indexRelation, false);
+    ZDBScanState       *scanstate  = (ZDBScanState *) scan->opaque;
+    ZDBIndexDescriptor *desc       = alloc_index_descriptor(scan->indexRelation, false);
     char               **queries;
     int                i;
+    bool               wantsScores = current_query_wants_scores();
 
     if (scanstate->hits)
         scanstate->indexDescriptor->implementation->freeSearchResponse(scanstate->hits);
@@ -655,7 +657,8 @@ static void setup_scan(IndexScanDesc scan) {
     scanstate->queries         = queries;
     scanstate->nqueries        = scan->numberOfKeys;
     scanstate->indexDescriptor = desc;
-    scanstate->hits            = desc->implementation->searchIndex(desc, queries, scan->numberOfKeys, &scanstate->nhits);
+    scanstate->hits            = desc->implementation->searchIndex(desc, queries, scan->numberOfKeys, &scanstate->nhits, wantsScores);
+    scanstate->hasScores       = wantsScores;
     scanstate->currhit         = 0;
 
     numHitsFound = scanstate->hits->total_hits;
@@ -677,10 +680,12 @@ Datum zdbgettuple(PG_FUNCTION_ARGS) {
     if (haveMore) {
         ZDBScore score;
 
-        set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, &score);
+        set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, &score, scanstate->hasScores);
         scanstate->currhit++;
 
-        zdb_record_score(RelationGetRelid(scan->indexRelation), &scan->xs_ctup.t_self, score);
+        if (scanstate->hasScores) {
+            zdb_record_score(RelationGetRelid(scan->indexRelation), &scan->xs_ctup.t_self, score);
+        }
     }
 
     PG_RETURN_BOOL(haveMore);

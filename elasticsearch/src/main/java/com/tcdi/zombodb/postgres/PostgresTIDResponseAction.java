@@ -40,31 +40,31 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
     static class TidArrayQuickSort {
 
         byte[] tmp = new byte[10];
-        void quickSort(byte[] array, int offset, int low, int high) {
+        void quickSort(byte[] array, int offset, int low, int high, int size) {
 
             if (high <= low)
                 return;
 
             int i = low;
             int j = high;
-            int pivot = Utils.decodeInteger(array, offset + ((low+(high-low)/2) * 10));
+            int pivot = Utils.decodeInteger(array, offset + ((low+(high-low)/2) * size));
             while (i <= j) {
-                while (Utils.decodeInteger(array, offset+i*10) < pivot)
+                while (Utils.decodeInteger(array, offset+i*size) < pivot)
                     i++;
-                while (Utils.decodeInteger(array, offset+j*10) > pivot)
+                while (Utils.decodeInteger(array, offset+j*size) > pivot)
                     j--;
                 if (i <= j) {
-                    System.arraycopy(array, offset+i*10, tmp, 0, 10);
-                    System.arraycopy(array, offset+j*10, array, offset+i*10, 10);
-                    System.arraycopy(tmp, 0, array, offset+j*10, 10);
+                    System.arraycopy(array, offset+i*size, tmp, 0, size);
+                    System.arraycopy(array, offset+j*size, array, offset+i*size, size);
+                    System.arraycopy(tmp, 0, array, offset+j*size, size);
                     i++;
                     j--;
                 }
             }
             if (low < j)
-                quickSort(array, offset, low, j);
+                quickSort(array, offset, low, j, size);
             if (i < high)
-                quickSort(array, offset, i, high);
+                quickSort(array, offset, i, high, size);
         }
     }
 
@@ -92,6 +92,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
+        boolean wantScores = request.paramAsBoolean("scores", true);
         long totalStart = System.nanoTime();
         SearchResponse response;
         BinaryTIDResponse tids;
@@ -109,11 +110,15 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setIndices(query.getIndexName());
             builder.setTypes("data");
             builder.setPreference(request.param("preference"));
-            builder.setTrackScores(true);
+            builder.setTrackScores(wantScores);
             builder.setRequestCache(true);
             builder.addDocValueField("_zdb_id");
             builder.addStoredField("_none_");
-            builder.setQuery(query.getQueryBuilder());
+
+            if (wantScores)
+                builder.setQuery(query.getQueryBuilder());
+            else
+                builder.setPostFilter(query.getQueryBuilder());
 
             if (query.hasLimit()) {
                 builder.setSearchType(SearchType.DEFAULT);
@@ -129,7 +134,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             response = client.search(builder.request()).actionGet();
             searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 
-            tids = buildBinaryResponse(client, response, query.hasLimit());
+            tids = buildBinaryResponse(client, response, query.hasLimit(), wantScores);
             many = tids.many;
             buildTime = tids.ttl;
             sortTime = tids.sort;
@@ -161,7 +166,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
      * All values are encoded in little-endian so that they can be directly
      * copied into memory on x86
      */
-    private BinaryTIDResponse buildBinaryResponse(Client client, SearchResponse searchResponse, boolean hasLimit) {
+    private BinaryTIDResponse buildBinaryResponse(Client client, SearchResponse searchResponse, boolean hasLimit, boolean wantScores) {
         int many = hasLimit ? searchResponse.getHits().getHits().length : (int) searchResponse.getHits().getTotalHits();
 
         long start = System.currentTimeMillis();
@@ -171,7 +176,9 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         results[0] = 0;
         offset++;
         offset += Utils.encodeLong(many, results, offset);
-        offset += Utils.encodeFloat(searchResponse.getHits().getMaxScore(), results, offset);
+        if (wantScores) {
+            offset += Utils.encodeFloat(searchResponse.getHits().getMaxScore(), results, offset);
+        }
         first_byte = offset;
 
         // kick off the first scroll request
@@ -212,11 +219,12 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
                 long _zdb_id = hit.getField("_zdb_id").getValue();
                 int blockno = (int) (_zdb_id >> 32);
                 char rowno = (char) _zdb_id;
-                float score = hit.getScore();
 
                 offset += Utils.encodeInteger(blockno, results, offset);
                 offset += Utils.encodeCharacter(rowno, results, offset);
-                offset += Utils.encodeFloat(score, results, offset);
+                if (wantScores) {
+                    offset += Utils.encodeFloat(hit.getScore(), results, offset);
+                }
                 cnt++;
             }
         }
@@ -224,7 +232,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         long end = System.currentTimeMillis();
 
         long sortStart = System.currentTimeMillis();
-        new TidArrayQuickSort().quickSort(results, first_byte, 0, many-1);
+        new TidArrayQuickSort().quickSort(results, first_byte, 0, many-1, wantScores ? 10 : 6);
         long sortEnd = System.currentTimeMillis();
 
         return new BinaryTIDResponse(results, many, (end - start) / 1000D, (sortEnd - sortStart)/1000D);

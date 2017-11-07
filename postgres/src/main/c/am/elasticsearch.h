@@ -33,7 +33,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 uint64            elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 uint64            elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 uint64            elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
-ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
+ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores);
 
 char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order, int shard_size);
 char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);

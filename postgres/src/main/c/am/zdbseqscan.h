@@ -21,18 +21,22 @@
 #include "zdbscore.h"
 
 #ifndef PG_USE_INLINE
-extern void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score);
+extern void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score, bool hasScores);
 #endif   /* !PG_USE_INLINE */
 #if defined(PG_USE_INLINE) || defined(ZDBSEQSCAN_INCLUDE_DEFINITIONS)
 
-STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score) {
+STATIC_IF_INLINE void set_item_pointer(ZDBSearchResponse *data, uint64 index, ItemPointer target, ZDBScore *score, bool hasScores) {
     BlockNumber  blkno;
     OffsetNumber offno;
 
-    memcpy(&blkno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4))), sizeof(BlockNumber));
-    memcpy(&offno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)) + sizeof(BlockNumber)), sizeof(OffsetNumber));
-    memcpy(score,  data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)) + sizeof(BlockNumber) + sizeof(OffsetNumber)), sizeof(float4));
-
+    if (hasScores) {
+        memcpy(&blkno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4))), sizeof(BlockNumber));
+        memcpy(&offno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)) + sizeof(BlockNumber)), sizeof(OffsetNumber));
+        memcpy(score, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber) + sizeof(float4)) + sizeof(BlockNumber) + sizeof(OffsetNumber)), sizeof(float4));
+    } else {
+        memcpy(&blkno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber))), sizeof(BlockNumber));
+        memcpy(&offno, data->hits + (index * (sizeof(BlockNumber) + sizeof(OffsetNumber)) + sizeof(BlockNumber)), sizeof(OffsetNumber));
+    }
     ItemPointerSet(target, blkno, offno);
 }
 
@@ -45,5 +49,6 @@ extern List *CURRENT_QUERY_STACK;
 extern Datum zdb_seqscan(PG_FUNCTION_ARGS);
 extern void  zdb_sequential_scan_support_cleanup(void);
 extern Datum zdbsel(PG_FUNCTION_ARGS);
+extern bool current_query_wants_scores(void);
 
 #endif

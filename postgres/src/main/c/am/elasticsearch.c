@@ -230,7 +230,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "         \"normalizer\": { %s }"
             "      }"
             "   }",
-					 indexDescriptor->pkeyFieldname,
+                     lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false),
 					 indexDescriptor->alwaysResolveJoins ? "true" : "false",
 					 fieldProperties, shards,
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
@@ -464,7 +464,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 }
 
 
-ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits) {
+ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores) {
     StringInfo        query;
     StringInfo        endpoint           = makeStringInfo();
     StringInfo        response;
@@ -472,9 +472,9 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     ZDBScore          max_score;
     bool              useInvisibilityMap = strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
 
-    appendStringInfo(endpoint, "%s%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgtid?scores=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, wantScores ? "true" : "false");
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query    = buildQuery(indexDescriptor, queries, nqueries, useInvisibilityMap);
     response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
@@ -487,7 +487,10 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 
     /* get the number of hits and max score from the response data */
     memcpy(nhits, response->data + 1, sizeof(uint64));
-    memcpy(&max_score, response->data + 1 + sizeof(uint64), sizeof(float4));
+
+    if (wantScores) {
+        memcpy(&max_score, response->data + 1 + sizeof(uint64), sizeof(float4));
+    }
 
     /* and make sure we have the specified number of hits in the response data */
     if (response->len != 1 + sizeof(uint64) + sizeof(float4) + (*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber) +
@@ -496,7 +499,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
 
     hits = palloc(sizeof(ZDBSearchResponse));
     hits->httpResponse = response;
-    hits->hits         = (response->data + 1 + sizeof(uint64) + sizeof(float4));
+    hits->hits         = (response->data + 1 + sizeof(uint64) + (wantScores ? sizeof(float4) : 0));
     hits->total_hits   = *nhits;
     hits->max_score    = max_score.fscore;
 
@@ -547,7 +550,7 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
     if (response->data[0] == '{')
         elog(ERROR, "%s", response->data);
 
-    nhits = (uint64) atol(response->data);
+    nhits = (uint64) strtoul(response->data, NULL, 10);
 
     freeStringInfo(endpoint);
     freeStringInfo(query);

@@ -21,7 +21,6 @@
 #include "curl_support.h"
 
 CURLSH *GLOBAL_CURL_SHARED_STATE = NULL;
-CURL   *GLOBAL_CURL_INSTANCE     = NULL;
 List   *MULTI_REST_STATES        = NULL;
 
 static void curl_shared_state_xact_cleanup(XactEvent event, void *arg) {
@@ -29,12 +28,6 @@ static void curl_shared_state_xact_cleanup(XactEvent event, void *arg) {
         case XACT_EVENT_PRE_PREPARE:
         case XACT_EVENT_COMMIT:
         case XACT_EVENT_ABORT:
-            /* cleanup our global curl instance */
-            if (GLOBAL_CURL_INSTANCE) {
-                curl_easy_cleanup(GLOBAL_CURL_INSTANCE);
-                GLOBAL_CURL_INSTANCE = NULL;
-            }
-
             /* cleanup each multi rest state (and contained curl instances) */
             if (MULTI_REST_STATES != NULL) {
                 ListCell *lc;
