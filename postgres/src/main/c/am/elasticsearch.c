@@ -219,6 +219,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "   },"
             "   \"settings\": {"
             "      \"refresh_interval\": -1,"
+            "      \"max_result_window\": 1048576,"
             "      \"number_of_shards\": %d,"
             "      \"number_of_replicas\": 0,"
             "      \"analysis\": {"
@@ -330,6 +331,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
     appendStringInfo(request, "{"
             "   \"settings\": {"
             "      \"refresh_interval\": \"%s\","
+            "      \"max_result_window\":1048576,"
             "      \"number_of_replicas\": %d"
             "   }"
             "}", ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
@@ -969,6 +971,9 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
     /* and the block number as its own field */
     appendStringInfo(bulk, ",\"_zdb_blockno\":%d", ItemPointerGetBlockNumber(ht_ctid));
+
+    /* and encode the item pointer as a long */
+    appendStringInfo(bulk, ",\"_zdb_id\":%lu", ItemPointerToUint64(ht_ctid));
 
 	if (isupdate)
 		appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));

@@ -540,6 +540,12 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             "\"type\":\"integer\","
             "\"include_in_all\":\"false\","
             "\"index\": \"not_analyzed\""
+            "},");
+
+    appendStringInfo(result, "\"_zdb_id\": {"
+            "\"type\":\"long\","
+            "\"include_in_all\":\"false\","
+            "\"index\": \"not_analyzed\""
             "}");
 
     for (i = 0; i < tupdesc->natts; i++) {

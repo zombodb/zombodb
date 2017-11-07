@@ -22,11 +22,9 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.common.CheckedConsumer;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
@@ -84,9 +82,6 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static final int INVALID_BLOCK_NUMBER = 0xFFFFFFFF;
-
-
     @Inject
     public PostgresTIDResponseAction(Settings settings, RestController controller) {
         super(settings);
@@ -116,7 +111,8 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             builder.setPreference(request.param("preference"));
             builder.setTrackScores(true);
             builder.setRequestCache(true);
-            builder.setFetchSource(false);
+            builder.addDocValueField("_zdb_id");
+            builder.addStoredField("_none_");
             builder.setQuery(query.getQueryBuilder());
 
             if (query.hasLimit()) {
@@ -126,7 +122,7 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
                 builder.setSize(query.getLimit().getLimit());
             } else {
                 builder.setScroll(TimeValue.timeValueMinutes(10));
-                builder.setSize(10000);
+                builder.setSize(1048576);
             }
 
             long searchStart = System.currentTimeMillis();
@@ -170,16 +166,12 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
 
         long start = System.currentTimeMillis();
         byte[] results = new byte[1 + 8 + 4 + (many * 10)];    // NULL + totalhits + maxscore + (many * (sizeof(int4)+sizeof(int2)+sizeof(float4)))
-        int offset = 0, maxscore_offset, first_byte;
-        float maxscore = 0;
+        int offset = 0, first_byte;
 
         results[0] = 0;
         offset++;
         offset += Utils.encodeLong(many, results, offset);
-
-        /* once we know the max score, it goes here */
-        maxscore_offset = offset;
-        offset += Utils.encodeFloat(0, results, offset);
+        offset += Utils.encodeFloat(searchResponse.getHits().getMaxScore(), results, offset);
         first_byte = offset;
 
         // kick off the first scroll request
@@ -217,27 +209,10 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             }
 
             for (SearchHit hit : searchResponse.getHits()) {
-                String id;
-                float score;
-                int blockno;
-                char rowno;
-
-                try {
-                    id = hit.id();
-                    score = hit.score();
-
-                    int dash = id.indexOf('-', 1);
-                    blockno = Integer.parseInt(id.substring(0, dash), 10);
-                    rowno = (char) Integer.parseInt(id.substring(dash + 1), 10);
-                } catch (Exception nfe) {
-                    logger.warn("hit.id()=/" + hit.id() + "/ is not in the proper format.  Defaulting to INVALID_BLOCK_NUMBER");
-                    blockno = INVALID_BLOCK_NUMBER;
-                    rowno = 0;
-                    score = 0;
-                }
-
-                if (score > maxscore)
-                    maxscore = score;
+                long _zdb_id = hit.getField("_zdb_id").getValue();
+                int blockno = (int) (_zdb_id >> 32);
+                char rowno = (char) _zdb_id;
+                float score = hit.getScore();
 
                 offset += Utils.encodeInteger(blockno, results, offset);
                 offset += Utils.encodeCharacter(rowno, results, offset);
@@ -246,7 +221,6 @@ public class PostgresTIDResponseAction extends BaseRestHandler {
             }
         }
 
-        Utils.encodeFloat(maxscore, results, maxscore_offset);
         long end = System.currentTimeMillis();
 
         long sortStart = System.currentTimeMillis();
