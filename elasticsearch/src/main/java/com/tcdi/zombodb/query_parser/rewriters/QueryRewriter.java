@@ -215,11 +215,7 @@ public abstract class QueryRewriter {
         QueryBuilder qb = build(tree);
         queryRewritten = true;
 
-        try {
-            return applyVisibility(qb);
-        } catch (Exception e) {
-            return needVisibilityOnTopLevel ? applyVisibility(qb) : qb;
-        }
+        return needVisibilityOnTopLevel ? applyVisibility(qb) : qb;
     }
 
     public AggregationBuilder rewriteAggregations() {
