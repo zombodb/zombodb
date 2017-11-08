@@ -13,16 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.join;
+package llc.zombodb.visibility_query;
 
 import org.apache.lucene.search.SimpleCollector;
 
-/**
- * Exists in this package to provide a <b>public</b> version of {@link TermsCollector}
- * that ZomboDB can implement
- */
 public abstract class ZomboDBTermsCollector extends SimpleCollector {
-    protected ZomboDBTermsCollector() {
+    public ZomboDBTermsCollector() {
         super();
     }
 
