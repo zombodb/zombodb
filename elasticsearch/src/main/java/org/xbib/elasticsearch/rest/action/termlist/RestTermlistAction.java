@@ -13,9 +13,7 @@
  */
 package org.xbib.elasticsearch.rest.action.termlist;
 
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tcdi.zombodb.query_parser.utils.Utils;
+import llc.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.inject.Inject;

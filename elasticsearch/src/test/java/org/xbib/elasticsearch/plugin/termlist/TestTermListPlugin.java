@@ -12,7 +12,7 @@
  */
 package org.xbib.elasticsearch.plugin.termlist;
 
-import com.tcdi.zombodb.test.ZomboDBTestCase;
+import llc.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.create.CreateIndexAction;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.index.IndexAction;
@@ -20,10 +20,10 @@ import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.junit.Test;
 import org.junit.Ignore;
-import org.xbib.elasticsearch.action.termlist.TermlistRequestBuilder;
+import org.junit.Test;
 import org.xbib.elasticsearch.action.termlist.TermlistAction;
+import org.xbib.elasticsearch.action.termlist.TermlistRequestBuilder;
 
 import java.io.IOException;
 import java.io.InputStream;
