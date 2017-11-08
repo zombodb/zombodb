@@ -22,7 +22,6 @@ import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 
 import java.util.*;
@@ -116,7 +115,7 @@ public class IndexLinkOptimizer {
             root = ((ASTExpansion) root).getQuery();
         }
 
-        Set<ASTIndexLink> links = collectIndexLinks(root, new HashSet<ASTIndexLink>());
+        Set<ASTIndexLink> links = collectIndexLinks(root, new HashSet<>());
         if (links.size() == 0)
             return;
 
@@ -234,9 +233,7 @@ public class IndexLinkOptimizer {
         for (QueryParserNode child : root) {
             if (child instanceof ASTExpansion) {
                 String key = child.getIndexLink().toStringNoFieldname();
-                List<ASTExpansion> groups = sameExpansions.get(key);
-                if (groups == null)
-                    sameExpansions.put(key, groups = new ArrayList<>());
+                List<ASTExpansion> groups = sameExpansions.computeIfAbsent(key, k -> new ArrayList<>());
 
                 groups.add((ASTExpansion) child);
                 cnt++;
