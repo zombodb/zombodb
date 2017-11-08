@@ -29,7 +29,7 @@ The `WITH` settings are:
 
 - `replicas` **optional**:  The number of Elasticsearch replicas to use.  The default is `1` and allowed values are `[0..64]`.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.
 
-- `store` **optional**:  The default is `false`, but if set to `true`, then ZomboDB will store the raw JSON for each row in Elasticsearch (as the "_source" field).  If set to `true`, this setting will allow you to use external search and visulation tools like Kibana with ZomboDB-managed indexes.  Note that ZomboDB-managed indexes contain dead or not-yet-visible rows, and querying the indexes via external tools will make these rows visible to those tools.
+- `store` **optional**:  The default is `false`, but if set to `true`, then ZomboDB will store the raw JSON for each row in Elasticsearch (as the "_source" field).  Changing the value on an existing index requires `REINDEX`.  If set to `true`, this setting will allow you to use external search and visulation tools like Kibana with ZomboDB-managed indexes.  Note that ZomboDB-managed indexes contain dead or not-yet-visible rows, and querying the indexes via external tools will make these rows visible to those tools.
 
 ### Advanced Settings
 - `options` **optional**:  `options` is a ZomboDB-specific string that allows you to define how this index relates to other indexes.  This is an advanced-use feature and is documented [here](INDEX-OPTIONS.md).
