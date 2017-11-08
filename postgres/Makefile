@@ -38,8 +38,10 @@ src/test/sql/so_comments.sql:
 src/test/sql/TUTORIAL.sql:
 	gunzip -c src/test/sql/TUTORIAL.sql.gz > src/test/sql/TUTORIAL.sql
 
-pgtap:
+src/test/zdbtaptests/tests/expand-same.sql:
 	src/test/zdbtaptests/tests/build-same.sh > src/test/zdbtaptests/tests/expand-same.sql
+
+pgtap: src/test/zdbtaptests/tests/expand-same.sql
 	if [ "x" = "x${TEST}" ] ; then psql -qAt template1 -f src/test/zdbtaptests/sql/teardown.sql ; fi
 	if [ "x" = "x${TEST}" ] ; then psql -qAt template1 -f src/test/zdbtaptests/sql/setup.sql ; fi
 	if [ "x" = "x${TEST}" ] ; then pg_prove -d zdbtaptests src/test/zdbtaptests/tests/*.sql ; fi
