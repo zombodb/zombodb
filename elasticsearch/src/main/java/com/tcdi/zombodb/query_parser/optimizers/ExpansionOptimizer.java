@@ -23,7 +23,6 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
@@ -89,7 +88,7 @@ public class ExpansionOptimizer {
 
     private void expand(final ASTExpansion root) {
         outer: while(true) {
-            Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
+            Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<>());
 
             ASTIndexLink myIndex = metadataManager.getMyIndex();
             QueryParserNode last;
@@ -183,27 +182,24 @@ public class ExpansionOptimizer {
             ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
             array.setFieldname(leftFieldname);
             array.setOperator(QueryParserNode.Operator.EQ);
-            array.setExternalValues(new Iterable<Object>() {
-                @Override
-                public Iterator<Object> iterator() {
-                    final Iterator<? extends Terms.Bucket> buckets = agg.getBuckets().iterator();
-                    return new Iterator<Object>() {
-                        @Override
-                        public boolean hasNext() {
-                            return buckets.hasNext();
-                        }
+            array.setExternalValues(() -> {
+                final Iterator<? extends Terms.Bucket> buckets = agg.getBuckets().iterator();
+                return new Iterator<Object>() {
+                    @Override
+                    public boolean hasNext() {
+                        return buckets.hasNext();
+                    }
 
-                        @Override
-                        public Object next() {
-                            return buckets.next().getKey();
-                        }
+                    @Override
+                    public Object next() {
+                        return buckets.next().getKey();
+                    }
 
-                        @Override
-                        public void remove() {
-                            buckets.remove();
-                        }
-                    };
-                }
+                    @Override
+                    public void remove() {
+                        buckets.remove();
+                    }
+                };
             }, agg.getBuckets().size());
 
             QueryParserNode filterQuery = node.getFilterQuery();
@@ -391,10 +387,7 @@ public class ExpansionOptimizer {
             }
 
             if (didWork) {
-                Map<QueryParserNode, Set<Object>> map = terms.get(child.getFieldname());
-
-                if (map == null)
-                    terms.put(child.getFieldname(), map = new HashMap<>());
+                Map<QueryParserNode, Set<Object>> map = terms.computeIfAbsent(child.getFieldname(), k -> new HashMap<>());
 
                 map.put(child, set);
             }
