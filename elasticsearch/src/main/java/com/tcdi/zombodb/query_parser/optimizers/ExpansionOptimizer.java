@@ -19,14 +19,11 @@ import com.tcdi.zombodb.query_parser.*;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadata;
 import com.tcdi.zombodb.query_parser.metadata.IndexMetadataManager;
 import com.tcdi.zombodb.query_parser.rewriters.QueryRewriter;
-import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.SearchAction;
-import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 
 import java.util.*;
 
@@ -156,63 +153,55 @@ public class ExpansionOptimizer {
             return notNull;
         }
 
-        TermsAggregationBuilder termsBuilder = terms(rightFieldname)
-                .field(rightFieldname)
-                .shardSize(!doFullFieldDataLookup ? 1024 : Integer.MAX_VALUE)
-                .size(!doFullFieldDataLookup ? 1024 : Integer.MAX_VALUE);
-
         QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery));
 
-        SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE)
-                .setSize(0)
-                .setQuery(query)
-                .setRequestCache(true)
+        SearchResponse response = SearchAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(link.getIndexName())
                 .setTypes("data")
-                .setTrackScores(false)
+                .setSize(0)
                 .setPreference(searchPreference)
-                .addAggregation(termsBuilder);
+                .setRequestCache(true)
+                .setQuery(query)
+                .addAggregation(
+                        terms(rightFieldname)
+                                .field(rightFieldname)
+                                .shardSize(!doFullFieldDataLookup ? 1024 : Integer.MAX_VALUE)
+                                .size(!doFullFieldDataLookup ? 1024 : Integer.MAX_VALUE)
+                )
+                .get();
 
-        ActionFuture<SearchResponse> future = client.search(builder.request());
+        Terms agg = (Terms) response.getAggregations().iterator().next();
+        ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
+        array.setFieldname(leftFieldname);
+        array.setOperator(QueryParserNode.Operator.EQ);
+        array.setExternalValues(() -> {
+            final Iterator<? extends Terms.Bucket> buckets = agg.getBuckets().iterator();
+            return new Iterator<Object>() {
+                @Override
+                public boolean hasNext() {
+                    return buckets.hasNext();
+                }
 
-        try {
-            SearchResponse response = future.get();
-            final Terms agg = (Terms) response.getAggregations().iterator().next();
+                @Override
+                public Object next() {
+                    return buckets.next().getKey();
+                }
 
-            ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
-            array.setFieldname(leftFieldname);
-            array.setOperator(QueryParserNode.Operator.EQ);
-            array.setExternalValues(() -> {
-                final Iterator<? extends Terms.Bucket> buckets = agg.getBuckets().iterator();
-                return new Iterator<Object>() {
-                    @Override
-                    public boolean hasNext() {
-                        return buckets.hasNext();
-                    }
+                @Override
+                public void remove() {
+                    buckets.remove();
+                }
+            };
+        }, agg.getBuckets().size());
 
-                    @Override
-                    public Object next() {
-                        return buckets.next().getKey();
-                    }
-
-                    @Override
-                    public void remove() {
-                        buckets.remove();
-                    }
-                };
-            }, agg.getBuckets().size());
-
-            QueryParserNode filterQuery = node.getFilterQuery();
-            if (filterQuery != null) {
-                ASTAnd and = new ASTAnd(QueryParserTreeConstants.JJTAND);
-                and.jjtAddChild(array, 0);
-                and.jjtAddChild(filterQuery, 1);
-                return and;
-            } else {
-                return array;
-            }
-        } catch (Exception e) {
-            throw new QueryRewriter.QueryRewriteException(e);
+        QueryParserNode filterQuery = node.getFilterQuery();
+        if (filterQuery != null) {
+            ASTAnd and = new ASTAnd(QueryParserTreeConstants.JJTAND);
+            and.jjtAddChild(array, 0);
+            and.jjtAddChild(filterQuery, 1);
+            return and;
+        } else {
+            return array;
         }
     }
 
