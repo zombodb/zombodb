@@ -964,6 +964,7 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
                                                 {"alias",                RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, aliasOffset)},
                                                 {"optimize_after",       RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, optimizeAfter)},
                                                 {"default_row_estimate", RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, defaultRowEstimate)},
+                                                {"store",                RELOPT_TYPE_BOOL,   offsetof(ZDBIndexOptions, store)},
     };
 
     options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB, &numoptions);

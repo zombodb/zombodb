@@ -570,8 +570,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
         /* otherwise, build a mapping based on the field type */
         typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(tupdesc->attrs[i]->atttypid)));
         appendStringInfo(result, "\"%s\": {", name);
-        bool is_json = (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0);
-        if (!is_json) appendStringInfo(result, "\"store\":false,");
 
         if (strcmp("fulltext", typename) == 0) {
             /* phrase-indexed field */
@@ -696,7 +694,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                    strcmp("smallint[]", typename) == 0 || strcmp("integer[]", typename) == 0) {
             /* integer field */
             appendStringInfo(result, "\"type\": \"integer\",");
-            appendStringInfo(result, "\"store\": \"true\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
@@ -704,7 +701,6 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                    strcmp("bigint[]", typename) == 0 || strcmp("numeric[]", typename) == 0) {
             /* long field */
             appendStringInfo(result, "\"type\": \"long\",");
-            appendStringInfo(result, "\"store\": \"true\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"index\": \"not_analyzed\"");
 
@@ -736,7 +732,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"type\": \"keyword\",");
             appendStringInfo(result, "\"index_options\": \"docs\",");
             appendStringInfo(result, "\"normalizer\": \"exact\"");
-        } else if (is_json) {
+        } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
             /* json field */
             appendStringInfo(result, "\"type\": \"nested\",");
             appendStringInfo(result, "\"include_in_parent\":true,");

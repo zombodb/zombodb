@@ -24,14 +24,22 @@ The `WITH` settings are:
 
 ### Basic Settings
 - `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).
+
 - `shards` **optional**:  The number of Elasticsearch shards to use.  The default is `5`.  Changing this value requires a `REINDEX` before the new value becomes live.
+
 - `replicas` **optional**:  The number of Elasticsearch replicas to use.  The default is `1` and allowed values are `[0..64]`.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.
+
+- `store` **optional**:  The default is `false`, but if set to `true`, then ZomboDB will store the raw JSON for each row in Elasticsearch (as the "_source" field).  If set to `true`, this setting will allow you to use external search and visulation tools like Kibana with ZomboDB-managed indexes.  Note that ZomboDB-managed indexes contain dead or not-yet-visible rows, and querying the indexes via external tools will make these rows visible to those tools.
 
 ### Advanced Settings
 - `options` **optional**:  `options` is a ZomboDB-specific string that allows you to define how this index relates to other indexes.  This is an advanced-use feature and is documented [here](INDEX-OPTIONS.md).
+
 - `shadow` **optional** (mutually exclusive with `url`): The name of an existing ZomboDB index that this index should use, but likely with a different set of options.  This too is an [advanced-use](INDEX-OPTIONS.md) feature.
+
 - `alias` **optional**:  The `alias` option can be used to assign an Elasticsearch index alias to the index ZomboDB creates.  This is typically only important when using Citus or when using Postgres table inheritence to do partitioning.  You can set this value to whatever you want, but it should be unique across your Elasticsearch cluster.
+
 - `field_lists` **optional**:  Allows to define lists fields that, when queried, are dynamically expanded to search their defined list of other fields.  The syntax for this setting is:  `field_lists='fake_field1=[a, b, c], fake_field2=[d,e,f], ...'`.  This can be useful, for example, for searching all "date" fields at once, or defining a set of fields that represent "names" or "locations".  Note that each field in a list must be of the same underlying Postgres data type.
+
 - `always_resolve_joins` **optional**:  The default is `false` which allows ZomboDB to directly query a linked index for aggregates and `zdb_estimate_count()` when the query only queries fields from one linked index (see `options` under Advanced Settings below along with the [INDEX-OPTIONS](INDEX-OPTIONS.md) documentation).  If your links/joins are always 1-to-1, this is perfectly safe and quite a performance improvement.  If your links/joins are 1-to-many (or many-to-1) this is not safe and you should set the value to `true`.
 
 ### Operational Settings
@@ -72,22 +80,18 @@ The `WITH` settings are:
 - `zombodb.force_row_estimation`:  A boolean "GUC" that when set to `true` will cause ZomboDB to query Elasticsearch during query planning to estimate the number of rows that will be returned for a `SELECT` query.  This "GUC" can be set in `postgresql.conf` or per-session or per-transaction so you can control how ZomboDB estimates query selectivity on a per-query basis, if necessary
 
 
-- `zombodb.log_level`:  This is an enumerated "GUC" that controls ZomboDB's Postgres logging level.  It supports the same set of values that Postgres' other log levels support, and its default value is `DEBUG1`.  Possible values are:
+- `zombodb.log_level`:  This is an enumerated "GUC" that controls ZomboDB's Postgres logging level.  It supports the same set of values that Postgres' other log levels support, and its default value is `DEBUG1`.  Possible values are, in order of decreasing detail:
 
-```
-      values in order of decreasing detail:
-        debug5
-        debug4
-        debug3
-        debug2
-        debug1* -- default value
-        info
-        notice
-        warning
-	    log
-```
+ - debug5
+ - debug4
+ - debug3
+ - debug2
+ - debug1 `<-- default value`
+ - info
+ - notice
+ - warning
+ - log
 
-This setting can be changed per-session or in `postgresql.conf` for all sessions.
     
 ## DROP INDEX
 

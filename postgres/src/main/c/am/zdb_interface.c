@@ -156,6 +156,8 @@ void zdb_index_init(void) {
 	add_string_reloption(RELOPT_KIND_ZDB, "alias", "The Elasticsearch Alias to which this index should belong", NULL, validate_alias);
     add_int_reloption(RELOPT_KIND_ZDB, "optimize_after", "After how many deleted docs should ZDB _optimize the ES index?", 0, 0, INT32_MAX);
     add_int_reloption(RELOPT_KIND_ZDB, "default_row_estimate", "Estimate the average number of rows returned by a ZDB query", zdb_default_row_estimate_guc, -1, INT32_MAX);
+	add_bool_reloption(RELOPT_KIND_ZDB, "store", "Should ZomboDB store the raw JSON source in Elasticsearch?", false);
+
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
@@ -199,6 +201,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->alwaysResolveJoins = ZDBIndexOptionsAlwaysResolveJoins(indexRel);
     desc->optimizeAfter      = ZDBIndexOptionsGetOptimizeAfter(indexRel);
     desc->defaultRowEstimate = ZDBIndexOptionsGetDefaultRowEstimate(indexRel);
+    desc->store              = ZDBIndexOptionsGetStore(indexRel);
 
     heapTupDesc = RelationGetDescr(heapRel);
     for (i = 0; i < heapTupDesc->natts; i++) {

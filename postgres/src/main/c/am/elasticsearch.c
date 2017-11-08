@@ -208,7 +208,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
     appendStringInfo(indexSettings, "{"
             "   \"mappings\": {"
             "      \"data\": {"
-            "          \"_source\": { \"enabled\": false },"
+            "          \"_source\": { \"enabled\": %s },"
             "          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
@@ -230,6 +230,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "         \"normalizer\": { %s }"
             "      }"
             "   }",
+                     indexDescriptor->store ? "true" : "false",
                      lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false),
 					 indexDescriptor->alwaysResolveJoins ? "true" : "false",
 					 fieldProperties, shards,
@@ -309,14 +310,17 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
      */
     appendStringInfo(request, "{"\
             "   \"data\": {"
-            "      \"_source\": { \"enabled\": false },"
+            "      \"_source\": { \"enabled\": %s },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
             "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"
             "    },"
 			SECONDARY_TYPES_MAPPING
-            "}", pkey, indexDescriptor->alwaysResolveJoins ? "true" : "false", properties);
+            "}",
+             indexDescriptor->store ? "true" : "false",
+             pkey,
+             indexDescriptor->alwaysResolveJoins ? "true" : "false", properties);
 
     appendStringInfo(endpoint, "%s%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("PUT", endpoint->data, request, indexDescriptor->compressionLevel);

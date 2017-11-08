@@ -50,6 +50,7 @@ typedef struct {
     int   aliasOffset;
     int   optimizeAfter;
 	int   defaultRowEstimate;
+	bool  store;
 } ZDBIndexOptions;
 
 #define ZDBIndexOptionsGetUrl(relation) \
@@ -105,7 +106,10 @@ typedef struct {
     ((uint64) ((relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->optimizeAfter : 0))
 
 #define ZDBIndexOptionsGetDefaultRowEstimate(relation) \
-    ((int) ((relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->defaultRowEstimate : 0))
+    ((int) ((relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->defaultRowEstimate : 2500))
+
+#define ZDBIndexOptionsGetStore(relation) \
+    (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->store : false
 
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
@@ -135,6 +139,7 @@ typedef struct {
     int  compressionLevel;
     bool ignoreVisibility;
 	int  defaultRowEstimate;
+	bool store;
 
     char *fieldLists;
 
