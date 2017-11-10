@@ -15,19 +15,17 @@
  */
 package llc.zombodb.query_parser.optimizers;
 
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.FastTermsResponse;
 import llc.zombodb.query_parser.*;
 import llc.zombodb.query_parser.metadata.IndexMetadata;
 import llc.zombodb.query_parser.metadata.IndexMetadataManager;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
-import org.elasticsearch.action.search.SearchAction;
-import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 
 import java.util.*;
-
-import static org.elasticsearch.search.aggregations.AggregationBuilders.terms;
 
 public class ExpansionOptimizer {
     private final QueryRewriter rewriter;
@@ -153,46 +151,73 @@ public class ExpansionOptimizer {
             return notNull;
         }
 
-        QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery));
-
-        SearchResponse response = SearchAction.INSTANCE.newRequestBuilder(client)
-                .setIndices(link.getIndexName())
-                .setTypes("data")
-                .setSize(0)
-                .setPreference(searchPreference)
-                .setRequestCache(true)
-                .setQuery(query)
-                .addAggregation(
-                        terms(rightFieldname)
-                                .field(rightFieldname)
-                                .shardSize(!doFullFieldDataLookup ? 1024 : Integer.MAX_VALUE)
-                                .size(!doFullFieldDataLookup ? 1024 : Integer.MAX_VALUE)
-                )
-                .get();
-
-        Terms agg = (Terms) response.getAggregations().iterator().next();
         ASTArray array = new ASTArray(QueryParserTreeConstants.JJTARRAY);
         array.setFieldname(leftFieldname);
         array.setOperator(QueryParserNode.Operator.EQ);
-        array.setExternalValues(() -> {
-            final Iterator<? extends Terms.Bucket> buckets = agg.getBuckets().iterator();
-            return new Iterator<Object>() {
-                @Override
-                public boolean hasNext() {
-                    return buckets.hasNext();
+
+        QueryBuilder query = rewriter.applyVisibility(rewriter.build(nodeQuery));
+        FastTermsResponse response = FastTermsAction.INSTANCE.newRequestBuilder(client)
+                .setIndices(link.getIndexName())
+                .setTypes("data")
+                .setFieldname(rightFieldname)
+                .setQuery(query)
+                .get();
+
+        if (response.getFailedShards() > 0) {
+            StringBuilder sb = new StringBuilder();
+            for (ShardOperationFailedException ex : response.getShardFailures())
+                sb.append(ex.reason());
+            throw new RuntimeException(sb.toString());
+        }
+
+        int total = response.getTotalDataCount();
+
+        array.setExternalValues(() -> new Iterator<Object>() {
+            int maxShards = response.getSuccessfulShards();
+            int currShard = 0;
+            int idx = 0;
+            int cnt;
+            @Override
+            public boolean hasNext() {
+                return cnt < total && currShard < maxShards;
+            }
+
+            @Override
+            public Object next() {
+                Object value = null;
+                int len;
+                switch (response.getDataType()) {
+                    case INT:
+                        len = response.getDataCount(currShard);
+                        if (len > 0)
+                            value = ((int[]) response.getData(currShard))[idx];
+                        break;
+                    case LONG:
+                        len = response.getDataCount(currShard);
+                        if (len > 0)
+                            value = ((long[]) response.getData(currShard))[idx];
+                        break;
+                    case STRING:
+                        len = response.getDataCount(currShard);
+                        if (len > 0)
+                            value = ((Object[]) response.getData(currShard))[idx];
+                        break;
+                    default:
+                        throw new RuntimeException("Unrecognized data type: " + response.getDataType());
                 }
 
-                @Override
-                public Object next() {
-                    return buckets.next().getKey();
+                idx++;
+                if (idx >= len) {
+                    // move to start of next shard
+                    currShard++;
+                    idx = 0;
                 }
-
-                @Override
-                public void remove() {
-                    buckets.remove();
-                }
-            };
-        }, agg.getBuckets().size());
+                if (value == null && hasNext())
+                    return next();
+                cnt++;
+                return value;
+            }
+        }, total);
 
         QueryParserNode filterQuery = node.getFilterQuery();
         if (filterQuery != null) {

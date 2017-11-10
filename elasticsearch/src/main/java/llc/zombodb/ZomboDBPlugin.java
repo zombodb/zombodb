@@ -16,6 +16,8 @@
  */
 package llc.zombodb;
 
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.TransportFastTermsAction;
 import llc.zombodb.rest.admin.ZomboDBMappingAction;
 import llc.zombodb.rest.admin.ZomboDBQueryAction;
 import llc.zombodb.rest.highlight.ZomboDBDocumentHighlighterAction;
@@ -93,8 +95,9 @@ public class ZomboDBPlugin extends Plugin implements ActionPlugin, SearchPlugin 
 
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
-        return Collections.singletonList(
-                new ActionHandler<>(TermlistAction.INSTANCE, TransportTermlistAction.class)
+        return Arrays.asList(
+                new ActionHandler<>(TermlistAction.INSTANCE, TransportTermlistAction.class),
+                new ActionHandler<>(FastTermsAction.INSTANCE, TransportFastTermsAction.class)
         );
     }
 

@@ -16,6 +16,8 @@
  */
 package llc.zombodb.rest.search;
 
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.FastTermsResponse;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import llc.zombodb.query_parser.utils.Utils;
 import llc.zombodb.rest.QueryAndIndexPair;
@@ -26,6 +28,8 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
@@ -41,6 +45,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
     static class TidArrayQuickSort {
 
         byte[] tmp = new byte[10];
+
         void quickSort(byte[] array, int offset, int low, int high, int size) {
 
             if (high <= low)
@@ -48,16 +53,16 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
             int i = low;
             int j = high;
-            int pivot = Utils.decodeInteger(array, offset + ((low+(high-low)/2) * size));
+            int pivot = Utils.decodeInteger(array, offset + ((low + (high - low) / 2) * size));
             while (i <= j) {
-                while (Utils.decodeInteger(array, offset+i*size) < pivot)
+                while (Utils.decodeInteger(array, offset + i * size) < pivot)
                     i++;
-                while (Utils.decodeInteger(array, offset+j*size) > pivot)
+                while (Utils.decodeInteger(array, offset + j * size) > pivot)
                     j--;
                 if (i <= j) {
-                    System.arraycopy(array, offset+i*size, tmp, 0, size);
-                    System.arraycopy(array, offset+j*size, array, offset+i*size, size);
-                    System.arraycopy(tmp, 0, array, offset+j*size, size);
+                    System.arraycopy(array, offset + i * size, tmp, 0, size);
+                    System.arraycopy(array, offset + j * size, array, offset + i * size, size);
+                    System.arraycopy(tmp, 0, array, offset + j * size, size);
                     i++;
                     j--;
                 }
@@ -96,7 +101,6 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         boolean wantScores = request.paramAsBoolean("scores", true);
         boolean needSort = request.paramAsBoolean("sort", true);
         long totalStart = System.nanoTime();
-        SearchResponse response;
         BinaryTIDResponse tids;
         QueryAndIndexPair query;
         int many = -1;
@@ -108,40 +112,73 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             query = buildJsonQueryFromRequestContent(client, request, true, false, false);
             parseEnd = System.nanoTime();
 
-            SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
-            builder.setIndices(query.getIndexName());
-            builder.setTypes("data");
-            builder.setPreference(request.param("preference"));
-            builder.setTrackScores(wantScores);
-            builder.setRequestCache(true);
-            builder.addDocValueField("_zdb_id");
-            builder.addStoredField("_none_");
+            if (!wantScores && !query.hasLimit()) {
+                /*
+                 * we don't want scores and we don't have a limit to apply
+                 * so we can get the matching _zdb_id values very quickly
+                 * using FastTermsAction
+                 */
+                long searchStart = System.currentTimeMillis();
+                FastTermsResponse response = FastTermsAction.INSTANCE.newRequestBuilder(client)
+                        .setIndices(query.getIndexName())
+                        .setTypes("data")
+                        .setFieldname("_zdb_id")
+                        .setQuery(query.getQueryBuilder())
+                        .get();
+                searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 
-            if (wantScores)
-                builder.setQuery(query.getQueryBuilder());
-            else
-                builder.setPostFilter(query.getQueryBuilder());
+                if (response.getFailedShards() > 0) {
+                    /* didn't work, so return failure */
+                    XContentBuilder builder = XContentBuilder.builder(JsonXContent.jsonXContent).prettyPrint();
+                    response.toXContent(builder, null);
+                    return channel -> new BytesRestResponse(response.status(), builder);
+                }
 
-            if (query.hasLimit()) {
-                builder.setSearchType(SearchType.DEFAULT);
-                builder.addSort(query.getLimit().getFieldname(), "asc".equals(query.getLimit().getSortDirection()) ? SortOrder.ASC : SortOrder.DESC);
-                builder.setFrom(query.getLimit().getOffset());
-                builder.setSize(query.getLimit().getLimit());
+                tids = buildBinaryResponse(response, needSort);
+                many = tids.many;
+                buildTime = tids.ttl;
+                sortTime = tids.sort;
+
+                return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
             } else {
-                builder.setScroll(TimeValue.timeValueMinutes(10));
-                builder.setSize(1048576);
+                /*
+                 * we need to run an actual search because we want scores or have a limit
+                 */
+                SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
+                builder.setIndices(query.getIndexName());
+                builder.setTypes("data");
+                builder.setPreference(request.param("preference"));
+                builder.setTrackScores(wantScores);
+                builder.setRequestCache(true);
+                builder.addDocValueField("_zdb_id");    // this is the only field we need
+                builder.addStoredField("_none_");       // don't get any _underscore fields like _id
+
+                if (wantScores)
+                    builder.setQuery(query.getQueryBuilder());
+                else
+                    builder.setPostFilter(query.getQueryBuilder());
+
+                if (query.hasLimit()) {
+                    builder.setSearchType(SearchType.DEFAULT);
+                    builder.addSort(query.getLimit().getFieldname(), "asc".equals(query.getLimit().getSortDirection()) ? SortOrder.ASC : SortOrder.DESC);
+                    builder.setFrom(query.getLimit().getOffset());
+                    builder.setSize(query.getLimit().getLimit());
+                } else {
+                    builder.setScroll(TimeValue.timeValueMinutes(10));
+                    builder.setSize(32768);
+                }
+
+                long searchStart = System.currentTimeMillis();
+                SearchResponse response = client.search(builder.request()).actionGet();
+                searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
+
+                tids = buildBinaryResponse(client, response, query.hasLimit(), wantScores, needSort);
+                many = tids.many;
+                buildTime = tids.ttl;
+                sortTime = tids.sort;
+
+                return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
             }
-
-            long searchStart = System.currentTimeMillis();
-            response = client.search(builder.request()).actionGet();
-            searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
-
-            tids = buildBinaryResponse(client, response, query.hasLimit(), wantScores, needSort);
-            many = tids.many;
-            buildTime = tids.ttl;
-            sortTime = tids.sort;
-
-            return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
         } finally {
             long totalEnd = System.nanoTime();
             logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s, sort=" + sortTime + ")");
@@ -174,10 +211,10 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         long start = System.currentTimeMillis();
         byte[] results = new byte[
                 1 +                             // always NULL
-                8 +                             // number of hits
-                (wantScores ? 4 : 0) +          // max score, if we want scores
-                (many * (wantScores ? 10 : 6))  // size per row, with or without scores sizeof(BlockNumber) + sizeof(OffsetNumber) + ?sizeOf(float4)
-        ];
+                        8 +                             // number of hits
+                        (wantScores ? 4 : 0) +          // max score, if we want scores
+                        (many * (wantScores ? 10 : 6))  // size per row, with or without scores sizeof(BlockNumber) + sizeof(OffsetNumber) + ?sizeOf(float4)
+                ];
         int offset = 0, first_byte;
 
         results[0] = 0;
@@ -225,10 +262,13 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             for (SearchHit hit : searchResponse.getHits()) {
                 long _zdb_id = hit.getField("_zdb_id").getValue();
                 int blockno = (int) (_zdb_id >> 32);
-                char rowno = (char) _zdb_id;
+                char offno = (char) _zdb_id;
+
+                if (offno == 0)
+                    throw new RuntimeException("Invalid offset number");
 
                 offset += Utils.encodeInteger(blockno, results, offset);
-                offset += Utils.encodeCharacter(rowno, results, offset);
+                offset += Utils.encodeCharacter(offno, results, offset);
                 if (wantScores) {
                     offset += Utils.encodeFloat(hit.getScore(), results, offset);
                 }
@@ -250,8 +290,56 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             sortEnd = 0;
         }
 
-        return new BinaryTIDResponse(results, many, (end - start) / 1000D, (sortEnd - sortStart)/1000D);
+        return new BinaryTIDResponse(results, many, (end - start) / 1000D, (sortEnd - sortStart) / 1000D);
     }
+
+    private BinaryTIDResponse buildBinaryResponse(FastTermsResponse response, boolean needSort) {
+        int many = response.getTotalDataCount();
+
+        long start = System.currentTimeMillis();
+        byte[] results = new byte[
+                1 +                             // always NULL
+                        8 +                     // number of hits
+                        (many * 6)  // size per row, with or without scores sizeof(BlockNumber) + sizeof(OffsetNumber) + ?sizeOf(float4)
+                ];
+        int offset = 0, first_byte;
+
+        results[0] = 0;
+        offset++;
+        offset += Utils.encodeLong(many, results, offset);
+        first_byte = offset;
+
+        for (int shard=0; shard<response.getSuccessfulShards(); shard++) {
+            int cnt = response.getDataCount(shard);
+            long[] data = response.getData(shard);
+            for (int i=0; i<cnt; i++) {
+                long _zdb_id = data[i];
+                int blockno = (int) (_zdb_id >> 32);
+                char offno = (char) _zdb_id;
+
+                if (offno == 0)
+                    throw new RuntimeException("Invalid offset number");
+
+                offset += Utils.encodeInteger(blockno, results, offset);
+                offset += Utils.encodeCharacter(offno, results, offset);
+            }
+        }
+        long end = System.currentTimeMillis();
+
+        long sortStart, sortEnd;
+        if (needSort) {
+            sortStart = System.currentTimeMillis();
+            new TidArrayQuickSort().quickSort(results, first_byte, 0, many - 1, 6);
+            sortEnd = System.currentTimeMillis();
+        } else {
+            /* so that we log a sort time of -1.0, indicating we didn't do it */
+            sortStart = 1000;
+            sortEnd = 0;
+        }
+
+        return new BinaryTIDResponse(results, many, (end - start) / 1000D, (sortEnd - sortStart) / 1000D);
+    }
+
 
     @Override
     public boolean supportsPlainText() {
