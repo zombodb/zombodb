@@ -122,7 +122,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         QueryAndIndexPair query;
         int many = -1;
         long parseStart = 0, parseEnd = 0;
-        double buildTime = 0, searchTime = 0, sortTime = 0;
+        double buildTime = -1, searchTime = -1, sortTime = 0;
 
         try {
             parseStart = System.nanoTime();
@@ -130,11 +130,9 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             parseEnd = System.nanoTime();
 
             if (!wantScores && !query.hasLimit()) {
-                /*
-                 * we don't want scores and we don't have a limit to apply
-                 * so we can get the matching _zdb_id values very quickly
-                 * using FastTermsAction
-                 */
+                // we don't want scores and we don't have a limit to apply
+                // so we can get the matching _zdb_id values very quickly
+                // using FastTermsAction
                 long searchStart = System.currentTimeMillis();
                 FastTermsResponse response = FastTermsAction.INSTANCE.newRequestBuilder(client)
                         .setIndices(query.getIndexName())
@@ -153,15 +151,8 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 }
 
                 tids = buildBinaryResponse(response, needSort);
-                many = tids.many;
-                buildTime = tids.ttl;
-                sortTime = tids.sort;
-
-                return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
             } else {
-                /*
-                 * we need to run an actual search because we want scores or have a limit
-                 */
+                // we need to run an actual search because we want scores or have a limit
                 SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
                 builder.setIndices(query.getIndexName());
                 builder.setTypes("data");
@@ -197,12 +188,14 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 
                 tids = buildBinaryResponse(client, response, query.hasLimit(), wantScores, needSort);
-                many = tids.many;
-                buildTime = tids.ttl;
-                sortTime = tids.sort;
-
-                return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
             }
+
+            many = tids.many;
+            buildTime = tids.ttl;
+            sortTime = tids.sort;
+
+            return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
+
         } finally {
             long totalEnd = System.nanoTime();
             logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s, sort=" + sortTime + ")");
@@ -239,10 +232,8 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                         (wantScores ? 4 : 0) +          // max score, if we want scores
                         (many * (wantScores ? 10 : 6))  // size per row, with or without scores sizeof(BlockNumber) + sizeof(OffsetNumber) + ?sizeOf(float4)
                 ];
-        int offset = 0, first_byte;
+        int offset = 1, first_byte;
 
-        bytes[0] = 0;
-        offset++;
         offset += Utils.encodeLong(many, bytes, offset);
         if (wantScores) {
             offset += Utils.encodeFloat(searchResponse.getHits().getMaxScore(), bytes, offset);
@@ -309,7 +300,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             new TidArrayQuickSort().quickSort(bytes, first_byte, 0, many - 1, wantScores ? 10 : 6);
             sortEnd = System.currentTimeMillis();
         } else {
-            /* so that we log a sort time of -1.0, indicating we didn't do it */
+            // so that we log a sort time of -1.0, indicating we didn't do it
             sortStart = 1000;
             sortEnd = 0;
         }
@@ -326,69 +317,62 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                         8 +                     // number of hits
                         (many * 6)  // size per row, with or without scores sizeof(BlockNumber) + sizeof(OffsetNumber) + ?sizeOf(float4)
                 ];
-        int offset = 0, first_byte;
+        int offset = 1, first_byte;
 
-        bytes[0] = 0;
-        offset++;
         offset += Utils.encodeLong(many, bytes, offset);
         first_byte = offset;
 
-        try {
-            if (needSort) {
-                // merge-sort the results from each shard inline into our results byte[]
-                PriorityQueue<ArrayContainer> queue = new PriorityQueue<>();
+        if (needSort) {
+            // merge-sort the results from each shard inline into our results byte[]
+            PriorityQueue<ArrayContainer> queue = new PriorityQueue<>();
 
-                for (int i=0; i<response.getSuccessfulShards(); i++) {
-                    long[] longs = response.getData(i);
-                    int len = response.getDataCount(i);
-                    if (len > 0) {
-                        queue.add(new ArrayContainer(longs, len, 0));
-                    }
+            for (int i = 0; i < response.getSuccessfulShards(); i++) {
+                long[] longs = response.getData(i);
+                int len = response.getDataCount(i);
+                if (len > 0) {
+                    queue.add(new ArrayContainer(longs, len, 0));
                 }
+            }
 
-                int idx = 0;
-                while (!queue.isEmpty()) {
-                    ArrayContainer ac = queue.poll();
-                    long _zdb_id = ac.arr[ac.index];
+            int idx = 0;
+            while (!queue.isEmpty()) {
+                ArrayContainer ac = queue.poll();
+                long _zdb_id = ac.arr[ac.index];
+                int blockno = (int) (_zdb_id >> 32);
+                char offno = (char) _zdb_id;
+
+                if (offno == 0)
+                    throw new RuntimeException("Invalid offset number");
+
+                Utils.encodeInteger(blockno, bytes, first_byte + (idx * 6));
+                Utils.encodeCharacter(offno, bytes, first_byte + (idx * 6) + 4);
+                idx++;
+
+                if (ac.index < ac.len - 1) {
+                    queue.add(new ArrayContainer(ac.arr, ac.len, ac.index + 1));
+                }
+            }
+        } else {
+            // don't mess with sorting at all
+            for (int shard = 0; shard < response.getSuccessfulShards(); shard++) {
+                int cnt = response.getDataCount(shard);
+                long[] data = response.getData(shard);
+                for (int i = 0; i < cnt; i++) {
+                    long _zdb_id = data[i];
                     int blockno = (int) (_zdb_id >> 32);
                     char offno = (char) _zdb_id;
 
                     if (offno == 0)
                         throw new RuntimeException("Invalid offset number");
 
-                    Utils.encodeInteger(blockno, bytes, first_byte + (idx * 6));
-                    Utils.encodeCharacter(offno, bytes, first_byte + (idx * 6) + 4);
-                    idx++;
-
-                    if (ac.index < ac.len - 1) {
-                        queue.add(new ArrayContainer(ac.arr, ac.len, ac.index + 1));
-                    }
-                }
-            } else {
-                // don't mess with sorting at all
-                for (int shard = 0; shard < response.getSuccessfulShards(); shard++) {
-                    int cnt = response.getDataCount(shard);
-                    long[] data = response.getData(shard);
-                    for (int i = 0; i < cnt; i++) {
-                        long _zdb_id = data[i];
-                        int blockno = (int) (_zdb_id >> 32);
-                        char offno = (char) _zdb_id;
-
-                        if (offno == 0)
-                            throw new RuntimeException("Invalid offset number");
-
-                        offset += Utils.encodeInteger(blockno, bytes, offset);
-                        offset += Utils.encodeCharacter(offno, bytes, offset);
-                    }
+                    offset += Utils.encodeInteger(blockno, bytes, offset);
+                    offset += Utils.encodeCharacter(offno, bytes, offset);
                 }
             }
-            long end = System.currentTimeMillis();
-
-            return new BinaryTIDResponse(bytes, many, (end - start) / 1000D, -1.0D);
-        } catch (Throwable t) {
-            logger.info(t);
-            throw t;
         }
+        long end = System.currentTimeMillis();
+
+        return new BinaryTIDResponse(bytes, many, (end - start) / 1000D, -1.0D);
     }
 
     @Override
