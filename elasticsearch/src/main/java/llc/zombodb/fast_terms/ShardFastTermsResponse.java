@@ -63,12 +63,15 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         switch (dataType) {
             case INT:
                 ints = in.readVIntArray();
+                dataCount = ints.length;
                 break;
             case LONG:
                 longs = in.readVLongArray();
+                dataCount = longs.length;
                 break;
             case STRING:
                 strings = in.readStringArray();
+                dataCount = strings.length;
                 break;
         }
     }

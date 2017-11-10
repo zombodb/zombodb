@@ -30,6 +30,7 @@ import llc.zombodb.rest.vacuum.ZomboDBVacuumCleanupAction;
 import llc.zombodb.rest.xact.ZomboDBBulkAction;
 import llc.zombodb.rest.xact.ZomboDBCommitXIDAction;
 import llc.zombodb.rest.xact.ZomboDBDeleteTuplesAction;
+import llc.zombodb.visibility_query.ZomboDBVisibilityQueryBuilder;
 import llc.zombodb.visibility_query.ZomboDBVisibilityQueryParser;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -104,7 +105,7 @@ public class ZomboDBPlugin extends Plugin implements ActionPlugin, SearchPlugin 
     @Override
     public List<QuerySpec<?>> getQueries() {
         return Collections.singletonList(
-                new QuerySpec<>("visibility", new ZomboDBVisibilityQueryParser(), new ZomboDBVisibilityQueryParser())
+                new QuerySpec<>(ZomboDBVisibilityQueryBuilder.NAME, ZomboDBVisibilityQueryBuilder::new, ZomboDBVisibilityQueryBuilder::fromXContent)
         );
     }
 }

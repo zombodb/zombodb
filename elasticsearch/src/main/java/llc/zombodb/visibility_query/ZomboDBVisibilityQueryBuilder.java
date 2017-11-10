@@ -16,15 +16,17 @@
 package llc.zombodb.visibility_query;
 
 import org.apache.lucene.search.Query;
+import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.xcontent.ObjectParser;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.index.query.AbstractQueryBuilder;
-import org.elasticsearch.index.query.QueryShardContext;
+import org.elasticsearch.index.query.*;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 
 public class ZomboDBVisibilityQueryBuilder extends AbstractQueryBuilder<ZomboDBVisibilityQueryBuilder> {
     public static final String NAME = "visibility";
@@ -40,6 +42,7 @@ public class ZomboDBVisibilityQueryBuilder extends AbstractQueryBuilder<ZomboDBV
     }
 
     public ZomboDBVisibilityQueryBuilder(StreamInput in) throws IOException {
+        super(in);
         myXid = in.readLong();
         xmin = in.readLong();
         xmax = in.readLong();
@@ -124,4 +127,19 @@ public class ZomboDBVisibilityQueryBuilder extends AbstractQueryBuilder<ZomboDBV
         builder.field("active_xids", activeXids);
         builder.endObject();
     }
+
+    private static final ObjectParser<ZomboDBVisibilityQueryBuilder, QueryParseContext> PARSER = new ObjectParser<>(NAME, ZomboDBVisibilityQueryBuilder::new);
+
+    static {
+        declareStandardFields(PARSER);
+    }
+
+    public static Optional<ZomboDBVisibilityQueryBuilder> fromXContent(QueryParseContext context) {
+        try {
+            return Optional.of(PARSER.apply(context.parser(), context));
+        } catch (IllegalArgumentException e) {
+            throw new ParsingException(context.parser().getTokenLocation(), e.getMessage(), e);
+        }
+    }
+
 }
