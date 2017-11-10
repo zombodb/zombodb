@@ -144,7 +144,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
             searcher.search(new ConstantScoreQuery(query.rewrite(engine.reader())), collector);
         }
 
-        return new ShardFastTermsResponse(request.getIndex(), request.shardId(), type, collector.getData(), collector.getDataCount());
+        return new ShardFastTermsResponse(request.shardId(), type, collector.getData(), collector.getDataCount(), request.getRequest().sortResultsPerShard());
     }
 
     @Override

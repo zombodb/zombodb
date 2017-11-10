@@ -6,6 +6,7 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.index.shard.ShardId;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class ShardFastTermsResponse extends BroadcastShardResponse {
     private FastTermsResponse.DataType dataType;
@@ -18,19 +19,29 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
 
     }
 
-    public ShardFastTermsResponse(String index, ShardId shardId, FastTermsResponse.DataType dataType, Object data, int dataCount) {
+    public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, Object data, int dataCount, boolean doSorting) {
         super(shardId);
         this.dataType = dataType;
         this.dataCount = dataCount;
         switch (dataType) {
             case INT:
                 ints = (int[]) data;
+                if (doSorting)
+                    Arrays.sort(ints, 0, dataCount);
                 break;
             case LONG:
                 longs = (long[]) data;
+                if (doSorting)
+                    Arrays.sort(longs, 0, dataCount);
                 break;
             case STRING:
                 strings = (Object[]) data;
+                if (doSorting)
+                    Arrays.sort(strings, 0, dataCount, (o1, o2) -> {
+                        String a = (String) o1;
+                        String b = (String) o2;
+                        return a.compareTo(b);
+                    });
                 break;
         }
     }

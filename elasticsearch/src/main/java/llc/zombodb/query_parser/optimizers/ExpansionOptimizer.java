@@ -161,6 +161,7 @@ public class ExpansionOptimizer {
                 .setTypes("data")
                 .setFieldname(rightFieldname)
                 .setQuery(query)
+                .setSortResultsPerShard(false)
                 .get();
 
         if (response.getFailedShards() > 0) {

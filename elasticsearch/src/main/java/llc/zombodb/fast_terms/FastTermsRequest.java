@@ -9,8 +9,9 @@ import java.io.IOException;
 
 public class FastTermsRequest extends BroadcastRequest<FastTermsRequest> {
     private String[] types;
-    private QueryBuilder query;
     private String fieldname;
+    private boolean sortResultsPerShard;
+    private QueryBuilder query;
 
     static FastTermsRequest from(StreamInput in) throws IOException {
         FastTermsRequest request = new FastTermsRequest();
@@ -42,11 +43,20 @@ public class FastTermsRequest extends BroadcastRequest<FastTermsRequest> {
         this.fieldname = fieldname;
     }
 
+    public boolean sortResultsPerShard() {
+        return sortResultsPerShard;
+    }
+
+    public void sortResultsPerShard(boolean sortResultsPerShard) {
+        this.sortResultsPerShard = sortResultsPerShard;
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
         types = in.readStringArray();
         fieldname = in.readString();
+        sortResultsPerShard = in.readBoolean();
         query = in.readNamedWriteable(QueryBuilder.class);
     }
 
@@ -55,6 +65,7 @@ public class FastTermsRequest extends BroadcastRequest<FastTermsRequest> {
         super.writeTo(out);
         out.writeStringArray(types);
         out.writeString(fieldname);
+        out.writeBoolean(sortResultsPerShard);
         out.writeNamedWriteable(query);
     }
 }

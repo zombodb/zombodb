@@ -26,6 +26,11 @@ public class FastTermsRequestBuilder extends BroadcastOperationRequestBuilder<Fa
         return this;
     }
 
+    public FastTermsRequestBuilder setSortResultsPerShard(boolean b) {
+        request.sortResultsPerShard(b);
+        return this;
+    }
+
     @Override
     public void execute(ActionListener<FastTermsResponse> listener) {
         client.execute(FastTermsAction.INSTANCE, this.request(), listener);
