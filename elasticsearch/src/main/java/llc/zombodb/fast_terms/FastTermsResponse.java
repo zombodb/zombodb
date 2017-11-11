@@ -100,12 +100,15 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         for (int i=0; i<super.getSuccessfulShards(); i++) {
             switch (dataType) {
                 case INT:
+                    ints = new int[counts.length][];
                     ints[i] = in.readVIntArray();
                     break;
                 case LONG:
+                    longs = new long[counts.length][];
                     longs[i] = in.readVLongArray();
                     break;
                 case STRING:
+                    strings = new Object[counts.length][];
                     strings[i] = in.readStringArray();
                     break;
             }
