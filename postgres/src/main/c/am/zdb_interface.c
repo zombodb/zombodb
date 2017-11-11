@@ -181,7 +181,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 
     heapRel = RelationIdGetRelation(indexRel->rd_index->indrelid);
 
-    desc = palloc(sizeof(ZDBIndexDescriptor));
+    desc = palloc0(sizeof(ZDBIndexDescriptor));
 
     /* these all come from the actual index */
     desc->indexRelid   = RelationGetRelid(indexRel);
@@ -241,7 +241,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 
 	desc->alias = ZDBIndexOptionsGetAlias(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetAlias(indexRel));
 
-    desc->implementation                          = palloc(sizeof(ZDBIndexImplementation));
+    desc->implementation                          = palloc0(sizeof(ZDBIndexImplementation));
     desc->implementation->_last_selectivity_query = NULL;
 
     desc->implementation->createNewIndex          = wrapper_createNewIndex;
