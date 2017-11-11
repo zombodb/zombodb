@@ -15,22 +15,66 @@
  */
 package llc.zombodb.query_parser.rewriters;
 
-import llc.zombodb.query_parser.optimizers.ExpansionOptimizer;
+import llc.zombodb.cross_join.CrossJoinQueryBuilder;
+import llc.zombodb.query_parser.ASTExpansion;
+import llc.zombodb.query_parser.ASTIndexLink;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
+
+import static org.elasticsearch.index.query.QueryBuilders.*;
 
 /**
  * ZomboDB's stock {@link QueryRewriter} that resolves joins during construction
  */
 public class ZomboDBQueryRewriter extends QueryRewriter {
 
-    public ZomboDBQueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-        super(client, indexName, contentRegistry, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
+    public ZomboDBQueryRewriter(ClusterService clusterService, Client client, String indexName, NamedXContentRegistry contentRegistry, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+        super(clusterService, client, indexName, contentRegistry, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
     }
 
     @Override
     protected void performOptimizations(Client client) {
         super.performOptimizations(client);
-        new ExpansionOptimizer(this, tree, metadataManager, client, searchPreference, doFullFieldDataLookup).optimize();
+    }
+
+    @Override
+    protected QueryBuilder build(ASTExpansion node) {
+        ASTIndexLink link = node.getIndexLink();
+        ASTIndexLink myIndex = metadataManager.getMyIndex();
+        QueryBuilder qb;
+
+        if (link == myIndex && !node.isGenerated()) {
+            return super.build(node);
+        } else {
+            if ("(null)".equals(link.getLeftFieldname()))
+                return super.build(node);
+
+            if (_isBuildingAggregate)
+                return matchAllQuery();
+
+            qb = constantScoreQuery(new CrossJoinQueryBuilder()
+                    .clusterName(this.clusterService.getClusterName().value())
+                    .host(this.clusterService.localNode().getAddress().getHost())
+                    .port(this.clusterService.localNode().getAddress().getPort())
+                    .index(link.getIndexName())
+                    .type("data")
+                    .leftFieldname(link.getLeftFieldname())
+                    .rightFieldname(link.getRightFieldname())
+                    .query(applyVisibility(build(node.getQuery()))));
+        }
+
+        if (node.getFilterQuery() != null) {
+            BoolQueryBuilder bqb = boolQuery();
+
+            bqb.must(qb);
+            bqb.filter(constantScoreQuery(build(node.getFilterQuery())));
+
+            qb = bqb;
+        }
+
+        return qb;
     }
 }

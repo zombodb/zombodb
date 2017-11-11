@@ -25,6 +25,7 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
@@ -105,9 +106,12 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
     }
 
+    private final ClusterService clusterService;
+
     @Inject
-    public ZomboDBTIDResponseAction(Settings settings, RestController controller) {
+    public ZomboDBTIDResponseAction(Settings settings, RestController controller, ClusterService clusterService) {
         super(settings);
+        this.clusterService = clusterService;
         controller.registerHandler(GET, "/{index}/_pgtid", this);
         controller.registerHandler(POST, "/{index}/_pgtid", this);
     }
@@ -126,7 +130,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, true, false, false);
+            query = buildJsonQueryFromRequestContent(clusterService, client, request, true, false, false);
             parseEnd = System.nanoTime();
 
             if (!wantScores && !query.hasLimit()) {
@@ -202,13 +206,13 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean doFullFieldDataLookups, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(ClusterService clusterService, Client client, RestRequest request, boolean doFullFieldDataLookups, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
         String queryString = request.content().utf8ToString();
         String indexName = request.param("index");
 
         try {
             if (queryString != null && queryString.trim().length() > 0) {
-                QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex, needVisibilityOnTopLevel);
+                QueryRewriter qr = QueryRewriter.Factory.create(clusterService, request, client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex, needVisibilityOnTopLevel);
                 return new QueryAndIndexPair(qr.rewriteQuery(), qr.getSearchIndexName(), qr.getLimit());
             } else {
                 return new QueryAndIndexPair(matchAllQuery(), indexName, null);

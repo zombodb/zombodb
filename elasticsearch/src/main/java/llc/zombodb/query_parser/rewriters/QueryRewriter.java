@@ -26,6 +26,7 @@ import llc.zombodb.query_parser.utils.EscapingStringTokenizer;
 import llc.zombodb.query_parser.utils.Utils;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
@@ -58,8 +59,8 @@ import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 public abstract class QueryRewriter {
 
     public static class Factory {
-        public static QueryRewriter create(RestRequest restRequest, Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-            return new ZomboDBQueryRewriter(client, indexName, restRequest.getXContentRegistry(), searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
+        public static QueryRewriter create(ClusterService clusterService, RestRequest restRequest, Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+            return new ZomboDBQueryRewriter(clusterService, client, indexName, restRequest.getXContentRegistry(), searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
         }
     }
 
@@ -119,6 +120,7 @@ public abstract class QueryRewriter {
 
     private static final String DateSuffix = ".date";
 
+    protected final ClusterService clusterService;
     protected final Client client;
     private final NamedXContentRegistry contentRegistry;
     protected final String searchPreference;
@@ -134,7 +136,8 @@ public abstract class QueryRewriter {
     protected final IndexMetadataManager metadataManager;
     private boolean hasJsonAggregate = false;
 
-    public QueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+    public QueryRewriter(ClusterService clusterService, Client client, String indexName, NamedXContentRegistry contentRegistry, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+        this.clusterService = clusterService;
         this.client = client;
         this.contentRegistry = contentRegistry;
         this.searchPreference = searchPreference;

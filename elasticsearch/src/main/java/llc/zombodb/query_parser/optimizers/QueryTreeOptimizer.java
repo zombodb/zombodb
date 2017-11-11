@@ -371,7 +371,7 @@ public class QueryTreeOptimizer {
         // need to build the ASTOr structure from the bottom-up so that
         // nested generated expansions don't exclude rows from inner-expansions
         // where the join field value is null
-        Stack<ASTExpansion> stack = ExpansionOptimizer.buildExpansionStack(root, new Stack<ASTExpansion>());
+        Stack<ASTExpansion> stack = buildExpansionStack(root, new Stack<ASTExpansion>());
 
         while (!stack.empty()) {
             ASTExpansion expansion = stack.pop();
@@ -385,4 +385,19 @@ public class QueryTreeOptimizer {
             }
         }
     }
+
+    private Stack<ASTExpansion> buildExpansionStack(QueryParserNode root, Stack<ASTExpansion> stack) {
+
+        if (root != null) {
+            if (root instanceof ASTExpansion) {
+                stack.push((ASTExpansion) root);
+                buildExpansionStack(((ASTExpansion) root).getQuery(), stack);
+            } else {
+                for (QueryParserNode child : root)
+                    buildExpansionStack(child, stack);
+            }
+        }
+        return stack;
+    }
+
 }

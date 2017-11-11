@@ -18,6 +18,7 @@ package llc.zombodb.rest.admin;
 
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
@@ -31,16 +32,21 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZomboDBMappingAction extends BaseRestHandler {
 
+    private final ClusterService clusterService;
+
     @Inject
-    public ZomboDBMappingAction(Settings settings, RestController controller) {
+    public ZomboDBMappingAction(Settings settings, RestController controller, ClusterService clusterService) {
         super(settings);
+
+        this.clusterService = clusterService;
+
         controller.registerHandler(GET, "/{index}/_pgmapping/{fieldname}", this);
         controller.registerHandler(POST, "/{index}/_pgmapping/{fieldname}", this);
     }
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-        QueryRewriter rewriter = QueryRewriter.Factory.create(request, client, request.param("index"), request.param("preference"), request.content().utf8ToString(), true, false, false);
+        QueryRewriter rewriter = QueryRewriter.Factory.create(clusterService, request, client, request.param("index"), request.param("preference"), request.content().utf8ToString(), true, false, false);
         rewriter.rewriteQuery();
         Map<String, ?> properties = rewriter.describedNestedObject(request.param("fieldname"));
 

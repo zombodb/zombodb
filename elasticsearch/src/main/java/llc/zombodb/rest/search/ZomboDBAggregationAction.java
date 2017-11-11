@@ -20,6 +20,7 @@ import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -40,9 +41,14 @@ import static org.elasticsearch.search.aggregations.AggregationBuilders.missing;
 
 public class ZomboDBAggregationAction extends BaseRestHandler {
 
+    private final ClusterService clusterService;
+
     @Inject
-    public ZomboDBAggregationAction(Settings settings, RestController controller) {
+    public ZomboDBAggregationAction(Settings settings, RestController controller, ClusterService clusterService) {
         super(settings);
+
+        this.clusterService = clusterService;
+
         controller.registerHandler(GET, "/{index}/_pgagg", this);
         controller.registerHandler(POST, "/{index}/_pgagg", this);
     }
@@ -52,7 +58,7 @@ public class ZomboDBAggregationAction extends BaseRestHandler {
         final long start = System.currentTimeMillis();
         SearchRequestBuilder builder = SearchAction.INSTANCE.newRequestBuilder(client);
         String input = request.content().utf8ToString();
-        final QueryRewriter rewriter = QueryRewriter.Factory.create(request, client, request.param("index"), request.param("preference"), input, true, true, true);
+        final QueryRewriter rewriter = QueryRewriter.Factory.create(clusterService, request, client, request.param("index"), request.param("preference"), input, true, true, true);
         QueryBuilder qb = rewriter.rewriteQuery();
         AggregationBuilder ab = rewriter.rewriteAggregations();
         SuggestionBuilder sb = rewriter.rewriteSuggestions();

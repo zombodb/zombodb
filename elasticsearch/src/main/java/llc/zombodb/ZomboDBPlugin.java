@@ -16,6 +16,7 @@
  */
 package llc.zombodb;
 
+import llc.zombodb.cross_join.CrossJoinQueryBuilder;
 import llc.zombodb.fast_terms.FastTermsAction;
 import llc.zombodb.fast_terms.TransportFastTermsAction;
 import llc.zombodb.rest.admin.ZomboDBMappingAction;
@@ -31,7 +32,6 @@ import llc.zombodb.rest.xact.ZomboDBBulkAction;
 import llc.zombodb.rest.xact.ZomboDBCommitXIDAction;
 import llc.zombodb.rest.xact.ZomboDBDeleteTuplesAction;
 import llc.zombodb.visibility_query.ZomboDBVisibilityQueryBuilder;
-import llc.zombodb.visibility_query.ZomboDBVisibilityQueryParser;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.client.Client;
@@ -57,7 +57,6 @@ import org.xbib.elasticsearch.rest.action.termlist.RestTermlistAction;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 public class ZomboDBPlugin extends Plugin implements ActionPlugin, SearchPlugin {
@@ -77,13 +76,13 @@ public class ZomboDBPlugin extends Plugin implements ActionPlugin, SearchPlugin 
     @Override
     public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings, IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter, IndexNameExpressionResolver indexNameExpressionResolver, java.util.function.Supplier<DiscoveryNodes> nodesInCluster) {
         return Arrays.asList(
-                new ZomboDBTIDResponseAction(settings, restController),
-                new ZomboDBAggregationAction(settings, restController),
-                new ZomboDBCountAction(settings, restController),
-                new ZomboDBMappingAction(settings, restController),
-                new ZomboDBQueryAction(settings, restController),
+                new ZomboDBTIDResponseAction(settings, restController, clusterService),
+                new ZomboDBAggregationAction(settings, restController, clusterService),
+                new ZomboDBCountAction(settings, restController, clusterService),
+                new ZomboDBMappingAction(settings, restController, clusterService),
+                new ZomboDBQueryAction(settings, restController, clusterService),
                 new ZomboDBDocumentHighlighterAction(settings, restController),
-                new ZomboDBMultiSearchAction(settings, restController),
+                new ZomboDBMultiSearchAction(settings, restController, clusterService),
                 new RestTermlistAction(settings, restController),
                 new ZomboDBBulkAction(settings, restController, clusterService),
                 new ZomboDBCommitXIDAction(settings, restController, clusterService),
@@ -104,8 +103,9 @@ public class ZomboDBPlugin extends Plugin implements ActionPlugin, SearchPlugin 
 
     @Override
     public List<QuerySpec<?>> getQueries() {
-        return Collections.singletonList(
-                new QuerySpec<>(ZomboDBVisibilityQueryBuilder.NAME, ZomboDBVisibilityQueryBuilder::new, ZomboDBVisibilityQueryBuilder::fromXContent)
+        return Arrays.asList(
+                new QuerySpec<>(ZomboDBVisibilityQueryBuilder.NAME, ZomboDBVisibilityQueryBuilder::new, ZomboDBVisibilityQueryBuilder::fromXContent),
+                new QuerySpec<>(CrossJoinQueryBuilder.NAME, CrossJoinQueryBuilder::new, CrossJoinQueryBuilder::fromXContent)
         );
     }
 }

@@ -22,6 +22,7 @@ import org.elasticsearch.action.search.MultiSearchRequestBuilder;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
@@ -75,9 +76,13 @@ public class ZomboDBMultiSearchAction extends BaseRestHandler {
         }
     }
 
+    private final ClusterService clusterService;
+
     @Inject
-    public ZomboDBMultiSearchAction(Settings settings, RestController controller) {
+    public ZomboDBMultiSearchAction(Settings settings, RestController controller, ClusterService clusterService) {
         super(settings);
+        this.clusterService = clusterService;
+
         controller.registerHandler(GET, "/{index}/_zdbmsearch", this);
         controller.registerHandler(POST, "/{index}/_zdbmsearch", this);
     }
@@ -94,7 +99,7 @@ public class ZomboDBMultiSearchAction extends BaseRestHandler {
             srb.setIndices(md.getIndexName());
             srb.setTypes("data");
             if (md.getPkey() != null) srb.addFieldDataField(md.getPkey());
-            srb.setQuery(QueryRewriter.Factory.create(request, client, md.getIndexName(), md.getPreference(), md.getQuery(), true, false, true).rewriteQuery());
+            srb.setQuery(QueryRewriter.Factory.create(clusterService, request, client, md.getIndexName(), md.getPreference(), md.getQuery(), true, false, true).rewriteQuery());
 
             msearchBuilder.add(srb);
         }
