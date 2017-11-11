@@ -17,13 +17,15 @@ package llc.zombodb.visibility_query;
 
 import com.carrotsearch.hppc.IntHashSet;
 import com.carrotsearch.hppc.IntSet;
-import com.carrotsearch.hppc.cursors.IntCursor;
-import org.apache.lucene.index.*;
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.NumericUtils;
 
 import java.io.IOException;
 import java.util.*;
@@ -31,49 +33,10 @@ import java.util.*;
 final class VisibilityQueryHelper {
 
     /**
-     * helper class for figuring out how many _xmin and _xmax values
-     * our shard has
-     */
-    private static class XminXmaxCounts {
-        private IndexSearcher searcher;
-        private int doccnt;
-        private int xmaxcnt;
-
-        XminXmaxCounts(IndexSearcher searcher) {
-            this.searcher = searcher;
-        }
-
-        int getDoccnt() {
-            return doccnt;
-        }
-
-        int getXmaxcnt() {
-            return xmaxcnt;
-        }
-
-        XminXmaxCounts invoke() throws IOException {
-            doccnt = 0;
-            xmaxcnt = 0;
-            for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-                Terms terms;
-
-                terms = context.reader().terms("_xmin");
-                if (terms != null)
-                    doccnt += terms.getDocCount();
-
-                terms = context.reader().terms("_xmax");
-                if (terms != null)
-                    xmaxcnt += terms.getDocCount();
-            }
-            return this;
-        }
-    }
-
-    /**
      * collect all the _zdb_xid values in the "aborted" type as both a set of Longs and as a list of BytesRef
      * for filtering in #determineVisibility
      */
-    private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids, final List<BytesRef> abortedXidsAsBytes) throws IOException {
+    private static void collectAbortedXids(IndexSearcher searcher, final Set<Long> abortedXids) throws IOException {
         searcher.search(new ConstantScoreQuery(new TermQuery(new Term("_type", "aborted"))),
                 new ZomboDBTermsCollector() {
                     SortedNumericDocValues _zdb_xid;
@@ -82,12 +45,8 @@ final class VisibilityQueryHelper {
                     public void collect(int doc) throws IOException {
                         _zdb_xid.setDocument(doc);
 
-                        long xid = _zdb_xid.valueAt(0);
-                        byte[] bytes = new byte[8];
-                        NumericUtils.longToSortableBytes(xid, bytes, 0);
-
-                        abortedXids.add(xid);
-                        abortedXidsAsBytes.add(new BytesRef(bytes));
+                        for (int i=0; i<_zdb_xid.count(); i++)
+                            abortedXids.add(_zdb_xid.valueAt(i));
                     }
 
                     @Override
@@ -141,21 +100,14 @@ final class VisibilityQueryHelper {
     }
 
     static Map<Integer, FixedBitSet> determineVisibility(final long myXid, final long myXmin, final long myXmax, final int myCommand, final Set<Long> activeXids, IndexSearcher searcher) throws IOException {
-        XminXmaxCounts xminXmaxCounts = new XminXmaxCounts(searcher).invoke();
-        int xmaxcnt = xminXmaxCounts.getXmaxcnt();
-        int doccnt = xminXmaxCounts.getDoccnt();
+        final IntSet dirtyBlocks = new IntHashSet();
+        final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>();
+        final Set<Long> abortedXids = new HashSet<>();
 
-        final boolean just_get_everything = xmaxcnt >= doccnt/3;
-
-        final IntSet dirtyBlocks = just_get_everything ? null : new IntHashSet();
-        final Map<HeapTuple, HeapTuple> modifiedTuples = new HashMap<>(xmaxcnt);
-
+        collectAbortedXids(searcher, abortedXids);
         collectMaxes(searcher, modifiedTuples, dirtyBlocks);
 
-        final Set<Long> abortedXids = new HashSet<>();
-        final List<BytesRef> abortedXidsAsBytes = new ArrayList<>();
-
-        collectAbortedXids(searcher, abortedXids, abortedXidsAsBytes);
+        final boolean just_get_everything = modifiedTuples.size() >= searcher.getIndexReader().maxDoc()/3;
 
         final List<Query> filters = new ArrayList<>();
         if (just_get_everything) {
@@ -166,33 +118,16 @@ final class VisibilityQueryHelper {
             filters.add(new MatchAllDocsQuery());
         } else {
             // just look at all the docs on the blocks we've identified as dirty
-            if (!dirtyBlocks.isEmpty()) {
-                List<BytesRef> tmp = new ArrayList<>();
-                for (IntCursor blockNumber : dirtyBlocks) {
-                    byte[] bytes = new byte[4];
-                    NumericUtils.intToSortableBytes(blockNumber.value, bytes, 0);
-                    tmp.add(new BytesRef(bytes));
-                }
-                filters.add(new TermInSetQuery("_zdb_blockno", tmp));
-            }
+            if (!dirtyBlocks.isEmpty())
+                filters.add(IntPoint.newSetQuery("_zdb_blockno", dirtyBlocks.toArray()));
 
             // we also need to examine docs that might be aborted or inflight on non-dirty pages
-
-            final List<BytesRef> activeXidsAsBytes = new ArrayList<>(activeXids.size());
-            for (Long xid : activeXids) {
-                byte[] bytes = new byte[8];
-                NumericUtils.longToSortableBytes(xid, bytes, 0);
-                activeXidsAsBytes.add(new BytesRef(bytes));
-            }
-
             if (!activeXids.isEmpty())
-                filters.add(new TermInSetQuery("_xmin", activeXidsAsBytes));
+                filters.add(LongPoint.newSetQuery("_xmin", activeXids));
             if (!abortedXids.isEmpty())
-                filters.add(new TermInSetQuery("_xmin", abortedXidsAsBytes));
+                filters.add(LongPoint.newSetQuery("_xmin", abortedXids));
 
-            byte[] bytes = new byte[8];
-            NumericUtils.longToSortableBytes(myXmin, bytes, 0);
-            filters.add(new TermRangeQuery("_xmin", new BytesRef(bytes), null, true, true));
+            filters.add(LongPoint.newRangeQuery("_xmin", myXmin, Long.MAX_VALUE));
         }
 
         //
