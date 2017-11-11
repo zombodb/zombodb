@@ -1,6 +1,5 @@
 package llc.zombodb.fast_terms;
 
-import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.broadcast.BroadcastOperationRequestBuilder;
 import org.elasticsearch.client.ElasticsearchClient;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -31,8 +30,4 @@ public class FastTermsRequestBuilder extends BroadcastOperationRequestBuilder<Fa
         return this;
     }
 
-    @Override
-    public void execute(ActionListener<FastTermsResponse> listener) {
-        client.execute(FastTermsAction.INSTANCE, this.request(), listener);
-    }
 }

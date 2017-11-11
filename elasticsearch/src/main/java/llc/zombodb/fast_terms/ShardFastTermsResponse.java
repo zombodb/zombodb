@@ -10,6 +10,7 @@ import java.util.Arrays;
 
 public class ShardFastTermsResponse extends BroadcastShardResponse {
     private FastTermsResponse.DataType dataType;
+    private boolean hasNegative;
     private int dataCount;
     private int[] ints;
     private long[] longs;
@@ -19,9 +20,10 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
 
     }
 
-    public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, Object data, int dataCount, boolean doSorting) {
+    public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, Object data, boolean hasNegative, int dataCount, boolean doSorting) {
         super(shardId);
         this.dataType = dataType;
+        this.hasNegative = hasNegative;
         this.dataCount = dataCount;
         switch (dataType) {
             case INT:
@@ -54,6 +56,10 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         return dataCount;
     }
 
+    public boolean hasNegative() {
+        return hasNegative;
+    }
+
     public <T> T getData() {
         switch (dataType) {
             case INT:
@@ -77,7 +83,14 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
                 dataCount = ints.length;
                 break;
             case LONG:
-                longs = in.readVLongArray();
+                hasNegative = in.readBoolean();
+                if (hasNegative) {
+                    longs = new long[in.readVInt()];
+                    for (int i=0; i<longs.length; i++)
+                        longs[i] = in.readZLong();
+                } else {
+                    longs = in.readVLongArray();
+                }
                 dataCount = longs.length;
                 break;
             case STRING:
@@ -111,9 +124,15 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
     }
 
     private void write_longs(StreamOutput out) throws IOException {
+        out.writeBoolean(hasNegative);
         out.writeVInt(dataCount);
-        for (int i=0; i<dataCount; i++)
-            out.writeVLong(longs[i]);
+        if (hasNegative) {
+            for (int i = 0; i < dataCount; i++)
+                out.writeZLong(longs[i]);
+        } else {
+            for (int i = 0; i < dataCount; i++)
+                out.writeVLong(longs[i]);
+        }
     }
 
     private void write_strings(StreamOutput out) throws IOException {

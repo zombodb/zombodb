@@ -25,6 +25,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     private Object[][] strings;
 
     private int[] counts;
+    private boolean[] negatives;
 
     public FastTermsResponse() {
 
@@ -35,6 +36,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         this.dataType = dataType;
         if (dataType != null) {
             counts = new int[shardCount];
+            negatives = new boolean[shardCount];
             switch (dataType) {
                 case INT:
                     ints = new int[shardCount][];
@@ -49,8 +51,9 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         }
     }
 
-    void addData(int shardId, Object data, int count) {
+    void addData(int shardId, Object data, boolean hasNegative, int count) {
         counts[shardId] = count;
+        negatives[shardId] = hasNegative;
         switch (dataType) {
             case INT:
                 ints[shardId] = (int[]) data;
@@ -85,6 +88,10 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return counts[shard];
     }
 
+    public boolean hasNegative(int shard) {
+        return negatives[shard];
+    }
+
     public int getTotalDataCount() {
         int total = 0;
         for (int cnt : counts)
@@ -97,12 +104,12 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         super.readFrom(in);
         dataType = in.readEnum(DataType.class);
         counts = in.readIntArray();
-
         switch (dataType) {
             case INT:
                 ints = new int[counts.length][];
                 break;
             case LONG:
+                negatives = new boolean[counts.length];
                 longs = new long[counts.length][];
                 break;
             case STRING:
@@ -110,16 +117,23 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 break;
         }
 
-        for (int i=0; i<super.getSuccessfulShards(); i++) {
+        for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
             switch (dataType) {
                 case INT:
-                    ints[i] = in.readVIntArray();
+                    ints[shardId] = in.readVIntArray();
                     break;
                 case LONG:
-                    longs[i] = in.readVLongArray();
+                    negatives[shardId] = in.readBoolean();
+                    if (negatives[shardId]) {
+                        longs[shardId] = new long[in.readVInt()];
+                        for (int i=0; i<longs[shardId].length; i++)
+                            longs[shardId][i] = in.readZLong();
+                    } else {
+                        longs[shardId] = in.readVLongArray();
+                    }
                     break;
                 case STRING:
-                    strings[i] = in.readStringArray();
+                    strings[shardId] = in.readStringArray();
                     break;
             }
         }
@@ -130,22 +144,29 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         super.writeTo(out);
         out.writeEnum(dataType);
         out.writeIntArray(counts);
-        for (int i=0; i<super.getSuccessfulShards(); i++) {
+        for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
             switch (dataType) {
                 case INT:
-                    out.writeVInt(counts[i]);
-                    for (int j=0; j<counts[i]; j++)
-                        out.writeVInt(ints[i][j]);
+                    out.writeVInt(counts[shardId]);
+                    for (int i=0; i<counts[shardId]; i++)
+                        out.writeVInt(ints[shardId][i]);
                     break;
                 case LONG:
-                    out.writeVInt(counts[i]);
-                    for (int j=0; j<counts[i]; j++)
-                        out.writeVLong(longs[i][j]);
+                    out.writeBoolean(negatives[shardId]);
+                    out.writeVInt(counts[shardId]);
+
+                    if (negatives[shardId]) {
+                        for (int i = 0; i < counts[shardId]; i++)
+                            out.writeZLong(longs[shardId][i]);
+                    } else {
+                        for (int i = 0; i < counts[shardId]; i++)
+                            out.writeVLong(longs[shardId][i]);
+                    }
                     break;
                 case STRING:
-                    out.writeVInt(counts[i]);
-                    for (int j=0; j<counts[i]; j++)
-                        out.writeString(String.valueOf(strings[i][j]));
+                    out.writeVInt(counts[shardId]);
+                    for (int i=0; i<counts[shardId]; i++)
+                        out.writeString(String.valueOf(strings[shardId][i]));
                     break;
             }
         }
