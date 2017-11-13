@@ -1,7 +1,11 @@
 package llc.zombodb.cross_join;
 
+import com.carrotsearch.hppc.IntArrayList;
+import com.carrotsearch.hppc.LongArrayList;
 import llc.zombodb.fast_terms.FastTermsAction;
 import llc.zombodb.fast_terms.FastTermsResponse;
+import llc.zombodb.utils.IntArrayMergeSortIterator;
+import llc.zombodb.utils.LongArrayMergeSortIterator;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.*;
@@ -24,22 +28,18 @@ class CrossJoinQueryRewriteHelper {
         if (response.getTotalDataCount() == 0)
             return new MatchNoDocsQuery();
 
-        BooleanQuery.Builder builder = new BooleanQuery.Builder();
-        for (int i = 0; i < response.getSuccessfulShards(); i++) {
-            int count = response.getDataCount(i);
-            if (count > 0) {
-                switch (response.getDataType()) {
-                    case INT:
-                        builder.add(newSetQuery(crossJoin.getLeftFieldname(), count, (int[]) response.getData(i)), BooleanClause.Occur.SHOULD);
-                        break;
-
-                    case LONG:
-                        builder.add(newSetQuery(crossJoin.getLeftFieldname(), count, (long[]) response.getData(i)), BooleanClause.Occur.SHOULD);
-                        break;
-
-                    case STRING: {
-                        final int shardId = i;
+        switch (response.getDataType()) {
+            case INT:
+                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), response.getTotalDataCount(), (int[][]) response.getAllData(), response.getAllDataCounts());
+            case LONG:
+                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), response.getTotalDataCount(), (long[][]) response.getAllData(), response.getAllDataCounts());
+            case STRING: {
+                BooleanQuery.Builder builder = new BooleanQuery.Builder();
+                for (int shardId = 0; shardId < response.getSuccessfulShards(); shardId++) {
+                    int count = response.getDataCount(shardId);
+                    if (count > 0) {
                         final Object[] strings = response.getData(shardId);
+                        int finalShardId = shardId;
                         builder.add(new TermInSetQuery(crossJoin.getLeftFieldname(), new AbstractCollection<BytesRef>() {
                             @Override
                             public Iterator<BytesRef> iterator() {
@@ -60,19 +60,16 @@ class CrossJoinQueryRewriteHelper {
 
                             @Override
                             public int size() {
-                                return response.getDataCount(shardId);
+                                return response.getDataCount(finalShardId);
                             }
                         }), BooleanClause.Occur.SHOULD);
                     }
-                    break;
-
-                    default:
-                        throw new RuntimeException("Unrecognized data type: " + response.getDataType());
                 }
+                return builder.build();
             }
+            default:
+                throw new RuntimeException("Unrecognized data type: " + response.getDataType());
         }
-
-        return builder.build();
     }
 
     private static Query newSetQuery(String field, int count, int... values) {
@@ -129,5 +126,104 @@ class CrossJoinQueryRewriteHelper {
         };
     }
 
+    public static Query buildRangeOrSetQuery(String field, int count, long[][] values, int[] counts) {
+        LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(values, counts);
+        LongArrayList points = new LongArrayList(count);
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+        int clauses = 0;
+
+        while (itr.hasNext()) {
+            long next = itr.next();
+            long head, tail;    // range bounds, inclusive
+            int cnt = 0;
+
+            head = tail = next;
+            while (itr.hasNext()) {
+                next = itr.next();
+                if (next != tail+1) {
+                    // we need 'next' for the subsequent iteration
+                    itr.push(next);
+                    break;
+                }
+                tail++;
+                cnt++;
+            }
+
+            if (cnt == 0) {
+                // just one value
+                points.add(head);
+            } else if (cnt < 2) {
+                // just two consecutive values
+                points.add(head);
+                points.add(tail);
+            } else {
+                // it's a range
+                if (tail-head < 100 || clauses >= BooleanQuery.getMaxClauseCount()-1) {
+                    // the range is too small to care about or we have too many already
+                    for (long i=head; i<=tail; i++)
+                        points.add(i);
+                } else {
+                    builder.add(LongPoint.newRangeQuery(field, head, tail), BooleanClause.Occur.SHOULD);
+                    clauses++;
+                }
+            }
+        }
+
+        if (points.elementsCount > 0) {
+            builder.add(newSetQuery(field, points.elementsCount, points.buffer), BooleanClause.Occur.SHOULD);
+        }
+
+        return builder.build();
+    }
+
+    public static Query buildRangeOrSetQuery(String field, int count, int[][] values, int[] counts) {
+        IntArrayMergeSortIterator itr = new IntArrayMergeSortIterator(values, counts);
+        IntArrayList points = new IntArrayList(count);
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+        int clauses = 0;
+
+        while (itr.hasNext()) {
+            int next = itr.next();
+            int head, tail;    // range bounds, inclusive
+            int cnt = 0;
+
+            head = tail = next;
+            while (itr.hasNext()) {
+                next = itr.next();
+                if (next != tail+1) {
+                    // we need 'next' for the subsequent iteration
+                    itr.push(next);
+                    break;
+                }
+                tail++;
+                cnt++;
+            }
+
+            if (cnt == 0) {
+                // just one value
+                points.add(head);
+            } else if (cnt < 2) {
+                // just two consecutive values
+                points.add(head);
+                points.add(tail);
+            } else {
+                // it's a range
+                if (tail-head < 100 || clauses >= BooleanQuery.getMaxClauseCount()-1) {
+                    // the range is too small to care about or we have too many already
+                    for (int i=head; i<=tail; i++)
+                        points.add(i);
+                } else {
+                    builder.add(IntPoint.newRangeQuery(field, head, tail), BooleanClause.Occur.SHOULD);
+                    clauses++;
+                }
+            }
+        }
+
+        if (points.elementsCount > 0) {
+            builder.add(newSetQuery(field, points.elementsCount, points.buffer), BooleanClause.Occur.SHOULD);
+        }
+
+        return builder.build();
+    }
 
 }

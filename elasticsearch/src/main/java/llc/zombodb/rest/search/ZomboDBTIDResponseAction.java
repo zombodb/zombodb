@@ -21,6 +21,7 @@ import llc.zombodb.fast_terms.FastTermsResponse;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import llc.zombodb.query_parser.utils.Utils;
 import llc.zombodb.rest.QueryAndIndexPair;
+import llc.zombodb.utils.LongArrayMergeSortIterator;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
@@ -36,29 +37,12 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
-import java.util.PriorityQueue;
 
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZomboDBTIDResponseAction extends BaseRestHandler {
-    class ArrayContainer implements Comparable<ArrayContainer> {
-        long[] arr;
-        int len;
-        int index;
-
-        ArrayContainer(long[] arr, int len, int index) {
-            this.arr = arr;
-            this.len = len;
-            this.index = index;
-        }
-
-        @Override
-        public int compareTo(ArrayContainer o) {
-            return Long.compare(this.arr[this.index], o.arr[o.index]);
-        }
-    }
 
     static class TidArrayQuickSort {
 
@@ -327,20 +311,10 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
         if (needSort) {
             // merge-sort the results from each shard inline into our results byte[]
-            PriorityQueue<ArrayContainer> queue = new PriorityQueue<>();
-
-            for (int i = 0; i < response.getSuccessfulShards(); i++) {
-                long[] longs = response.getData(i);
-                int len = response.getDataCount(i);
-                if (len > 0) {
-                    queue.add(new ArrayContainer(longs, len, 0));
-                }
-            }
-
+            LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(response.getAllData(), response.getAllDataCounts());
             int idx = 0;
-            while (!queue.isEmpty()) {
-                ArrayContainer ac = queue.poll();
-                long _zdb_id = ac.arr[ac.index];
+            while (itr.hasNext()) {
+                long _zdb_id = itr.next();
                 int blockno = (int) (_zdb_id >> 32);
                 char offno = (char) _zdb_id;
 
@@ -350,10 +324,6 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 Utils.encodeInteger(blockno, bytes, first_byte + (idx * 6));
                 Utils.encodeCharacter(offno, bytes, first_byte + (idx * 6) + 4);
                 idx++;
-
-                if (ac.index < ac.len - 1) {
-                    queue.add(new ArrayContainer(ac.arr, ac.len, ac.index + 1));
-                }
             }
         } else {
             // don't mess with sorting at all

@@ -68,6 +68,19 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return dataType;
     }
 
+    public <T> T getAllData() {
+        switch (dataType) {
+            case INT:
+                return (T) ints;
+            case LONG:
+                return (T) longs;
+            case STRING:
+                return (T) strings;
+            default:
+                throw new RuntimeException("Unrecognized type: " + dataType);
+        }
+    }
+
     public <T> T getData(int shard) {
         switch (dataType) {
             case INT:
@@ -79,6 +92,10 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
             default:
                 throw new RuntimeException("Unrecognized type: " + dataType);
         }
+    }
+
+    public int[] getAllDataCounts() {
+        return counts;
     }
 
     public int getDataCount(int shard) {
