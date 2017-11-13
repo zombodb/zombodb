@@ -66,7 +66,6 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
         FastTermsResponse.DataType dataType = null;
         List<Object> datas = new ArrayList<>();
         List<Integer> counts = new ArrayList<>();
-        List<Boolean> negatives  = new ArrayList<>();
 
         for (int i = 0; i < shardsResponses.length(); i++) {
             Object shardResponse = shardsResponses.get(i);
@@ -90,14 +89,13 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
 
                     datas.add(resp.getData());
                     counts.add(resp.getDataCount());
-                    negatives.add(resp.hasNegative());
                 }
             }
         }
 
         FastTermsResponse response = new FastTermsResponse(shardsResponses.length(), successfulShards, failedShards, shardFailures, dataType);
         for (int i = 0; i < datas.size(); i++) {
-            response.addData(i, datas.get(i), negatives.get(i), counts.get(i));
+            response.addData(i, datas.get(i), counts.get(i));
         }
         return response;
     }
@@ -146,7 +144,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
             searcher.search(new ConstantScoreQuery(query.rewrite(engine.reader())), collector);
         }
 
-        return new ShardFastTermsResponse(request.shardId(), type, collector.getData(), collector.hasNegatives(), collector.getDataCount(), request.getRequest().sortResultsPerShard());
+        return new ShardFastTermsResponse(request.shardId(), type, collector.getData(), collector.getDataCount());
     }
 
     @Override

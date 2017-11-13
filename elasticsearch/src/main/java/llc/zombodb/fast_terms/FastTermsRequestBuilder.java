@@ -24,10 +24,4 @@ public class FastTermsRequestBuilder extends BroadcastOperationRequestBuilder<Fa
         request.fieldname(fieldname);
         return this;
     }
-
-    public FastTermsRequestBuilder setSortResultsPerShard(boolean b) {
-        request.sortResultsPerShard(b);
-        return this;
-    }
-
 }

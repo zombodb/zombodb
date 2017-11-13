@@ -17,7 +17,6 @@ class CrossJoinQueryRewriteHelper {
         FastTermsResponse response = FastTermsAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(crossJoin.getIndex())
                 .setTypes(crossJoin.getType())
-                .setSortResultsPerShard(true)
                 .setFieldname(crossJoin.getRightFieldname())
                 .setQuery(crossJoin.getQuery())
                 .get();

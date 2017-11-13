@@ -10,7 +10,6 @@ import java.util.Arrays;
 
 public class ShardFastTermsResponse extends BroadcastShardResponse {
     private FastTermsResponse.DataType dataType;
-    private boolean hasNegative;
     private int dataCount;
     private int[] ints;
     private long[] longs;
@@ -20,30 +19,26 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
 
     }
 
-    public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, Object data, boolean hasNegative, int dataCount, boolean doSorting) {
+    public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, Object data, int dataCount) {
         super(shardId);
         this.dataType = dataType;
-        this.hasNegative = hasNegative;
         this.dataCount = dataCount;
         switch (dataType) {
             case INT:
                 ints = (int[]) data;
-                if (doSorting)
-                    Arrays.sort(ints, 0, dataCount);
+                Arrays.sort(ints, 0, dataCount);
                 break;
             case LONG:
                 longs = (long[]) data;
-                if (doSorting)
-                    Arrays.sort(longs, 0, dataCount);
+                Arrays.sort(longs, 0, dataCount);
                 break;
             case STRING:
                 strings = (Object[]) data;
-                if (doSorting)
-                    Arrays.sort(strings, 0, dataCount, (o1, o2) -> {
-                        String a = (String) o1;
-                        String b = (String) o2;
-                        return a.compareTo(b);
-                    });
+                Arrays.sort(strings, 0, dataCount, (o1, o2) -> {
+                    String a = (String) o1;
+                    String b = (String) o2;
+                    return a.compareTo(b);
+                });
                 break;
         }
     }
@@ -54,10 +49,6 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
 
     public int getDataCount() {
         return dataCount;
-    }
-
-    public boolean hasNegative() {
-        return hasNegative;
     }
 
     public <T> T getData() {
@@ -79,18 +70,11 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         dataType = in.readEnum(FastTermsResponse.DataType.class);
         switch (dataType) {
             case INT:
-                ints = in.readVIntArray();
+                ints = DeltaEncoder.decode_ints_from_deltas(in);
                 dataCount = ints.length;
                 break;
             case LONG:
-                hasNegative = in.readBoolean();
-                if (hasNegative) {
-                    longs = new long[in.readVInt()];
-                    for (int i=0; i<longs.length; i++)
-                        longs[i] = in.readZLong();
-                } else {
-                    longs = in.readVLongArray();
-                }
+                longs = DeltaEncoder.decode_longs_from_deltas(in);
                 dataCount = longs.length;
                 break;
             case STRING:
@@ -106,32 +90,14 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         out.writeEnum(dataType);
         switch (dataType) {
             case INT:
-                write_ints(out);
+                DeltaEncoder.encode_ints_as_deltas(ints, dataCount, out);
                 break;
             case LONG:
-                write_longs(out);
+                DeltaEncoder.encode_longs_as_deltas(longs, dataCount, out);
                 break;
             case STRING:
                 write_strings(out);
                 break;
-        }
-    }
-
-    private void write_ints(StreamOutput out) throws IOException {
-        out.writeVInt(dataCount);
-        for (int i=0; i<dataCount; i++)
-            out.writeVInt(ints[i]);
-    }
-
-    private void write_longs(StreamOutput out) throws IOException {
-        out.writeBoolean(hasNegative);
-        out.writeVInt(dataCount);
-        if (hasNegative) {
-            for (int i = 0; i < dataCount; i++)
-                out.writeZLong(longs[i]);
-        } else {
-            for (int i = 0; i < dataCount; i++)
-                out.writeVLong(longs[i]);
         }
     }
 

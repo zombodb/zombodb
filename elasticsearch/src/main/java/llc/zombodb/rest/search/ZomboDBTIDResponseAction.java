@@ -143,7 +143,6 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                         .setTypes("data")
                         .setFieldname("_zdb_id")
                         .setQuery(query.getQueryBuilder())
-                        .setSortResultsPerShard(needSort)
                         .get();
                 searchTime = (System.currentTimeMillis() - searchStart) / 1000D;
 

@@ -33,10 +33,6 @@ public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
         internal_collect(doc);
     }
 
-    public boolean hasNegatives() {
-        return false;
-    }
-
     @Override
     protected final void doSetNextReader(LeafReaderContext context) throws IOException {
         numeric = context.reader().getNumericDocValues(fieldname);

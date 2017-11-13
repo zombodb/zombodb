@@ -7,7 +7,6 @@ import java.io.IOException;
 public class LongCollector extends FastTermsCollector<long[]> {
 
     private LongArrayList data = new LongArrayList();
-    private boolean hasNegatives = false;
 
     public LongCollector(String fieldname) {
         super(fieldname);
@@ -22,11 +21,6 @@ public class LongCollector extends FastTermsCollector<long[]> {
     }
 
     @Override
-    public boolean hasNegatives() {
-        return hasNegatives;
-    }
-
-    @Override
     public void internal_collect(int doc) throws IOException {
         switch (type) {
             case NUMERIC: {
@@ -35,8 +29,6 @@ public class LongCollector extends FastTermsCollector<long[]> {
 
                 long value = numeric.get(doc);
                 data.add(value);
-                if (!hasNegatives && value < 0)
-                    hasNegatives = true;
             }
             break;
 
@@ -49,8 +41,6 @@ public class LongCollector extends FastTermsCollector<long[]> {
                 for (int i = 0; i < cnt; i++) {
                     long value = sortedNumeric.valueAt(i);
                     data.add(value);
-                    if (!hasNegatives && value < 0)
-                        hasNegatives = true;
                 }
             }
             break;

@@ -25,7 +25,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     private Object[][] strings;
 
     private int[] counts;
-    private boolean[] negatives;
 
     public FastTermsResponse() {
 
@@ -36,7 +35,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         this.dataType = dataType;
         if (dataType != null) {
             counts = new int[shardCount];
-            negatives = new boolean[shardCount];
             switch (dataType) {
                 case INT:
                     ints = new int[shardCount][];
@@ -51,9 +49,8 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         }
     }
 
-    void addData(int shardId, Object data, boolean hasNegative, int count) {
+    void addData(int shardId, Object data, int count) {
         counts[shardId] = count;
-        negatives[shardId] = hasNegative;
         switch (dataType) {
             case INT:
                 ints[shardId] = (int[]) data;
@@ -88,10 +85,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return counts[shard];
     }
 
-    public boolean hasNegative(int shard) {
-        return negatives[shard];
-    }
-
     public int getTotalDataCount() {
         int total = 0;
         for (int cnt : counts)
@@ -109,7 +102,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 ints = new int[counts.length][];
                 break;
             case LONG:
-                negatives = new boolean[counts.length];
                 longs = new long[counts.length][];
                 break;
             case STRING:
@@ -120,17 +112,10 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
             switch (dataType) {
                 case INT:
-                    ints[shardId] = in.readVIntArray();
+                    ints[shardId] = DeltaEncoder.decode_ints_from_deltas(in);
                     break;
                 case LONG:
-                    negatives[shardId] = in.readBoolean();
-                    if (negatives[shardId]) {
-                        longs[shardId] = new long[in.readVInt()];
-                        for (int i=0; i<longs[shardId].length; i++)
-                            longs[shardId][i] = in.readZLong();
-                    } else {
-                        longs[shardId] = in.readVLongArray();
-                    }
+                    longs[shardId] = DeltaEncoder.decode_longs_from_deltas(in);
                     break;
                 case STRING:
                     strings[shardId] = in.readStringArray();
@@ -147,21 +132,10 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
             switch (dataType) {
                 case INT:
-                    out.writeVInt(counts[shardId]);
-                    for (int i=0; i<counts[shardId]; i++)
-                        out.writeVInt(ints[shardId][i]);
+                    DeltaEncoder.encode_ints_as_deltas(ints[shardId], counts[shardId], out);
                     break;
                 case LONG:
-                    out.writeBoolean(negatives[shardId]);
-                    out.writeVInt(counts[shardId]);
-
-                    if (negatives[shardId]) {
-                        for (int i = 0; i < counts[shardId]; i++)
-                            out.writeZLong(longs[shardId][i]);
-                    } else {
-                        for (int i = 0; i < counts[shardId]; i++)
-                            out.writeVLong(longs[shardId][i]);
-                    }
+                    DeltaEncoder.encode_longs_as_deltas(longs[shardId], counts[shardId], out);
                     break;
                 case STRING:
                     out.writeVInt(counts[shardId]);
