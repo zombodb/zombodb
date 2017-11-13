@@ -94,7 +94,7 @@ public class CrossJoinQuery extends Query {
     public Query rewrite(IndexReader reader) throws IOException {
         TransportClient client = getClient(clusterName, host, port);
 
-        return CrossJoinQueryRewriteHelper.rewriteQuery(client, CrossJoinQuery.this);
+        return CrossJoinQueryRewriteHelper.rewriteQuery(client, this);
     }
 
     private static TransportClient getClient(String clusterName, String host, int port) {
