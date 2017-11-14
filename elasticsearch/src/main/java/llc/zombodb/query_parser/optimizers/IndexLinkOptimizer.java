@@ -377,7 +377,7 @@ public class IndexLinkOptimizer {
         //
         queryCnt = estimateCount(expansion, true);
 
-        if (queryCnt < totalCnt && queryCnt > totalCnt / 2) {
+        if (queryCnt > totalCnt / 2) {
             //
             // and if the expansion is going to return more than 1/2 the database
             // invert it on the inner side of the expansion
@@ -409,7 +409,7 @@ public class IndexLinkOptimizer {
         builder.setFetchSource(false);
         builder.setTrackScores(false);
         if (useQuery)
-            builder.setQuery(rewriter.build(expansion.getQuery()));
+            builder.setPostFilter(rewriter.build(expansion.getQuery()));
 
         String key = expansion.getIndexLink().getIndexName() + ":" + builder.toString();
         Long count = COUNT_ESTIMATE_CACHE.get(key);
