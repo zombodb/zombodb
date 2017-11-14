@@ -18,6 +18,7 @@ package llc.zombodb.query_parser.rewriters;
 import llc.zombodb.cross_join.CrossJoinQueryBuilder;
 import llc.zombodb.query_parser.ASTExpansion;
 import llc.zombodb.query_parser.ASTIndexLink;
+import llc.zombodb.query_parser.ASTVisibility;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
@@ -54,8 +55,9 @@ public class ZomboDBQueryRewriter extends QueryRewriter {
 
             if (_isBuildingAggregate)
                 return matchAllQuery();
+            ASTVisibility visibility = this.tree.getVisibility();
 
-            qb = constantScoreQuery(new CrossJoinQueryBuilder()
+            CrossJoinQueryBuilder crossJoin = new CrossJoinQueryBuilder()
                     .clusterName(this.clusterService.getClusterName().value())
                     .host(this.clusterService.localNode().getAddress().getHost())
                     .port(this.clusterService.localNode().getAddress().getPort())
@@ -63,7 +65,12 @@ public class ZomboDBQueryRewriter extends QueryRewriter {
                     .type("data")
                     .leftFieldname(link.getLeftFieldname())
                     .rightFieldname(link.getRightFieldname())
-                    .query(applyVisibility(build(node.getQuery()))));
+                    .query(applyVisibility(build(node.getQuery())));
+            if (visibility != null) {
+                crossJoin.cacheKey(visibility.getMyXid()+":"+visibility.getXmin()+":"+visibility.getXmax()+":"+visibility.getCommandId());
+            }
+
+            qb = constantScoreQuery(crossJoin);
         }
 
         if (node.getFilterQuery() != null) {
