@@ -17,7 +17,6 @@ package llc.zombodb.cross_join;
 
 import llc.zombodb.ZomboDBPlugin;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Query;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.cache.Cache;
@@ -41,7 +40,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CrossJoinQuery extends Query {
 
     private static final Map<String, TransportClient> CLIENTS = new ConcurrentHashMap<>();
-    private static final Cache<String, Query> QUERY_CACHE = CacheBuilder.<String, Query>builder().setExpireAfterAccess(TimeValue.timeValueMinutes(2)).build();
+    private static final Cache<String, Query> QUERY_CACHE = CacheBuilder.<String, Query>builder()
+            .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
+            .setExpireAfterWrite(TimeValue.timeValueMinutes(7))
+            .build();
 
     private final String cacheKey;
     private final String clusterName;
@@ -53,10 +55,8 @@ public class CrossJoinQuery extends Query {
     private final String rightFieldname;
     private final QueryBuilder query;
 
-    public CrossJoinQuery(String cacheKey, String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query) {
-        if (cacheKey == null)
-            throw new IllegalArgumentException("CrossJoinQuery's cacheKey cannot be null");
-        this.cacheKey = cacheKey;
+    public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query) {
+        this.cacheKey = clusterName + host + port + index + type + leftFieldname + rightFieldname + query;
         this.clusterName = clusterName;
         this.host = host;
         this.port = port;
@@ -65,10 +65,6 @@ public class CrossJoinQuery extends Query {
         this.leftFieldname = leftFieldname;
         this.rightFieldname = rightFieldname;
         this.query = query;
-    }
-
-    public String getCacheKey() {
-        return cacheKey;
     }
 
     public String getClusterName() {
@@ -109,7 +105,7 @@ public class CrossJoinQuery extends Query {
         if (query == null) {
             synchronized (cacheKey.intern()) {
                 TransportClient client = getClient(clusterName, host, port);
-                query = new ConstantScoreQuery(CrossJoinQueryRewriteHelper.rewriteQuery(client, this));
+                query = CrossJoinQueryRewriteHelper.rewriteQuery(client, this);
                 QUERY_CACHE.put(cacheKey, query);
             }
         }
