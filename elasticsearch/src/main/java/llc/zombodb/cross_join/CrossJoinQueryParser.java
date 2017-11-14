@@ -36,6 +36,7 @@ public class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>,
     public Optional<CrossJoinQueryBuilder> fromXContent(QueryParseContext parseContext) throws IOException {
         XContentParser parser = parseContext.parser();
 
+        String cacheKey = null;
         String clusterName = null;
         String host = null;
         int port = -1;
@@ -54,6 +55,9 @@ public class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>,
             } else if (currentFieldName != null) {
                 if (token.isValue()) {
                     switch (currentFieldName) {
+                        case "cache_key":
+                            cacheKey = parser.text();
+                            break;
                         case "cluster_name":
                             clusterName = parser.text();
                             break;
@@ -86,6 +90,6 @@ public class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>,
             }
         }
 
-        return Optional.of(new CrossJoinQueryBuilder(clusterName, host, port, index, type, leftFieldname, rightFieldname, query));
+        return Optional.of(new CrossJoinQueryBuilder(cacheKey, clusterName, host, port, index, type, leftFieldname, rightFieldname, query));
     }
 }

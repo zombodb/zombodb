@@ -17,10 +17,14 @@ package llc.zombodb.cross_join;
 
 import llc.zombodb.ZomboDBPlugin;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Query;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.cache.Cache;
+import org.elasticsearch.common.cache.CacheBuilder;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 
@@ -37,7 +41,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CrossJoinQuery extends Query {
 
     private static final Map<String, TransportClient> CLIENTS = new ConcurrentHashMap<>();
+    private static final Cache<String, Query> QUERY_CACHE = CacheBuilder.<String, Query>builder().setExpireAfterAccess(TimeValue.timeValueMinutes(2)).build();
 
+    private final String cacheKey;
     private final String clusterName;
     private final String host;
     private final int port;
@@ -47,7 +53,10 @@ public class CrossJoinQuery extends Query {
     private final String rightFieldname;
     private final QueryBuilder query;
 
-    public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query) {
+    public CrossJoinQuery(String cacheKey, String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query) {
+        if (cacheKey == null)
+            throw new IllegalArgumentException("CrossJoinQuery's cacheKey cannot be null");
+        this.cacheKey = cacheKey;
         this.clusterName = clusterName;
         this.host = host;
         this.port = port;
@@ -56,6 +65,10 @@ public class CrossJoinQuery extends Query {
         this.leftFieldname = leftFieldname;
         this.rightFieldname = rightFieldname;
         this.query = query;
+    }
+
+    public String getCacheKey() {
+        return cacheKey;
     }
 
     public String getClusterName() {
@@ -92,13 +105,19 @@ public class CrossJoinQuery extends Query {
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
-        TransportClient client = getClient(clusterName, host, port);
-
-        return CrossJoinQueryRewriteHelper.rewriteQuery(client, this);
+        Query query = QUERY_CACHE.get(cacheKey);
+        if (query == null) {
+            synchronized (cacheKey.intern()) {
+                TransportClient client = getClient(clusterName, host, port);
+                query = new ConstantScoreQuery(CrossJoinQueryRewriteHelper.rewriteQuery(client, this));
+                QUERY_CACHE.put(cacheKey, query);
+            }
+        }
+        return query;
     }
 
     private static TransportClient getClient(String clusterName, String host, int port) {
-        return AccessController.doPrivileged((PrivilegedAction<TransportClient>)() -> {
+        return AccessController.doPrivileged((PrivilegedAction<TransportClient>) () -> {
             String key = clusterName + host + port;
             TransportClient tc = CLIENTS.get(key);
             if (tc == null) {
@@ -118,21 +137,20 @@ public class CrossJoinQuery extends Query {
                         throw new RuntimeException(uhe);
                     } catch (Throwable t) {
                         if (--retries > 0)
-                            continue;;
+                            continue;
                         throw t;
                     }
                 }
 
                 CLIENTS.put(key, tc);
             }
-
             return tc;
         });
     }
 
     @Override
     public String toString(String field) {
-        return "cross_join(cluster=" + clusterName + ", host=" + host + ", port=" + port + ", index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", query=" + query + ")";
+        return "cross_join(cacheKey=" + cacheKey + ", cluster=" + clusterName + ", host=" + host + ", port=" + port + ", index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", query=" + query + ")";
     }
 
     @Override
@@ -140,7 +158,8 @@ public class CrossJoinQuery extends Query {
         if (obj == null || getClass() != obj.getClass())
             return false;
         CrossJoinQuery other = (CrossJoinQuery) obj;
-        return Objects.equals(clusterName, other.clusterName) &&
+        return Objects.equals(cacheKey, other.cacheKey) &&
+                Objects.equals(clusterName, other.clusterName) &&
                 Objects.equals(host, other.host) &&
                 Objects.equals(port, other.port) &&
                 Objects.equals(index, other.index) &&
@@ -152,6 +171,6 @@ public class CrossJoinQuery extends Query {
 
     @Override
     public int hashCode() {
-        return Objects.hash(clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
+        return Objects.hash(cacheKey, clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
     }
 }

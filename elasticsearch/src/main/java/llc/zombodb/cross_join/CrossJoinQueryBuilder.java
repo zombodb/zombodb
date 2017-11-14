@@ -29,10 +29,13 @@ import org.elasticsearch.index.query.QueryShardContext;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBuilder> {
     public static final String NAME = "cross_join";
 
+    private static final AtomicInteger SEQ = new AtomicInteger(0);
+    private String cacheKey;
     private String clusterName;
     private String host;
     private int port;
@@ -44,10 +47,12 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
     public CrossJoinQueryBuilder() {
         super();
+        cacheKey = System.currentTimeMillis() + ":" + SEQ.getAndIncrement();
     }
 
     public CrossJoinQueryBuilder(StreamInput in) throws IOException {
         super(in);
+        cacheKey = in.readString();
         clusterName = in.readString();
         host = in.readString();
         port = in.readInt();
@@ -58,7 +63,8 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         query = in.readNamedWriteable(QueryBuilder.class);
     }
 
-    public CrossJoinQueryBuilder(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query) {
+    public CrossJoinQueryBuilder(String cacheKey, String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query) {
+        this.cacheKey = cacheKey;
         this.clusterName = clusterName;
         this.host = host;
         this.port = port;
@@ -67,6 +73,11 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         this.leftFieldname = leftFieldname;
         this.rightFieldname = rightFieldname;
         this.query = query;
+    }
+
+    public CrossJoinQueryBuilder cacheKey(String cacheKey) {
+        this.cacheKey = cacheKey;
+        return this;
     }
 
     public CrossJoinQueryBuilder clusterName(String clusterName) {
@@ -111,6 +122,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
+        out.writeString(cacheKey);
         out.writeString(clusterName);
         out.writeString(host);
         out.writeInt(port);
@@ -124,6 +136,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
     @Override
     protected void doXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(NAME);
+        builder.field("cache_key", cacheKey);
         builder.field("cluster_name", clusterName);
         builder.field("host", host);
         builder.field("port", port);
@@ -137,12 +150,13 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
-        return new CrossJoinQuery(clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
+        return new CrossJoinQuery(cacheKey, clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
     }
 
     @Override
     protected boolean doEquals(CrossJoinQueryBuilder other) {
-        return Objects.equals(clusterName, other.clusterName) &&
+        return Objects.equals(cacheKey, other.cacheKey) &&
+                Objects.equals(clusterName, other.clusterName) &&
                 Objects.equals(host, other.host) &&
                 Objects.equals(port, other.port) &&
                 Objects.equals(index, other.index) &&
@@ -154,7 +168,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
     @Override
     protected int doHashCode() {
-        return Objects.hash(clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
+        return Objects.hash(cacheKey, clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
     }
 
     @Override
