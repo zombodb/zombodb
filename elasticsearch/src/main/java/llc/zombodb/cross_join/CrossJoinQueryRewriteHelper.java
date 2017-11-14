@@ -28,7 +28,9 @@ import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.client.transport.TransportClient;
 
 import java.util.AbstractCollection;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 class CrossJoinQueryRewriteHelper {
 
@@ -144,13 +146,11 @@ class CrossJoinQueryRewriteHelper {
     public static Query buildRangeOrSetQuery(String field, int count, long[][] values, int[] counts) {
         LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(values, counts);
         LongArrayList points = new LongArrayList(count);
-        BooleanQuery.Builder builder = new BooleanQuery.Builder();
-        int clauses = 0;
+        List<Query> clauses = new ArrayList<>();
 
         while (itr.hasNext()) {
-            long next = itr.next();
             long head, tail;    // range bounds, inclusive
-            int cnt = 0;
+            long next = itr.next();
 
             head = tail = next;
             while (itr.hasNext()) {
@@ -159,48 +159,42 @@ class CrossJoinQueryRewriteHelper {
                     // we need 'next' for the subsequent iteration
                     itr.push(next);
                     break;
+                } else if (tail == next) {
+                    // it's a duplicate value, so we can de-dup it
+                    continue;
                 }
                 tail++;
-                cnt++;
             }
 
-            if (cnt == 0) {
+            if (head == tail) {
                 // just one value
                 points.add(head);
-            } else if (cnt < 2) {
-                // just two consecutive values
-                points.add(head);
-                points.add(tail);
+            } else if ((tail-head) < 2048 || clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
+                // not enough values in range to care about
+                // or we have too many range clauses already
+                for (long i=head; i<=tail; i++)
+                    points.add(i);
             } else {
                 // it's a range
-                if (tail-head < 100 || clauses >= BooleanQuery.getMaxClauseCount()-1) {
-                    // the range is too small to care about or we have too many already
-                    for (long i=head; i<=tail; i++)
-                        points.add(i);
-                } else {
-                    builder.add(LongPoint.newRangeQuery(field, head, tail), BooleanClause.Occur.SHOULD);
-                    clauses++;
-                }
+                clauses.add(LongPoint.newRangeQuery(field, head, tail));
             }
         }
 
-        if (points.elementsCount > 0) {
-            builder.add(newSetQuery(field, points.elementsCount, points.buffer), BooleanClause.Occur.SHOULD);
+        if (points.size() > 0) {
+            clauses.add(newSetQuery(field, points.size(), points.buffer));
         }
 
-        return builder.build();
+        return buildQuery(clauses);
     }
 
     public static Query buildRangeOrSetQuery(String field, int count, int[][] values, int[] counts) {
         IntArrayMergeSortIterator itr = new IntArrayMergeSortIterator(values, counts);
         IntArrayList points = new IntArrayList(count);
-        BooleanQuery.Builder builder = new BooleanQuery.Builder();
-        int clauses = 0;
+        List<Query> clauses = new ArrayList<>();
 
         while (itr.hasNext()) {
-            int next = itr.next();
             int head, tail;    // range bounds, inclusive
-            int cnt = 0;
+            int next = itr.next();
 
             head = tail = next;
             while (itr.hasNext()) {
@@ -209,36 +203,43 @@ class CrossJoinQueryRewriteHelper {
                     // we need 'next' for the subsequent iteration
                     itr.push(next);
                     break;
+                } else if (tail == next) {
+                    // it's a duplicate value, so we can de-dup it
+                    continue;
                 }
                 tail++;
-                cnt++;
             }
 
-            if (cnt == 0) {
+            if (head == tail) {
                 // just one value
                 points.add(head);
-            } else if (cnt < 2) {
-                // just two consecutive values
-                points.add(head);
-                points.add(tail);
+            } else if ((tail-head) < 2048 || clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
+                // not enough values in range to care about
+                // or we have too many range clauses already
+                for (int i=head; i<=tail; i++)
+                    points.add(i);
             } else {
                 // it's a range
-                if (tail-head < 100 || clauses >= BooleanQuery.getMaxClauseCount()-1) {
-                    // the range is too small to care about or we have too many already
-                    for (int i=head; i<=tail; i++)
-                        points.add(i);
-                } else {
-                    builder.add(IntPoint.newRangeQuery(field, head, tail), BooleanClause.Occur.SHOULD);
-                    clauses++;
-                }
+                clauses.add(IntPoint.newRangeQuery(field, head, tail));
             }
         }
 
-        if (points.elementsCount > 0) {
-            builder.add(newSetQuery(field, points.elementsCount, points.buffer), BooleanClause.Occur.SHOULD);
+        if (points.size() > 0) {
+            clauses.add(newSetQuery(field, points.size(), points.buffer));
         }
 
-        return builder.build();
+        return buildQuery(clauses);
+    }
+
+    private static Query buildQuery(List<Query> clauses) {
+        if (clauses.size() == 1) {
+            return clauses.get(0);
+        } else {
+            BooleanQuery.Builder builder = new BooleanQuery.Builder();
+            for (Query q : clauses)
+                builder.add(q, BooleanClause.Occur.SHOULD);
+            return builder.build();
+        }
     }
 
 }
