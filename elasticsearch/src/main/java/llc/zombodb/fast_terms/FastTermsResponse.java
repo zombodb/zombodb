@@ -15,6 +15,12 @@
  */
 package llc.zombodb.fast_terms;
 
+import com.carrotsearch.hppc.IntArrayList;
+import com.carrotsearch.hppc.LongArrayList;
+import com.carrotsearch.hppc.ObjectArrayList;
+import llc.zombodb.utils.IntArrayMergeSortIterator;
+import llc.zombodb.utils.LongArrayMergeSortIterator;
+import llc.zombodb.utils.StringArrayMergeSortIterator;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -38,6 +44,9 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     private int[][] ints;
     private long[][] longs;
     private Object[][] strings;
+    private LongArrayList longArray;
+    private IntArrayList intArray;
+    private ObjectArrayList<String> stringArray;
 
     private int[] counts;
 
@@ -122,6 +131,42 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         for (int cnt : counts)
             total += cnt;
         return total;
+    }
+
+    public synchronized LongArrayList getLongArray() {
+        if (longArray == null) {
+            LongArrayMergeSortIterator sorter = new LongArrayMergeSortIterator(longs, counts);
+            longArray = new LongArrayList(sorter.getTotal());
+            while (sorter.hasNext())
+                longArray.add(sorter.next());
+            longs = null;
+        }
+
+        return longArray;
+    }
+
+    public synchronized IntArrayList getIntArray() {
+        if (intArray == null) {
+            IntArrayMergeSortIterator sorter = new IntArrayMergeSortIterator(ints, counts);
+            intArray = new IntArrayList(sorter.getTotal());
+            while (sorter.hasNext())
+                intArray.add(sorter.next());
+            ints = null;
+        }
+
+        return intArray;
+    }
+    
+    public synchronized ObjectArrayList<String> getStringArray() {
+        if (stringArray == null) {
+            StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, counts);
+            stringArray = new ObjectArrayList<String>(sorter.getTotal());
+            while (sorter.hasNext())
+                stringArray.add(sorter.next());
+            strings = null;
+        }
+
+        return stringArray;
     }
 
     @Override

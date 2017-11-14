@@ -137,7 +137,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
-        return new CrossJoinQuery(clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
+        return new CrossJoinQuery(clusterName, host, port, index, type, leftFieldname, rightFieldname, query, context.fieldMapper(leftFieldname).typeName());
     }
 
     @Override

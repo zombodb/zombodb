@@ -38,13 +38,19 @@ public class LongArrayMergeSortIterator {
 
     private PriorityQueue<ArrayContainer> queue = new PriorityQueue<>();
     private Stack<Long> pushback = new Stack<>();
+    private int total;
 
     public LongArrayMergeSortIterator(long[][] values, int[] counts) {
         for (int i = 0; i < values.length; i++) {
             if (counts[i] > 0) {
+                total = counts[i];
                 queue.add(new ArrayContainer(values[i], counts[i], 0));
             }
         }
+    }
+
+    public int getTotal() {
+        return total;
     }
 
     public void push(Long value) {

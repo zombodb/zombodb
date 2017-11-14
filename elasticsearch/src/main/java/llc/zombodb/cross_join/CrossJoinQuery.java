@@ -16,8 +16,12 @@
 package llc.zombodb.cross_join;
 
 import llc.zombodb.ZomboDBPlugin;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.search.Query;
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.FastTermsResponse;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.*;
+import org.apache.lucene.util.BitDocIdSet;
+import org.apache.lucene.util.BitSet;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.cache.Cache;
 import org.elasticsearch.common.cache.CacheBuilder;
@@ -40,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CrossJoinQuery extends Query {
 
     private static final Map<String, TransportClient> CLIENTS = new ConcurrentHashMap<>();
-    private static final Cache<String, Query> QUERY_CACHE = CacheBuilder.<String, Query>builder()
+    private static final Cache<String,FastTermsResponse> RESPONSE_CACHE = CacheBuilder.<String, FastTermsResponse>builder()
             .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
             .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
             .build();
@@ -54,8 +58,9 @@ public class CrossJoinQuery extends Query {
     private final String leftFieldname;
     private final String rightFieldname;
     private final QueryBuilder query;
+    private final String fieldType;
 
-    public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query) {
+    public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, String fieldType) {
         this.cacheKey = clusterName + host + port + index + type + leftFieldname + rightFieldname + query;
         this.clusterName = clusterName;
         this.host = host;
@@ -65,6 +70,7 @@ public class CrossJoinQuery extends Query {
         this.leftFieldname = leftFieldname;
         this.rightFieldname = rightFieldname;
         this.query = query;
+        this.fieldType = fieldType;
     }
 
     public String getClusterName() {
@@ -100,16 +106,44 @@ public class CrossJoinQuery extends Query {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-        Query query = QUERY_CACHE.get(cacheKey);
-        if (query == null) {
-            synchronized (cacheKey.intern()) {
-                TransportClient client = getClient(clusterName, host, port);
-                query = CrossJoinQueryRewriteHelper.rewriteQuery(client, this);
-                QUERY_CACHE.put(cacheKey, query);
+    public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
+        return new ConstantScoreWeight(this) {
+            Map<Integer, BitSet> bitsets;
+
+            @Override
+            public Scorer scorer(LeafReaderContext context) throws IOException {
+                if (bitsets == null) {
+                    FastTermsResponse response;
+
+                    synchronized (cacheKey.intern()) {
+                        response = RESPONSE_CACHE.get(cacheKey.intern());
+
+                        if (response == null) {
+                            TransportClient client = getClient(clusterName, host, port);
+                            response = FastTermsAction.INSTANCE.newRequestBuilder(client)
+                                    .setIndices(index)
+                                    .setTypes(type)
+                                    .setFieldname(rightFieldname)
+                                    .setQuery(query)
+                                    .get();
+
+                            RESPONSE_CACHE.put(cacheKey.intern(), response);
+                        }
+                    }
+
+                    bitsets = CrossJoinQueryExecutor.execute(
+                            searcher,
+                            type,
+                            leftFieldname,
+                            fieldType,
+                            response
+                    );
+                }
+
+                BitSet bitset = bitsets.get(context.ord);
+                return bitset == null ? null : new ConstantScoreScorer(this, 0, new BitDocIdSet(bitset).iterator());
             }
-        }
-        return query;
+        };
     }
 
     private static TransportClient getClient(String clusterName, String host, int port) {

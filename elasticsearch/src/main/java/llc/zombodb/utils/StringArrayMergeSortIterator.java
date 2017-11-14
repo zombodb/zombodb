@@ -18,13 +18,13 @@ package llc.zombodb.utils;
 import java.util.PriorityQueue;
 import java.util.Stack;
 
-public class IntArrayMergeSortIterator {
+public class StringArrayMergeSortIterator {
     static class ArrayContainer implements Comparable<ArrayContainer> {
-        int[] arr;
+        Object[] arr;
         int len;
         int index;
 
-        ArrayContainer(int[] arr, int len, int index) {
+        ArrayContainer(Object[] arr, int len, int index) {
             this.arr = arr;
             this.len = len;
             this.index = index;
@@ -32,37 +32,37 @@ public class IntArrayMergeSortIterator {
 
         @Override
         public int compareTo(ArrayContainer o) {
-            return Integer.compare(this.arr[this.index], o.arr[o.index]);
+            return ((String)this.arr[this.index]).compareTo((String)o.arr[o.index]);
         }
     }
 
     private PriorityQueue<ArrayContainer> queue = new PriorityQueue<>();
-    private Stack<Integer> pushback = new Stack<>();
+    private Stack<String> pushback = new Stack<>();
     private int total;
 
-    public IntArrayMergeSortIterator(int[][] values, int[] counts) {
+    public StringArrayMergeSortIterator(Object[][] values, int[] counts) {
         for (int i = 0; i < values.length; i++) {
             if (counts[i] > 0) {
-                total += counts[i];
+                total = counts[i];
                 queue.add(new ArrayContainer(values[i], counts[i], 0));
             }
         }
-    }
-
-    public void push(Integer value) {
-        pushback.push(value);
     }
 
     public int getTotal() {
         return total;
     }
 
-    public int next() {
+    public void push(String value) {
+        pushback.push(value);
+    }
+
+    public String next() {
         if (!pushback.isEmpty())
             return pushback.pop();
 
         ArrayContainer ac = queue.poll();
-        int value = ac.arr[ac.index];
+        String value = (String) ac.arr[ac.index];
 
         if (ac.index < ac.len - 1) {
             queue.add(new ArrayContainer(ac.arr, ac.len, ac.index + 1));
