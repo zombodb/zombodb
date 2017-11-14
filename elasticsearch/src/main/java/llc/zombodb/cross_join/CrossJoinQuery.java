@@ -42,7 +42,7 @@ public class CrossJoinQuery extends Query {
     private static final Map<String, TransportClient> CLIENTS = new ConcurrentHashMap<>();
     private static final Cache<String, Query> QUERY_CACHE = CacheBuilder.<String, Query>builder()
             .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
-            .setExpireAfterWrite(TimeValue.timeValueMinutes(7))
+            .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
             .build();
 
     private final String cacheKey;
