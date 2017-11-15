@@ -35,6 +35,8 @@
 #include "utils/tqual.h"
 
 #include "rest/rest.h"
+#include "util/encode.h"
+#include "util/varintenc.h"
 #include "util/zdbutils.h"
 
 #include "elasticsearch.h"
@@ -82,6 +84,36 @@ typedef struct {
 
 
 static List *batchInsertDataList = NULL;
+
+static char *encode_tuple(const ItemPointerData *ht_ctid, TransactionId xmin, unsigned int *b64_len) {
+	StringInfo str = makeStringInfo();
+	char       *b64;
+	char       *enc_blockno;
+	int        sz_blockno;
+	char       *enc_offno;
+	int        sz_offno;
+	char       *enc_xid;
+	int        sz_xid;
+	char       *enc_cmin;
+	int        sz_cmin;
+
+	enc_blockno = varint_encode_uint32(ItemPointerGetBlockNumber(ht_ctid), &sz_blockno);
+	enc_offno   = varint_encode_uint32(ItemPointerGetOffsetNumber(ht_ctid), &sz_offno);
+	enc_xid     = varint_encode_uint64(convert_xid(xmin), &sz_xid);
+	enc_cmin    = varint_encode_uint32(GetCurrentCommandId(true), &sz_cmin);
+
+	appendBinaryStringInfo(str, enc_blockno, sz_blockno);
+	appendBinaryStringInfo(str, enc_offno, sz_offno);
+	appendBinaryStringInfo(str, enc_xid, sz_xid);
+	appendBinaryStringInfo(str, enc_cmin, sz_cmin);
+
+	b64 = palloc((Size) (sz_blockno + sz_offno + sz_xid + sz_cmin) * 5);
+	(*b64_len) = b64_encode(str->data, (unsigned int) str->len, b64);
+
+	freeStringInfo(str);
+
+	return b64;
+}
 
 static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescriptor, bool create) {
     BatchInsertData *data = NULL;
@@ -940,6 +972,9 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 }
 
 static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, int64 sequence) {
+	char         *b64_tuple;
+	unsigned int b64_len;
+
     /* the data */
     appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
 
@@ -964,6 +999,10 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
     /* and encode the item pointer as a long */
     appendStringInfo(bulk, ",\"_zdb_id\":%lu", ItemPointerToUint64(ht_ctid));
+
+	b64_tuple = encode_tuple(ht_ctid, xmin, &b64_len);
+	appendStringInfo(bulk, ",\"_zdb_encoded_tuple\":\"%.*s\"", b64_len, b64_tuple);
+	pfree(b64_tuple);
 
 	if (isupdate)
 		appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));

@@ -1,6 +1,7 @@
 package llc.zombodb.rest.xact;
 
 import llc.zombodb.rest.RoutingHelper;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.action.DocWriteRequest;
@@ -232,30 +233,6 @@ public class ZomboDBBulkAction extends BaseRestHandler {
             Number cmin = (Number) data.get("_cmin");
             Number sequence = (Number) data.get("_zdb_seq");    // -1 means an index build (CREATE INDEX)
 
-            {
-                // encode a few things into one binary field
-                // and then add that field to the json source of this document
-                String[] parts = doc.id().split("-");
-                int blockno = Integer.parseInt(parts[0]);
-                int offno = Integer.parseInt(parts[1]);
-                BytesRef encodedTuple = encodeTuple(xmin.longValue(), cmin.intValue(), blockno, offno);
-
-                // re-create the source as a byte array.
-                // this is much faster than using doc.source(Map<String, Object>)
-                byte[] source = BytesReference.toBytes(doc.source());
-                int start = 0;
-                int len = source.length;
-
-                // backup to the last closing bracket
-                while (source[start + --len] != '}') ;
-
-                byte[] valueBytes = (",\"_zdb_encoded_tuple\":\"" + Base64.getEncoder().encodeToString(encodedTuple.bytes) + "\"}").getBytes();
-                byte[] dest = new byte[len + valueBytes.length];
-                System.arraycopy(source, start, dest, 0, len);
-                System.arraycopy(valueBytes, 0, dest, len, valueBytes.length);
-                doc.source(dest);
-            }
-
             if (prev_ctid != null) {
                 // we are inserting a new doc that replaces a previous doc (an UPDATE)
                 String[] parts = prev_ctid.split("-");
@@ -278,7 +255,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
 
             if (sequence.intValue() > -1) {
                 // delete a possible existing xmax value for this doc
-                // but only if we're in an index build (ie, CREATE INDEX)
+                // but only if we're NOT in an index build (ie, CREATE INDEX)
                 xmaxRequests.add(
                         DeleteAction.INSTANCE.newRequestBuilder(client)
                                 .setIndex(defaultIndex)
