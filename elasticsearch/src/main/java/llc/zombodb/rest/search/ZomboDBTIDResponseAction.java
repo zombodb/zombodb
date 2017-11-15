@@ -311,7 +311,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
         if (needSort) {
             // merge-sort the results from each shard inline into our results byte[]
-            LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(response.getAllData(), response.getAllDataCounts());
+            LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(response.getAllData(), response.getAllDataLengths());
             int idx = 0;
             while (itr.hasNext()) {
                 long _zdb_id = itr.next();

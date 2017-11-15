@@ -43,9 +43,9 @@ class CrossJoinQueryRewriteHelper {
 
         switch (response.getDataType()) {
             case INT:
-                return newSetQuery(crossJoin.getLeftFieldname(), (int[][]) response.getAllData(), response.getAllDataCounts());
+                return newSetQuery(crossJoin.getLeftFieldname(), (int[][]) response.getAllData(), response.getAllDataLengths());
             case LONG:
-                return newSetQuery(crossJoin.getLeftFieldname(), (long[][]) response.getAllData(), response.getAllDataCounts());
+                return newSetQuery(crossJoin.getLeftFieldname(), (long[][]) response.getAllData(), response.getAllDataLengths());
             case STRING: {
                 BooleanQuery.Builder builder = new BooleanQuery.Builder();
                 for (int shardId = 0; shardId < response.getSuccessfulShards(); shardId++) {
@@ -85,8 +85,8 @@ class CrossJoinQueryRewriteHelper {
         }
     }
 
-    private static Query newSetQuery(String field, long[][] values, int[] counts) {
-        LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(values, counts);
+    private static Query newSetQuery(String field, long[][] values, int[] lengths) {
+        LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(values, lengths);
         final BytesRef encoded = new BytesRef(new byte[Long.BYTES]);
 
         return new PointInSetQuery(field, 1, Long.BYTES,

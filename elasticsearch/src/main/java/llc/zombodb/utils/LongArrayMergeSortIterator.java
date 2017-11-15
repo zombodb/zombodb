@@ -15,62 +15,49 @@
  */
 package llc.zombodb.utils;
 
-import java.util.PriorityQueue;
-import java.util.Stack;
-
 public class LongArrayMergeSortIterator {
-    static class ArrayContainer implements Comparable<ArrayContainer> {
-        long[] arr;
-        int len;
-        int index;
+    // Thanks, @ShitalShah from https://stackoverflow.com/a/31310853 for the inspiration
 
-        ArrayContainer(long[] arr, int len, int index) {
-            this.arr = arr;
-            this.len = len;
-            this.index = index;
-        }
-
-        @Override
-        public int compareTo(ArrayContainer o) {
-            return Long.compare(this.arr[this.index], o.arr[o.index]);
-        }
-    }
-
-    private PriorityQueue<ArrayContainer> queue = new PriorityQueue<>();
-    private Stack<Long> pushback = new Stack<>();
+    private final long[][] arrays;
+    private int[] counters;
+    private final int[] lengths;
+    private final int finalTotal;
     private int total;
 
-    public LongArrayMergeSortIterator(long[][] values, int[] counts) {
-        for (int i = 0; i < values.length; i++) {
-            if (counts[i] > 0) {
-                total = counts[i];
-                queue.add(new ArrayContainer(values[i], counts[i], 0));
-            }
-        }
-    }
-
-    public int getTotal() {
-        return total;
-    }
-
-    public void push(Long value) {
-        pushback.push(value);
+    public LongArrayMergeSortIterator(long[][] arrays, int[] lengths) {
+        this.arrays = arrays;
+        this.counters = new int[arrays.length];
+        this.lengths = lengths;
+        for (int l : lengths)
+            total += l;
+        this.finalTotal = total;
     }
 
     public long next() {
-        if (!pushback.isEmpty())
-            return pushback.pop();
+        --total;
 
-        ArrayContainer ac = queue.poll();
-        long value = ac.arr[ac.index];
+        // find first array that we haven't exhausted
+        // to assume it'll have the smallest value
+        int smallest = 0;
+        while (counters[smallest] >= lengths[smallest])
+            smallest++;
 
-        if (ac.index < ac.len - 1) {
-            queue.add(new ArrayContainer(ac.arr, ac.len, ac.index + 1));
+        for (int i = smallest+1; i < counters.length; i++) {
+            if (counters[i] < lengths[i] &&   // this one is exhausted
+                arrays[i][counters[i]] <= arrays[smallest][counters[smallest]] // this one is smaller
+            ) {
+                smallest = i;
+            }
         }
-        return value;
+
+        return arrays[smallest][counters[smallest]++];
     }
 
     public boolean hasNext() {
-        return !queue.isEmpty() || !pushback.isEmpty();
+        return total > 0;
+    }
+
+    public int getTotal() {
+        return finalTotal;
     }
 }

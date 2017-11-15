@@ -48,7 +48,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     private IntArrayList intArray;
     private ObjectArrayList<String> stringArray;
 
-    private int[] counts;
+    private int[] lengths;
 
     public FastTermsResponse() {
 
@@ -58,7 +58,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         super(shardCount, successfulShards, failedShards, shardFailures);
         this.dataType = dataType;
         if (dataType != null) {
-            counts = new int[shardCount];
+            lengths = new int[shardCount];
             switch (dataType) {
                 case INT:
                     ints = new int[shardCount][];
@@ -74,7 +74,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     }
 
     void addData(int shardId, Object data, int count) {
-        counts[shardId] = count;
+        lengths[shardId] = count;
         switch (dataType) {
             case INT:
                 ints[shardId] = (int[]) data;
@@ -118,24 +118,24 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         }
     }
 
-    public int[] getAllDataCounts() {
-        return counts;
+    public int[] getAllDataLengths() {
+        return lengths;
     }
 
     public int getDataCount(int shard) {
-        return counts[shard];
+        return lengths[shard];
     }
 
     public int getTotalDataCount() {
         int total = 0;
-        for (int cnt : counts)
+        for (int cnt : lengths)
             total += cnt;
         return total;
     }
 
     public synchronized LongArrayList getLongArray() {
         if (longArray == null) {
-            LongArrayMergeSortIterator sorter = new LongArrayMergeSortIterator(longs, counts);
+            LongArrayMergeSortIterator sorter = new LongArrayMergeSortIterator(longs, lengths);
             longArray = new LongArrayList(sorter.getTotal());
             while (sorter.hasNext())
                 longArray.add(sorter.next());
@@ -147,7 +147,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     public synchronized IntArrayList getIntArray() {
         if (intArray == null) {
-            IntArrayMergeSortIterator sorter = new IntArrayMergeSortIterator(ints, counts);
+            IntArrayMergeSortIterator sorter = new IntArrayMergeSortIterator(ints, lengths);
             intArray = new IntArrayList(sorter.getTotal());
             while (sorter.hasNext())
                 intArray.add(sorter.next());
@@ -159,7 +159,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     
     public synchronized ObjectArrayList<String> getStringArray() {
         if (stringArray == null) {
-            StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, counts);
+            StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, lengths);
             stringArray = new ObjectArrayList<String>(sorter.getTotal());
             while (sorter.hasNext())
                 stringArray.add(sorter.next());
@@ -173,16 +173,16 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
         dataType = in.readEnum(DataType.class);
-        counts = in.readIntArray();
+        lengths = in.readIntArray();
         switch (dataType) {
             case INT:
-                ints = new int[counts.length][];
+                ints = new int[lengths.length][];
                 break;
             case LONG:
-                longs = new long[counts.length][];
+                longs = new long[lengths.length][];
                 break;
             case STRING:
-                strings = new Object[counts.length][];
+                strings = new Object[lengths.length][];
                 break;
         }
 
@@ -205,18 +205,18 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
         out.writeEnum(dataType);
-        out.writeIntArray(counts);
+        out.writeIntArray(lengths);
         for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
             switch (dataType) {
                 case INT:
-                    DeltaEncoder.encode_ints_as_deltas(ints[shardId], counts[shardId], out);
+                    DeltaEncoder.encode_ints_as_deltas(ints[shardId], lengths[shardId], out);
                     break;
                 case LONG:
-                    DeltaEncoder.encode_longs_as_deltas(longs[shardId], counts[shardId], out);
+                    DeltaEncoder.encode_longs_as_deltas(longs[shardId], lengths[shardId], out);
                     break;
                 case STRING:
-                    out.writeVInt(counts[shardId]);
-                    for (int i=0; i<counts[shardId]; i++)
+                    out.writeVInt(lengths[shardId]);
+                    for (int i = 0; i< lengths[shardId]; i++)
                         out.writeString(String.valueOf(strings[shardId][i]));
                     break;
             }
