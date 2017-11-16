@@ -15,8 +15,6 @@
  */
 package llc.zombodb.utils;
 
-import java.util.Stack;
-
 public class IntArrayMergeSortIterator {
     // Thanks, @ShitalShah from https://stackoverflow.com/a/31310853 for the inspiration
 
@@ -26,7 +24,8 @@ public class IntArrayMergeSortIterator {
     private final int finalTotal;
     private int total;
 
-    private Stack<Integer> pushback = new Stack<>();
+    private int pushback;
+    private boolean havePushback = false;
 
     public IntArrayMergeSortIterator(int[][] arrays, int[] lengths) {
         this.arrays = arrays;
@@ -38,12 +37,15 @@ public class IntArrayMergeSortIterator {
     }
 
     public void push(int value) {
-        pushback.push(value);
+        pushback = value;
+        havePushback = true;
     }
 
     public int next() {
-        if (!pushback.isEmpty())
-            return pushback.pop();
+        if (havePushback) {
+            havePushback = false;
+            return pushback;
+        }
 
         --total;
 
@@ -65,7 +67,7 @@ public class IntArrayMergeSortIterator {
     }
 
     public boolean hasNext() {
-        return total > 0 || !pushback.isEmpty();
+        return total > 0 || havePushback;
     }
 
     public int getTotal() {
