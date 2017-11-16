@@ -169,8 +169,7 @@ class CrossJoinQueryRewriteHelper {
                 // just one value
                 points.add(head);
             } else if (clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
-                // not enough values in range to care about
-                // or we have too many range clauses already
+                // we have too many range clauses already
                 for (long i=head; i<=tail; i++)
                     points.add(i);
             } else {
@@ -212,9 +211,8 @@ class CrossJoinQueryRewriteHelper {
             if (head == tail) {
                 // just one value
                 points.add(head);
-            } else if ((tail-head) < 2048 || clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
-                // not enough values in range to care about
-                // or we have too many range clauses already
+            } else if (clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
+                // we have too many range clauses already
                 for (int i=head; i<=tail; i++)
                     points.add(i);
             } else {
