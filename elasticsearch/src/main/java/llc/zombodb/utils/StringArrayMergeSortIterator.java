@@ -15,6 +15,8 @@
  */
 package llc.zombodb.utils;
 
+import java.util.Stack;
+
 public class StringArrayMergeSortIterator {
     // Thanks, @ShitalShah from https://stackoverflow.com/a/31310853 for the inspiration
 
@@ -23,6 +25,7 @@ public class StringArrayMergeSortIterator {
     private final int[] lengths;
     private final int finalTotal;
     private int total;
+    private Stack<String> pushback = new Stack<>();
 
     public StringArrayMergeSortIterator(Object[][] arrays, int[] lengths) {
         this.arrays = arrays;
@@ -33,7 +36,14 @@ public class StringArrayMergeSortIterator {
         this.finalTotal = total;
     }
 
+    public void push(String value) {
+        pushback.push(value);
+    }
+
     public String next() {
+        if (!pushback.isEmpty())
+            return pushback.pop();
+
         --total;
 
         // find first array that we haven't exhausted
@@ -54,7 +64,7 @@ public class StringArrayMergeSortIterator {
     }
 
     public boolean hasNext() {
-        return total > 0;
+        return total > 0 || !pushback.isEmpty();
     }
 
     public int getTotal() {

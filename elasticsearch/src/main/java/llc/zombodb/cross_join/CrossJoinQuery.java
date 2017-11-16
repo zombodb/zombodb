@@ -18,6 +18,7 @@ package llc.zombodb.cross_join;
 import llc.zombodb.ZomboDBPlugin;
 import llc.zombodb.fast_terms.FastTermsAction;
 import llc.zombodb.fast_terms.FastTermsResponse;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BitDocIdSet;
@@ -59,6 +60,8 @@ public class CrossJoinQuery extends Query {
     private final String rightFieldname;
     private final QueryBuilder query;
     private final String fieldType;
+
+    FastTermsResponse fastTerms;
 
     public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, String fieldType) {
         this.cacheKey = clusterName + host + port + index + type + leftFieldname + rightFieldname + query;
@@ -107,25 +110,6 @@ public class CrossJoinQuery extends Query {
 
     @Override
     public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
-        FastTermsResponse response;
-
-        synchronized (cacheKey.intern()) {
-            response = RESPONSE_CACHE.get(cacheKey.intern());
-
-            if (response == null) {
-                TransportClient client = getClient(clusterName, host, port);
-                response = FastTermsAction.INSTANCE.newRequestBuilder(client)
-                        .setIndices(index)
-                        .setTypes(type)
-                        .setFieldname(rightFieldname)
-                        .setQuery(query)
-                        .get();
-
-                RESPONSE_CACHE.put(cacheKey.intern(), response);
-            }
-        }
-
-        FastTermsResponse finalResponse = response;
         return new ConstantScoreWeight(this) {
 
             @Override
@@ -135,12 +119,32 @@ public class CrossJoinQuery extends Query {
                         type,
                         leftFieldname,
                         fieldType,
-                        finalResponse
+                        fastTerms
                 );
 
                 return bitset == null ? null : new ConstantScoreScorer(this, 0, new BitDocIdSet(bitset).iterator());
             }
         };
+    }
+
+    @Override
+    public Query rewrite(IndexReader reader) throws IOException {
+        synchronized (cacheKey.intern()) {
+            fastTerms = RESPONSE_CACHE.get(cacheKey.intern());
+
+            if (fastTerms == null) {
+                fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(getClient(clusterName, host, port))
+                        .setIndices(index)
+                        .setTypes(type)
+                        .setFieldname(rightFieldname)
+                        .setQuery(query)
+                        .get();
+
+                RESPONSE_CACHE.put(cacheKey.intern(), fastTerms);
+            }
+        }
+
+        return CrossJoinQueryRewriteHelper.rewriteQuery(this);
     }
 
     private static TransportClient getClient(String clusterName, String host, int port) {

@@ -15,6 +15,8 @@
  */
 package llc.zombodb.utils;
 
+import java.util.Stack;
+
 public class LongArrayMergeSortIterator {
     // Thanks, @ShitalShah from https://stackoverflow.com/a/31310853 for the inspiration
 
@@ -23,6 +25,8 @@ public class LongArrayMergeSortIterator {
     private final int[] lengths;
     private final int finalTotal;
     private int total;
+
+    private Stack<Long> pushback = new Stack<>();
 
     public LongArrayMergeSortIterator(long[][] arrays, int[] lengths) {
         this.arrays = arrays;
@@ -33,7 +37,14 @@ public class LongArrayMergeSortIterator {
         this.finalTotal = total;
     }
 
+    public void push(long value) {
+        pushback.push(value);
+    }
+
     public long next() {
+        if (!pushback.isEmpty())
+            return pushback.pop();
+
         --total;
 
         // find first array that we haven't exhausted
@@ -54,7 +65,7 @@ public class LongArrayMergeSortIterator {
     }
 
     public boolean hasNext() {
-        return total > 0;
+        return total > 0 || !pushback.isEmpty();
     }
 
     public int getTotal() {
