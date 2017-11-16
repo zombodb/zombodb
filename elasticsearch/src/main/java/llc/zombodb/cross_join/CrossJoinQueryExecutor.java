@@ -17,18 +17,14 @@ package llc.zombodb.cross_join;
 
 import llc.zombodb.cross_join.collectors.CrossJoinCollector;
 import llc.zombodb.fast_terms.FastTermsResponse;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 
 import java.io.IOException;
-import java.util.Map;
 
 class CrossJoinQueryExecutor {
 
-    static Map<Integer, BitSet> execute(IndexSearcher searcher, String type, String fieldname, String fieldType, FastTermsResponse fastTerms) throws IOException {
+    static BitSet execute(LeafReaderContext context, String type, String fieldname, String fieldType, FastTermsResponse fastTerms) throws IOException {
         CrossJoinCollector collector;
 
         switch(fieldType) {
@@ -44,7 +40,12 @@ class CrossJoinQueryExecutor {
             default:
                 throw new RuntimeException("Unsupported field type [" + fieldType + "] for [" + fieldname + "]");
         }
-        searcher.search(new ConstantScoreQuery(new TermQuery(new Term("_type", type))), collector);
-        return collector.getBitsets();
+
+        collector.doSetNextReader(context);
+        for (int i=0; i<context.reader().maxDoc(); i++) {
+            collector.collect(i);
+        }
+
+        return collector.getBitset();
     }
 }

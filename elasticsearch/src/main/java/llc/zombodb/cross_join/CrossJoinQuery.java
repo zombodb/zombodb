@@ -44,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CrossJoinQuery extends Query {
 
     private static final Map<String, TransportClient> CLIENTS = new ConcurrentHashMap<>();
-    private static final Cache<String,FastTermsResponse> RESPONSE_CACHE = CacheBuilder.<String, FastTermsResponse>builder()
+    private static final Cache<String, FastTermsResponse> RESPONSE_CACHE = CacheBuilder.<String, FastTermsResponse>builder()
             .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
             .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
             .build();
@@ -107,40 +107,37 @@ public class CrossJoinQuery extends Query {
 
     @Override
     public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
+        FastTermsResponse response;
+
+        synchronized (cacheKey.intern()) {
+            response = RESPONSE_CACHE.get(cacheKey.intern());
+
+            if (response == null) {
+                TransportClient client = getClient(clusterName, host, port);
+                response = FastTermsAction.INSTANCE.newRequestBuilder(client)
+                        .setIndices(index)
+                        .setTypes(type)
+                        .setFieldname(rightFieldname)
+                        .setQuery(query)
+                        .get();
+
+                RESPONSE_CACHE.put(cacheKey.intern(), response);
+            }
+        }
+
+        FastTermsResponse finalResponse = response;
         return new ConstantScoreWeight(this) {
-            Map<Integer, BitSet> bitsets;
 
             @Override
             public Scorer scorer(LeafReaderContext context) throws IOException {
-                if (bitsets == null) {
-                    FastTermsResponse response;
+                BitSet bitset = CrossJoinQueryExecutor.execute(
+                        context,
+                        type,
+                        leftFieldname,
+                        fieldType,
+                        finalResponse
+                );
 
-                    synchronized (cacheKey.intern()) {
-                        response = RESPONSE_CACHE.get(cacheKey.intern());
-
-                        if (response == null) {
-                            TransportClient client = getClient(clusterName, host, port);
-                            response = FastTermsAction.INSTANCE.newRequestBuilder(client)
-                                    .setIndices(index)
-                                    .setTypes(type)
-                                    .setFieldname(rightFieldname)
-                                    .setQuery(query)
-                                    .get();
-
-                            RESPONSE_CACHE.put(cacheKey.intern(), response);
-                        }
-                    }
-
-                    bitsets = CrossJoinQueryExecutor.execute(
-                            searcher,
-                            type,
-                            leftFieldname,
-                            fieldType,
-                            response
-                    );
-                }
-
-                BitSet bitset = bitsets.get(context.ord);
                 return bitset == null ? null : new ConstantScoreScorer(this, 0, new BitDocIdSet(bitset).iterator());
             }
         };

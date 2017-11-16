@@ -25,14 +25,11 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
 
     private final String fieldname;
-    private Map<Integer, BitSet> bitsets = new HashMap<>();
-    private int contextOrd;
+    private BitSet bitset;
     private int maxdoc;
 
     private DocValuesType docType;
@@ -62,15 +59,17 @@ public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
         return false;
     }
 
-    public Map<Integer, BitSet> getBitsets() {
-        return bitsets;
+    public BitSet getBitset() {
+        return bitset;
     }
 
     private void setBit(int doc) {
-        BitSet bits = bitsets.get(contextOrd);
-        if (bits == null)
-            bitsets.put(contextOrd, bits = new FixedBitSet(maxdoc));
-        bits.set(doc);
+        try {
+            bitset.set(doc);
+        } catch (NullPointerException npe) {
+            bitset = new FixedBitSet(maxdoc);
+            bitset.set(doc);
+        }
     }
 
     @Override
@@ -127,9 +126,9 @@ public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
     public boolean accept(BytesRef value) { return false; }
 
     @Override
-    protected final void doSetNextReader(LeafReaderContext context) throws IOException {
-        contextOrd = context.ord;
+    public final void doSetNextReader(LeafReaderContext context) throws IOException {
         maxdoc = context.reader().maxDoc();
+        bitset = null;
 
         sortedNumeric = context.reader().getSortedNumericDocValues(fieldname);
         if (sortedNumeric != null) {
