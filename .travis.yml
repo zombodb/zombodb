@@ -23,8 +23,8 @@ before_install:
   - sudo apt-get install -y postgresql-9.5 postgresql-server-dev-9.5
   - sudo ls -lad /usr/share/postgresql/*
   - sudo apt-get install -y maven
-  - sudo wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.6.4.tar.gz
   - cd ~
+  - sudo wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.6.4.tar.gz
   - sudo tar xzf ./elasticsearch-5.6.4.tar.gz
 
 script:
