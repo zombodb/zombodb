@@ -20,12 +20,10 @@ import llc.zombodb.query_parser.ASTIndexLink;
 public class FieldAndIndexPair {
     public final ASTIndexLink link;
     public final String fieldname;
-    public final IndexMetadata md;
 
-    FieldAndIndexPair(ASTIndexLink link, String fieldname, IndexMetadata md) {
+    FieldAndIndexPair(ASTIndexLink link, String fieldname) {
         this.link = link;
         this.fieldname = fieldname;
-        this.md = md;
     }
 
     @Override

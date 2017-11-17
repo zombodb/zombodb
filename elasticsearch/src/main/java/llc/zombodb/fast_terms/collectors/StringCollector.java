@@ -18,10 +18,8 @@ package llc.zombodb.fast_terms.collectors;
 import com.carrotsearch.hppc.ObjectArrayList;
 import org.apache.lucene.index.SortedSetDocValues;
 
-import java.io.IOException;
-
 public class StringCollector extends FastTermsCollector<Object[]> {
-    private ObjectArrayList<String> data = new ObjectArrayList<>();
+    private final ObjectArrayList<String> data = new ObjectArrayList<>();
 
 
     public StringCollector(String fieldname) {
@@ -38,7 +36,7 @@ public class StringCollector extends FastTermsCollector<Object[]> {
     }
 
     @Override
-    public void internal_collect(int doc) throws IOException {
+    public void internal_collect(int doc) {
         switch (type) {
             case SORTED: {
                 if (sorted == null)

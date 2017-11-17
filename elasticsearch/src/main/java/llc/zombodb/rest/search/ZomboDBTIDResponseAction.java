@@ -46,7 +46,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
     static class TidArrayQuickSort {
 
-        byte[] tmp = new byte[10];
+        final byte[] tmp = new byte[10];
 
         void quickSort(byte[] array, int offset, int low, int high, int size) {
 
@@ -77,10 +77,10 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
     }
 
     private static class BinaryTIDResponse {
-        byte[] data;
-        int many;
-        double ttl;
-        double sort;
+        final byte[] data;
+        final int many;
+        final double ttl;
+        final double sort;
 
         private BinaryTIDResponse(byte[] data, int many, double ttl, double sort) {
             this.data = data;
@@ -114,7 +114,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(clusterService, client, request, true, false, false);
+            query = buildJsonQueryFromRequestContent(clusterService, client, request, false, false);
             parseEnd = System.nanoTime();
 
             if (!wantScores && !query.hasLimit()) {
@@ -189,13 +189,16 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(ClusterService clusterService, Client client, RestRequest request, boolean doFullFieldDataLookups, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(ClusterService clusterService, Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
         String queryString = request.content().utf8ToString();
         String indexName = request.param("index");
 
         try {
             if (queryString != null && queryString.trim().length() > 0) {
-                QueryRewriter qr = QueryRewriter.Factory.create(clusterService, request, client, indexName, request.param("preference"), queryString, doFullFieldDataLookups, canDoSingleIndex, needVisibilityOnTopLevel);
+                // silence an error from Elasticsearch about an unused request parameter
+                // TODO:  should we use 'preference' in FastTerms and/or CrossJoin somehow?
+                String preference = request.param("preference");
+                QueryRewriter qr = QueryRewriter.Factory.create(clusterService, request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel);
                 return new QueryAndIndexPair(qr.rewriteQuery(), qr.getSearchIndexName(), qr.getLimit());
             } else {
                 return new QueryAndIndexPair(matchAllQuery(), indexName, null);

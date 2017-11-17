@@ -21,7 +21,7 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZomboDBCommitXIDAction extends BaseRestHandler {
 
-    private ClusterService clusterService;
+    private final ClusterService clusterService;
 
     @Inject
     public ZomboDBCommitXIDAction(Settings settings, RestController controller, ClusterService clusterService) {

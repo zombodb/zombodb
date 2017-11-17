@@ -39,7 +39,6 @@ import org.elasticsearch.transport.TransportService;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.function.Supplier;
 
 /**
  * Termlist index/indices action.
@@ -56,17 +55,7 @@ public class TransportTermlistAction
                                    IndexNameExpressionResolver indexNameExpressionResolver,
                                    IndicesService indicesService) {
         super(settings, TermlistAction.NAME, threadPool, clusterService, transportService, actionFilters,
-                indexNameExpressionResolver, new Supplier<TermlistRequest>() {
-                    @Override
-                    public TermlistRequest get() {
-                        return new TermlistRequest();
-                    }
-                }, new Supplier<ShardTermlistRequest>() {
-                    @Override
-                    public ShardTermlistRequest get() {
-                        return new ShardTermlistRequest();
-                    }
-                },
+                indexNameExpressionResolver, () -> new TermlistRequest(), () -> new ShardTermlistRequest(),
                 ThreadPool.Names.GENERIC);
         this.indicesService = indicesService;
     }

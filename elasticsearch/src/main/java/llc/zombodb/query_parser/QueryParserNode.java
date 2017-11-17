@@ -37,14 +37,14 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
     }
 
     protected String fieldname;
-    protected String typename;
+    private String typename;
     protected float boost = 0.0f;
     protected int fuzzyness = 0;
     protected int distance = 0;
     protected boolean ordered = true;
     protected Operator operator = Operator.CONTAINS;
 
-    protected ASTIndexLink indexLink;
+    private ASTIndexLink indexLink;
 
     public QueryParserNode copy() {
         try {
@@ -182,7 +182,7 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         return jjtGetNumChildren() > 0;
     }
 
-    public QueryParserNode getChild(Class t) {
+    QueryParserNode getChild(Class t) {
         if (this.getClass().isAssignableFrom(t))
             return this;
         for (QueryParserNode child : this) {

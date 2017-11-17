@@ -25,7 +25,7 @@ import org.elasticsearch.index.query.QueryParser;
 import java.io.IOException;
 import java.util.Optional;
 
-public class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>, Writeable.Reader<CrossJoinQueryBuilder>  {
+class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>, Writeable.Reader<CrossJoinQueryBuilder>  {
 
     @Override
     public CrossJoinQueryBuilder read(StreamInput in) throws IOException {

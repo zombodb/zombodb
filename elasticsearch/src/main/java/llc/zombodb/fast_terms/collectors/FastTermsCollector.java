@@ -22,15 +22,15 @@ import java.io.IOException;
 
 public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
 
-    protected DocValuesType type;
+    DocValuesType type;
     private final String fieldname;
 
-    protected SortedNumericDocValues sortedNumeric;
-    protected NumericDocValues numeric;
-    protected SortedSetDocValues sortedSet;
-    protected SortedDocValues sorted;
+    SortedNumericDocValues sortedNumeric;
+    NumericDocValues numeric;
+    SortedSetDocValues sortedSet;
+    SortedDocValues sorted;
 
-    public FastTermsCollector(String fieldname) {
+    FastTermsCollector(String fieldname) {
         this.fieldname = fieldname;
     }
 
@@ -38,7 +38,7 @@ public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
 
     public abstract int getDataCount();
 
-    protected abstract void internal_collect(int doc) throws IOException;
+    protected abstract void internal_collect(int doc);
 
     @Override
     public final void collect(int doc) throws IOException {

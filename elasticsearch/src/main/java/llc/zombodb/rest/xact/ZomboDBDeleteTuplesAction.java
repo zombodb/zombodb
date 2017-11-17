@@ -40,7 +40,7 @@ import java.util.List;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZomboDBDeleteTuplesAction extends BaseRestHandler {
-    private ClusterService clusterService;
+    private final ClusterService clusterService;
 
     @Inject
     public ZomboDBDeleteTuplesAction(Settings settings, RestController controller, ClusterService clusterService) {

@@ -17,11 +17,9 @@ package llc.zombodb.fast_terms.collectors;
 
 import com.carrotsearch.hppc.LongArrayList;
 
-import java.io.IOException;
-
 public class LongCollector extends FastTermsCollector<long[]> {
 
-    private LongArrayList data = new LongArrayList();
+    private final LongArrayList data = new LongArrayList();
 
     public LongCollector(String fieldname) {
         super(fieldname);
@@ -36,7 +34,7 @@ public class LongCollector extends FastTermsCollector<long[]> {
     }
 
     @Override
-    public void internal_collect(int doc) throws IOException {
+    public void internal_collect(int doc) {
         switch (type) {
             case NUMERIC: {
                 if (numeric == null)

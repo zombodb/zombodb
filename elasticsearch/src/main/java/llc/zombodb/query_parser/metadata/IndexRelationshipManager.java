@@ -21,10 +21,10 @@ import java.util.*;
 
 public class IndexRelationshipManager {
 
-    private Dijkstra d = new Dijkstra();
+    private final Dijkstra d = new Dijkstra();
 
     private int cnt = 0;
-    private Map<String, Set<String>> equivalencies = new HashMap<>();
+    private final Map<String, Set<String>> equivalencies = new HashMap<>();
 
     public IndexRelationshipManager() {
 

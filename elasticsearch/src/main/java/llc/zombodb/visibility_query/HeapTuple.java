@@ -19,7 +19,8 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.util.BytesRef;
 
 class HeapTuple implements Comparable<HeapTuple> {
-    final int blockno, offno;
+    final int blockno;
+    private final int offno;
     long xmin;
     int cmin;
     long xmax;

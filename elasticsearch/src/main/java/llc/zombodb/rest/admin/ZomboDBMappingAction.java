@@ -46,7 +46,7 @@ public class ZomboDBMappingAction extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-        QueryRewriter rewriter = QueryRewriter.Factory.create(clusterService, request, client, request.param("index"), request.param("preference"), request.content().utf8ToString(), true, false, false);
+        QueryRewriter rewriter = QueryRewriter.Factory.create(clusterService, request, client, request.param("index"), request.content().utf8ToString(), false, false);
         rewriter.rewriteQuery();
         Map<String, ?> properties = rewriter.describedNestedObject(request.param("fieldname"));
 

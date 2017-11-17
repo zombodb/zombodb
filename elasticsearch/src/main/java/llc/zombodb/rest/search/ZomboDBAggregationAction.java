@@ -58,7 +58,7 @@ public class ZomboDBAggregationAction extends BaseRestHandler {
         final long start = System.currentTimeMillis();
         SearchRequestBuilder builder = SearchAction.INSTANCE.newRequestBuilder(client);
         String input = request.content().utf8ToString();
-        final QueryRewriter rewriter = QueryRewriter.Factory.create(clusterService, request, client, request.param("index"), request.param("preference"), input, true, true, true);
+        final QueryRewriter rewriter = QueryRewriter.Factory.create(clusterService, request, client, request.param("index"), input, true, true);
         QueryBuilder qb = rewriter.rewriteQuery();
         AggregationBuilder ab = rewriter.rewriteAggregations();
         SuggestionBuilder sb = rewriter.rewriteSuggestions();

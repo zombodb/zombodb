@@ -30,11 +30,11 @@ import java.util.*;
 public class AnalyzedField {
 
     private static class ProximityGroup {
-        Stack<Token> tokens = new Stack<>();
+        final Stack<Token> tokens = new Stack<>();
         int min_pos;
         int max_pos;
 
-        public ProximityGroup(Token leftToken, Token rightToken, int min_pos, int max_pos) {
+        ProximityGroup(Token leftToken, Token rightToken, int min_pos, int max_pos) {
             tokens.push(rightToken);
             tokens.push(leftToken);
             this.min_pos = min_pos;
@@ -50,18 +50,18 @@ public class AnalyzedField {
         private String clause;
         private ProximityGroup group = null;
 
-        public Token(Object primaryKey, String fieldName, int arrayIndex, AnalyzeResponse.AnalyzeToken token) {
+        Token(Object primaryKey, String fieldName, int arrayIndex, AnalyzeResponse.AnalyzeToken token) {
             super(token.getTerm(), token.getPosition()+1, token.getStartOffset(), token.getEndOffset(), 0, token.getType(), null);
             this.primaryKey = primaryKey;
             this.fieldName = fieldName;
             this.arrayIndex = arrayIndex;
         }
 
-        public boolean shouldKeep() {
+        boolean shouldKeep() {
             return keep;
         }
 
-        public void setKeep(QueryParserNode node) {
+        void setKeep(QueryParserNode node) {
             this.keep = true;
             clause = node.getDescription();
         }
@@ -124,11 +124,13 @@ public class AnalyzedField {
                 keep((ASTNull) node);
             else if (node instanceof ASTFuzzy)
                 keep((ASTFuzzy) node);
-            else
-                /*just ignore it*/;
+            else {
+                /*just ignore it*/
+                ;
+            }
         }
 
-        public void keep(ASTWord word) {
+        void keep(ASTWord word) {
             String value = String.valueOf(word.getValue());
 
             if (word.getOperator() == QueryParserNode.Operator.REGEX) {
@@ -160,22 +162,22 @@ public class AnalyzedField {
             }
         }
 
-        public void keep(ASTNumber number) {
+        void keep(ASTNumber number) {
             for (Token token : match(number))
                 token.setKeep(number);
         }
 
-        public void keep(ASTBoolean bool) {
+        void keep(ASTBoolean bool) {
             for (Token token : match(bool))
                 token.setKeep(bool);
         }
 
-        public void keep(ASTArray array) {
+        void keep(ASTArray array) {
             for (QueryParserNode child : array)
                 keep(child);
         }
 
-        public void keep(ASTPhrase phrase) {
+        void keep(ASTPhrase phrase) {
             String value = String.valueOf(phrase.getValue());
             final List<String> tokens = Utils.simpleTokenize(value);
             QueryParserNode toKeep;
@@ -228,31 +230,31 @@ public class AnalyzedField {
             keep(toKeep);
         }
 
-        public void keep(ASTPrefix prefix) {
+        void keep(ASTPrefix prefix) {
             for (Token token : match(prefix)) {
                 token.setKeep(prefix);
             }
         }
 
-        public void keep(ASTWildcard wildcard) {
+        void keep(ASTWildcard wildcard) {
             for (Token token : match(wildcard)) {
                 token.setKeep(wildcard);
             }
         }
 
-        public void keep(ASTNotNull notnull) {
+        void keep(ASTNotNull notnull) {
             // noop
         }
 
-        public void keep(ASTNull _null) {
+        void keep(ASTNull _null) {
             // noop
         }
 
-        public void keep(ASTFuzzy fuzzy) {
+        void keep(ASTFuzzy fuzzy) {
             // TODO:  implement this
         }
 
-        public void keep(ASTProximity proximity) {
+        void keep(ASTProximity proximity) {
             List<ProximityGroup> scratch = new ArrayList<>();
             keep(proximity, scratch);
             int cnt = proximity.getChildrenOfType(ASTWord.class).size() / 2 + 1;
@@ -268,7 +270,7 @@ public class AnalyzedField {
             }
         }
 
-        public void keep(ASTProximity proximity, List<ProximityGroup> scratch) {
+        void keep(ASTProximity proximity, List<ProximityGroup> scratch) {
             proximity.forceFieldname(proximity.getFieldname());
             QueryParserNode left = proximity.getChild(0);
             QueryParserNode right = proximity.getChild(1);
@@ -346,7 +348,7 @@ public class AnalyzedField {
             }
         }
 
-        public void keepRegex(QueryParserNode node) {
+        void keepRegex(QueryParserNode node) {
             for (Token token : matchRegex(node)) {
                 token.setKeep(node);
             }

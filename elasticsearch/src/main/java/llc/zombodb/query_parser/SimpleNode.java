@@ -9,17 +9,17 @@ import java.util.TreeMap;
 
 public class SimpleNode implements Node {
 
-    protected Node parent;
-    protected Map<Number, Node> children;
-    protected int id;
+    private Node parent;
+    Map<Number, Node> children;
+    private final int id;
     protected Object value;
-    protected QueryParser parser;
+    private QueryParser parser;
 
-    public SimpleNode(int i) {
+    SimpleNode(int i) {
         id = i;
     }
 
-    public SimpleNode(QueryParser p, int i) {
+    SimpleNode(QueryParser p, int i) {
         this(i);
         parser = p;
     }
@@ -96,7 +96,7 @@ public class SimpleNode implements Node {
         this.value = value;
     }
 
-    public Object jjtGetValue() {
+    Object jjtGetValue() {
         return value;
     }
 
@@ -129,14 +129,14 @@ public class SimpleNode implements Node {
         return QueryParserTreeConstants.jjtNodeName[id];
     }
 
-    public String toString(String prefix) {
+    private String toString(String prefix) {
         return prefix + toString();
     }
 
   /* Override this method if you want to customize how the node dumps
      out its children. */
 
-    public void dump(String prefix) {
+    private void dump(String prefix) {
         System.out.println(toString(prefix));
         if (children != null) {
             for (Node n : children.values()) {

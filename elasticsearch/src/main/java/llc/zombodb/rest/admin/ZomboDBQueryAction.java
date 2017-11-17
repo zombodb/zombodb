@@ -53,7 +53,7 @@ public class ZomboDBQueryAction extends BaseRestHandler {
         boolean profile = request.paramAsBoolean("profile", false);
 
         try {
-            QueryAndIndexPair queryAndIndex = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(clusterService, client, request, true, true, true);
+            QueryAndIndexPair queryAndIndex = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(clusterService, client, request, true, true);
 
             if (profile) {
                 return channel -> SearchAction.INSTANCE.newRequestBuilder(client)

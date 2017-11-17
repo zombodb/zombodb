@@ -66,7 +66,7 @@ final class VisibilityQueryHelper {
      */
     private static void collectMaxes(IndexSearcher searcher, final Map<HeapTuple, HeapTuple> tuples, final IntSet dirtyBlocks) throws IOException {
         abstract class Collector extends ZomboDBTermsCollector {
-            ByteArrayDataInput in = new ByteArrayDataInput();
+            final ByteArrayDataInput in = new ByteArrayDataInput();
             BinaryDocValues _zdb_encoded_tuple;
 
             @Override

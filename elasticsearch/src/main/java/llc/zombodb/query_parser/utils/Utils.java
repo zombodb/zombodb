@@ -229,7 +229,7 @@ public class Utils {
 
     private static List<String> analyze(Client client, IndexMetadataManager metadataManager, String analyzer, String fieldname, String phrase) throws RuntimeException {
         if (analyzer == null)
-            return Arrays.asList(phrase);
+            return Collections.singletonList(phrase);
 
         try {
             AnalyzeResponse response = client.admin().indices().analyze(
@@ -255,27 +255,24 @@ public class Utils {
     }
 
     public static QueryParserNode convertToProximityForHighlighting(IndexMetadataManager metadataManager, String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
-        return convertToProximityForHighlighting(metadataManager, fieldname, new Iterable<String>() {
-            @Override
-            public Iterator<String> iterator() {
-                final Iterator<AnalyzeResponse.AnalyzeToken> iterator = tokens.iterator();
-                return new Iterator<String>() {
-                    @Override
-                    public boolean hasNext() {
-                        return iterator.hasNext();
-                    }
+        return convertToProximityForHighlighting(metadataManager, fieldname, () -> {
+            final Iterator<AnalyzeResponse.AnalyzeToken> iterator = tokens.iterator();
+            return new Iterator<String>() {
+                @Override
+                public boolean hasNext() {
+                    return iterator.hasNext();
+                }
 
-                    @Override
-                    public String next() {
-                        return iterator.next().getTerm();
-                    }
+                @Override
+                public String next() {
+                    return iterator.next().getTerm();
+                }
 
-                    @Override
-                    public void remove() {
-                        iterator.remove();
-                    }
-                };
-            }
+                @Override
+                public void remove() {
+                    iterator.remove();
+                }
+            };
         });
     }
 
@@ -308,27 +305,24 @@ public class Utils {
 
 
     public static ASTProximity convertToProximity(String fieldname, final List<AnalyzeResponse.AnalyzeToken> tokens) {
-        return convertToProximity(fieldname, new Iterable<String>() {
-            @Override
-            public Iterator<String> iterator() {
-                final Iterator<AnalyzeResponse.AnalyzeToken> iterator = tokens.iterator();
-                return new Iterator<String>() {
-                    @Override
-                    public boolean hasNext() {
-                        return iterator.hasNext();
-                    }
+        return convertToProximity(fieldname, () -> {
+            final Iterator<AnalyzeResponse.AnalyzeToken> iterator = tokens.iterator();
+            return new Iterator<String>() {
+                @Override
+                public boolean hasNext() {
+                    return iterator.hasNext();
+                }
 
-                    @Override
-                    public String next() {
-                        return iterator.next().getTerm();
-                    }
+                @Override
+                public String next() {
+                    return iterator.next().getTerm();
+                }
 
-                    @Override
-                    public void remove() {
-                        iterator.remove();
-                    }
-                };
-            }
+                @Override
+                public void remove() {
+                    iterator.remove();
+                }
+            };
         });
     }
 

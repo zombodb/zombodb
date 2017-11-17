@@ -21,7 +21,7 @@ import java.util.Arrays;
 
 class LongCollector extends CrossJoinCollector {
 
-    private LongArrayList array;
+    private final LongArrayList array;
 
     LongCollector(String fieldname, LongArrayList longs) {
         super(fieldname);

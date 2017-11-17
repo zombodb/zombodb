@@ -72,7 +72,7 @@ public class Dijkstra {
             return v;
         }
 
-        public Vertex add(Edge e) {
+        Vertex add(Edge e) {
             if (name.equals(e.target.name))
                 return this;
             else {
@@ -109,7 +109,7 @@ public class Dijkstra {
     }
 
     public class NamedIndex {
-        public final String name;
+        final String name;
         public final String index;
 
         NamedIndex(String name, String index) {

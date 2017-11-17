@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RoutingHelper {
-    private static Map<String, String[]> ROUTING_TABLE = new ConcurrentHashMap<>();
+    private static final Map<String, String[]> ROUTING_TABLE = new ConcurrentHashMap<>();
 
     public static String[] getRoutingTable(ClusterService clusterService, String index, int shards) {
         String key = index+"."+shards;

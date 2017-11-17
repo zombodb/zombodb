@@ -39,7 +39,7 @@ import static org.elasticsearch.rest.RestStatus.OK;
 
 public class ZomboDBBulkAction extends BaseRestHandler {
 
-    private ClusterService clusterService;
+    private final ClusterService clusterService;
 
     @Inject
     public ZomboDBBulkAction(Settings settings, RestController controller, ClusterService clusterService) {

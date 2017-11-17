@@ -30,6 +30,19 @@ public class ASTAggregate extends QueryParserNode {
         return null;
     }
 
+    public String getStem() {
+        QueryParserNode node = getChild(0);
+        String stem = String.valueOf(node.getValue());
+        if (stem.startsWith("^"))
+            stem = stem.substring(1);
+
+        if (node instanceof ASTPrefix)
+            stem += "*";
+
+        return stem;
+    }
+
+
     public void setIsNested(boolean isNested) {
         this.isNested = isNested;
     }

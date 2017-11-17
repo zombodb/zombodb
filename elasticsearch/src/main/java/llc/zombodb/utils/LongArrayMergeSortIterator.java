@@ -19,7 +19,7 @@ public class LongArrayMergeSortIterator {
     // Thanks, @ShitalShah from https://stackoverflow.com/a/31310853 for the inspiration
 
     private final long[][] arrays;
-    private int[] counters;
+    private final int[] counters;
     private final int[] lengths;
     private final int finalTotal;
     private int total;

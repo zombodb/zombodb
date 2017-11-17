@@ -19,13 +19,11 @@ import com.carrotsearch.hppc.IntArrayList;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 
-import java.io.IOException;
-
 public class IntCollector extends FastTermsCollector<int[]> {
     private SortedNumericDocValues sorted;
     private NumericDocValues numeric;
 
-    private IntArrayList data = new IntArrayList();
+    private final IntArrayList data = new IntArrayList();
 
     public IntCollector(String fieldname) {
         super(fieldname);
@@ -40,7 +38,7 @@ public class IntCollector extends FastTermsCollector<int[]> {
     }
 
     @Override
-    public void internal_collect(int doc) throws IOException {
+    public void internal_collect(int doc) {
         switch (type) {
             case NUMERIC: {
                 if (numeric == null)

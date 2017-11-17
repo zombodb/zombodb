@@ -41,8 +41,8 @@ public class IndexMetadata {
     private final ASTIndexLink link;
 
 
-    private Map<String, Map<String, Object>> fields;
-    private String pkeyFieldName;
+    private final Map<String, Map<String, Object>> fields;
+    private final String pkeyFieldName;
     private boolean alwaysResolveJoins = false;
 
     public IndexMetadata(ASTIndexLink link, MappingMetaData mmd) {
@@ -54,7 +54,7 @@ public class IndexMetadata {
         pullUpMultiFields();
 
         pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
-        alwaysResolveJoins = meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins")));
+        alwaysResolveJoins = meta != null && (meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins"))));
     }
 
     public ASTIndexLink getLink() {
@@ -108,7 +108,7 @@ public class IndexMetadata {
         return type == null ? "unknown" : type;
     }
 
-    public String getFieldProperty(String fieldname, String property) {
+    private String getFieldProperty(String fieldname, String property) {
         if (fieldname == null)
             return null;
 

@@ -74,10 +74,10 @@ public class DocumentHighlighter {
         highlight(root);
     }
 
-    private Highlighter _highlighter = new Highlighter();
+    private final Highlighter _highlighter = new Highlighter();
 
     private class Highlighter {
-        public void perform(QueryParserNode node) {
+        void perform(QueryParserNode node) {
             if (node == null)
                 return;
 
@@ -109,9 +109,9 @@ public class DocumentHighlighter {
                 highlightChildren(boolQuery.getMust());
             if (boolQuery.getShould() != null)
                 highlightChildren(boolQuery.getShould());
-        } else if (node instanceof ASTNot)
+        } else if (node instanceof ASTNot) {
             ;   // do nothing for ASTNot nodes
-        else
+        } else
             _highlighter.perform(node);
     }
 

@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-public class ZomboDBVisibilityQueryParser implements QueryParser<ZomboDBVisibilityQueryBuilder>, Writeable.Reader<ZomboDBVisibilityQueryBuilder> {
+class ZomboDBVisibilityQueryParser implements QueryParser<ZomboDBVisibilityQueryBuilder>, Writeable.Reader<ZomboDBVisibilityQueryBuilder> {
 
     @Override
     public ZomboDBVisibilityQueryBuilder read(StreamInput in) throws IOException {

@@ -6,9 +6,8 @@ public
 class ASTArray extends QueryParserNode {
 
   private Iterable<Object> externalValues;
-  int totalExternalValues;
-
-  protected boolean isAnd = false;
+  private int totalExternalValues;
+  private boolean isAnd = false;
 
   public ASTArray(int id) {
     super(id);

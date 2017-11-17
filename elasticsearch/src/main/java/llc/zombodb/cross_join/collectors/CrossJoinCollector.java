@@ -122,8 +122,8 @@ public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
         }
     }
 
-    public boolean accept(long value) { return false; }
-    public boolean accept(BytesRef value) { return false; }
+    boolean accept(long value) { return false; }
+    boolean accept(BytesRef value) { return false; }
 
     @Override
     public final void doSetNextReader(LeafReaderContext context) throws IOException {

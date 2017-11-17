@@ -20,7 +20,7 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 
 import java.io.IOException;
 
-public class DeltaEncoder {
+class DeltaEncoder {
 
     public static void encode_longs_as_deltas(long[] longs, int len, StreamOutput out) throws IOException {
         out.writeVInt(len);

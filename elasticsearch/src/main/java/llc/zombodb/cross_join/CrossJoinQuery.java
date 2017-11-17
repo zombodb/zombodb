@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class CrossJoinQuery extends Query {
+class CrossJoinQuery extends Query {
 
     private static final Map<String, TransportClient> CLIENTS = new ConcurrentHashMap<>();
     private static final Cache<String, FastTermsResponse> RESPONSE_CACHE = CacheBuilder.<String, FastTermsResponse>builder()

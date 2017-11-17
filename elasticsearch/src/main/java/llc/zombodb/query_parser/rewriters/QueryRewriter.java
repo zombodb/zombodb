@@ -59,8 +59,8 @@ import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 public abstract class QueryRewriter {
 
     public static class Factory {
-        public static QueryRewriter create(ClusterService clusterService, RestRequest restRequest, Client client, String indexName, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-            return new ZomboDBQueryRewriter(clusterService, client, indexName, restRequest.getXContentRegistry(), searchPreference, input, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
+        public static QueryRewriter create(ClusterService clusterService, RestRequest restRequest, Client client, String indexName, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+            return new ZomboDBQueryRewriter(clusterService, client, indexName, restRequest.getXContentRegistry(), input, canDoSingleIndex, needVisibilityOnTopLevel);
         }
     }
 
@@ -70,11 +70,8 @@ public abstract class QueryRewriter {
 
     /* short for QueryBuilderFactory */
     private interface QBF {
-        QBF DUMMY = new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                throw new QueryRewriteException("Should not get here");
-            }
+        QBF DUMMY = n -> {
+            throw new QueryRewriteException("Should not get here");
         };
 
         QueryBuilder b(QueryParserNode n);
@@ -104,12 +101,12 @@ public abstract class QueryRewriter {
         public String to;
     }
 
-    public static class QueryRewriteException extends RuntimeException {
-        public QueryRewriteException(String message) {
+    static class QueryRewriteException extends RuntimeException {
+        QueryRewriteException(String message) {
             super(message);
         }
 
-        public QueryRewriteException(Throwable cause) {
+        QueryRewriteException(Throwable cause) {
             super(cause);
         }
 
@@ -120,28 +117,24 @@ public abstract class QueryRewriter {
 
     private static final String DateSuffix = ".date";
 
-    protected final ClusterService clusterService;
-    protected final Client client;
+    final ClusterService clusterService;
+    private final Client client;
     private final NamedXContentRegistry contentRegistry;
-    protected final String searchPreference;
-    protected final boolean doFullFieldDataLookup;
     private boolean needVisibilityOnTopLevel;
-    protected final ASTQueryTree tree;
+    private final ASTQueryTree tree;
 
-    protected boolean _isBuildingAggregate = false;
+    boolean _isBuildingAggregate = false;
     private boolean queryRewritten = false;
 
     private Map<String, String> arrayData;
 
-    protected final IndexMetadataManager metadataManager;
+    final IndexMetadataManager metadataManager;
     private boolean hasJsonAggregate = false;
 
-    public QueryRewriter(ClusterService clusterService, Client client, String indexName, NamedXContentRegistry contentRegistry, String input, String searchPreference, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+    public QueryRewriter(ClusterService clusterService, Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
         this.clusterService = clusterService;
         this.client = client;
         this.contentRegistry = contentRegistry;
-        this.searchPreference = searchPreference;
-        this.doFullFieldDataLookup = doFullFieldDataLookup;
         this.needVisibilityOnTopLevel = needVisibilityOnTopLevel;
 
         metadataManager = new IndexMetadataManager(client, indexName);
@@ -191,7 +184,7 @@ public abstract class QueryRewriter {
      * Subclasses can override if additional optimizations are necessary, but
      * they should definitely call {@link super.performOptimizations(Client)}
      */
-    protected void performOptimizations(Client client) {
+    private void performOptimizations(Client client) {
         new ArrayDataOptimizer(tree, metadataManager, arrayData).optimize();
         new IndexLinkOptimizer(client, this, tree, metadataManager).optimize();
         new TermAnalyzerOptimizer(client, metadataManager, tree).optimize();
@@ -259,7 +252,7 @@ public abstract class QueryRewriter {
 
     }
 
-    public String getAggregateFieldName(ASTAggregate agg) {
+    private String getAggregateFieldName(ASTAggregate agg) {
         String fieldname = agg.getFieldname();
         IndexMetadata md = metadataManager.getMetadataForField(fieldname);
 
@@ -708,9 +701,9 @@ public abstract class QueryRewriter {
         return qb;
     }
 
-    private String nested = null;
+    private final String nested = null;
 
-    protected QueryBuilder build(ASTExpansion node) {
+    QueryBuilder build(ASTExpansion node) {
         QueryBuilder expansionBuilder = build(node.getQuery());
         QueryParserNode filterQuery = node.getFilterQuery();
         if (filterQuery != null) {
@@ -732,13 +725,10 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder build(ASTWord node) {
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                Object value = n.getValue();
+        return buildStandard(node, n -> {
+            Object value = n.getValue();
 
-                return termQuery(n.getFieldname(), value);
-            }
+            return termQuery(n.getFieldname(), value);
         });
     }
 
@@ -750,27 +740,21 @@ public abstract class QueryRewriter {
         if (node.getOperator() == QueryParserNode.Operator.REGEX)
             return buildStandard(node, QBF.DUMMY);
 
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                MatchPhraseQueryBuilder builder = matchPhraseQuery(n.getFieldname(), n.getValue());
-                if (node.getDistance() != 0)
-                    builder.slop(node.getDistance());
-                return builder;
-            }
+        return buildStandard(node, n -> {
+            MatchPhraseQueryBuilder builder = matchPhraseQuery(n.getFieldname(), n.getValue());
+            if (node.getDistance() != 0)
+                builder.slop(node.getDistance());
+            return builder;
         });
     }
 
     private QueryBuilder build(ASTNumber node) {
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                Object value;
+        return buildStandard(node, n -> {
+            Object value;
 
-                String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
-                value = coerceNumber(n.getValue(), type);
-                return termQuery(n.getFieldname(), value);
-            }
+            String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
+            value = coerceNumber(n.getValue(), type);
+            return termQuery(n.getFieldname(), value);
         });
     }
 
@@ -828,12 +812,7 @@ public abstract class QueryRewriter {
 
     private QueryBuilder build(ASTNull node) {
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                return boolQuery().mustNot(existsQuery(n.getFieldname()));
-            }
-        });
+        return buildStandard(node, n -> boolQuery().mustNot(existsQuery(n.getFieldname())));
     }
 
     private QueryBuilder build(ASTNotNull node) {
@@ -849,32 +828,17 @@ public abstract class QueryRewriter {
         }
 
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                return existsQuery(n.getFieldname());
-            }
-        });
+        return buildStandard(node, n -> existsQuery(n.getFieldname()));
     }
 
     private QueryBuilder build(ASTBoolean node) {
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                return termQuery(n.getFieldname(), n.getValue());
-            }
-        });
+        return buildStandard(node, n -> termQuery(n.getFieldname(), n.getValue()));
     }
 
     private QueryBuilder build(final ASTFuzzy node) {
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                return fuzzyQuery(n.getFieldname(), n.getValue()).prefixLength(n.getFuzzyness() == 0 ? 3 : n.getFuzzyness());
-            }
-        });
+        return buildStandard(node, n -> fuzzyQuery(n.getFieldname(), n.getValue()).prefixLength(n.getFuzzyness() == 0 ? 3 : n.getFuzzyness()));
     }
 
     private QueryBuilder build(final ASTPrefix node) {
@@ -882,12 +846,7 @@ public abstract class QueryRewriter {
             return regexpQuery(node.getFieldname(), String.valueOf(node.getValue()));
 
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                return prefixQuery(n.getFieldname(), String.valueOf(n.getValue()));
-            }
-        });
+        return buildStandard(node, n -> prefixQuery(n.getFieldname(), String.valueOf(n.getValue())));
     }
 
     private QueryBuilder build(final ASTWildcard node) {
@@ -895,66 +854,77 @@ public abstract class QueryRewriter {
             return regexpQuery(node.getFieldname(), String.valueOf(node.getValue()));
 
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                return wildcardQuery(n.getFieldname(), String.valueOf(n.getValue()));
-            }
-        });
+        return buildStandard(node, n -> wildcardQuery(n.getFieldname(), String.valueOf(n.getValue())));
     }
 
     private QueryBuilder build(final ASTArray node) {
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(final QueryParserNode n) {
-                Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
-                final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
-                int minShouldMatch = node.isAnd() ? cnt : 1;
-                final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
-                boolean isNumber = false;
+        return buildStandard(node, n -> {
+            Iterable<Object> itr = node.hasExternalValues() ? node.getExternalValues() : node.getChildValues();
+            final int cnt = node.hasExternalValues() ? node.getTotalExternalValues() : node.jjtGetNumChildren();
+            int minShouldMatch = node.isAnd() ? cnt : 1;
+            final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
+            boolean isNumber = false;
 
-                switch (type) {
-                    case "integer":
-                    case "long":
-                    case "double":
-                    case "float":
-                        isNumber = true;
-                        // fall-through
-                    case "unknown": {
-                        final Iterable<Object> finalItr = itr;
-                        itr = new Iterable<Object>() {
+            switch (type) {
+                case "integer":
+                case "long":
+                case "double":
+                case "float":
+                    isNumber = true;
+                    // fall-through
+                case "unknown": {
+                    final Iterable<Object> finalItr = itr;
+                    itr = () -> {
+                        final Iterator<Object> iterator = finalItr.iterator();
+                        return new Iterator<Object>() {
                             @Override
-                            public Iterator<Object> iterator() {
-                                final Iterator<Object> iterator = finalItr.iterator();
-                                return new Iterator<Object>() {
-                                    @Override
-                                    public boolean hasNext() {
-                                        return iterator.hasNext();
-                                    }
+                            public boolean hasNext() {
+                                return iterator.hasNext();
+                            }
 
-                                    @Override
-                                    public Object next() {
-                                        Object value = iterator.next();
-                                        return coerceNumber(value, type);
-                                    }
+                            @Override
+                            public Object next() {
+                                Object value = iterator.next();
+                                return coerceNumber(value, type);
+                            }
 
-                                    @Override
-                                    public void remove() {
-                                        iterator.remove();
-                                    }
-                                };
+                            @Override
+                            public void remove() {
+                                iterator.remove();
                             }
                         };
-                    }
+                    };
                 }
+            }
 
-                if ((isNumber && minShouldMatch == 1) || (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024)) {
-                    final Iterable<Object> finalItr1 = itr;
-                    TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+            if ((isNumber && minShouldMatch == 1) || (node.hasExternalValues() && minShouldMatch == 1 && node.getTotalExternalValues() >= 1024)) {
+                final Iterable<Object> finalItr1 = itr;
+                TermsQueryBuilder builder = termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
+                    @Override
+                    public Iterator<Object> iterator() {
+                        return finalItr1.iterator();
+                    }
+
+                    @Override
+                    public int size() {
+                        return cnt;
+                    }
+                });
+                return constantScoreQuery(builder);
+            } else {
+                if (minShouldMatch > 1) {
+                    BoolQueryBuilder bool = boolQuery();
+                    for (Object o : itr)
+                        bool.must(termQuery(n.getFieldname(), o));
+                    return bool;
+                } else {
+                    final Iterable<Object> finalItr = itr;
+
+                    return termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
                         @Override
                         public Iterator<Object> iterator() {
-                            return finalItr1.iterator();
+                            return finalItr.iterator();
                         }
 
                         @Override
@@ -962,28 +932,6 @@ public abstract class QueryRewriter {
                             return cnt;
                         }
                     });
-                    return constantScoreQuery(builder);
-                } else {
-                    if (minShouldMatch > 1) {
-                        BoolQueryBuilder bool = boolQuery();
-                        for (Object o : itr)
-                            bool.must(termQuery(n.getFieldname(), o));
-                        return bool;
-                    } else {
-                        final Iterable<Object> finalItr = itr;
-
-                        return termsQuery(n.getFieldname(), new AbstractCollection<Object>() {
-                            @Override
-                            public Iterator<Object> iterator() {
-                                return finalItr.iterator();
-                            }
-
-                            @Override
-                            public int size() {
-                                return cnt;
-                            }
-                        });
-                    }
                 }
             }
         });
@@ -991,63 +939,57 @@ public abstract class QueryRewriter {
 
     private QueryBuilder build(final ASTArrayData node) {
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                if ("_id".equals(node.getFieldname())) {
-                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
-                    Collection<String> terms = st.getAllTokens();
-                    return idsQuery().addIds(terms.toArray(new String[terms.size()]));
-                } else {
-                    final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
-                    final List<String> tokens = st.getAllTokens();
-                    final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
-                    return constantScoreQuery(termsQuery(node.getFieldname(), new AbstractCollection<Object>() {
-                        @Override
-                        public Iterator<Object> iterator() {
-                            final Iterator<String> itr = tokens.iterator();
-                            return new Iterator<Object>() {
-                                @Override
-                                public boolean hasNext() {
-                                    return itr.hasNext();
-                                }
+        return buildStandard(node, n -> {
+            if ("_id".equals(node.getFieldname())) {
+                final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
+                Collection<String> terms = st.getAllTokens();
+                return idsQuery().addIds(terms.toArray(new String[terms.size()]));
+            } else {
+                final EscapingStringTokenizer st = new EscapingStringTokenizer(arrayData.get(node.getValue().toString()), ", \r\n\t\f\"'[]");
+                final List<String> tokens = st.getAllTokens();
+                final String type = metadataManager.getMetadataForField(n.getFieldname()).getType(n.getFieldname());
+                return constantScoreQuery(termsQuery(node.getFieldname(), new AbstractCollection<Object>() {
+                    @Override
+                    public Iterator<Object> iterator() {
+                        final Iterator<String> itr = tokens.iterator();
+                        return new Iterator<Object>() {
+                            @Override
+                            public boolean hasNext() {
+                                return itr.hasNext();
+                            }
 
-                                @Override
-                                public Object next() {
-                                    String value = itr.next();
-                                    try {
-                                        return coerceNumber(value, type);
-                                    } catch (Exception e) {
-                                        return value;
-                                    }
+                            @Override
+                            public Object next() {
+                                String value = itr.next();
+                                try {
+                                    return coerceNumber(value, type);
+                                } catch (Exception e) {
+                                    return value;
                                 }
+                            }
 
-                                @Override
-                                public void remove() {
-                                    itr.remove();
-                                }
-                            };
-                        }
+                            @Override
+                            public void remove() {
+                                itr.remove();
+                            }
+                        };
+                    }
 
-                        @Override
-                        public int size() {
-                            return tokens.size();
-                        }
-                    }));
-                }
+                    @Override
+                    public int size() {
+                        return tokens.size();
+                    }
+                }));
             }
         });
     }
 
     private QueryBuilder build(final ASTRange node) {
         validateOperator(node);
-        return buildStandard(node, new QBF() {
-            @Override
-            public QueryBuilder b(QueryParserNode n) {
-                QueryParserNode start = n.getChild(0);
-                QueryParserNode end = n.getChild(1);
-                return rangeQuery(node.getFieldname()).from(coerceNumber(start.getValue(), "unknown")).to(coerceNumber(end.getValue(), "unknown"));
-            }
+        return buildStandard(node, n -> {
+            QueryParserNode start = n.getChild(0);
+            QueryParserNode end = n.getChild(1);
+            return rangeQuery(node.getFieldname()).from(coerceNumber(start.getValue(), "unknown")).to(coerceNumber(end.getValue(), "unknown"));
         });
     }
 
@@ -1259,7 +1201,7 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
-    public QueryBuilder applyVisibility(QueryBuilder query) {
+    QueryBuilder applyVisibility(QueryBuilder query) {
         ASTVisibility visibility = tree.getVisibility();
 
         if (visibility == null)

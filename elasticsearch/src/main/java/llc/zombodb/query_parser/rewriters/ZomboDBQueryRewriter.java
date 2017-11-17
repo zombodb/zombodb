@@ -29,15 +29,10 @@ import static org.elasticsearch.index.query.QueryBuilders.*;
 /**
  * ZomboDB's stock {@link QueryRewriter} that resolves joins during construction
  */
-public class ZomboDBQueryRewriter extends QueryRewriter {
+class ZomboDBQueryRewriter extends QueryRewriter {
 
-    public ZomboDBQueryRewriter(ClusterService clusterService, Client client, String indexName, NamedXContentRegistry contentRegistry, String searchPreference, String input, boolean doFullFieldDataLookup, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-        super(clusterService, client, indexName, contentRegistry, input, searchPreference, doFullFieldDataLookup, canDoSingleIndex, needVisibilityOnTopLevel);
-    }
-
-    @Override
-    protected void performOptimizations(Client client) {
-        super.performOptimizations(client);
+    public ZomboDBQueryRewriter(ClusterService clusterService, Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+        super(clusterService, client, indexName, contentRegistry, input, canDoSingleIndex, needVisibilityOnTopLevel);
     }
 
     @Override

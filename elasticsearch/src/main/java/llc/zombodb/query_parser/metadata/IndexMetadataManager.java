@@ -29,9 +29,9 @@ import java.util.*;
 
 public class IndexMetadataManager {
 
-    public static class IndexLinkAndMapping {
-        public ASTIndexLink link;
-        public ActionFuture<GetMappingsResponse> mapping;
+    static class IndexLinkAndMapping {
+        final ASTIndexLink link;
+        final ActionFuture<GetMappingsResponse> mapping;
 
         private IndexLinkAndMapping(ASTIndexLink link, ActionFuture<GetMappingsResponse> mapping) {
             this.link = link;
@@ -43,7 +43,7 @@ public class IndexMetadataManager {
     private final Map<String, ASTIndexLink> indexLinksByIndexName = new HashMap<>();
     private List<FieldAndIndexPair> allFields;
     private final IndexRelationshipManager relationshipManager = new IndexRelationshipManager();
-    private Map<ASTIndexLink, IndexMetadata> metadataCache = new HashMap<>();
+    private final Map<ASTIndexLink, IndexMetadata> metadataCache = new HashMap<>();
 
     private final Client client;
     private ASTIndexLink myIndex;
@@ -76,7 +76,7 @@ public class IndexMetadataManager {
         return false;
     }
 
-    public ASTIndexLink getExternalIndexLink(String fieldname) {
+    private ASTIndexLink getExternalIndexLink(String fieldname) {
         for (IndexLinkAndMapping ilap : mappings) {
             if (fieldname.equals(ilap.link.getFieldname()))
                 return ilap.link;
@@ -92,7 +92,9 @@ public class IndexMetadataManager {
         for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings)
             if (link == ilam.link)
                 return ilam;
-        return null;
+
+        // this shouldn't every happen
+        throw new RuntimeException("Unable to find a mapping for " + link.dumpAsString());
     }
 
     public IndexMetadata getMetadataForMyIndex() {
@@ -104,7 +106,7 @@ public class IndexMetadataManager {
         return fieldSource != null ? getMetadata(fieldSource) : null;
     }
 
-    public IndexMetadata getMetadata(ASTIndexLink link) {
+    private IndexMetadata getMetadata(ASTIndexLink link) {
         if (mappings == null)
             return null;
 
@@ -189,17 +191,7 @@ public class IndexMetadataManager {
         if (fieldname.contains("."))
             fieldname = fieldname.substring(0, fieldname.indexOf('.'));
 
-        for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings) {
-            ASTIndexLink link = ilam.link;
-
-            if (fieldname.equals(link.getFieldname()))
-                return link;
-
-            IndexMetadata md = getMetadata(link);
-            if (md != null && md.hasField(fieldname))
-                return link;
-        }
-        return myIndex;
+        return findLinkForField0(fieldname);
     }
 
     private ASTIndexLink findLinkForField(String fieldname) {
@@ -211,6 +203,10 @@ public class IndexMetadataManager {
             return (md != null && md.hasField(fieldname)) ? link : myIndex;
         }
 
+        return findLinkForField0(fieldname);
+    }
+
+    private ASTIndexLink findLinkForField0(String fieldname) {
         for (IndexMetadataManager.IndexLinkAndMapping ilam : mappings) {
             ASTIndexLink link = ilam.link;
 
@@ -221,6 +217,7 @@ public class IndexMetadataManager {
             if (md != null && md.hasField(fieldname))
                 return link;
         }
+
         return myIndex;
     }
 
@@ -244,20 +241,20 @@ public class IndexMetadataManager {
                 }
 
                 if (md.getSearchAnalyzer(field) != null) {
-                    FieldAndIndexPair faip = new FieldAndIndexPair(link, field, md);
+                    FieldAndIndexPair faip = new FieldAndIndexPair(link, field);
                     if (!fields.contains(faip))
                         fields.add(faip);
                 }
 
             }
             if (hasAllField) {
-                FieldAndIndexPair faip = new FieldAndIndexPair(link, "_all", md);
+                FieldAndIndexPair faip = new FieldAndIndexPair(link, "_all");
                 if (!fields.contains(faip))
                     fields.add(faip);    // we still want the "_all" field if any defined field lives in it
             }
         }
         if (fields.isEmpty())
-            fields.add(new FieldAndIndexPair(null, "_all", null));
+            fields.add(new FieldAndIndexPair(null, "_all"));
 
         return allFields = fields;
     }
