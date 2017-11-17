@@ -4,8 +4,8 @@ set enable_bitmapscan to off;
 explain (costs off) select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by id;
 select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by id;
 
-explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id;
-select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id;
+explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id, so_comments.id;
+select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id, so_comments.id;
 
 explain (costs off) select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts', ctid) ==> 'wine';
 select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts', ctid) ==> 'wine' order by id;

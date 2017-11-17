@@ -188,11 +188,11 @@ select id, title from so_posts where zdb('so_posts', ctid) ==> 'beer' order by i
  272560 | Say I wanted to create a cross platform program that does not require a runtime/VM, am I stuck with C/C++?
 (174 rows)
 
-explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id;
+explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id, so_comments.id;
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Sort
-   Sort Key: so_posts.id
+   Sort Key: so_posts.id, so_comments.id
    ->  Hash Join
          Hash Cond: (so_comments.post_id = so_posts.id)
          ->  Seq Scan on so_comments
@@ -201,7 +201,7 @@ explain (costs off) select so_posts.title, so_comments.user_display_name from so
                      Filter: (zdb('so_posts'::regclass, ctid) ==> 'beer'::text)
 (8 rows)
 
-select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id;
+select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'beer' order by so_posts.id, so_comments.id;
                                                                  title                                                                  | user_display_name 
 ----------------------------------------------------------------------------------------------------------------------------------------+-------------------
  Why is free software good for programmers?                                                                                             | 
@@ -252,21 +252,20 @@ select so_posts.title, so_comments.user_display_name from so_posts inner join so
  How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
  How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
  How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
+ How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
  How not to suffer from ideologists when you're a pragmatic person?                                                                     | user8
  How not to suffer from ideologists when you're a pragmatic person?                                                                     | user8
  How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
  How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
  How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
- How not to suffer from ideologists when you're a pragmatic person?                                                                     | 
-                                                                                                                                        | 
                                                                                                                                         | user8685
                                                                                                                                         | 
                                                                                                                                         | 
@@ -275,64 +274,65 @@ select so_posts.title, so_comments.user_display_name from so_posts inner join so
                                                                                                                                         | 
                                                                                                                                         | user1249
                                                                                                                                         | 
-                                                                                                                                        | user1249
-                                                                                                                                        | 
-                                                                                                                                        | John Dunagan
-                                                                                                                                        | 
-                                                                                                                                        | John Dunagan
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
- free as in free beer                                                                                                                   | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
                                                                                                                                         | 
                                                                                                                                         | user1249
                                                                                                                                         | 
+                                                                                                                                        | 
+                                                                                                                                        | John Dunagan
+                                                                                                                                        | John Dunagan
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+ free as in free beer                                                                                                                   | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | user1249
                                                                                                                                         | 
                                                                                                                                         | 
                                                                                                                                         | 
@@ -424,8 +424,8 @@ select so_posts.title, so_comments.user_display_name from so_posts inner join so
                                                                                                                                         | 
                                                                                                                                         | 
                                                                                                                                         | 
-                                                                                                                                        | Peter Hilton
                                                                                                                                         | 
+                                                                                                                                        | Peter Hilton
                                                                                                                                         | 
                                                                                                                                         | 
                                                                                                                                         | fatcat1111
@@ -434,11 +434,11 @@ select so_posts.title, so_comments.user_display_name from so_posts inner join so
                                                                                                                                         | Matthew Lock
                                                                                                                                         | 
                                                                                                                                         | Optimal Solutions
-                                                                                                                                        | Kawu
-                                                                                                                                        | 
                                                                                                                                         | 
                                                                                                                                         | JeeBee
                                                                                                                                         | Esti
+                                                                                                                                        | 
+                                                                                                                                        | Kawu
                                                                                                                                         | 
  Where to find resources to write a program like sandboxie?                                                                             | 
  Where to find resources to write a program like sandboxie?                                                                             | 
@@ -461,9 +461,9 @@ select so_posts.title, so_comments.user_display_name from so_posts inner join so
                                                                                                                                         | 
                                                                                                                                         | 
                                                                                                                                         | Peter Wone
- What is the economic rationale for focusing on free, open source projects?                                                             | 
- What is the economic rationale for focusing on free, open source projects?                                                             | user8
  What is the economic rationale for focusing on free, open source projects?                                                             | user1249
+ What is the economic rationale for focusing on free, open source projects?                                                             | user8
+ What is the economic rationale for focusing on free, open source projects?                                                             | 
  What is the economic rationale for focusing on free, open source projects?                                                             | user1249
                                                                                                                                         | 
  How can I defend Ruby on Rails against customers' not technical opinion?                                                               | 
@@ -500,18 +500,18 @@ select so_posts.title, so_comments.user_display_name from so_posts inner join so
                                                                                                                                         | 
                                                                                                                                         | 
                                                                                                                                         | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
-                                                                                                                                        | 
                                                                                                                                         | user1249
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
+                                                                                                                                        | 
                                                                                                                                         | 
                                                                                                                                         | 
                                                                                                                                         | 
@@ -1128,18 +1128,19 @@ select count(*) from (with words as (select word from words order by ctid offset
 (1 row)
 
 explain (costs off) select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id;
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Sort
-   Sort Key: so_posts.id
-   ->  Hash Join
-         Hash Cond: (so_comments.post_id = so_posts.id)
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Merge Join
+   Merge Cond: (so_posts.id = so_comments.post_id)
+   ->  Sort
+         Sort Key: so_posts.id
+         ->  Seq Scan on so_posts
+               Filter: (zdb('so_posts'::regclass, ctid) ==> 'java'::text)
+   ->  Sort
+         Sort Key: so_comments.post_id
          ->  Seq Scan on so_comments
                Filter: (zdb('so_comments'::regclass, ctid) ==> 'java'::text)
-         ->  Hash
-               ->  Seq Scan on so_posts
-                     Filter: (zdb('so_posts'::regclass, ctid) ==> 'java'::text)
-(9 rows)
+(10 rows)
 
 select count(*) FROM (select so_posts.title, so_comments.user_display_name from so_posts inner join so_comments on so_posts.id = so_comments.post_id where zdb('so_posts', so_posts.ctid) ==> 'java' and zdb('so_comments', so_comments.ctid) ==> 'java' order by so_posts.id) x;
  count 
