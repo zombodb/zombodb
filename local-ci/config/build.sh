@@ -20,7 +20,7 @@ export VERSION=$(grep default_version postgres/zombodb.control | sed -e "s/defau
 
 mvn clean install
 
-/usr/share/elasticsearch/bin/plugin install file:///build/zombodb/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+echo "Y" | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///build/zombodb/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
 /etc/init.d/elasticsearch start
 
 sleep 10
