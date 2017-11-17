@@ -49,7 +49,7 @@ script:
   - sudo rm /usr/lib/postgresql/9.5/lib/zombodb.so
   - sudo src/main/shell/hack-configs-for-travisci.sh
   - cd ${BUILD_HOME}
-  - echo Y | sudo ~/elasticsearch-5.6.3/bin/elasticsearch-plugin install file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
+  - echo Y | sudo ~/elasticsearch-5.6.4/bin/elasticsearch-plugin install file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
   - sudo ~/elasticsearch-5.6.4/bin/elasticsearch -d
   - sudo /etc/init.d/postgresql start 9.5
   - sudo cat /var/log/syslog

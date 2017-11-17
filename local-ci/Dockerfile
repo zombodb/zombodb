@@ -45,7 +45,7 @@ RUN wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticse
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --no-check-certificate -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
-# java 7
+# java 8
 RUN apt-get install -y -qq python-software-properties
 RUN \
   echo oracle-java7-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
