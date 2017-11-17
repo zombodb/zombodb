@@ -62,6 +62,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         int requestNumber = request.paramAsInt("request_no", -1);
 
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
+        bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
         bulkRequest.add(request.content(), defaultIndex, defaultType);
 
         List<DocWriteRequest> xmaxRequests = new ArrayList<>();
@@ -79,28 +80,23 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         if (isdelete) {
             // when deleting, we need to delete the "data" docs first
             // otherwise VisibilityQueryHelper might think "data" docs don't have an "xmax" when they really do
-
-            // we don't need to force a refresh here, as if ?refresh=true, we'll get it below
-            bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.NONE);
             response = client.bulk(bulkRequest).actionGet();
 
             if (!response.hasFailures()) {
                 // then we can delete from "xmax"
-                response = processTrackingRequests(request, client, xmaxRequests, refresh);
+                response = processTrackingRequests(request, client, xmaxRequests);
             }
         } else {
-            // refreshes aren't necessary until we send the "data" documents at the very end (and then only if ?refresh=true)
             // when inserting, we first need to add the "aborted" docs
-            response = processTrackingRequests(request, client, abortedRequests, false);
+            response = processTrackingRequests(request, client, abortedRequests);
 
             if (!response.hasFailures()) {
                 // then we need to add the "xmax" docs
                 // otherwise VisibilityQueryHelper might think "data" docs don't have an "xmax" when they really do
-                response = processTrackingRequests(request, client, xmaxRequests, false);
+                response = processTrackingRequests(request, client, xmaxRequests);
 
                 if (!response.hasFailures()) {
                     // then we can insert into "data"
-                    bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
                     response = client.bulk(bulkRequest).actionGet();
                 }
             }
@@ -110,9 +106,10 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         return channel -> channel.sendResponse(buildResponse(finalResponse, JsonXContent.contentBuilder()));
     }
 
-    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<DocWriteRequest> trackingRequests, boolean refresh) {
+    private BulkResponse processTrackingRequests(RestRequest request, Client client, List<DocWriteRequest> trackingRequests) {
         if (trackingRequests.isEmpty())
             return new BulkResponse(new BulkItemResponse[0], 0);
+        boolean refresh = request.paramAsBoolean("refresh", false);
 
         BulkRequest bulkRequest;
         bulkRequest = Requests.bulkRequest();
