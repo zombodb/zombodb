@@ -302,7 +302,10 @@ StringInfo rest_call(char *method, char *url, StringInfo postData, int compressi
         if (GLOBAL_CURL_INSTANCE == NULL)
             elog(ERROR, "Unable to initialize global curl instance");
 
-        CURL_ERROR_BUFF = (char *) palloc0(CURL_ERROR_SIZE);
+		/* allocated outside of Postgres' "palloc" system because so is GLOBAL_CURL_INSTANCE */
+        CURL_ERROR_BUFF = (char *) calloc(1, CURL_ERROR_SIZE);
+		if (CURL_ERROR_BUFF == NULL)
+			elog(ERROR, "Unable to allocate curl error buffer");
 
         /* these are all the curl options we want set every time we use it */
         curl_easy_setopt(GLOBAL_CURL_INSTANCE, CURLOPT_SHARE, GLOBAL_CURL_SHARED_STATE);
