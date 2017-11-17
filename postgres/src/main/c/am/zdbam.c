@@ -496,13 +496,6 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
     buildstate.desc        = alloc_index_descriptor(indexRel, false);
 
     if (!buildstate.desc->isShadow) {
-		HASHCTL hashctl;
-
-		hashctl.entrysize = sizeof(TransactionId);
-		hashctl.keysize = sizeof(TransactionId);
-		hashctl.hcxt = TopTransactionContext;
-		hashctl.hash = tag_hash;
-
         /* drop the existing index */
         buildstate.desc->implementation->dropIndex(buildstate.desc);
 
