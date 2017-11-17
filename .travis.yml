@@ -8,6 +8,7 @@ sudo: required
 dist: trusty
 
 before_install:
+  - export BUILD_HOME=`pwd`
   - free
   - ls -la /etc/init.d/
   - sudo apt-get purge -y elasticsearch
@@ -23,7 +24,6 @@ before_install:
   - sudo apt-get install -y postgresql-9.5 postgresql-server-dev-9.5
   - sudo ls -lad /usr/share/postgresql/*
   - sudo apt-get install -y maven
-  - cd ~
   - sudo wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.6.4.tar.gz
   - sudo tar xzf ./elasticsearch-5.6.4.tar.gz
 
@@ -48,6 +48,7 @@ script:
   - sudo cp /usr/lib/postgresql/9.5/lib/zombodb.so /usr/lib/postgresql/9.5/lib/plugins/zombodb.so
   - sudo rm /usr/lib/postgresql/9.5/lib/zombodb.so
   - sudo src/main/shell/hack-configs-for-travisci.sh
+  - cd ${BUILD_HOME}
   - echo Y | sudo ~/elasticsearch-5.6.3/bin/elasticsearch-plugin install file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
   - sudo ~/elasticsearch-5.6.5/bin/elasticsearch -d
   - sudo /etc/init.d/postgresql start 9.5
