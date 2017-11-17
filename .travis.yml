@@ -62,7 +62,7 @@ script:
 after_failure:
   - sudo cat regression.diffs
   - sudo cat /var/log/postgresql/*.log
-  - sudo cat ${BUILD_HOME}/elasticsearch-5.6.4/logs/*.log | grep -v "version type FORCE is deprecated"
+  - sudo cat ${BUILD_HOME}/elasticsearch-5.6.4/logs/*.log | grep -v "is deprecated"
   - df -h
   - ps auwwx
   - sudo dmesg
