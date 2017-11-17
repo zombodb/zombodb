@@ -166,7 +166,7 @@ public class IndexMetadataManager {
         try {
             if (isNestedObjectFieldExternal(fieldname)) {
                 link = getExternalIndexLink(fieldname);
-                return (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap();
+                return lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap();
             } else {
                 Map properties = (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap().get("properties");
                 return (Map<String, ?>) properties.get(fieldname);
