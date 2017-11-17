@@ -542,7 +542,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     hits->httpResponse = response;
 	hits->hits         = (response->data + 1 + sizeof(uint64) + (wantScores ? sizeof(float4) : 0));
     hits->total_hits   = *nhits;
-    hits->max_score    = max_score.fscore;
+    hits->max_score    = wantScores ? max_score.fscore : 0;
 
     freeStringInfo(endpoint);
     freeStringInfo(query);
