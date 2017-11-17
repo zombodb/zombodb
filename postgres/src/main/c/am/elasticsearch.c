@@ -55,8 +55,8 @@
 "          \"_all\": { \"enabled\": false, \"analyzer\": \"phrase\" },"\
 "          \"_routing\": { \"required\": true },"\
 "          \"properties\": {"\
-"              \"_xmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"include_in_all\":\"false\" },"\
-"              \"_cmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"include_in_all\":\"false\" },"\
+"              \"_xmax\": { \"type\": \"long\", \"index\": \"true\",\"include_in_all\":\"false\" },"\
+"              \"_cmax\": { \"type\": \"long\", \"index\": \"true\",\"include_in_all\":\"false\" },"\
 "              \"_replacement_ctid\": { \"type\": \"keyword\", \"index\": \"not_analyzed\",\"include_in_all\":\"false\", \"doc_values\": false },"\
 "              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true },"\
 "              \"_zdb_reason\": { \"type\": \"keyword\", \"index\": \"not_analyzed\",\"include_in_all\":\"false\", \"doc_values\": false }"\
@@ -67,7 +67,7 @@
 "          \"_all\": { \"enabled\": false, \"analyzer\": \"phrase\" },"\
 "          \"_routing\": { \"required\": true },"\
 "          \"properties\": {"\
-"             \"_zdb_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\",\"include_in_all\":\"false\" }"\
+"             \"_zdb_xid\": { \"type\": \"long\",\"index\":\"true\",\"include_in_all\":\"false\" }"\
 "          }"\
 "      }"
 
