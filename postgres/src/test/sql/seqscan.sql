@@ -10,7 +10,6 @@ select so_posts.title, so_comments.user_display_name from so_posts inner join so
 explain (costs off) select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts', ctid) ==> 'wine';
 select id from so_posts where zdb('so_posts', ctid) ==> 'beer' or zdb('so_posts', ctid) ==> 'wine' order by id;
 
-explain (costs off) select id from so_posts where id in (select generate_series(1, 10000)) and zdb('so_posts', ctid) ==> 'java' order by id;
 select id from so_posts where id in (select generate_series(1, 10000)) and zdb('so_posts', ctid) ==> 'java' order by id;
 
 explain (costs off) select count(*) from (with words as (select word from words order by ctid offset 10 limit 50) select id from so_posts, words where zdb('so_posts', ctid) ==> words.word) x;
