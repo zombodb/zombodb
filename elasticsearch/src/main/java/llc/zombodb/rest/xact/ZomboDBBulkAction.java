@@ -1,7 +1,6 @@
 package llc.zombodb.rest.xact;
 
 import llc.zombodb.rest.RoutingHelper;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.action.DocWriteRequest;
@@ -23,7 +22,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -33,7 +31,6 @@ import org.elasticsearch.rest.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -138,7 +135,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
                         case CONFLICT:
                             if (failure.getMessage().contains("VersionConflictEngineException")) {
                                 if ("xmax".equals(itemResponse.getType())) {
-                                    if ("delete".equals(itemResponse.getOpType())) {
+                                    if (itemResponse.getOpType() == DocWriteRequest.OpType.DELETE) {
                                         // this is a version conflict error where we tried to delete
                                         // an old xmax doc, which is perfectly acceptable
                                         continue main_loop;
