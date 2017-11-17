@@ -50,13 +50,13 @@ script:
   - sudo src/main/shell/hack-configs-for-travisci.sh
   - cd ${BUILD_HOME}
   - echo Y | sudo elasticsearch-5.6.4/bin/elasticsearch-plugin install file://${WHERE}/elasticsearch/target/zombodb-es-plugin-${VERSION}.zip
-  - sudo elasticsearch-5.6.4/bin/elasticsearch -d
+  - elasticsearch-5.6.4/bin/elasticsearch -d
   - sudo /etc/init.d/postgresql start 9.5
   - sudo cat /var/log/syslog
   - cat /etc/postgresql/9.5/main/postgresql.conf
 #  - sudo -u postgres createuser -s travis
-  - sudo sleep 10
   - curl localhost:9200/
+  - cd ${BUILD_HOME}/postgres
   - make installcheck
 
 after_failure:
