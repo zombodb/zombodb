@@ -167,10 +167,10 @@ public class NumberArrayLookup implements Streamable {
 
     @Override
     public void readFrom(StreamInput in) throws IOException {
-        min = in.readZLong();
         boolean haveBitset = in.readBoolean();
 
         if (haveBitset) {
+            min = in.readZLong();
             bitsetLength = in.readVInt();
             int numbytes = in.readVInt();
             byte[] bytes = new byte[numbytes];
@@ -196,10 +196,10 @@ public class NumberArrayLookup implements Streamable {
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
-        out.writeZLong(min);
         out.writeBoolean(bitset != null);
 
         if (bitset != null) {
+            out.writeZLong(min);
             out.writeVInt(bitset.cardinality());
             NoCopyByteArrayOutputStream baos = new NoCopyByteArrayOutputStream(4096);
             try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
