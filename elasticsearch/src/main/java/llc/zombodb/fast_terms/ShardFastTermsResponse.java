@@ -15,6 +15,8 @@
  */
 package llc.zombodb.fast_terms;
 
+import llc.zombodb.fast_terms.collectors.FastTermsCollector;
+import llc.zombodb.utils.NumberArrayLookup;
 import org.elasticsearch.action.support.broadcast.BroadcastShardResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -26,29 +28,25 @@ import java.util.Arrays;
 public class ShardFastTermsResponse extends BroadcastShardResponse {
     private FastTermsResponse.DataType dataType;
     private int dataCount;
-    private int[] ints;
-    private long[] longs;
+    private NumberArrayLookup bitset;
     private Object[] strings;
 
     public ShardFastTermsResponse() {
 
     }
 
-    public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, Object data, int dataCount) {
+    public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, FastTermsCollector collector) {
         super(shardId);
         this.dataType = dataType;
-        this.dataCount = dataCount;
+        this.dataCount = collector.getDataCount();
         switch (dataType) {
             case INT:
-                ints = (int[]) data;
-                Arrays.sort(ints, 0, dataCount);
-                break;
             case LONG:
-                longs = (long[]) data;
-                Arrays.sort(longs, 0, dataCount);
+                bitset = new NumberArrayLookup(collector.getMin(), collector.getMax());
+                bitset.setAll((long[]) collector.getData(), collector.getDataCount());
                 break;
             case STRING:
-                strings = (Object[]) data;
+                strings = (Object[]) collector.getData();
                 Arrays.sort(strings, 0, dataCount, (o1, o2) -> {
                     String a = (String) o1;
                     String b = (String) o2;
@@ -69,9 +67,9 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
     public <T> T getData() {
         switch (dataType) {
             case INT:
-                return (T) ints;
+                return (T) bitset;
             case LONG:
-                return (T) longs;
+                return (T) bitset;
             case STRING:
                 return (T) strings;
             default:
@@ -85,12 +83,10 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         dataType = in.readEnum(FastTermsResponse.DataType.class);
         switch (dataType) {
             case INT:
-                ints = DeltaEncoder.decode_ints_from_deltas(in);
-                dataCount = ints.length;
+                bitset = NumberArrayLookup.fromStreamInput(in);
                 break;
             case LONG:
-                longs = DeltaEncoder.decode_longs_from_deltas(in);
-                dataCount = longs.length;
+                bitset = NumberArrayLookup.fromStreamInput(in);
                 break;
             case STRING:
                 strings = in.readStringArray();
@@ -105,10 +101,10 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         out.writeEnum(dataType);
         switch (dataType) {
             case INT:
-                DeltaEncoder.encode_ints_as_deltas(ints, dataCount, out);
+                bitset.writeTo(out);
                 break;
             case LONG:
-                DeltaEncoder.encode_longs_as_deltas(longs, dataCount, out);
+                bitset.writeTo(out);
                 break;
             case STRING:
                 write_strings(out);

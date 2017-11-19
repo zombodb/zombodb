@@ -140,6 +140,9 @@ class CrossJoinQuery extends Query {
                         .setQuery(query)
                         .get();
 
+                if (fastTerms.getFailedShards() > 0)
+                    throw new IOException(fastTerms.getShardFailures()[0].getCause());
+
                 RESPONSE_CACHE.put(cacheKey.intern(), fastTerms);
             }
         }

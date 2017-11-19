@@ -15,21 +15,23 @@
  */
 package llc.zombodb.cross_join.collectors;
 
-import com.carrotsearch.hppc.IntArrayList;
+import llc.zombodb.utils.NumberArrayLookup;
 
-import java.util.Arrays;
+class NumberCollector extends CrossJoinCollector {
 
-class IntCollector extends CrossJoinCollector {
+    private final NumberArrayLookup[] bitsets;
 
-    private final IntArrayList ints;
-
-    IntCollector(String fieldname, IntArrayList ints) {
+    NumberCollector(String fieldname, NumberArrayLookup[] bitsets) {
         super(fieldname);
-        this.ints = ints;
+        this.bitsets = bitsets;
     }
 
     @Override
     public boolean accept(long value) {
-        return Arrays.binarySearch(ints.buffer, 0, ints.elementsCount, (int) value) >= 0;
+        for (NumberArrayLookup bitset : bitsets) {
+            if (bitset.get(value))
+                return true;
+        }
+        return false;
     }
 }

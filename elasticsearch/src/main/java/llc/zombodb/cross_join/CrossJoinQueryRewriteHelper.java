@@ -18,8 +18,7 @@ package llc.zombodb.cross_join;
 import com.carrotsearch.hppc.IntArrayList;
 import com.carrotsearch.hppc.LongArrayList;
 import llc.zombodb.fast_terms.FastTermsResponse;
-import llc.zombodb.utils.IntArrayMergeSortIterator;
-import llc.zombodb.utils.LongArrayMergeSortIterator;
+import llc.zombodb.utils.NumberArrayLookupMergeSortIterator;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.*;
@@ -46,16 +45,15 @@ class CrossJoinQueryRewriteHelper {
 
         switch (fastTerms.getDataType()) {
             case INT:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), (int[][]) fastTerms.getAllData(), fastTerms.getAllDataLengths());
+                return buildIntRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()));
             case LONG:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), (long[][]) fastTerms.getAllData(), fastTerms.getAllDataLengths());
+                return buildLongRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()));
             case STRING: {
                 BooleanQuery.Builder builder = new BooleanQuery.Builder();
                 for (int shardId = 0; shardId < fastTerms.getSuccessfulShards(); shardId++) {
-                    int count = fastTerms.getDataCount(shardId);
+                    int count = fastTerms.getStringCount(shardId);
                     if (count > 0) {
-                        final Object[] strings = fastTerms.getData(shardId);
-                        int finalShardId = shardId;
+                        final Object[] strings = fastTerms.getStrings(shardId);
                         builder.add(new TermInSetQuery(crossJoin.getLeftFieldname(), new AbstractCollection<BytesRef>() {
                             @Override
                             public Iterator<BytesRef> iterator() {
@@ -76,7 +74,7 @@ class CrossJoinQueryRewriteHelper {
 
                             @Override
                             public int size() {
-                                return fastTerms.getDataCount(finalShardId);
+                                return count;
                             }
                         }), BooleanClause.Occur.SHOULD);
                     }
@@ -142,8 +140,7 @@ class CrossJoinQueryRewriteHelper {
         };
     }
 
-    private static Query buildRangeOrSetQuery(String field, long[][] values, int[] lengths) {
-        LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(values, lengths);
+    private static Query buildLongRangeOrSetQuery(String field, NumberArrayLookupMergeSortIterator itr) {
         LongArrayList points = new LongArrayList();
         List<Query> clauses = new ArrayList<>();
 
@@ -185,18 +182,17 @@ class CrossJoinQueryRewriteHelper {
         return buildQuery(clauses);
     }
 
-    private static Query buildRangeOrSetQuery(String field, int[][] values, int[] lengths) {
-        IntArrayMergeSortIterator itr = new IntArrayMergeSortIterator(values, lengths);
+    private static Query buildIntRangeOrSetQuery(String field, NumberArrayLookupMergeSortIterator itr) {
         IntArrayList points = new IntArrayList();
         List<Query> clauses = new ArrayList<>();
 
         while (itr.hasNext()) {
             int head, tail;    // range bounds, inclusive
-            int next = itr.next();
+            int next = (int) itr.next();
 
             head = tail = next;
             while (itr.hasNext()) {
-                next = itr.next();
+                next = (int) itr.next();
                 if (next != tail+1) {
                     // we need 'next' for the subsequent iteration
                     itr.push(next);

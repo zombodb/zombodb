@@ -22,13 +22,18 @@ import java.io.IOException;
 
 public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
 
-    DocValuesType type;
+    interface InternalCollector {
+        void collect(int doc);
+    }
+
+    private DocValuesType type;
     private final String fieldname;
 
     SortedNumericDocValues sortedNumeric;
     NumericDocValues numeric;
     SortedSetDocValues sortedSet;
     SortedDocValues sorted;
+    private long min = Long.MAX_VALUE, max = Long.MIN_VALUE;
 
     FastTermsCollector(String fieldname) {
         this.fieldname = fieldname;
@@ -39,6 +44,16 @@ public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
     public abstract int getDataCount();
 
     protected abstract void internal_collect(int doc);
+
+    protected abstract void setDocValuesType(DocValuesType type);
+
+    public long getMin() {
+        return min;
+    }
+
+    public long getMax() {
+        return max;
+    }
 
     @Override
     public final void collect(int doc) throws IOException {
@@ -52,29 +67,37 @@ public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
     protected final void doSetNextReader(LeafReaderContext context) throws IOException {
         numeric = context.reader().getNumericDocValues(fieldname);
         if (numeric != null) {
-            type = DocValuesType.NUMERIC;
+            setDocValuesType(type = DocValuesType.NUMERIC);
             return;
         }
 
         sortedNumeric = context.reader().getSortedNumericDocValues(fieldname);
         if (sortedNumeric != null) {
-            type = DocValuesType.SORTED_NUMERIC;
+            setDocValuesType(type = DocValuesType.SORTED_NUMERIC);
             return;
         }
 
         sorted = context.reader().getSortedDocValues(fieldname);
         if (sorted != null) {
-            type = DocValuesType.SORTED;
+            setDocValuesType(type = DocValuesType.SORTED);
             return;
         }
 
         sortedSet = context.reader().getSortedSetDocValues(fieldname);
         if (sortedSet != null) {
-            type = DocValuesType.SORTED_SET;
+            setDocValuesType(type = DocValuesType.SORTED_SET);
             return;
         }
 
-        type = DocValuesType.NONE;
+        setDocValuesType(type = DocValuesType.NONE);
     }
+
+    void setMinMax(long value) {
+        if (value < min)
+            min = value;
+        if (value > max)
+            max = value;
+    }
+
 
 }

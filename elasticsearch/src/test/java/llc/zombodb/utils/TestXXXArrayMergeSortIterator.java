@@ -29,66 +29,58 @@ public class TestXXXArrayMergeSortIterator {
             }
 
             LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(longs, lengths);
-            long prev = -1;
-            boolean first = true;
-            int processed = 0, total = itr.getTotal();
-            while (itr.hasNext()) {
-                long value = itr.next();
-                if (!first) {
-                    if (!(value >= prev)) {
-                        System.err.println("NOT SORTED: current=" + value + ", prev=" + prev);
-                    }
-                    assertTrue(value >= prev);
-                }
-
-                prev = value;
-                first = false;
-                processed++;
-            }
-
-            assertTrue(total == processed);
+            assertSorted(itr, itr.getTotal());
         }
     }
 
     @Test
-    public void testInt() throws Exception {
+    public void testNumberArray() throws Exception {
         for (int cnt=0; cnt<1000; cnt++) {
             Random rnd = new Random();
             int MAX = 5000;
 
-            int[][] ints = new int[10][];
-            int[] lengths = new int[ints.length];
-            for (int i = 0; i < ints.length; i++) {
+
+            NumberArrayLookup[] longs = new NumberArrayLookup[10];
+            for (int i = 0; i < longs.length; i++) {
                 int many = Math.abs(rnd.nextInt()) % MAX;
 
-                int[] values = new int[many];
-                lengths[i] = values.length;
-                for (int j = 0; j < many; j++)
-                    values[j] = rnd.nextInt() % (MAX * 10);
-                Arrays.sort(values);
-                ints[i] = values;
-            }
-
-            IntArrayMergeSortIterator itr = new IntArrayMergeSortIterator(ints, lengths);
-            int prev = -1;
-            boolean first = true;
-            int processed = 0, total = itr.getTotal();
-            while (itr.hasNext()) {
-                int value = itr.next();
-                if (!first) {
-                    if (!(value >= prev)) {
-                        System.err.println("NOT SORTED: current=" + value + ", prev=" + prev);
-                    }
-                    assertTrue(value >= prev);
+                long[] values = new long[many];
+                long min = Long.MAX_VALUE, max = Long.MIN_VALUE;
+                for (int j = 0; j < many; j++) {
+                    values[j] = rnd.nextLong() % (MAX * 10);
+                    if (values[j] < min)
+                        min = values[j];
+                    if (values[j] > max)
+                        max = values[j];
                 }
-
-                prev = value;
-                first = false;
-                processed++;
+                longs[i] = new NumberArrayLookup(min, max);
+                longs[i].setAll(values, many);
             }
 
-            assertTrue(total == processed);
+            NumberArrayLookupMergeSortIterator itr = new NumberArrayLookupMergeSortIterator(longs);
+            assertSorted(itr, itr.getTotal());
         }
+    }
+
+    private void assertSorted(LongIterator itr, int total) {
+        long prev = -1;
+        boolean first = true;
+        int processed = 0;
+        while (itr.hasNext()) {
+            long value = itr.next();
+            if (!first) {
+                if (!(value >= prev)) {
+                    System.err.println("NOT SORTED: current=" + value + ", prev=" + prev);
+                }
+                assertTrue(value >= prev);
+            }
+
+            prev = value;
+            first = false;
+            processed++;
+        }
+
+        assertTrue(total == processed);
     }
 
     @Test

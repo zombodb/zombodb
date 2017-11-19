@@ -29,10 +29,10 @@ class CrossJoinQueryExecutor {
 
         switch(fieldType) {
             case "integer":
-                collector = CrossJoinCollector.create(fieldname, fastTerms.getIntArray());
+                collector = CrossJoinCollector.create(fieldname, fastTerms.getNumberLookup());
                 break;
             case "long":
-                collector = CrossJoinCollector.create(fieldname, fastTerms.getLongArray());
+                collector = CrossJoinCollector.create(fieldname, fastTerms.getNumberLookup());
                 break;
             case "keyword":
                 collector = CrossJoinCollector.create(fieldname, fastTerms.getStringArray());

@@ -21,7 +21,8 @@ import llc.zombodb.fast_terms.FastTermsResponse;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import llc.zombodb.query_parser.utils.Utils;
 import llc.zombodb.rest.QueryAndIndexPair;
-import llc.zombodb.utils.LongArrayMergeSortIterator;
+import llc.zombodb.utils.LongIterator;
+import llc.zombodb.utils.NumberArrayLookupMergeSortIterator;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
@@ -137,7 +138,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                     return channel -> new BytesRestResponse(response.status(), builder);
                 }
 
-                tids = buildBinaryResponse(response, needSort);
+                tids = buildBinaryResponse(response);
             } else {
                 // we need to run an actual search because we want scores or have a limit
                 SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
@@ -298,7 +299,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         return new BinaryTIDResponse(bytes, many, (end - start) / 1000D, (sortEnd - sortStart) / 1000D);
     }
 
-    private BinaryTIDResponse buildBinaryResponse(FastTermsResponse response, boolean needSort) {
+    private BinaryTIDResponse buildBinaryResponse(FastTermsResponse response) {
         int many = response.getTotalDataCount();
 
         long start = System.currentTimeMillis();
@@ -312,39 +313,18 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         offset += Utils.encodeLong(many, bytes, offset);
         first_byte = offset;
 
-        if (needSort) {
-            // merge-sort the results from each shard inline into our results byte[]
-            LongArrayMergeSortIterator itr = new LongArrayMergeSortIterator(response.getAllData(), response.getAllDataLengths());
-            int idx = 0;
-            while (itr.hasNext()) {
-                long _zdb_id = itr.next();
-                int blockno = (int) (_zdb_id >> 32);
-                char offno = (char) _zdb_id;
+        int idx = 0;
+        for (LongIterator itr = new NumberArrayLookupMergeSortIterator(response.getNumberLookup()); itr.hasNext();) {
+            long _zdb_id = itr.next();
+            int blockno = (int) (_zdb_id >> 32);
+            char offno = (char) _zdb_id;
 
-                if (offno == 0)
-                    throw new RuntimeException("Invalid offset number");
+            if (offno == 0)
+                throw new RuntimeException("Invalid offset number");
 
-                Utils.encodeInteger(blockno, bytes, first_byte + (idx * 6));
-                Utils.encodeCharacter(offno, bytes, first_byte + (idx * 6) + 4);
-                idx++;
-            }
-        } else {
-            // don't mess with sorting at all
-            for (int shard = 0; shard < response.getSuccessfulShards(); shard++) {
-                int cnt = response.getDataCount(shard);
-                long[] data = response.getData(shard);
-                for (int i = 0; i < cnt; i++) {
-                    long _zdb_id = data[i];
-                    int blockno = (int) (_zdb_id >> 32);
-                    char offno = (char) _zdb_id;
-
-                    if (offno == 0)
-                        throw new RuntimeException("Invalid offset number");
-
-                    offset += Utils.encodeInteger(blockno, bytes, offset);
-                    offset += Utils.encodeCharacter(offno, bytes, offset);
-                }
-            }
+            Utils.encodeInteger(blockno, bytes, first_byte + (idx * 6));
+            Utils.encodeCharacter(offno, bytes, first_byte + (idx * 6) + 4);
+            idx++;
         }
         long end = System.currentTimeMillis();
 

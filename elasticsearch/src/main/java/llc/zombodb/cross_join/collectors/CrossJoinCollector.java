@@ -15,9 +15,8 @@
  */
 package llc.zombodb.cross_join.collectors;
 
-import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.LongArrayList;
 import com.carrotsearch.hppc.ObjectArrayList;
+import llc.zombodb.utils.NumberArrayLookup;
 import llc.zombodb.visibility_query.ZomboDBTermsCollector;
 import org.apache.lucene.index.*;
 import org.apache.lucene.util.BitSet;
@@ -38,12 +37,8 @@ public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
     private SortedSetDocValues sortedSet;
     private SortedDocValues sortedDocValues;
 
-    public static CrossJoinCollector create(String fieldname, LongArrayList longs) {
-        return new LongCollector(fieldname, longs);
-    }
-
-    public static CrossJoinCollector create(String fieldname, IntArrayList ints) {
-        return new IntCollector(fieldname, ints);
+    public static CrossJoinCollector create(String fieldname, NumberArrayLookup[] bitSets) {
+        return new NumberCollector(fieldname, bitSets);
     }
 
     public static CrossJoinCollector create(String fieldname, ObjectArrayList<String> strings) {

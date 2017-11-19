@@ -15,7 +15,7 @@
  */
 package llc.zombodb.utils;
 
-public class LongArrayMergeSortIterator {
+public class LongArrayMergeSortIterator implements LongIterator {
     // Thanks, @ShitalShah from https://stackoverflow.com/a/31310853 for the inspiration
 
     private final long[][] arrays;

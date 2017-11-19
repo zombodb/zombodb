@@ -15,47 +15,48 @@
  */
 package llc.zombodb.fast_terms.collectors;
 
-import com.carrotsearch.hppc.ObjectArrayList;
+import com.carrotsearch.hppc.LongArrayList;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.SortedSetDocValues;
 
-public class StringCollector extends FastTermsCollector<Object[]> {
+public class NumberCollector extends FastTermsCollector<long[]> {
 
-    private class SortedDocValuesCollector implements InternalCollector {
-        @Override
+    private class NumericDocValuesCollector implements InternalCollector {
         public void collect(int doc) {
-            if (sorted == null)
+            if (numeric == null)
                 return;
 
-            data.add(sorted.get(doc).utf8ToString());
+            long value = numeric.get(doc);
+            setMinMax(value);
+            data.add(value);
         }
     }
 
-    private class SortedSetDocValuesCollector implements InternalCollector {
-        @Override
+    private class SortedNumericDocValuesCollector  implements InternalCollector {
         public void collect(int doc) {
-            if (sortedSet == null)
+            if (sortedNumeric == null)
                 return;
 
-            sortedSet.setDocument(doc);
-            for (long ord = sortedSet.nextOrd(); ord != SortedSetDocValues.NO_MORE_ORDS; ord = sortedSet.nextOrd()) {
-                data.add(sortedSet.lookupOrd(ord).utf8ToString());
+            sortedNumeric.setDocument(doc);
+            int cnt = sortedNumeric.count();
+            for (int i = 0; i < cnt; i++) {
+                long value = sortedNumeric.valueAt(i);
+                setMinMax(value);
+                data.add(value);
             }
         }
     }
 
-    private final ObjectArrayList<String> data = new ObjectArrayList<>();
+    private final LongArrayList data = new LongArrayList();
     private InternalCollector collector;
 
-    public StringCollector(String fieldname) {
+    public NumberCollector(String fieldname) {
         super(fieldname);
     }
 
-    public Object[] getData() {
+    public long[] getData() {
         return data.buffer;
     }
 
-    @Override
     public int getDataCount() {
         return data.size();
     }
@@ -68,17 +69,17 @@ public class StringCollector extends FastTermsCollector<Object[]> {
     @Override
     protected void setDocValuesType(DocValuesType type) {
         switch (type) {
-            case SORTED:
-                this.collector = new SortedDocValuesCollector();
+            case NUMERIC:
+                this.collector = new NumericDocValuesCollector();
                 break;
-            case SORTED_SET:
-                this.collector = new SortedSetDocValuesCollector();
+            case SORTED_NUMERIC:
+                this.collector = new SortedNumericDocValuesCollector();
                 break;
             case NONE:
                 this.collector = null;
                 break;
             default:
-                throw new IllegalStateException("Unrecognized doctype: " + type);
+                throw new IllegalStateException("Unsupported doctype: " + type);
         }
     }
 }

@@ -15,11 +15,8 @@
  */
 package llc.zombodb.fast_terms;
 
-import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.LongArrayList;
 import com.carrotsearch.hppc.ObjectArrayList;
-import llc.zombodb.utils.IntArrayMergeSortIterator;
-import llc.zombodb.utils.LongArrayMergeSortIterator;
+import llc.zombodb.utils.NumberArrayLookup;
 import llc.zombodb.utils.StringArrayMergeSortIterator;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
@@ -41,14 +38,12 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     }
 
     private DataType dataType;
-    private int[][] ints;
-    private long[][] longs;
-    private Object[][] strings;
-    private LongArrayList longArray;
-    private IntArrayList intArray;
-    private ObjectArrayList<String> stringArray;
+    private int numShards;
 
-    private int[] lengths;
+    private NumberArrayLookup[] lookups;
+    private Object[][] strings;
+    private int[] numStrings;
+    private ObjectArrayList<String> stringArray;
 
     public FastTermsResponse() {
 
@@ -57,33 +52,36 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     FastTermsResponse(int shardCount, int successfulShards, int failedShards, List<ShardOperationFailedException> shardFailures, DataType dataType) {
         super(shardCount, successfulShards, failedShards, shardFailures);
         this.dataType = dataType;
+        this.numShards = successfulShards;
         if (dataType != null) {
-            lengths = new int[shardCount];
             switch (dataType) {
                 case INT:
-                    ints = new int[shardCount][];
+                    lookups = new NumberArrayLookup[successfulShards];
                     break;
                 case LONG:
-                    longs = new long[shardCount][];
+                    lookups = new NumberArrayLookup[successfulShards];
                     break;
                 case STRING:
-                    strings = new Object[shardCount][];
+                    strings = new Object[successfulShards][];
+                    numStrings = new int[successfulShards];
                     break;
             }
         }
     }
 
     void addData(int shardId, Object data, int count) {
-        lengths[shardId] = count;
+        if (shardId > numShards)
+            numShards = shardId;
         switch (dataType) {
             case INT:
-                ints[shardId] = (int[]) data;
+                lookups[shardId] = (NumberArrayLookup) data;
                 break;
             case LONG:
-                longs[shardId] = (long[]) data;
+                lookups[shardId] = (NumberArrayLookup) data;
                 break;
             case STRING:
                 strings[shardId] = (Object[]) data;
+                numStrings[shardId] = count;
                 break;
         }
     }
@@ -92,74 +90,37 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return dataType;
     }
 
-    public <T> T getAllData() {
-        switch (dataType) {
-            case INT:
-                return (T) ints;
-            case LONG:
-                return (T) longs;
-            case STRING:
-                return (T) strings;
-            default:
-                throw new RuntimeException("Unrecognized type: " + dataType);
-        }
-    }
-
-    public <T> T getData(int shard) {
-        switch (dataType) {
-            case INT:
-                return (T) ints[shard];
-            case LONG:
-                return (T) longs[shard];
-            case STRING:
-                return (T) strings[shard];
-            default:
-                throw new RuntimeException("Unrecognized type: " + dataType);
-        }
-    }
-
-    public int[] getAllDataLengths() {
-        return lengths;
-    }
-
-    public int getDataCount(int shard) {
-        return lengths[shard];
+    public NumberArrayLookup[] getNumberLookup() {
+        return lookups;
     }
 
     public int getTotalDataCount() {
-        int total = 0;
-        for (int cnt : lengths)
-            total += cnt;
-        return total;
-    }
+        switch (dataType) {
+            case INT:
+            case LONG: {
+                int total = 0;
+                for (NumberArrayLookup bitset : lookups) {
+                    total +=  bitset.getValueCount();
+                }
+                return total;
+            }
 
-    public synchronized LongArrayList getLongArray() {
-        if (longArray == null) {
-            LongArrayMergeSortIterator sorter = new LongArrayMergeSortIterator(longs, lengths);
-            longArray = new LongArrayList(sorter.getTotal());
-            while (sorter.hasNext())
-                longArray.add(sorter.next());
-            longs = null;
+            case STRING: {
+                int total = 0;
+                for (int cnt : numStrings)
+                    total += cnt;
+                return total;
+            }
+
+            default:
+                throw new RuntimeException("Unexpected data type: " + dataType);
         }
-
-        return longArray;
     }
 
-    public synchronized IntArrayList getIntArray() {
-        if (intArray == null) {
-            IntArrayMergeSortIterator sorter = new IntArrayMergeSortIterator(ints, lengths);
-            intArray = new IntArrayList(sorter.getTotal());
-            while (sorter.hasNext())
-                intArray.add(sorter.next());
-            ints = null;
-        }
 
-        return intArray;
-    }
-    
     public synchronized ObjectArrayList<String> getStringArray() {
         if (stringArray == null) {
-            StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, lengths);
+            StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, numStrings);
             stringArray = new ObjectArrayList<String>(sorter.getTotal());
             while (sorter.hasNext())
                 stringArray.add(sorter.next());
@@ -169,33 +130,43 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return stringArray;
     }
 
+    public Object[] getStrings(int shardId) {
+        return strings[shardId];
+    }
+
+    public int getStringCount(int shardId) {
+        return numStrings[shardId];
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
+        numShards = in.readVInt();
         dataType = in.readEnum(DataType.class);
-        lengths = in.readIntArray();
         switch (dataType) {
             case INT:
-                ints = new int[lengths.length][];
+                lookups = new NumberArrayLookup[numShards];
                 break;
             case LONG:
-                longs = new long[lengths.length][];
+                lookups = new NumberArrayLookup[numShards];
                 break;
             case STRING:
-                strings = new Object[lengths.length][];
+                strings = new Object[numShards][];
+                numStrings = new int[numShards];
                 break;
         }
 
         for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
             switch (dataType) {
                 case INT:
-                    ints[shardId] = DeltaEncoder.decode_ints_from_deltas(in);
+                    lookups[shardId] = NumberArrayLookup.fromStreamInput(in);
                     break;
                 case LONG:
-                    longs[shardId] = DeltaEncoder.decode_longs_from_deltas(in);
+                    lookups[shardId] = NumberArrayLookup.fromStreamInput(in);
                     break;
                 case STRING:
                     strings[shardId] = in.readStringArray();
+                    numStrings[shardId] = strings[shardId].length;
                     break;
             }
         }
@@ -204,19 +175,19 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
+        out.writeVInt(numShards);
         out.writeEnum(dataType);
-        out.writeIntArray(lengths);
         for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
             switch (dataType) {
                 case INT:
-                    DeltaEncoder.encode_ints_as_deltas(ints[shardId], lengths[shardId], out);
+                    lookups[shardId].writeTo(out);
                     break;
                 case LONG:
-                    DeltaEncoder.encode_longs_as_deltas(longs[shardId], lengths[shardId], out);
+                    lookups[shardId].writeTo(out);
                     break;
                 case STRING:
-                    out.writeVInt(lengths[shardId]);
-                    for (int i = 0; i< lengths[shardId]; i++)
+                    out.writeVInt(numStrings[shardId]);
+                    for (int i = 0; i< numStrings[shardId]; i++)
                         out.writeString(String.valueOf(strings[shardId][i]));
                     break;
             }

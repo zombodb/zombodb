@@ -16,8 +16,7 @@
 package llc.zombodb.fast_terms;
 
 import llc.zombodb.fast_terms.collectors.FastTermsCollector;
-import llc.zombodb.fast_terms.collectors.IntCollector;
-import llc.zombodb.fast_terms.collectors.LongCollector;
+import llc.zombodb.fast_terms.collectors.NumberCollector;
 import llc.zombodb.fast_terms.collectors.StringCollector;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -79,8 +78,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
         int failedShards = 0;
         List<ShardOperationFailedException> shardFailures = null;
         FastTermsResponse.DataType dataType = null;
-        List<Object> datas = new ArrayList<>();
-        List<Integer> counts = new ArrayList<>();
+        List<ShardFastTermsResponse> successful = new ArrayList<>();
 
         for (int i = 0; i < shardsResponses.length(); i++) {
             Object shardResponse = shardsResponses.get(i);
@@ -102,15 +100,15 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                     else if (dataType != resp.getDataType())
                         throw new RuntimeException("Data Types from shards don't match");
 
-                    datas.add(resp.getData());
-                    counts.add(resp.getDataCount());
+                    successful.add(resp);
                 }
             }
         }
 
         FastTermsResponse response = new FastTermsResponse(shardsResponses.length(), successfulShards, failedShards, shardFailures, dataType);
-        for (int i = 0; i < datas.size(); i++) {
-            response.addData(i, datas.get(i), counts.get(i));
+        for (int i = 0; i < successful.size(); i++) {
+            ShardFastTermsResponse shardResponse = successful.get(i);
+            response.addData(i, shardResponse.getData(), shardResponse.getDataCount());
         }
         return response;
     }
@@ -142,11 +140,11 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
             switch (context.fieldMapper(fieldname).typeName()) {
                 case "integer":
                     type = FastTermsResponse.DataType.INT;
-                    collector = new IntCollector(fieldname);
+                    collector = new NumberCollector(fieldname);
                     break;
                 case "long":
                     type = FastTermsResponse.DataType.LONG;
-                    collector = new LongCollector(fieldname);
+                    collector = new NumberCollector(fieldname);
                     break;
                 case "keyword":
                     type = FastTermsResponse.DataType.STRING;
@@ -159,7 +157,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
             searcher.search(new ConstantScoreQuery(query.rewrite(engine.reader())), collector);
         }
 
-        return new ShardFastTermsResponse(request.shardId(), type, collector.getData(), collector.getDataCount());
+        return new ShardFastTermsResponse(request.shardId(), type, collector);
     }
 
     @Override
