@@ -13,7 +13,7 @@ import java.util.*;
  * If the array of values can fit within 32bits, we scale each value so we
  * can use a bitset for O(1) lookup,
  *
- * Otherwise the array of values is sorted and we binary search for O(n).
+ * Otherwise the array of values is sorted and we binary search for O(log(n)) lookup.
  */
 public class NumberArrayLookup implements Streamable {
     private static class NoCopyByteArrayOutputStream extends ByteArrayOutputStream {
