@@ -394,7 +394,11 @@ uint64 lookup_pkey(Oid heapRelOid, char *pkeyFieldname, ItemPointer ctid) {
 Oid create_trigger(char *zombodbNamespace, char *schemaname, char *relname, Oid relid, char *triggerName, char *functionName, Oid arg, int16 type) {
 	CreateTrigStmt *tgstmt;
 	RangeVar       *relrv = makeRangeVar(schemaname, relname, -1);
+#if (PG_VERSION_NUM < 90500)
 	Oid            triggerOid;
+#else
+	ObjectAddress triggerOid;
+#endif
 	List           *args  = NIL;
 
     if (arg != InvalidOid) {
@@ -424,5 +428,9 @@ Oid create_trigger(char *zombodbNamespace, char *schemaname, char *relname, Oid 
     /* Make the new trigger visible within this session */
     CommandCounterIncrement();
 
+#if (PG_VERSION_NUM < 90500)
 	return triggerOid;
+#else
+	return triggerOid.objectId;
+#endif
 }
