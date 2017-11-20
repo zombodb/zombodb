@@ -20,3 +20,13 @@ INSERT INTO zdb_normalizers(name, definition, is_default) VALUES (
     "char_filter": [],
     "filter": ["lowercase"]
   }', true);
+
+GRANT ALL ON zdb_analyzers TO PUBLIC;
+GRANT ALL ON zdb_char_filters TO PUBLIC;
+GRANT ALL ON zdb_filters TO PUBLIC;
+GRANT ALL ON zdb_mappings TO PUBLIC;
+GRANT ALL ON zdb_tokenizers TO PUBLIC;
+GRANT ALL ON zdb_normalizers TO PUBLIC;
+
+GRANT SELECT ON zdb_index_stats TO PUBLIC;
+GRANT SELECT ON zdb_index_stats_fast TO PUBLIC;

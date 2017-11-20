@@ -351,69 +351,48 @@ static void create_trigger_dependency(Oid indexRelOid, Oid triggerOid) {
     recordDependencyOn(&triggerAddress, &indexAddress, DEPENDENCY_INTERNAL);
 }
 
+static char *lookup_zdb_namespace(void) {
+    StringInfo sql = makeStringInfo();
+
+    appendStringInfo(sql, "select nspname from pg_namespace where oid = (select extnamespace from pg_extension where extname = 'zombodb');");
+    if (SPI_execute(sql->data, true, 1) != SPI_OK_SELECT || SPI_processed != 1)
+        elog(ERROR, "Cannot determine ZomboDB's namespace");
+
+    return SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
+}
+
 static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
-    StringInfo triggerSQL = makeStringInfo();
+    StringInfo sql = makeStringInfo();
+	StringInfo triggerName = makeStringInfo();
+	Oid triggerOid;
 
-	appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", heapRelOid, indexRelOid);
-	if (SPI_execute(triggerSQL->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
-		return;
+	appendStringInfo(triggerName, "zzzzdb_tuple_sync_for_%d_using_%d", heapRelOid, indexRelOid);
 
-	resetStringInfo(triggerSQL);
-    appendStringInfo(triggerSQL,
-                     "CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
-                             "       BEFORE UPDATE ON \"%s\".\"%s\" "
-                             "       FOR EACH ROW EXECUTE PROCEDURE zdbupdatetrigger();"
-                             "UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d';"
-                             "SELECT oid "
-                             "       FROM pg_trigger "
-                             "       WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'",
-                     heapRelOid, indexRelOid, schemaName, tableName, /* CREATE TRIGGER args */
-                     heapRelOid, indexRelOid, /* UPDATE pg_trigger args */
-                     heapRelOid, indexRelOid /* SELECT FROM pg_trigger args */
-    );
+	appendStringInfo(sql, "SELECT * FROM pg_trigger WHERE tgname = '%s'", triggerName->data);
+	if (SPI_execute(sql->data, true, 1) != SPI_OK_SELECT || SPI_processed != 0)
+		return;	/* trigger already exists */
 
-    if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1) {
-        Oid triggerOid = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
+	triggerOid = create_trigger(lookup_zdb_namespace(), schemaName, tableName, heapRelOid, triggerName->data, "zdbupdatetrigger", InvalidOid, TRIGGER_TYPE_UPDATE);
+	create_trigger_dependency(indexRelOid, triggerOid);
 
-        create_trigger_dependency(indexRelOid, triggerOid);
-    } else {
-        elog(ERROR, "Cannot create update trigger");
-    }
-
-    freeStringInfo(triggerSQL);
+	freeStringInfo(sql);
 }
 
 static void create_delete_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
-    StringInfo triggerSQL = makeStringInfo();
+    StringInfo sql = makeStringInfo();
+	StringInfo triggerName = makeStringInfo();
+	Oid triggerOid;
 
-	appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d'", heapRelOid, indexRelOid);
-	if (SPI_execute(triggerSQL->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
+	appendStringInfo(triggerName, "zzzzdb_tuple_delete_for_%d_using_%d", heapRelOid, indexRelOid);
+
+	appendStringInfo(sql, "SELECT * FROM pg_trigger WHERE tgname = '%s'", triggerName->data);
+	if (SPI_execute(sql->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
 		return;	/* trigger already exists */
 
-	resetStringInfo(triggerSQL);
-    appendStringInfo(triggerSQL,
-                     "CREATE TRIGGER zzzzdb_tuple_delete_for_%d_using_%d"
-                             "       BEFORE DELETE ON \"%s\".\"%s\" "
-                             "       FOR EACH ROW EXECUTE PROCEDURE zdbdeletetrigger(%d);"
-                             "UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d';"
-                             "SELECT oid "
-                             "       FROM pg_trigger "
-                             "       WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d'",
-                     heapRelOid, indexRelOid, schemaName, tableName, /* CREATE TRIGGER args */
-                     indexRelOid, /* zdbdeletetrigger() args */
-                     heapRelOid, indexRelOid, /* UPDATE pg_trigger args */
-                     heapRelOid, indexRelOid /* SELECT FROM pg_trigger args */
-    );
+	triggerOid = create_trigger(lookup_zdb_namespace(), schemaName, tableName, heapRelOid, triggerName->data, "zdbdeletetrigger", indexRelOid, TRIGGER_TYPE_DELETE);
+	create_trigger_dependency(indexRelOid, triggerOid);
 
-    if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1) {
-        Oid triggerOid = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
-
-        create_trigger_dependency(indexRelOid, triggerOid);
-    } else {
-        elog(ERROR, "Cannot create delete trigger");
-    }
-
-    freeStringInfo(triggerSQL);
+    freeStringInfo(sql);
 }
 
 void zdbam_init(void) {
@@ -517,16 +496,11 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 
         if (heapRel->rd_rel->relkind != 'm')
         {
-            StringInfo triggerSQL = makeStringInfo();
-
             /* put a trigger on the table to forward UPDATEs and DELETEs into our code for ES xact synchronization */
             SPI_connect();
 
 			create_update_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
 			create_delete_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
-
-            pfree(triggerSQL->data);
-            pfree(triggerSQL);
 
             SPI_finish();
         }
