@@ -1,18 +1,21 @@
 package llc.zombodb.utils;
 
+import com.zaxxer.sparsebits.SparseBitSet;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Streamable;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Allows quick lookup for a value in an array of longs.
- *
+ * <p>
  * If the array of values can fit within 32bits, we scale each value so we
  * can use a bitset for O(1) lookup,
- *
+ * <p>
  * Otherwise the array of values is sorted and we binary search for O(log(n)) lookup.
  */
 public class NumberArrayLookup implements Streamable {
@@ -32,7 +35,7 @@ public class NumberArrayLookup implements Streamable {
 
     private List<long[]> longs;
     private List<Integer> longLengths;
-    private BitSet bitset;
+    private SparseBitSet bitset;
     private int bitsetLength = -1;
     private long min;
 
@@ -51,10 +54,10 @@ public class NumberArrayLookup implements Streamable {
 
         this.min = min;
 
-        if (range >= Integer.MIN_VALUE && range < Integer.MAX_VALUE-1) {
+        if (range >= Integer.MIN_VALUE && range < Integer.MAX_VALUE - 1) {
             // the range of longs can scale to fit within 32 bits
             // so we're free to use a bitset
-            this.bitset = new BitSet((int) range+1);
+            this.bitset = new SparseBitSet((int) range + 1);
             this.longs = null;
             this.longLengths = null;
         } else {
@@ -87,7 +90,7 @@ public class NumberArrayLookup implements Streamable {
             int asint = (int) (value - min);
             return asint >= 0 && bitset.get(asint);
         } else {
-            for (int i=0; i<longs.size(); i++) {
+            for (int i = 0; i < longs.size(); i++) {
                 int length = longLengths.get(i);
                 if (Arrays.binarySearch(longs.get(i), 0, length, value) >= 0)
                     return true;
@@ -112,34 +115,38 @@ public class NumberArrayLookup implements Streamable {
 
     public LongIterator iterator() {
         if (bitset != null) {
-            PrimitiveIterator.OfInt itr = bitset.stream().iterator();
             return new LongIterator() {
-                private long pushbash;
+                private long pushback;
                 private boolean havePushback;
+                private int idx = bitset.nextSetBit(0);
+
                 @Override
                 public boolean hasNext() {
-                    return itr.hasNext() || havePushback;
+                    return idx >= 0 || havePushback;
                 }
 
                 @Override
                 public long next() {
-                    try {
-                        return havePushback ? pushbash : itr.nextInt() + min;
-                    } finally {
+                    if (havePushback) {
                         havePushback = false;
+                        return pushback;
+                    } else {
+                        long value = idx + min;
+                        idx = bitset.nextSetBit(idx + 1);
+                        return value;
                     }
                 }
 
                 @Override
                 public void push(long value) {
-                    pushbash = value;
+                    pushback = value;
                     havePushback = true;
                 }
             };
         } else if (longs.size() > 0) {
             long[][] arrays = new long[longs.size()][];
             int[] lengths = new int[longs.size()];
-            for (int i=0; i<arrays.length; i++) {
+            for (int i = 0; i < arrays.length; i++) {
                 arrays[i] = longs.get(i);
                 lengths[i] = longLengths.get(i);
             }
@@ -177,7 +184,7 @@ public class NumberArrayLookup implements Streamable {
             in.readBytes(bytes, 0, numbytes);
             try (ObjectInputStream oin = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
                 try {
-                    bitset = (BitSet) oin.readObject();
+                    bitset = (SparseBitSet) oin.readObject();
                 } catch (ClassNotFoundException cnfe) {
                     throw new IOException(cnfe);
                 }
@@ -187,7 +194,7 @@ public class NumberArrayLookup implements Streamable {
 
             longs = new ArrayList<>(numlongs);
             longLengths = new ArrayList<>(numlongs);
-            for (int i=0; i<numlongs; i++) {
+            for (int i = 0; i < numlongs; i++) {
                 longs.add(DeltaEncoder.decode_longs_from_deltas(in));
                 longLengths.add(longs.get(i).length);
             }
@@ -210,7 +217,7 @@ public class NumberArrayLookup implements Streamable {
             }
         } else {
             out.writeVInt(longs.size());
-            for (int i=0; i<longs.size(); i++)
+            for (int i = 0; i < longs.size(); i++)
                 DeltaEncoder.encode_longs_as_deltas(longs.get(i), longLengths.get(i), out);
         }
     }
