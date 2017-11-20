@@ -39,8 +39,8 @@ class CrossJoinQueryRewriteHelper {
         // for a random set of values.  If the values are (mostly) consecutive, we
         // would still win by doing the buildRangeOrSetQuery() below, but it's not
         // clear if spending the time to detect that is worth it for lists with more
-        // than 50k items
-        if (fastTerms.getTotalDataCount() > 50000)
+        // than 2.5M items
+        if (fastTerms.getTotalDataCount() > 2_500_000)
             return crossJoin;
 
         switch (fastTerms.getDataType()) {
@@ -165,6 +165,10 @@ class CrossJoinQueryRewriteHelper {
             if (head == tail) {
                 // just one value
                 points.add(head);
+            } else if (tail-head == 1) {
+                // just two points, not worth making a range
+                points.add(head);
+                points.add(tail);
             } else if (clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
                 // we have too many range clauses already
                 for (long i=head; i<=tail; i++)
@@ -207,6 +211,10 @@ class CrossJoinQueryRewriteHelper {
             if (head == tail) {
                 // just one value
                 points.add(head);
+            } else if (tail-head == 1) {
+                // just two points, not worth making a range
+                points.add(head);
+                points.add(tail);
             } else if (clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
                 // we have too many range clauses already
                 for (int i=head; i<=tail; i++)
