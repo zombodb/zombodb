@@ -45,5 +45,6 @@ uint64     convert_xid(TransactionId xid);
 
 Expr *evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod, Oid result_collation);
 uint64 lookup_pkey(Oid heapRelOid, char *pkeyFieldname, ItemPointer ctid);
+Oid create_trigger(char *zombodbNamespace, char *schemaname, char *relname, Oid relid, char *triggerName, char *functionName, Oid arg, int16 type);
 
 #endif
