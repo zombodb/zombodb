@@ -53,6 +53,9 @@ public class NumberArrayLookupMergeSortIterator implements LongIterator {
                 }
             }
         }
+
+        assert(winner != null);
+
         return value;
     }
 

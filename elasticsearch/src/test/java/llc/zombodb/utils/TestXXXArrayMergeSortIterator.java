@@ -46,15 +46,20 @@ public class TestXXXArrayMergeSortIterator {
 
                 long[] values = new long[many];
                 long min = Long.MAX_VALUE, max = Long.MIN_VALUE;
-                for (int j = 0; j < many; j++) {
-                    values[j] = rnd.nextLong() % (MAX * 10);
-                    if (values[j] < min)
-                        min = values[j];
-                    if (values[j] > max)
-                        max = values[j];
+                if (many > 0) {
+                    values[0] = Long.MAX_VALUE;
+                    for (int j = 0; j < many; j++) {
+                        if (j > 0)
+                            values[j] = rnd.nextLong() % (MAX * 10);
+                        if (values[j] < min)
+                            min = values[j];
+                        if (values[j] > max)
+                            max = values[j];
+                    }
                 }
                 longs[i] = new NumberArrayLookup(min, max);
                 longs[i].setAll(values, many);
+
             }
 
             NumberArrayLookupMergeSortIterator itr = new NumberArrayLookupMergeSortIterator(longs);
