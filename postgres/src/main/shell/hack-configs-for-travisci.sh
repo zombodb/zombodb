@@ -15,6 +15,7 @@ autovacuum=off
 max_connections=10
 work_mem=64kB
 fsync=off
+zombodb.default_elasticsearch_url='http://localhost:9200/'
 DONE
 
 cat << DONE > /etc/postgresql/9.5/main/pg_hba.conf

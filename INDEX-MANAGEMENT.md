@@ -23,7 +23,8 @@ The output of the `zdb(table)` function is what is actually indexed -- which is 
 The `WITH` settings are:
 
 ### Basic Settings
-- `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).
+- `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).  If the value is `default`, then the Postgres GUC setting `zombodb.default_elasticsearch_url` (from `postgresql.conf`) will be used.  See below for that GUC setting.
+
 - `shards` **optional**:  The number of Elasticsearch shards to use.  The default is `5`.  Changing this value requires a `REINDEX` before the new value becomes live.
 - `replicas` **optional**:  The number of Elasticsearch replicas to use.  The default is `1` and allowed values are `[0..64]`.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.
 
@@ -42,6 +43,11 @@ The `WITH` settings are:
 - `refresh_interval` **optional**:  This setting directly relates to Elasticsearch's [`index.refresh_interval`](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/setup-configuration.html#configuration-index-settings).  The default value is `-1`, meaning ZomboDB will control index refreshes such that modified rows are always immediately visible.  If a time delay is okay, change this setting to something like `5s` for five seconds.  This can help improve single-record INSERT/UPDATE performance at the expense of when the rows are actually searchable.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.    
 - `ignore_visibility` **optional**:  Controls, on a per-index level, if queries that require row visibility information to be MVCC-correct should honor it.  The default for `ignore_visibility` is `false`, meaning all queries are MVCC-correct.  Set this to `true` if you don't need exact values for aggregates and `zdb_estimate_count()`.
 - `optimize_after` **optional**:  An integer value that represents the number of deleted documents in the Elasticsearch index after which ZomboDB shoud expunge deleted documents.  The default is zero, meaning never do this (i.e., let Elasticsearch manage it on its own segment merge schedule), but specifying a value can help keep performance in check for tables that experience high UPDATE/DELETE loads.
+
+
+### `postgresql.conf`-only Settings
+
+- `zombodb.default_elasticsearch_url`:  This is a string "GUC" that can be used by `CREATE INDEX` statements when its `url` option has the value of `default`.  This allows an administrator to set a system-wide Elasticsearch cluster URL for all ZomboDB indexes.  This setting can **only** be set in `postgresql.conf` and changing it requires at least a `pg_ctl reload` or a server restart.  For administrators changing the value from one URL to another:  You'll need to `REINDEX` all existing ZomboDB indexes and you otherwise choose to use this at your own risk.
 
 ### Per-session Settings
 
