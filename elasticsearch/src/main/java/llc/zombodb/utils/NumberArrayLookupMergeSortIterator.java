@@ -43,7 +43,7 @@ public class NumberArrayLookupMergeSortIterator implements LongIterator {
         for (LongIterator itr : iterators) {
             if (itr.hasNext()) {
                 long next = itr.next();
-                if (next < value) {
+                if (next <= value) {
                     if (winner != null) // push the old value back
                         winner.push(value);
                     value = next;
