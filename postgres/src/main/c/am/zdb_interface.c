@@ -40,6 +40,7 @@ bool        zdb_batch_mode_guc;
 bool        zdb_ignore_visibility_guc;
 bool        zdb_force_row_estimates_guc;
 int         zdb_default_row_estimate_guc;
+char       *zdb_default_elasticsearch_url_guc;
 
 int ZDB_LOG_LEVEL;
 static const struct config_enum_entry zdb_log_level_options[] = {
@@ -99,9 +100,18 @@ static void wrapper_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor
 
 static void wrapper_transactionFinish(ZDBIndexDescriptor *indexDescriptor, ZDBTransactionCompletionType completionType);
 
+static bool validate_default_elasticsearch_url (char **newval, void **extra, GucSource source) {
+    /* valid only if it's NULL or ends with a forward slash */
+	char *str = *newval;
+	return str == NULL || str[strlen(str) - 1] == '/';
+}
+
 static void validate_url(char *str) {
-    if (str && str[strlen(str) - 1] != '/')
-        elog(ERROR, "'url' index option must end in a slash");
+    /* valid only if it's NULL or ends with a forward slash */
+	if (str == NULL || str[strlen(str) - 1] == '/' || strcmp("default", str) == 0)
+        return;
+
+    elog(ERROR, "'url' index option must end in a slash");
 }
 
 static void validate_shadow(char *str) {
@@ -139,6 +149,7 @@ void zdb_index_init(void) {
     DefineCustomEnumVariable("zombodb.log_level", "ZomboDB's logging level", NULL, &ZDB_LOG_LEVEL, DEBUG1, zdb_log_level_options, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomBoolVariable("zombodb.force_row_estimation", "If true, SELECT statements will always get a row estimate from Elasticsearch, regardless of index settings", NULL, &zdb_force_row_estimates_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
     DefineCustomIntVariable("zombodb.default_row_estimates", "The default row estimate ZDB should use for all indexes without an explicit option", NULL, &zdb_default_row_estimate_guc, 2500, 1, INT_MAX, PGC_USERSET, 0, NULL, NULL, NULL);
+	DefineCustomStringVariable("zombodb.default_elasticsearch_url", "The default Elasticsearch URL ZomboDB should use if not specified on the index", NULL, &zdb_default_elasticsearch_url_guc, NULL, PGC_SIGHUP, 0, validate_default_elasticsearch_url, NULL, NULL);
 
     add_string_reloption(RELOPT_KIND_ZDB, "url", "Server URL and port", NULL, validate_url);
     add_string_reloption(RELOPT_KIND_ZDB, "shadow", "A zombodb index to which this one should shadow", NULL, validate_shadow);
@@ -231,7 +242,18 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         /* or just from the actual index if we're not a shadow */
         desc->shards    = ZDBIndexOptionsGetNumberOfShards(indexRel);
         desc->indexName = pstrdup(RelationGetRelationName(indexRel));
-        desc->url       = ZDBIndexOptionsGetUrl(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(indexRel));
+		if (ZDBIndexOptionsGetUrl(indexRel) == NULL) {
+			elog(ERROR, "Must set 'url' option on index or set 'zombodb.default_elasticsearch_url' in postgresql.conf");
+		} else if (strcmp(ZDBIndexOptionsGetUrl(indexRel), "default") == 0) {
+			/* use the default from postgresql.conf */
+			if (zdb_default_elasticsearch_url_guc == NULL)
+				elog(ERROR, "Must set 'zombodb.default_elasticsearch_url' in postgresql.conf");
+			else
+				desc->url = zdb_default_elasticsearch_url_guc;
+		} else {
+			/* use the url the user specified */
+			desc->url = ZDBIndexOptionsGetUrl(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(indexRel));
+		}
 
         desc->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
     }

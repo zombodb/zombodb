@@ -23,7 +23,7 @@ The output of the `zdb(table)` function is what is actually indexed -- which is 
 The `WITH` settings are:
 
 ### Basic Settings
-- `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).
+- `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).  If the value is `default`, then the Postgres GUC setting `zombodb.default_elasticsearch_url` (from `postgresql.conf`) will be used.  See below for that GUC setting.
 
 - `shards` **optional**:  The number of Elasticsearch shards to use.  The default is `5`.  Changing this value requires a `REINDEX` before the new value becomes live.
 
@@ -65,6 +65,10 @@ The `WITH` settings are:
 
 
 - `default_row_estimate` **optional**:  An integer value that ZomboDB will use during query planning as the number of rows returned by any query using this index.  The default value is set to the value of the "GUC" named `zombodb.default_row_estimate` (which defaults to `2500`).  A value of `-1` will cause ZomboDB to ask Elasticsearch directly how many rows are likely to be returned.  This will always generate a query plan that's tailored to the exact query, at the cost of an additional round-trip (and "_count" search) to Elasticsearch per query.  `2500` was chosen as the default as it doesn't disrupt the plans any of ZomboDB's unit tests at the time this option was implemented.  See below for the "GUC" named `zombodb.force_row_estimation` that can be used on a per-transaction basis to force ZomboDB to ask Elasticsearch on a query-by-query basis.
+
+### `postgresql.conf`-only Settings
+
+- `zombodb.default_elasticsearch_url`:  This is a string "GUC" that can be used by `CREATE INDEX` statements when its `url` option has the value of `default`.  This allows an administrator to set a system-wide Elasticsearch cluster URL for all ZomboDB indexes.  This setting can **only** be set in `postgresql.conf` and changing it requires at least a `pg_ctl reload` or a server restart.  For administrators changing the value from one URL to another:  You'll need to `REINDEX` all existing ZomboDB indexes and you otherwise choose to use this at your own risk.
 
 ### Per-session Settings
 

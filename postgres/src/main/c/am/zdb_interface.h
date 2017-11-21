@@ -172,6 +172,7 @@ extern PGDLLEXPORT bool        zdb_batch_mode_guc;
 extern PGDLLEXPORT bool        zdb_ignore_visibility_guc;
 extern PGDLLEXPORT bool        zdb_force_row_estimates_guc;
 extern PGDLLEXPORT int         zdb_default_row_estimate_guc;
+extern PGDLLEXPORT char       *zdb_default_elasticsearch_url_guc;
 extern PGDLLEXPORT int         ZDB_LOG_LEVEL;
 
 void               zdb_index_init(void);
