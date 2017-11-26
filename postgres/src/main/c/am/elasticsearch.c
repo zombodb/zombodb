@@ -243,7 +243,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_source\": { \"enabled\": %s },"
             "          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
+            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"optimize_for_joins\": \"%s\" },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
             "      },"
@@ -265,6 +265,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
                      indexDescriptor->store ? "true" : "false",
                      lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false),
 					 indexDescriptor->alwaysResolveJoins ? "true" : "false",
+                     indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null",
 					 fieldProperties, shards,
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
@@ -344,15 +345,18 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "   \"data\": {"
             "      \"_source\": { \"enabled\": %s },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
+            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"optimize_for_joins\": \"%s\" },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"
             "    },"
 			SECONDARY_TYPES_MAPPING
             "}",
-             indexDescriptor->store ? "true" : "false",
-             pkey,
-             indexDescriptor->alwaysResolveJoins ? "true" : "false", properties);
+                     indexDescriptor->store ? "true" : "false",
+                     pkey,
+                     indexDescriptor->alwaysResolveJoins ? "true" : "false",
+                     indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null",
+                     properties
+    );
 
     appendStringInfo(endpoint, "%s%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("PUT", endpoint->data, request, indexDescriptor->compressionLevel);
@@ -884,9 +888,9 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
     ListCell *lc;
     int i=0;
 
-	appendStringInfo(endpoint, "%s%s/data/_zdbbulk", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s%s/data/_zdbbulk?optimize_for_joins=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null");
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-        appendStringInfo(endpoint, "?refresh=true");
+        appendStringInfo(endpoint, "&refresh=true");
     }
 
     foreach (lc, ctidsToDelete) {
@@ -1053,7 +1057,7 @@ elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ct
         StringInfo endpoint = makeStringInfo();
 
         /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-        appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests);
+        appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d&optimize_for_joins=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests, indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null");
 
         /* send the request to index this batch */
         rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, indexDescriptor->compressionLevel);
@@ -1083,7 +1087,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
-            appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests);
+            appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d&optimize_for_joins=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests, indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null");
 
             if (batch->nrequests == 0) {
 				/*

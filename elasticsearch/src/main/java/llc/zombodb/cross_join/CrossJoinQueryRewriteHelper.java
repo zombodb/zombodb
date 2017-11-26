@@ -16,41 +16,43 @@
 package llc.zombodb.cross_join;
 
 import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.LongArrayList;
 import llc.zombodb.fast_terms.FastTermsResponse;
+import llc.zombodb.utils.LongIterator;
 import llc.zombodb.utils.NumberArrayLookupMergeSortIterator;
+import llc.zombodb.utils.PushbackIterator;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
 
-import java.util.AbstractCollection;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 class CrossJoinQueryRewriteHelper {
+    static class Range {
+        private long start, end;
+
+        public Range(long start, long end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
 
     static Query rewriteQuery(CrossJoinQuery crossJoin) {
         FastTermsResponse fastTerms = crossJoin.fastTerms;
+        int total = fastTerms.getTotalDataCount();
 
-        // chosen through some quick benchmarking.  seems to be the break-even point
-        // between a XXXInSet query and just walking the entire set of doc values
-        // for a random set of values.  If the values are (mostly) consecutive, we
-        // would still win by doing the buildRangeOrSetQuery() below, but it's not
-        // clear if spending the time to detect that is worth it for lists with more
-        // than 2.5M items
-        if (fastTerms.getTotalDataCount() > 2_500_000)
+        if (total == 0 || total >= 50_000)
             return crossJoin;
 
         switch (fastTerms.getDataType()) {
             case INT:
                 return buildIntRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()));
             case LONG:
-                return buildLongRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()));
+                return buildLongRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), fastTerms.getRanges());
             case STRING: {
                 BooleanQuery.Builder builder = new BooleanQuery.Builder();
-                for (int shardId = 0; shardId < fastTerms.getSuccessfulShards(); shardId++) {
+                for (int shardId = 0; shardId < fastTerms.getNumShards(); shardId++) {
                     int count = fastTerms.getStringCount(shardId);
                     if (count > 0) {
                         final Object[] strings = fastTerms.getStrings(shardId);
@@ -113,21 +115,18 @@ class CrossJoinQueryRewriteHelper {
         };
     }
 
-    private static Query newSetQuery(String field, int count, long... values) {
+    private static Query newSetQuery(String field, LongIterator itr) {
         final BytesRef encoded = new BytesRef(new byte[Long.BYTES]);
 
         return new PointInSetQuery(field, 1, Long.BYTES,
                 new PointInSetQuery.Stream() {
 
-                    int upto;
-
                     @Override
                     public BytesRef next() {
-                        if (upto == count) {
+                        if (!itr.hasNext()) {
                             return null;
                         } else {
-                            LongPoint.encodeDimension(values[upto], encoded.bytes, 0);
-                            upto++;
+                            LongPoint.encodeDimension(itr.next(), encoded.bytes, 0);
                             return encoded;
                         }
                     }
@@ -140,47 +139,42 @@ class CrossJoinQueryRewriteHelper {
         };
     }
 
-    private static Query buildLongRangeOrSetQuery(String field, NumberArrayLookupMergeSortIterator itr) {
-        LongArrayList points = new LongArrayList();
-        List<Query> clauses = new ArrayList<>();
+    private static Query buildLongRangeOrSetQuery(String field, NumberArrayLookupMergeSortIterator itr, Collection<long[]> ranges) {
+        List<Range> rangeList = new ArrayList<>();
 
-        while (itr.hasNext()) {
-            long head, tail;    // range bounds, inclusive
-            long next = itr.next();
+        for (long[] range : ranges) {
+            for (int i = 0; i < range.length; i += 2)
+                rangeList.add(new Range(range[i], range[i + 1]));
+        }
 
-            head = tail = next;
-            while (itr.hasNext()) {
-                next = itr.next();
-                if (next != tail+1) {
-                    // we need 'next' for the subsequent iteration
-                    itr.push(next);
-                    break;
-                } else if (tail == next) {
-                    // it's a duplicate value, so we can de-dup it
-                    continue;
-                }
-                tail++;
-            }
+        // sort lowest to highest and merge together adjacent ranges
+        rangeList.sort((o1, o2) -> Long.compare(o1.end, o2.start));
 
-            if (head == tail) {
-                // just one value
-                points.add(head);
-            } else if (tail-head == 1) {
-                // just two points, not worth making a range
-                points.add(head);
-                points.add(tail);
-            } else if (clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
-                // we have too many range clauses already
-                for (long i=head; i<=tail; i++)
-                    points.add(i);
-            } else {
-                // it's a range
-                clauses.add(LongPoint.newRangeQuery(field, head, tail));
+        for (PushbackIterator<Range> i = new PushbackIterator<>(rangeList.iterator()); i.hasNext(); ) {
+            Range a = i.next();
+            if (!i.hasNext())
+                break;
+            Range b = i.next();
+
+            if (a.end + 1 == b.start) {
+                // these two ranges can be merged
+                a.end = b.end;
+
+                // and we don't need 'b' anymore
+                i.remove();
+
+                // but we want to see if 'a' can merge with the next range
+                i.push(a);
             }
         }
 
-        if (points.size() > 0) {
-            clauses.add(newSetQuery(field, points.size(), points.buffer));
+        List<Query> clauses = new ArrayList<>();
+        for (Range range : rangeList) {
+            clauses.add(LongPoint.newRangeQuery(field, range.start, range.end));
+        }
+
+        if (itr.hasNext()) {
+            clauses.add(newSetQuery(field, itr));
         }
 
         return buildQuery(clauses);
@@ -197,7 +191,7 @@ class CrossJoinQueryRewriteHelper {
             head = tail = next;
             while (itr.hasNext()) {
                 next = (int) itr.next();
-                if (next != tail+1) {
+                if (next != tail + 1) {
                     // we need 'next' for the subsequent iteration
                     itr.push(next);
                     break;
@@ -211,13 +205,13 @@ class CrossJoinQueryRewriteHelper {
             if (head == tail) {
                 // just one value
                 points.add(head);
-            } else if (tail-head == 1) {
+            } else if (tail - head == 1) {
                 // just two points, not worth making a range
                 points.add(head);
                 points.add(tail);
-            } else if (clauses.size() >= BooleanQuery.getMaxClauseCount()-1) {
+            } else if (clauses.size() >= BooleanQuery.getMaxClauseCount() - 1) {
                 // we have too many range clauses already
-                for (int i=head; i<=tail; i++)
+                for (int i = head; i <= tail; i++)
                     points.add(i);
             } else {
                 // it's a range
@@ -236,10 +230,19 @@ class CrossJoinQueryRewriteHelper {
         if (clauses.size() == 1) {
             return clauses.get(0);
         } else {
-            BooleanQuery.Builder builder = new BooleanQuery.Builder();
-            for (Query q : clauses)
-                builder.add(q, BooleanClause.Occur.SHOULD);
-            return builder.build();
+            BooleanQuery.Builder top;
+            BooleanQuery.Builder builder = top = new BooleanQuery.Builder();
+            int cnt = 0;
+            for (Query q : clauses) {
+                if (cnt++ >= BooleanQuery.getMaxClauseCount()-1) {
+                    BooleanQuery.Builder tmp = new BooleanQuery.Builder();
+                    tmp.add(builder.build(), BooleanClause.Occur.SHOULD);
+                    builder = tmp;
+                } else {
+                    builder.add(q, BooleanClause.Occur.SHOULD);
+                }
+            }
+            return top.build();
         }
     }
 

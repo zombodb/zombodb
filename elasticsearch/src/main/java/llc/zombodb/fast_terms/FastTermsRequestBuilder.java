@@ -39,4 +39,9 @@ public class FastTermsRequestBuilder extends BroadcastOperationRequestBuilder<Fa
         request.fieldname(fieldname);
         return this;
     }
+
+    public FastTermsRequestBuilder setSourceShard(int shardId) {
+        request.sourceShardId(shardId);
+        return this;
+    }
 }

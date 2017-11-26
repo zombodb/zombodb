@@ -4,7 +4,6 @@ public class NumberArrayLookupMergeSortIterator implements LongIterator {
     // Thanks, @ShitalShah from https://stackoverflow.com/a/31310853 for the inspiration
 
     private final LongIterator[] iterators;
-    private final int[] lengths;
     private final int finalTotal;
     private int total;
 
@@ -12,16 +11,19 @@ public class NumberArrayLookupMergeSortIterator implements LongIterator {
     private boolean havePushback = false;
 
     public NumberArrayLookupMergeSortIterator(NumberArrayLookup[] arrays) {
-        this.iterators = new LongIterator[arrays.length];
-        this.lengths = new int[arrays.length];
-        for (int i=0; i<arrays.length; i++) {
-            NumberArrayLookup lookup = arrays[i];
+        if (arrays != null) {
+            this.iterators = new LongIterator[arrays.length];
+            for (int i = 0; i < arrays.length; i++) {
+                NumberArrayLookup lookup = arrays[i];
 
-            iterators[i] = lookup.iterator();
-            lengths[i] = lookup.getValueCount();
-            total += lengths[i];
+                iterators[i] = lookup.iterator();
+                total += lookup.getValueCount();
+            }
+            this.finalTotal = total;
+        } else {
+            this.iterators = new LongIterator[0];
+            this.finalTotal = 0;
         }
-        this.finalTotal = total;
     }
 
     public void push(long value) {

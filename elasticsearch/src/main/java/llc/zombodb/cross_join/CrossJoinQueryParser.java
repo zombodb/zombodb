@@ -44,6 +44,7 @@ class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>, Writea
         String leftFieldname = null;
         String rightFieldname = null;
         QueryBuilder query = null;
+        boolean canOptimizeJoins = false;
 
         String currentFieldName = null;
         XContentParser.Token token;
@@ -75,6 +76,9 @@ class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>, Writea
                         case "right_fieldname":
                             rightFieldname = parser.text();
                             break;
+                        case "can_optimize_joins":
+                            canOptimizeJoins = parser.booleanValue();
+                            break;
                     }
                 } else if (token == XContentParser.Token.START_OBJECT) {
                     switch (currentFieldName) {
@@ -86,6 +90,6 @@ class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>, Writea
             }
         }
 
-        return Optional.of(new CrossJoinQueryBuilder(clusterName, host, port, index, type, leftFieldname, rightFieldname, query));
+        return Optional.of(new CrossJoinQueryBuilder(clusterName, host, port, index, type, leftFieldname, rightFieldname, query, canOptimizeJoins));
     }
 }

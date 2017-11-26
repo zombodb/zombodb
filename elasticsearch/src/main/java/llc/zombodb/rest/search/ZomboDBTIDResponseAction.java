@@ -31,6 +31,7 @@ import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.rest.*;
@@ -38,6 +39,7 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
+import java.util.Collections;
 
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -134,7 +136,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 if (response.getFailedShards() > 0) {
                     /* didn't work, so return failure */
                     XContentBuilder builder = XContentBuilder.builder(JsonXContent.jsonXContent).prettyPrint();
-                    response.toXContent(builder, null);
+                    response.toXContent(builder, new ToXContent.MapParams(Collections.emptyMap()));
                     return channel -> new BytesRestResponse(response.status(), builder);
                 }
 

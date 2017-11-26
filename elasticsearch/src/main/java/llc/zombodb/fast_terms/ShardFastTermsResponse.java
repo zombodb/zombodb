@@ -26,13 +26,18 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class ShardFastTermsResponse extends BroadcastShardResponse {
+
     private FastTermsResponse.DataType dataType;
     private int dataCount;
     private NumberArrayLookup bitset;
     private Object[] strings;
 
-    public ShardFastTermsResponse() {
+    ShardFastTermsResponse() {
+        super();
+    }
 
+    ShardFastTermsResponse(ShardId shardId) {
+        super(shardId);
     }
 
     public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, FastTermsCollector collector) {
@@ -80,35 +85,46 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
-        dataType = in.readEnum(FastTermsResponse.DataType.class);
-        switch (dataType) {
-            case INT:
-                bitset = NumberArrayLookup.fromStreamInput(in);
-                break;
-            case LONG:
-                bitset = NumberArrayLookup.fromStreamInput(in);
-                break;
-            case STRING:
-                strings = in.readStringArray();
-                dataCount = strings.length;
-                break;
+        if (in.readBoolean()) {
+            dataType = in.readEnum(FastTermsResponse.DataType.class);
+            switch (dataType) {
+                case INT:
+                case LONG:
+                    if (in.readBoolean()) {
+                        bitset = NumberArrayLookup.fromStreamInput(in);
+                    }
+                    break;
+                case STRING:
+                    if (in.readBoolean()) {
+                        strings = in.readStringArray();
+                        dataCount = strings.length;
+                    }
+                    break;
+            }
         }
     }
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
-        out.writeEnum(dataType);
-        switch (dataType) {
-            case INT:
-                bitset.writeTo(out);
-                break;
-            case LONG:
-                bitset.writeTo(out);
-                break;
-            case STRING:
-                write_strings(out);
-                break;
+        out.writeBoolean(dataType != null);
+        if (dataType != null) {
+            out.writeEnum(dataType);
+            switch (dataType) {
+                case INT:
+                case LONG:
+                    out.writeBoolean(bitset != null);
+                    if (bitset != null) {
+                        bitset.writeTo(out);
+                    }
+                    break;
+                case STRING:
+                    out.writeBoolean(strings != null);
+                    if (strings != null) {
+                        write_strings(out);
+                    }
+                    break;
+            }
         }
     }
 

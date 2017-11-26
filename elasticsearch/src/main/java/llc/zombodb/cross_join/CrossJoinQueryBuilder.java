@@ -41,6 +41,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
     private String leftFieldname;
     private String rightFieldname;
     private QueryBuilder query;
+    private boolean canOptimizeJoins;
 
     public CrossJoinQueryBuilder() {
         super();
@@ -56,9 +57,10 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         leftFieldname = in.readString();
         rightFieldname = in.readString();
         query = in.readNamedWriteable(QueryBuilder.class);
+        canOptimizeJoins = in.readBoolean();
     }
 
-    public CrossJoinQueryBuilder(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query) {
+    public CrossJoinQueryBuilder(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins) {
         this.clusterName = clusterName;
         this.host = host;
         this.port = port;
@@ -67,6 +69,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         this.leftFieldname = leftFieldname;
         this.rightFieldname = rightFieldname;
         this.query = query;
+        this.canOptimizeJoins = canOptimizeJoins;
     }
 
     public CrossJoinQueryBuilder clusterName(String clusterName) {
@@ -109,6 +112,15 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         return this;
     }
 
+    public boolean canOptimizeJoins() {
+        return canOptimizeJoins;
+    }
+
+    public CrossJoinQueryBuilder canOptimizeJoins(boolean canOptimizeJoins) {
+        this.canOptimizeJoins = canOptimizeJoins;
+        return this;
+    }
+
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
         out.writeString(clusterName);
@@ -119,6 +131,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         out.writeString(leftFieldname);
         out.writeString(rightFieldname);
         out.writeNamedWriteable(query);
+        out.writeBoolean(canOptimizeJoins);
     }
 
     @Override
@@ -131,13 +144,14 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         builder.field("type", type);
         builder.field("left_fieldname", leftFieldname);
         builder.field("right_fieldname", rightFieldname);
+        builder.field("can_optimize_joins", canOptimizeJoins);
         builder.field("query", query);
         builder.endObject();
     }
 
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
-        return new CrossJoinQuery(clusterName, host, port, index, type, leftFieldname, rightFieldname, query, context.fieldMapper(leftFieldname).typeName());
+        return new CrossJoinQuery(clusterName, host, port, index, type, leftFieldname, rightFieldname, query, canOptimizeJoins, context.fieldMapper(leftFieldname).typeName(), context.getShardId());
     }
 
     @Override
@@ -149,12 +163,13 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
                 Objects.equals(type, other.type) &&
                 Objects.equals(leftFieldname, other.leftFieldname) &&
                 Objects.equals(rightFieldname, other.rightFieldname) &&
-                Objects.equals(query, other.query);
+                Objects.equals(query, other.query) &&
+                Objects.equals(canOptimizeJoins, canOptimizeJoins);
     }
 
     @Override
     protected int doHashCode() {
-        return Objects.hash(clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
+        return Objects.hash(clusterName, host, port, index, type, leftFieldname, rightFieldname, query, canOptimizeJoins);
     }
 
     @Override

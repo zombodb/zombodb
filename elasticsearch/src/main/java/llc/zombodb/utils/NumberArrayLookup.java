@@ -1,5 +1,6 @@
 package llc.zombodb.utils;
 
+import com.carrotsearch.hppc.LongArrayList;
 import com.zaxxer.sparsebits.SparseBitSet;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -40,9 +41,9 @@ public class NumberArrayLookup implements Streamable {
     private long min;
 
     public static NumberArrayLookup fromStreamInput(StreamInput in) throws IOException {
-        NumberArrayLookup sbs = new NumberArrayLookup();
-        sbs.readFrom(in);
-        return sbs;
+        NumberArrayLookup nal = new NumberArrayLookup();
+        nal.readFrom(in);
+        return nal;
     }
 
     private NumberArrayLookup() {
@@ -68,6 +69,12 @@ public class NumberArrayLookup implements Streamable {
         }
     }
 
+    private LongArrayList ranges;
+
+    public long[] getRanges() {
+        return ranges == null ? null : ranges.buffer;
+    }
+
     /**
      * May sort the incoming long[] of bits using {@link java.util.Arrays#sort(long[])}
      */
@@ -75,6 +82,38 @@ public class NumberArrayLookup implements Streamable {
         if (bitset != null) {
             for (int i = 0; i < length; i++)
                 bitset.set((int) (bits[i] - min));
+
+            for (LongIterator itr = iterator(); itr.hasNext();) {
+                long head, tail;
+
+                head = tail = itr.next();
+                while (itr.hasNext()) {
+                    long next = itr.next();
+                    if (next != tail+1) {
+                        itr.push(next); // save for next time
+                        break;
+                    }
+                    tail = next;
+                }
+
+                if (tail - head > 1014) {
+                    // we have a range of sufficient values to care about
+
+                    // clear bits included in this range
+                    bitset.clear((int) (head-min), (int) ((tail+1)-min));
+
+                    // record the range as two longs
+                    try {
+                        ranges.add(head);
+                        ranges.add(tail);
+                    } catch (NullPointerException npe) {
+                        // first time when 'ranges' is uninitialized
+                        ranges = new LongArrayList();
+                        ranges.add(head);
+                        ranges.add(tail);
+                    }
+                }
+            }
         } else {
             Arrays.sort(bits, 0, length);
             longs.add(bits);
@@ -88,7 +127,22 @@ public class NumberArrayLookup implements Streamable {
     public boolean get(long value) {
         if (bitset != null) {
             int asint = (int) (value - min);
-            return asint >= 0 && bitset.get(asint);
+            if (!(asint >= 0 && bitset.get(asint))) {
+                // value is not in our bitset
+                if (ranges != null) {
+                    // scan through ranges to see if the incoming value is a member
+                    for (int i = 0; i < ranges.elementsCount; i += 2) {
+                        long low = ranges.buffer[i];
+                        long high = ranges.buffer[i + 1];
+                        if (value >= low && value <= high)
+                            return true;    // found it
+                    }
+                }
+                // value is not in any ranges
+                return false;
+            }
+            // value is in our bitset
+            return true;
         } else {
             for (int i = 0; i < longs.size(); i++) {
                 int length = longLengths.get(i);
@@ -199,6 +253,12 @@ public class NumberArrayLookup implements Streamable {
                 longLengths.add(longs.get(i).length);
             }
         }
+
+        if (in.readBoolean()) {
+            ranges = new LongArrayList();
+            ranges.buffer = DeltaEncoder.decode_longs_from_deltas(in);
+            ranges.elementsCount = ranges.buffer.length;
+        }
     }
 
     @Override
@@ -212,13 +272,18 @@ public class NumberArrayLookup implements Streamable {
             try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
                 oos.writeObject(bitset);
                 oos.flush();
-                out.writeVInt(baos.getNumBytes());
-                out.writeBytes(baos.getBytes(), 0, baos.getNumBytes());
             }
+            out.writeVInt(baos.getNumBytes());
+            out.writeBytes(baos.getBytes(), 0, baos.getNumBytes());
         } else {
             out.writeVInt(longs.size());
             for (int i = 0; i < longs.size(); i++)
                 DeltaEncoder.encode_longs_as_deltas(longs.get(i), longLengths.get(i), out);
+        }
+
+        out.writeBoolean(ranges != null);
+        if (ranges != null) {
+            DeltaEncoder.encode_longs_as_deltas(ranges.buffer, ranges.elementsCount, out);
         }
     }
 }

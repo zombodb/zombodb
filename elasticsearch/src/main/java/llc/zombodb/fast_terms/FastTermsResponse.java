@@ -28,21 +28,24 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestActions;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject {
     public enum DataType {
+        UNKNOWN,
         INT,
         LONG,
         STRING
     }
 
-    private DataType dataType;
+    private DataType dataType = DataType.UNKNOWN;
     private int numShards;
 
-    private NumberArrayLookup[] lookups;
-    private Object[][] strings;
-    private int[] numStrings;
+    private NumberArrayLookup[] lookups = new NumberArrayLookup[0];
+    private Object[][] strings = new Object[0][];
+    private int[] numStrings = new int[0];
     private ObjectArrayList<String> stringArray;
 
     public FastTermsResponse() {
@@ -51,21 +54,20 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     FastTermsResponse(int shardCount, int successfulShards, int failedShards, List<ShardOperationFailedException> shardFailures, DataType dataType) {
         super(shardCount, successfulShards, failedShards, shardFailures);
+        assert dataType != null;
+
         this.dataType = dataType;
-        this.numShards = successfulShards;
-        if (dataType != null) {
-            switch (dataType) {
-                case INT:
-                    lookups = new NumberArrayLookup[successfulShards];
-                    break;
-                case LONG:
-                    lookups = new NumberArrayLookup[successfulShards];
-                    break;
-                case STRING:
-                    strings = new Object[successfulShards][];
-                    numStrings = new int[successfulShards];
-                    break;
-            }
+        this.numShards = shardCount;
+
+        switch (dataType) {
+            case INT:
+            case LONG:
+                lookups = new NumberArrayLookup[shardCount];
+                break;
+            case STRING:
+                strings = new Object[shardCount][];
+                numStrings = new int[shardCount];
+                break;
         }
     }
 
@@ -74,8 +76,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
             numShards = shardId;
         switch (dataType) {
             case INT:
-                lookups[shardId] = (NumberArrayLookup) data;
-                break;
             case LONG:
                 lookups[shardId] = (NumberArrayLookup) data;
                 break;
@@ -90,11 +90,30 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return dataType;
     }
 
+    public int getNumShards() {
+        return numShards;
+    }
+
     public NumberArrayLookup[] getNumberLookup() {
         return lookups;
     }
 
+    public Collection<long[]> getRanges() {
+        List<long[]> rc = new ArrayList<>();
+        for (NumberArrayLookup nal : lookups) {
+            long[] ranges = nal.getRanges();
+            if (ranges != null) {
+                rc.add(ranges);
+            }
+        }
+
+        return rc;
+    }
+
     public int getTotalDataCount() {
+        if (dataType == DataType.UNKNOWN)
+            return 0;
+
         switch (dataType) {
             case INT:
             case LONG: {
@@ -145,8 +164,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         dataType = in.readEnum(DataType.class);
         switch (dataType) {
             case INT:
-                lookups = new NumberArrayLookup[numShards];
-                break;
             case LONG:
                 lookups = new NumberArrayLookup[numShards];
                 break;
@@ -156,11 +173,9 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 break;
         }
 
-        for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
+        for (int shardId=0; shardId<numShards; shardId++) {
             switch (dataType) {
                 case INT:
-                    lookups[shardId] = NumberArrayLookup.fromStreamInput(in);
-                    break;
                 case LONG:
                     lookups[shardId] = NumberArrayLookup.fromStreamInput(in);
                     break;
@@ -177,11 +192,9 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         super.writeTo(out);
         out.writeVInt(numShards);
         out.writeEnum(dataType);
-        for (int shardId=0; shardId<super.getSuccessfulShards(); shardId++) {
+        for (int shardId=0; shardId<numShards; shardId++) {
             switch (dataType) {
                 case INT:
-                    lookups[shardId].writeTo(out);
-                    break;
                 case LONG:
                     lookups[shardId].writeTo(out);
                     break;

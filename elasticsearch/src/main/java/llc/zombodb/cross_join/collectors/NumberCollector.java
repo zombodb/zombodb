@@ -19,17 +19,17 @@ import llc.zombodb.utils.NumberArrayLookup;
 
 class NumberCollector extends CrossJoinCollector {
 
-    private final NumberArrayLookup[] bitsets;
+    private final NumberArrayLookup[] lookups;
 
-    NumberCollector(String fieldname, NumberArrayLookup[] bitsets) {
+    NumberCollector(String fieldname, NumberArrayLookup[] lookups) {
         super(fieldname);
-        this.bitsets = bitsets;
+        this.lookups = lookups;
     }
 
     @Override
     public boolean accept(long value) {
-        for (NumberArrayLookup bitset : bitsets) {
-            if (bitset.get(value))
+        for (NumberArrayLookup lookup : lookups) {
+            if (lookup.get(value))
                 return true;
         }
         return false;

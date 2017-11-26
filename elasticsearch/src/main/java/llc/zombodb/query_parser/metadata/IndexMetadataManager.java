@@ -20,6 +20,7 @@ import llc.zombodb.query_parser.ASTIndexLink;
 import llc.zombodb.query_parser.ASTOptions;
 import llc.zombodb.query_parser.QueryParserNode;
 import org.elasticsearch.action.ActionFuture;
+import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsAction;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.support.IndicesOptions;
@@ -31,9 +32,9 @@ public class IndexMetadataManager {
 
     static class IndexLinkAndMapping {
         final ASTIndexLink link;
-        final ActionFuture<GetMappingsResponse> mapping;
+        final GetMappingsResponse mapping;
 
-        private IndexLinkAndMapping(ASTIndexLink link, ActionFuture<GetMappingsResponse> mapping) {
+        private IndexLinkAndMapping(ASTIndexLink link, GetMappingsResponse mapping) {
             this.link = link;
             this.mapping = mapping;
         }
@@ -106,6 +107,17 @@ public class IndexMetadataManager {
         return fieldSource != null ? getMetadata(fieldSource) : null;
     }
 
+    public IndexMetadata getMetadataForIndexName(String indexName) {
+        if (mappings == null)
+            throw new IllegalArgumentException("No metadata found for: " + indexName);
+
+        for (Map.Entry<ASTIndexLink, IndexMetadata> entry : metadataCache.entrySet()) {
+            if (entry.getKey().getIndexName().equalsIgnoreCase(indexName))
+                return entry.getValue();
+        }
+        throw new IllegalArgumentException("No metadata found for: " + indexName);
+    }
+
     private IndexMetadata getMetadata(ASTIndexLink link) {
         if (mappings == null)
             return null;
@@ -113,7 +125,7 @@ public class IndexMetadataManager {
         try {
             IndexMetadata md = metadataCache.get(link);
             if (md == null)
-                metadataCache.put(link, md = new IndexMetadata(link, lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data")));
+                metadataCache.put(link, md = new IndexMetadata(link, lookupMapping(link).mapping.getMappings().get(link.getIndexName()).get("data")));
             return md;
         } catch (NullPointerException npe) {
             return null;
@@ -126,32 +138,27 @@ public class IndexMetadataManager {
         if (client == null)
             return link; // nothing we can do
 
-        GetMappingsRequest getMappingsRequest = new GetMappingsRequest();
-        getMappingsRequest.indices(indexName).types("data");
-        getMappingsRequest.indicesOptions(IndicesOptions.fromOptions(false, false, true, true));
-        getMappingsRequest.local(false);
+        GetMappingsResponse response = GetMappingsAction.INSTANCE.newRequestBuilder(client)
+                .setIndices(indexName)
+                .setTypes("data")
+                .setIndicesOptions(IndicesOptions.fromOptions(false, false, true, true))
+                .setLocal(true)
+                .get();
 
-        ActionFuture<GetMappingsResponse> future = client.admin().indices().getMappings(getMappingsRequest);
         if (link == null) {
-            try {
-                GetMappingsResponse response = future.get();
-                String firstIndexName = response.getMappings().iterator().next().key;
-                String pkey = (String) ((Map) response.getMappings().get(firstIndexName).get("data").getSourceAsMap().get("_meta")).get("primary_key");
+            String firstIndexName = response.getMappings().iterator().next().key;
+            String pkey = (String) ((Map) response.getMappings().get(firstIndexName).get("data").getSourceAsMap().get("_meta")).get("primary_key");
 
-                String alias = null;
-                if (!firstIndexName.equals(indexName)) {
-                    alias = indexName;
-                    indexName = firstIndexName;
-                }
-
-
-                link = ASTIndexLink.create(pkey, indexName, alias, pkey, true);
-            } catch (Exception e) {
-                throw new RuntimeException("Problem creating anonymous ASTIndexLink for " + indexName, e);
+            String alias = null;
+            if (!firstIndexName.equals(indexName)) {
+                alias = indexName;
+                indexName = firstIndexName;
             }
+
+            link = ASTIndexLink.create(pkey, indexName, alias, pkey, true);
         }
 
-        mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, future));
+        mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, response));
         indexLinksByIndexName.put(indexName, link);
         return link;
     }
@@ -168,9 +175,9 @@ public class IndexMetadataManager {
         try {
             if (isNestedObjectFieldExternal(fieldname)) {
                 link = getExternalIndexLink(fieldname);
-                return lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap();
+                return lookupMapping(link).mapping.getMappings().get(link.getIndexName()).get("data").getSourceAsMap();
             } else {
-                Map properties = (Map) lookupMapping(link).mapping.get().getMappings().get(link.getIndexName()).get("data").getSourceAsMap().get("properties");
+                Map properties = (Map) lookupMapping(link).mapping.getMappings().get(link.getIndexName()).get("data").getSourceAsMap().get("properties");
                 return (Map<String, ?>) properties.get(fieldname);
             }
         } catch (NullPointerException npe) {

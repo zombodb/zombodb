@@ -25,6 +25,7 @@ import java.io.IOException;
 public class FastTermsRequest extends BroadcastRequest<FastTermsRequest> {
     private String[] types;
     private String fieldname;
+    private int sourceShardId = -1;
     private QueryBuilder query;
 
     static FastTermsRequest from(StreamInput in) throws IOException {
@@ -57,11 +58,20 @@ public class FastTermsRequest extends BroadcastRequest<FastTermsRequest> {
         this.fieldname = fieldname;
     }
 
+    public int sourceShardId() {
+        return sourceShardId;
+    }
+
+    public void sourceShardId(int sourceShardId) {
+        this.sourceShardId = sourceShardId;
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
         types = in.readStringArray();
         fieldname = in.readString();
+        sourceShardId = in.readInt();
         query = in.readNamedWriteable(QueryBuilder.class);
     }
 
@@ -70,6 +80,7 @@ public class FastTermsRequest extends BroadcastRequest<FastTermsRequest> {
         super.writeTo(out);
         out.writeStringArray(types);
         out.writeString(fieldname);
+        out.writeInt(sourceShardId);
         out.writeNamedWriteable(query);
     }
 }

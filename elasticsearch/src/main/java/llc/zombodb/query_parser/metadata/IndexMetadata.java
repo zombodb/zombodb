@@ -44,6 +44,7 @@ public class IndexMetadata {
     private final Map<String, Map<String, Object>> fields;
     private final String pkeyFieldName;
     private boolean alwaysResolveJoins = false;
+    private String optimizeForJoins;
 
     public IndexMetadata(ASTIndexLink link, MappingMetaData mmd) {
         this.link = link;
@@ -55,6 +56,9 @@ public class IndexMetadata {
 
         pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
         alwaysResolveJoins = meta != null && (meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins"))));
+        optimizeForJoins = meta != null ? (String) meta.get("optimize_for_joins") : null;
+        if ("null".equals(optimizeForJoins))
+            optimizeForJoins = null;
     }
 
     public ASTIndexLink getLink() {
@@ -63,6 +67,10 @@ public class IndexMetadata {
 
     public String getPrimaryKeyFieldName() {
         return pkeyFieldName;
+    }
+
+    public String getOptimizeForJoinsFieldName() {
+        return optimizeForJoins;
     }
 
     public boolean alwaysResolveJoins() {

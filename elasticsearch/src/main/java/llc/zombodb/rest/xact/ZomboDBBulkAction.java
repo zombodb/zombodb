@@ -60,6 +60,9 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         boolean refresh = request.paramAsBoolean("refresh", false);
         boolean isdelete = false;
         int requestNumber = request.paramAsInt("request_no", -1);
+        String optimizeForJoins = request.param("optimize_for_joins", null);
+        if ("null".equals(optimizeForJoins))
+            optimizeForJoins = null;
 
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
         bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
@@ -73,7 +76,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
             if (isdelete) {
                 handleDeleteRequests(client, bulkRequest.requests(), defaultIndex, xmaxRequests);
             } else {
-                handleIndexRequests(client, bulkRequest.requests(), defaultIndex, requestNumber, xmaxRequests, abortedRequests);
+                handleIndexRequests(client, optimizeForJoins, bulkRequest.requests(), defaultIndex, requestNumber, xmaxRequests, abortedRequests);
             }
         }
 
@@ -219,7 +222,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         }
     }
 
-    private void handleIndexRequests(Client client, List<DocWriteRequest> requests, String defaultIndex, int requestNumber, List<DocWriteRequest> xmaxRequests, List<DocWriteRequest> abortedRequests) {
+    private void handleIndexRequests(Client client, String optimizeForJoins, List<DocWriteRequest> requests, String defaultIndex, int requestNumber, List<DocWriteRequest> xmaxRequests, List<DocWriteRequest> abortedRequests) {
 
         int cnt = 0;
         for (DocWriteRequest ar : requests) {
@@ -229,6 +232,8 @@ public class ZomboDBBulkAction extends BaseRestHandler {
             Number xmin = (Number) data.get("_xmin");
             Number cmin = (Number) data.get("_cmin");
             Number sequence = (Number) data.get("_zdb_seq");    // -1 means an index build (CREATE INDEX)
+            Number routing_key = optimizeForJoins != null ? (Number) data.get(optimizeForJoins) : null;
+            String docRouting;
 
             if (prev_ctid != null) {
                 // we are inserting a new doc that replaces a previous doc (an UPDATE)
@@ -283,6 +288,12 @@ public class ZomboDBBulkAction extends BaseRestHandler {
                 }
             }
 
+            if (routing_key != null) {
+                docRouting = String.valueOf((routing_key.longValue() / 100_000) * 100_000);
+            } else {
+                docRouting = doc.id();
+            }
+
             // every doc with an "_id" that is a ctid needs a version
             // and that version must be *larger* than the document that might
             // have previously occupied this "_id" value -- the Postgres transaction id (xid)
@@ -290,7 +301,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
             doc.opType(IndexRequest.OpType.INDEX);
             doc.version(xmin.longValue());
             doc.versionType(VersionType.FORCE);
-            doc.routing(doc.id());
+            doc.routing(docRouting);
 
             cnt++;
         }

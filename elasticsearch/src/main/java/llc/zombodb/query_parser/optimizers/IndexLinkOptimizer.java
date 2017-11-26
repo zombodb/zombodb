@@ -183,12 +183,7 @@ public class IndexLinkOptimizer {
                 expansion.jjtAddChild(last == null ? root : last, 1);
                 newLink.setFieldname(link.getFieldname());
 
-                lastExpansion = expansion;
-                if (last == null && !newLink.getIndexName().equals(metadataManager.getMyIndex().getIndexName())) {
-                    last = maybeInvertExpansion(expansion);
-                } else {
-                    last = expansion;
-                }
+                last = lastExpansion = expansion;
             }
 
             if (last != null) {
@@ -360,72 +355,4 @@ public class IndexLinkOptimizer {
         }
 
     }
-
-    private QueryParserNode maybeInvertExpansion(ASTExpansion expansion) {
-        if (metadataManager.getMetadataForMyIndex().alwaysResolveJoins())
-            return expansion;
-
-        long totalCnt, queryCnt;
-
-        //
-        // figure out how many records are in the index
-        //
-        totalCnt = estimateCount(expansion, false);
-
-        //
-        // then how many records this expansion is likely to return
-        //
-        queryCnt = estimateCount(expansion, true);
-
-        if (queryCnt > totalCnt / 2) {
-            //
-            // and if the expansion is going to return more than 1/2 the database
-            // invert it on the inner side of the expansion
-            //
-            ASTNot innerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
-            innerNot.jjtAddChild(expansion.getQuery(), 0);
-            expansion.jjtAddChild(innerNot, 1);
-
-            //
-            // and on the outer side.
-            //
-            // This way we're only shipping around the minimal number of rows
-            // through the rest of the query
-            //
-            ASTNot outerNot = new ASTNot(QueryParserTreeConstants.JJTNOT);
-            outerNot.jjtAddChild(expansion, 0);
-            return outerNot;
-        }
-
-        return expansion;
-    }
-
-    private long estimateCount(ASTExpansion expansion, boolean useQuery) {
-        SearchRequestBuilder builder = new SearchRequestBuilder(client, SearchAction.INSTANCE);
-        builder.setIndices(expansion.getIndexLink().getIndexName());
-        builder.setTypes("data");
-        builder.setSize(0);
-        builder.setRequestCache(true);
-        builder.setFetchSource(false);
-        builder.setTrackScores(false);
-        if (useQuery)
-            builder.setPostFilter(rewriter.build(expansion.getQuery()));
-
-        String key = expansion.getIndexLink().getIndexName() + ":" + builder.toString();
-        Long count = COUNT_ESTIMATE_CACHE.get(key);
-        if (count != null)
-            return count;
-
-        try {
-            count = client.search(builder.request()).get().getHits().getTotalHits();
-            if (COUNT_ESTIMATE_CACHE.size() >= 1000)
-                COUNT_ESTIMATE_CACHE.clear();
-
-            COUNT_ESTIMATE_CACHE.put(key, count);
-            return count;
-        } catch (Exception e) {
-            throw new RuntimeException("Problem estimating count", e);
-        }
-    }
-
 }

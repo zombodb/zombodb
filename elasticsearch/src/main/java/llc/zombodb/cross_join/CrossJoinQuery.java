@@ -60,11 +60,13 @@ class CrossJoinQuery extends Query {
     private final String rightFieldname;
     private final QueryBuilder query;
     private final String fieldType;
+    private final int thisShardId;
+    private final boolean canOptimizeJoins;
 
     FastTermsResponse fastTerms;
 
-    public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, String fieldType) {
-        this.cacheKey = clusterName + host + port + index + type + leftFieldname + rightFieldname + query;
+    public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins, String fieldType, int thisShardId) {
+        this.cacheKey = clusterName + host + port + index + type + leftFieldname + rightFieldname + query + thisShardId + canOptimizeJoins;
         this.clusterName = clusterName;
         this.host = host;
         this.port = port;
@@ -74,6 +76,8 @@ class CrossJoinQuery extends Query {
         this.rightFieldname = rightFieldname;
         this.query = query;
         this.fieldType = fieldType;
+        this.thisShardId = thisShardId;
+        this.canOptimizeJoins = canOptimizeJoins;
     }
 
     public String getClusterName() {
@@ -138,6 +142,7 @@ class CrossJoinQuery extends Query {
                         .setTypes(type)
                         .setFieldname(rightFieldname)
                         .setQuery(query)
+                        .setSourceShard(canOptimizeJoins ? thisShardId : -1)
                         .get();
 
                 if (fastTerms.getFailedShards() > 0)
@@ -184,7 +189,7 @@ class CrossJoinQuery extends Query {
 
     @Override
     public String toString(String field) {
-        return "cross_join(cacheKey=" + cacheKey + ", cluster=" + clusterName + ", host=" + host + ", port=" + port + ", index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", query=" + query + ")";
+        return "cross_join(cluster=" + clusterName + ", host=" + host + ", port=" + port + ", index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", query=" + query + ", shard=" + thisShardId + ", canOptimizeJoins=" + canOptimizeJoins + ")";
     }
 
     @Override
@@ -200,11 +205,13 @@ class CrossJoinQuery extends Query {
                 Objects.equals(type, other.type) &&
                 Objects.equals(leftFieldname, other.leftFieldname) &&
                 Objects.equals(rightFieldname, other.rightFieldname) &&
-                Objects.equals(query, other.query);
+                Objects.equals(query, other.query) &&
+                Objects.equals(thisShardId, other.thisShardId) &&
+                Objects.equals(canOptimizeJoins, other.canOptimizeJoins);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(cacheKey, clusterName, host, port, index, type, leftFieldname, rightFieldname, query);
+        return Objects.hash(cacheKey, clusterName, host, port, index, type, leftFieldname, rightFieldname, query, thisShardId, canOptimizeJoins);
     }
 }

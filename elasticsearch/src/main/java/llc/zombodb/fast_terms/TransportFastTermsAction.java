@@ -77,7 +77,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
         int successfulShards = 0;
         int failedShards = 0;
         List<ShardOperationFailedException> shardFailures = null;
-        FastTermsResponse.DataType dataType = null;
+        FastTermsResponse.DataType dataType = FastTermsResponse.DataType.UNKNOWN;
         List<ShardFastTermsResponse> successful = new ArrayList<>();
 
         for (int i = 0; i < shardsResponses.length(); i++) {
@@ -95,7 +95,10 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                     successfulShards++;
                     ShardFastTermsResponse resp = (ShardFastTermsResponse) shardResponse;
 
-                    if (dataType == null)
+                    if (resp.getDataCount() == 0)
+                        continue;   // this one is empty and we don't need it
+
+                    if (dataType == FastTermsResponse.DataType.UNKNOWN)
                         dataType = resp.getDataType();
                     else if (dataType != resp.getDataType())
                         throw new RuntimeException("Data Types from shards don't match");
@@ -105,7 +108,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
             }
         }
 
-        FastTermsResponse response = new FastTermsResponse(shardsResponses.length(), successfulShards, failedShards, shardFailures, dataType);
+        FastTermsResponse response = new FastTermsResponse(successful.size(), successfulShards, failedShards, shardFailures, dataType);
         for (int i = 0; i < successful.size(); i++) {
             ShardFastTermsResponse shardResponse = successful.get(i);
             response.addData(i, shardResponse.getData(), shardResponse.getDataCount());
@@ -127,37 +130,41 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
     protected ShardFastTermsResponse shardOperation(ShardFastTermsRequest request) throws IOException {
         Index index = request.shardId().getIndex();
         int shardId = request.shardId().id();
-        IndexShard indexShard = indicesService.indexServiceSafe(index).getShard(shardId);
-        String fieldname = request.getRequest().fieldname();
-        FastTermsResponse.DataType type;
-        FastTermsCollector collector;
+        if (request.getRequest().sourceShardId() == -1 || shardId == request.getRequest().sourceShardId()) {
+            IndexShard indexShard = indicesService.indexServiceSafe(index).getShard(shardId);
+            String fieldname = request.getRequest().fieldname();
+            FastTermsResponse.DataType type;
+            FastTermsCollector collector;
 
-        try (Engine.Searcher engine = indexShard.acquireSearcher("fastterms")) {
-            IndexSearcher searcher = new IndexSearcher(engine.reader());
-            QueryShardContext context = indicesService.indexServiceSafe(index).newQueryShardContext(shardId, engine.reader(), System::currentTimeMillis);
-            Query query = request.getRequest().query().toQuery(context);
+            try (Engine.Searcher engine = indexShard.acquireSearcher("fastterms")) {
+                IndexSearcher searcher = new IndexSearcher(engine.reader());
+                QueryShardContext context = indicesService.indexServiceSafe(index).newQueryShardContext(shardId, engine.reader(), System::currentTimeMillis);
+                Query query = request.getRequest().query().toQuery(context);
 
-            switch (context.fieldMapper(fieldname).typeName()) {
-                case "integer":
-                    type = FastTermsResponse.DataType.INT;
-                    collector = new NumberCollector(fieldname);
-                    break;
-                case "long":
-                    type = FastTermsResponse.DataType.LONG;
-                    collector = new NumberCollector(fieldname);
-                    break;
-                case "keyword":
-                    type = FastTermsResponse.DataType.STRING;
-                    collector = new StringCollector(fieldname);
-                    break;
-                default:
-                    throw new RuntimeException("Unrecognized data type: " + context.fieldMapper(fieldname).typeName());
+                switch (context.fieldMapper(fieldname).typeName()) {
+                    case "integer":
+                        type = FastTermsResponse.DataType.INT;
+                        collector = new NumberCollector(fieldname);
+                        break;
+                    case "long":
+                        type = FastTermsResponse.DataType.LONG;
+                        collector = new NumberCollector(fieldname);
+                        break;
+                    case "keyword":
+                        type = FastTermsResponse.DataType.STRING;
+                        collector = new StringCollector(fieldname);
+                        break;
+                    default:
+                        throw new RuntimeException("Unrecognized data type: " + context.fieldMapper(fieldname).typeName());
+                }
+
+                searcher.search(new ConstantScoreQuery(query.rewrite(engine.reader())), collector);
             }
 
-            searcher.search(new ConstantScoreQuery(query.rewrite(engine.reader())), collector);
+            return new ShardFastTermsResponse(request.shardId(), type, collector);
+        } else {
+            return new ShardFastTermsResponse(request.shardId());
         }
-
-        return new ShardFastTermsResponse(request.shardId(), type, collector);
     }
 
     @Override

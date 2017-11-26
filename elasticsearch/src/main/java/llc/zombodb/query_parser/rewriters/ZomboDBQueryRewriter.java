@@ -18,6 +18,8 @@ package llc.zombodb.query_parser.rewriters;
 import llc.zombodb.cross_join.CrossJoinQueryBuilder;
 import llc.zombodb.query_parser.ASTExpansion;
 import llc.zombodb.query_parser.ASTIndexLink;
+import llc.zombodb.query_parser.QueryParserNode;
+import llc.zombodb.query_parser.metadata.IndexMetadata;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
@@ -50,6 +52,23 @@ class ZomboDBQueryRewriter extends QueryRewriter {
             if (_isBuildingAggregate)
                 return matchAllQuery();
 
+            ASTIndexLink parentLink = null;
+            QueryParserNode parentNode = (QueryParserNode) node.jjtGetParent();
+            while (parentNode != null) {
+                if ((parentLink = parentNode.getIndexLink()) != null)
+                    break;
+                parentNode = (QueryParserNode) parentNode.jjtGetParent();
+            };
+
+            if (parentLink == null)
+                parentLink = myIndex;
+
+            IndexMetadata leftMetadata = metadataManager.getMetadataForIndexName(parentLink.getIndexName());
+            IndexMetadata rightMetadata = metadataManager.getMetadataForIndexName(link.getIndexName());
+
+            boolean canOptimizeForJoins = link.getLeftFieldname().equals(leftMetadata.getOptimizeForJoinsFieldName()) &&
+                    link.getRightFieldname().equals(rightMetadata.getOptimizeForJoinsFieldName());
+
             qb = constantScoreQuery(new CrossJoinQueryBuilder()
                     .clusterName(this.clusterService.getClusterName().value())
                     .host(this.clusterService.localNode().getAddress().getHost())
@@ -58,6 +77,7 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     .type("data")
                     .leftFieldname(link.getLeftFieldname())
                     .rightFieldname(link.getRightFieldname())
+                    .canOptimizeJoins(canOptimizeForJoins)
                     .query(applyVisibility(build(node.getQuery()))));
         }
 
