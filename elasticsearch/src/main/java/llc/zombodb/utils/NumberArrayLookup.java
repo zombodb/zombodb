@@ -10,6 +10,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.LongStream;
 
 /**
  * Allows quick lookup for a value in an array of longs.
@@ -169,7 +170,11 @@ public class NumberArrayLookup implements Streamable {
 
     public LongIterator iterator() {
         if (bitset != null) {
-            return new LongIterator() {
+            int cnt = 1 + (ranges == null ? 0 : ranges.size()/2);
+            int idx = 0;
+            LongIterator[] iterators = new LongIterator[cnt];
+
+            iterators[idx++] = new LongIterator() {
                 private long pushback;
                 private boolean havePushback;
                 private int idx = bitset.nextSetBit(0);
@@ -197,6 +202,18 @@ public class NumberArrayLookup implements Streamable {
                     havePushback = true;
                 }
             };
+
+            if (ranges != null) {
+                for (int i = 0; i < ranges.size(); i += 2) {
+                    long low = ranges.get(i);
+                    long high = ranges.get(i + 1);
+
+                    iterators[idx++] = LongIterator.create(LongStream.rangeClosed(low, high).iterator());
+                }
+            }
+
+            return LongIterator.create(iterators);
+
         } else if (longs.size() > 0) {
             long[][] arrays = new long[longs.size()][];
             int[] lengths = new int[longs.size()];
