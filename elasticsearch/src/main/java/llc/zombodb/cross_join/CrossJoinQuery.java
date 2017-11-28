@@ -137,10 +137,10 @@ class CrossJoinQuery extends Query {
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
-        fastTerms = RESPONSE_CACHE.get(cacheKey);
+        synchronized (cacheKey) {
+            fastTerms = RESPONSE_CACHE.get(cacheKey);
 
-        if (fastTerms == null) {
-            synchronized (cacheKey) {
+            if (fastTerms == null) {
                 fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(getClient(clusterName, host, port))
                         .setIndices(index)
                         .setTypes(type)
