@@ -63,7 +63,7 @@ class CrossJoinQuery extends Query {
     private final int thisShardId;
     private final boolean canOptimizeJoins;
 
-    FastTermsResponse fastTerms;
+    private FastTermsResponse fastTerms;
 
     public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins, String fieldType, int thisShardId) {
         this.cacheKey = (clusterName + host + port + index + type + leftFieldname + rightFieldname + query + (canOptimizeJoins ? thisShardId : -1)).intern();
@@ -110,6 +110,10 @@ class CrossJoinQuery extends Query {
 
     public QueryBuilder getQuery() {
         return query;
+    }
+
+    public FastTermsResponse getFastTerms() {
+        return fastTerms;
     }
 
     @Override
