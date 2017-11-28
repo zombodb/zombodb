@@ -16,16 +16,18 @@
 package llc.zombodb.cross_join.collectors;
 
 import com.carrotsearch.hppc.ObjectArrayList;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BytesRef;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 class StringCollector extends CrossJoinCollector {
 
     private final ObjectArrayList strings;
 
-    StringCollector(String fieldname, ObjectArrayList<String> strings) {
-        super(fieldname);
+    StringCollector(LeafReaderContext context, String fieldname, ObjectArrayList<String> strings) throws IOException {
+        super(context, fieldname);
         this.strings = strings;
     }
 

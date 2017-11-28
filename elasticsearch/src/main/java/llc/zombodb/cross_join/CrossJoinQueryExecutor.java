@@ -26,23 +26,21 @@ class CrossJoinQueryExecutor {
 
     static BitSet execute(LeafReaderContext context, String type, String fieldname, String fieldType, FastTermsResponse fastTerms) throws IOException {
         CrossJoinCollector collector;
+        int maxdoc = context.reader().maxDoc();
 
         switch(fieldType) {
             case "integer":
-                collector = CrossJoinCollector.create(fieldname, fastTerms.getNumberLookup());
-                break;
             case "long":
-                collector = CrossJoinCollector.create(fieldname, fastTerms.getNumberLookup());
+                collector = CrossJoinCollector.create(context, fieldname, fastTerms.getNumberLookup());
                 break;
             case "keyword":
-                collector = CrossJoinCollector.create(fieldname, fastTerms.getStringArray());
+                collector = CrossJoinCollector.create(context, fieldname, fastTerms.getStringArray());
                 break;
             default:
                 throw new RuntimeException("Unsupported field type [" + fieldType + "] for [" + fieldname + "]");
         }
 
-        collector.doSetNextReader(context);
-        for (int i=0; i<context.reader().maxDoc(); i++) {
+        for (int i=0; i<maxdoc; i++) {
             collector.collect(i);
         }
 

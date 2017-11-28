@@ -16,13 +16,16 @@
 package llc.zombodb.cross_join.collectors;
 
 import llc.zombodb.utils.NumberArrayLookup;
+import org.apache.lucene.index.LeafReaderContext;
+
+import java.io.IOException;
 
 class NumberCollector extends CrossJoinCollector {
 
     private final NumberArrayLookup[] lookups;
 
-    NumberCollector(String fieldname, NumberArrayLookup[] lookups) {
-        super(fieldname);
+    NumberCollector(LeafReaderContext context, String fieldname, NumberArrayLookup[] lookups) throws IOException {
+        super(context, fieldname);
         this.lookups = lookups;
     }
 

@@ -17,7 +17,6 @@ package llc.zombodb.cross_join.collectors;
 
 import com.carrotsearch.hppc.ObjectArrayList;
 import llc.zombodb.utils.NumberArrayLookup;
-import llc.zombodb.visibility_query.ZomboDBTermsCollector;
 import org.apache.lucene.index.*;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
@@ -25,7 +24,7 @@ import org.apache.lucene.util.FixedBitSet;
 
 import java.io.IOException;
 
-public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
+public abstract class CrossJoinCollector {
 
     private final String fieldname;
     private BitSet bitset;
@@ -37,21 +36,17 @@ public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
     private SortedSetDocValues sortedSet;
     private SortedDocValues sortedDocValues;
 
-    public static CrossJoinCollector create(String fieldname, NumberArrayLookup[] bitSets) {
-        return new NumberCollector(fieldname, bitSets);
+    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, NumberArrayLookup[] bitSets) throws IOException {
+        return new NumberCollector(context, fieldname, bitSets);
     }
 
-    public static CrossJoinCollector create(String fieldname, ObjectArrayList<String> strings) {
-        return new StringCollector(fieldname, strings);
+    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, ObjectArrayList<String> strings) throws IOException {
+        return new StringCollector(context, fieldname, strings);
     }
 
-    CrossJoinCollector(String fieldname) {
+    CrossJoinCollector(LeafReaderContext context, String fieldname) throws IOException {
         this.fieldname = fieldname;
-    }
-
-    @Override
-    public boolean needsScores() {
-        return false;
+        init_context(context);
     }
 
     public BitSet getBitset() {
@@ -67,7 +62,6 @@ public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
         }
     }
 
-    @Override
     public void collect(int doc) throws IOException {
         switch (docType) {
             case NUMERIC: {
@@ -120,8 +114,7 @@ public abstract class CrossJoinCollector extends ZomboDBTermsCollector {
     boolean accept(long value) { return false; }
     boolean accept(BytesRef value) { return false; }
 
-    @Override
-    public final void doSetNextReader(LeafReaderContext context) throws IOException {
+    private void init_context(LeafReaderContext context) throws IOException {
         maxdoc = context.reader().maxDoc();
         bitset = null;
 
