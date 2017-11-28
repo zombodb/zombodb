@@ -39,6 +39,7 @@ public class IndexMetadata {
     };
 
     private final ASTIndexLink link;
+    private final int numberOfShards;
 
 
     private final Map<String, Map<String, Object>> fields;
@@ -46,8 +47,9 @@ public class IndexMetadata {
     private boolean alwaysResolveJoins = false;
     private String optimizeForJoins;
 
-    public IndexMetadata(ASTIndexLink link, MappingMetaData mmd) {
+    public IndexMetadata(ASTIndexLink link, MappingMetaData mmd, int numberOfShards) {
         this.link = link;
+        this.numberOfShards = numberOfShards;
         Map meta = (Map) mmd.getSourceAsMap().get("_meta");
 
         fields = (Map) mmd.getSourceAsMap().get("properties");
@@ -71,6 +73,10 @@ public class IndexMetadata {
 
     public String getOptimizeForJoinsFieldName() {
         return optimizeForJoins;
+    }
+
+    public int getNumberOfShards() {
+        return numberOfShards;
     }
 
     public boolean alwaysResolveJoins() {

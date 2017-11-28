@@ -19,10 +19,10 @@ package llc.zombodb.query_parser.metadata;
 import llc.zombodb.query_parser.ASTIndexLink;
 import llc.zombodb.query_parser.ASTOptions;
 import llc.zombodb.query_parser.QueryParserNode;
-import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsAction;
-import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsAction;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.client.Client;
 
@@ -33,10 +33,12 @@ public class IndexMetadataManager {
     static class IndexLinkAndMapping {
         final ASTIndexLink link;
         final GetMappingsResponse mapping;
+        final GetSettingsResponse settings;
 
-        private IndexLinkAndMapping(ASTIndexLink link, GetMappingsResponse mapping) {
+        private IndexLinkAndMapping(ASTIndexLink link, GetMappingsResponse mapping, GetSettingsResponse settings) {
             this.link = link;
             this.mapping = mapping;
+            this.settings = settings;
         }
     }
 
@@ -125,7 +127,7 @@ public class IndexMetadataManager {
         try {
             IndexMetadata md = metadataCache.get(link);
             if (md == null)
-                metadataCache.put(link, md = new IndexMetadata(link, lookupMapping(link).mapping.getMappings().get(link.getIndexName()).get("data")));
+                metadataCache.put(link, md = new IndexMetadata(link, lookupMapping(link).mapping.getMappings().get(link.getIndexName()).get("data"), Integer.parseInt(lookupMapping(link).settings.getSetting(link.getIndexName(), "index.number_of_shards"))));
             return md;
         } catch (NullPointerException npe) {
             return null;
@@ -138,16 +140,21 @@ public class IndexMetadataManager {
         if (client == null)
             return link; // nothing we can do
 
-        GetMappingsResponse response = GetMappingsAction.INSTANCE.newRequestBuilder(client)
+        GetMappingsResponse mappingResponse = GetMappingsAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(indexName)
                 .setTypes("data")
                 .setIndicesOptions(IndicesOptions.fromOptions(false, false, true, true))
                 .setLocal(true)
                 .get();
+        GetSettingsResponse settingsResponse = GetSettingsAction.INSTANCE.newRequestBuilder(client)
+                .setIndices(indexName)
+                .setLocal(true)
+                .get();
+
 
         if (link == null) {
-            String firstIndexName = response.getMappings().iterator().next().key;
-            String pkey = (String) ((Map) response.getMappings().get(firstIndexName).get("data").getSourceAsMap().get("_meta")).get("primary_key");
+            String firstIndexName = mappingResponse.getMappings().iterator().next().key;
+            String pkey = (String) ((Map) mappingResponse.getMappings().get(firstIndexName).get("data").getSourceAsMap().get("_meta")).get("primary_key");
 
             String alias = null;
             if (!firstIndexName.equals(indexName)) {
@@ -158,7 +165,7 @@ public class IndexMetadataManager {
             link = ASTIndexLink.create(pkey, indexName, alias, pkey, true);
         }
 
-        mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, response));
+        mappings.add(new IndexMetadataManager.IndexLinkAndMapping(link, mappingResponse, settingsResponse));
         indexLinksByIndexName.put(indexName, link);
         return link;
     }
