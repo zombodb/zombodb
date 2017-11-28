@@ -56,7 +56,7 @@ public abstract class ZomboDBTestCase {
     public static void beforeClass() throws Exception {
         node = bootstrapElasticsearch();
 
-        for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users", "db.schema.so_comments.idxso_comments", "db.schema.main_ft.idxmain_ft", "db.schema.main_vol.idxmain_vol", "db.schema.main_other.idxmain_other", "db.schema.main_other.idxmain"}) {
+        for (String indexName : new String[]{DEFAULT_INDEX_NAME, "db.schema.so_users.idxso_users", "db.schema.so_comments.idxso_comments", "db.schema.main_ft.idxmain_ft", "db.schema.main_vol.idxmain_vol", "db.schema.main_other.idxmain_other", "db.schema.main_other.idxmain", "db.schema.table2.index2"}) {
             createIndex(indexName);
         }
     }
