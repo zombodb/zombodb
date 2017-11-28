@@ -157,33 +157,36 @@ class CrossJoinQuery extends Query {
 
     private static TransportClient getClient(String clusterName, String host, int port) {
         return AccessController.doPrivileged((PrivilegedAction<TransportClient>) () -> {
-            String key = clusterName + host + port;
-            TransportClient tc = CLIENTS.get(key);
-            if (tc == null) {
-                int retries = 5;
-                while (true) {
-                    try {
-                        tc = new PreBuiltTransportClient(
-                                Settings.builder()
-                                        .put("cluster.name", clusterName)
-                                        .put("client.transport.ignore_cluster_name", true)
-                                        .put("client.transport.sniff", true)
-                                        .build(),
-                                Collections.singletonList(ZomboDBPlugin.class)
-                        ).addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
-                        break;
-                    } catch (UnknownHostException uhe) {
-                        throw new RuntimeException(uhe);
-                    } catch (Throwable t) {
-                        if (--retries > 0)
-                            continue;
-                        throw t;
+            final String key = clusterName + host + port;
+            synchronized (key.intern()) {
+                TransportClient tc = CLIENTS.get(key);
+                if (tc == null) {
+                    int retries = 5;
+                    while (true) {
+                        try {
+                            tc = new PreBuiltTransportClient(
+                                    Settings.builder()
+                                            .put("cluster.name", clusterName)
+                                            .put("client.transport.ignore_cluster_name", true)
+                                            .put("client.transport.sniff", true)
+                                            .build(),
+                                    Collections.singletonList(ZomboDBPlugin.class)
+                            ).addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
+                            break;
+                        } catch (UnknownHostException uhe) {
+                            throw new RuntimeException(uhe);
+                        } catch (Throwable t) {
+                            if (--retries > 0)
+                                continue;
+                            throw t;
+                        }
                     }
-                }
 
-                CLIENTS.put(key, tc);
+                    CLIENTS.put(key, tc);
+
+                }
+                return tc;
             }
-            return tc;
         });
     }
 

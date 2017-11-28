@@ -33,6 +33,9 @@ public interface LongIterator {
     }
 
     static LongIterator create(LongIterator... iterators) {
+        if (iterators.length == 1)
+            return iterators[0];
+
         return new LongIterator() {
             private long pushback;
             private boolean havePushback;

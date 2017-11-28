@@ -40,11 +40,15 @@ class CrossJoinQueryRewriteHelper {
 
     static Query rewriteQuery(CrossJoinQuery crossJoin) {
         FastTermsResponse fastTerms = crossJoin.fastTerms;
-        int total = fastTerms.getTotalDataCount();
 
-        if (total == 0 || total >= 50_000)
-            return crossJoin;
+        if (fastTerms.getTotalDataCount() == 0)
+            return new MatchNoDocsQuery();
+        else if (fastTerms.getPointCount() >= 50_000)
+            return crossJoin;   // 50k points is about the break-even point in terms of performance v/s just scanning all DocValues
 
+        //
+        // rewrite the provided CrossJoinQuery into a series of point and/or range queries
+        //
         switch (fastTerms.getDataType()) {
             case INT:
                 return buildIntRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()));

@@ -34,13 +34,13 @@ import java.util.List;
 
 public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject {
     public enum DataType {
-        UNKNOWN,
+        NONE,
         INT,
         LONG,
         STRING
     }
 
-    private DataType dataType = DataType.UNKNOWN;
+    private DataType dataType = DataType.NONE;
     private int numShards;
 
     private NumberArrayLookup[] lookups = new NumberArrayLookup[0];
@@ -72,8 +72,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     }
 
     void addData(int shardId, Object data, int count) {
-        if (shardId > numShards)
-            numShards = shardId;
         switch (dataType) {
             case INT:
             case LONG:
@@ -110,16 +108,43 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return rc;
     }
 
-    public int getTotalDataCount() {
-        if (dataType == DataType.UNKNOWN)
+    public int getPointCount() {
+        if (dataType == DataType.NONE)
             return 0;
 
         switch (dataType) {
             case INT:
             case LONG: {
                 int total = 0;
-                for (NumberArrayLookup bitset : lookups) {
-                    total +=  bitset.getValueCount();
+                for (NumberArrayLookup nal : lookups) {
+                    int len = nal.getCountOfBits();
+                    total += len > 0 ? len : nal.getCountOfLongs();
+                }
+                return total;
+            }
+
+            case STRING: {
+                int total = 0;
+                for (int cnt : numStrings)
+                    total += cnt;
+                return total;
+            }
+
+            default:
+                throw new RuntimeException("Unexpected data type: " + dataType);
+        }
+    }
+
+    public int getTotalDataCount() {
+        if (dataType == DataType.NONE)
+            return 0;
+
+        switch (dataType) {
+            case INT:
+            case LONG: {
+                int total = 0;
+                for (NumberArrayLookup nal : lookups) {
+                    total +=  nal.getValueCount();
                 }
                 return total;
             }

@@ -92,6 +92,7 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
                 case LONG:
                     if (in.readBoolean()) {
                         bitset = NumberArrayLookup.fromStreamInput(in);
+                        dataCount = bitset.getValueCount();
                     }
                     break;
                 case STRING:

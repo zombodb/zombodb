@@ -77,7 +77,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
         int successfulShards = 0;
         int failedShards = 0;
         List<ShardOperationFailedException> shardFailures = null;
-        FastTermsResponse.DataType dataType = FastTermsResponse.DataType.UNKNOWN;
+        FastTermsResponse.DataType dataType = FastTermsResponse.DataType.NONE;
         List<ShardFastTermsResponse> successful = new ArrayList<>();
 
         for (int i = 0; i < shardsResponses.length(); i++) {
@@ -95,10 +95,11 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                     successfulShards++;
                     ShardFastTermsResponse resp = (ShardFastTermsResponse) shardResponse;
 
-                    if (resp.getDataCount() == 0)
+                    if (resp.getDataCount() == 0) {
                         continue;   // this one is empty and we don't need it
+                    }
 
-                    if (dataType == FastTermsResponse.DataType.UNKNOWN)
+                    if (dataType == FastTermsResponse.DataType.NONE)
                         dataType = resp.getDataType();
                     else if (dataType != resp.getDataType())
                         throw new RuntimeException("Data Types from shards don't match");

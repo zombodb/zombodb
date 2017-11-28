@@ -37,8 +37,11 @@ public class NumberArrayLookup implements Streamable {
 
     private List<long[]> longs;
     private List<Integer> longLengths;
+    private int countOfLongs = -1;
     private SparseBitSet bitset;
-    private int bitsetLength = -1;
+    private LongArrayList ranges;
+    private int countOfBits = -1;
+    private int countOfRanges = -1;
     private long min;
 
     public static NumberArrayLookup fromStreamInput(StreamInput in) throws IOException {
@@ -70,8 +73,6 @@ public class NumberArrayLookup implements Streamable {
         }
     }
 
-    private LongArrayList ranges;
-
     public long[] getRanges() {
         return ranges == null ? null : ranges.buffer;
     }
@@ -84,7 +85,7 @@ public class NumberArrayLookup implements Streamable {
             for (int i = 0; i < length; i++)
                 bitset.set((int) (bits[i] - min));
 
-            for (LongIterator itr = iterator(); itr.hasNext();) {
+            for (LongIterator itr = iterator(true); itr.hasNext();) {
                 long head, tail;
 
                 head = tail = itr.next();
@@ -154,23 +155,55 @@ public class NumberArrayLookup implements Streamable {
         }
     }
 
+    public int getCountOfBits() {
+        if (countOfBits == -1) {
+            countOfBits = bitset != null ? bitset.cardinality() : 0;
+        }
+
+        return countOfBits;
+    }
+
+    public int getCountOfRanges() {
+        if (countOfRanges == -1) {
+            countOfRanges = 0;
+            if (ranges != null) {
+                for (int i=0; i<ranges.size(); i+=2) {
+                    long low = ranges.get(i);
+                    long high = ranges.get(i+1);
+                    countOfRanges += (high-low);
+                }
+            }
+        }
+        return countOfRanges;
+    }
+
+    public int getCountOfLongs() {
+        if (countOfLongs == -1) {
+            countOfLongs = 0;
+            if (longLengths != null) {
+                for (int length : longLengths)
+                    countOfLongs += length;
+            }
+        }
+
+        return countOfLongs;
+    }
+
     public int getValueCount() {
         if (bitset != null) {
-            if (bitsetLength == -1)
-                return bitsetLength = bitset.cardinality();
-            else
-                return bitsetLength;
+            return getCountOfBits() + getCountOfRanges();
         } else {
-            int total = 0;
-            for (int length : longLengths)
-                total += length;
-            return total;
+            return getCountOfLongs();
         }
     }
 
     public LongIterator iterator() {
+        return iterator(true);
+    }
+
+    public LongIterator iterator(boolean bitset_only) {
         if (bitset != null) {
-            int cnt = 1 + (ranges == null ? 0 : ranges.size()/2);
+            int cnt = 1 + (bitset_only || ranges == null ? 0 : ranges.size()/2);
             int idx = 0;
             LongIterator[] iterators = new LongIterator[cnt];
 
@@ -203,7 +236,7 @@ public class NumberArrayLookup implements Streamable {
                 }
             };
 
-            if (ranges != null) {
+            if (!bitset_only && ranges != null) {
                 for (int i = 0; i < ranges.size(); i += 2) {
                     long low = ranges.get(i);
                     long high = ranges.get(i + 1);
@@ -249,7 +282,8 @@ public class NumberArrayLookup implements Streamable {
 
         if (haveBitset) {
             min = in.readZLong();
-            bitsetLength = in.readVInt();
+            countOfBits = in.readVInt();
+            countOfRanges = in.readVInt();
             int numbytes = in.readVInt();
             byte[] bytes = new byte[numbytes];
             in.readBytes(bytes, 0, numbytes);
@@ -285,6 +319,7 @@ public class NumberArrayLookup implements Streamable {
         if (bitset != null) {
             out.writeZLong(min);
             out.writeVInt(bitset.cardinality());
+            out.writeVInt(countOfRanges);
             NoCopyByteArrayOutputStream baos = new NoCopyByteArrayOutputStream(4096);
             try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
                 oos.writeObject(bitset);
