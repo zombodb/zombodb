@@ -111,7 +111,7 @@ class CrossJoinQueryRewriteHelper {
 
         if (fastTerms.getTotalDataCount() == 0)
             return new MatchNoDocsQuery();
-        else if (fastTerms.getPointCount() >= 50_000)
+        else if (fastTerms.getPointCount() > 50_000)
             return crossJoin;   // 50k points is about the break-even point in terms of performance v/s just scanning all DocValues
 
         //
