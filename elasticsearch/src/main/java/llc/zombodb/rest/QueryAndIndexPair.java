@@ -20,17 +20,23 @@ import org.elasticsearch.index.query.QueryBuilder;
 
 public class QueryAndIndexPair {
     private final QueryBuilder query;
+    private final QueryBuilder visibilityFilter;
     private final String indexName;
     private final ASTLimit limit;
 
-    public QueryAndIndexPair(QueryBuilder query, String indexName, ASTLimit limit) {
+    public QueryAndIndexPair(QueryBuilder query, QueryBuilder visibilityFilter, String indexName, ASTLimit limit) {
         this.query = query;
+        this.visibilityFilter = visibilityFilter;
         this.indexName = indexName;
         this.limit = limit;
     }
 
     public QueryBuilder getQueryBuilder() {
         return query;
+    }
+
+    public QueryBuilder getVisibilityFilter() {
+        return visibilityFilter;
     }
 
     public String getIndexName() {

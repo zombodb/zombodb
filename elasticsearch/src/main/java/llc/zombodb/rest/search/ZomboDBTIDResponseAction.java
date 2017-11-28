@@ -202,9 +202,9 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 // TODO:  should we use 'preference' in FastTerms and/or CrossJoin somehow?
                 String preference = request.param("preference");
                 QueryRewriter qr = QueryRewriter.Factory.create(clusterService, request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel);
-                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getSearchIndexName(), qr.getLimit());
+                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit());
             } else {
-                return new QueryAndIndexPair(matchAllQuery(), indexName, null);
+                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null);
             }
         } catch (Exception e) {
             throw new RuntimeException(queryString, e);

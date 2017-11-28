@@ -1201,6 +1201,24 @@ public abstract class QueryRewriter {
         return !_isBuildingAggregate || !tree.getAggregate().isNested();
     }
 
+    public QueryBuilder getVisibilityFilter() {
+        ASTVisibility visibility = tree.getVisibility();
+
+        if (visibility == null)
+            return matchAllQuery();
+
+        return
+                boolQuery()
+                        .mustNot(
+                                visibility()
+                                        .myXid(visibility.getMyXid())
+                                        .xmin(visibility.getXmin())
+                                        .xmax(visibility.getXmax())
+                                        .commandId(visibility.getCommandId())
+                                        .activeXids(visibility.getActiveXids())
+                        );
+    }
+
     QueryBuilder applyVisibility(QueryBuilder query) {
         ASTVisibility visibility = tree.getVisibility();
 

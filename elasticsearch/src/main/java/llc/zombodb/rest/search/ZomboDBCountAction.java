@@ -55,7 +55,7 @@ public class ZomboDBCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(clusterService, client, request, true, true);
+            query = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(clusterService, client, request, true, false);
             if (query.hasLimit() && isSelectivityQuery) {
                 count = query.getLimit().getLimit();
             } else {
@@ -68,6 +68,7 @@ public class ZomboDBCountAction extends BaseRestHandler {
                 builder.setFetchSource(false);
                 builder.setTrackScores(false);
                 builder.setQuery(query.getQueryBuilder());
+                builder.setPostFilter(query.getVisibilityFilter());
 
                 SearchResponse searchResponse = client.search(builder.request()).actionGet();
 
