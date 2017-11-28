@@ -66,7 +66,7 @@ class CrossJoinQuery extends Query {
     FastTermsResponse fastTerms;
 
     public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins, String fieldType, int thisShardId) {
-        this.cacheKey = clusterName + host + port + index + type + leftFieldname + rightFieldname + query + thisShardId + canOptimizeJoins;
+        this.cacheKey = (clusterName + host + port + index + type + leftFieldname + rightFieldname + query + (canOptimizeJoins ? thisShardId : -1)).intern();
         this.clusterName = clusterName;
         this.host = host;
         this.port = port;
@@ -133,10 +133,10 @@ class CrossJoinQuery extends Query {
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
-        synchronized (cacheKey.intern()) {
-            fastTerms = RESPONSE_CACHE.get(cacheKey.intern());
+        fastTerms = RESPONSE_CACHE.get(cacheKey);
 
-            if (fastTerms == null) {
+        if (fastTerms == null) {
+            synchronized (cacheKey) {
                 fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(getClient(clusterName, host, port))
                         .setIndices(index)
                         .setTypes(type)
@@ -148,7 +148,7 @@ class CrossJoinQuery extends Query {
                 if (fastTerms.getFailedShards() > 0)
                     throw new IOException(fastTerms.getShardFailures()[0].getCause());
 
-                RESPONSE_CACHE.put(cacheKey.intern(), fastTerms);
+                RESPONSE_CACHE.put(cacheKey, fastTerms);
             }
         }
 
