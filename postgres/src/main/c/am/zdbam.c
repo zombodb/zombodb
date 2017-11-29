@@ -1128,7 +1128,7 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
         bool isnull;
         Datum d = SPI_getbinval(trigdata->tg_trigtuple, desc, SPI_fnumber(desc, joinKeyField), &isnull);
         if (isnull)
-            elog(ERROR, "encounted null value in field '%s'", joinKeyField);
+            elog(ERROR, "encountered null value in field '%s'", joinKeyField);
 
         deleted->joinKey = DatumGetInt64(d);
 	}
