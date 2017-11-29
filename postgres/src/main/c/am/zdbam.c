@@ -1118,7 +1118,7 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
 
     Assert(entry->desc->indexRelid == indexRelId);
 
-	deleted = palloc(sizeof(ZDBDeletedCtidAndCommand));
+	deleted = palloc0(sizeof(ZDBDeletedCtidAndCommand));
     ItemPointerCopy(&trigdata->tg_trigtuple->t_self, &deleted->ctid);
     deleted->commandid = GetCurrentCommandId(true);
 
@@ -1131,8 +1131,6 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
             elog(ERROR, "encounted null value in field '%s'", joinKeyField);
 
         deleted->joinKey = DatumGetInt64(d);
-    } else {
-		deleted->joinKey = -1;
 	}
 
     entry->deleted = lappend(entry->deleted, deleted);
