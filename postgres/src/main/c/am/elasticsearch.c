@@ -1162,7 +1162,7 @@ void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids
     foreach (lc, ctids) {
         ZDBDeletedCtidAndCommand *deleted = (ZDBDeletedCtidAndCommand *) lfirst(lc);
 
-        appendStringInfo(request, "%d-%d:%lu:%u:%lu\n", ItemPointerGetBlockNumber(&deleted->ctid), ItemPointerGetOffsetNumber(&deleted->ctid), xid, deleted->commandid, deleted->joinKey);
+        appendStringInfo(request, "%d-%d:%lu:%u:%ld\n", ItemPointerGetBlockNumber(&deleted->ctid), ItemPointerGetOffsetNumber(&deleted->ctid), xid, deleted->commandid, deleted->joinKey);
     }
 
     response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);

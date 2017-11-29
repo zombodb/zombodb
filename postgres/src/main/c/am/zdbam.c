@@ -1131,7 +1131,9 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
             elog(ERROR, "encounted null value in field '%s'", joinKeyField);
 
         deleted->joinKey = DatumGetInt64(d);
-    }
+    } else {
+		deleted->joinKey = -1;
+	}
 
     entry->deleted = lappend(entry->deleted, deleted);
 
