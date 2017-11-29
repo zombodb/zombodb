@@ -57,9 +57,9 @@
 "          \"properties\": {"\
 "              \"_xmax\": { \"type\": \"long\", \"index\": \"true\",\"include_in_all\":\"false\" },"\
 "              \"_cmax\": { \"type\": \"long\", \"index\": \"true\",\"include_in_all\":\"false\" },"\
-"              \"_replacement_ctid\": { \"type\": \"keyword\", \"index\": \"not_analyzed\",\"include_in_all\":\"false\", \"doc_values\": false },"\
+"              \"_replacement_ctid\": { \"type\": \"keyword\", \"index\": \"true\",\"include_in_all\":\"false\", \"doc_values\": false },"\
 "              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true },"\
-"              \"_zdb_reason\": { \"type\": \"keyword\", \"index\": \"not_analyzed\",\"include_in_all\":\"false\", \"doc_values\": false }"\
+"              \"_zdb_reason\": { \"type\": \"keyword\", \"index\": \"true\",\"include_in_all\":\"false\", \"doc_values\": false }"\
 "          }"\
 "      },"\
 "      \"aborted\": {"\
