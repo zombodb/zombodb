@@ -977,7 +977,7 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 		elog(ERROR, "%s", response->data);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, int64 sequence) {
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, int64 old_join_key, TransactionId xmin, int64 sequence) {
 	char         *b64_tuple;
 	unsigned int b64_len;
 
@@ -1010,8 +1010,12 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 	appendStringInfo(bulk, ",\"_zdb_encoded_tuple\":\"%.*s\"", b64_len, b64_tuple);
 	pfree(b64_tuple);
 
-	if (isupdate)
-		appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));
+	if (isupdate) {
+        appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));
+        if (indexDescriptor->optimizeForJoins != NULL) {
+            appendStringInfo(bulk, ",\"_prev_organize_for_joins\":%ld", old_join_key);
+        }
+    }
 
 	appendStringInfo(bulk, "}\n");
 }
@@ -1035,14 +1039,14 @@ static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
 }
 
 void
-elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, int64 sequence) {
+elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, int64 old_join_key, TransactionId xid, CommandId commandId, int64 sequence) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
     bool fast_path = false;
 
     if (batch->bulk == NULL)
         batch->bulk = checkout_batch_pool(batch);
 
-    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, old_ctid, xid, sequence);
+    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, old_ctid, old_join_key, xid, sequence);
     batch->nprocessed++;
     batch->nrecs++;
 
@@ -1150,15 +1154,15 @@ void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids
     ListCell *lc;
     uint64 xid = convert_xid(GetCurrentTransactionId());
 
-    appendStringInfo(endpoint, "%s%s/_zdb_delete_tuples", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_zdb_delete_tuples?optimize_for_joins=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null");
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-        appendStringInfo(endpoint, "?refresh=true");
+        appendStringInfo(endpoint, "&refresh=true");
     }
 
     foreach (lc, ctids) {
         ZDBDeletedCtidAndCommand *deleted = (ZDBDeletedCtidAndCommand *) lfirst(lc);
 
-        appendStringInfo(request, "%d-%d:%lu:%u\n", ItemPointerGetBlockNumber(&deleted->ctid), ItemPointerGetOffsetNumber(&deleted->ctid), xid, deleted->commandid);
+        appendStringInfo(request, "%d-%d:%lu:%u:%lu\n", ItemPointerGetBlockNumber(&deleted->ctid), ItemPointerGetOffsetNumber(&deleted->ctid), xid, deleted->commandid, deleted->joinKey);
     }
 
     response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);

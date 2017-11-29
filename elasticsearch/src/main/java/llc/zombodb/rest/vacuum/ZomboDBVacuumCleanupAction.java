@@ -113,6 +113,7 @@ public class ZomboDBVacuumCleanupAction extends BaseRestHandler {
                 .setScroll(TimeValue.timeValueMinutes(10))
                 .setSize(10000)
                 .addFieldDataField("_xmax")
+                .addStoredField("_routing")
                 .setQuery(termsQuery("_xmax", xids));
 
         if (!xids.isEmpty()) {
@@ -121,6 +122,8 @@ public class ZomboDBVacuumCleanupAction extends BaseRestHandler {
             while (true) {
                 if (response == null) {
                     response = client.execute(SearchAction.INSTANCE, search.request()).actionGet();
+                    if (response.getFailedShards() > 0)
+                        throw new RuntimeException(response.getShardFailures()[0].getCause());
                     total = (int) response.getHits().getTotalHits();
                 } else {
                     response = client.execute(SearchScrollAction.INSTANCE,
@@ -132,6 +135,10 @@ public class ZomboDBVacuumCleanupAction extends BaseRestHandler {
 
                 for (SearchHit hit : response.getHits()) {
                     Number xmax = hit.field("_xmax").value();
+                    String routing = hit.field("_routing").value();
+
+                    if (routing == null)
+                        throw new RuntimeException("Unknown routing in [" + index + "] for _id [" + hit.id() + "]");
 
                     // we can delete this "xmax" entry because its _xmax transaction
                     // is known to be aborted by Postgres.  As such, its corresponding
@@ -150,7 +157,7 @@ public class ZomboDBVacuumCleanupAction extends BaseRestHandler {
                                     // having this DeleteRequest actually complete would be deleting something
                                     // that isn't what we currently think it is.
                                     .setVersion(xmax.longValue())
-                                    .setRouting(hit.id())
+                                    .setRouting(routing)
                                     .setId(hit.id())
                                     .request()
                     );

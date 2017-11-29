@@ -74,7 +74,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
             isdelete = bulkRequest.requests().get(0) instanceof DeleteRequest;
 
             if (isdelete) {
-                handleDeleteRequests(client, bulkRequest.requests(), defaultIndex, xmaxRequests);
+                handleDeleteRequests(client, optimizeForJoins != null, bulkRequest.requests(), defaultIndex, xmaxRequests);
             } else {
                 handleIndexRequests(client, optimizeForJoins, bulkRequest.requests(), defaultIndex, requestNumber, xmaxRequests, abortedRequests);
             }
@@ -205,30 +205,85 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         return new BytesRestResponse(OK, builder);
     }
 
-    private void handleDeleteRequests(Client client, List<DocWriteRequest> requests, String defaultIndex, List<DocWriteRequest> xmaxRequests) {
+    private void handleDeleteRequests(Client client, boolean optimizeForJoins, List<DocWriteRequest> requests, String defaultIndex, List<DocWriteRequest> xmaxRequests) {
+        if (optimizeForJoins) {
+            //
+            // we're optimizing for joins and as such, we have no idea what the "_routing" value
+            // is for the documents we want to delete.  We could search up all the documents to find their
+            // routing, but it's easier to issue a Delete request to every shard, so that's what we're doing here
+            //
+            GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
+            int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
+            String[] routingTable = RoutingHelper.getRoutingTable(clusterService, defaultIndex, shards);
 
-        for (DocWriteRequest doc : requests) {
+            // additional DeleteRequests for each document against shards other than the 0'th shard
+            List<DeleteRequest> otherShards = new ArrayList<>();
 
-            xmaxRequests.add(
-                    DeleteAction.INSTANCE.newRequestBuilder(client)
-                            .setIndex(defaultIndex)
-                            .setType("xmax")
-                            .setRouting(doc.id())
-                            .setId(doc.id())
-                            .request()
-            );
+            for (DocWriteRequest doc : requests) {
 
-            doc.routing(doc.id());
+                for (int i=0; i<routingTable.length; i++) {
+                    // xmax delete requests for each shard
+                    xmaxRequests.add(
+                            DeleteAction.INSTANCE.newRequestBuilder(client)
+                                    .setIndex(defaultIndex)
+                                    .setType("xmax")
+                                    .setRouting(routingTable[i])
+                                    .setId(doc.id())
+                                    .request()
+                    );
+
+                    if (i == 0) {
+                        // first routing value, so just set the routing on the
+                        // doc already in the list of requests
+                        doc.routing(routingTable[i]);
+                    } else {
+                        // not-the-first routing value, so create new delete requests
+                        // that are the same as the current, but with this routing value
+                        otherShards.add(
+                                DeleteAction.INSTANCE.newRequestBuilder(client)
+                                        .setIndex(doc.index())
+                                        .setType(doc.type())
+                                        .setId(doc.id())
+                                        .setRouting(routingTable[i])
+                                        .setVersion(doc.version())
+                                        .setVersionType(doc.versionType())
+                                        .request()
+                        );
+                    }
+                }
+            }
+
+            // remember all the other DeleteRequests we made
+            requests.addAll(otherShards);
+        } else {
+            // we're not optimizing for joins, and as such we know the routing value
+            // for every document -- it's the "id"
+            for (DocWriteRequest doc : requests) {
+                xmaxRequests.add(
+                        DeleteAction.INSTANCE.newRequestBuilder(client)
+                                .setIndex(defaultIndex)
+                                .setType("xmax")
+                                .setRouting(doc.id())
+                                .setId(doc.id())
+                                .request()
+                );
+
+                doc.routing(doc.id());
+            }
         }
     }
 
     private void handleIndexRequests(Client client, String optimizeForJoins, List<DocWriteRequest> requests, String defaultIndex, int requestNumber, List<DocWriteRequest> xmaxRequests, List<DocWriteRequest> abortedRequests) {
+        GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
+        int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
+        String[] routingTable = RoutingHelper.getRoutingTable(clusterService, defaultIndex, shards);
 
         int cnt = 0;
         for (DocWriteRequest ar : requests) {
             IndexRequest doc = (IndexRequest) ar;
             Map<String, Object> data = doc.sourceAsMap();
             String prev_ctid = (String) data.get("_prev_ctid");
+            Number prev_organize_for_joins = optimizeForJoins != null ? (Number) data.get("_prev_organize_for_joins") : null;
             Number xmin = (Number) data.get("_xmin");
             Number cmin = (Number) data.get("_cmin");
             Number sequence = (Number) data.get("_zdb_seq");    // -1 means an index build (CREATE INDEX)
@@ -242,13 +297,16 @@ public class ZomboDBBulkAction extends BaseRestHandler {
                 int offno = Integer.parseInt(parts[1]);
                 BytesRef encodedTuple = encodeTuple(xmin.longValue(), cmin.intValue(), blockno, offno);
 
+                if (optimizeForJoins != null && prev_organize_for_joins == null)
+                    throw new RuntimeException("Found null routing value in [" + defaultIndex + "] with id [" + doc.id() + "] for field [_prev_organize_for_joins]");
+
                 xmaxRequests.add(
                         IndexAction.INSTANCE.newRequestBuilder(client)
                                 .setIndex(defaultIndex)
                                 .setType("xmax")
                                 .setVersionType(VersionType.FORCE)
                                 .setVersion(xmin.longValue())
-                                .setRouting(prev_ctid)
+                                .setRouting(optimizeForJoins != null ? calcRoutingValue(prev_organize_for_joins) : prev_ctid)
                                 .setId(prev_ctid)
                                 .setSource("_xmax", xmin, "_cmax", cmin, "_replacement_ctid", doc.id(), "_zdb_encoded_tuple", encodedTuple, "_zdb_reason", "U")
                                 .request()
@@ -258,23 +316,36 @@ public class ZomboDBBulkAction extends BaseRestHandler {
             if (sequence.intValue() > -1) {
                 // delete a possible existing xmax value for this doc
                 // but only if we're NOT in an index build (ie, CREATE INDEX)
-                xmaxRequests.add(
-                        DeleteAction.INSTANCE.newRequestBuilder(client)
-                                .setIndex(defaultIndex)
-                                .setType("xmax")
-                                .setRouting(doc.id())
-                                .setId(doc.id())
-                                .request()
-                );
+
+                if (optimizeForJoins != null) {
+                    // if we are optimizing for joins then we need to send the delete to every shard
+                    // because we don't know what routing value might have been used
+                    for (String routing : routingTable) {
+                        xmaxRequests.add(
+                                DeleteAction.INSTANCE.newRequestBuilder(client)
+                                        .setIndex(defaultIndex)
+                                        .setType("xmax")
+                                        .setRouting(routing)
+                                        .setId(doc.id())
+                                        .request()
+                        );
+                    }
+                } else {
+                    // not optimizing for joins, so the routing is the doc's "id"
+                    xmaxRequests.add(
+                            DeleteAction.INSTANCE.newRequestBuilder(client)
+                                    .setIndex(defaultIndex)
+                                    .setType("xmax")
+                                    .setRouting(doc.id())
+                                    .setId(doc.id())
+                                    .request()
+                    );
+                }
             }
 
             // only add the "aborted" xid entry if this is the first
             // record in what might be a batch of inserts from one statement
             if (requestNumber == 0 && cnt == 0 && sequence.intValue() > -1) {
-                GetSettingsResponse indexSettings = client.admin().indices().getSettings(client.admin().indices().prepareGetSettings(defaultIndex).request()).actionGet();
-                int shards = Integer.parseInt(indexSettings.getSetting(defaultIndex, "index.number_of_shards"));
-                String[] routingTable = RoutingHelper.getRoutingTable(clusterService, defaultIndex, shards);
-
                 for (String routing : routingTable) {
                     abortedRequests.add(
                             IndexAction.INSTANCE.newRequestBuilder(client)
@@ -288,8 +359,10 @@ public class ZomboDBBulkAction extends BaseRestHandler {
                 }
             }
 
-            if (routing_key != null) {
-                docRouting = String.valueOf((routing_key.longValue() / 100_000) * 100_000);
+            if (optimizeForJoins != null) {
+                if (routing_key == null)
+                    throw new RuntimeException("Found null routing value in [" + defaultIndex + "] with id [" + doc.id() + "] for field [" + optimizeForJoins + "]");
+                docRouting = calcRoutingValue(routing_key);
             } else {
                 docRouting = doc.id();
             }
@@ -319,5 +392,9 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
         }
+    }
+
+    static String calcRoutingValue(Number incomingValue) {
+        return String.valueOf((incomingValue.longValue()/100_000) * 100_000);
     }
 }

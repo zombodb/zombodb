@@ -525,6 +525,12 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             "\"index\": \"false\""
             "},");
 
+    appendStringInfo(result, "\"_prev_organize_for_joins\": {"
+            "\"type\":\"long\","
+            "\"include_in_all\":\"false\","
+            "\"index\": \"false\""
+            "},");
+
     appendStringInfo(result, "\"_zdb_seq\": {"
             "\"type\":\"long\","
             "\"include_in_all\":\"false\","

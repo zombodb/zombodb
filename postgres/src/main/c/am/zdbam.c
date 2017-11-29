@@ -106,6 +106,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
 static ItemPointer LAST_UPDATED_CTID = NULL;
+static int64 LAST_UPDATED_JOIN_KEY = 0;
 
 static List *deletedCtids = NULL;
 
@@ -372,7 +373,7 @@ static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableN
 	if (SPI_execute(sql->data, true, 1) != SPI_OK_SELECT || SPI_processed != 0)
 		return;	/* trigger already exists */
 
-	triggerOid = create_trigger(lookup_zdb_namespace(), schemaName, tableName, heapRelOid, triggerName->data, "zdbupdatetrigger", InvalidOid, TRIGGER_TYPE_UPDATE);
+	triggerOid = create_trigger(lookup_zdb_namespace(), schemaName, tableName, heapRelOid, triggerName->data, "zdbupdatetrigger", indexRelOid, TRIGGER_TYPE_UPDATE);
 	create_trigger_dependency(indexRelOid, triggerOid);
 
 	freeStringInfo(sql);
@@ -543,7 +544,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 
 	xmin = HeapTupleHeaderGetXmin(htup->t_data);
 
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), -1);
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, 0, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), -1);
 
     buildstate->indtuples++;
 }
@@ -573,7 +574,7 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
 		LAST_UPDATED_CTID = NULL;
     }
 
-    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, &old_ctid, currentTransactionId, GetCurrentCommandId(true), zdb_sequence++);
+    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, &old_ctid, LAST_UPDATED_JOIN_KEY, currentTransactionId, GetCurrentCommandId(true), zdb_sequence++);
 
     PG_RETURN_BOOL(true);
 }
@@ -1044,7 +1045,10 @@ Datum zdbcostestimate(PG_FUNCTION_ARGS) {
 }
 
 Datum zdbupdatetrigger(PG_FUNCTION_ARGS) {
-    TriggerData        *trigdata = (TriggerData *) fcinfo->context;
+    TriggerData *trigdata  = (TriggerData *) fcinfo->context;
+    Oid         indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
+    Relation    indexRel;
+    char        *joinKeyField;
 
     /* make sure it's called as a trigger at all */
     if (!CALLED_AS_TRIGGER(fcinfo))
@@ -1059,16 +1063,31 @@ Datum zdbupdatetrigger(PG_FUNCTION_ARGS) {
 	if (LAST_UPDATED_CTID == NULL)
 		LAST_UPDATED_CTID = palloc(sizeof(ItemPointerData));
 	memcpy(LAST_UPDATED_CTID, &trigdata->tg_trigtuple->t_self, sizeof(ItemPointerData));
+
+    indexRel = RelationIdGetRelation(indexRelId);
+    joinKeyField = ZDBIndexOptionsGetOptimizeForJoins(indexRel);
+    if (joinKeyField != NULL) {
+        TupleDesc desc = trigdata->tg_relation->rd_att;
+        bool isnull;
+        Datum d = SPI_getbinval(trigdata->tg_trigtuple, desc, SPI_fnumber(desc, joinKeyField), &isnull);
+        if (isnull)
+            elog(ERROR, "encounted null value in field '%s'", joinKeyField);
+
+        LAST_UPDATED_JOIN_KEY = DatumGetInt64(d);
+    }
+
+    RelationClose(indexRel);
+
     return PointerGetDatum(trigdata->tg_newtuple);
 }
 
 Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
-    MemoryContext tmpcxt;
-    TriggerData *trigdata = (TriggerData *) fcinfo->context;
-    Oid indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
-    ZDBDeletedCtid *entry = NULL;
-    ListCell *lc;
-	ZDBDeletedCtidAndCommand *deleted;
+    MemoryContext            tmpcxt;
+    TriggerData              *trigdata  = (TriggerData *) fcinfo->context;
+    Oid                      indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
+    ZDBDeletedCtid           *entry     = NULL;
+    ListCell                 *lc;
+    ZDBDeletedCtidAndCommand *deleted;
 
     /* make sure it's called as a trigger at all */
     if (!CALLED_AS_TRIGGER(fcinfo))
@@ -1101,7 +1120,19 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
 
 	deleted = palloc(sizeof(ZDBDeletedCtidAndCommand));
     ItemPointerCopy(&trigdata->tg_trigtuple->t_self, &deleted->ctid);
-	deleted->commandid = GetCurrentCommandId(true);
+    deleted->commandid = GetCurrentCommandId(true);
+
+    if (entry->desc->optimizeForJoins != NULL) {
+        TupleDesc desc = trigdata->tg_relation->rd_att;
+        char *joinKeyField = entry->desc->optimizeForJoins;
+        bool isnull;
+        Datum d = SPI_getbinval(trigdata->tg_trigtuple, desc, SPI_fnumber(desc, joinKeyField), &isnull);
+        if (isnull)
+            elog(ERROR, "encounted null value in field '%s'", joinKeyField);
+
+        deleted->joinKey = DatumGetInt64(d);
+    }
+
     entry->deleted = lappend(entry->deleted, deleted);
 
     MemoryContextSwitchTo(tmpcxt);
