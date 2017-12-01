@@ -144,11 +144,9 @@ public class IndexMetadataManager {
                 .setIndices(indexName)
                 .setTypes("data")
                 .setIndicesOptions(IndicesOptions.fromOptions(false, false, true, true))
-                .setLocal(true)
                 .get();
         GetSettingsResponse settingsResponse = GetSettingsAction.INSTANCE.newRequestBuilder(client)
                 .setIndices(indexName)
-                .setLocal(true)
                 .get();
 
 
