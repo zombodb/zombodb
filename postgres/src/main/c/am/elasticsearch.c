@@ -875,7 +875,7 @@ static uint64 count_deleted_docs(ZDBIndexDescriptor *indexDescriptor) {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo response;
 
-	appendStringInfo(endpoint, "%s/_cat/indices/%s?h=docs.deleted", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s_cat/indices/%s?h=docs.deleted", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
 	return (uint64) atoll(response->data);
