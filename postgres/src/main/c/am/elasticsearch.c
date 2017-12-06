@@ -809,7 +809,7 @@ char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo response;
 
     sprintf(indexName, "%s", indexDescriptor->fullyQualifiedName);
-    appendStringInfo(endpoint, "%s%s/_mapping", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_mapping?pretty", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
