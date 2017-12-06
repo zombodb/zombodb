@@ -918,10 +918,10 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
 
 		if (deleted_docs >=  indexDescriptor->optimizeAfter) {
 			resetStringInfo(endpoint);
-			appendStringInfo(endpoint, "%s%s/_optimize?only_expunge_deletes=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+			appendStringInfo(endpoint, "%s%s/_forcemerge?only_expunge_deletes=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 			elog(ZDB_LOG_LEVEL, "[zombodb vacuum] expunging deleted docs in %s (docs.deleted=%lu)", indexDescriptor->fullyQualifiedName, deleted_docs);
-			rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+			rest_call("POST", endpoint->data, NULL, indexDescriptor->compressionLevel);
 		}
 	}
 
