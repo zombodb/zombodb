@@ -132,9 +132,20 @@ PARSER_END(QueryParser)
     <ARRAY_CLOB_END: "]]"> : DEFAULT
 }
 
+<JSON_CLOB> MORE :
+{
+      <JSON_DATA: (~[")"])+ >
+}
+
+<JSON_CLOB> TOKEN:
+{
+    <JSON_CLOB_END: ")"> : DEFAULT
+}
+
 <DEFAULT> MORE :
 {
-  "[[": ARRAY_CLOB
+   "[[": ARRAY_CLOB
+ | "({": JSON_CLOB
 }
 
 <DEFAULT> TOKEN :
@@ -200,7 +211,6 @@ PARSER_END(QueryParser)
              ) ("~" ("!")? (<DIGIT>)+)?
     >
   | <SCRIPT: "$$" (~[])* "$$" >
-  | <JSON_QUERY: "({" (~[])* "})" >
 
   | <#LETTER: ["a"-"z", "_"] >
   | <#DIGIT: ["0"-"9"] >
@@ -238,7 +248,7 @@ void JsonAgg() #JsonAgg :
     Token t;
 }
 {
-    ( <JSON_AGG> t = <JSON_QUERY> )
+    ( <JSON_AGG> t = <JSON_CLOB_END> )
     {
          jjtThis.value = t.image.substring(1, t.image.length()-1);
     }
@@ -465,7 +475,7 @@ void UnaryExpression() :
           n = Not()
         | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
         | ("(" ")") // just ignore empty parens, ie:  ()
-        | Limit() | Options() | Aggregations() | FieldLists() | Visibility()
+        | Limit() | Options() | LOOKAHEAD(3) Aggregations() | FieldLists() | Visibility()
         | n = Expansion()
         | n = JsonQuery()
         | n = BoolQuery()
@@ -560,7 +570,7 @@ QueryParserNode JsonQuery() #JsonQuery :
     Token t;
 }
 {
-    ( t = <JSON_QUERY> )
+    ( t = <JSON_CLOB_END>)
     {
         jjtThis.value = t.image.substring(1, t.image.length()-1);
         return jjtThis;

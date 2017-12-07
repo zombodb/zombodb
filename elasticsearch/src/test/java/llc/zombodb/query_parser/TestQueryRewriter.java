@@ -5078,6 +5078,17 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testMultipleEmbeddedJsonQueryDSL() throws Exception {
+        assertAST(
+                "({\"term\":{\"_all\":\"java\"}}) or ({ \"term\":{\"_all\":\"joe\"} })",
+                "QueryTree\n" +
+                        "   Or\n" +
+                        "      JsonQuery (value={\"term\":{\"_all\":\"java\"}})\n" +
+                        "      JsonQuery (value={ \"term\":{\"_all\":\"joe\"} })"
+        );
+    }
+
+    @Test
     public void testIssue143_Json() throws Exception {
         assertJson(
                 "subject:(beer or wine and cheese) and ({" +
