@@ -45,7 +45,7 @@ public class IndexMetadata {
     private final Map<String, Map<String, Object>> fields;
     private final String pkeyFieldName;
     private boolean alwaysResolveJoins = false;
-    private String optimizeForJoins;
+    private String blockRoutingField;
 
     public IndexMetadata(ASTIndexLink link, MappingMetaData mmd, int numberOfShards) {
         this.link = link;
@@ -58,9 +58,9 @@ public class IndexMetadata {
 
         pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
         alwaysResolveJoins = meta != null && (meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins"))));
-        optimizeForJoins = meta != null ? (String) meta.get("optimize_for_joins") : null;
-        if ("null".equals(optimizeForJoins))
-            optimizeForJoins = null;
+        blockRoutingField = meta != null ? (String) meta.get("block_routing_field") : null;
+        if ("null".equals(blockRoutingField))
+            blockRoutingField = null;
     }
 
     public ASTIndexLink getLink() {
@@ -71,8 +71,8 @@ public class IndexMetadata {
         return pkeyFieldName;
     }
 
-    public String getOptimizeForJoinsFieldName() {
-        return optimizeForJoins;
+    public String getBlockRoutingField() {
+        return blockRoutingField;
     }
 
     public int getNumberOfShards() {

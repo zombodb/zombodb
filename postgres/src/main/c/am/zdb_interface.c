@@ -139,7 +139,7 @@ static void validate_alias(char *str) {
 	// noop
 }
 
-static void validate_optimize_for_joins(char *fieldname) {
+static void validate_block_routing_field(char *fieldname) {
     // noop
 }
 
@@ -172,7 +172,7 @@ void zdb_index_init(void) {
     add_int_reloption(RELOPT_KIND_ZDB, "optimize_after", "After how many deleted docs should ZDB _optimize the ES index?", 0, 0, INT32_MAX);
     add_int_reloption(RELOPT_KIND_ZDB, "default_row_estimate", "Estimate the average number of rows returned by a ZDB query", zdb_default_row_estimate_guc, -1, INT32_MAX);
 	add_bool_reloption(RELOPT_KIND_ZDB, "store", "Should ZomboDB store the raw JSON source in Elasticsearch?", false);
-	add_string_reloption(RELOPT_KIND_ZDB, "optimize_for_joins", "Which field should ZomboDB use to group rows in shards", NULL, validate_optimize_for_joins);
+	add_string_reloption(RELOPT_KIND_ZDB, "block_routing_field", "Which field should ZomboDB use to group rows in shards", NULL, validate_block_routing_field);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
@@ -232,7 +232,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         desc->url       = ZDBIndexOptionsGetUrl(shadowRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetUrl(shadowRel));
 
         desc->compressionLevel  = ZDBIndexOptionsGetCompressionLevel(shadowRel);
-		desc->optimizeForJoins = ZDBIndexOptionsGetOptimizeForJoins(shadowRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptimizeForJoins(shadowRel));
+		desc->blockRoutingField = ZDBIndexOptionsGetBlockRoutingField(shadowRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetBlockRoutingField(shadowRel));
 
         RelationClose(shadowRel);
     } else {
@@ -253,18 +253,18 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 		}
 
         desc->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
-		desc->optimizeForJoins = ZDBIndexOptionsGetOptimizeForJoins(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptimizeForJoins(indexRel));
+		desc->blockRoutingField = ZDBIndexOptionsGetBlockRoutingField(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetBlockRoutingField(indexRel));
     }
 
-	/* see if we have any json fields and also validate the 'optimizeForJoins' field */
+	/* see if we have any json fields and also validate the 'blockRoutingField' field */
 	heapTupDesc = RelationGetDescr(heapRel);
 	for (i = 0; i < heapTupDesc->natts; i++) {
 		if (heapTupDesc->attrs[i]->atttypid == JSONOID) {
 			desc->hasJson = true;
 		}
 
-		if (desc->optimizeForJoins != NULL) {
-			if (strcmp(desc->optimizeForJoins, heapTupDesc->attrs[i]->attname.data) == 0) {
+		if (desc->blockRoutingField != NULL) {
+			if (strcmp(desc->blockRoutingField, heapTupDesc->attrs[i]->attname.data) == 0) {
 				switch (heapTupDesc->attrs[i]->atttypid) {
 					case INT2OID:
 					case INT4OID:
@@ -272,7 +272,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 						// these are okay
 						break;
 					default:
-						elog(ERROR, "'optimize_for_joins' field type is not correct.  It should be one of int2, int4, or int8.");
+						elog(ERROR, "'block_routing_field' field type is not correct.  It should be one of int2, int4, or int8.");
 						break;
 				}
 

@@ -60,9 +60,9 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         boolean refresh = request.paramAsBoolean("refresh", false);
         boolean isdelete = false;
         int requestNumber = request.paramAsInt("request_no", -1);
-        String optimizeForJoins = request.param("optimize_for_joins", null);
-        if ("null".equals(optimizeForJoins))
-            optimizeForJoins = null;
+        String blockRoutingField = request.param("block_routing_field", null);
+        if ("null".equals(blockRoutingField))
+            blockRoutingField = null;
 
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
         bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
@@ -74,9 +74,9 @@ public class ZomboDBBulkAction extends BaseRestHandler {
             isdelete = bulkRequest.requests().get(0) instanceof DeleteRequest;
 
             if (isdelete) {
-                handleDeleteRequests(client, optimizeForJoins != null, bulkRequest.requests(), defaultIndex, xmaxRequests);
+                handleDeleteRequests(client, blockRoutingField != null, bulkRequest.requests(), defaultIndex, xmaxRequests);
             } else {
-                handleIndexRequests(client, optimizeForJoins, bulkRequest.requests(), defaultIndex, requestNumber, xmaxRequests, abortedRequests);
+                handleIndexRequests(client, blockRoutingField, bulkRequest.requests(), defaultIndex, requestNumber, xmaxRequests, abortedRequests);
             }
         }
 
@@ -208,7 +208,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
     private void handleDeleteRequests(Client client, boolean optimizeForJoins, List<DocWriteRequest> requests, String defaultIndex, List<DocWriteRequest> xmaxRequests) {
         if (optimizeForJoins) {
             //
-            // we're optimizing for joins and as such, we have no idea what the "_routing" value
+            // we're doing block routing and as such, we have no idea what the "_routing" value
             // is for the documents we want to delete.  We could search up all the documents to find their
             // routing, but it's easier to issue a Delete request to every shard, so that's what we're doing here
             //
@@ -256,7 +256,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
             // remember all the other DeleteRequests we made
             requests.addAll(otherShards);
         } else {
-            // we're not optimizing for joins, and as such we know the routing value
+            // we're not doing block routing, and as such we know the routing value
             // for every document -- it's the "id"
             for (DocWriteRequest doc : requests) {
                 xmaxRequests.add(
@@ -318,7 +318,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
                 // but only if we're NOT in an index build (ie, CREATE INDEX)
 
                 if (optimizeForJoins != null) {
-                    // if we are optimizing for joins then we need to send the delete to every shard
+                    // if we are doing block routing then we need to send the delete to every shard
                     // because we don't know what routing value might have been used
                     for (String routing : routingTable) {
                         xmaxRequests.add(
@@ -331,7 +331,7 @@ public class ZomboDBBulkAction extends BaseRestHandler {
                         );
                     }
                 } else {
-                    // not optimizing for joins, so the routing is the doc's "id"
+                    // not doing block routing, so the routing is the doc's "id"
                     xmaxRequests.add(
                             DeleteAction.INSTANCE.newRequestBuilder(client)
                                     .setIndex(defaultIndex)

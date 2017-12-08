@@ -66,8 +66,8 @@ class ZomboDBQueryRewriter extends QueryRewriter {
             IndexMetadata leftMetadata = metadataManager.getMetadataForIndexName(parentLink.getIndexName());
             IndexMetadata rightMetadata = metadataManager.getMetadataForIndexName(link.getIndexName());
 
-            boolean canOptimizeForJoins = link.getLeftFieldname().equals(leftMetadata.getOptimizeForJoinsFieldName()) &&
-                    link.getRightFieldname().equals(rightMetadata.getOptimizeForJoinsFieldName()) &&
+            boolean canOptimizeForJoins = link.getLeftFieldname().equals(leftMetadata.getBlockRoutingField()) &&
+                    link.getRightFieldname().equals(rightMetadata.getBlockRoutingField()) &&
                     leftMetadata.getNumberOfShards() == rightMetadata.getNumberOfShards();
 
             qb = constantScoreQuery(new CrossJoinQueryBuilder()

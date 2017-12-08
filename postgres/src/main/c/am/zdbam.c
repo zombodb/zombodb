@@ -933,7 +933,7 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
                                                 {"optimize_after",       RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, optimizeAfter)},
                                                 {"default_row_estimate", RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, defaultRowEstimate)},
                                                 {"store",                RELOPT_TYPE_BOOL,   offsetof(ZDBIndexOptions, store)},
-												{"optimize_for_joins",   RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, optimizeForJoinsOffset)},
+												{"block_routing_field",   RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, blockRoutingFieldOffset)},
     };
 
     options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB, &numoptions);
@@ -1048,7 +1048,7 @@ Datum zdbupdatetrigger(PG_FUNCTION_ARGS) {
     TriggerData *trigdata  = (TriggerData *) fcinfo->context;
     Oid         indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
     Relation    indexRel;
-    char        *joinKeyField;
+    char        *blockRoutingField;
 
     /* make sure it's called as a trigger at all */
     if (!CALLED_AS_TRIGGER(fcinfo))
@@ -1065,13 +1065,13 @@ Datum zdbupdatetrigger(PG_FUNCTION_ARGS) {
 	memcpy(LAST_UPDATED_CTID, &trigdata->tg_trigtuple->t_self, sizeof(ItemPointerData));
 
     indexRel = RelationIdGetRelation(indexRelId);
-    joinKeyField = ZDBIndexOptionsGetOptimizeForJoins(indexRel);
-    if (joinKeyField != NULL) {
+    blockRoutingField = ZDBIndexOptionsGetBlockRoutingField(indexRel);
+    if (blockRoutingField != NULL) {
         TupleDesc desc = trigdata->tg_relation->rd_att;
         bool isnull;
-        Datum d = SPI_getbinval(trigdata->tg_trigtuple, desc, SPI_fnumber(desc, joinKeyField), &isnull);
+        Datum d = SPI_getbinval(trigdata->tg_trigtuple, desc, SPI_fnumber(desc, blockRoutingField), &isnull);
         if (isnull)
-            elog(ERROR, "encounted null value in field '%s'", joinKeyField);
+            elog(ERROR, "encounted null value in field '%s'", blockRoutingField);
 
         LAST_UPDATED_JOIN_KEY = DatumGetInt64(d);
     }
@@ -1122,9 +1122,9 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
     ItemPointerCopy(&trigdata->tg_trigtuple->t_self, &deleted->ctid);
     deleted->commandid = GetCurrentCommandId(true);
 
-    if (entry->desc->optimizeForJoins != NULL) {
+    if (entry->desc->blockRoutingField != NULL) {
         TupleDesc desc = trigdata->tg_relation->rd_att;
-        char *joinKeyField = entry->desc->optimizeForJoins;
+        char *joinKeyField = entry->desc->blockRoutingField;
         bool isnull;
         Datum d = SPI_getbinval(trigdata->tg_trigtuple, desc, SPI_fnumber(desc, joinKeyField), &isnull);
         if (isnull)

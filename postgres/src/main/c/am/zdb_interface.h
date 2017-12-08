@@ -51,7 +51,7 @@ typedef struct {
     int   optimizeAfter;
 	int   defaultRowEstimate;
 	bool  store;
-	int   optimizeForJoinsOffset;
+	int   blockRoutingFieldOffset;
 } ZDBIndexOptions;
 
 #define ZDBIndexOptionsGetUrl(relation) \
@@ -112,9 +112,9 @@ typedef struct {
 #define ZDBIndexOptionsGetStore(relation) \
     (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->store : false
 
-#define ZDBIndexOptionsGetOptimizeForJoins(relation) \
-    ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->optimizeForJoinsOffset > 0 ? \
-      (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->optimizeForJoinsOffset : (NULL))
+#define ZDBIndexOptionsGetBlockRoutingField(relation) \
+    ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->blockRoutingFieldOffset > 0 ? \
+      (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->blockRoutingFieldOffset : (NULL))
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
@@ -144,7 +144,7 @@ typedef struct {
     bool ignoreVisibility;
 	int  defaultRowEstimate;
 	bool store;
-	char *optimizeForJoins;
+	char *blockRoutingField;
 
     char *fieldLists;
 

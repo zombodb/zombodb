@@ -57,9 +57,9 @@ public class ZomboDBDeleteTuplesAction extends BaseRestHandler {
         boolean refresh = request.paramAsBoolean("refresh", false);
         List<DocWriteRequest> xmaxRequests = new ArrayList<>();
         List<DocWriteRequest> abortedRequests = new ArrayList<>();
-        String optimizeForJoins = request.param("optimize_for_joins");
-        if ("null".equals(optimizeForJoins))
-            optimizeForJoins = null;
+        String blockRoutingField = request.param("block_routing_field");
+        if ("null".equals(blockRoutingField))
+            blockRoutingField = null;
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.content().streamInput()));
         String line;
@@ -100,7 +100,7 @@ public class ZomboDBDeleteTuplesAction extends BaseRestHandler {
                             .setType("xmax")
                             .setVersionType(VersionType.FORCE)
                             .setVersion(xid)
-                            .setRouting(optimizeForJoins != null ? ZomboDBBulkAction.calcRoutingValue(joinKey) : ctid)
+                            .setRouting(blockRoutingField != null ? ZomboDBBulkAction.calcRoutingValue(joinKey) : ctid)
                             .setId(ctid)
                             .setSource("_xmax", xid, "_cmax", cmax, "_replacement_ctid", ctid, "_zdb_encoded_tuple", encodedTuple, "_zdb_reason", "D")
                             .request()

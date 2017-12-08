@@ -243,7 +243,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_source\": { \"enabled\": %s },"
             "          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"optimize_for_joins\": \"%s\" },"
+            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\" },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
             "      },"
@@ -265,7 +265,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
                      indexDescriptor->store ? "true" : "false",
                      lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false),
 					 indexDescriptor->alwaysResolveJoins ? "true" : "false",
-                     indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null",
+                     indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null",
 					 fieldProperties, shards,
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
@@ -345,7 +345,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "   \"data\": {"
             "      \"_source\": { \"enabled\": %s },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"optimize_for_joins\": \"%s\" },"
+            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\" },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"
             "    },"
@@ -354,7 +354,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
                      indexDescriptor->store ? "true" : "false",
                      pkey,
                      indexDescriptor->alwaysResolveJoins ? "true" : "false",
-                     indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null",
+                     indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null",
                      properties
     );
 
@@ -888,7 +888,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
     ListCell *lc;
     int i=0;
 
-	appendStringInfo(endpoint, "%s%s/data/_zdbbulk?optimize_for_joins=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null");
+	appendStringInfo(endpoint, "%s%s/data/_zdbbulk?block_routing_field=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null");
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
         appendStringInfo(endpoint, "&refresh=true");
     }
@@ -1012,7 +1012,7 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
 
 	if (isupdate) {
         appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));
-        if (indexDescriptor->optimizeForJoins != NULL) {
+        if (indexDescriptor->blockRoutingField != NULL) {
             appendStringInfo(bulk, ",\"_prev_organize_for_joins\":%ld", old_join_key);
         }
     }
@@ -1061,7 +1061,7 @@ elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ct
         StringInfo endpoint = makeStringInfo();
 
         /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-        appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d&optimize_for_joins=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests, indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null");
+        appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d&block_routing_field=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests, indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null");
 
         /* send the request to index this batch */
         rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, indexDescriptor->compressionLevel);
@@ -1091,7 +1091,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
-            appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d&optimize_for_joins=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests, indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null");
+            appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d&block_routing_field=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests, indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null");
 
             if (batch->nrequests == 0) {
 				/*
@@ -1154,7 +1154,7 @@ void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids
     ListCell *lc;
     uint64 xid = convert_xid(GetCurrentTransactionId());
 
-    appendStringInfo(endpoint, "%s%s/_zdb_delete_tuples?optimize_for_joins=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->optimizeForJoins ? indexDescriptor->optimizeForJoins : "null");
+    appendStringInfo(endpoint, "%s%s/_zdb_delete_tuples?block_routing_field=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null");
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
         appendStringInfo(endpoint, "&refresh=true");
     }
