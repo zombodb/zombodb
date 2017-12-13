@@ -77,9 +77,9 @@ If you were to execute a query such as `SELECT * FROM book WHERE zdb('book', cti
         }
 ```
 
-As explained in [CROSS-INDEX-JOINS.md](CROSS-INDEX-JOINS.md), ZomboDB will run a CrossJoinQuery on every shard for `book` that then uses the FastTerms shard action to query **every** shard in `book_content`, and then rewrite the final query to find `book` documents with an `id` contained in the set of all `book_id`s found FastTerms.  And again, all of this is happening for every shard in `books` (40, in this example).
+As explained in [CROSS-INDEX-JOINS.md](CROSS-INDEX-JOINS.md), ZomboDB will run a CrossJoinQuery on every shard for `book` that then uses the FastTerms shard action to query **every** shard in `book_content`, and then rewrite the final query to find `book` documents with an `id` contained in the set of all `book_id`s found by FastTerms.  And again, all of this is happening for every shard in `books` (40, in this example).
 
-Note here that the `can_optimize_joins` proeprty is true in the generated query.  This means ZomboDB examined both `idxbook` and `idxcontent` and determined that they're routed in a way that's equivalent.  As such, the block routing optimization can kick in.
+Note here that the `can_optimize_joins` proeprty is `true` in the generated query.  This means ZomboDB examined both `idxbook` and `idxcontent` and determined that they're routed in a way that's equivalent.  As such, the block routing optimization can kick in.
 
 What happens is that when the CrossJoinQuery is executing on, say, shard 2 of `idxbook`, it only needs to use FastTerms to query shard 2 on `idxcontent` because there's no possible way any of the other shards in `idxcontent` could contain docs with `book_content.book_id` values that would match the `book.id` values contained on shard 2 of `book`.  This is because we defined each index to use block routing on the fields that were defined as equivalent in the index linking `options`.
 
