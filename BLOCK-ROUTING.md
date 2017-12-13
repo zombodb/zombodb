@@ -48,7 +48,7 @@ Lets say you have a simple schema similar to this:
 CREATE TABLE book (id serial4 NOT NULL PRIMARY KEY, title phrase, author text);
 CREATE TABLE book_content (book_id int4 NOT NULL, body fulltext, pageno int4);
 CREATE INDEX idxbook ON book USING zombodb (zdb('book', ctid), zdb(book)) 
-        WITH (url='...', shards=40, block_routing_field='id', options='id=<book_content.idxcontent>book_id);
+        WITH (url='...', shards=40, block_routing_field='id', options='id=<book_content.idxcontent>book_id');
 CREATE INDEX idxcontent on book_content USING zombodb (zdb('book_content', ctid), zdb(book_content)) 
         WITH (url='...', shards=40, block_routing_field='book_id');
 ```
