@@ -395,6 +395,6 @@ public class ZomboDBBulkAction extends BaseRestHandler {
     }
 
     static String calcRoutingValue(Number incomingValue) {
-        return String.valueOf((incomingValue.longValue()/100_000) * 100_000);
+        return String.valueOf(incomingValue.longValue()/100_000L);
     }
 }
