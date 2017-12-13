@@ -2,7 +2,7 @@
 
 ZomboDB consists of two pieces.  One is a Postgres Extension (written in C and SQL/PLPGSQL), and the other is an Elasticsearch plugin (written in Java).
 
-Currently ZomboDB supports Postgres `v9.3`, `v9.4`, or `v9.5` (on x86_64 Linux) and Elasticsearch `v1.7+` (not `v2.x`)
+Currently ZomboDB supports Postgres `v9.3`, `v9.4`, or `v9.5` (on x86_64 Linux) and Elasticsearch `v5.6.4`.
 
 
 ## Postgres Extension
@@ -37,7 +37,7 @@ $ psql example -c "CREATE EXTENSION zombodb;"
 
 ## Elasticsearch Plugin
 
-ZomboDB's Elasticsearch plugin needs to be installed on all nodes of your Elasticsearch cluster.  This became a requirement as of v2.6.7.
+ZomboDB's Elasticsearch plugin needs to be installed on **all** nodes of your Elasticsearch cluster.
 
 [Download](https://github.com/zombodb/zombodb/releases/latest) the latest release `.zip` file and use Elasticsearch's plugin utility to install ZomboDB:
 
@@ -49,20 +49,11 @@ ZomboDB's Elasticsearch plugin needs to be installed on all nodes of your Elasti
 There are a few configuration settings that **must** be set in `elasticsearch.yml`:
 
 ```
-
-threadpool.bulk.queue_size: 1024
-threadpool.bulk.size: 12
-
 http.compression: true
-
 http.max_content_length: 1024mb
-index.query.bool.max_clause_count: 1000000
-index.max_result_window: 10000000
 ```
 
-The bulk threadpool must be increased because ZomboDB multiplexes against the `_bulk` endpoint.
-
-The last two settings can be turned up or down (`http.max_content_length` must be be greater than 8192kB), but are good defaults.
+`http.max_content_length` must be greater than 8192kB, but `1024mb` is a good default.
 
 The `http.compression` setting is only necessary if you set the `compression_level` option on your ZomboDB indexes.  Using HTTP compression may or may not improve indexing performance -- the deciding factor will be the bandwith/latency of the network between Postgres and Elasticsearch.  Failure to set `http.compression` when you've set a `compression_level` will cause ZomboDB to fail when it communicates with Elasticsearch.
 
@@ -85,5 +76,3 @@ in every database that contains the extension.
 
 > ### NOTE
 Make sure to check the Release Notes of the version you're installing to see if a `REINDEX DATABASE` is required.  Generally, this is necessary only when either of the first two version numbers change.  For example, an upgrade from v2.5.4 to v2.6.14 would require a `REINDEX DATABASE` as well as an upgrade from v2.6.14 to v3.0.0.
-
-

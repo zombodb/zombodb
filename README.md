@@ -1,20 +1,21 @@
 # [![ZomboDB](logo.png)](http://www.zombodb.com/) [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
 
-(This branch is for Elasticsearch 2.4.6)
+(This branch is for Elasticsearch 5.6.4)
 
-## Upgrading from v3.x and ES 1.7?
+## Upgrading from ES 1.7 or ES 2.4?
 
-If you are upgrading from a previous version of ZomboDB, that likely means you're also upgrading from ES 1.7.
-
-In short, ZomboDB doesn't provide a migration process from ES 1.7 to ES 2.4.6.  You'll need to drop all of your `USING zombodb` indexes, manually delete all the indexes from your ES 1.7 cluster, upgrade your ES cluster to 2.4.6, upgrade the ZomboDB Postgres extension to v4.0.x and then re-create all your `USING zombodb` indexes.
+In short, ZomboDB doesn't provide a migration process from ES 1.7/2.4 to ES 5.6.4.  You'll need to drop all of your `USING zombodb` indexes, manually delete all the indexes from your ES cluster, upgrade your ES cluster to 5.6.4, upgrade the ZomboDB Postgres extension to v5.6.4-x.x.x and then re-create all your `USING zombodb` indexes.
 
 If you require assistance with this process, please don't hesitate to [contact ZomboDB, LLC](https://www.zombodb.com/services/).
 
-## What's Different with ES 2.4.6+ Support?
+## What's Different with ES 5.6.4+ Support?
 
-In general, everything is the same.  All SQL-level syntax is the same, along with ZomboDB's query language syntax.  Basically, whatever the benefits of Elasticsearch 2.4.6, in terms of performance and general cluster management, are now available to you with ZomboDB.
+In general, everything is significantly faster.  
 
-It is important to note that ZomboDB v4 removes support for the SIREn plugin as the developers of that plugin have abandonded it.  We are working on a clean-room implementation that provides similar functionality and performance for a near-future ZomboDB version.
+Elasticsearch 5.6.4 is generally faster for indexing and searching, and its API has improved such that ZomboDB is able to implement certain optimizations that make everything faster.
+
+All SQL-level syntax is backwards-compatible along with ZomboDB's query language syntax.
+
 
 ## About ZomboDB
 
@@ -33,19 +34,20 @@ Elasticsearch-calculated aggregations are also provided through custom functions
 
 
 ## Quick Links
-   - [Latest Release](https://github.com/zombodb/zombodb/releases/latest)  
+   - [Latest Release](https://www.zombodb.com/releases/latest)  
    - [Installation instructions](INSTALL.md)  
    - [Getting Started Tutorial](TUTORIAL.md)  
    - [Index Management](INDEX-MANAGEMENT.md), [Index Options](INDEX-OPTIONS.md), and [Type Mapping](TYPE-MAPPING.md)
    - [Query Syntax](SYNTAX.md)  
    - [SQL-level API](SQL-API.md)  
-   - [v4.0.0 Release Notes](https://github.com/zombodb/zombodb/releases/tag/v4.0.0)
+   - [v5.6.4-1.0.0 Release Notes](https://github.com/zombodb/zombodb/releases/tag/v5.6.4-1.0.0_beta1)
 
 ## Features
 
-- transaction-safe, MVCC-correct full text queries
+- transaction-safe, MVCC-correct full text queries and Elasticsearch aggregations
 - managed & queried via standard Postgres SQL
 - works with tables of any structure
+   - Extremely fast [Cross-index joining](CROSS-INDEX-JOINS.md) for full text queries across relational data structures
 - automatically creates Elasticsearch Mappings supporting most datatypes, including arrays
    - supports full set of Elasticsearch [language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/analysis-lang-analyzer.html)
    - support for [custom analyzer chains](TYPE-MAPPING.md)
@@ -54,6 +56,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
 - works with all Postgres query plans, including [sequential scans](SEQUENTIAL-SCAN-SUPPORT.md) 
 - use whatever method you currently use for talking to Postgres (JDBC, DBI, libpq, etc)
 - extremely fast indexing
+- store document source in Elasticsearch so ZomboDB-generated indexes can by used by 3rd-party tools like Kibana
 - [per-row scoring](SQL-API.md#function-zdb_scoretable_name-regclass-ctid-tid-returns-float4) with term/phrase boosting
 - [record count estimation](SQL-API.md#function-zdb_estimate_counttable_name-regclass-query-text-returns-bigint)
 - custom full-text query language supporting nearly all of Elasticsearch's search features, such as
@@ -64,7 +67,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
   - range queries
   - "more like this"
   - any Elasticsearch query construct through direct JSON
-- [query expansion](SYNTAX.md#query-expansion) and [index linking](INDEX-OPTIONS.md)
+- [query expansion](SYNTAX.md#query-expansion), [index linking](INDEX-OPTIONS.md), and [block routing](BLOCK-ROUTING.md) for improved cross-index join performance
 - [search multiple tables at once](SQL-API.md#function-zdb_multi_searchtable_names-regclass-user_identifiers-text-field_names-query-text-returns-setof-zdb_multi_search_response)
 - [high-performance hit highlighting](SQL-API.md#function-zdb_highlighttable_name-regclass-es_query-text-where_clause-text-returns-set-of-zdb_highlight_response)
 - limit/offset/sorting of fulltext queries by Elasticsearch
@@ -76,7 +79,7 @@ Not to suggest that these things are impossible, but there's a small set of non-
 
 - ZomboDB indexes are not WAL-logged by Postgres.  As such, ZomboDB indexes are not recoverable in the event of a Postgres server crash and will require a `REINDEX`
 - interoperability with various Postgres replication schemes is unknown
-- Postgres [HOT](https://github.com/postgres/postgres/blob/master/src/backend/access/heap/README.HOT) update chains are not supported (necessitates a `VACUUM FULL` if a HOT-updated row is found)
+- Postgres [HOT](https://github.com/postgres/postgres/blob/master/src/backend/access/heap/README.HOT) update chains are not supported (necessitates a `VACUUM FULL` if a HOT-updated row is found during index creation)
 
 ## Downloading
 
@@ -96,7 +99,7 @@ For the Postgres extension binaries, you'll need to use the one that's for your 
 Product       | Version 
 ---           | ---      
 Postgres      | 9.3, 9.4, 9.5
-Elasticsearch | 2.4.6
+Elasticsearch | 5.6.4
 
 For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
 
