@@ -165,6 +165,7 @@ SELECT *
 - Google Group: [zombodb@googlegroups.com](mailto:zombodb@googlegroups.com)
 - Twitter:  [@zombodb](https://twitter.com/zombodb)
 - via github Issues and Pull Requests ;)
+- [https://www.zombodb.com/services/](https://www.zombodb.com/services/)  for commercial support
 
 
 ## History
