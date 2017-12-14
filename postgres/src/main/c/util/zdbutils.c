@@ -25,7 +25,9 @@
 #include "access/xlog.h"
 #include "catalog/dependency.h"
 #include "catalog/namespace.h"
+#include "catalog/pg_trigger.h"
 #include "catalog/pg_type.h"
+#include "commands/trigger.h"
 #include "executor/executor.h"
 #include "executor/spi.h"
 #include "nodes/makefuncs.h"
@@ -389,3 +391,46 @@ uint64 lookup_pkey(Oid heapRelOid, char *pkeyFieldname, ItemPointer ctid) {
     return DatumGetInt64(pkey);
 }
 
+Oid create_trigger(char *zombodbNamespace, char *schemaname, char *relname, Oid relid, char *triggerName, char *functionName, Oid arg, int16 type) {
+	CreateTrigStmt *tgstmt;
+	RangeVar       *relrv = makeRangeVar(schemaname, relname, -1);
+#if (PG_VERSION_NUM < 90500)
+	Oid            triggerOid;
+#else
+	ObjectAddress triggerOid;
+#endif
+	List           *args  = NIL;
+
+    if (arg != InvalidOid) {
+        StringInfo arg_str = makeStringInfo();
+        appendStringInfo(arg_str, "%u", arg);
+        args = lappend(NIL, makeString(pstrdup(arg_str->data)));
+        freeStringInfo(arg_str);
+    }
+
+    tgstmt = makeNode(CreateTrigStmt);
+    tgstmt->trigname     = triggerName;
+    tgstmt->relation     = copyObject(relrv);
+    tgstmt->funcname     = list_make2(makeString(zombodbNamespace), makeString(functionName));
+    tgstmt->args         = args;
+    tgstmt->row          = true;
+    tgstmt->timing       = TRIGGER_TYPE_BEFORE;
+    tgstmt->events       = type;
+    tgstmt->columns      = NIL;
+    tgstmt->whenClause   = NULL;
+    tgstmt->isconstraint = false;
+    tgstmt->deferrable   = false;
+    tgstmt->initdeferred = false;
+    tgstmt->constrrel    = NULL;
+
+    triggerOid = CreateTrigger(tgstmt, NULL, relid, InvalidOid, InvalidOid, InvalidOid, true /* tgisinternal */);
+
+    /* Make the new trigger visible within this session */
+    CommandCounterIncrement();
+
+#if (PG_VERSION_NUM < 90500)
+	return triggerOid;
+#else
+	return triggerOid.objectId;
+#endif
+}
