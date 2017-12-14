@@ -2,7 +2,7 @@ alter index idxso_posts set (always_resolve_joins=true, options='user_data:(owne
 select count(*) from so_posts where zdb('so_posts', ctid) ==> 'a or b';
  count  
 --------
- 161166
+ 158579
 (1 row)
 
 alter index idxso_posts reset (options, always_resolve_joins);

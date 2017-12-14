@@ -1,0 +1,4541 @@
+{
+  "bool" : {
+    "should" : [
+      {
+        "bool" : {
+          "must" : [
+            {
+              "bool" : {
+                "must" : [
+                  {
+                    "terms" : {
+                      "fulltext" : [
+                        "beer"
+                      ],
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "nested" : {
+                      "query" : {
+                        "term" : {
+                          "long.dotted.field" : {
+                            "value" : "foo",
+                            "boost" : 1.0
+                          }
+                        }
+                      },
+                      "path" : "long",
+                      "ignore_unmapped" : false,
+                      "score_mode" : "avg",
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "terms" : {
+                      "subject" : [
+                        "beer"
+                      ],
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "regexp" : {
+                      "field" : {
+                        "value" : "^.*",
+                        "flags_value" : 65535,
+                        "max_determinized_states" : 10000,
+                        "boost" : 1.0
+                      }
+                    }
+                  },
+                  {
+                    "constant_score" : {
+                      "filter" : {
+                        "terms" : {
+                          "subject" : [
+                            "a",
+                            "b",
+                            "c",
+                            "d"
+                          ],
+                          "boost" : 1.0
+                        }
+                      },
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "must" : [
+                        {
+                          "term" : {
+                            "fileextension" : {
+                              "value" : "pdf",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "fileextension" : {
+                              "value" : "pdf",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "term" : {
+                      "custodian" : {
+                        "value" : "querty, v",
+                        "boost" : 1.0
+                      }
+                    }
+                  },
+                  {
+                    "term" : {
+                      "recordtype" : {
+                        "value" : "email attachment",
+                        "boost" : 1.0
+                      }
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "meeting",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "meeting",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "meeting",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "meeting",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "must_not" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "term" : {
+                                  "fulltext_field" : {
+                                    "value" : "staff",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "term" : {
+                                  "_all" : {
+                                    "value" : "staff",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "term" : {
+                                  "fulltext_field" : {
+                                    "value" : "staff",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "term" : {
+                                  "_all" : {
+                                    "value" : "staff",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "term" : {
+                                  "fulltext_field" : {
+                                    "value" : "cancelled",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "term" : {
+                                  "_all" : {
+                                    "value" : "cancelled",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "term" : {
+                                  "fulltext_field" : {
+                                    "value" : "cancelled",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "term" : {
+                                  "_all" : {
+                                    "value" : "cancelled",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "term" : {
+                                  "fulltext_field" : {
+                                    "value" : "risk",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "term" : {
+                                  "_all" : {
+                                    "value" : "risk",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "term" : {
+                                  "fulltext_field" : {
+                                    "value" : "risk",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "term" : {
+                                  "_all" : {
+                                    "value" : "risk",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "must" : [
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "fulltext_field" : {
+                                          "value" : "the",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_all" : {
+                                          "value" : "the",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "fulltext_field" : {
+                                          "value" : "the",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_all" : {
+                                          "value" : "the",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "fulltext_field" : {
+                                          "value" : "subquery",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_all" : {
+                                          "value" : "subquery",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "fulltext_field" : {
+                                          "value" : "subquery",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_all" : {
+                                          "value" : "subquery",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "must" : [
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "fulltext_field" : {
+                                          "value" : "the",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_all" : {
+                                          "value" : "the",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "fulltext_field" : {
+                                          "value" : "the",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_all" : {
+                                          "value" : "the",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "fulltext_field" : {
+                                          "value" : "subquery",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_all" : {
+                                          "value" : "subquery",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "fulltext_field" : {
+                                          "value" : "subquery",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_all" : {
+                                          "value" : "subquery",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "fuzzy" : {
+                            "fulltext_field" : {
+                              "value" : "fuzzy",
+                              "fuzziness" : "AUTO",
+                              "prefix_length" : 32,
+                              "max_expansions" : 50,
+                              "transpositions" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "fuzzy" : {
+                            "_all" : {
+                              "value" : "fuzzy",
+                              "fuzziness" : "AUTO",
+                              "prefix_length" : 32,
+                              "max_expansions" : 50,
+                              "transpositions" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "fuzzy" : {
+                            "fulltext_field" : {
+                              "value" : "fuzzy",
+                              "fuzziness" : "AUTO",
+                              "prefix_length" : 32,
+                              "max_expansions" : 50,
+                              "transpositions" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "fuzzy" : {
+                            "_all" : {
+                              "value" : "fuzzy",
+                              "fuzziness" : "AUTO",
+                              "prefix_length" : 32,
+                              "max_expansions" : 50,
+                              "transpositions" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "1-2",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "1-2",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "1-2",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "1-2",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "prefix" : {
+                            "fulltext_field" : {
+                              "value" : "prefix",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "prefix" : {
+                            "_all" : {
+                              "value" : "prefix",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "prefix" : {
+                            "fulltext_field" : {
+                              "value" : "prefix",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "prefix" : {
+                            "_all" : {
+                              "value" : "prefix",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "wildcard" : {
+                            "fulltext_field" : {
+                              "wildcard" : "*wildcard",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "wildcard" : {
+                            "_all" : {
+                              "wildcard" : "*wildcard",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "wildcard" : {
+                            "fulltext_field" : {
+                              "wildcard" : "*wildcard",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "wildcard" : {
+                            "_all" : {
+                              "wildcard" : "*wildcard",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "wildcard" : {
+                            "fulltext_field" : {
+                              "wildcard" : "*wildcard2*",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "wildcard" : {
+                            "_all" : {
+                              "wildcard" : "*wildcard2*",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "wildcard" : {
+                            "fulltext_field" : {
+                              "wildcard" : "*wildcard2*",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "wildcard" : {
+                            "_all" : {
+                              "wildcard" : "*wildcard2*",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "wildcard" : {
+                            "fulltext_field" : {
+                              "wildcard" : "*wild*card3*",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "wildcard" : {
+                            "_all" : {
+                              "wildcard" : "*wild*card3*",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "wildcard" : {
+                            "fulltext_field" : {
+                              "wildcard" : "*wild*card3*",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "wildcard" : {
+                            "_all" : {
+                              "wildcard" : "*wild*card3*",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "wildcard" : {
+                            "fulltext_field" : {
+                              "wildcard" : "wild*card4",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "wildcard" : {
+                            "_all" : {
+                              "wildcard" : "wild*card4",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "wildcard" : {
+                            "fulltext_field" : {
+                              "wildcard" : "wild*card4",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "wildcard" : {
+                            "_all" : {
+                              "wildcard" : "wild*card4",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "prefix" : {
+                                      "fulltext_field" : {
+                                        "value" : "prefix",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "fulltext_field" : {
+                                        "wildcard" : "*wildcard",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "fulltext_field" : {
+                                        "wildcard" : "*wildcard2*",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "fulltext_field" : {
+                                        "wildcard" : "*wild*card3*",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "fulltext_field" : {
+                                        "wildcard" : "wild*card4",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 0,
+                            "in_order" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "prefix" : {
+                                      "_all" : {
+                                        "value" : "prefix",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "_all" : {
+                                        "wildcard" : "*wildcard",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "_all" : {
+                                        "wildcard" : "*wildcard2*",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "_all" : {
+                                        "wildcard" : "*wild*card3*",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "_all" : {
+                                        "wildcard" : "wild*card4",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 0,
+                            "in_order" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "prefix" : {
+                                      "fulltext_field" : {
+                                        "value" : "prefix",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "fulltext_field" : {
+                                        "wildcard" : "*wildcard",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "fulltext_field" : {
+                                        "wildcard" : "*wildcard2*",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "fulltext_field" : {
+                                        "wildcard" : "*wild*card3*",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "fulltext_field" : {
+                                        "wildcard" : "wild*card4",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 0,
+                            "in_order" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "prefix" : {
+                                      "_all" : {
+                                        "value" : "prefix",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "_all" : {
+                                        "wildcard" : "*wildcard",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "_all" : {
+                                        "wildcard" : "*wildcard2*",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "_all" : {
+                                        "wildcard" : "*wild*card3*",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "wildcard" : {
+                                      "_all" : {
+                                        "wildcard" : "wild*card4",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 0,
+                            "in_order" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "001",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "001",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "001",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "001",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "123",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "123",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "123",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "123",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "0",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "0",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "0",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "0",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "000",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "000",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "000",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "000",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "0.23",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "0.23",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "0.23",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "0.23",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "script" : {
+                "script" : {
+                  "source" : " doc['id'].value > 1024 ",
+                  "lang" : "painless"
+                },
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "some",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "some",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "some",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "some",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "query",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "query",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "query",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "query",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "other",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "other",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "other",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "other",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "query",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "query",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "query",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "query",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            }
+          ],
+          "disable_coord" : false,
+          "adjust_pure_negative" : true,
+          "boost" : 1.0
+        }
+      },
+      {
+        "bool" : {
+          "must" : [
+            {
+              "bool" : {
+                "must" : [
+                  {
+                    "constant_score" : {
+                      "filter" : {
+                        "terms" : {
+                          "title" : [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ],
+                          "boost" : 1.0
+                        }
+                      },
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "must_not" : [
+                        {
+                          "exists" : {
+                            "field" : "field",
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "bool" : {
+                            "must" : [
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.owner_username" : {
+                                        "value" : "e_ridge",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "terms" : {
+                                      "review_data.status_name" : [
+                                        "review_updated",
+                                        "review_checked_out"
+                                      ],
+                                      "boost" : 1.0
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "nested" : {
+                            "query" : {
+                              "term" : {
+                                "review_data.status_name" : {
+                                  "value" : "review_ready",
+                                  "boost" : 1.0
+                                }
+                              }
+                            },
+                            "path" : "review_data",
+                            "ignore_unmapped" : false,
+                            "score_mode" : "avg",
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "nested" : {
+                      "query" : {
+                        "term" : {
+                          "review_data.project_id" : {
+                            "value" : 1040,
+                            "boost" : 1.0
+                          }
+                        }
+                      },
+                      "path" : "review_data",
+                      "ignore_unmapped" : false,
+                      "score_mode" : "avg",
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "this",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "is",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "a",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "sloppy",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "fuzzy" : {
+                                      "fulltext_field" : {
+                                        "value" : "phrase",
+                                        "fuzziness" : "AUTO",
+                                        "prefix_length" : 3,
+                                        "max_expansions" : 50,
+                                        "transpositions" : false,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 11,
+                            "in_order" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "this",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "is",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "a",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "sloppy",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "fuzzy" : {
+                                      "_all" : {
+                                        "value" : "phrase",
+                                        "fuzziness" : "AUTO",
+                                        "prefix_length" : 3,
+                                        "max_expansions" : 50,
+                                        "transpositions" : false,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 11,
+                            "in_order" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "this",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "is",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "a",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "sloppy",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "fuzzy" : {
+                                      "fulltext_field" : {
+                                        "value" : "phrase",
+                                        "fuzziness" : "AUTO",
+                                        "prefix_length" : 3,
+                                        "max_expansions" : 50,
+                                        "transpositions" : false,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 11,
+                            "in_order" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "this",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "is",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "a",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "sloppy",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "fuzzy" : {
+                                      "_all" : {
+                                        "value" : "phrase",
+                                        "fuzziness" : "AUTO",
+                                        "prefix_length" : 3,
+                                        "max_expansions" : 50,
+                                        "transpositions" : false,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 11,
+                            "in_order" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "so is this",
+                              "slop" : 42,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "so is this",
+                              "slop" : 42,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "so is this",
+                              "slop" : 42,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "so is this",
+                              "slop" : 42,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "this",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "is",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "an",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "unordered",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "sloppy",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "fuzzy" : {
+                                      "fulltext_field" : {
+                                        "value" : "phrase",
+                                        "fuzziness" : "AUTO",
+                                        "prefix_length" : 3,
+                                        "max_expansions" : 50,
+                                        "transpositions" : false,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 11,
+                            "in_order" : false,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "this",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "is",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "an",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "unordered",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "sloppy",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "fuzzy" : {
+                                      "_all" : {
+                                        "value" : "phrase",
+                                        "fuzziness" : "AUTO",
+                                        "prefix_length" : 3,
+                                        "max_expansions" : 50,
+                                        "transpositions" : false,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 11,
+                            "in_order" : false,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "this",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "is",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "an",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "unordered",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "fulltext_field" : {
+                                    "value" : "sloppy",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "fuzzy" : {
+                                      "fulltext_field" : {
+                                        "value" : "phrase",
+                                        "fuzziness" : "AUTO",
+                                        "prefix_length" : 3,
+                                        "max_expansions" : 50,
+                                        "transpositions" : false,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 11,
+                            "in_order" : false,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "this",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "is",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "an",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "unordered",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "_all" : {
+                                    "value" : "sloppy",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_multi" : {
+                                  "match" : {
+                                    "fuzzy" : {
+                                      "_all" : {
+                                        "value" : "phrase",
+                                        "fuzziness" : "AUTO",
+                                        "prefix_length" : 3,
+                                        "max_expansions" : 50,
+                                        "transpositions" : false,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "slop" : 11,
+                            "in_order" : false,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            }
+          ],
+          "disable_coord" : false,
+          "adjust_pure_negative" : true,
+          "boost" : 1.0
+        }
+      },
+      {
+        "bool" : {
+          "must" : [
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "fuzzy" : {
+                            "fulltext_field" : {
+                              "value" : "fuzzy",
+                              "fuzziness" : "AUTO",
+                              "prefix_length" : 1,
+                              "max_expansions" : 50,
+                              "transpositions" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "fuzzy" : {
+                            "_all" : {
+                              "value" : "fuzzy",
+                              "fuzziness" : "AUTO",
+                              "prefix_length" : 1,
+                              "max_expansions" : 50,
+                              "transpositions" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "fuzzy" : {
+                            "fulltext_field" : {
+                              "value" : "fuzzy",
+                              "fuzziness" : "AUTO",
+                              "prefix_length" : 1,
+                              "max_expansions" : 50,
+                              "transpositions" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "fuzzy" : {
+                            "_all" : {
+                              "value" : "fuzzy",
+                              "fuzziness" : "AUTO",
+                              "prefix_length" : 1,
+                              "max_expansions" : 50,
+                              "transpositions" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "bool" : {
+                            "must_not" : [
+                              {
+                                "exists" : {
+                                  "field" : "fulltext_field",
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "must_not" : [
+                              {
+                                "exists" : {
+                                  "field" : "_all",
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "terms" : {
+                            "fulltext_field" : [
+                              "1",
+                              "2",
+                              "3",
+                              "beer",
+                              "foo",
+                              "blah",
+                              true,
+                              "123.99"
+                            ],
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "terms" : {
+                            "fulltext_field" : [
+                              "1",
+                              "2",
+                              "3",
+                              "beer",
+                              "foo",
+                              "blah",
+                              true,
+                              "123.99"
+                            ],
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "terms" : {
+                            "_all" : [
+                              "1",
+                              "2",
+                              "3",
+                              "beer",
+                              "foo",
+                              "blah",
+                              true,
+                              "123.99"
+                            ],
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "terms" : {
+                            "_all" : [
+                              "1",
+                              "2",
+                              "3",
+                              "beer",
+                              "foo",
+                              "blah",
+                              true,
+                              "123.99"
+                            ],
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "bool" : {
+                            "must_not" : [
+                              {
+                                "exists" : {
+                                  "field" : "fulltext_field",
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "must_not" : [
+                              {
+                                "exists" : {
+                                  "field" : "_all",
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            }
+          ],
+          "disable_coord" : false,
+          "adjust_pure_negative" : true,
+          "boost" : 1.0
+        }
+      },
+      {
+        "bool" : {
+          "must" : [
+            {
+              "bool" : {
+                "must" : [
+                  {
+                    "bool" : {
+                      "must_not" : [
+                        {
+                          "wildcard" : {
+                            "field" : {
+                              "wildcard" : "http*//www.*tcdi.com/",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "fuzzy" : {
+                      "field" : {
+                        "value" : "value",
+                        "fuzziness" : "AUTO",
+                        "prefix_length" : 3,
+                        "max_expansions" : 50,
+                        "transpositions" : false,
+                        "boost" : 1.0
+                      }
+                    }
+                  },
+                  {
+                    "nested" : {
+                      "query" : {
+                        "term" : {
+                          "review_data.assigned_reviewers" : {
+                            "value" : "e_ridge",
+                            "boost" : 1.0
+                          }
+                        }
+                      },
+                      "path" : "review_data",
+                      "ignore_unmapped" : false,
+                      "score_mode" : "avg",
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "term" : {
+                      "blah" : {
+                        "value" : 1,
+                        "boost" : 1.0
+                      }
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "bool" : {
+                            "must" : [
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "prefix" : {
+                                        "a" : {
+                                          "value" : "word1",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "prefix" : {
+                                        "b" : {
+                                          "value" : "word1",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "prefix" : {
+                                        "c" : {
+                                          "value" : "word1",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "prefix" : {
+                                        "a" : {
+                                          "value" : "word2",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "prefix" : {
+                                        "b" : {
+                                          "value" : "word2",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "prefix" : {
+                                        "c" : {
+                                          "value" : "word2",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "wildcard" : {
+                                        "a" : {
+                                          "wildcard" : "w*ld?card*",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "wildcard" : {
+                                        "b" : {
+                                          "wildcard" : "w*ld?card*",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "wildcard" : {
+                                        "c" : {
+                                          "wildcard" : "w*ld?card*",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "prefix" : {
+                                        "d" : {
+                                          "value" : "wo",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "prefix" : {
+                                        "e" : {
+                                          "value" : "wo",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "prefix" : {
+                                        "f" : {
+                                          "value" : "wo",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "a" : {
+                                          "value" : "rd3",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "b" : {
+                                          "value" : "rd3",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "c" : {
+                                          "value" : "rd3",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "must" : [
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "terms" : {
+                                      "review_data.subject" : [
+                                        "wine",
+                                        "last",
+                                        "first",
+                                        "wine",
+                                        "cheese",
+                                        "food",
+                                        "foo",
+                                        "bar"
+                                      ],
+                                      "boost" : 1.0
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.review_set_name" : {
+                                        "value" : "zipper",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "must" : [
+                                    {
+                                      "term" : {
+                                        "field" : {
+                                          "value" : "drink",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "field" : {
+                                          "value" : "food",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.subject" : {
+                                        "value" : "wine",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.subject" : {
+                                        "value" : "last",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.subject" : {
+                                        "value" : "first",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.subject" : {
+                                        "value" : "wine",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.subject" : {
+                                        "value" : "cheese",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.subject" : {
+                                        "value" : "food",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.subject" : {
+                                        "value" : "foo",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "nested" : {
+                                  "query" : {
+                                    "term" : {
+                                      "review_data.subject" : {
+                                        "value" : "bar",
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  },
+                                  "path" : "review_data",
+                                  "ignore_unmapped" : false,
+                                  "score_mode" : "avg",
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "must" : [
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "nested" : {
+                                        "query" : {
+                                          "term" : {
+                                            "review_data.review_set_name" : {
+                                              "value" : "food",
+                                              "boost" : 1.0
+                                            }
+                                          }
+                                        },
+                                        "path" : "review_data",
+                                        "ignore_unmapped" : false,
+                                        "score_mode" : "avg",
+                                        "boost" : 1.0
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "a" : {
+                                          "value" : "beer",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "b" : {
+                                          "value" : "beer",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "c" : {
+                                          "value" : "beer",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "terms" : {
+                                        "a" : [
+                                          "this",
+                                          "merges",
+                                          "arrays",
+                                          1,
+                                          2,
+                                          3,
+                                          "x",
+                                          "y",
+                                          "z",
+                                          "some phrase"
+                                        ],
+                                        "boost" : 1.0
+                                      }
+                                    },
+                                    {
+                                      "terms" : {
+                                        "b" : [
+                                          "this",
+                                          "merges",
+                                          "arrays",
+                                          1,
+                                          2,
+                                          3,
+                                          "x",
+                                          "y",
+                                          "z",
+                                          "some phrase"
+                                        ],
+                                        "boost" : 1.0
+                                      }
+                                    },
+                                    {
+                                      "terms" : {
+                                        "c" : [
+                                          "this",
+                                          "merges",
+                                          "arrays",
+                                          1,
+                                          2,
+                                          3,
+                                          "x",
+                                          "y",
+                                          "z",
+                                          "some phrase"
+                                        ],
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "must_not" : [
+                                    {
+                                      "bool" : {
+                                        "should" : [
+                                          {
+                                            "wildcard" : {
+                                              "a" : {
+                                                "wildcard" : "*gr*avy*",
+                                                "boost" : 1.0
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "wildcard" : {
+                                              "b" : {
+                                                "wildcard" : "*gr*avy*",
+                                                "boost" : 1.0
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "wildcard" : {
+                                              "c" : {
+                                                "wildcard" : "*gr*avy*",
+                                                "boost" : 1.0
+                                              }
+                                            }
+                                          }
+                                        ],
+                                        "disable_coord" : false,
+                                        "adjust_pure_negative" : true,
+                                        "boost" : 1.0
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "a" : {
+                                          "value" : "beer",
+                                          "boost" : 2.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "b" : {
+                                          "value" : "beer",
+                                          "boost" : 2.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "c" : {
+                                          "value" : "beer",
+                                          "boost" : 2.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "d" : {
+                                          "value" : "beer",
+                                          "boost" : 2.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "e" : {
+                                          "value" : "beer",
+                                          "boost" : 2.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "f" : {
+                                          "value" : "beer",
+                                          "boost" : 2.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "should" : [
+                                    {
+                                      "term" : {
+                                        "a" : {
+                                          "value" : "wine",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "b" : {
+                                          "value" : "wine",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "c" : {
+                                          "value" : "wine",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "d" : {
+                                          "value" : "wine",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "e" : {
+                                          "value" : "wine",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "f" : {
+                                          "value" : "wine",
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "nested" : {
+                      "query" : {
+                        "bool" : {
+                          "must" : [
+                            {
+                              "term" : {
+                                "nested_field.fielda" : {
+                                  "value" : "beer",
+                                  "boost" : 1.0
+                                }
+                              }
+                            },
+                            {
+                              "term" : {
+                                "nested_field.fieldb" : {
+                                  "value" : "wine",
+                                  "boost" : 1.0
+                                }
+                              }
+                            },
+                            {
+                              "terms" : {
+                                "nested_field.fieldc" : [
+                                  "food",
+                                  "cheese"
+                                ],
+                                "boost" : 1.0
+                              }
+                            }
+                          ],
+                          "disable_coord" : false,
+                          "adjust_pure_negative" : true,
+                          "boost" : 1.0
+                        }
+                      },
+                      "path" : "nested_field",
+                      "ignore_unmapped" : false,
+                      "score_mode" : "avg",
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "span_near" : {
+                      "clauses" : [
+                        {
+                          "span_term" : {
+                            "field" : {
+                              "value" : "a",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "span_near" : {
+                            "clauses" : [
+                              {
+                                "span_term" : {
+                                  "field" : {
+                                    "value" : "b",
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "span_term" : {
+                                  "field" : {
+                                    "value" : "c",
+                                    "boost" : 2.0
+                                  }
+                                }
+                              }
+                            ],
+                            "slop" : 2,
+                            "in_order" : false,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "slop" : 123,
+                      "in_order" : false,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "range" : {
+                      "id" : {
+                        "from" : "one",
+                        "to" : "two",
+                        "include_lower" : true,
+                        "include_upper" : true,
+                        "boost" : 1.0
+                      }
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "range" : {
+                            "fulltext_field" : {
+                              "from" : "foo",
+                              "to" : "three",
+                              "include_lower" : true,
+                              "include_upper" : true,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "range" : {
+                            "_all" : {
+                              "from" : "foo",
+                              "to" : "three",
+                              "include_lower" : true,
+                              "include_upper" : true,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "range" : {
+                            "fulltext_field" : {
+                              "from" : "foo",
+                              "to" : "three",
+                              "include_lower" : true,
+                              "include_upper" : true,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "range" : {
+                            "_all" : {
+                              "from" : "foo",
+                              "to" : "three",
+                              "include_lower" : true,
+                              "include_upper" : true,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "a-b-c-d",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "a-b-c-d",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "a-b-c-d",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "a-b-c-d",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "abcd",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "abcd",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "abcd",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "abcd",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "a/b/c/d",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "a/b/c/d",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "a/b/c/d",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "a/b/c/d",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "http://www.tcdi.com/?id=42",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "http://www.tcdi.com/?id=42",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "match_phrase" : {
+                            "fulltext_field" : {
+                              "query" : "http://www.tcdi.com/?id=42",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "match_phrase" : {
+                            "_all" : {
+                              "query" : "http://www.tcdi.com/?id=42",
+                              "slop" : 0,
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "to",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "to",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "to",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "to",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "10",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "10",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "10",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "10",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "a",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "a",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "a",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "a",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "to",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "to",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "to",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "to",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "z",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "z",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "should" : [
+                        {
+                          "term" : {
+                            "fulltext_field" : {
+                              "value" : "z",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "_all" : {
+                              "value" : "z",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            },
+            {
+              "bool" : {
+                "should" : [
+                  {
+                    "bool" : {
+                      "must" : [
+                        {
+                          "term" : {
+                            "_xmin" : {
+                              "value" : 42,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "range" : {
+                            "_cmin" : {
+                              "from" : null,
+                              "to" : 42,
+                              "include_lower" : true,
+                              "include_upper" : false,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "term" : {
+                                  "_xmax" : {
+                                    "value" : 0,
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "must" : [
+                                    {
+                                      "term" : {
+                                        "_xmax" : {
+                                          "value" : 42,
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "range" : {
+                                        "_cmax" : {
+                                          "from" : 42,
+                                          "to" : null,
+                                          "include_lower" : true,
+                                          "include_upper" : true,
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  {
+                    "bool" : {
+                      "must" : [
+                        {
+                          "term" : {
+                            "_xmin_is_committed" : {
+                              "value" : true,
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "bool" : {
+                            "should" : [
+                              {
+                                "term" : {
+                                  "_xmax" : {
+                                    "value" : 0,
+                                    "boost" : 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "must" : [
+                                    {
+                                      "term" : {
+                                        "_xmax" : {
+                                          "value" : 42,
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "range" : {
+                                        "_cmax" : {
+                                          "from" : 42,
+                                          "to" : null,
+                                          "include_lower" : true,
+                                          "include_upper" : true,
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              },
+                              {
+                                "bool" : {
+                                  "must" : [
+                                    {
+                                      "bool" : {
+                                        "must_not" : [
+                                          {
+                                            "term" : {
+                                              "_xmax" : {
+                                                "value" : 42,
+                                                "boost" : 1.0
+                                              }
+                                            }
+                                          }
+                                        ],
+                                        "disable_coord" : false,
+                                        "adjust_pure_negative" : true,
+                                        "boost" : 1.0
+                                      }
+                                    },
+                                    {
+                                      "term" : {
+                                        "_xmax_is_committed" : {
+                                          "value" : false,
+                                          "boost" : 1.0
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "disable_coord" : false,
+                                  "adjust_pure_negative" : true,
+                                  "boost" : 1.0
+                                }
+                              }
+                            ],
+                            "disable_coord" : false,
+                            "adjust_pure_negative" : true,
+                            "boost" : 1.0
+                          }
+                        }
+                      ],
+                      "disable_coord" : false,
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  }
+                ],
+                "disable_coord" : false,
+                "adjust_pure_negative" : true,
+                "boost" : 1.0
+              }
+            }
+          ],
+          "disable_coord" : false,
+          "adjust_pure_negative" : true,
+          "boost" : 1.0
+        }
+      }
+    ],
+    "disable_coord" : false,
+    "adjust_pure_negative" : true,
+    "boost" : 1.0
+  }
+}

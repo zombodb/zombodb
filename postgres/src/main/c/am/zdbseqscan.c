@@ -19,8 +19,11 @@
 #define ZDBSEQSCAN_INCLUDE_DEFINITIONS
 
 #include "miscadmin.h"
+#include "catalog/pg_type.h"
 #include "executor/spi.h"
+#include "nodes/nodeFuncs.h"
 #include "parser/parsetree.h"
+#include "parser/parse_func.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
@@ -36,7 +39,7 @@ static int    sequential_scan_key_match(const void *key1, const void *key2, Size
 static void   *sequential_scan_key_copy(void *d, const void *s, Size keysize);
 
 static void initialize_sequential_scan_cache(void);
-static Oid  determine_index_oid(Node *funcExpr);
+static Oid  determine_index_oid(Node *node);
 
 typedef struct SequentialScanIndexRef {
     Oid funcOid;
@@ -56,11 +59,13 @@ typedef struct SequentialScanEntry {
     ItemPointer       one_hit;
     bool              empty;
     ZDBScore          score;
+    bool              hasScore;
 }           SequentialScanEntry;
 
 typedef struct SequentialScanTidAndScore {
     ItemPointerData tid;
     ZDBScore        score;
+    bool            hasScore;
 }           SequentialScanTidAndScoreEntry;
 
 List *SEQUENTIAL_SCAN_INDEXES = NULL;
@@ -191,9 +196,10 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
         ZDBSearchResponse  *response;
         ZDBIndexDescriptor *desc;
         uint64             nhits, i;
+        bool               wantScores = current_query_wants_scores();
 
         desc     = zdb_alloc_index_descriptor_by_index_oid(key.indexRelOid);
-        response = desc->implementation->searchIndex(desc, &query, 1, &nhits);
+        response = desc->implementation->searchIndex(desc, &query, 1, &nhits, wantScores, false);
 
         entry = hash_search(SEQUENTIAL_SCANS, &key, HASH_ENTER, &found);
         entry->one_hit = NULL;
@@ -207,7 +213,8 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
             MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
             entry->one_hit = palloc(sizeof(ItemPointerData));
-            set_item_pointer(response, 0, entry->one_hit, &entry->score);
+            entry->hasScore = wantScores;
+            set_item_pointer(response, 0, entry->one_hit, &entry->score, wantScores);
 
             MemoryContextSwitchTo(oldContext);
         } else {
@@ -229,9 +236,12 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
 
                 CHECK_FOR_INTERRUPTS();
 
-                set_item_pointer(response, i, &hit_tid, &hit_score);
+                set_item_pointer(response, i, &hit_tid, &hit_score, wantScores);
                 tid_and_score_entry = hash_search(entry->scan, &hit_tid, HASH_ENTER, &found);
-                tid_and_score_entry->score = hit_score;
+                if (wantScores) {
+                    tid_and_score_entry->score    = hit_score;
+                    tid_and_score_entry->hasScore = wantScores;
+                }
             }
         }
 
@@ -243,13 +253,13 @@ Datum zdb_seqscan(PG_FUNCTION_ARGS) {
         found = false;
     } else if (entry->one_hit) {
         found = ItemPointerEquals(tid, entry->one_hit);
-        if (found)
+        if (found && entry->hasScore)
             zdb_record_score(key.indexRelOid, tid, entry->score);
     } else {
         SequentialScanTidAndScoreEntry *tid_and_score;
 
         tid_and_score = hash_search(entry->scan, tid, HASH_FIND, &found);
-        if (found)
+        if (found && tid_and_score->hasScore)
             zdb_record_score(key.indexRelOid, tid, tid_and_score->score);
     }
 
@@ -289,8 +299,9 @@ Datum zdbsel(PG_FUNCTION_ARGS) {
 
             heapRel     = RelationIdGetRelation(heapRelOid);
             desc        = zdb_alloc_index_descriptor_by_index_oid(determine_index_oid((Node *) funcExpr));
-            nhits       = desc->implementation->estimateSelectivity(desc, query);
-            selectivity = ((float8) nhits) / heapRel->rd_rel->reltuples;
+
+			nhits       = get_row_estimate(desc, heapRel, query);
+			selectivity = ((float8) nhits) / heapRel->rd_rel->reltuples;
 
             RelationClose(heapRel);
         }
@@ -300,4 +311,44 @@ Datum zdbsel(PG_FUNCTION_ARGS) {
     selectivity = Max(selectivity, 0);
 
     PG_RETURN_FLOAT8(selectivity);
+}
+
+
+bool current_query_wants_scores(void) {
+    QueryDesc *queryDesc  = (QueryDesc *) linitial(CURRENT_QUERY_STACK);
+    Oid        args[2]       = {REGCLASSOID, TIDOID};
+    Oid        zdb_score_oid = LookupFuncName(lappend(NULL, makeString("zdb_score_internal")), 2, args, true);
+    StringInfo find          = makeStringInfo();
+    char       *str;
+
+    // TODO:  how to walk the plan tree without converting it to a string
+    // TODO:  and otherwise implementing a ton of code that'll be impossible
+    // TODO:  to keep current between Postgres versions
+    str = nodeToString(queryDesc->plannedstmt->planTree);
+
+    /*
+     * We're looking for a function expression (FuncExpr) somewhere
+     * in the plan that references our zdb_score_internal function
+     */
+    appendStringInfo(find, "{FUNCEXPR :funcid %d ", zdb_score_oid);
+    return strstr(str, find->data) != 0;
+}
+
+uint64 get_row_estimate(ZDBIndexDescriptor *desc, Relation heapRel, char *query) {
+	uint64 estimate;
+
+	if (zdb_force_row_estimates_guc || desc->defaultRowEstimate == -1) {
+		/* go to the remote index and estimate */
+		estimate = desc->implementation->estimateSelectivity(desc, query);
+	} else {
+		/* use the default value specified on the local PG index */
+		estimate     = Max(1, (uint64) desc->defaultRowEstimate);
+
+		/* unless it's greater than the number of tuples we think we have */
+		if (estimate > heapRel->rd_rel->reltuples)
+			estimate = 1;
+	}
+
+	/* make sure it's always at least 1 */
+	return Max(1, estimate);
 }

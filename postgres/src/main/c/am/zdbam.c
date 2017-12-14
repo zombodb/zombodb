@@ -37,6 +37,7 @@
 #include "executor/spi.h"
 #include "nodes/makefuncs.h"
 #include "nodes/relation.h"
+#include "parser/parse_func.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
@@ -93,6 +94,7 @@ typedef struct {
     uint64             nhits;
     uint64             currhit;
     ZDBSearchResponse  *hits;
+    bool               hasScores;
     char               **queries;
     int                nqueries;
 } ZDBScanState;
@@ -104,6 +106,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 static List *usedIndexesList     = NULL;
 static List *indexesInsertedList = NULL;
 static ItemPointer LAST_UPDATED_CTID = NULL;
+static int64 LAST_UPDATED_JOIN_KEY = 0;
 
 static List *deletedCtids = NULL;
 
@@ -349,69 +352,48 @@ static void create_trigger_dependency(Oid indexRelOid, Oid triggerOid) {
     recordDependencyOn(&triggerAddress, &indexAddress, DEPENDENCY_INTERNAL);
 }
 
+static char *lookup_zdb_namespace(void) {
+    StringInfo sql = makeStringInfo();
+
+    appendStringInfo(sql, "select nspname from pg_namespace where oid = (select extnamespace from pg_extension where extname = 'zombodb');");
+    if (SPI_execute(sql->data, true, 1) != SPI_OK_SELECT || SPI_processed != 1)
+        elog(ERROR, "Cannot determine ZomboDB's namespace");
+
+    return SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
+}
+
 static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
-    StringInfo triggerSQL = makeStringInfo();
+    StringInfo sql = makeStringInfo();
+	StringInfo triggerName = makeStringInfo();
+	Oid triggerOid;
 
-	appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'", heapRelOid, indexRelOid);
-	if (SPI_execute(triggerSQL->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
-		return;
+	appendStringInfo(triggerName, "zzzzdb_tuple_sync_for_%d_using_%d", heapRelOid, indexRelOid);
 
-	resetStringInfo(triggerSQL);
-    appendStringInfo(triggerSQL,
-                     "CREATE TRIGGER zzzzdb_tuple_sync_for_%d_using_%d"
-                             "       BEFORE UPDATE ON \"%s\".\"%s\" "
-                             "       FOR EACH ROW EXECUTE PROCEDURE zdbupdatetrigger();"
-                             "UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d';"
-                             "SELECT oid "
-                             "       FROM pg_trigger "
-                             "       WHERE tgname = 'zzzzdb_tuple_sync_for_%d_using_%d'",
-                     heapRelOid, indexRelOid, schemaName, tableName, /* CREATE TRIGGER args */
-                     heapRelOid, indexRelOid, /* UPDATE pg_trigger args */
-                     heapRelOid, indexRelOid /* SELECT FROM pg_trigger args */
-    );
+	appendStringInfo(sql, "SELECT * FROM pg_trigger WHERE tgname = '%s'", triggerName->data);
+	if (SPI_execute(sql->data, true, 1) != SPI_OK_SELECT || SPI_processed != 0)
+		return;	/* trigger already exists */
 
-    if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1) {
-        Oid triggerOid = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
+	triggerOid = create_trigger(lookup_zdb_namespace(), schemaName, tableName, heapRelOid, triggerName->data, "zdbupdatetrigger", indexRelOid, TRIGGER_TYPE_UPDATE);
+	create_trigger_dependency(indexRelOid, triggerOid);
 
-        create_trigger_dependency(indexRelOid, triggerOid);
-    } else {
-        elog(ERROR, "Cannot create update trigger");
-    }
-
-    freeStringInfo(triggerSQL);
+	freeStringInfo(sql);
 }
 
 static void create_delete_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
-    StringInfo triggerSQL = makeStringInfo();
+    StringInfo sql = makeStringInfo();
+	StringInfo triggerName = makeStringInfo();
+	Oid triggerOid;
 
-	appendStringInfo(triggerSQL, "SELECT * FROM pg_trigger WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d'", heapRelOid, indexRelOid);
-	if (SPI_execute(triggerSQL->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
+	appendStringInfo(triggerName, "zzzzdb_tuple_delete_for_%d_using_%d", heapRelOid, indexRelOid);
+
+	appendStringInfo(sql, "SELECT * FROM pg_trigger WHERE tgname = '%s'", triggerName->data);
+	if (SPI_execute(sql->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0)
 		return;	/* trigger already exists */
 
-	resetStringInfo(triggerSQL);
-    appendStringInfo(triggerSQL,
-                     "CREATE TRIGGER zzzzdb_tuple_delete_for_%d_using_%d"
-                             "       BEFORE DELETE ON \"%s\".\"%s\" "
-                             "       FOR EACH ROW EXECUTE PROCEDURE zdbdeletetrigger(%d);"
-                             "UPDATE pg_trigger SET tgisinternal = true WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d';"
-                             "SELECT oid "
-                             "       FROM pg_trigger "
-                             "       WHERE tgname = 'zzzzdb_tuple_delete_for_%d_using_%d'",
-                     heapRelOid, indexRelOid, schemaName, tableName, /* CREATE TRIGGER args */
-                     indexRelOid, /* zdbdeletetrigger() args */
-                     heapRelOid, indexRelOid, /* UPDATE pg_trigger args */
-                     heapRelOid, indexRelOid /* SELECT FROM pg_trigger args */
-    );
+	triggerOid = create_trigger(lookup_zdb_namespace(), schemaName, tableName, heapRelOid, triggerName->data, "zdbdeletetrigger", indexRelOid, TRIGGER_TYPE_DELETE);
+	create_trigger_dependency(indexRelOid, triggerOid);
 
-    if (SPI_execute(triggerSQL->data, false, 0) == SPI_OK_SELECT && SPI_processed == 1) {
-        Oid triggerOid = (Oid) atoi(SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
-
-        create_trigger_dependency(indexRelOid, triggerOid);
-    } else {
-        elog(ERROR, "Cannot create delete trigger");
-    }
-
-    freeStringInfo(triggerSQL);
+    freeStringInfo(sql);
 }
 
 void zdbam_init(void) {
@@ -492,16 +474,8 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
     buildstate.heapRel     = heapRel;
     buildstate.indtuples   = 0;
     buildstate.desc        = alloc_index_descriptor(indexRel, false);
-    buildstate.desc->logit = true;
 
     if (!buildstate.desc->isShadow) {
-		HASHCTL hashctl;
-
-		hashctl.entrysize = sizeof(TransactionId);
-		hashctl.keysize = sizeof(TransactionId);
-		hashctl.hcxt = TopTransactionContext;
-		hashctl.hash = tag_hash;
-
         /* drop the existing index */
         buildstate.desc->implementation->dropIndex(buildstate.desc);
 
@@ -523,16 +497,11 @@ Datum zdbbuild(PG_FUNCTION_ARGS) {
 
         if (heapRel->rd_rel->relkind != 'm')
         {
-            StringInfo triggerSQL = makeStringInfo();
-
             /* put a trigger on the table to forward UPDATEs and DELETEs into our code for ES xact synchronization */
             SPI_connect();
 
 			create_update_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
 			create_delete_trigger(RelationGetRelid(heapRel), buildstate.desc->schemaName, buildstate.desc->tableName, RelationGetRelid((indexRel)));
-
-            pfree(triggerSQL->data);
-            pfree(triggerSQL);
 
             SPI_finish();
         }
@@ -571,11 +540,11 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	TransactionId xmin;
 
     if (HeapTupleIsHeapOnly(htup))
-        elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL %s; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)), desc->qualifiedTableName);
+        elog(ERROR, "Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL <tablename>; and reindex", ItemPointerGetBlockNumber(&(htup->t_self)), ItemPointerGetOffsetNumber(&(htup->t_self)));
 
 	xmin = HeapTupleHeaderGetXmin(htup->t_data);
 
-    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), -1);
+    desc->implementation->batchInsertRow(desc, &htup->t_self, DatumGetTextP(values[1]), false, NULL, 0, xmin, HeapTupleHeaderGetRawCommandId(htup->t_data), -1);
 
     buildstate->indtuples++;
 }
@@ -605,7 +574,7 @@ Datum zdbinsert(PG_FUNCTION_ARGS) {
 		LAST_UPDATED_CTID = NULL;
     }
 
-    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, &old_ctid, currentTransactionId, GetCurrentCommandId(true), zdb_sequence++);
+    desc->implementation->batchInsertRow(desc, ht_ctid, DatumGetTextP(values[1]), isupdate, &old_ctid, LAST_UPDATED_JOIN_KEY, currentTransactionId, GetCurrentCommandId(true), zdb_sequence++);
 
     PG_RETURN_BOOL(true);
 }
@@ -624,10 +593,11 @@ Datum zdb_num_hits(PG_FUNCTION_ARGS) {
 }
 
 static void setup_scan(IndexScanDesc scan) {
-    ZDBScanState       *scanstate = (ZDBScanState *) scan->opaque;
-    ZDBIndexDescriptor *desc      = alloc_index_descriptor(scan->indexRelation, false);
+    ZDBScanState       *scanstate  = (ZDBScanState *) scan->opaque;
+    ZDBIndexDescriptor *desc       = alloc_index_descriptor(scan->indexRelation, false);
     char               **queries;
     int                i;
+    bool               wantsScores = current_query_wants_scores();
 
     if (scanstate->hits)
         scanstate->indexDescriptor->implementation->freeSearchResponse(scanstate->hits);
@@ -655,7 +625,8 @@ static void setup_scan(IndexScanDesc scan) {
     scanstate->queries         = queries;
     scanstate->nqueries        = scan->numberOfKeys;
     scanstate->indexDescriptor = desc;
-    scanstate->hits            = desc->implementation->searchIndex(desc, queries, scan->numberOfKeys, &scanstate->nhits);
+    scanstate->hits            = desc->implementation->searchIndex(desc, queries, scan->numberOfKeys, &scanstate->nhits, wantsScores, true);
+    scanstate->hasScores       = wantsScores;
     scanstate->currhit         = 0;
 
     numHitsFound = scanstate->hits->total_hits;
@@ -677,10 +648,12 @@ Datum zdbgettuple(PG_FUNCTION_ARGS) {
     if (haveMore) {
         ZDBScore score;
 
-        set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, &score);
+        set_item_pointer(scanstate->hits, scanstate->currhit, &scan->xs_ctup.t_self, &score, scanstate->hasScores);
         scanstate->currhit++;
 
-        zdb_record_score(RelationGetRelid(scan->indexRelation), &scan->xs_ctup.t_self, score);
+        if (scanstate->hasScores) {
+            zdb_record_score(RelationGetRelid(scan->indexRelation), &scan->xs_ctup.t_self, score);
+        }
     }
 
     PG_RETURN_BOOL(haveMore);
@@ -958,6 +931,9 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
                                                 {"compression_level",    RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, compressionLevel)},
                                                 {"alias",                RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, aliasOffset)},
                                                 {"optimize_after",       RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, optimizeAfter)},
+                                                {"default_row_estimate", RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, defaultRowEstimate)},
+                                                {"store",                RELOPT_TYPE_BOOL,   offsetof(ZDBIndexOptions, store)},
+												{"block_routing_field",   RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, blockRoutingFieldOffset)},
     };
 
     options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB, &numoptions);
@@ -1048,9 +1024,12 @@ Datum zdbcostestimate(PG_FUNCTION_ARGS) {
     }
 
     if (query->len > 0) {
-        ZDBIndexDescriptor *desc = zdb_alloc_index_descriptor_by_index_oid(index->indexoid);
+        ZDBIndexDescriptor *desc   = zdb_alloc_index_descriptor_by_index_oid(index->indexoid);
+        Relation           heapRel = RelationIdGetRelation(desc->heapRelid);
 
-        nhits = desc->implementation->estimateSelectivity(desc, query->data);
+        nhits = get_row_estimate(desc, heapRel, query->data);
+
+        RelationClose(heapRel);
     }
 
     *indexStartupCost = (Cost) 0;
@@ -1066,7 +1045,10 @@ Datum zdbcostestimate(PG_FUNCTION_ARGS) {
 }
 
 Datum zdbupdatetrigger(PG_FUNCTION_ARGS) {
-    TriggerData        *trigdata = (TriggerData *) fcinfo->context;
+    TriggerData *trigdata  = (TriggerData *) fcinfo->context;
+    Oid         indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
+    Relation    indexRel;
+    char        *blockRoutingField;
 
     /* make sure it's called as a trigger at all */
     if (!CALLED_AS_TRIGGER(fcinfo))
@@ -1081,16 +1063,31 @@ Datum zdbupdatetrigger(PG_FUNCTION_ARGS) {
 	if (LAST_UPDATED_CTID == NULL)
 		LAST_UPDATED_CTID = palloc(sizeof(ItemPointerData));
 	memcpy(LAST_UPDATED_CTID, &trigdata->tg_trigtuple->t_self, sizeof(ItemPointerData));
+
+    indexRel = RelationIdGetRelation(indexRelId);
+    blockRoutingField = ZDBIndexOptionsGetBlockRoutingField(indexRel);
+    if (blockRoutingField != NULL) {
+        TupleDesc desc = trigdata->tg_relation->rd_att;
+        bool isnull;
+        Datum d = SPI_getbinval(trigdata->tg_trigtuple, desc, SPI_fnumber(desc, blockRoutingField), &isnull);
+        if (isnull)
+            elog(ERROR, "encounted null value in field '%s'", blockRoutingField);
+
+        LAST_UPDATED_JOIN_KEY = DatumGetInt64(d);
+    }
+
+    RelationClose(indexRel);
+
     return PointerGetDatum(trigdata->tg_newtuple);
 }
 
 Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
-    MemoryContext tmpcxt;
-    TriggerData *trigdata = (TriggerData *) fcinfo->context;
-    Oid indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
-    ZDBDeletedCtid *entry = NULL;
-    ListCell *lc;
-	ZDBDeletedCtidAndCommand *deleted;
+    MemoryContext            tmpcxt;
+    TriggerData              *trigdata  = (TriggerData *) fcinfo->context;
+    Oid                      indexRelId = (Oid) atoi(trigdata->tg_trigger->tgargs[0]);
+    ZDBDeletedCtid           *entry     = NULL;
+    ListCell                 *lc;
+    ZDBDeletedCtidAndCommand *deleted;
 
     /* make sure it's called as a trigger at all */
     if (!CALLED_AS_TRIGGER(fcinfo))
@@ -1121,9 +1118,21 @@ Datum zdbdeletetrigger(PG_FUNCTION_ARGS) {
 
     Assert(entry->desc->indexRelid == indexRelId);
 
-	deleted = palloc(sizeof(ZDBDeletedCtidAndCommand));
+	deleted = palloc0(sizeof(ZDBDeletedCtidAndCommand));
     ItemPointerCopy(&trigdata->tg_trigtuple->t_self, &deleted->ctid);
-	deleted->commandid = GetCurrentCommandId(true);
+    deleted->commandid = GetCurrentCommandId(true);
+
+    if (entry->desc->blockRoutingField != NULL) {
+        TupleDesc desc = trigdata->tg_relation->rd_att;
+        char *joinKeyField = entry->desc->blockRoutingField;
+        bool isnull;
+        Datum d = SPI_getbinval(trigdata->tg_trigtuple, desc, SPI_fnumber(desc, joinKeyField), &isnull);
+        if (isnull)
+            elog(ERROR, "encountered null value in field '%s'", joinKeyField);
+
+        deleted->joinKey = DatumGetInt64(d);
+	}
+
     entry->deleted = lappend(entry->deleted, deleted);
 
     MemoryContextSwitchTo(tmpcxt);

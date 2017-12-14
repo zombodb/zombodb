@@ -51,6 +51,7 @@ PG_FUNCTION_INFO_V1(zdb_internal_multi_search);
 PG_FUNCTION_INFO_V1(zdb_internal_analyze_text);
 PG_FUNCTION_INFO_V1(zdb_internal_update_mapping);
 PG_FUNCTION_INFO_V1(zdb_internal_dump_query);
+PG_FUNCTION_INFO_V1(zdb_internal_profile_query);
 
 #if (PG_VERSION_NUM < 90400)
 
@@ -485,6 +486,19 @@ Datum zdb_internal_dump_query(PG_FUNCTION_ARGS) {
     PG_RETURN_TEXT_P(CStringGetTextDatum(jsonQuery));
 }
 
+Datum zdb_internal_profile_query(PG_FUNCTION_ARGS) {
+    Oid                indexRel   = PG_GETARG_OID(0);
+    char               *userQuery = GET_STR(PG_GETARG_TEXT_P(1));
+    ZDBIndexDescriptor *desc;
+    char               *jsonQuery;
+
+    desc = zdb_alloc_index_descriptor_by_index_oid(indexRel);
+
+    jsonQuery = desc->implementation->profileQuery(desc, userQuery);
+
+    PG_RETURN_TEXT_P(CStringGetTextDatum(jsonQuery));
+}
+
 Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
     StringInfo result = makeStringInfo();
     char       *json;
@@ -495,32 +509,32 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
 
     appendStringInfo(result, "\"_xmin\": {"
             "\"type\":\"long\","
-            "\"fielddata\": {\"format\": \"doc_values\"},"
             "\"include_in_all\":\"false\","
-            "\"norms\": {\"enabled\":false},"
-            "\"index\": \"not_analyzed\""
+            "\"index\": \"true\""
             "},");
 
     appendStringInfo(result, "\"_cmin\": {"
             "\"type\":\"integer\","
-            "\"fielddata\": {\"format\": \"doc_values\"},"
             "\"include_in_all\":\"false\","
-            "\"norms\": {\"enabled\":false},"
-            "\"index\": \"not_analyzed\""
+            "\"index\": \"true\""
             "},");
 
     appendStringInfo(result, "\"_prev_ctid\": {"
-            "\"type\":\"string\","
+            "\"type\":\"keyword\","
             "\"include_in_all\":\"false\","
-            "\"norms\": {\"enabled\":false},"
-            "\"index\": \"not_analyzed\""
+            "\"index\": \"false\""
+            "},");
+
+    appendStringInfo(result, "\"_prev_organize_for_joins\": {"
+            "\"type\":\"long\","
+            "\"include_in_all\":\"false\","
+            "\"index\": \"false\""
             "},");
 
     appendStringInfo(result, "\"_zdb_seq\": {"
             "\"type\":\"long\","
             "\"include_in_all\":\"false\","
-            "\"norms\": {\"enabled\":false},"
-            "\"index\": \"not_analyzed\""
+            "\"index\": \"true\""
             "},");
 
     appendStringInfo(result, "\"_zdb_encoded_tuple\": {"
@@ -530,10 +544,14 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
 
     appendStringInfo(result, "\"_zdb_blockno\": {"
             "\"type\":\"integer\","
-            "\"fielddata\": {\"format\": \"doc_values\"},"
             "\"include_in_all\":\"false\","
-            "\"norms\": {\"enabled\":false},"
-            "\"index\": \"not_analyzed\""
+            "\"index\": \"true\""
+            "},");
+
+    appendStringInfo(result, "\"_zdb_id\": {"
+            "\"type\":\"long\","
+            "\"include_in_all\":\"false\","
+            "\"index\": \"true\""
             "}");
 
     for (i = 0; i < tupdesc->natts; i++) {
@@ -558,52 +576,41 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
         /* otherwise, build a mapping based on the field type */
         typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(tupdesc->attrs[i]->atttypid)));
         appendStringInfo(result, "\"%s\": {", name);
-        bool is_json = (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0);
-        if (!is_json) appendStringInfo(result, "\"store\":false,");
 
         if (strcmp("fulltext", typename) == 0) {
             /* phrase-indexed field */
-            appendStringInfo(result, "\"type\": \"string\",");
+            appendStringInfo(result, "\"type\": \"text\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"analyzer\": \"fulltext\",");
-            appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
-            appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+            appendStringInfo(result, "\"analyzer\": \"fulltext\"");
 		} else if (strcmp("fulltext_with_shingles", typename) == 0) {
             /* phrase-indexed field */
-            appendStringInfo(result, "\"type\": \"string\",");
+            appendStringInfo(result, "\"type\": \"text\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"analyzer\": \"fulltext_with_shingles\",");
-            appendStringInfo(result, "\"search_analyzer\": \"fulltext_with_shingles_search\",");
-            appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
-            appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+            appendStringInfo(result, "\"search_analyzer\": \"fulltext_with_shingles_search\"");
 
         } else if (strcmp("phrase", typename) == 0 || strcmp("phrase_array", typename) == 0) {
             /* phrase-indexed field */
-            appendStringInfo(result, "\"type\": \"string\",");
+            appendStringInfo(result, "\"type\": \"text\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
             appendStringInfo(result, "\"analyzer\": \"phrase\",");
-            appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
-            appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+            appendStringInfo(result, "\"fielddata\": true");
         } else if (strcmp("date", typename) == 0 || strcmp("date[]", typename) == 0) {
             /* date field */
-            appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\",");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
+            appendStringInfo(result, "\"type\": \"keyword\",");
+            appendStringInfo(result, "\"index\": \"true\",");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\"}"
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"true\"}"
                     "}");
         } else if (strcmp("timestamp", typename) == 0 || strcmp("timestamp without time zone", typename) == 0 ||
                    strcmp("timestamp[]", typename) == 0 || strcmp("timestamp without time zone[]", typename) == 0) {
             /* timestamp field */
-            appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\",");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
+            appendStringInfo(result, "\"type\": \"keyword\",");
+            appendStringInfo(result, "\"index\": \"true\",");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\""
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"true\""
 #if (PG_VERSION_NUM < 90400)
                     ",\"format\": \"date_optional_time||yyyy-MM-dd HH:mm:ss.SSSSSSSSSS||"
                     "yyyy-MM-dd HH:mm:ss.SSSSSSSSS||"
@@ -623,12 +630,10 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
         } else if (strcmp("timestamp with time zone", typename) == 0 ||
                    strcmp("timestamp with time zone[]", typename) == 0) {
             /* timestamp field */
-            appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\",");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
+            appendStringInfo(result, "\"type\": \"keyword\",");
+            appendStringInfo(result, "\"index\": \"true\",");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\""
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"true\""
 #if (PG_VERSION_NUM < 90400)
                     ",\"format\": \"date_optional_time||yyyy-MM-dd HH:mm:ss.SSSSSSSSSSZ||"
                     "yyyy-MM-dd HH:mm:ss.SSSSSSSSSZ||"
@@ -649,12 +654,10 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                    strcmp("time without time zone", typename) == 0 ||
                    strcmp("time without time zone[]", typename) == 0) {
             /* time field */
-            appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\",");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
+            appendStringInfo(result, "\"type\": \"keyword\",");
+            appendStringInfo(result, "\"index\": \"true\",");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\""
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"true\""
 #if (PG_VERSION_NUM < 90400)
                     ",\"format\": \"HH:mm:ss.SSSSSSSSSS||"
                     "HH:mm:ss.SSSSSSSSS||"
@@ -673,12 +676,10 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                     "}");
         } else if (strcmp("time with time zone", typename) == 0 || strcmp("time with time zone[]", typename) == 0) {
             /* time field */
-            appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\",");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
+            appendStringInfo(result, "\"type\": \"keyword\",");
+            appendStringInfo(result, "\"index\": \"true\",");
             appendStringInfo(result, "\"fields\": {"
-                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"not_analyzed\""
+                    "   \"date\" : {\"type\" : \"date\", \"index\" : \"true\""
 #if (PG_VERSION_NUM < 90400)
                     ",\"format\": \"HH:mm:ss.SSSSSSSSSSZ||"
                     "HH:mm:ss.SSSSSSSSSZ||"
@@ -699,45 +700,33 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                    strcmp("smallint[]", typename) == 0 || strcmp("integer[]", typename) == 0) {
             /* integer field */
             appendStringInfo(result, "\"type\": \"integer\",");
-            appendStringInfo(result, "\"store\": \"true\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\"");
+            appendStringInfo(result, "\"index\": \"true\"");
 
         } else if (strcmp("bigint", typename) == 0 || strcmp("numeric", typename) == 0 ||
                    strcmp("bigint[]", typename) == 0 || strcmp("numeric[]", typename) == 0) {
             /* long field */
             appendStringInfo(result, "\"type\": \"long\",");
-            appendStringInfo(result, "\"store\": \"true\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\"");
+            appendStringInfo(result, "\"index\": \"true\"");
 
         } else if (strcmp("float", typename) == 0 || strcmp("float[]", typename) == 0) {
             /* float field */
             appendStringInfo(result, "\"type\": \"float\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\"");
+            appendStringInfo(result, "\"index\": \"true\"");
 
         } else if (strcmp("double precision", typename) == 0 || strcmp("double precision[]", typename) == 0) {
             /* double field */
             appendStringInfo(result, "\"type\": \"double\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\"");
+            appendStringInfo(result, "\"index\": \"true\"");
 
         } else if (strcmp("boolean", typename) == 0 || strcmp("boolean[]", typename) == 0) {
             /* boolean field */
             appendStringInfo(result, "\"type\": \"boolean\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
-            appendStringInfo(result, "\"fielddata\": {\"format\": \"doc_values\"},");
-            appendStringInfo(result, "\"index\": \"not_analyzed\"");
+            appendStringInfo(result, "\"index\": \"true\"");
 
         } else if (strcmp("text", typename) == 0 || strcmp("varchar", typename) == 0 ||
                    strcmp("character", typename) == 0 || strcmp("character varying", typename) == 0 ||
@@ -746,12 +735,10 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                    strcmp("uuid", typename) == 0 || strcmp("uuid[]", typename) == 0 ||
                    strcmp("citext", typename) == 0 || strcmp("citext[]", typename) == 0) {
             /* string field */
-            appendStringInfo(result, "\"type\": \"string\",");
-            appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+            appendStringInfo(result, "\"type\": \"keyword\",");
             appendStringInfo(result, "\"index_options\": \"docs\",");
-            appendStringInfo(result, "\"ignore_above\":32000,");
-            appendStringInfo(result, "\"analyzer\": \"exact\"");
-        } else if (is_json) {
+            appendStringInfo(result, "\"normalizer\": \"exact\"");
+        } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
             /* json field */
             appendStringInfo(result, "\"type\": \"nested\",");
             appendStringInfo(result, "\"include_in_parent\":true,");
@@ -775,13 +762,11 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                          * treat this as if it were of type 'fulltext', in that
                          * it's NOT included in _all and fielddata is disabled
                          */
-                        appendStringInfo(result, "\"type\": \"string\",");
+                        appendStringInfo(result, "\"type\": \"text\",");
                         appendStringInfo(result, "\"index_options\": \"positions\",");
                         appendStringInfo(result, "\"include_in_all\": \"false\",");
                         appendStringInfo(result, "\"analyzer\": \"%s\",", analyzer);
-                        appendStringInfo(result, "\"fielddata\": { \"format\": \"disabled\" },");
-                        appendStringInfo(result, "\"ignore_above\":32000,");
-                        appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+                        appendStringInfo(result, "\"fielddata\": false");
                         break;
 
                     case VARCHAROID:
@@ -790,13 +775,11 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                          * want to treat this as if it were of type 'phrase' in that
                          * it *is* included in _all and fielddata is enabled
                          */
-                        appendStringInfo(result, "\"type\": \"string\",");
+                        appendStringInfo(result, "\"type\": \"keyword\",");
                         appendStringInfo(result, "\"index_options\": \"positions\",");
                         appendStringInfo(result, "\"include_in_all\": \"true\",");
                         appendStringInfo(result, "\"analyzer\": \"%s\",", analyzer);
-                        appendStringInfo(result, "\"fielddata\": { \"format\": \"paged_bytes\" },");
-                        appendStringInfo(result, "\"ignore_above\":32000,");
-                        appendStringInfo(result, "\"norms\": {\"enabled\":true}");
+                        appendStringInfo(result, "\"fielddata\": true");
                         break;
 
                     default:
@@ -805,11 +788,9 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                 }
             } else {
                 /* we're unsure about this type, so pretend it's an 'exact' analyzed string */
-                appendStringInfo(result, "\"type\": \"string\",");
-                appendStringInfo(result, "\"norms\": {\"enabled\":false},");
+                appendStringInfo(result, "\"type\": \"keyword\",");
                 appendStringInfo(result, "\"index_options\": \"docs\",");
-                appendStringInfo(result, "\"ignore_above\":32000,");
-                appendStringInfo(result, "\"analyzer\": \"exact\"");
+                appendStringInfo(result, "\"normalizer\": \"exact\"");
 
                 /* warn about it so users know what's happening */
                 elog(WARNING, "Unrecognized data type %s, pretending it's of type 'text'", typename);

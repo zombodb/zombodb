@@ -35,6 +35,8 @@
 #include "utils/tqual.h"
 
 #include "rest/rest.h"
+#include "util/encode.h"
+#include "util/varintenc.h"
 #include "util/zdbutils.h"
 
 #include "elasticsearch.h"
@@ -52,13 +54,12 @@
 "          \"_source\": { \"enabled\": false },"\
 "          \"_all\": { \"enabled\": false, \"analyzer\": \"phrase\" },"\
 "          \"_routing\": { \"required\": true },"\
-"          \"_all\": { \"enabled\": false },"\
 "          \"properties\": {"\
-"              \"_xmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
-"              \"_cmax\": { \"type\": \"long\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
-"              \"_replacement_ctid\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} },"\
+"              \"_xmax\": { \"type\": \"long\", \"index\": \"true\",\"include_in_all\":\"false\" },"\
+"              \"_cmax\": { \"type\": \"long\", \"index\": \"true\",\"include_in_all\":\"false\" },"\
+"              \"_replacement_ctid\": { \"type\": \"keyword\", \"index\": \"true\",\"include_in_all\":\"false\", \"doc_values\": false },"\
 "              \"_zdb_encoded_tuple\": { \"type\": \"binary\", \"doc_values\": true },"\
-"              \"_zdb_reason\": { \"type\": \"string\", \"index\": \"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
+"              \"_zdb_reason\": { \"type\": \"keyword\", \"index\": \"true\",\"include_in_all\":\"false\", \"doc_values\": false }"\
 "          }"\
 "      },"\
 "      \"aborted\": {"\
@@ -66,7 +67,7 @@
 "          \"_all\": { \"enabled\": false, \"analyzer\": \"phrase\" },"\
 "          \"_routing\": { \"required\": true },"\
 "          \"properties\": {"\
-"             \"_zdb_xid\": { \"type\": \"long\",\"index\":\"not_analyzed\",\"fielddata\":{\"format\":\"doc_values\"},\"include_in_all\":\"false\",\"norms\": {\"enabled\":false} }"\
+"             \"_zdb_xid\": { \"type\": \"long\",\"index\":\"true\",\"include_in_all\":\"false\" }"\
 "          }"\
 "      }"
 
@@ -83,6 +84,36 @@ typedef struct {
 
 
 static List *batchInsertDataList = NULL;
+
+static char *encode_tuple(const ItemPointerData *ht_ctid, TransactionId xmin, unsigned int *b64_len) {
+	StringInfo str = makeStringInfo();
+	char       *b64;
+	char       *enc_blockno;
+	int        sz_blockno;
+	char       *enc_offno;
+	int        sz_offno;
+	char       *enc_xid;
+	int        sz_xid;
+	char       *enc_cmin;
+	int        sz_cmin;
+
+	enc_blockno = varint_encode_uint32(ItemPointerGetBlockNumber(ht_ctid), &sz_blockno);
+	enc_offno   = varint_encode_uint32(ItemPointerGetOffsetNumber(ht_ctid), &sz_offno);
+	enc_xid     = varint_encode_uint64(convert_xid(xmin), &sz_xid);
+	enc_cmin    = varint_encode_uint32(GetCurrentCommandId(true), &sz_cmin);
+
+	appendBinaryStringInfo(str, enc_blockno, sz_blockno);
+	appendBinaryStringInfo(str, enc_offno, sz_offno);
+	appendBinaryStringInfo(str, enc_xid, sz_xid);
+	appendBinaryStringInfo(str, enc_cmin, sz_cmin);
+
+	b64 = palloc((Size) (sz_blockno + sz_offno + sz_xid + sz_cmin) * 5);
+	(*b64_len) = b64_encode(str->data, (unsigned int) str->len, b64);
+
+	freeStringInfo(str);
+
+	return b64;
+}
 
 static BatchInsertData *lookup_batch_insert_data(ZDBIndexDescriptor *indexDescriptor, bool create) {
     BatchInsertData *data = NULL;
@@ -186,7 +217,7 @@ static void es_wait_for_index_availability(ZDBIndexDescriptor *indexDescriptor) 
     char       *status;
 
     /* ask ES to wait for the health status of this index to be at least yellow.  Has default timeout of 30s */
-    appendStringInfo(endpoint, "%s/_cluster/health/%s?wait_for_status=yellow", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s_cluster/health/%s?wait_for_status=yellow", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
     if (response->len == 0 || response->data[0] != '{')
         elog(ERROR, "Response from cluster health not in correct format: %s", response->data);
@@ -209,10 +240,10 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
     appendStringInfo(indexSettings, "{"
             "   \"mappings\": {"
             "      \"data\": {"
-            "          \"_source\": { \"enabled\": false },"
+            "          \"_source\": { \"enabled\": %s },"
             "          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
+            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\" },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s"
             "      },"
@@ -220,24 +251,36 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "   },"
             "   \"settings\": {"
             "      \"refresh_interval\": -1,"
+            "      \"max_result_window\": 1048576,"
             "      \"number_of_shards\": %d,"
             "      \"number_of_replicas\": 0,"
             "      \"analysis\": {"
             "         \"filter\": { %s },"
             "         \"char_filter\" : { %s },"
             "         \"tokenizer\" : { %s },"
-            "         \"analyzer\": { %s }"
+            "         \"analyzer\": { %s },"
+            "         \"normalizer\": { %s }"
             "      }"
             "   }",
-					 indexDescriptor->pkeyFieldname, indexDescriptor->alwaysResolveJoins ? "true"
-                                                           : "false", fieldProperties, shards, lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"), lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"), lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"));
+                     indexDescriptor->store ? "true" : "false",
+                     lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false),
+					 indexDescriptor->alwaysResolveJoins ? "true" : "false",
+                     indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null",
+					 fieldProperties, shards,
+					 lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
+					 lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
+					 lookup_analysis_thing(CurrentMemoryContext, "zdb_tokenizers"),
+					 lookup_analysis_thing(CurrentMemoryContext, "zdb_analyzers"),
+					 lookup_analysis_thing(CurrentMemoryContext, "zdb_normalizers")
+	);
+
 	if (indexDescriptor->alias != NULL) {
 		appendStringInfo(indexSettings, ", \"aliases\": { \"%s\": {} }", indexDescriptor->alias);
 	}
 	appendStringInfoChar(indexSettings, '}');
 
-    appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
-    response = rest_call("POST", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
+    appendStringInfo(endpoint, "%s%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    response = rest_call("PUT", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
 
     freeStringInfo(response);
     freeStringInfo(indexSettings);
@@ -252,7 +295,7 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
 
 
 	/* first refresh the index */
-	appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 	checkForRefreshError(response);
 
@@ -269,7 +312,7 @@ void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor) {
     RelationClose(indexRel);
 
 	resetStringInfo(endpoint);
-    appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("PUT", endpoint->data, indexSettings, indexDescriptor->compressionLevel);
 
     freeStringInfo(response);
@@ -300,16 +343,22 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
      */
     appendStringInfo(request, "{"\
             "   \"data\": {"
-            "      \"_source\": { \"enabled\": false },"
+            "      \"_source\": { \"enabled\": %s },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s },"
+            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\" },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"
             "    },"
 			SECONDARY_TYPES_MAPPING
-            "}", pkey, indexDescriptor->alwaysResolveJoins ? "true" : "false", properties);
+            "}",
+                     indexDescriptor->store ? "true" : "false",
+                     pkey,
+                     indexDescriptor->alwaysResolveJoins ? "true" : "false",
+                     indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null",
+                     properties
+    );
 
-    appendStringInfo(endpoint, "%s/%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_mapping/data", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("PUT", endpoint->data, request, indexDescriptor->compressionLevel);
     freeStringInfo(response);
 
@@ -322,11 +371,12 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
     appendStringInfo(request, "{"
             "   \"settings\": {"
             "      \"refresh_interval\": \"%s\","
+            "      \"max_result_window\":1048576,"
             "      \"number_of_replicas\": %d"
             "   }"
             "}", ZDBIndexOptionsGetRefreshInterval(indexRel), ZDBIndexOptionsGetNumberOfReplicas(indexRel));
 
-    appendStringInfo(endpoint, "%s/%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_settings", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("PUT", endpoint->data, request, indexDescriptor->compressionLevel);
     freeStringInfo(response);
 
@@ -342,7 +392,7 @@ char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQue
     StringInfo response;
     bool       useInvisibilityMap = strstr(userQuery, "#expand") != NULL || indexDescriptor->options != NULL;
 
-    appendStringInfo(endpoint, "%s/%s/_zdbquery", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_zdbquery", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -355,11 +405,29 @@ char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQue
     return response->data;
 }
 
+char *elasticsearch_profileQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery) {
+    StringInfo query;
+    StringInfo endpoint           = makeStringInfo();
+    StringInfo response;
+
+    appendStringInfo(endpoint, "%s%s/_zdbquery?profile=true&pretty=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    if (indexDescriptor->searchPreference != NULL)
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
+
+    query    = buildQuery(indexDescriptor, &userQuery, 1, true);
+    response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
+
+    freeStringInfo(query);
+    freeStringInfo(endpoint);
+
+    return response->data;
+}
+
 void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response = NULL;
 
-    appendStringInfo(endpoint, "%s/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("DELETE", endpoint->data, NULL, indexDescriptor->compressionLevel);
     freeStringInfo(response);
 }
@@ -371,7 +439,7 @@ void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo response;
 
             elog(ZDB_LOG_LEVEL, "[zombodb] Refreshing index %s", indexDescriptor->fullyQualifiedName);
-            appendStringInfo(endpoint, "%s/%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+            appendStringInfo(endpoint, "%s%s/_refresh", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
             response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
             checkForRefreshError(response);
 
@@ -426,7 +494,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
     }
     appendStringInfoChar(request, ']');
 
-    appendStringInfo(endpoint, "%s/%s/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_zdbmsearch", descriptors[0]->url, descriptors[0]->fullyQualifiedName);
     response = rest_call("POST", endpoint->data, request, descriptors[0]->compressionLevel);
 
     freeStringInfo(request);
@@ -436,17 +504,18 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 }
 
 
-ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits) {
+ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores, bool needSort) {
     StringInfo        query;
     StringInfo        endpoint           = makeStringInfo();
     StringInfo        response;
     ZDBSearchResponse *hits;
     ZDBScore          max_score;
     bool              useInvisibilityMap = strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
+	int               expected_bytes_len;
 
-    appendStringInfo(endpoint, "%s/%s/_pgtid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgtid?scores=%s&sort=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, wantScores ? "true" : "false", needSort ? "true" : "false");
     if (indexDescriptor->searchPreference != NULL)
-        appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
 
     query    = buildQuery(indexDescriptor, queries, nqueries, useInvisibilityMap);
     response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
@@ -454,21 +523,30 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     if (response->data[0] != '\0')
         elog(ERROR, "%s", response->data);
 
-    if (response->len < 1 + sizeof(uint64) + sizeof(float4)) /* bounds checking on data returned from ES */
-        elog(ERROR, "Elasticsearch didn't return enough data");
+    /* make sure we at least have enough data to represent the number of rows returned and the max score (if required) */
+    if (response->len < 1 + sizeof(uint64) + (wantScores ? sizeof(float4) : 0))
+        elog(ERROR, "Elasticsearch didn't return enough header data");
 
     /* get the number of hits and max score from the response data */
     memcpy(nhits, response->data + 1, sizeof(uint64));
-    memcpy(&max_score, response->data + 1 + sizeof(uint64), sizeof(float4));
+
+    if (wantScores) {
+        memcpy(&max_score, response->data + 1 + sizeof(uint64), sizeof(float4));
+    } else {
+		memset(&max_score, 0, sizeof(ZDBScore));
+	}
 
     /* and make sure we have the specified number of hits in the response data */
-    if (response->len != 1 + sizeof(uint64) + sizeof(float4) + (*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber) +
-                                                                          sizeof(float4)))) /* more bounds checking */
-        elog(ERROR, "Elasticsearch says there's %ld hits, but didn't return all of them, len=%d", *nhits, response->len);
+	expected_bytes_len = 1 +	/* initial byte to indicate binary or json response */
+			sizeof(uint64) + 	/* number of hits */
+			(wantScores ? sizeof(float4) : 0) +	/* the max score, if we wanted scores */
+			(*nhits * (sizeof(BlockNumber) + sizeof(OffsetNumber) + (wantScores ? sizeof(float4) : 0))); /* size per row, with or without scores */
+    if (response->len != expected_bytes_len) /* more bounds checking */
+        elog(ERROR, "Elasticsearch says there's %ld hits, but didn't return the correct number of bytes, expected=%d, received=%d", *nhits, expected_bytes_len, response->len);
 
     hits = palloc(sizeof(ZDBSearchResponse));
     hits->httpResponse = response;
-    hits->hits         = (response->data + 1 + sizeof(uint64) + sizeof(float4));
+	hits->hits         = (response->data + 1 + sizeof(uint64) + (wantScores ? sizeof(float4) : 0));
     hits->total_hits   = *nhits;
     hits->max_score    = max_score.fscore;
 
@@ -485,7 +563,7 @@ uint64 elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor,
     Datum      countDatum;
     char       *countString;
 
-    appendStringInfo(endpoint, "%s/%s/%s/_count", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName, type_name);
+    appendStringInfo(endpoint, "%s%s/%s/_count", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName, type_name);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -510,7 +588,7 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
     StringInfo response;
     uint64     nhits;
 
-    appendStringInfo(endpoint, "%s/%s/_pgcount", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgcount", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -519,7 +597,7 @@ uint64 elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **q
     if (response->data[0] == '{')
         elog(ERROR, "%s", response->data);
 
-    nhits = (uint64) atol(response->data);
+    nhits = (uint64) strtoul(response->data, NULL, 10);
 
     freeStringInfo(endpoint);
     freeStringInfo(query);
@@ -535,7 +613,7 @@ uint64 elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, ch
 
     query = buildQuery(indexDescriptor, &user_query, 1, false);
 
-    appendStringInfo(endpoint, "%s/%s/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgcount?selectivity=true", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -558,7 +636,7 @@ char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, 
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -579,7 +657,7 @@ char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fi
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -600,7 +678,7 @@ char *elasticsearch_significant_terms(ZDBIndexDescriptor *indexDescriptor, char 
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -621,7 +699,7 @@ char *elasticsearch_extended_stats(ZDBIndexDescriptor *indexDescriptor, char *fi
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -643,7 +721,7 @@ char *elasticsearch_arbitrary_aggregate(ZDBIndexDescriptor *indexDescriptor, cha
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -664,7 +742,7 @@ char *elasticsearch_json_aggregate(ZDBIndexDescriptor *indexDescriptor, zdb_json
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -685,7 +763,7 @@ char *elasticsearch_suggest_terms(ZDBIndexDescriptor *indexDescriptor, char *fie
     StringInfo query;
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_pgagg", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
         appendStringInfo(endpoint, "?preference=%s", indexDescriptor->searchPreference);
 
@@ -715,7 +793,7 @@ char *elasticsearch_termlist(ZDBIndexDescriptor *descriptor, char *fieldname, ch
     }
     appendStringInfo(request, ", \"size\":%d}", size);
 
-    appendStringInfo(endpoint, "%s/%s/_zdbtermlist", descriptor->url, descriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_zdbtermlist", descriptor->url, descriptor->fullyQualifiedName);
     response = rest_call("POST", endpoint->data, request, descriptor->compressionLevel);
 
     freeStringInfo(request);
@@ -731,7 +809,7 @@ char *elasticsearch_getIndexMapping(ZDBIndexDescriptor *indexDescriptor) {
     StringInfo response;
 
     sprintf(indexName, "%s", indexDescriptor->fullyQualifiedName);
-    appendStringInfo(endpoint, "%s/%s/_mapping", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_mapping?pretty", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
@@ -746,7 +824,7 @@ char *elasticsearch_describeNestedObject(ZDBIndexDescriptor *indexDescriptor, ch
     if (indexDescriptor->options)
         appendStringInfo(request, "#options(%s) ", indexDescriptor->options);
 
-    appendStringInfo(endpoint, "%s/%s/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
+    appendStringInfo(endpoint, "%s%s/_pgmapping/%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, fieldname);
     response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
@@ -760,7 +838,7 @@ char *elasticsearch_analyzeText(ZDBIndexDescriptor *indexDescriptor, char *analy
     StringInfo response;
 
     appendStringInfo(request, "%s", data);
-    appendStringInfo(endpoint, "%s/%s/_analyze?analyzer=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, analyzerName);
+    appendStringInfo(endpoint, "%s%s/_analyze?analyzer=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, analyzerName);
     response = rest_call("GET", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
@@ -780,7 +858,7 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *user_qu
         appendStringInfo(request, ", \"field_lists\":\"%s\"", indexDescriptor->fieldLists);
     appendStringInfoChar(request, '}');
 
-    appendStringInfo(endpoint, "%s/%s/_zdbhighlighter", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_zdbhighlighter", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
     response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
 
     freeStringInfo(endpoint);
@@ -797,7 +875,7 @@ static uint64 count_deleted_docs(ZDBIndexDescriptor *indexDescriptor) {
 	StringInfo endpoint = makeStringInfo();
 	StringInfo response;
 
-	appendStringInfo(endpoint, "%s/_cat/indices/%s?h=docs.deleted", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s_cat/indices/%s?h=docs.deleted", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
 	return (uint64) atoll(response->data);
@@ -810,7 +888,7 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
     ListCell *lc;
     int i=0;
 
-	appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s%s/data/_zdbbulk?block_routing_field=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null");
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
         appendStringInfo(endpoint, "&refresh=true");
     }
@@ -840,10 +918,10 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
 
 		if (deleted_docs >=  indexDescriptor->optimizeAfter) {
 			resetStringInfo(endpoint);
-			appendStringInfo(endpoint, "%s/%s/_optimize?only_expunge_deletes=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+			appendStringInfo(endpoint, "%s%s/_forcemerge?only_expunge_deletes=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
 			elog(ZDB_LOG_LEVEL, "[zombodb vacuum] expunging deleted docs in %s (docs.deleted=%lu)", indexDescriptor->fullyQualifiedName, deleted_docs);
-			rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
+			rest_call("POST", endpoint->data, NULL, indexDescriptor->compressionLevel);
 		}
 	}
 
@@ -851,34 +929,12 @@ void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsTo
     freeStringInfo(request);
 }
 
-char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor) {
-	StringInfo endpoint = makeStringInfo();
-	StringInfo response;
-	Snapshot snapshot = GetActiveSnapshot();
-
-	appendStringInfo(endpoint, "%s/%s/_zdbvacuum?xmin=%lu&xmax=%lu&commandid=%u", indexDescriptor->url, indexDescriptor->fullyQualifiedName, convert_xid(snapshot->xmin), convert_xid(snapshot->xmax), GetCurrentCommandId(false));
-	if (snapshot->xcnt > 0) {
-		int i;
-		appendStringInfo(endpoint, "&active=");
-		for (i = 0; i < snapshot->xcnt; i++) {
-			if (i > 0) appendStringInfoChar(endpoint, ',');
-			appendStringInfo(endpoint, "%lu", convert_xid(snapshot->xip[i]));
-		}
-	}
-
-	response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
-
-	freeStringInfo(endpoint);
-	if (response->len > 0 && response->data[0] == '{' && strstr(response->data, "error") != NULL)
-		elog(ERROR, "%s", response->data);
-	return response->data;
-}
 
 static char *confirm_aborted_xids(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems) {
     StringInfo endpoint = makeStringInfo();
     StringInfo response;
 
-    appendStringInfo(endpoint, "%s/%s/_zdbxidvacuumcandidates", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_zdbxidvacuumcandidates", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
     response = rest_call("GET", endpoint->data, NULL, indexDescriptor->compressionLevel);
 
@@ -898,7 +954,7 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 	char *xids;
 	uint64 i;
 
-	appendStringInfo(endpoint, "%s/%s/_zdbvacuumcleanup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s%s/_zdbvacuumcleanup", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 	if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
 		appendStringInfo(endpoint, "?refresh=true");
 	}
@@ -921,7 +977,10 @@ void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor) {
 		elog(ERROR, "%s", response->data);
 }
 
-static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, TransactionId xmin, int64 sequence) {
+static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPointer ht_ctid, text *value, StringInfo bulk, bool isupdate, ItemPointer old_ctid, int64 old_join_key, TransactionId xmin, int64 sequence) {
+	char         *b64_tuple;
+	unsigned int b64_len;
+
     /* the data */
     appendStringInfo(bulk, "{\"index\":{\"_id\":\"%d-%d\"}}\n", ItemPointerGetBlockNumber(ht_ctid), ItemPointerGetOffsetNumber(ht_ctid));
 
@@ -944,8 +1003,19 @@ static void appendBatchInsertData(ZDBIndexDescriptor *indexDescriptor, ItemPoint
     /* and the block number as its own field */
     appendStringInfo(bulk, ",\"_zdb_blockno\":%d", ItemPointerGetBlockNumber(ht_ctid));
 
-	if (isupdate)
-		appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));
+    /* and encode the item pointer as a long */
+    appendStringInfo(bulk, ",\"_zdb_id\":%lu", ItemPointerToUint64(ht_ctid));
+
+	b64_tuple = encode_tuple(ht_ctid, xmin, &b64_len);
+	appendStringInfo(bulk, ",\"_zdb_encoded_tuple\":\"%.*s\"", b64_len, b64_tuple);
+	pfree(b64_tuple);
+
+	if (isupdate) {
+        appendStringInfo(bulk, ",\"_prev_ctid\":\"%d-%d\"", ItemPointerGetBlockNumber(old_ctid), ItemPointerGetOffsetNumber(old_ctid));
+        if (indexDescriptor->blockRoutingField != NULL) {
+            appendStringInfo(bulk, ",\"_prev_organize_for_joins\":%ld", old_join_key);
+        }
+    }
 
 	appendStringInfo(bulk, "}\n");
 }
@@ -969,14 +1039,14 @@ static PostDataEntry *checkout_batch_pool(BatchInsertData *batch) {
 }
 
 void
-elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, int64 sequence) {
+elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, int64 old_join_key, TransactionId xid, CommandId commandId, int64 sequence) {
     BatchInsertData *batch = lookup_batch_insert_data(indexDescriptor, true);
     bool fast_path = false;
 
     if (batch->bulk == NULL)
         batch->bulk = checkout_batch_pool(batch);
 
-    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, old_ctid, xid, sequence);
+    appendBatchInsertData(indexDescriptor, ctid, data, batch->bulk->buff, isupdate, old_ctid, old_join_key, xid, sequence);
     batch->nprocessed++;
     batch->nrecs++;
 
@@ -991,7 +1061,7 @@ elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ct
         StringInfo endpoint = makeStringInfo();
 
         /* don't &refresh=true here as a full .refreshIndex() is called after batchInsertFinish() */
-        appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default&request_no=%d", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests);
+        appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d&block_routing_field=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests, indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null");
 
         /* send the request to index this batch */
         rest_multi_call(batch->rest, "POST", endpoint->data, batch->bulk, indexDescriptor->compressionLevel);
@@ -1021,7 +1091,7 @@ void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor) {
             StringInfo endpoint = makeStringInfo();
             StringInfo response;
 
-            appendStringInfo(endpoint, "%s/%s/data/_zdbbulk?consistency=default&request_no=%d", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests);
+            appendStringInfo(endpoint, "%s%s/data/_zdbbulk?request_no=%d&block_routing_field=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, batch->nrequests, indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null");
 
             if (batch->nrequests == 0) {
 				/*
@@ -1084,15 +1154,15 @@ void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids
     ListCell *lc;
     uint64 xid = convert_xid(GetCurrentTransactionId());
 
-    appendStringInfo(endpoint, "%s/%s/_zdb_delete_tuples", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    appendStringInfo(endpoint, "%s%s/_zdb_delete_tuples?block_routing_field=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null");
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {
-        appendStringInfo(endpoint, "?refresh=true");
+        appendStringInfo(endpoint, "&refresh=true");
     }
 
     foreach (lc, ctids) {
         ZDBDeletedCtidAndCommand *deleted = (ZDBDeletedCtidAndCommand *) lfirst(lc);
 
-        appendStringInfo(request, "%d-%d:%lu:%u\n", ItemPointerGetBlockNumber(&deleted->ctid), ItemPointerGetOffsetNumber(&deleted->ctid), xid, deleted->commandid);
+        appendStringInfo(request, "%d-%d:%lu:%u:%ld\n", ItemPointerGetBlockNumber(&deleted->ctid), ItemPointerGetOffsetNumber(&deleted->ctid), xid, deleted->commandid, deleted->joinKey);
     }
 
     response = rest_call("POST", endpoint->data, request, indexDescriptor->compressionLevel);
@@ -1106,7 +1176,7 @@ void elasticsearch_markTransactionCommitted(ZDBIndexDescriptor *indexDescriptor,
 	StringInfo response;
 
 	appendStringInfo(request, "%lu", convertedXid);
-	appendStringInfo(endpoint, "%s/%s/_zdbxid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+	appendStringInfo(endpoint, "%s%s/_zdbxid", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
 
     /* we always want to refresh the index so long as the user hasn't specified a refresh interval */
     if (strcmp("-1", indexDescriptor->refreshInterval) == 0) {

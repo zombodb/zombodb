@@ -203,6 +203,11 @@ CREATE OR REPLACE FUNCTION zdb_dump_query(table_name regclass, user_query text) 
   SELECT zdb_internal_dump_query(zdb_determine_index(table_name), user_query);
 $$;
 
+CREATE OR REPLACE FUNCTION zdb_internal_profile_query(index_oid oid, user_query text) RETURNS text STRICT IMMUTABLE LANGUAGE c AS '$libdir/plugins/zombodb';
+CREATE OR REPLACE FUNCTION zdb_profile_query(table_name regclass, user_query text) RETURNS text STRICT IMMUTABLE LANGUAGE sql AS $$
+  SELECT zdb_internal_profile_query(zdb_determine_index(table_name), user_query);
+$$;
+
 CREATE TYPE zdb_tally_order AS ENUM ('count', 'term', 'reverse_count', 'reverse_term');
 CREATE TYPE zdb_tally_response AS (term text, count bigint);
 CREATE OR REPLACE FUNCTION zdb_internal_tally(type_oid oid, fieldname text, stem text, query text, max_terms bigint, sort_order text, shard_size int) RETURNS json LANGUAGE c STRICT IMMUTABLE AS '$libdir/plugins/zombodb';
@@ -432,7 +437,7 @@ BEGIN
                UNION ALL
                SELECT (x->>'text')::text,
                  (x->>'freq')::int8
-               FROM json_array_elements(json_array_element(data->'suggest'->'suggestions', 0)->'options') x;
+               FROM json_array_elements(json_array_element(data->'suggest'->fieldname, 0)->'options') x;
 END;
 $$;
 
@@ -643,6 +648,12 @@ CREATE TABLE zdb_analyzers (
   is_default boolean DEFAULT false NOT NULL
 );
 
+CREATE TABLE zdb_normalizers (
+  name text NOT NULL PRIMARY KEY,
+  definition json NOT NULL,
+  is_default boolean DEFAULT false NOT NULL
+);
+
 CREATE TABLE zdb_mappings (
   table_name regclass NOT NULL,
   field_name name NOT NULL,
@@ -658,6 +669,7 @@ CREATE TABLE zdb_tokenizers (
 SELECT pg_catalog.pg_extension_config_dump('zdb_filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_char_filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_analyzers', 'WHERE NOT is_default');
+SELECT pg_catalog.pg_extension_config_dump('zdb_normalizers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_mappings', '');
 SELECT pg_catalog.pg_extension_config_dump('zdb_tokenizers', '');
 
@@ -674,6 +686,11 @@ $$;
 CREATE OR REPLACE FUNCTION zdb_define_analyzer(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
   DELETE FROM zdb_analyzers WHERE name = $1;
   INSERT INTO zdb_analyzers(name, definition) VALUES ($1, $2);
+$$;
+
+CREATE OR REPLACE FUNCTION zdb_define_normalizer(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
+  DELETE FROM zdb_normalizers WHERE name = $1;
+  INSERT INTO zdb_normalizers(name, definition) VALUES ($1, $2);
 $$;
 
 CREATE OR REPLACE FUNCTION zdb_define_mapping(table_name regclass, field_name name, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
@@ -710,10 +727,10 @@ INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
           "tokenizer": "keyword",
           "filter": ["trim", "zdb_truncate_32000", "lowercase"]
         }', true);
-INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ( /* we keep this around for Utils.analyze() to use during query parsing */
   'exact', '{
           "tokenizer": "keyword",
-          "filter": ["trim", "zdb_truncate_32000", "lowercase"]
+          "filter": ["lowercase"]
         }', true);
 INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
   'phrase', '{
@@ -725,7 +742,8 @@ INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
           "tokenizer": "standard",
           "filter": ["lowercase"]
         }', true);
-INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_shingles', '{
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
+  'fulltext_with_shingles', '{
           "type": "custom",
           "tokenizer": "standard",
           "filter": [
@@ -733,7 +751,8 @@ INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_s
             "shingle_filter"
           ]
         }', true);
-INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_shingles_search', '{
+INSERT INTO zdb_analyzers(name, definition, is_default) VALUES (
+  'fulltext_with_shingles_search', '{
           "type": "custom",
           "tokenizer": "standard",
           "filter": [
@@ -741,6 +760,12 @@ INSERT INTO zdb_analyzers(name, definition, is_default) VALUES ('fulltext_with_s
             "shingle_filter_search"
           ]
         }', true);
+INSERT INTO zdb_normalizers(name, definition, is_default) VALUES (
+  'exact', '{
+    "type": "custom",
+    "char_filter": [],
+    "filter": ["lowercase"]
+  }', true);
 
 CREATE DOMAIN fulltext_with_shingles AS text;
 
@@ -793,3 +818,13 @@ BEGIN
                    FROM json_array_elements(results->'tokens');
 END;
 $$;
+
+GRANT ALL ON zdb_analyzers TO PUBLIC;
+GRANT ALL ON zdb_char_filters TO PUBLIC;
+GRANT ALL ON zdb_filters TO PUBLIC;
+GRANT ALL ON zdb_mappings TO PUBLIC;
+GRANT ALL ON zdb_tokenizers TO PUBLIC;
+GRANT ALL ON zdb_normalizers TO PUBLIC;
+
+GRANT SELECT ON zdb_index_stats TO PUBLIC;
+GRANT SELECT ON zdb_index_stats_fast TO PUBLIC;

@@ -1,26 +1,40 @@
 SELECT * FROM zdb_dump_query('so_posts', 'id:*');
-   zdb_dump_query    
----------------------
- {                  +
-   "match_all" : { }+
+  zdb_dump_query   
+-------------------
+ {                +
+   "match_all" : {+
+     "boost" : 1.0+
+   }              +
  }
 (1 row)
 
 SELECT * FROM zdb_dump_query('so_users', 'beer');
-       zdb_dump_query        
------------------------------
- {                          +
-   "bool" : {               +
-     "should" : [ {         +
-       "term" : {           +
-         "about_me" : "beer"+
-       }                    +
-     }, {                   +
-       "term" : {           +
-         "_all" : "beer"    +
-       }                    +
-     } ]                    +
-   }                        +
+           zdb_dump_query           
+------------------------------------
+ {                                 +
+   "bool" : {                      +
+     "should" : [                  +
+       {                           +
+         "term" : {                +
+           "about_me" : {          +
+             "value" : "beer",     +
+             "boost" : 1.0         +
+           }                       +
+         }                         +
+       },                          +
+       {                           +
+         "term" : {                +
+           "_all" : {              +
+             "value" : "beer",     +
+             "boost" : 1.0         +
+           }                       +
+         }                         +
+       }                           +
+     ],                            +
+     "disable_coord" : false,      +
+     "adjust_pure_negative" : true,+
+     "boost" : 1.0                 +
+   }                               +
  }
 (1 row)
 

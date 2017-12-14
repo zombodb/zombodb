@@ -45,6 +45,7 @@ if [ "$1" = 'postgres' ]; then
 		{ echo; echo "host all all 0.0.0.0/0 $authMethod"; } >> "$PGDATA/pg_hba.conf"
 
 		echo "local_preload_libraries = 'zombodb.so'" >> "$PGDATA/postgresql.conf"
+		echo "zombodb.default_elasticsearch_url = 'http://localhost:9200/'" >> "$PGDATA/postgresql.conf"
 
 		# internal start of server in order to allow set-up using psql-client
 		# does not listen on TCP/IP and waits until start finishes

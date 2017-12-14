@@ -43,7 +43,7 @@ public class TermInfo implements Streamable, ToXContent, Serializable {
         return term;
     }
 
-    public TermInfo setTerm(String term) {
+    private TermInfo setTerm(String term) {
         this.term = term;
         return this;
     }

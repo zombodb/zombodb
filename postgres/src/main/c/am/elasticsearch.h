@@ -22,6 +22,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 void elasticsearch_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
+char *elasticsearch_profileQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
 void elasticsearch_dropIndex(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_refreshIndex(ZDBIndexDescriptor *indexDescriptor);
@@ -32,7 +33,7 @@ char *elasticsearch_multi_search(ZDBIndexDescriptor **descriptors, char **user_q
 uint64            elasticsearch_actualIndexRecordCount(ZDBIndexDescriptor *indexDescriptor, char *type_name);
 uint64            elasticsearch_estimateCount(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 uint64            elasticsearch_estimateSelectivity(ZDBIndexDescriptor *indexDescriptor, char *query);
-ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
+ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores, bool needSort);
 
 char *elasticsearch_tally(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order, int shard_size);
 char *elasticsearch_rangeAggregate(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *range_spec, char *query);
@@ -54,10 +55,9 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *query, 
 void elasticsearch_freeSearchResponse(ZDBSearchResponse *searchResponse);
 
 void elasticsearch_bulkDelete(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete);
-char *elasticsearch_vacuumSupport(ZDBIndexDescriptor *indexDescriptor);
 void elasticsearch_vacuumCleanup(ZDBIndexDescriptor *indexDescriptor);
 
-void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xid, CommandId commandId, int64 sequence);
+void elasticsearch_batchInsertRow(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, int64 old_join_key, TransactionId xid, CommandId commandId, int64 sequence);
 void elasticsearch_batchInsertFinish(ZDBIndexDescriptor *indexDescriptor);
 
 void elasticsearch_deleteTuples(ZDBIndexDescriptor *indexDescriptor, List *ctids);

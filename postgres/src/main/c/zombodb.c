@@ -60,10 +60,10 @@ Datum zdb_es_direct_request(PG_FUNCTION_ARGS) {
 
     if (endpoint[0] == '/') {
         /* user wants to hit the cluster itself */
-        appendStringInfo(final_endpoint, "%s/%s", desc->url, endpoint);
+        appendStringInfo(final_endpoint, "%s%s", desc->url, endpoint+1);
     } else {
         /* user wants to hit the specific index */
-        appendStringInfo(final_endpoint, "%s/%s/%s", desc->url, desc->fullyQualifiedName, endpoint);
+        appendStringInfo(final_endpoint, "%s%s/%s", desc->url, desc->fullyQualifiedName, endpoint);
     }
     response = rest_call(method, final_endpoint->data, NULL, 0);
     freeStringInfo(final_endpoint);

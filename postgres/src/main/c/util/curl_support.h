@@ -44,7 +44,6 @@ typedef struct MultiRestState {
 } MultiRestState;
 
 extern CURLSH *GLOBAL_CURL_SHARED_STATE;
-extern CURL   *GLOBAL_CURL_INSTANCE;
 extern List   *MULTI_REST_STATES;
 
 void curl_support_init(void);

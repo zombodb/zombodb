@@ -1,14 +1,20 @@
-<assembly>
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.0.0 http://maven.apache.org/xsd/assembly-2.0.0.xsd">
     <id>plugin</id>
     <formats>
         <format>zip</format>
     </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
+    <baseDirectory>elasticsearch</baseDirectory>
     <!-- plugin descriptor -->
     <files>
       <file>
         <source>src/main/resources/plugin-descriptor.properties</source>
         <filtered>true</filtered>
+      </file>
+      <file>
+        <source>src/main/resources/plugin-security.policy</source>
+        <filtered>false</filtered>
       </file>
     </files>
     <dependencySets>

@@ -49,6 +49,9 @@ typedef struct {
     int   compressionLevel;
     int   aliasOffset;
     int   optimizeAfter;
+	int   defaultRowEstimate;
+	bool  store;
+	int   blockRoutingFieldOffset;
 } ZDBIndexOptions;
 
 #define ZDBIndexOptionsGetUrl(relation) \
@@ -103,28 +106,32 @@ typedef struct {
 #define ZDBIndexOptionsGetOptimizeAfter(relation) \
     ((uint64) ((relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->optimizeAfter : 0))
 
+#define ZDBIndexOptionsGetDefaultRowEstimate(relation) \
+    ((int) ((relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->defaultRowEstimate : 2500))
+
+#define ZDBIndexOptionsGetStore(relation) \
+    (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->store : false
+
+#define ZDBIndexOptionsGetBlockRoutingField(relation) \
+    ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->blockRoutingFieldOffset > 0 ? \
+      (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->blockRoutingFieldOffset : (NULL))
 
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
 typedef struct {
     Oid   indexRelid;
     Oid   heapRelid;
-    int64 advisory_mutex;
     bool  isShadow;
-    bool  logit;
     bool  alwaysResolveJoins;
     char  *databaseName;
     char  *schemaName;
     char  *tableName;
     char  *indexName;
     char  *fullyQualifiedName;
-    char  *pkeyFieldname;
     char  *alias;
     int   shards;
-    int   optimizeAfter;
+    uint64 optimizeAfter;
     bool  hasJson;
-
-    char *qualifiedTableName;
 
     char *url;
     char *options;
@@ -135,6 +142,9 @@ typedef struct {
     int  batch_size;
     int  compressionLevel;
     bool ignoreVisibility;
+	int  defaultRowEstimate;
+	bool store;
+	char *blockRoutingField;
 
     char *fieldLists;
 
@@ -154,7 +164,8 @@ typedef struct {
 
 typedef struct {
 	ItemPointerData ctid;
-	CommandId commandid;
+	CommandId       commandid;
+	int64           joinKey;
 } ZDBDeletedCtidAndCommand;
 
 typedef struct {
@@ -165,6 +176,9 @@ typedef struct {
 extern PGDLLEXPORT relopt_kind RELOPT_KIND_ZDB;
 extern PGDLLEXPORT bool        zdb_batch_mode_guc;
 extern PGDLLEXPORT bool        zdb_ignore_visibility_guc;
+extern PGDLLEXPORT bool        zdb_force_row_estimates_guc;
+extern PGDLLEXPORT int         zdb_default_row_estimate_guc;
+extern PGDLLEXPORT char       *zdb_default_elasticsearch_url_guc;
 extern PGDLLEXPORT int         ZDB_LOG_LEVEL;
 
 void               zdb_index_init(void);
@@ -186,6 +200,7 @@ typedef void (*ZDBCreateNewIndex_function)(ZDBIndexDescriptor *indexDescriptor, 
 typedef void (*ZDBFinalizeNewIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBUpdateMapping_function)(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 typedef char *(*ZDBDumpQuery_function)(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
+typedef char *(*ZDBProfileQuery_function)(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
 typedef void (*ZDBDropIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBRefreshIndex_function)(ZDBIndexDescriptor *indexDescriptor);
@@ -193,7 +208,7 @@ typedef void (*ZDBRefreshIndex_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef uint64            (*ZDBActualIndexRecordCount_function)(ZDBIndexDescriptor *indexDescriptor, char *table_name);
 typedef uint64            (*ZDBEstimateCount_function)(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries);
 typedef uint64            (*ZDBEstimateSelectivity_function)(ZDBIndexDescriptor *indexDescriptor, char *query);
-typedef ZDBSearchResponse *(*ZDBSearchIndex_function)(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits);
+typedef ZDBSearchResponse *(*ZDBSearchIndex_function)(ZDBIndexDescriptor *indexDescriptor, char **queries, int nqueries, uint64 *nhits, bool wantScores, bool needSort);
 typedef ZDBSearchResponse *(*ZDBGetPossiblyExpiredItems)(ZDBIndexDescriptor *indexDescriptor, uint64 *nitems);
 
 typedef char *(*ZDBTally_function)(ZDBIndexDescriptor *indexDescriptor, char *fieldname, char *stem, char *query, int64 max_terms, char *sort_order, int shard_size);
@@ -215,10 +230,9 @@ typedef char *(*ZDBHighlight_function)(ZDBIndexDescriptor *indexDescriptor, char
 typedef void (*ZDBFreeSearchResponse_function)(ZDBSearchResponse *searchResponse);
 
 typedef void (*ZDBBulkDelete_function)(ZDBIndexDescriptor *indexDescriptor, List *ctidsToDelete);
-typedef char *(*ZDBVacuumSupport_function)(ZDBIndexDescriptor *indexDescriptor);
 typedef void (*ZDBVacuumCleanup_function)(ZDBIndexDescriptor *indexDescriptor);
 
-typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, TransactionId xmin, CommandId commandId, int64 sequence);
+typedef void (*ZDBIndexBatchInsertRow_function)(ZDBIndexDescriptor *indexDescriptor, ItemPointer ctid, text *data, bool isupdate, ItemPointer old_ctid, int64 old_join_key, TransactionId xmin, CommandId commandId, int64 sequence);
 typedef void (*ZDBIndexBatchInsertFinish_function)(ZDBIndexDescriptor *indexDescriptor);
 
 typedef void (*ZDBDeleteTuples_function)(ZDBIndexDescriptor *indexDescriptor, List *ctids);
@@ -235,6 +249,7 @@ struct ZDBIndexImplementation {
     ZDBFinalizeNewIndex_function finalizeNewIndex;
     ZDBUpdateMapping_function    updateMapping;
     ZDBDumpQuery_function        dumpQuery;
+	ZDBProfileQuery_function     profileQuery;
 
     ZDBDropIndex_function    dropIndex;
 
@@ -262,7 +277,6 @@ struct ZDBIndexImplementation {
     ZDBFreeSearchResponse_function freeSearchResponse;
 
     ZDBBulkDelete_function bulkDelete;
-    ZDBVacuumSupport_function vacuumSupport;
 	ZDBVacuumCleanup_function vacuumCleanup;
 
     ZDBIndexBatchInsertRow_function    batchInsertRow;

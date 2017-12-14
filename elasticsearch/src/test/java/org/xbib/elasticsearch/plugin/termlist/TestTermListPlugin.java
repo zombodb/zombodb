@@ -12,17 +12,18 @@
  */
 package org.xbib.elasticsearch.plugin.termlist;
 
-import com.tcdi.zombodb.test.ZomboDBTestCase;
+import llc.zombodb.test.ZomboDBTestCase;
 import org.elasticsearch.action.admin.indices.create.CreateIndexAction;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.index.IndexAction;
 import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.junit.Test;
 import org.junit.Ignore;
-import org.xbib.elasticsearch.action.termlist.TermlistRequestBuilder;
+import org.junit.Test;
 import org.xbib.elasticsearch.action.termlist.TermlistAction;
+import org.xbib.elasticsearch.action.termlist.TermlistRequestBuilder;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,7 +58,7 @@ public class TestTermListPlugin extends ZomboDBTestCase {
                     .setType("docs")
                     .setId(Integer.toString(i))
                     .setSource("content", content);
-            indexRequestBuilder.setRefresh(true).execute().actionGet();
+            indexRequestBuilder.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).execute().actionGet();
         }
         TermlistRequestBuilder termlistRequestBuilder = new TermlistRequestBuilder(client(), TermlistAction.INSTANCE);
         termlistRequestBuilder.execute().actionGet();

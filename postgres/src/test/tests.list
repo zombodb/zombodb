@@ -106,3 +106,10 @@ issue-219
 issue-210
 issue-224
 issue-226
+zdb_profile_query
+default_row_estimate
+issue-233
+issue-233-cleanup
+issue-235
+update-negative-pkey
+optimize_after
