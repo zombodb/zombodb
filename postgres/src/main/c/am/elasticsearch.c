@@ -49,6 +49,70 @@
  */
 #define MAX_DOCS_PER_REQUEST 10000
 
+#define _DEFAULT_MAPPING_93 \
+"      \"dynamic_templates\": ["\
+"        {"\
+"          \"strings\": {"\
+"            \"match_mapping_type\": \"string\","\
+"            \"mapping\": {"\
+"              \"type\": \"keyword\","\
+"              \"ignore_above\": 10921,"\
+"              \"normalizer\": \"exact\""\
+"            }"\
+"          }"\
+"        },"\
+"        {"\
+"          \"dates\": {"\
+"            \"match_mapping_type\": \"date\","\
+"            \"mapping\": {"\
+"              \"type\": \"keyword\","\
+"              \"normalizer\": \"exact\","\
+"              \"fields\": {"\
+"                 \"date\": {"\
+"                    \"type\": \"date\""\
+"                   ,\"format\": \"HH:mm:ss.SSSSSSSSSSZ||HH:mm:ss.SSSSSSSSSZ||HH:mm:ss.SSSSSSSSZ||HH:mm:ss.SSSSSSSZ||HH:mm:ss.SSSSSSZ||HH:mm:ss.SSSSSZ||HH:mm:ss.SSSSZ||HH:mm:ss.SSSZ||HH:mm:ss.SSZ||HH:mm:ss.SZ||HH:mm:ssZ\""\
+"                 }"\
+"              }"\
+"            }"\
+"          }"\
+"        }"\
+"      ]"\
+
+#define _DEFAULT_MAPPING_GT_93 \
+"      \"dynamic_templates\": ["\
+"        {"\
+"          \"strings\": {"\
+"            \"match_mapping_type\": \"string\","\
+"            \"mapping\": {"\
+"              \"type\": \"keyword\","\
+"              \"ignore_above\": 10921,"\
+"              \"normalizer\": \"exact\""\
+"            }"\
+"          }"\
+"        },"\
+"        {"\
+"          \"dates\": {"\
+"            \"match_mapping_type\": \"date\","\
+"            \"mapping\": {"\
+"              \"type\": \"keyword\","\
+"              \"normalizer\": \"exact\","\
+"              \"fields\": {"\
+"                 \"date\": {"\
+"                    \"type\": \"date\""\
+"                 }"\
+"              }"\
+"            }"\
+"          }"\
+"        }"\
+"      ]"\
+
+#if (PG_VERSION_NUM < 90400)
+#define _DEFAULT_MAPPING_ _DEFAULT_MAPPING_93
+#else
+#define _DEFAULT_MAPPING_ _DEFAULT_MAPPING_GT_93
+#endif
+
+
 #define SECONDARY_TYPES_MAPPING \
 "      \"xmax\": {"\
 "          \"_source\": { \"enabled\": false },"\
@@ -245,7 +309,8 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
             "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\" },"
             "          \"date_detection\": false,"
-            "          \"properties\" : %s"
+            "          \"properties\" : %s,"
+            _DEFAULT_MAPPING_
             "      },"
 			SECONDARY_TYPES_MAPPING
             "   },"

@@ -258,9 +258,7 @@ public abstract class QueryRewriter {
 
         fieldname = maybeStripFieldname(fieldname, md);
 
-        if (fieldname.contains(".") && "string".equals(md.getType(fieldname)))
-            fieldname += ".keyword";
-        else if (hasDate(md, fieldname))
+        if (hasDate(md, fieldname))
             fieldname += DateSuffix;
 
         return fieldname;

@@ -1002,7 +1002,7 @@ Datum zdbcostestimate(PG_FUNCTION_ARGS) {
     IndexOptInfo *index            = path->indexinfo;
     ListCell     *lc;
     StringInfo   query             = makeStringInfo();
-    int64        nhits             = 1;
+    uint64        nhits            = 1;
 
     foreach (lc, path->indexclauses) {
         RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
