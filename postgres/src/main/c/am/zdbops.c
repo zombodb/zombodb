@@ -736,6 +736,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                    strcmp("citext", typename) == 0 || strcmp("citext[]", typename) == 0) {
             /* string field */
             appendStringInfo(result, "\"type\": \"keyword\",");
+            appendStringInfo(result, "\"ignore_above\": 10921,");
             appendStringInfo(result, "\"index_options\": \"docs\",");
             appendStringInfo(result, "\"normalizer\": \"exact\"");
         } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
@@ -775,7 +776,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
                          * want to treat this as if it were of type 'phrase' in that
                          * it *is* included in _all and fielddata is enabled
                          */
-                        appendStringInfo(result, "\"type\": \"keyword\",");
+                        appendStringInfo(result, "\"type\": \"text\",");
                         appendStringInfo(result, "\"index_options\": \"positions\",");
                         appendStringInfo(result, "\"include_in_all\": \"true\",");
                         appendStringInfo(result, "\"analyzer\": \"%s\",", analyzer);
@@ -789,6 +790,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             } else {
                 /* we're unsure about this type, so pretend it's an 'exact' analyzed string */
                 appendStringInfo(result, "\"type\": \"keyword\",");
+                appendStringInfo(result, "\"ignore_above\": 10921,");
                 appendStringInfo(result, "\"index_options\": \"docs\",");
                 appendStringInfo(result, "\"normalizer\": \"exact\"");
 
