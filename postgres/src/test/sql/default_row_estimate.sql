@@ -24,7 +24,7 @@ SELECT assert(
 alter index idxso_posts set (default_row_estimate = -1);
 SELECT assert(
     (json_array_element(explain('select id from so_posts where zdb(''so_posts'', ctid) ==> '''''), 0)->'Plan'->'Plan Rows')::text::int8,
-    165240,
+    (select reltuples from pg_class where relname = 'so_posts')::int8,
     'actual row count');
 
 -- restore back to default of 2500
@@ -33,6 +33,6 @@ alter index idxso_posts reset (default_row_estimate);
 SET zombodb.force_row_estimation TO ON;
 SELECT assert(
     (json_array_element(explain('select id from so_posts where zdb(''so_posts'', ctid) ==> '''''), 0)->'Plan'->'Plan Rows')::text::int8,
-    165240,
+    (select reltuples from pg_class where relname = 'so_posts')::int8,
     'actual row count, forced');
 
