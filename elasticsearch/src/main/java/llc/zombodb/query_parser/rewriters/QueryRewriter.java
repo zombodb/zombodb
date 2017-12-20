@@ -219,7 +219,7 @@ public abstract class QueryRewriter {
     }
 
     public boolean isAggregateNested() {
-        return tree.getAggregate().isNested();
+        return tree.getAggregate().isNested(metadataManager.getMetadataForField(tree.getAggregate().getFieldname()));
     }
 
     public boolean hasJsonAggregate() {
@@ -314,7 +314,7 @@ public abstract class QueryRewriter {
             ab.subAggregation(build(subagg));
         }
 
-        if (agg.isNested()) {
+        if (agg.isNested(metadataManager.getMetadataForField(agg.getFieldname()))) {
             ab = nested("nested", agg.getNestedPath())
                     .subAggregation(
                             filter("filter", build(tree))
@@ -810,7 +810,21 @@ public abstract class QueryRewriter {
 
     private QueryBuilder build(ASTNull node) {
         validateOperator(node);
-        return buildStandard(node, n -> boolQuery().mustNot(existsQuery(n.getFieldname())));
+        String fieldname = node.getFieldname();
+
+        if (metadataManager.getMetadataForField(fieldname).isNestedObjectField(fieldname)) {
+            // for queries like:  WHERE ... ==> 'json_field = NULL'
+            switch (node.getOperator()) {
+                case EQ:
+                    return boolQuery().mustNot(nestedQuery(fieldname, boolQuery().mustNot(existsQuery(fieldname + ".zdb_always_exists")), ScoreMode.None));
+                case NE:
+                    return nestedQuery(fieldname, boolQuery().mustNot(existsQuery(fieldname + ".zdb_always_exists")), ScoreMode.None);
+                default:
+                    throw new QueryRewriteException("Unsupported operator for ASTNull: " + node.getOperator());
+            }
+        } else {
+            return buildStandard(node, n -> boolQuery().mustNot(existsQuery(n.getFieldname())));
+        }
     }
 
     private QueryBuilder build(ASTNotNull node) {
@@ -1196,7 +1210,7 @@ public abstract class QueryRewriter {
 
 
     private boolean shouldJoinNestedFilter() {
-        return !_isBuildingAggregate || !tree.getAggregate().isNested();
+        return !_isBuildingAggregate || !tree.getAggregate().isNested(metadataManager.getMetadataForField(tree.getAggregate().getFieldname()));
     }
 
     public QueryBuilder getVisibilityFilter() {

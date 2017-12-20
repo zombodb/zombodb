@@ -742,9 +742,14 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
         } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
             /* json field */
             appendStringInfo(result, "\"type\": \"nested\",");
-            appendStringInfo(result, "\"include_in_parent\":true,");
-            appendStringInfo(result, "\"include_in_root\":true,");
-            appendStringInfo(result, "\"include_in_all\":true");
+            appendStringInfo(result, "\"include_in_all\":true,");
+            appendStringInfo(result, "\"properties\": {");
+            appendStringInfo(result, "    \"zdb_always_exists\": {");
+            appendStringInfo(result, "         \"type\": \"boolean\",");
+            appendStringInfo(result, "         \"include_in_all\":false,");
+            appendStringInfo(result, "         \"null_value\": true");
+			appendStringInfo(result, "    }");
+			appendStringInfo(result, "}");
 
         } else {
             Oid base_type;
