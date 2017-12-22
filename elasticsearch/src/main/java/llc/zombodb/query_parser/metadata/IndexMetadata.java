@@ -109,6 +109,40 @@ public class IndexMetadata {
         return fields.containsKey(fieldname);
     }
 
+    public boolean isNested(String fieldname) {
+        if (fieldname == null)
+            return false;
+        if (!fieldname.contains("."))
+            return false;
+        if (isMultiField(fieldname))
+            return false;
+
+        Map fields = this.fields;
+        while (fieldname.contains(".")) {
+            String base = fieldname.substring(0, fieldname.indexOf('.'));
+            fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
+
+            Object value = fields.get(base);
+            if (value == null)
+                return false;
+            else if (value instanceof Map) {
+                fields = (Map) ((Map) value).get("properties");
+                if (fields == null)
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean isNestedObjectField(String fieldname) {
+        return "nested".equals(getType(fieldname));
+    }
+
+    public String getNestedObjectSentinelField(String fieldname) {
+        return fieldname + ".zdb_always_exists";
+    }
+
     public String getNullValue(String fieldname) {
         return getFieldProperty(fieldname, "null_value");
     }

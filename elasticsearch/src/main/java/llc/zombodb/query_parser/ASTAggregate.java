@@ -15,6 +15,8 @@
  */
 package llc.zombodb.query_parser;
 
+import llc.zombodb.query_parser.metadata.IndexMetadata;
+
 public class ASTAggregate extends QueryParserNode {
     private boolean isNested;
 
@@ -47,8 +49,8 @@ public class ASTAggregate extends QueryParserNode {
         this.isNested = isNested;
     }
 
-    public boolean isNested() {
-        return isNested;
+    public boolean isNested(IndexMetadata md) {
+        return isNested || md.isNested(getFieldname());
     }
 
     public ASTAggregate(QueryParser p, int i) {
