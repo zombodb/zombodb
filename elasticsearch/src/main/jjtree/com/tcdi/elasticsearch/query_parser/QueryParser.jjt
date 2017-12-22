@@ -206,8 +206,22 @@ PARSER_END(QueryParser)
              | ("'" <WORD> "'")
              | ("\"" <WORD> "\"")
             ) "~" (<DIGIT>)* >
-  | <PHRASE: (      ("\"" (~["\""] | "\\\"")* "\"") |
-                    ("'"  (~["'"]  | "\\'")*  "'")
+  | <PHRASE: (      ( "\""
+                          (
+                               "\\" ~[]     //any escaped character
+                          |                 //or
+                              ~["\"","\\"]  //any character except quote or backslash
+                          )*
+                          "\""
+                    ) |
+                    ( "'"
+                          (
+                               "\\" ~[]     //any escaped character
+                          |                 //or
+                              ~["'","\\"]  //any character except quote or backslash
+                          )*
+                          "'"
+                    )
              ) ("~" ("!")? (<DIGIT>)+)?
     >
   | <SCRIPT: "$$" (~[])* "$$" >

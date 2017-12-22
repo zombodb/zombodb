@@ -1,0 +1,1 @@
+((exact_field:"\\") (exact_field:"foo")) or ((exact_field:'\\') (exact_field:'foo'))

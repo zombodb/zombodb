@@ -5585,5 +5585,21 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testIssue244() throws Exception {
+        assertAST(resource(this.getClass(), "testIssue244.query"),
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Or\n" +
+                        "         Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "            Word (fieldname=exact_field, operator=CONTAINS, value=\\\\, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=exact_field, operator=CONTAINS, value=foo, index=db.schema.table.index)\n" +
+                        "         Array (fieldname=exact_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "            Word (fieldname=exact_field, operator=CONTAINS, value=\\\\, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=exact_field, operator=CONTAINS, value=foo, index=db.schema.table.index)"
+        );
+    }
+
 }
 
