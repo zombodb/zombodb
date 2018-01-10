@@ -656,7 +656,7 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(withNestedPath, fb, ScoreMode.Avg);
             else
-                return boolQuery().filter(nestedQuery(withNestedPath, fb, ScoreMode.Avg));
+                return fb;
         } else {
             return fb;
         }
@@ -1188,7 +1188,7 @@ public abstract class QueryRewriter {
             if (shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(), fb, ScoreMode.Avg);
             else
-                return boolQuery().filter(nestedQuery(node.getNestedPath(), fb, ScoreMode.Avg));
+                return fb;
         } else if (!node.isNested(metadataManager)) {
             if (_isBuildingAggregate)
                 return matchAllQuery();
