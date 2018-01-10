@@ -19,7 +19,6 @@ package llc.zombodb.rest.search;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
@@ -81,7 +80,6 @@ public class ZomboDBAggregationAction extends BaseRestHandler {
         builder.setPreference(request.param("preference"));
         builder.setRequestCache(true);
 
-        SearchResponse response = client.search(builder.request()).actionGet();
         return channel -> client.search(builder.request(), new RestStatusToXContentListener<>(channel));
     }
 
