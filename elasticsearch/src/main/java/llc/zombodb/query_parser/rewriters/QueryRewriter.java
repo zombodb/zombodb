@@ -314,12 +314,17 @@ public abstract class QueryRewriter {
             ab.subAggregation(build(subagg));
         }
 
-        if (agg.isNested(metadataManager.getMetadataForField(agg.getFieldname()))) {
-            ab = nested("nested", agg.getNestedPath())
-                    .subAggregation(
-                            filter("filter", build(tree))
-                                    .subAggregation(ab).subAggregation(missing("missing").field(getAggregateFieldName(agg)))
-                    );
+        if (metadataManager.getMetadataForField(agg.getFieldname()).isNested(agg.getFieldname())) {
+            if (agg.isSpecifiedAsNested()) {
+                ab = nested("nested", agg.getNestedPath())
+                        .subAggregation(
+                                filter("filter", build(tree))
+                                        .subAggregation(ab).subAggregation(missing("missing").field(getAggregateFieldName(agg)))
+                        );
+            } else {
+                ab = nested("nested", agg.getNestedPath())
+                        .subAggregation(ab).subAggregation(missing("missing").field(getAggregateFieldName(agg)));
+            }
         }
 
         return ab;

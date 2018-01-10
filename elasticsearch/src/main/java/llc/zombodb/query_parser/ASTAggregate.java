@@ -49,8 +49,12 @@ public class ASTAggregate extends QueryParserNode {
         this.isNested = isNested;
     }
 
+    public boolean isSpecifiedAsNested() {
+        return isNested;
+    }
+
     public boolean isNested(IndexMetadata md) {
-        return isNested || md.isNested(getFieldname());
+        return isNested && md.isNested(getFieldname());
     }
 
     public ASTAggregate(QueryParser p, int i) {

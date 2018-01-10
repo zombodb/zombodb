@@ -230,6 +230,9 @@ BEGIN
   IF nested THEN
     missing := (json_data->'aggregations'->'nested'->'filter'->'missing'->>'doc_count')::bigint;
     buckets := json_data->'aggregations'->'nested'->'filter'->fieldname->'buckets';
+  ELSEIF (json_data->'aggregations'->'nested'->fieldname->'buckets') IS NOT NULL THEN
+    missing := (json_data->'aggregations'->'nested'->'missing'->>'doc_count')::bigint;
+    buckets := json_data->'aggregations'->'nested'->fieldname->'buckets';
   ELSE
     missing := (json_data->'aggregations'->'missing'->>'doc_count')::bigint;
     buckets := json_data->'aggregations'->fieldname->'buckets';
@@ -271,6 +274,8 @@ BEGIN
 
   IF nested THEN
     buckets := json_data->'aggregations'->'nested'->'filter'->fieldname->'buckets';
+  ELSEIF (json_data->'aggregations'->'nested'->fieldname->'buckets') IS NOT NULL THEN
+    buckets := json_data->'aggregations'->'nested'->fieldname->'buckets';
   ELSE
     buckets := json_data -> 'aggregations' -> fieldname -> 'buckets';
   END IF;
@@ -304,6 +309,8 @@ BEGIN
 
   IF nested THEN
     buckets := json_data->'aggregations'->'nested'->'filter'->fieldname->'buckets';
+  ELSEIF (json_data->'aggregations'->'nested'->fieldname->'buckets') IS NOT NULL THEN
+    buckets := json_data->'aggregations'->'nested'->fieldname->'buckets';
   ELSE
     buckets := json_data->'aggregations'->fieldname->'buckets';
   END IF;
@@ -337,6 +344,8 @@ BEGIN
 
   IF nested THEN
     json_data := json_data->'aggregations'->'nested'->'filter'->fieldname;
+  ELSEIF (json_data->'aggregations'->'nested'->fieldname->'buckets') IS NOT NULL THEN
+    json_data := json_data->'aggregations'->'nested'->fieldname->'buckets';
   ELSE
     json_data := json_data->'aggregations'->fieldname;
   END IF;
