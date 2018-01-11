@@ -349,10 +349,10 @@ public abstract class QueryRewriter {
         IndexMetadata md = metadataManager.getMetadataForField(fieldname);
         DateHistogramIntervals interval = null;
         String intervalOffset = null;
+        boolean isdate = hasDate(md, fieldname);
 
         boolean useHistogram = false;
-        if (hasDate(md, fieldname)) {
-            try {
+        if (isdate) {
                 String stem = agg.getStem();
                 int colon_idx = stem.indexOf(':');
 
@@ -361,6 +361,7 @@ public abstract class QueryRewriter {
                     stem = stem.substring(0, colon_idx);
                 }
 
+            try {
                 interval = DateHistogramIntervals.valueOf(stem);
                 useHistogram = true;
             } catch (IllegalArgumentException iae) {
@@ -418,8 +419,10 @@ public abstract class QueryRewriter {
                     .shardSize(agg.getShardSize() == 0 ? Integer.MAX_VALUE : agg.getShardSize())
                     .order(stringToTermsOrder(agg.getSortOrder()));
 
-            if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
-                tb.includeExclude(new IncludeExclude(agg.getStem(), null));
+            if (!isdate) {
+                if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
+                    tb.includeExclude(new IncludeExclude(agg.getStem(), null));
+            }
 
             return tb;
         }
