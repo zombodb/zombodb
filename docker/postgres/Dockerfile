@@ -16,8 +16,7 @@ RUN \
   cd / && \
   mkdir zombodb && \
   cd zombodb && \
-  wget https://github.com/zombodb/zombodb/releases/download/v${ZOMBODB_VER}/zombodb_jessie_pg95-${ZOMBODB_VER}_amd64.deb
-
+  wget https://www.zombodb.com/releases/v${ZOMBODB_VER}/zombodb_jessie_pg95-${ZOMBODB_VER}_amd64.deb
 RUN \
   cd /zombodb && \
   dpkg -i zombodb_jessie_pg95-${ZOMBODB_VER}_amd64.deb

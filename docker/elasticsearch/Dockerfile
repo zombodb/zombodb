@@ -6,33 +6,36 @@
 #
 
 # Pull base image.
-FROM java:7
+FROM java:8
 
-ENV ES_PKG_NAME elasticsearch-2.4.6
+ENV ES_PKG_NAME elasticsearch-5.6.4
 ENV ZOMBODB_VER 5.6.4-1.0.0_beta4
+
+# need a non-root user to run elasticsearch
+RUN useradd -ms /bin/bash elastic
 
 # Install Elasticsearch.
 RUN \
   cd / && \
-  wget https://download.elastic.co/elasticsearch/elasticsearch/$ES_PKG_NAME.tar.gz && \
-  tar xvzf $ES_PKG_NAME.tar.gz && \
-  rm -f $ES_PKG_NAME.tar.gz && \
-  mv /$ES_PKG_NAME /elasticsearch
+  wget -qO - https://artifacts.elastic.co/downloads/elasticsearch/${ES_PKG_NAME}.tar.gz | tar xzvf -
+RUN \
+  mv ${ES_PKG_NAME} elasticsearch && \
+  chown -R elastic:elastic elasticsearch
 
 # Define mountable directories.
+RUN mkdir -p /data/data /data/logs
+RUN chown -R elastic:elastic /data
+RUN ls -la /data
 VOLUME ["/data"]
+
+# become the elasticsearch user
+USER elastic
 
 # Mount elasticsearch.yml config
 ADD config/elasticsearch.yml /elasticsearch/config/elasticsearch.yml
 
 # Install zombo
-RUN \
-  cd / && \
-  mkdir zombodb && \
-  cd zombodb && \
-  wget https://github.com/zombodb/zombodb/releases/download/v$ZOMBODB_VER/zombodb-es-plugin-$ZOMBODB_VER.zip
-
-RUN /elasticsearch/bin/plugin -i zombodb -u file:///zombodb/zombodb-es-plugin-$ZOMBODB_VER.zip
+RUN /elasticsearch/bin/elasticsearch-plugin install https://www.zombodb.com/releases/v$ZOMBODB_VER/zombodb-es-plugin-$ZOMBODB_VER.zip
 
 # Define working directory.
 WORKDIR /data
