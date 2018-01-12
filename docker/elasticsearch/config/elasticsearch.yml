@@ -2,5 +2,7 @@ path:
   data: /data/data
   logs: /data/logs
 
+network.host: 0.0.0.0
+
 http.max_content_length: 1024mb
 http.compression: true
