@@ -8,6 +8,7 @@ set_listen_addresses() {
 
 if [ "$1" = 'postgres' ]; then
 	mkdir -p "$PGDATA"
+	chmod 0700 "$PGDATA"
 	chown -R postgres "$PGDATA"
 
 	chmod g+s /run/postgresql
