@@ -351,6 +351,7 @@ public abstract class QueryRewriter {
         String intervalOffset = null;
         boolean isdate = hasDate(md, fieldname);
 
+        fieldname = maybeStripFieldname(fieldname, md);
         boolean useHistogram = false;
         if (isdate) {
                 String stem = agg.getStem();
@@ -364,14 +365,18 @@ public abstract class QueryRewriter {
             try {
                 interval = DateHistogramIntervals.valueOf(stem);
                 useHistogram = true;
+                fieldname += DateSuffix;
             } catch (IllegalArgumentException iae) {
+                // caller wants to use a regex stem instead of
+                // the histogram (because it didn't parse correctly)
+                // so lets not treat it as a date
                 useHistogram = false;
             }
         }
 
         if (useHistogram) {
             DateHistogramAggregationBuilder dhb = dateHistogram(agg.getFieldname())
-                    .field(getAggregateFieldName(agg))
+                    .field(fieldname)
                     .order(stringToDateHistogramOrder(agg.getSortOrder()))
                     .minDocCount(1);
 
@@ -414,15 +419,13 @@ public abstract class QueryRewriter {
             return dhb;
         } else {
             TermsAggregationBuilder tb = terms(agg.getFieldname())
-                    .field(getAggregateFieldName(agg))
+                    .field(fieldname)
                     .size(agg.getMaxTerms())
                     .shardSize(agg.getShardSize() == 0 ? Integer.MAX_VALUE : agg.getShardSize())
                     .order(stringToTermsOrder(agg.getSortOrder()));
 
-            if (!isdate) {
-                if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
-                    tb.includeExclude(new IncludeExclude(agg.getStem(), null));
-            }
+            if ("string".equalsIgnoreCase(md.getType(agg.getFieldname())))
+                tb.includeExclude(new IncludeExclude(agg.getStem(), null));
 
             return tb;
         }

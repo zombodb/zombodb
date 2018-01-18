@@ -9,15 +9,15 @@ insert into issue247 (date_field, timestamp_field) values ('March 20, 1977', 'Ma
 insert into issue247 (date_field, timestamp_field) values ('March 20, 1977', 'March 20, 1977 3:49pm PDT');
 insert into issue247 (date_field, timestamp_field) values ('March 20, 1977', 'March 20, 1977 3:49pm PDT');
 SELECT term, count FROM zdb_tally('issue247', 'date_field', '0', '^.*', '', 2147483647,'term'::zdb_tally_order);
-           term           | count 
---------------------------+-------
- 1977-03-20T00:00:00.000Z |     3
+    term    | count 
+------------+-------
+ 1977-03-20 |     3
 (1 row)
 
 SELECT term, count FROM zdb_tally('issue247', 'timestamp_field', '0', '^.*', '', 2147483647,'term'::zdb_tally_order);
-           term           | count 
---------------------------+-------
- 1977-03-20T15:49:00.000Z |     3
+        term         | count 
+---------------------+-------
+ 1977-03-20 15:49:00 |     3
 (1 row)
 
 SELECT term, count FROM zdb_tally('issue247', 'date_field', '0', 'day', '', 2147483647,'term'::zdb_tally_order);
