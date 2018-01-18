@@ -1,0 +1,22 @@
+select id from so_Posts where zdb('so_posts', ctid) ==> 'id:~"^.*"';
+ERROR:  {
+  "_shards" : {
+    "total" : 0,
+    "successful" : 0,
+    "skipped" : 0,
+    "failed" : 5,
+    "failures" : [
+      {
+        "shard" : 0,
+        "index" : "contrib_regression.public.so_posts.idxso_posts",
+        "status" : "BAD_REQUEST",
+        "reason" : {
+          "type" : "query_shard_exception",
+          "reason" : "Can only use regexp queries on keyword and text fields - not on [id] which is of type [long]",
+          "index_uuid" : "XjiwNU13REauOQgGRcpSzQ",
+          "index" : "contrib_regression.public.so_posts.idxso_posts"
+        }
+      }
+    ]
+  }
+}

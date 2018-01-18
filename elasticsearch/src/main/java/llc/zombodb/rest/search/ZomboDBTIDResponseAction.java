@@ -137,7 +137,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                     /* didn't work, so return failure */
                     XContentBuilder builder = XContentBuilder.builder(JsonXContent.jsonXContent).prettyPrint();
                     response.toXContent(builder, new ToXContent.MapParams(Collections.emptyMap()));
-                    return channel -> new BytesRestResponse(response.status(), builder);
+                    return channel -> channel.sendResponse(new BytesRestResponse(response.status(), builder));
                 }
 
                 tids = buildBinaryResponse(response);

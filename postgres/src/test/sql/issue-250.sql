@@ -1,0 +1,1 @@
+select id from so_Posts where zdb('so_posts', ctid) ==> 'id:~"^.*"';
