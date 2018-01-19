@@ -82,5 +82,6 @@ for POSTGRES_VERSION in ${POSTGRES_VERSIONS} ; do
 
 done
 
-echo "Removing all inflight docker images"
+echo "Removing all transient docker images"
 docker rmi -f $(docker images | grep "inflight" | awk '{print $3}')
+docker rm $(docker ps -a | grep "\(Exited\|Created\)" | cut -f 1 -d ' ')
