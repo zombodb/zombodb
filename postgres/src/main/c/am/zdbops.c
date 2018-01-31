@@ -740,17 +740,23 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"index_options\": \"docs\",");
             appendStringInfo(result, "\"normalizer\": \"exact\"");
         } else if (strcmp("json", typename) == 0 || strcmp("jsonb", typename) == 0) {
-            /* json field */
-            appendStringInfo(result, "\"type\": \"nested\",");
-            appendStringInfo(result, "\"include_in_all\":true,");
-            appendStringInfo(result, "\"properties\": {");
-            appendStringInfo(result, "    \"zdb_always_exists\": {");
-            appendStringInfo(result, "         \"type\": \"boolean\",");
-            appendStringInfo(result, "         \"include_in_all\":false,");
-            appendStringInfo(result, "         \"null_value\": true");
+			/* json field */
+			appendStringInfo(result, "\"type\": \"nested\",");
+			appendStringInfo(result, "\"include_in_all\":true,");
+			appendStringInfo(result, "\"properties\": {");
+			appendStringInfo(result, "    \"zdb_always_exists\": {");
+			appendStringInfo(result, "         \"type\": \"boolean\",");
+			appendStringInfo(result, "         \"include_in_all\":false,");
+			appendStringInfo(result, "         \"null_value\": true");
 			appendStringInfo(result, "    }");
 			appendStringInfo(result, "}");
-
+		} else if (strcmp("bytea", typename) == 0) {
+			appendStringInfo(result, "\"type\": \"keyword\",");
+			appendStringInfo(result, "\"index\": false,");
+			appendStringInfo(result, "\"ignore_above\": 1,");
+			appendStringInfo(result, "\"doc_values\": false,");
+			appendStringInfo(result, "\"include_in_all\": false,");
+			appendStringInfo(result, "\"store\": false");
         } else {
             Oid base_type;
 
