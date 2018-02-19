@@ -4,7 +4,7 @@ ZomboDB is a Postgres extension that enables efficient full-text searching via t
 
 ## What am I Reading?
 
-This is the `master` branch of ZomboDB.  It simply serves as a landing page to learn about ZomboDB.  Documentation is availble here and within each version branch.
+This is the `master` branch of ZomboDB.  It simply serves as a landing page to learn about ZomboDB.  Documentation is available here and within each version branch.
 
 The current version of ZomboDB is `v5.6.4-1.0.0_beta1`.
 
