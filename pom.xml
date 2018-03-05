@@ -6,7 +6,7 @@
 
     <groupId>llc.elasticsearch</groupId>
     <artifactId>zombodb-parent</artifactId>
-    <version>5.6.4-1.0.0</version>
+    <version>5.6.4-1.0.1</version>
 
     <packaging>pom</packaging>
 
