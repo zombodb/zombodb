@@ -21,10 +21,10 @@ import llc.zombodb.fast_terms.collectors.StringCollector;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.DefaultShardOperationFailedException;
-import org.elasticsearch.action.support.broadcast.BroadcastShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.TransportBroadcastAction;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.block.ClusterBlockException;
@@ -40,6 +40,8 @@ import org.elasticsearch.index.Index;
 import org.elasticsearch.index.engine.Engine;
 import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.index.shard.IndexShard;
+import org.elasticsearch.index.shard.IndexShardNotStartedException;
+import org.elasticsearch.index.shard.IndexShardState;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
@@ -82,30 +84,42 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
 
         for (int i = 0; i < shardsResponses.length(); i++) {
             Object shardResponse = shardsResponses.get(i);
-            if (shardResponse instanceof BroadcastShardOperationFailedException) {
-                BroadcastShardOperationFailedException e = (BroadcastShardOperationFailedException) shardResponse;
-                logger.error(e.getMessage(), e);
+
+            if (! (shardResponse instanceof ShardFastTermsResponse)) {
+                // we have an error of some kind to deal with
+                if (shardResponse == null)
+                    shardResponse = new DefaultShardOperationFailedException(request.indices()[0], i, new ElasticsearchException("No Response for element [" + i + "] in [" + request.indices()[0] + "]"));
+
+                DefaultShardOperationFailedException failure = shardResponse instanceof DefaultShardOperationFailedException ?
+                        (DefaultShardOperationFailedException) shardResponse :
+                        shardResponse instanceof ElasticsearchException ?
+                                new DefaultShardOperationFailedException((ElasticsearchException) shardResponse) :
+                                new DefaultShardOperationFailedException(request.indices()[0], i, new ElasticsearchException("Unknown failure for element [" + i + "], response=" + shardResponse));
+
+                logger.error(failure.getCause().getMessage(), failure);
                 failedShards++;
+
                 if (shardFailures == null) {
                     shardFailures = new LinkedList<>();
                 }
-                shardFailures.add(new DefaultShardOperationFailedException(e));
+
+                shardFailures.add(failure);
             } else {
-                if (shardResponse instanceof ShardFastTermsResponse) {
-                    successfulShards++;
-                    ShardFastTermsResponse resp = (ShardFastTermsResponse) shardResponse;
+                // everything worked
 
-                    if (resp.getDataCount() == 0) {
-                        continue;   // this one is empty and we don't need it
-                    }
+                successfulShards++;
+                ShardFastTermsResponse resp = (ShardFastTermsResponse) shardResponse;
 
-                    if (dataType == FastTermsResponse.DataType.NONE)
-                        dataType = resp.getDataType();
-                    else if (dataType != resp.getDataType())
-                        throw new RuntimeException("Data Types from shards don't match");
-
-                    successful.add(resp);
+                if (resp.getDataCount() == 0) {
+                    continue;   // this one is empty and we don't need it
                 }
+
+                if (dataType == FastTermsResponse.DataType.NONE)
+                    dataType = resp.getDataType();
+                else if (dataType != resp.getDataType())
+                    throw new RuntimeException("Data Types from shards don't match");
+
+                successful.add(resp);
             }
         }
 
@@ -131,8 +145,12 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
     protected ShardFastTermsResponse shardOperation(ShardFastTermsRequest request) throws IOException {
         Index index = request.shardId().getIndex();
         int shardId = request.shardId().id();
+        IndexShard indexShard = indicesService.indexServiceSafe(index).getShard(shardId);
+
+        if (indexShard.state() != IndexShardState.STARTED)
+            throw new IndexShardNotStartedException(indexShard.shardId(), indexShard.state());
+
         if (request.getRequest().sourceShardId() == -1 || shardId == request.getRequest().sourceShardId()) {
-            IndexShard indexShard = indicesService.indexServiceSafe(index).getShard(shardId);
             String fieldname = request.getRequest().fieldname();
             FastTermsResponse.DataType type;
             FastTermsCollector collector;

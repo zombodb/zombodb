@@ -106,8 +106,7 @@ class CrossJoinQueryRewriteHelper {
     }
 
 
-    static Query rewriteQuery(CrossJoinQuery crossJoin) {
-        FastTermsResponse fastTerms = crossJoin.getFastTerms();
+    static Query rewriteQuery(CrossJoinQuery crossJoin, FastTermsResponse fastTerms) {
 
         if (fastTerms.getTotalDataCount() == 0)
             return new MatchNoDocsQuery();

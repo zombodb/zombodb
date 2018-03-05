@@ -24,9 +24,14 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.rest.*;
 
 import java.io.IOException;
+import java.util.Collections;
+
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
@@ -71,6 +76,13 @@ public class ZomboDBCountAction extends BaseRestHandler {
                 builder.setPostFilter(query.getVisibilityFilter());
 
                 SearchResponse searchResponse = client.search(builder.request()).actionGet();
+
+                if (searchResponse.getFailedShards() > 0) {
+                    /* didn't work, so return failure */
+                    XContentBuilder xContentBuilder = XContentBuilder.builder(JsonXContent.jsonXContent).prettyPrint();
+                    searchResponse.toXContent(xContentBuilder, new ToXContent.MapParams(Collections.emptyMap()));
+                    return channel -> channel.sendResponse(new BytesRestResponse(searchResponse.status(), xContentBuilder));
+                }
 
                 count = searchResponse.getHits().getTotalHits();
             }

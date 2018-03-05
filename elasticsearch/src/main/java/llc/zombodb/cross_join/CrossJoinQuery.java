@@ -18,17 +18,13 @@ package llc.zombodb.cross_join;
 import llc.zombodb.ZomboDBPlugin;
 import llc.zombodb.fast_terms.FastTermsAction;
 import llc.zombodb.fast_terms.FastTermsResponse;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSet;
 import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.cache.Cache;
-import org.elasticsearch.common.cache.CacheBuilder;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 
@@ -45,12 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 class CrossJoinQuery extends Query {
 
     private static final Map<String, TransportClient> CLIENTS = new ConcurrentHashMap<>();
-    private static final Cache<String, FastTermsResponse> RESPONSE_CACHE = CacheBuilder.<String, FastTermsResponse>builder()
-            .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
-            .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
-            .build();
 
-    private final String cacheKey;
     private final String clusterName;
     private final String host;
     private final int port;
@@ -63,10 +54,7 @@ class CrossJoinQuery extends Query {
     private final int thisShardId;
     private final boolean canOptimizeJoins;
 
-    private FastTermsResponse fastTerms;
-
     public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins, String fieldType, int thisShardId) {
-        this.cacheKey = (clusterName + host + port + index + type + leftFieldname + rightFieldname + query + (canOptimizeJoins ? thisShardId : -1)).intern();
         this.clusterName = clusterName;
         this.host = host;
         this.port = port;
@@ -112,51 +100,44 @@ class CrossJoinQuery extends Query {
         return query;
     }
 
-    public FastTermsResponse getFastTerms() {
-        return fastTerms;
-    }
-
     @Override
     public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
-        return new ConstantScoreWeight(this) {
+        // Run the FastTerms action to get the doc key values that we need for joining
+        FastTermsResponse fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(getClient(clusterName, host, port))
+                .setIndices(index)
+                .setTypes(type)
+                .setFieldname(rightFieldname)
+                .setQuery(query)
+                .setSourceShard(canOptimizeJoins ? thisShardId : -1)
+                .get();
 
-            @Override
-            public Scorer scorer(LeafReaderContext context) throws IOException {
-                BitSet bitset = CrossJoinQueryExecutor.execute(
-                        context,
-                        type,
-                        leftFieldname,
-                        fieldType,
-                        fastTerms
-                );
+        if (fastTerms.getFailedShards() > 0)
+            throw new IOException(fastTerms.getShardFailures()[0].getCause());
 
-                return bitset == null ? null : new ConstantScoreScorer(this, 0, new BitDocIdSet(bitset).iterator());
-            }
-        };
-    }
+        // Using this query and the FastTermsResponse, try to rewrite into a more simple/efficient query
+        Query rewritten = CrossJoinQueryRewriteHelper.rewriteQuery(this, fastTerms);
 
-    @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-        synchronized (cacheKey) {
-            fastTerms = RESPONSE_CACHE.get(cacheKey);
+        if (rewritten != this) {
+            // during rewriting, we were given a new query, so use that to create weights
+            return rewritten.createWeight(searcher, needsScores);
+        } else {
+            // otherwise we need to do it ourselves
+            return new ConstantScoreWeight(this) {
 
-            if (fastTerms == null) {
-                fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(getClient(clusterName, host, port))
-                        .setIndices(index)
-                        .setTypes(type)
-                        .setFieldname(rightFieldname)
-                        .setQuery(query)
-                        .setSourceShard(canOptimizeJoins ? thisShardId : -1)
-                        .get();
+                @Override
+                public Scorer scorer(LeafReaderContext context) throws IOException {
+                    BitSet bitset = CrossJoinQueryExecutor.execute(
+                            context,
+                            type,
+                            leftFieldname,
+                            fieldType,
+                            fastTerms
+                    );
 
-                if (fastTerms.getFailedShards() > 0)
-                    throw new IOException(fastTerms.getShardFailures()[0].getCause());
-
-                RESPONSE_CACHE.put(cacheKey, fastTerms);
-            }
+                    return bitset == null ? null : new ConstantScoreScorer(this, 0, new BitDocIdSet(bitset).iterator());
+                }
+            };
         }
-
-        return CrossJoinQueryRewriteHelper.rewriteQuery(this);
     }
 
     private static TransportClient getClient(String clusterName, String host, int port) {
@@ -196,18 +177,17 @@ class CrossJoinQuery extends Query {
 
     @Override
     public String toString(String field) {
-        return "cross_join(cluster=" + clusterName + ", host=" + host + ", port=" + port + ", index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", query=" + query + ", shard=" + thisShardId + ", canOptimizeJoins=" + canOptimizeJoins + ")";
+        return "cross_join(cluster=" + clusterName + ", index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", query=" + query + ", shard=" + thisShardId + ", canOptimizeJoins=" + canOptimizeJoins + ")";
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj == null || getClass() != obj.getClass())
             return false;
+
         CrossJoinQuery other = (CrossJoinQuery) obj;
-        return Objects.equals(cacheKey, other.cacheKey) &&
-                Objects.equals(clusterName, other.clusterName) &&
-                Objects.equals(host, other.host) &&
-                Objects.equals(port, other.port) &&
+        // NB:  'host' and 'port' aren't included here because it all comes from the same cluster, so we don't care
+        return  Objects.equals(clusterName, other.clusterName) &&
                 Objects.equals(index, other.index) &&
                 Objects.equals(type, other.type) &&
                 Objects.equals(leftFieldname, other.leftFieldname) &&
@@ -219,6 +199,7 @@ class CrossJoinQuery extends Query {
 
     @Override
     public int hashCode() {
-        return Objects.hash(cacheKey, clusterName, host, port, index, type, leftFieldname, rightFieldname, query, thisShardId, canOptimizeJoins);
+        // NB:  'host' and 'port' aren't included here because it all comes from the same cluster, so we don't care
+        return Objects.hash(clusterName, index, type, leftFieldname, rightFieldname, query, thisShardId, canOptimizeJoins);
     }
 }
