@@ -250,6 +250,10 @@ public class IndexMetadataManager {
                 if (md.getIncludeInAll(field)) {
                     hasAllField = true;
                     continue;
+                } else if (field.endsWith(".date")) {
+                    // skip this 'date' multifield because it's one ZDB created and we don't want the
+                    // outside world believing it actually exists in our index
+                    continue;
                 }
 
                 if (md.getSearchAnalyzer(field) != null) {
