@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -88,25 +88,10 @@ public class IndexMetadata {
     }
 
     public boolean hasField(String fieldname) {
-        if (isMultiField(fieldname))
-            return true;
+        if (fieldname == null)
+            fieldname = "_all";
 
-        Map fields = this.fields;
-        while (fieldname.contains(".")) {
-            String base = fieldname.substring(0, fieldname.indexOf('.'));
-            fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
-
-            Object value = fields.get(base);
-            if (value == null)
-                return false;
-            else if (value instanceof Map) {
-                fields = (Map) ((Map) value).get("fields");
-                if (fields == null)
-                    return false;
-            }
-        }
-
-        return fields.containsKey(fieldname);
+        return fields.containsKey(fieldname) || isMultiField(fieldname) || isNested(fieldname);
     }
 
     public boolean isNested(String fieldname) {
@@ -156,77 +141,79 @@ public class IndexMetadata {
         return type == null ? "unknown" : type;
     }
 
-    private String getFieldProperty(String fieldname, String property) {
+    private <T> T getFieldProperty(String fieldname, String property) {
         if (fieldname == null)
-            return null;
+            fieldname = "_all";
 
-        if (isMultiField(fieldname)) {
-            Map properties = (Map) fields.get(fieldname).get("properties");
-            if (properties != null)
-                return valueOf(properties.get(property));
+        Map fields = this.fields;
+        if (fieldname.contains(".")) {
+            if (isMultiField(fieldname)) {
+                fields = getNestedOrMultifieldPropertyMapContainer(fields, fieldname, "fields");
+            } else {
+                fields = getNestedOrMultifieldPropertyMapContainer(fields, fieldname, "properties");
+            }
+
+            if (fields == null) {
+                // couldn't find it above, so try it within us
+                // but with just the final fieldname
+                fields = this.fields;
+                fields = (Map) fields.get(fieldname.substring(fieldname.lastIndexOf('.') + 1));
+            }
+
+        } else {
+            fields = (Map) fields.get(fieldname);
         }
 
-        String[] parts = fieldname.split("[.]");
-        if (parts.length == 1) {
-            Map<String, Object> fieldProperties = fields.get(fieldname);
-            if (fieldProperties == null) {
+        return fields != null ? (T) fields.get(property) : null;
+    }
+
+    private Map getNestedOrMultifieldPropertyMapContainer(Map fields, String fieldname, String fieldCompositionType) {
+
+        while (fieldname.contains(".")) {
+            String base = fieldname.substring(0, fieldname.indexOf('.'));
+            fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
+
+            Object value = fields.get(base);
+            if (value == null)
                 return null;
+            else if (value instanceof Map) {
+                fields = (Map) ((Map) value).get(fieldCompositionType);
+                if (fields == null)
+                    return null;
             }
-            return valueOf(fieldProperties.get(property));
         }
 
-        Map properties = fields;
-        for (int i = 0; properties != null && i < parts.length; i++) {
-            Map tmpproperties = ((Map) properties.get(parts[i]));
-            if (tmpproperties != null) {
-                if (tmpproperties.containsKey("properties"))
-                    tmpproperties = (Map) tmpproperties.get("properties");
-            }
-
-            if (tmpproperties != null)
-                properties = tmpproperties;
-        }
-
-        if (properties == null)
-            return null;
-
-        String type = String.valueOf(properties.get("type"));
-        return "null".equals(type) ? "unknown" : type;
+        return (Map) fields.get(fieldname);
     }
 
     public boolean getIncludeInAll(String fieldname) {
-//        Object o = fields.get(fieldname).get("include_in_all");
-//        return o == null || o == Boolean.TRUE || "true".equalsIgnoreCase(String.valueOf(o));
-        String includeInAll = getFieldProperty(fieldname, "include_in_all");
-        return includeInAll == null || "true".equalsIgnoreCase(includeInAll);
+        Boolean includeInAll = getFieldProperty(fieldname, "include_in_all");
+        return includeInAll == null || // because "include_in_all" is our index default
+                includeInAll;   // or it might be explicitly set to true
     }
 
     public String getSearchAnalyzer(String fieldname) {
-        Map<String, Object> fieldInfo = fields.get(fieldname);
-        if (fieldInfo == null)
-            return "exact"; // we don't know about this field, so assume it's using index default analyzer of 'exact'
-
-        String analyzer = (String) fieldInfo.get("search_analyzer");
-        if (analyzer == null)
-            analyzer = (String) fieldInfo.get("analyzer");
-
-        if (analyzer == null)
-            analyzer = (String) fieldInfo.get("normalizer");
-
-        return analyzer;
+        return getAnalyzerOfType(fieldname, "search");
     }
 
     public String getIndexAnalyzer(String fieldname) {
-        Map<String, Object> fieldInfo = fields.get(fieldname);
-        if (fieldInfo == null)
-            return "exact"; // we don't know about this field, so assume it's using index default analyzer of 'exact'
+        return getAnalyzerOfType(fieldname, "index");
+    }
 
-        String analyzer = (String) fieldInfo.get("index_analyzer");
-        if (analyzer == null)
-            analyzer = (String) fieldInfo.get("analyzer");
+    private String getAnalyzerOfType(String fieldname, String analyzerType) {
+        if (fieldname == null)
+            fieldname = "_all";
 
+        if (!hasField(fieldname))
+            return "exact";
+
+        String analyzer;
+
+        analyzer = getFieldProperty(fieldname, analyzerType + "_analyzer");
         if (analyzer == null)
-            analyzer = (String) fieldInfo.get("normalizer");
+            analyzer = getFieldProperty(fieldname, "analyzer");
+        if (analyzer == null)
+            analyzer = getFieldProperty(fieldname, "normalizer");
 
         return analyzer;
     }
@@ -242,7 +229,7 @@ public class IndexMetadata {
 
     private void pullUpMultiFields() {
         Map<String, Map<String, Object>> found = new HashMap<>();
-        for(Map.Entry<String, Map<String, Object>> entry : fields.entrySet()) {
+        for (Map.Entry<String, Map<String, Object>> entry : fields.entrySet()) {
             Map<String, Object> multifields = (Map) entry.getValue().get("fields");
             if (multifields != null) {
                 for (Map.Entry<String, Object> mfield : multifields.entrySet()) {
