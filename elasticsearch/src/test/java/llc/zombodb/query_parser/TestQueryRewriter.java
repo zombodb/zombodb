@@ -5607,9 +5607,6 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "QueryTree\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
-                        "         LeftField (value=id)\n" +
-                        "         IndexName (value=db.schema.table.index)\n" +
-                        "         RightField (value=id)\n" +
                         "      Or\n" +
                         "         Array (fieldname=fulltext_field, operator=CONTAINS, index=db.schema.table.index) (OR)\n" +
                         "            Word (fieldname=fulltext_field, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
