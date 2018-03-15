@@ -177,6 +177,7 @@ public abstract class QueryRewriter {
             }
         }
 
+        metadataManager.loadExpansionMappings(tree);
         performOptimizations(client);
     }
 

@@ -375,14 +375,18 @@ public class QueryTreeOptimizer {
 
         while (!stack.empty()) {
             ASTExpansion expansion = stack.pop();
+
+            if (expansion.isSubselect())
+                continue;
+            else if (!expansion.isGenerated())
+                continue;
+
             QueryParserNode parent = (QueryParserNode) expansion.jjtGetParent();
-            if (expansion.isGenerated()) {
-                ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
-                or.jjtAddChild(expansion, 0);
-                QueryParserNode queryNode = expansion.getQuery().copy();
-                or.jjtAddChild(queryNode, 1);
-                parent.replaceChild(expansion, or);
-            }
+            ASTOr or = new ASTOr(QueryParserTreeConstants.JJTOR);
+            or.jjtAddChild(expansion, 0);
+            QueryParserNode queryNode = expansion.getQuery().copy();
+            or.jjtAddChild(queryNode, 1);
+            parent.replaceChild(expansion, or);
         }
     }
 

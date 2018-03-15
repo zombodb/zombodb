@@ -16,9 +16,7 @@
  */
 package llc.zombodb.query_parser.metadata;
 
-import llc.zombodb.query_parser.ASTIndexLink;
-import llc.zombodb.query_parser.ASTOptions;
-import llc.zombodb.query_parser.QueryParserNode;
+import llc.zombodb.query_parser.*;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsAction;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsAction;
@@ -117,7 +115,11 @@ public class IndexMetadataManager {
             if (entry.getKey().getIndexName().equalsIgnoreCase(indexName))
                 return entry.getValue();
         }
-        throw new IllegalArgumentException("No metadata found for: " + indexName);
+
+        IndexMetadata md = getMetadata(getIndexLinkByIndexName(indexName));
+        if (md == null)
+            throw new IllegalArgumentException("No metadata found for: " + indexName);
+        return md;
     }
 
     private IndexMetadata getMetadata(ASTIndexLink link) {
@@ -281,23 +283,39 @@ public class IndexMetadataManager {
 
         for (QueryParserNode node : options) {
             if (node instanceof ASTIndexLink) {
-                ASTIndexLink link = (ASTIndexLink) node;
-                String indexName = link.getIndexName();
-
-                if (indexName.split("[.]").length > 2) {
-                    // (hopefully) already fully qualified
-                    loadMapping(link.getIndexName(), link);
-                } else if (myIndex != null) {
-                    // not fully qualified, so we need to do that (if we know our index)
-                    String prefix = myIndex.getIndexName();
-                    prefix = prefix.substring(0, prefix.lastIndexOf('.'));    // strip off current index name
-                    prefix = prefix.substring(0, prefix.lastIndexOf('.'));    // strip off current table name
-
-                    // fully qualify the index name
-                    link.qualifyIndexName(prefix);
-                    loadMapping(link.getIndexName(), link);
-                }
+                loadMappingForLink((ASTIndexLink) node);
             }
+        }
+    }
+
+    public void loadExpansionMappings(ASTQueryTree tree) {
+        for (ASTExpansion expansion : tree.getChildrenOfType(ASTExpansion.class)) {
+            ASTIndexLink link = expansion.getIndexLink();
+            String indexName = link.getIndexName();
+            if ("this.index".equalsIgnoreCase(indexName)) {
+                indexName = myIndex.getIndexName();
+                loadMapping(indexName, link);
+            } else {
+                loadMappingForLink(link);
+            }
+        }
+    }
+
+    private void loadMappingForLink(ASTIndexLink link) {
+        String indexName = link.getIndexName();
+
+        if (indexName.split("[.]").length > 2) {
+            // (hopefully) already fully qualified
+            loadMapping(link.getIndexName(), link);
+        } else if (myIndex != null) {
+            // not fully qualified, so we need to do that (if we know our index)
+            String prefix = myIndex.getIndexName();
+            prefix = prefix.substring(0, prefix.lastIndexOf('.'));    // strip off current index name
+            prefix = prefix.substring(0, prefix.lastIndexOf('.'));    // strip off current table name
+
+            // fully qualify the index name
+            link.qualifyIndexName(prefix);
+            loadMapping(link.getIndexName(), link);
         }
     }
 
