@@ -6,7 +6,7 @@ ZomboDB is a Postgres extension that enables efficient full-text searching via t
 
 This is the `master` branch of ZomboDB.  It simply serves as a landing page to learn about ZomboDB.  Documentation is available here and within each version branch.
 
-The current version of ZomboDB is `v5.6.4-1.0.0_beta1`.
+The current version of ZomboDB is `v5.6.4-1.0.1`.
 
 ## Upgrading from ES 1.7 or ES 2.4?
 
@@ -21,7 +21,7 @@ If you just want to download the latest version for your ES+PG+Linux stack, plea
 
 ZomboDB will continue to support ES 1.7 under the `v3.x` versioning scheme, and ES 2.4 under the `v4.x` scheme.
 
-Going forward, ZomboDB will follow, at least, the major version number of Elasticsearch.  As such, the ZomboDB version to support ES 5.6 is currently `v5.6.4-1.0.0`.  The same will be true of ES 6 support.
+Going forward, ZomboDB will follow, at least, the major version number of Elasticsearch.  As such, the ZomboDB version to support ES 5.6 is currently `v5.6.4-1.0.1`.  The same will be true of ES 6 support.
 
 Other than for security fixes or very serious bugs Support for Elasticsearch 1.7 and 2.4 is now suspended.  Going forward, only ES v5.6.x (and soon ES 6.0) will be supported.
 
