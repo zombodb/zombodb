@@ -90,6 +90,6 @@ class CrossJoinQueryParser implements QueryParser<CrossJoinQueryBuilder>, Writea
             }
         }
 
-        return Optional.of(new CrossJoinQueryBuilder(clusterName, host, port, index, type, leftFieldname, rightFieldname, query, canOptimizeJoins));
+        return Optional.of(new CrossJoinQueryBuilder(index, type, leftFieldname, rightFieldname, query, canOptimizeJoins));
     }
 }

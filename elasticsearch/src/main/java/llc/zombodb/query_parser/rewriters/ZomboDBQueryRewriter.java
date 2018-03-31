@@ -33,8 +33,8 @@ import static org.elasticsearch.index.query.QueryBuilders.*;
  */
 class ZomboDBQueryRewriter extends QueryRewriter {
 
-    public ZomboDBQueryRewriter(ClusterService clusterService, Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-        super(clusterService, client, indexName, contentRegistry, input, canDoSingleIndex, needVisibilityOnTopLevel);
+    public ZomboDBQueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+        super(client, indexName, contentRegistry, input, canDoSingleIndex, needVisibilityOnTopLevel);
     }
 
     @Override
@@ -71,9 +71,6 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     leftMetadata.getNumberOfShards() == rightMetadata.getNumberOfShards();
 
             qb = constantScoreQuery(new CrossJoinQueryBuilder()
-                    .clusterName(this.clusterService.getClusterName().value())
-                    .host(this.clusterService.localNode().getAddress().getHost())
-                    .port(this.clusterService.localNode().getAddress().getPort())
                     .index(link.getIndexName())
                     .type("data")
                     .leftFieldname(link.getLeftFieldname())

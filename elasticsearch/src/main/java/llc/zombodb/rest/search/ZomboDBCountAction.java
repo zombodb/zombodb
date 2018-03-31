@@ -38,13 +38,9 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZomboDBCountAction extends BaseRestHandler {
 
-    private final ClusterService clusterService;
-
     @Inject
-    public ZomboDBCountAction(Settings settings, RestController controller, ClusterService clusterService) {
+    public ZomboDBCountAction(Settings settings, RestController controller) {
         super(settings);
-
-        this.clusterService = clusterService;
 
         controller.registerHandler(GET, "/{index}/_pgcount", this);
         controller.registerHandler(POST, "/{index}/_pgcount", this);
@@ -60,7 +56,7 @@ public class ZomboDBCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(clusterService, client, request, true, false);
+            query = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, false);
             if (query.hasLimit() && isSelectivityQuery) {
                 count = query.getLimit().getLimit();
             } else {

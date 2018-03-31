@@ -32,13 +32,9 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZomboDBMappingAction extends BaseRestHandler {
 
-    private final ClusterService clusterService;
-
     @Inject
-    public ZomboDBMappingAction(Settings settings, RestController controller, ClusterService clusterService) {
+    public ZomboDBMappingAction(Settings settings, RestController controller) {
         super(settings);
-
-        this.clusterService = clusterService;
 
         controller.registerHandler(GET, "/{index}/_pgmapping/{fieldname}", this);
         controller.registerHandler(POST, "/{index}/_pgmapping/{fieldname}", this);
@@ -46,7 +42,7 @@ public class ZomboDBMappingAction extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-        QueryRewriter rewriter = QueryRewriter.Factory.create(clusterService, request, client, request.param("index"), request.content().utf8ToString(), false, false);
+        QueryRewriter rewriter = QueryRewriter.Factory.create(request, client, request.param("index"), request.content().utf8ToString(), false, false);
         rewriter.rewriteQuery();
         Map<String, ?> properties = rewriter.describedNestedObject(request.param("fieldname"));
 

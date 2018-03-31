@@ -34,13 +34,10 @@ import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class ZomboDBQueryAction extends BaseRestHandler {
-    private final ClusterService clusterService;
 
     @Inject
-    public ZomboDBQueryAction(Settings settings, RestController controller, ClusterService clusterService) {
+    public ZomboDBQueryAction(Settings settings, RestController controller) {
         super(settings);
-
-        this.clusterService = clusterService;
 
         controller.registerHandler(GET, "/{index}/_zdbquery", this);
         controller.registerHandler(POST, "/{index}/_zdbquery", this);
@@ -53,7 +50,7 @@ public class ZomboDBQueryAction extends BaseRestHandler {
         boolean profile = request.paramAsBoolean("profile", false);
 
         try {
-            QueryAndIndexPair queryAndIndex = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(clusterService, client, request, true, true);
+            QueryAndIndexPair queryAndIndex = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, true);
 
             if (profile) {
                 return channel -> SearchAction.INSTANCE.newRequestBuilder(client)

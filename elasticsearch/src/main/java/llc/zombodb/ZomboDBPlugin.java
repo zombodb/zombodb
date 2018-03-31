@@ -76,13 +76,13 @@ public class ZomboDBPlugin extends Plugin implements ActionPlugin, SearchPlugin 
     @Override
     public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings, IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter, IndexNameExpressionResolver indexNameExpressionResolver, java.util.function.Supplier<DiscoveryNodes> nodesInCluster) {
         return Arrays.asList(
-                new ZomboDBTIDResponseAction(settings, restController, clusterService),
-                new ZomboDBAggregationAction(settings, restController, clusterService),
-                new ZomboDBCountAction(settings, restController, clusterService),
-                new ZomboDBMappingAction(settings, restController, clusterService),
-                new ZomboDBQueryAction(settings, restController, clusterService),
+                new ZomboDBTIDResponseAction(settings, restController),
+                new ZomboDBAggregationAction(settings, restController),
+                new ZomboDBCountAction(settings, restController),
+                new ZomboDBMappingAction(settings, restController),
+                new ZomboDBQueryAction(settings, restController),
                 new ZomboDBDocumentHighlighterAction(settings, restController),
-                new ZomboDBMultiSearchAction(settings, restController, clusterService),
+                new ZomboDBMultiSearchAction(settings, restController),
                 new RestTermlistAction(settings, restController),
                 new ZomboDBBulkAction(settings, restController, clusterService),
                 new ZomboDBCommitXIDAction(settings, restController, clusterService),

@@ -15,36 +15,18 @@
  */
 package llc.zombodb.cross_join;
 
-import llc.zombodb.ZomboDBPlugin;
-import llc.zombodb.fast_terms.FastTermsAction;
 import llc.zombodb.fast_terms.FastTermsResponse;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSet;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.transport.client.PreBuiltTransportClient;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Collections;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 class CrossJoinQuery extends Query {
 
-    private static final Map<String, TransportClient> CLIENTS = new ConcurrentHashMap<>();
-
-    private final String clusterName;
-    private final String host;
-    private final int port;
     private final String index;
     private final String type;
     private final String leftFieldname;
@@ -53,11 +35,9 @@ class CrossJoinQuery extends Query {
     private final String fieldType;
     private final int thisShardId;
     private final boolean canOptimizeJoins;
+    private final FastTermsResponse fastTerms;
 
-    public CrossJoinQuery(String clusterName, String host, int port, String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins, String fieldType, int thisShardId) {
-        this.clusterName = clusterName;
-        this.host = host;
-        this.port = port;
+    public CrossJoinQuery(String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins, String fieldType, int thisShardId, FastTermsResponse fastTerms) {
         this.index = index;
         this.type = type;
         this.leftFieldname = leftFieldname;
@@ -66,18 +46,7 @@ class CrossJoinQuery extends Query {
         this.fieldType = fieldType;
         this.thisShardId = thisShardId;
         this.canOptimizeJoins = canOptimizeJoins;
-    }
-
-    public String getClusterName() {
-        return clusterName;
-    }
-
-    public String getHost() {
-        return host;
-    }
-
-    public int getPort() {
-        return port;
+        this.fastTerms = fastTerms;
     }
 
     public String getIndex() {
@@ -103,13 +72,6 @@ class CrossJoinQuery extends Query {
     @Override
     public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
         // Run the FastTerms action to get the doc key values that we need for joining
-        FastTermsResponse fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(getClient(clusterName, host, port))
-                .setIndices(index)
-                .setTypes(type)
-                .setFieldname(rightFieldname)
-                .setQuery(query)
-                .setSourceShard(canOptimizeJoins ? thisShardId : -1)
-                .get();
 
         if (fastTerms.getFailedShards() > 0)
             throw new IOException(fastTerms.getShardFailures()[0].getCause());
@@ -140,44 +102,9 @@ class CrossJoinQuery extends Query {
         }
     }
 
-    private static TransportClient getClient(String clusterName, String host, int port) {
-        return AccessController.doPrivileged((PrivilegedAction<TransportClient>) () -> {
-            final String key = clusterName + host + port;
-            synchronized (key.intern()) {
-                TransportClient tc = CLIENTS.get(key);
-                if (tc == null) {
-                    int retries = 5;
-                    while (true) {
-                        try {
-                            tc = new PreBuiltTransportClient(
-                                    Settings.builder()
-                                            .put("cluster.name", clusterName)
-                                            .put("client.transport.ignore_cluster_name", true)
-                                            .put("client.transport.sniff", true)
-                                            .build(),
-                                    Collections.singletonList(ZomboDBPlugin.class)
-                            ).addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
-                            break;
-                        } catch (UnknownHostException uhe) {
-                            throw new RuntimeException(uhe);
-                        } catch (Throwable t) {
-                            if (--retries > 0)
-                                continue;
-                            throw t;
-                        }
-                    }
-
-                    CLIENTS.put(key, tc);
-
-                }
-                return tc;
-            }
-        });
-    }
-
     @Override
     public String toString(String field) {
-        return "cross_join(cluster=" + clusterName + ", index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", query=" + query + ", shard=" + thisShardId + ", canOptimizeJoins=" + canOptimizeJoins + ")";
+        return "cross_join(index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", query=" + query + ", shard=" + thisShardId + ", canOptimizeJoins=" + canOptimizeJoins + ")";
     }
 
     @Override
@@ -186,9 +113,7 @@ class CrossJoinQuery extends Query {
             return false;
 
         CrossJoinQuery other = (CrossJoinQuery) obj;
-        // NB:  'host' and 'port' aren't included here because it all comes from the same cluster, so we don't care
-        return  Objects.equals(clusterName, other.clusterName) &&
-                Objects.equals(index, other.index) &&
+        return Objects.equals(index, other.index) &&
                 Objects.equals(type, other.type) &&
                 Objects.equals(leftFieldname, other.leftFieldname) &&
                 Objects.equals(rightFieldname, other.rightFieldname) &&
@@ -199,7 +124,6 @@ class CrossJoinQuery extends Query {
 
     @Override
     public int hashCode() {
-        // NB:  'host' and 'port' aren't included here because it all comes from the same cluster, so we don't care
-        return Objects.hash(clusterName, index, type, leftFieldname, rightFieldname, query, thisShardId, canOptimizeJoins);
+        return Objects.hash(index, type, leftFieldname, rightFieldname, query, thisShardId, canOptimizeJoins);
     }
 }

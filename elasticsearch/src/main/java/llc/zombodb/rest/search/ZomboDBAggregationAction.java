@@ -41,13 +41,9 @@ import static org.elasticsearch.search.aggregations.AggregationBuilders.missing;
 
 public class ZomboDBAggregationAction extends BaseRestHandler {
 
-    private final ClusterService clusterService;
-
     @Inject
-    public ZomboDBAggregationAction(Settings settings, RestController controller, ClusterService clusterService) {
+    public ZomboDBAggregationAction(Settings settings, RestController controller) {
         super(settings);
-
-        this.clusterService = clusterService;
 
         controller.registerHandler(GET, "/{index}/_pgagg", this);
         controller.registerHandler(POST, "/{index}/_pgagg", this);
@@ -58,7 +54,7 @@ public class ZomboDBAggregationAction extends BaseRestHandler {
         final long start = System.currentTimeMillis();
         SearchRequestBuilder builder = SearchAction.INSTANCE.newRequestBuilder(client);
         String input = request.content().utf8ToString();
-        final QueryRewriter rewriter = QueryRewriter.Factory.create(clusterService, request, client, request.param("index"), input, true, true);
+        final QueryRewriter rewriter = QueryRewriter.Factory.create(request, client, request.param("index"), input, true, true);
         QueryBuilder qb = rewriter.rewriteQuery();
         AggregationBuilder ab = rewriter.rewriteAggregations();
         SuggestionBuilder sb = rewriter.rewriteSuggestions();

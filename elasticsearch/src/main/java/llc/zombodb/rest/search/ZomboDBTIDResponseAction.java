@@ -93,12 +93,10 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    private final ClusterService clusterService;
-
     @Inject
-    public ZomboDBTIDResponseAction(Settings settings, RestController controller, ClusterService clusterService) {
+    public ZomboDBTIDResponseAction(Settings settings, RestController controller) {
         super(settings);
-        this.clusterService = clusterService;
+
         controller.registerHandler(GET, "/{index}/_pgtid", this);
         controller.registerHandler(POST, "/{index}/_pgtid", this);
     }
@@ -117,7 +115,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(clusterService, client, request, false, false);
+            query = buildJsonQueryFromRequestContent(client, request, false, false);
             parseEnd = System.nanoTime();
 
             if (!wantScores && !query.hasLimit()) {
@@ -192,7 +190,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(ClusterService clusterService, Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
         String queryString = request.content().utf8ToString();
         String indexName = request.param("index");
 
@@ -201,7 +199,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 // silence an error from Elasticsearch about an unused request parameter
                 // TODO:  should we use 'preference' in FastTerms and/or CrossJoin somehow?
                 String preference = request.param("preference");
-                QueryRewriter qr = QueryRewriter.Factory.create(clusterService, request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel);
+                QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel);
                 return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit());
             } else {
                 return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null);

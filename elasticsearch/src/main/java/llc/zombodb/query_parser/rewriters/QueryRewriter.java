@@ -59,8 +59,8 @@ import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 public abstract class QueryRewriter {
 
     public static class Factory {
-        public static QueryRewriter create(ClusterService clusterService, RestRequest restRequest, Client client, String indexName, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-            return new ZomboDBQueryRewriter(clusterService, client, indexName, restRequest.getXContentRegistry(), input, canDoSingleIndex, needVisibilityOnTopLevel);
+        public static QueryRewriter create(RestRequest restRequest, Client client, String indexName, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+            return new ZomboDBQueryRewriter(client, indexName, restRequest.getXContentRegistry(), input, canDoSingleIndex, needVisibilityOnTopLevel);
         }
     }
 
@@ -117,7 +117,6 @@ public abstract class QueryRewriter {
 
     private static final String DateSuffix = ".date";
 
-    final ClusterService clusterService;
     private final Client client;
     private final NamedXContentRegistry contentRegistry;
     private boolean needVisibilityOnTopLevel;
@@ -131,8 +130,7 @@ public abstract class QueryRewriter {
     final IndexMetadataManager metadataManager;
     private boolean hasJsonAggregate = false;
 
-    public QueryRewriter(ClusterService clusterService, Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-        this.clusterService = clusterService;
+    public QueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
         this.client = client;
         this.contentRegistry = contentRegistry;
         this.needVisibilityOnTopLevel = needVisibilityOnTopLevel;

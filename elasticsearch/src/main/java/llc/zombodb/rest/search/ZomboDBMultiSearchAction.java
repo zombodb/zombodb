@@ -76,12 +76,9 @@ public class ZomboDBMultiSearchAction extends BaseRestHandler {
         }
     }
 
-    private final ClusterService clusterService;
-
     @Inject
-    public ZomboDBMultiSearchAction(Settings settings, RestController controller, ClusterService clusterService) {
+    public ZomboDBMultiSearchAction(Settings settings, RestController controller) {
         super(settings);
-        this.clusterService = clusterService;
 
         controller.registerHandler(GET, "/{index}/_zdbmsearch", this);
         controller.registerHandler(POST, "/{index}/_zdbmsearch", this);
@@ -99,7 +96,7 @@ public class ZomboDBMultiSearchAction extends BaseRestHandler {
             srb.setIndices(md.getIndexName());
             srb.setTypes("data");
             if (md.getPkey() != null) srb.addFieldDataField(md.getPkey());
-            srb.setQuery(QueryRewriter.Factory.create(clusterService, request, client, md.getIndexName(),md.getQuery(), false, true).rewriteQuery());
+            srb.setQuery(QueryRewriter.Factory.create(request, client, md.getIndexName(),md.getQuery(), false, true).rewriteQuery());
 
             msearchBuilder.add(srb);
         }

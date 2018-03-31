@@ -96,7 +96,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                                 new DefaultShardOperationFailedException((ElasticsearchException) shardResponse) :
                                 new DefaultShardOperationFailedException(request.indices()[0], i, new ElasticsearchException("Unknown failure for element [" + i + "], response=" + shardResponse));
 
-                logger.error(failure.getCause().getMessage(), failure);
+                logger.error(failure.toString(), failure);
                 failedShards++;
 
                 if (shardFailures == null) {

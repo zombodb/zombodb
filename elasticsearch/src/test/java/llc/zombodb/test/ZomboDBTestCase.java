@@ -135,7 +135,7 @@ public abstract class ZomboDBTestCase {
 
 
     protected QueryRewriter qr(String query) {
-        return new QueryRewriter(null, client(), DEFAULT_INDEX_NAME, node.injector().getInstance(NamedXContentRegistry.class), query, false, false) { /* anonymous implementation */ };
+        return new QueryRewriter(client(), DEFAULT_INDEX_NAME, node.injector().getInstance(NamedXContentRegistry.class), query, false, false) { /* anonymous implementation */ };
     }
 
     protected void assertJson(String query, String expectedJson) throws Exception {
