@@ -51,7 +51,7 @@ CREATE TABLE unit_tests.data(
 , CONSTRAINT idx_unit_tests_data_pkey PRIMARY KEY (pk_data)
 );
 
-CREATE INDEX es_unit_tests_data ON unit_tests.data USING zombodb (zdb('unit_tests.data', ctid), zdb(data.*)) WITH (url=:zombodb_url, options='pk_data = <var.es_unit_tests_var>pk_var,pk_data = <vol.es_unit_tests_vol>pk_vol', shards='3', replicas='1');
+CREATE INDEX es_unit_tests_data ON unit_tests.data USING zombodb (zdb('unit_tests.data', ctid), zdb(data.*)) WITH (url=:zombodb_url, options='pk_data = <var.es_unit_tests_var>pk_var,pk_data = <vol.es_unit_tests_vol>pk_vol', shards='9', replicas='1');
 --**********************************************************************************************************************
 
 
@@ -92,7 +92,7 @@ CREATE TABLE unit_tests.var(
 , CONSTRAINT idx_unit_tests_var_pkey PRIMARY KEY (pk_var)
 );
 
-CREATE INDEX es_unit_tests_var ON unit_tests.var USING zombodb (zdb('unit_tests.var', ctid), zdb(var.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_var ON unit_tests.var USING zombodb (zdb('unit_tests.var', ctid), zdb(var.*)) WITH (url=:zombodb_url, shards='9', replicas='1');
 --**********************************************************************************************************************
 
 
@@ -133,7 +133,7 @@ CREATE TABLE unit_tests.vol(
 , CONSTRAINT idx_unit_tests_vol_pkey PRIMARY KEY (pk_vol)
 );
 
-CREATE INDEX es_unit_tests_vol ON unit_tests.vol USING zombodb (zdb('unit_tests.vol', ctid), zdb(vol.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_vol ON unit_tests.vol USING zombodb (zdb('unit_tests.vol', ctid), zdb(vol.*)) WITH (url=:zombodb_url, shards='9', replicas='1');
 --**********************************************************************************************************************
 
 -- TODO: RULES/TRIGGERS
@@ -273,9 +273,9 @@ ALTER TABLE unit_tests.data_same ADD PRIMARY KEY (id);
 ALTER TABLE unit_tests.var_same ADD PRIMARY KEY (id);
 ALTER TABLE unit_tests.vol_same ADD PRIMARY KEY (id);
 
-CREATE INDEX es_unit_tests_data_same ON unit_tests.data_same USING zombodb (zdb('unit_tests.data_same', ctid), zdb(data_same.*)) WITH (url=:zombodb_url, options='id = <var_same.es_unit_tests_var_same>id, id = <vol_same.es_unit_tests_vol_same>id', shards='3', replicas='1');
-CREATE INDEX es_unit_tests_var_same ON unit_tests.var_same USING zombodb (zdb('unit_tests.var_same', ctid), zdb(var_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
-CREATE INDEX es_unit_tests_vol_same ON unit_tests.vol_same USING zombodb (zdb('unit_tests.vol_same', ctid), zdb(vol_same.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_data_same ON unit_tests.data_same USING zombodb (zdb('unit_tests.data_same', ctid), zdb(data_same.*)) WITH (url=:zombodb_url, options='id = <var_same.es_unit_tests_var_same>id, id = <vol_same.es_unit_tests_vol_same>id', shards='9', replicas='1');
+CREATE INDEX es_unit_tests_var_same ON unit_tests.var_same USING zombodb (zdb('unit_tests.var_same', ctid), zdb(var_same.*)) WITH (url=:zombodb_url, shards='9', replicas='1');
+CREATE INDEX es_unit_tests_vol_same ON unit_tests.vol_same USING zombodb (zdb('unit_tests.vol_same', ctid), zdb(vol_same.*)) WITH (url=:zombodb_url, shards='9', replicas='1');
 
 CREATE VIEW unit_tests.consolidated_record_view_same AS
   SELECT data_same.id
@@ -387,7 +387,7 @@ CREATE TABLE unit_tests.case_name
   CONSTRAINT idx_unit_tests_case_name PRIMARY KEY (pk_cpm)
 );
 
-CREATE INDEX es_unit_tests_case_name ON unit_tests.case_name USING zombodb (zdb('unit_tests.case_name'::regclass, ctid), zdb(case_name.*)) WITH (url=:zombodb_url, shards='3', replicas='1');
+CREATE INDEX es_unit_tests_case_name ON unit_tests.case_name USING zombodb (zdb('unit_tests.case_name'::regclass, ctid), zdb(case_name.*)) WITH (url=:zombodb_url, shards='9', replicas='1');
 
 ALTER INDEX unit_tests.es_unit_tests_data set (options='pk_data = <var.es_unit_tests_var>pk_var,pk_data = <vol.es_unit_tests_vol>pk_vol,data_bigint_array_2=<case_name.es_unit_tests_case_name>pk_cpm');
 
