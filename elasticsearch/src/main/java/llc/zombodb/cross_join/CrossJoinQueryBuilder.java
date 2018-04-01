@@ -57,7 +57,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         query = in.readNamedWriteable(QueryBuilder.class);
         canOptimizeJoins = in.readBoolean();
         if (in.readBoolean())
-            fastTerms = in.readNamedWriteable(FastTermsResponse.class);
+            fastTerms = new FastTermsResponse(in);
     }
 
     public CrossJoinQueryBuilder(String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins, FastTermsResponse fastTerms) {
@@ -119,7 +119,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         out.writeBoolean(canOptimizeJoins);
         out.writeBoolean(fastTerms != null);
         if (fastTerms != null)
-            out.writeNamedWriteable(fastTerms);
+            fastTerms.writeTo(out);
     }
 
     @Override
