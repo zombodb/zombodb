@@ -78,12 +78,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <!-- from:  https://github.com/brettwooldridge/SparseBitSet -->
-            <groupId>com.zaxxer</groupId>
-            <artifactId>SparseBitSet</artifactId>
-            <version>1.1</version>
-        </dependency>
-        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
             <version>2.6.6</version>

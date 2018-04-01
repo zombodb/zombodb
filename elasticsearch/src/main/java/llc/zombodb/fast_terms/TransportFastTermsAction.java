@@ -68,7 +68,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                 indexNameExpressionResolver,
                 FastTermsRequest::new,
                 ShardFastTermsRequest::new,
-                ThreadPool.Names.GENERIC    // the SEARCH thread pool can deadlock as it's of a fixed size, GENERIC is not
+                ThreadPool.Names.SAME   // any other thread pool (either Fixed or Scaling) can cause a deadlock when an index has more shards on the node than it does CPUs (or slots in the queue)
         );
         this.indicesService = indicesService;
     }

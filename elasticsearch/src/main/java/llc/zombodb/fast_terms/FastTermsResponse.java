@@ -20,6 +20,7 @@ import llc.zombodb.utils.NumberArrayLookup;
 import llc.zombodb.utils.StringArrayMergeSortIterator;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
+import org.elasticsearch.common.io.stream.NamedWriteable;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.StatusToXContentObject;
@@ -32,7 +33,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject {
+public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject, NamedWriteable {
     public enum DataType {
         NONE,
         INT,
@@ -243,5 +244,15 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         RestActions.buildBroadcastShardsHeader(builder, params, getTotalShards(), getSuccessfulShards(), 0, getFailedShards(), getShardFailures());
         builder.endObject();
         return builder;
+    }
+
+    @Override
+    public String getWriteableName() {
+        return "FastTermsResponse";
+    }
+
+    @Override
+    public boolean isFragment() {
+        return false;
     }
 }

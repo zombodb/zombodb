@@ -26,7 +26,6 @@ import llc.zombodb.query_parser.utils.EscapingStringTokenizer;
 import llc.zombodb.query_parser.utils.Utils;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
@@ -117,7 +116,7 @@ public abstract class QueryRewriter {
 
     private static final String DateSuffix = ".date";
 
-    private final Client client;
+    protected final Client client;
     private final NamedXContentRegistry contentRegistry;
     private boolean needVisibilityOnTopLevel;
     private final ASTQueryTree tree;

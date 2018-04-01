@@ -16,12 +16,14 @@
 package llc.zombodb.query_parser.rewriters;
 
 import llc.zombodb.cross_join.CrossJoinQueryBuilder;
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.FastTermsResponse;
 import llc.zombodb.query_parser.ASTExpansion;
 import llc.zombodb.query_parser.ASTIndexLink;
 import llc.zombodb.query_parser.QueryParserNode;
 import llc.zombodb.query_parser.metadata.IndexMetadata;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -70,13 +72,31 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     link.getRightFieldname().equals(rightMetadata.getBlockRoutingField()) &&
                     leftMetadata.getNumberOfShards() == rightMetadata.getNumberOfShards();
 
+            QueryBuilder query = applyVisibility(build(node.getQuery()));
+            FastTermsResponse fastTerms = null;
+
+            if (!canOptimizeForJoins) {
+                // if we can't optimize joins then we'd end up with an exponential explosion
+                // of queries that need to be exected based on the number of shards
+                //
+                // so instead, just get the terms now, while we're building the query
+                // and pass them through
+                fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(client)
+                        .setIndices(link.getIndexName())
+                        .setTypes("data")
+                        .setFieldname(link.getRightFieldname())
+                        .setQuery(query)
+                        .get(TimeValue.timeValueSeconds(300));
+            }
+
             qb = constantScoreQuery(new CrossJoinQueryBuilder()
                     .index(link.getIndexName())
                     .type("data")
                     .leftFieldname(link.getLeftFieldname())
                     .rightFieldname(link.getRightFieldname())
                     .canOptimizeJoins(canOptimizeForJoins)
-                    .query(applyVisibility(build(node.getQuery()))));
+                    .query(query)
+                    .fastTerms(fastTerms));
         }
 
         if (node.getFilterQuery() != null) {

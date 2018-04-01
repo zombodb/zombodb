@@ -1,7 +1,6 @@
 package llc.zombodb.utils;
 
 import com.carrotsearch.hppc.LongArrayList;
-import com.zaxxer.sparsebits.SparseBitSet;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Streamable;
@@ -9,6 +8,7 @@ import org.elasticsearch.common.io.stream.Streamable;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 import java.util.stream.LongStream;
 
@@ -38,7 +38,7 @@ public class NumberArrayLookup implements Streamable {
     private List<long[]> longs;
     private List<Integer> longLengths;
     private int countOfLongs = -1;
-    private SparseBitSet bitset;
+    private BitSet bitset;
     private LongArrayList ranges;
     private int countOfBits = -1;
     private int countOfRanges = -1;
@@ -62,7 +62,7 @@ public class NumberArrayLookup implements Streamable {
         if (range >= Integer.MIN_VALUE && range < Integer.MAX_VALUE - 1) {
             // the range of longs can scale to fit within 32 bits
             // so we're free to use a bitset
-            this.bitset = new SparseBitSet((int) range + 1);
+            this.bitset = new BitSet((int) range + 1);
             this.longs = null;
             this.longLengths = null;
         } else {
@@ -289,7 +289,7 @@ public class NumberArrayLookup implements Streamable {
             in.readBytes(bytes, 0, numbytes);
             try (ObjectInputStream oin = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
                 try {
-                    bitset = (SparseBitSet) oin.readObject();
+                    bitset = (BitSet) oin.readObject();
                 } catch (ClassNotFoundException cnfe) {
                     throw new IOException(cnfe);
                 }

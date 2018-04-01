@@ -24,7 +24,10 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.ObjectParser;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.AbstractQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryParseContext;
+import org.elasticsearch.index.query.QueryShardContext;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -39,6 +42,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
     private String rightFieldname;
     private QueryBuilder query;
     private boolean canOptimizeJoins;
+    private FastTermsResponse fastTerms;
 
     public CrossJoinQueryBuilder() {
         super();
@@ -52,15 +56,18 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         rightFieldname = in.readString();
         query = in.readNamedWriteable(QueryBuilder.class);
         canOptimizeJoins = in.readBoolean();
+        if (in.readBoolean())
+            fastTerms = in.readNamedWriteable(FastTermsResponse.class);
     }
 
-    public CrossJoinQueryBuilder(String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins) {
+    public CrossJoinQueryBuilder(String index, String type, String leftFieldname, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins, FastTermsResponse fastTerms) {
         this.index = index;
         this.type = type;
         this.leftFieldname = leftFieldname;
         this.rightFieldname = rightFieldname;
         this.query = query;
         this.canOptimizeJoins = canOptimizeJoins;
+        this.fastTerms = fastTerms;
     }
 
     public CrossJoinQueryBuilder index(String index) {
@@ -88,6 +95,11 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         return this;
     }
 
+    public CrossJoinQueryBuilder fastTerms(FastTermsResponse fastTerms) {
+        this.fastTerms = fastTerms;
+        return this;
+    }
+
     public boolean canOptimizeJoins() {
         return canOptimizeJoins;
     }
@@ -105,6 +117,9 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         out.writeString(rightFieldname);
         out.writeNamedWriteable(query);
         out.writeBoolean(canOptimizeJoins);
+        out.writeBoolean(fastTerms != null);
+        if (fastTerms != null)
+            out.writeNamedWriteable(fastTerms);
     }
 
     @Override
@@ -116,18 +131,22 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         builder.field("right_fieldname", rightFieldname);
         builder.field("can_optimize_joins", canOptimizeJoins);
         builder.field("query", query);
+        builder.field("fast_terms", fastTerms);
         builder.endObject();
     }
 
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
-        FastTermsResponse fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(context.getClient())
+        FastTermsResponse fastTerms = this.fastTerms;
+
+        if (fastTerms == null)
+            fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(context.getClient())
                 .setIndices(index)
                 .setTypes(type)
                 .setFieldname(rightFieldname)
                 .setQuery(query)
                 .setSourceShard(canOptimizeJoins ? context.getShardId() : -1)
-                .get(TimeValue.timeValueSeconds(30));
+                    .get(TimeValue.timeValueSeconds(300));
 
         return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, query, canOptimizeJoins, context.fieldMapper(leftFieldname).typeName(), context.getShardId(), fastTerms);
     }
