@@ -18,7 +18,6 @@ package llc.zombodb.fast_terms;
 import llc.zombodb.fast_terms.collectors.FastTermsCollector;
 import llc.zombodb.fast_terms.collectors.NumberCollector;
 import llc.zombodb.fast_terms.collectors.StringCollector;
-import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.elasticsearch.ElasticsearchException;
@@ -48,6 +47,7 @@ import org.elasticsearch.transport.TransportService;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -68,7 +68,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                 indexNameExpressionResolver,
                 FastTermsRequest::new,
                 ShardFastTermsRequest::new,
-                ThreadPool.Names.SAME   // any other thread pool (either Fixed or Scaling) can cause a deadlock when an index has more shards on the node than it does CPUs (or slots in the queue)
+                ThreadPool.Names.GENERIC
         );
         this.indicesService = indicesService;
     }
@@ -85,7 +85,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
         for (int i = 0; i < shardsResponses.length(); i++) {
             Object shardResponse = shardsResponses.get(i);
 
-            if (! (shardResponse instanceof ShardFastTermsResponse)) {
+            if (!(shardResponse instanceof ShardFastTermsResponse)) {
                 // we have an error of some kind to deal with
                 if (shardResponse == null)
                     shardResponse = new DefaultShardOperationFailedException(request.indices()[0], i, new ElasticsearchException("No Response for element [" + i + "] in [" + request.indices()[0] + "]"));
@@ -123,7 +123,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
             }
         }
 
-        FastTermsResponse response = new FastTermsResponse(successful.size(), successfulShards, failedShards, shardFailures, dataType);
+        FastTermsResponse response = new FastTermsResponse(request.indices()[0], successful.size(), successfulShards, failedShards, shardFailures, dataType);
         for (int i = 0; i < successful.size(); i++) {
             ShardFastTermsResponse shardResponse = successful.get(i);
             response.addData(i, shardResponse.getData(), shardResponse.getDataCount());
@@ -158,7 +158,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
             try (Engine.Searcher engine = indexShard.acquireSearcher("fastterms")) {
                 IndexSearcher searcher = new IndexSearcher(engine.reader());
                 QueryShardContext context = indicesService.indexServiceSafe(index).newQueryShardContext(shardId, engine.reader(), System::currentTimeMillis);
-                Query query = request.getRequest().query().toQuery(context);
+                Query query = context.toQuery(request.getRequest().query()).query();
 
                 switch (context.fieldMapper(fieldname).typeName()) {
                     case "integer":
@@ -177,7 +177,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                         throw new RuntimeException("Unrecognized data type: " + context.fieldMapper(fieldname).typeName());
                 }
 
-                searcher.search(new ConstantScoreQuery(query.rewrite(engine.reader())), collector);
+                searcher.search(query, collector);
             }
 
             return new ShardFastTermsResponse(request.shardId(), type, collector);
@@ -188,7 +188,11 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
 
     @Override
     protected GroupShardsIterator<ShardIterator> shards(ClusterState clusterState, FastTermsRequest request, String[] concreteIndices) {
-        return clusterState.routingTable().activePrimaryShardsGrouped(concreteIndices, true);
+        if (request.sourceShardId() != -1)
+            return new GroupShardsIterator<>(Collections.singletonList(clusterService.operationRouting()
+                    .getShards(clusterService.state(), request.indices()[0], request.sourceShardId(), null)));
+        else
+            return clusterState.routingTable().activePrimaryShardsGrouped(concreteIndices, false);
     }
 
     @Override

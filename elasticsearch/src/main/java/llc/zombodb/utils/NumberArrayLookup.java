@@ -6,10 +6,7 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Streamable;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.List;
+import java.util.*;
 import java.util.stream.LongStream;
 
 /**
@@ -337,5 +334,36 @@ public class NumberArrayLookup implements Streamable {
         if (ranges != null) {
             DeltaEncoder.encode_longs_as_deltas(ranges.buffer, ranges.elementsCount, out);
         }
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 1;
+
+        if (longs != null)
+            for (long[] l : longs)
+                hash = 31 * hash + Arrays.hashCode(l);
+        return 31 * hash + Objects.hash(longLengths, countOfLongs, bitset, ranges, countOfBits, countOfRanges, min);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null || obj.getClass() != getClass())
+            return false;
+
+        NumberArrayLookup other = (NumberArrayLookup) obj;
+        if (longs.size() != other.longs.size())
+            return false;
+        for (int i = 0; i < longs.size(); i++)
+            if (!Arrays.equals(longs.get(i), other.longs.get(i)))
+                return false;
+
+        return Objects.equals(longLengths, other.longLengths) &&
+                Objects.equals(countOfLongs, other.countOfLongs) &&
+                Objects.equals(bitset, other.bitset) &&
+                Objects.equals(ranges, other.ranges) &&
+                Objects.equals(countOfBits, other.countOfBits) &&
+                Objects.equals(countOfRanges, other.countOfRanges) &&
+                Objects.equals(min, other.min);
     }
 }

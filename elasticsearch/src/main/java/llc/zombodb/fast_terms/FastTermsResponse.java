@@ -28,9 +28,7 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestActions;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject {
     public enum DataType {
@@ -40,6 +38,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         STRING
     }
 
+    private String index;
     private DataType dataType = DataType.NONE;
     private int numShards;
 
@@ -56,10 +55,11 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         readFrom(in);
     }
 
-    FastTermsResponse(int shardCount, int successfulShards, int failedShards, List<ShardOperationFailedException> shardFailures, DataType dataType) {
+    FastTermsResponse(String index, int shardCount, int successfulShards, int failedShards, List<ShardOperationFailedException> shardFailures, DataType dataType) {
         super(shardCount, successfulShards, failedShards, shardFailures);
         assert dataType != null;
 
+        this.index = index;
         this.dataType = dataType;
         this.numShards = shardCount;
 
@@ -189,6 +189,8 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
+
+        index = in.readString();
         numShards = in.readVInt();
         dataType = in.readEnum(DataType.class);
         switch (dataType) {
@@ -219,6 +221,8 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
+
+        out.writeString(index);
         out.writeVInt(numShards);
         out.writeEnum(dataType);
         for (int shardId=0; shardId<numShards; shardId++) {
@@ -247,6 +251,29 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         RestActions.buildBroadcastShardsHeader(builder, params, getTotalShards(), getSuccessfulShards(), 0, getFailedShards(), getShardFailures());
         builder.endObject();
         return builder;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = Objects.hash(index, dataType, numShards, Arrays.deepHashCode(lookups),
+                Arrays.deepHashCode(strings), stringArray);
+        hash = 31 * hash + Arrays.hashCode(numStrings);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null || obj.getClass() != getClass())
+            return false;
+
+        FastTermsResponse other = (FastTermsResponse) obj;
+        return Objects.equals(index, other.index) &&
+                Objects.equals(dataType, other.dataType) &&
+                Objects.equals(numShards, other.numShards) &&
+                Objects.deepEquals(lookups, other.lookups) &&
+                Objects.deepEquals(strings, other.strings) &&
+                Objects.deepEquals(numStrings, other.numStrings) &&
+                Objects.equals(stringArray, other.stringArray);
     }
 
 }
