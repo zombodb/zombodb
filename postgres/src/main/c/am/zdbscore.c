@@ -43,40 +43,14 @@ typedef struct ZDBBitmapScoreEntry {
 
 static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid);
 
-static List *recentScores = NULL;
 static HTAB *bitmapScores = NULL;
 
 void zdb_reset_scores(void) {
-    recentScores = NULL;
     bitmapScores = NULL;
 }
 
 void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
-    ListCell      *lc;
-    ZDBScoreEntry *entry = NULL;
-
-    foreach(lc, recentScores) {
-        entry = lfirst(lc);
-        if (entry->index_relid == index_relid) {
-            break;
-        }
-        entry = NULL;
-    }
-
-    if (entry == NULL) {
-        MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
-
-        entry        = palloc(sizeof(ZDBScoreEntry));
-        recentScores = lappend(recentScores, entry);
-        MemoryContextSwitchTo(oldContext);
-    }
-
-    entry->index_relid = index_relid;
-    memcpy(&entry->ctid, ctid, sizeof(ItemPointerData));
-    memcpy(&entry->score, &score, sizeof(ZDBScore));
-}
-
-void zdb_record_bitmap_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
     bool                found;
     ZDBBitmapScoreKey   key;
     ZDBBitmapScoreEntry *entry;
@@ -96,16 +70,11 @@ void zdb_record_bitmap_score(Oid index_relid, ItemPointer ctid, ZDBScore score) 
     memcpy(&key.ctid, ctid, sizeof(ItemPointerData));
     entry = hash_search(bitmapScores, &key, HASH_ENTER, &found);
     memcpy(&entry->score, &score, sizeof(ZDBScore));
+
+    MemoryContextSwitchTo(oldContext);
 }
 
 static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid) {
-    ListCell *lc;
-
-    foreach(lc, recentScores) {
-        ZDBScoreEntry *entry = lfirst(lc);
-        if (entry->index_relid == index_relid && ItemPointerEquals(&entry->ctid, ctid))
-            return &entry->score;
-    }
 
     if (bitmapScores != NULL) {
         ZDBBitmapScoreKey   key;
