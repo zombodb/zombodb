@@ -6,6 +6,7 @@ public
 class ASTExpansion extends QueryParserNode {
 
   private boolean generated;
+  private boolean subselect;
 
   public ASTExpansion(int id) {
     super(id);
@@ -39,6 +40,14 @@ class ASTExpansion extends QueryParserNode {
 
   public void setGenerated(boolean generated) {
     this.generated = generated;
+  }
+
+  public boolean isSubselect() {
+    return subselect;
+  }
+
+  public void setSubselect(boolean subselect) {
+    this.subselect = subselect;
   }
 
   /** Accept the visitor. **/

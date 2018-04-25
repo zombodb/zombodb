@@ -1,0 +1,2 @@
+select id from so_users where zdb('so_users', ctid) ==> '#subselect<id=<this.index>id>(id:[1,2,3,4,5,6,7,8,9,10])' order by id;
+select id from so_users where zdb('so_users', ctid) ==> '#subselect<id=<so_posts.idxso_posts>id>(id:[1,2,3,4,5,6,7,8,9,10])' order by id;

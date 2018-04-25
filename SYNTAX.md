@@ -268,6 +268,48 @@ It's also possible to search for groups within some distance of another group.  
 `description:((cat OR dog) w/5 (pet wo/3 (sale OR "free to good home" OR free*)))`
 
 
+## Subselects
+
+ZomboDB supports subselects which are akin to SQL `IN()` clauses.  The query clause is named `#subselect` and is an 
+unary operator that can be used in conjuction with any of ZomboDB's other query clauses, and can also be nested indefinitely.
+
+An example query:
+
+```
+   title:food AND #subselect<id=<other_table.index_name>join_id>(other_field = 'other value') 
+```
+
+This is akin to an SQL statement such as:
+
+```sql
+    SELECT * 
+      FROM table 
+     WHERE title LIKE 'food' 
+       AND id IN (SELECT join_id FROM other_table WHERE other_field = 'other value');
+```
+
+You can do a subselect from any table/index pair that has an existing ZomboDB index, and if you wish to do a subselect
+against the primary index you're querying, simply specify `outer_field=<this.index>inner_field`, where `this.index` is
+a literal value.  For example:
+
+```
+    #subselect<parent_id=<this.index>id>(food, beer, wine)
+```
+
+The above will do a self-join and match all docs with a `parent_id` that's equivalent to any doc `id` that contains
+any of `food`, `beer`, or `wine`.
+
+In the case where the table/index you're subselecting from has the same fieldnames as the outer index, you may want
+to use a "named index link" to help ZomboDB disambiguate field names.  Example:
+
+```
+    #subselect<my_name:(id=<other_table.index_name>join_id)>(my_name.common_field = value)
+```
+
+`#subselect` is different from `#expand` (described below) in that `#expand` is intended to add more rows to the results,
+whereas `#subselect` is intended to limit the results.
+
+
 ## Query Expansion
 
 Query expansion is a way for a single query to "pull in" additional records from the same index that are related to the records that match your fulltext query.

@@ -172,6 +172,7 @@ PARSER_END(QueryParser)
   | <LIMIT: "#limit" >
   | <FIELDLISTS: "#field_lists" >
   | <EXPAND: "#expand" >
+  | <SUBSELECT: "#subselect" >
   | <FILTER: "#filter" >
   | <BOOL_QUERY: "#bool" >
   | <MUST: "#must" >
@@ -491,6 +492,7 @@ void UnaryExpression() :
         | ("(" ")") // just ignore empty parens, ie:  ()
         | Limit() | Options() | LOOKAHEAD(3) Aggregations() | FieldLists() | Visibility()
         | n = Expansion()
+        | n = Subselect()
         | n = JsonQuery()
         | n = BoolQuery()
         | n = Literal()
@@ -569,6 +571,16 @@ QueryParserNode Expansion() #Expansion : { }
     ( <EXPAND> "<" IndexLink() ">" "(" Expression() [Filter()] ")" )
     {
         jjtThis.setGenerated(true);
+        return jjtThis;
+    }
+}
+
+QueryParserNode Subselect() #Expansion : { }
+{
+    ( <SUBSELECT> "<" IndexLink() ">" "(" Expression() ")" )
+    {
+        jjtThis.setGenerated(true);
+        jjtThis.setSubselect(true);
         return jjtThis;
     }
 }
