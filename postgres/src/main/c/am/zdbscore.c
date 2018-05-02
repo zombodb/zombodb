@@ -24,12 +24,6 @@
 
 PG_FUNCTION_INFO_V1(zdb_score_internal);
 
-typedef struct ZDBScoreEntry {
-    Oid             index_relid;
-    ItemPointerData ctid;
-    ZDBScore        score;
-} ZDBScoreEntry;
-
 typedef struct ZDBBitmapScoreKey {
     ItemPointerData ctid;
     Oid             index_relid;
@@ -58,12 +52,13 @@ void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
     if (bitmapScores == NULL) {
         HASHCTL ctl;
 
+        memset(&ctl, 0, sizeof(ctl));
         ctl.keysize   = sizeof(ZDBBitmapScoreKey);
         ctl.entrysize = sizeof(ZDBBitmapScoreEntry);
         ctl.hcxt      = TopTransactionContext;
         ctl.hash      = tag_hash;
 
-        bitmapScores = hash_create("zdb bitmap scores", 32768, &ctl, HASH_FUNCTION | HASH_CONTEXT);
+        bitmapScores = hash_create("zdb bitmap scores", 32768, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
     }
 
     key.index_relid = index_relid;
