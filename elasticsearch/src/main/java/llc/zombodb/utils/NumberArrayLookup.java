@@ -352,11 +352,14 @@ public class NumberArrayLookup implements Streamable {
             return false;
 
         NumberArrayLookup other = (NumberArrayLookup) obj;
-        if (longs.size() != other.longs.size())
-            return false;
-        for (int i = 0; i < longs.size(); i++)
-            if (!Arrays.equals(longs.get(i), other.longs.get(i)))
+        if (longs != null && other.longs != null) {
+            if (longs.size() != other.longs.size())
                 return false;
+
+            for (int i = 0; i < longs.size(); i++)
+                if (!Arrays.equals(longs.get(i), other.longs.get(i)))
+                    return false;
+        }
 
         return Objects.equals(longLengths, other.longLengths) &&
                 Objects.equals(countOfLongs, other.countOfLongs) &&
