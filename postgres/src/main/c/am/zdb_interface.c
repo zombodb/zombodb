@@ -208,7 +208,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
 	desc->options	   = ZDBIndexOptionsGetOptions(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetOptions(indexRel));
 
     desc->searchPreference   = ZDBIndexOptionsGetSearchPreference(indexRel) == NULL ? NULL : pstrdup(ZDBIndexOptionsGetSearchPreference(indexRel));
-    desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel) ? pstrdup("-1") : pstrdup(ZDBIndexOptionsGetRefreshInterval(indexRel));
+    desc->refreshInterval    = ZDBIndexOptionsGetRefreshInterval(indexRel) == NULL ? pstrdup("-1") : pstrdup(ZDBIndexOptionsGetRefreshInterval(indexRel));
     desc->bulk_concurrency   = ZDBIndexOptionsGetBulkConcurrency(indexRel);
     desc->batch_size         = ZDBIndexOptionsGetBatchSize(indexRel);
     desc->ignoreVisibility   = ZDBIndexOptionsGetIgnoreVisibility(indexRel);
