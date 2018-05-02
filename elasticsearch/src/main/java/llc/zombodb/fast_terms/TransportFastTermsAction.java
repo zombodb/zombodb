@@ -178,6 +178,9 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                 }
 
                 searcher.search(query, collector);
+            } catch (Throwable t) {
+                logger.error("Error while executing FastTerms", t);
+                throw t;
             }
 
             return new ShardFastTermsResponse(request.shardId(), type, collector);
