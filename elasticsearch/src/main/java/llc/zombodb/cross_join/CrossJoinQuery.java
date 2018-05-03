@@ -15,17 +15,33 @@
  */
 package llc.zombodb.cross_join;
 
+import llc.zombodb.fast_terms.FastTermsAction;
 import llc.zombodb.fast_terms.FastTermsResponse;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSet;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.common.cache.Cache;
+import org.elasticsearch.common.cache.CacheBuilder;
+import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Stack;
+import java.util.concurrent.ExecutionException;
 
 class CrossJoinQuery extends Query {
+    // a two-level cache for caching FastTermResponse objects so we can avoid re-executing them if the IndexSearcher
+    // from which they were created is still alive.  Even then, we only want to keep things cached for 1 minute
+    private static final Cache<IndexSearcher, Cache<String, FastTermsResponse>> CACHE = CacheBuilder.<IndexSearcher, Cache<String, FastTermsResponse>>builder()
+            .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
+            .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
+            .build();
 
     private final String index;
     private final String type;
@@ -34,9 +50,13 @@ class CrossJoinQuery extends Query {
     private final String fieldType;
     private final int thisShardId;
     private final boolean canOptimizeJoins;
-    private final FastTermsResponse fastTerms;
+    private final QueryBuilder query;
+    private final Client client;
+    private transient FastTermsResponse fastTerms;
+    private transient Weight weight;
+    private transient boolean didRewrite;
 
-    CrossJoinQuery(String index, String type, String leftFieldname, String rightFieldname, boolean canOptimizeJoins, String fieldType, int thisShardId, FastTermsResponse fastTerms) {
+    CrossJoinQuery(String index, String type, String leftFieldname, String rightFieldname, boolean canOptimizeJoins, String fieldType, int thisShardId, QueryBuilder query, Client client, FastTermsResponse fastTerms) {
         this.index = index;
         this.type = type;
         this.leftFieldname = leftFieldname;
@@ -44,6 +64,8 @@ class CrossJoinQuery extends Query {
         this.fieldType = fieldType;
         this.thisShardId = thisShardId;
         this.canOptimizeJoins = canOptimizeJoins;
+        this.query = query;
+        this.client = client;
         this.fastTerms = fastTerms;
     }
 
@@ -64,11 +86,34 @@ class CrossJoinQuery extends Query {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
+    public Weight createWeight(IndexSearcher searcher, boolean needsScores) {
         return new ConstantScoreWeight(this) {
 
             @Override
             public Scorer scorer(LeafReaderContext context) throws IOException {
+                if (fastTerms == null) {
+                    // first resolve any nested CrossJoinQueries we might have in 'this.query' from the bottom up
+                    // and it's important we resolve them from the bottom up so that we're not doing any
+                    // re-entrant queries back into Elasticsearch as it'll deadlock if we exhaust the GENERIC threadpool
+                    resolveNestedCrossJoins(searcher);
+
+                    // resolve this CrossJoinQuery using FastTerms
+                    fastTerms = getFastTerms(searcher, index, type, rightFieldname, query, canOptimizeJoins);
+                }
+
+                if (!didRewrite) {
+                    didRewrite = true;
+
+                    // attempt to rewrite the query into something less complicated
+                    Query rewritten = CrossJoinQueryRewriteHelper.rewriteQuery(CrossJoinQuery.this, fastTerms);
+                    if (rewritten != CrossJoinQuery.this)
+                        weight = new ConstantScoreQuery(rewritten).createWeight(searcher, needsScores);
+                }
+
+                if (weight != null)
+                    return weight.scorer(context);
+
+                // we have to do it the hard way by grovelling through doc values
                 BitSet bitset = CrossJoinQueryExecutor.execute(
                         context,
                         type,
@@ -84,19 +129,79 @@ class CrossJoinQuery extends Query {
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
-        // Using this query and the FastTermsResponse, try to rewrite into a more simple/efficient query
-        Query rewritten = CrossJoinQueryRewriteHelper.rewriteQuery(this, fastTerms);
+        return super.rewrite(reader);
+    }
 
-        if (rewritten != this)
-            return rewritten;   // and we did!
+    private Stack<CrossJoinQueryBuilder> buildCrossJoinQueryBuilderStack(QueryBuilder query, Stack<CrossJoinQueryBuilder> stack) {
+        if (query instanceof CrossJoinQueryBuilder) {
+            CrossJoinQueryBuilder cjqb = (CrossJoinQueryBuilder) query;
 
-        // nope, we gotta do it ourselves
-        return this;
+            stack.push(cjqb);
+            buildCrossJoinQueryBuilderStack(cjqb.query, stack);
+
+        } else if (query instanceof BoolQueryBuilder) {
+            BoolQueryBuilder bqb = (BoolQueryBuilder) query;
+
+            for (QueryBuilder builder : bqb.must())
+                buildCrossJoinQueryBuilderStack(builder, stack);
+            for (QueryBuilder builder : bqb.should())
+                buildCrossJoinQueryBuilderStack(builder, stack);
+            for (QueryBuilder builder : bqb.mustNot())
+                buildCrossJoinQueryBuilderStack(builder, stack);
+            for (QueryBuilder builder : bqb.filter())
+                buildCrossJoinQueryBuilderStack(builder, stack);
+        } else if (query instanceof ConstantScoreQueryBuilder) {
+            buildCrossJoinQueryBuilderStack(((ConstantScoreQueryBuilder) query).innerQuery(), stack);
+        }
+
+        return stack;
+    }
+
+    private void resolveNestedCrossJoins(IndexSearcher searcher) {
+        Stack<CrossJoinQueryBuilder> stack = buildCrossJoinQueryBuilderStack(this.query, new Stack<>());
+
+        // resolve all FastTerms from nested CrossJoinQueryBuilders from the bottom up
+        while (!stack.isEmpty()) {
+            CrossJoinQueryBuilder cjqb = stack.pop();
+
+            if (cjqb.fastTerms == null) {
+                cjqb.fastTerms(getFastTerms(searcher, cjqb.index, cjqb.type, cjqb.rightFieldname, cjqb.query, false));
+
+                if (cjqb.fastTerms.getFailedShards() > 0)
+                    throw new RuntimeException("Shard failures while executing FastTermsAction", cjqb.fastTerms.getShardFailures()[0].getCause());
+            }
+        }
+    }
+
+    private FastTermsResponse getFastTerms(IndexSearcher searcher, String index, String type, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins) {
+        try {
+            Cache<String, FastTermsResponse> searcherCache = CACHE.computeIfAbsent(searcher, loader -> CacheBuilder.<String, FastTermsResponse>builder()
+                    .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
+                    .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
+                    .build());
+
+            String key = thisShardId + ":" + index + ":" + type + ":" + rightFieldname + ":" + query;
+            FastTermsResponse fastTerms = searcherCache.get(key);
+
+            if (fastTerms == null) {
+                fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(client)
+                        .setIndices(index)
+                        .setTypes(type)
+                        .setFieldname(rightFieldname)
+                        .setQuery(query)
+                        .setSourceShard(canOptimizeJoins ? thisShardId : -1)
+                        .get(TimeValue.timeValueSeconds(300));
+                searcherCache.put(key, fastTerms);
+            }
+            return fastTerms;
+        } catch (ExecutionException ee) {
+            throw new RuntimeException(ee);
+        }
     }
 
     @Override
     public String toString(String field) {
-        return "cross_join(index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", shard=" + thisShardId + ", canOptimizeJoins=" + canOptimizeJoins + ", fastTerms=" + fastTerms + ")";
+        return "cross_join(index=" + index + ", type=" + type + ", left=" + leftFieldname + ", right=" + rightFieldname + ", shard=" + thisShardId + ", canOptimizeJoins=" + canOptimizeJoins + ", query=" + query + ")";
     }
 
     @Override
@@ -111,7 +216,7 @@ class CrossJoinQuery extends Query {
                 Objects.equals(rightFieldname, other.rightFieldname) &&
                 Objects.equals(thisShardId, other.thisShardId) &&
                 Objects.equals(canOptimizeJoins, other.canOptimizeJoins) &&
-                Objects.equals(fastTerms, other.fastTerms);
+                Objects.equals(query, other.query);
     }
 
     @Override
@@ -123,6 +228,6 @@ class CrossJoinQuery extends Query {
                 rightFieldname,
                 thisShardId,
                 canOptimizeJoins,
-                fastTerms);
+                query);
     }
 }

@@ -1247,7 +1247,7 @@ public abstract class QueryRewriter {
             return query;
 
         return
-                boolQuery()
+                constantScoreQuery(boolQuery()
                         .must(query)
                         .mustNot(
                                 visibility()
@@ -1256,6 +1256,6 @@ public abstract class QueryRewriter {
                                         .xmax(visibility.getXmax())
                                         .commandId(visibility.getCommandId())
                                         .activeXids(visibility.getActiveXids())
-                        );
+                        ));
     }
 }

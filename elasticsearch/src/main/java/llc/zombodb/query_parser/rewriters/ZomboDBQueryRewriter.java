@@ -23,6 +23,7 @@ import llc.zombodb.query_parser.metadata.IndexMetadata;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
@@ -70,13 +71,13 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     link.getRightFieldname().equals(rightMetadata.getBlockRoutingField()) &&
                     leftMetadata.getNumberOfShards() == rightMetadata.getNumberOfShards();
 
-            qb = new CrossJoinQueryBuilder()
+            qb = new ConstantScoreQueryBuilder(new CrossJoinQueryBuilder()
                     .index(link.getIndexName())
                     .type("data")
                     .leftFieldname(link.getLeftFieldname())
                     .rightFieldname(link.getRightFieldname())
                     .canOptimizeJoins(canOptimizeForJoins)
-                    .query(applyVisibility(build(node.getQuery())));
+                    .query(applyVisibility(build(node.getQuery()))));
         }
 
         if (node.getFilterQuery() != null) {

@@ -359,6 +359,8 @@ public class NumberArrayLookup implements Streamable {
             for (int i = 0; i < longs.size(); i++)
                 if (!Arrays.equals(longs.get(i), other.longs.get(i)))
                     return false;
+        } else {
+            return false;
         }
 
         return Objects.equals(longLengths, other.longLengths) &&
