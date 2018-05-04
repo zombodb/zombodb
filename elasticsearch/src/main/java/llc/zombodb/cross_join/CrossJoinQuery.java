@@ -175,25 +175,21 @@ class CrossJoinQuery extends Query {
 
     private FastTermsResponse getFastTerms(IndexSearcher searcher, String index, String type, String rightFieldname, QueryBuilder query, boolean canOptimizeJoins) {
         try {
-            Cache<String, FastTermsResponse> searcherCache = CACHE.computeIfAbsent(searcher, loader -> CacheBuilder.<String, FastTermsResponse>builder()
-                    .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
-                    .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
-                    .build());
+            String key = (canOptimizeJoins ? thisShardId : -1) + ":" + index + ":" + type + ":" + rightFieldname + ":" + query;
 
-            String key = thisShardId + ":" + index + ":" + type + ":" + rightFieldname + ":" + query;
-            FastTermsResponse fastTerms = searcherCache.get(key);
-
-            if (fastTerms == null) {
-                fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(client)
-                        .setIndices(index)
-                        .setTypes(type)
-                        .setFieldname(rightFieldname)
-                        .setQuery(query)
-                        .setSourceShard(canOptimizeJoins ? thisShardId : -1)
-                        .get(TimeValue.timeValueSeconds(300));
-                searcherCache.put(key, fastTerms);
-            }
-            return fastTerms;
+            return CACHE.computeIfAbsent(searcher,
+                    loader -> CacheBuilder.<String, FastTermsResponse>builder()
+                            .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
+                            .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
+                            .build())
+                    .computeIfAbsent(key,
+                            fastTerms -> FastTermsAction.INSTANCE.newRequestBuilder(client)
+                                    .setIndices(index)
+                                    .setTypes(type)
+                                    .setFieldname(rightFieldname)
+                                    .setQuery(query)
+                                    .setSourceShard(canOptimizeJoins ? thisShardId : -1)
+                                    .get(TimeValue.timeValueSeconds(300)));
         } catch (ExecutionException ee) {
             throw new RuntimeException(ee);
         }
