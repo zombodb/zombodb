@@ -241,7 +241,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
         desc->indexName = pstrdup(RelationGetRelationName(indexRel));
 		if (ZDBIndexOptionsGetUrl(indexRel) == NULL) {
 			elog(ERROR, "Must set 'url' option on index or set 'zombodb.default_elasticsearch_url' in postgresql.conf");
-		} else if (strcmp(ZDBIndexOptionsGetUrl(indexRel), "default") == 0) {
+		} else if (strcmp("default", ZDBIndexOptionsGetUrl(indexRel)) == 0) {
 			/* use the default from postgresql.conf */
 			if (zdb_default_elasticsearch_url_guc == NULL)
 				elog(ERROR, "Must set 'zombodb.default_elasticsearch_url' in postgresql.conf");
