@@ -20,8 +20,6 @@ import llc.zombodb.query_parser.*;
 import llc.zombodb.query_parser.metadata.Dijkstra;
 import llc.zombodb.query_parser.metadata.IndexMetadataManager;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
-import org.elasticsearch.action.search.SearchAction;
-import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.client.Client;
 
 import java.util.*;
@@ -110,6 +108,8 @@ public class IndexLinkOptimizer {
             return;
 
         while (root instanceof ASTExpansion) {
+            if (((ASTExpansion) root).isSubselect())
+                return;
             injectASTExpansionNodes(((ASTExpansion) root).getFilterQuery());
 
             root = ((ASTExpansion) root).getQuery();
