@@ -122,7 +122,59 @@ The Elasticsearch [analyzer documentation](https://www.elastic.co/guide/en/elast
 
 > The important bit here is that ZomboDB requires a Postgres `DOMAIN` with the same name.
 
-Note that if your custom DOMAIN is defined `AS text`, fields of that type are **not** included in Elasticsearch's `_all` field, but are expanded at query time to include such fields.  However, if the custom DOMAIN is defined `AS varchar(<length>)`, the field **is** included in the `_all` field. 
+Note that if your custom DOMAIN is defined `AS text`, fields of that type are **not** included in Elasticsearch's `_all` field, but are expanded at query time to include such fields.  However, if the custom DOMAIN is defined `AS varchar(<length>)`, the field **is** included in the `_all` field.
+
+Here comes the example of defining `char_filter` for ES 1.7 with russian symbols `Ё` and `Й` that a usually replaced with `Е` and `И` in typography:
+
+```sql
+-- Note that we define both lowercase and uppercase letters to be replaced
+select zdb_define_char_filter('similars', '{ "type" : "mapping",
+                                             "mappings" : ["ё=>е", "Ё=>Е", "й=>и", "Й=>И"] }');
+
+-- The important part here is to define "filter": ["lowercase"]
+-- otherwise queries will become case sensitive
+select zdb_define_analyzer('similars_varchar', '{ "tokenizer" : "standard",
+                                                  "filter": ["lowercase"], "char_filter" : ["similars"] }');
+
+-- Now we define new type(DOMAIN in terms of PostgreSQL)
+CREATE DOMAIN similars_varchar AS character varying;
+
+-- And create a table that contains field of this type, actually it's still CHARACTER VARYING,
+-- but under different name that can be used by ZDB to apply defined analyzer to this field
+CREATE TABLE movies (
+    id serial8 PRIMARY KEY,
+    title similars_varchar
+);
+CREATE INDEX idx_zdb_movied ON movies USING zombodb(zdb('movies', movies.ctid), zdb(movies))
+WITH (url='http://<server_ip>:9200/');
+
+-- Populate the table with data where the same word is written in both variations
+INSERT INTO movies VALUES (1, 'Ежик в тумане');
+INSERT INTO movies VALUES (2, 'Жил был пёс');
+INSERT INTO movies VALUES (3, 'Как Ёжик и Медвежонок Встречали Новый Год');
+```
+Now we can search for the data:
+```sql
+SELECT * FROM movies WHERE zdb('movies', movies.ctid) ==> 'title:*ежик*'
+SELECT * FROM movies WHERE zdb('movies', movies.ctid) ==> 'title:*ёжик*'
+SELECT * FROM movies WHERE zdb('movies', movies.ctid) ==> 'title:*Ежик*'
+SELECT * FROM movies WHERE zdb('movies', movies.ctid) ==> 'title:*ЕЖИК*'
+```
+Note that all this queries will return the same result as the word we're looking for is the same nevertheless it's written with different letters every time(and different case).
+The same happens with another query:
+```sql
+select * from movies where zdb('movies', movies.ctid) ==> 'title:*пес*'
+select * from movies where zdb('movies', movies.ctid) ==> 'title:*пёс*'
+```
+__Important:__ as describe below in __About the `_all` field__ `character varying` will be searched only if required field is directly in the query. If you want to search like this:
+```sql
+select * from movies where zdb('movies', movies.ctid) ==> '*пес*' -- no field title in query
+```
+You'll need to describe your DOMAIN like this
+```sql
+CREATE DOMAIN CREATE DOMAIN similars_text AS text;
+```
+
 
 ## About the `_all` Field
 
