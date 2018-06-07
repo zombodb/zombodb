@@ -321,6 +321,9 @@ bool current_query_wants_scores(void) {
     StringInfo find          = makeStringInfo();
     char       *str;
 
+    if (queryDesc->operation != CMD_SELECT)
+    	return false;
+    
     // TODO:  how to walk the plan tree without converting it to a string
     // TODO:  and otherwise implementing a ton of code that'll be impossible
     // TODO:  to keep current between Postgres versions
