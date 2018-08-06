@@ -1,6 +1,6 @@
 CREATE TABLE issue272 (
-  id   SERIAL8 NOT NULL PRIMARY KEY,
-  data JSON
+  id serial8 NOT NULL PRIMARY KEY,
+  data json
 );
 
 SELECT zdb_define_mapping('issue272', 'data', '{
@@ -25,8 +25,7 @@ SELECT zdb_define_mapping('issue272', 'data', '{
   }
 }');
 
-CREATE INDEX idxissue272
-  ON issue272 USING zombodb (zdb('issue272', ctid), zdb(issue272)) WITH (url='localhost:9200/');
+CREATE INDEX idxissue272 ON issue272 USING zombodb (zdb('issue272', ctid), zdb(issue272)) WITH (url='localhost:9200/');
 
 INSERT INTO issue272 (data) VALUES ('{
   "obj1": [
