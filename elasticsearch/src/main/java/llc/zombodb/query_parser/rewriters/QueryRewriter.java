@@ -418,7 +418,7 @@ public abstract class QueryRewriter {
         } else {
             TermsAggregationBuilder tb = terms(agg.getFieldname())
                     .field(fieldname)
-                    .size(agg.getMaxTerms())
+                    .size(agg.getMaxTerms() == 0 ? Integer.MAX_VALUE : agg.getMaxTerms())
                     .shardSize(agg.getShardSize() == 0 ? Integer.MAX_VALUE : agg.getShardSize())
                     .order(stringToTermsOrder(agg.getSortOrder()));
 

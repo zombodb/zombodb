@@ -5028,6 +5028,17 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testMaxTermsZeroExpandsToIntegerMaxValue() throws Exception {
+        QueryRewriter qr;
+
+        qr = qr("#tally(field, \"^.*\", 0, \"term\", 50)");
+        assertEquals(
+                "\"field\"{\"terms\":{\"field\":\"field\",\"size\":" + Integer.MAX_VALUE + ",\"shard_size\":50,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":{\"_term\":\"asc\"}}}",
+                qr.rewriteAggregations().toXContent(JsonXContent.contentBuilder(), null).string()
+        );
+    }
+
+    @Test
     public void testIssue132() throws Exception {
         assertAST("#expand<group_id=<this.index>group_id>(#expand<group_id=<this.index>group_id>(pk_id:3 OR pk_id:5))",
                 "QueryTree\n" +
