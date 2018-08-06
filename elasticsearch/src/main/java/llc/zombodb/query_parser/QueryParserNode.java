@@ -163,6 +163,23 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         return fieldname.substring(0, idx);
     }
 
+    public List<String> getNestedPaths() {
+        if (fieldname == null || !fieldname.contains("."))
+            return Collections.emptyList();
+
+        List<String> rc = new ArrayList<>();
+        String[] parts = fieldname.split("[.]");
+        StringBuilder tmp = new StringBuilder();
+
+        for (int i = 0; i < parts.length - 1; i++) {
+            if (i > 0) tmp.append('.');
+            tmp.append(parts[i]);
+            rc.add(tmp.toString());
+        }
+
+        return rc;
+    }
+
     public ASTIndexLink getIndexLink() {
         return indexLink;
     }

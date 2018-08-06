@@ -644,11 +644,12 @@ public abstract class QueryRewriter {
     }
 
     private int withDepth = 0;
-    private String withNestedPath;
 
     private QueryBuilder build(ASTWith node) {
+        List<String> nestedPaths = null;
+
         if (withDepth == 0)
-            withNestedPath = Utils.validateSameNestedPath(node);
+            nestedPaths = Utils.validateSameNestedPath(node);
 
         BoolQueryBuilder fb = boolQuery();
 
@@ -662,10 +663,19 @@ public abstract class QueryRewriter {
         }
 
         if (withDepth == 0) {
-            if (shouldJoinNestedFilter())
-                return nestedQuery(withNestedPath, fb, ScoreMode.Avg);
-            else
+            if (shouldJoinNestedFilter()) {
+                if (nestedPaths == null || nestedPaths.isEmpty())
+                    throw new RuntimeException("Never determined nested paths");
+
+                QueryBuilder qb = fb;
+                Collections.reverse(nestedPaths);
+                for (String path : nestedPaths) {
+                    qb = nestedQuery(path, qb, ScoreMode.Avg);
+                }
+                return qb;
+            } else {
                 return fb;
+            }
         } else {
             return fb;
         }

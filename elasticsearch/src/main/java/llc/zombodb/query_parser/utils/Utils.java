@@ -390,20 +390,25 @@ public class Utils {
         return arrayData;
     }
 
-    public static String validateSameNestedPath(ASTWith node) {
-        return validateSameNestedPath(node, null);
+    public static List<String> validateSameNestedPath(ASTWith node) {
+        QueryParserNode[] anyNode = new QueryParserNode[1];
+        validateSameNestedPath(node, null, anyNode);
+        return anyNode[0].getNestedPaths();
     }
 
-    private static String validateSameNestedPath(QueryParserNode node, String nestedPath) {
+    private static String validateSameNestedPath(QueryParserNode node, String nestedPath, QueryParserNode[] anyNode) {
         if (!node.hasChildren())
             return nestedPath;
 
         for (QueryParserNode child : node) {
-            if (nestedPath == null)
+            if (nestedPath == null) {
                 nestedPath = child.getNestedPath();
+                if (nestedPath != null && anyNode[0] == null)
+                    anyNode[0] = child;
+            }
 
             if (child.hasChildren())
-                nestedPath = validateSameNestedPath(child, nestedPath);
+                nestedPath = validateSameNestedPath(child, nestedPath, anyNode);
             else if (nestedPath != null && !nestedPath.equals(child.getNestedPath()))
                 throw new RuntimeException("WITH chain must all belong to the same nested object");
         }
