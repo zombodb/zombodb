@@ -20,8 +20,10 @@ Table Schema/Index Definition:
 
 Output from `select zdb.index_mapping('index_name');`:
 
+```json
 
 
+```
 
 Other Discussion:
 
