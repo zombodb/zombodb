@@ -16,7 +16,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
 
 This is a new version of ZomboDB that only supports Postgres 10 and doesn't require an Elasticsearch plugin.  As such, it's currently a beta release, with a production-ready release planned for the near future.
 
-If you've used ZomboDB before, you'll find that this is a bit of a different product, and you should definitely review all the documentation as many things, including SQL syntax and query language, have changed.
+If you've used ZomboDB before, you'll learn that this is a different and more advanced product. Please review all the documentation as many things (including SQL syntax and query language) have changed.
 
 Since this is beta software, there's a short TODO-list:
 
@@ -80,7 +80,7 @@ libcurl       | >=7.28.0
 
 Please visit [https://www.zombodb.com/releases/](https://www.zombodb.com/releases/) to download.
 
-If you want to integrate with some kind of CI or deployment system, you can intuit the pattern for versions from the Postgres extension download links, but it'll be something like:
+If you want to integrate with a CI/CD system you can intuit the pattern for versions from the Postgres extension download links, but it'll be something like:
 
 ```
 https://www.zombodb.com/releases/VERSION/zombodb_trusty_pg10-VERSION_amd64.deb
