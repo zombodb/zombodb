@@ -26,7 +26,7 @@ Since this is beta software, there's a short TODO-list:
 Previous versions that support Postgres <=9.5 are still available, from these branches:
 
 - [Support for Elasticsearch 5.6](https://github.com/zombodb/zombodb/tree/master-es5.6)
-- [Support for Elasticearch 2.4](https://github.com/zombodb/zombodb/tree/master-es2.4)
+- [Support for Elasticsearch 2.4](https://github.com/zombodb/zombodb/tree/master-es2.4)
 - [Support for Elasticsearch 1.7](https://github.com/zombodb/zombodb/tree/master-es1.7)
 
 Commerical support for all versions of ZomboDB is available by [contacting ZomboDB, LLC](https://www.zombodb.com/services/).

@@ -27,7 +27,7 @@ $ dpkg -i zombodb_ubuntu_xenial_pg10-1.0.0_amd64.deb
 
 ### Installation on MacOS
 
-For MacOS, ZomboDB can only be installed from source.  Detailed compilation instructions are outside the scope of this document, but in general simply cloning the ZomboDB repository, switching to the `master-pg10` branch and running:
+For MacOS, ZomboDB can only be installed from source.  Detailed compilation instructions are outside the scope of this document, but in general simply cloning the ZomboDB repository, switching to the `master` branch and running:
 
 ```shell
 $ make clean install
