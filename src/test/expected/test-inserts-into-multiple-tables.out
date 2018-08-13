@@ -1,0 +1,68 @@
+CREATE TABLE a (
+  a_id INT8
+);
+CREATE TABLE b (
+  b_id INT8
+);
+CREATE TABLE c (
+  c_id INT8
+);
+CREATE INDEX idxa
+  ON a USING zombodb ((a)) WITH (shards=40);
+CREATE INDEX idxb
+  ON b USING zombodb ((b)) WITH (shards=40);
+CREATE INDEX idxc
+  ON c USING zombodb ((c)) WITH (shards=40);
+-- get all the pkey/fkey contraints configured
+ALTER TABLE a
+  ADD CONSTRAINT idx_a_pkey PRIMARY KEY (a_id);
+ALTER TABLE b
+  ADD CONSTRAINT idx_b_pkey PRIMARY KEY (b_id);
+ALTER TABLE b
+  ADD CONSTRAINT b_fk_id FOREIGN KEY (b_id)
+REFERENCES a (a_id) MATCH SIMPLE
+ON UPDATE NO ACTION ON DELETE CASCADE;
+ALTER TABLE c
+  ADD CONSTRAINT idx_c_pkey PRIMARY KEY (c_id);
+ALTER TABLE c
+  ADD CONSTRAINT c_fk_id FOREIGN KEY (c_id)
+REFERENCES a (a_id) MATCH SIMPLE
+ON UPDATE NO ACTION ON DELETE CASCADE;
+-- insert first set of test records
+INSERT INTO a (a_id) VALUES (1), (2), (3);
+INSERT INTO b (b_id) VALUES (1), (2), (3);
+INSERT INTO c (c_id) VALUES (1), (2), (3);
+-- remove ids 1 and 2
+BEGIN;
+DELETE FROM a
+WHERE a_id IN ('1', '2');
+COMMIT;
+-- vacuum tables so cv will recognize free space created by deleted ids 1 & 2
+VACUUM a;
+VACUUM b;
+VACUUM c;
+-- insert last set of records... the var/vol inserts should ERROR if this is bugged
+INSERT INTO a (a_id) VALUES (4), (5), (6);
+INSERT INTO b (b_id) VALUES (4), (5), (6);
+INSERT INTO c (c_id) VALUES (4), (5), (6);
+BEGIN;
+DELETE FROM a
+WHERE a_id IN ('3', '4');
+COMMIT;
+VACUUM FULL a;
+VACUUM FULL b;
+VACUUM FULL c;
+BEGIN;
+DELETE FROM b WHERE b_id = 5;
+DELETE FROM c WHERE c_id = 5;
+COMMIT;
+VACUUM b;
+VACUUM c;
+-- should cause a DocumentAlreadyExists ERROR from Elasticsearch if this is bugged
+INSERT INTO c (c_id) VALUES (5);
+DROP TABLE a CASCADE;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to constraint b_fk_id on table b
+drop cascades to constraint c_fk_id on table c
+DROP TABLE b CASCADE;
+DROP TABLE c CASCADE;

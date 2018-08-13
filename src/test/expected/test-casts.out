@@ -1,0 +1,36 @@
+SELECT pg_typeof('beer'::text::zdbquery);
+ pg_typeof 
+-----------
+ zdbquery
+(1 row)
+
+SELECT pg_typeof('{"term":"beer"}'::json::zdbquery);
+ pg_typeof 
+-----------
+ zdbquery
+(1 row)
+
+SELECT pg_typeof('{"term":"beer"}'::jsonb::zdbquery);
+ pg_typeof 
+-----------
+ zdbquery
+(1 row)
+
+SELECT pg_typeof('beer'::zdbquery::text);
+ pg_typeof 
+-----------
+ text
+(1 row)
+
+SELECT pg_typeof('{"term":"beer"}'::zdbquery::json);
+ pg_typeof 
+-----------
+ json
+(1 row)
+
+SELECT pg_typeof('{"term":"beer"}'::zdbquery::jsonb);
+ pg_typeof 
+-----------
+ jsonb
+(1 row)
+

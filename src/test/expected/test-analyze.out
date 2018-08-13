@@ -1,0 +1,24 @@
+SELECT * FROM zdb.analyze_text('idxevents', 'standard', 'This is a test, 42 https://www.zombodb.com');
+    type    |      token      | position | start_offset | end_offset 
+------------+-----------------+----------+--------------+------------
+ <ALPHANUM> | this            |        0 |            0 |          4
+ <ALPHANUM> | is              |        1 |            5 |          7
+ <ALPHANUM> | a               |        2 |            8 |          9
+ <ALPHANUM> | test            |        3 |           10 |         14
+ <NUM>      | 42              |        4 |           16 |         18
+ <ALPHANUM> | https           |        5 |           19 |         24
+ <ALPHANUM> | www.zombodb.com |        6 |           27 |         42
+(7 rows)
+
+SELECT * FROM zdb.analyze_custom(index=>'idxevents', text=>'This is a test, 42 https://www.zombodb.com', tokenizer=>'keyword', filter=>ARRAY['lowercase']);
+ type |                   token                    | position | start_offset | end_offset 
+------+--------------------------------------------+----------+--------------+------------
+ word | this is a test, 42 https://www.zombodb.com |        0 |            0 |         42
+(1 row)
+
+SELECT * FROM zdb.analyze_with_field('idxevents', 'event_type', 'This is a test, 42 https://www.zombodb.com/');
+ type |                    token                    | position | start_offset | end_offset 
+------+---------------------------------------------+----------+--------------+------------
+ word | this is a test, 42 https://www.zombodb.com/ |        0 |            0 |         43
+(1 row)
+

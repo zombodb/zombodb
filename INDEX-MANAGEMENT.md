@@ -1,124 +1,154 @@
 # Index Management
 
-Index management happens through normal Postgres SQL commands.
+ZomboDB index management happens through standard Postgres DDL statements such as `CREATE INDEX`, `ALTER INDEX`, and `DROP INDEX`.  ZomboDB also exposes a number of index-level options that can be set to affect things like number of shards, replicas, etc.
+
 
 ## CREATE INDEX
 
-To create a ZomboDB index, use the form:
+The form for creating ZomboDB indices is:
 
 ```sql
-CREATE INDEX idxname 
-          ON table
-       USING zombodb (zdb('table', table.ctid), zdb(table))
-        WITH (url='...', 
-              shards=N, 
-              replicas=N,
-              preference='...',
-              options='...');
+CREATE INDEX index_name 
+          ON table_name 
+       USING zombodb ((table_name.*)) 
+        WITH (...)
 ```
+(where the options for `WITH` are detailed below)
 
-The `(zdb('table', ctid), zdb(table))` construct is required and causes the index to be a multi-"column" _functional index_.
-The output of the `zdb(table)` function is what is actually indexed -- which is a JSON-formatted version of each row.
+ZomboDB generates a UUID to use as the backing Elasticsearch index name, but also assigns an alias in the form of `database_name.schema_name.table_name.index_name-index_oid`.  "index_oid" is the Postgres catalog id for the index from the "pg_class" system catalog table.
 
-The `WITH` settings are:
-
-### Basic Settings
-- `url` **required**: The base url of the primary entry point into your Elasticsearch cluster.  For example: `http://192.168.0.75:9200/`.  The value **must** end with a forward slash (`/`).  If the value is `default`, then the Postgres GUC setting `zombodb.default_elasticsearch_url` (from `postgresql.conf`) will be used.  See below for that GUC setting.
-- `shards` **optional**:  The number of Elasticsearch shards to use.  The default is `5`.  Changing this value requires a `REINDEX` before the new value becomes live.
-- `replicas` **optional**:  The number of Elasticsearch replicas to use.  The default is `1` and allowed values are `[0..64]`.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.
-- `store` **optional**:  The default is `false`, but if set to `true`, then ZomboDB will store the raw JSON for each row in Elasticsearch (as the "_source" field).  Changing the value on an existing index requires `REINDEX`.  If set to `true`, this setting will allow you to use external search and visulation tools like Kibana with ZomboDB-managed indexes.  Note that ZomboDB-managed indexes contain dead or not-yet-visible rows, and querying the indexes via external tools will make these rows visible to those tools.
-
-
-### Advanced Settings
-- `options` **optional**:  `options` is a ZomboDB-specific string that allows you to define how this index relates to other indexes.  This is an advanced-use feature and is documented [here](INDEX-OPTIONS.md).
-- `shadow` **optional** (mutually exclusive with `url`): The name of an existing ZomboDB index that this index should use, but likely with a different set of options.  This too is an [advanced-use](INDEX-OPTIONS.md) feature.
-- `alias` **optional**:  The `alias` option can be used to assign an Elasticsearch index alias to the index ZomboDB creates.  This is typically only important when using Citus or when using Postgres table inheritence to do partitioning.  You can set this value to whatever you want, but it should be unique across your Elasticsearch cluster.
-- `field_lists` **optional**:  Allows to define lists fields that, when queried, are dynamically expanded to search their defined list of other fields.  The syntax for this setting is:  `field_lists='fake_field1=[a, b, c], fake_field2=[d,e,f], ...'`.  This can be useful, for example, for searching all "date" fields at once, or defining a set of fields that represent "names" or "locations".  Note that each field in a list must be of the same underlying Postgres data type.
-- `block_routing_field` **optional**:  When set to a column name whose type is `int2`, `int4`, or `int8`, ZomboDB will use that column's value to route documents to shards in blocks of 100,000.  Essentially, this calculated value becomes the `_routing` for each document, and when used with a column that is frequently used to do cross-index joining (via the `options` index links above), can greatly improve cross-index joins.  ZomboDB will group rows together in blocks of 100,000 using `_routing = (long) (field_value / 100_000L)` and then Elasticsearch's normal routing hashing kicks in to determine which shard gets that block of documents.  Read more about this, and how it improves cross-index join performance in [BLOCK-ROUTING.md](BLOCK-ROUTING.md) and generally about cross-index joins in [CROSS-INDEX-JOINS.md](CROSS-INDEX-JOINS.md).  Changing the value of this field requires a `REINDEX`.
-
-- `always_resolve_joins` **optional**:  The default is `false` which allows ZomboDB to directly query a linked index for aggregates and `zdb_estimate_count()` when the query only queries fields from one linked index (see `options` under Advanced Settings below along with the [INDEX-OPTIONS](INDEX-OPTIONS.md) documentation).  If your links/joins are always 1-to-1, this is perfectly safe and quite a performance improvement.  If your links/joins are 1-to-many (or many-to-1) this is not safe and you should set the value to `true`.
-
-### Operational Settings
-- `preference` **optional**:  The Elasticsearch [search preference](https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-preference.html) to use.  The default is `null`, meaning no search preference is used.
-- `compression_level` **optional**:  ZomboDB can use "deflate" compression when communicating with Elasticsearch via HTTP.  The default compression level is zero (ie, disabled), but a value between `1` and `9` will enable compression.  If you enable compression, you also need to set `http.compression: true` in `elasticsearch.yml` for each node in your cluster.
-- `bulk_concurrency` **optional**:  Specifies the maximum number of concurrent HTTP requests, per Postgres backend, to use when making "batch" changes, which include CREATE INDEX/REINDEX, INSERT, UPDATE, COPY statements.  The default is `12` and allowed values are in the set `[1..1024]`
-- `batch_size` **optional**:  Specifies the size, in bytes, for batch POST data.  Affects CREATE INDEX/REINDEX, INSERT, UPDATE, COPY, and VACUUM statements.  The default is `8388608` bytes (8MB) and allowed values are `[1k..1Gb]`.  Note that ZomboDB will potentially consume `batch_size * bulk_concurrency` bytes of memory during any given statement, **per backend connection**.
-- `refresh_interval` **optional**:  This setting directly relates to Elasticsearch's [`index.refresh_interval`](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/setup-configuration.html#configuration-index-settings).  The default value is `-1`, meaning ZomboDB will control index refreshes such that modified rows are always immediately visible.  If a time delay is okay, change this setting to something like `5s` for five seconds.  This can help improve single-record INSERT/UPDATE performance at the expense of when the rows are actually searchable.  Changing this property requires that you call `zdb_update_mapping(tablename_containg_index)` to push the setting to Elasticsearch.    
-- `ignore_visibility` **optional**:  Controls, on a per-index level, if queries that require row visibility information to be MVCC-correct should honor it.  The default for `ignore_visibility` is `false`, meaning all queries are MVCC-correct.  Set this to `true` if you don't need exact values for aggregates and `zdb_estimate_count()`.
-- `optimize_after` **optional**:  An integer value that represents the number of deleted documents in the Elasticsearch index after which ZomboDB shoud expunge deleted documents.  The default is zero, meaning never do this (i.e., let Elasticsearch manage it on its own segment merge schedule), but specifying a value can help keep performance in check for tables that experience high UPDATE/DELETE loads.
-
-### Per-session Settings
-
-- `zombodb.batch_mode`:  This is a boolean "GUC" that controls how ZomboDB sends index changes to Elasticsearch.  The default for `zombodb.batch_mode` is `false` which means that ZomboDB sends index changes to ES on a per-statement level and flushes the remote Elasticsearch index at the end of each statement.  Setting this to `true` will cause ZomboDB to batch index changes through the life of the transaction, and the final set of changes won't be available for search until `COMMIT`.  When set to `true`, ZomboDB delays flushing the index until transaction `COMMIT`.  This can be changed interactively by issuing `SET zombodb.batch_mode = true;`
-- `zombodb.ignore_visibility`:  This is a boolean "GUC" that controls if ZomboDB will honor MVCC visibility rules.  The default is `false` meaning it will, but you can `SET zombodb.ignore_visibility = true;` if you don't mind having dead/invisible rows counted in aggregates and `zdb_estimate_count()`.  This is similiar to the index-level setting of the same name, but can be controlled per session.
-- `zombodb.log_level`:  This is an enumerated "GUC" that controls ZomboDB's Postgres logging level.  It supports the same set of values that Postgres' other log levels support, and its default value is `DEBUG1`.  Possible values are:
-```
-      values in order of decreasing detail:
-        debug5
-        debug4
-        debug3
-        debug2
-        debug1* -- default value
-        info
-        notice
-        warning
-	log
-```
-    This setting can be changed per-session or in `postgresql.conf` for all sessions.
-    
-## DROP INDEX
-
-To drop a ZomboDB index, use Postgres' standard `DROP INDEX` command:
-
-```sql
-DROP INDEX idxname;
-```
-
-This removes the index from Postgres' system catalogs but does **not** also delete the index from Elasticsearch.  You must do that manually, for example:
-
-```
-$ curl -XDELETE http://cluster.ip:9200/db.schema.table.index
-```
-
-NOTE:  This may change in the future such that the Elasticsearch search index is deleted.  It's currently unclear which direction is most helpful.
-
-## REINDEX
-
-To reindex an exising ZomboDB index, simply use Postgres' standard [REINDEX](http://www.postgresql.org/docs/9.5/static/sql-reindex.html) command.  All the various forms of `INDEX`, `TABLE`, and `DATABASE` are fully supported.
-
+The alias is meant to be a human-readable name that you can use with external tools like Kibana or even curl.
 
 ## ALTER INDEX
 
-You can use Postgres' `ALTER INDEX` command to change any of the `WITH` settings defined above.  For example:
+The various Index Options supported by ZomboDB can be changed using Postgres `ALTER INDEX` statement.  They can be changed to new values or reset to their defaults.
+
+For example:
 
 ```sql
-ALTER INDEX idxname SET (replicas=3);
-ALTER INDEX idxname RESET (preference);
+ALTER INDEX index_name SET (replicas=2)
 ```
 
-Chagning non-structure settings such as `replicas` and `refresh_interval` do not require a reindex, but do require you call `zdb_update_mapping(tablename)` to push these changes to Elasticsearch.
+## DROP INDEX/TABLE/SCHEMA/DATABASE
 
-However, a `REINDEX` is required after changing an index setting that would affect the physical structure of the underlying Elasticsearch index, specifically `shards`.  This is a limitation of Elasticsearch in that shard count is fixed at index creation time.
+When you drop a Postgres object that contains a ZomboDB index, the corresponding Elasticsearch is also deleted.
+
+`DROP` statements are transaction safe and don't delete the backing Elasticsearch index until the controlling transaction commits.
+
+Note that `DROP DATABASE` can't delete its corresponding Elasticsearch indices as there's no way for ZomboDB to receive a notification that a database is being dropped.
+
+## WITH (...) Options
+
+All of the below options can be set during `CREATE INDEX` and most of them can be changed with `ALTER INDEX`.  Those that cannot be altered are noted.
+
+### Required Options
+
+```
+url
+
+Type: string
+Default: zdb.default_elasticsearch_url
+```
+
+The Elasticsearch Cluster URL for the index.  This option is required, but can be ommitted if the `postgresql.conf` setting `zdb.default_elasticsearch_url` is set.  This option can be changed with `ALTER INDEX`, but you must be a Postgres superuser to do so.
+
+The value must end with a forward slash (`/`).
 
 
-## ALTER TABLE
+### Elasticsearch Options
 
-The various forms of ALTER TABLE that add/drop columns or change column types are supported.  Note that if added columns have a default value or if the type change isn't directly cast-able, Postgres will automatically rebuild the index, so these operations could take a significant amount of time.
+```
+shards
 
-####WARNING:  
+Type: integer
+Default: 5
+Range: [1, 32768]
+```
 
-Renaming columns is not supported. What will happen is that newly INSERTed/UPDATEd rows will use the new column name but existing rows will use the old name, making searching difficult.  
+The number of shards Elasticsearch should create for the index.  This option can be changed with `ALTER INDEX` but you must issue a `REINDEX INDEX` before the change will take effect.
 
-If you need rename a column, you'll need to manually issue a `REINDEX`.
+```
+replicas
 
-Perhaps in the future, ZomboDB can transparently alias fields to avoid this situation, but at present, it's not the case.
+Type: integer
+Default: zdb.default_replicas
+```
+
+This controls the number of Elasticsearch index replicas.  The default is the value of the `zdb.default_replicas` GUC, which itself defaults to zero.  Changes to this value via `ALTER INDEX` take effect immediately.
+
+```
+alias
+
+Type: string
+Default: "database.schema.table.index-index_oid"
+```
+
+You can set an alias to use to identify an index from external tools.  This is for user convienece only.  Changes via `ALTER INDEX` take effect immediately.
+
+Normal SELECT statements are executed in Elasticsearch directly against the named index.  Aggregate functions such as `zdb.count()` and `zdb.terms()` use the alias, however.  
+
+In cases where you're using ZomboDB indices on inherited tables or on partition tables, it is suggested you assigned the **same** alias name to all tables in the hierarchy so that aggregate functions will run across all the tables involved.
 
 
-## VACUUM
+```
+refresh_interval
 
-Running a standard `VACUUM` on a table with a ZomboDB index does the minimum amount of work to remove dead rows from the backing Elastisearch index and shoud happen in a reasonable amount of time (depending, of course, on the update frequency).
+Type: string
+Default: "-1"
+```
 
-Running a `VACUUM FULL` on a table with a ZomboDB index, on the otherhand, is functionally equilivant to running a `REINDEX` on the table, which means a `VACUUM FULL` could take a long time to complete.
+This option specifies how frequently Elasticsearch should refresh the index to make changes visible to searches.  By default, this is set to `-1` because ZomboDB wants to control refreshes itself so that it can maintain proper MVCC visibility results.  It is not recommented that you change this setting unless you're okay with search results being inconsistent with what Postgres expects.  Changes via `ALTER INDEX` take effect immediately.
 
-For tables with ZomboDB indexes that are frequently UPDATEd, it's important that autovacuum be configured to be as aggressive as your I/O subsystem can afford.  This is because certain types of ZomboDB queries need to build an "invisibility map", which necessitates looking at every heap page that is not known to be all-visibile.
+```
+type_name
 
+Type: string
+Default: "doc"
+```
+
+This is the Elasticsearch index type into which documents are mapped.  The default, "doc" is compatible with Elasticsearch v5 and v6.  There should be no need to set.  Note that it can only be set during `CREATE INDEX`.
+
+
+### Network Options
+
+```
+bulk_concurrency
+
+Type: integer
+Default: 12
+Range: [1, 1024]
+```
+
+When synchronizing changes to Elasticsearch, ZomboDB does this by multiplexing HTTP(S) requests using libcurl.  This setting controls the number of concurrent requests.  ZomboDB also logs how many active concurrent requests it's managing during writes to Elasticsearch.  You can use that value to ensure you're not overloading your Elasticsearch cluster.  Changes via `ALTER INDEX` take effect immediately.
+
+```
+batch_size
+
+Type: integer (in bytes)
+Default: 8388608
+Range: [1024, (INT_MAX/2)-1]
+```
+
+When synchronizing changes to Elasticsearch, ZomboDB does htis by batching them together into chunks of `batch_size`.  The default of 8mb is a sensible default, but can be changed in conjunction with `bulk_concurrency` to improve overall write performance.  Changes via `ALTER INDEX` take effect immediately.
+
+```
+compression_level
+
+Type: integer
+Default: 1
+Range: [0, 9]
+```
+
+Sets the HTTP(s) transport (and request body) deflate compression level.  Over slow networks, it may make sense to set this to a higher value.  Setting to zero turns off all compression.  Changes via `ALTER INDEX` take effect immediately.
+
+
+### Advanced Options
+
+```
+llapi
+
+Type: boolean
+Default: false
+```
+
+Indicates that this index will be used directly by ZomboDB's [low-level API](LLAPI.md).  Indices with this set to `true` will not have their corresponding Elasticsearch index deleted by `DROP INDEX/TABLE/SCHEMA`.

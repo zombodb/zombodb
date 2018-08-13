@@ -1,176 +1,288 @@
 # Type Mapping
 
+ZomboDB provides a set of default Postgres<-->Elasticsearch type mappings for Postgres' common data types.  ZomboDB also includes a complete set of custom Postgres DOMAINs that represent all of the foreign languages that Elasticsearch supports.
+
 This document attempts to explain how ZomboDB maps Postgres data types to Elasticsearch data types, how they're analyzed (if at all), and how these things can be controlled through a combination of Postgres' type system and ZomboDB-specific functions.
 
 ## Common Data Types
 
-The mapping of common data types is straightforward.  In general, none of the core Postgres types are analyzed (or at least they behave as if they're unanalyzed).  This includes `text` and `varchar`.
+These are the default mappings:
 
-### Postgres Type Conversions
+Postgres Type | Elasticsearch JSON Mapping Definition                                                            
+--- | ---
+ `bytea`                       | `{"type": "binary"}`
+ `boolean`                     | `{"type": "boolean"}`
+ `smallint`                    | `{"type": "short"}`
+ `integer`                     | `{"type": "integer"}`
+ `bigint`                      | `{"type": "long"}`
+ `real`                        | `{"type": "float"}`
+ `double precision`            | `{"type": "double"}`
+ `character varying`           | `{"type": "keyword", "copy_to": "zdb_all", "normalizer": "lowercase", "ignore_above": 10922}`
+ `text`                        | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard", "fielddata": true}`
+ `time without time zone`      | `{"type": "date", "format": "HH:mm:ss.SSSSSS", "copy_to": "zdb_all"}`
+ `time with time zone`         | `{"type": "date", "format": "HH:mm:ss.SSSSSSZZ", "copy_to": "zdb_all"}`
+ `date`                        | `{"type": "date", "copy_to": "zdb_all"}`
+ `timestamp without time zone` | `{"type": "date", "copy_to": "zdb_all"}`
+ `timestamp with time zone`    | `{"type": "date", "copy_to": "zdb_all"}`
+ `json`                        | `{"type": "nested", "include_in_parent": true}`
+ `jsonb`                       | `{"type": "nested", "include_in_parent": true}`
+ `inet`                        | `{"type": "ip", "copy_to": "zdb_all"}`
+ `zdb.fulltext`                | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard"}`
+ `zdb.fulltext_with_shingles`  | `{"type": "text", "copy_to": "zdb_all", "analyzer": "fulltext_with_shingles", "search_analyzer": "fulltext_with_shingles_search"}`
 
-Postgres Type | Elasticsearch Type
----           | ---
-date          | unanalyzed-string in yyyy-MM-dd
-timestamp [with time zone]    | unanalyzed-string in yyyy-MM-dd HH:mm:ss.SSSSS
-time [with time zone]         | unanalyzed-string in HH:mm:ss.SSSSS
-smallint      | integer
-bigint        | long
-float         | float
-double precision | double
-boolean       | boolean
-text          | string, analyzed using ZomboDB's `exact` analyzer
-varchar       | string, analyzed using ZomboDB's `exact` analyzer
-character     | string, analyzed using ZomboDB's `exact` analyzer
-uuid          | string, analyzed using ZomboDB's `exact` analyzer
-json/jsonb    | nested_object, where each property is analyzed using ZomboDB's `exact` analyzer
-unlisted type | string, analyzed using ZomboDB's `exact` analyzer
+Some things to note from the above:
 
-(for all types above, arrays of the Postgres type are fully supported)
+- Columns of type `character varying (varchar)` are **not** analyzed by Elasticsearch.  They're indexed as whole values, but are converted to lowercase
+- Columns of type `text` **are** analyzed by Elasticsearch using its `standard` analyzer, and the individual terms are converted to lowercase
+- Columns of type `json/jsonb` are mapped to Elasticsearch's `nested` object with a dynamic template that treats "string" properties as if they're of type `character varying` (ie, unanalyzed exact, lowercased values), and treats "date" properties as if they're dates, accepting a wide range of date formats.
 
-### ZomboDB custom DOMAIN types
+In all cases above, arrays of Postgres types are fully supported.
 
-ZomboDB comes with a set of custom Postgres DOMAIN types that **are** analyzed.  `phrase`, `phrase_array`, and `fulltext` are ZomboDB-specific, while the set of 33 "language domains" map directly to Elasticsearch's language analyzers.
+## ZomboDB's Custom DOMAIN types
 
-Domain Type | Elasticsearch Type
----         | ---
-phrase      | string, analyzed using ZomboDB's `phrase` analyzer
-phrase_array | array of strings, analyzed using ZomboDB's `phrase` analyzer
-fulltext    | string, analyzed using ZomboDB's `phrase` analyzer
-fulltext_with_shingles | string, analyzed using a 2-gram single filter for high-speed right-truncated wildcard support within "quoted phrases"
-"language domains" | string, analyzed using the Elasticsearch analyzer of that name
+ZomboDB includes a few custom Postgres DOMAIN types which can be used as column types in your tables.
 
-## ZomboDB's `exact` Analyzer
+`zdb.fulltext` works exactly the same way as a column of type `text`, but exists so as to provide an extra hint of metadata to client applications indicating that the column likely contains a large amount of text.
 
-ZomboDB configures an Elasticsearch analyzer named `exact` that is used to analyze all "text"-based Postgres types.  It is defined as:
+`zdb.fulltext_with_shingles` is akin to `zdb.fulltext` but uses a 2-gram single filter for high-speed right-truncated wildcard support.
 
-```json
-{
-   "tokenizer": "keyword",
-   "filter": ["trim", "zdb_truncate_32000", "lowercase"]
-}
-```
+## Language-specific DOMAIN types
 
-(the `zdb_truncate_32000` filter truncates the value at 32,000 characters).
-
-The intent here is to provide case-insensitive, "full-value" (ie, no tokenization) searching for "text"-based types.  If tokenization is necessary for a field, see the `phrase`/`fulltext` domains below.
-
-
-## About `phrase` and `fulltext` DOMAINS
-
-The `phrase`, `phrase_array`, and `fulltext` DOMAINS are all based on the Postgres `text` type (ie, `CREATE DOMAIN phrase AS text`).  Additionally, ZomboDB configures Elasticsearch analyzers of the same names.  All three are identically defined:
-
-```json
-{
-   "tokenizer": "standard",
-   "filter": ["lowercase"]
-}
-```
-
-Generally, this works well for latin-based languages.  Note that the analyzer does **NOT** perform stemming or stop-word removal.  This is by design.  Should you also need these abilities, you should use one of the language-specific domains.
-
-Note that fields of type `phrase` (and `phrase_array`) **are** included in Elasticsearch's `_all` field, whereas fiels of type `fulltext` are not (but are expanded at search time to include such fields).
-
-## About `fulltext_with_shingles` DOMAIN
-
-The `fulltext_with_shingles` DOMAIN is similar to the `fulltext` DOMAIN described above, except its underlying definition is such that it emits tokens not only as single terms, but pairs of terms (separated by the dollar sign).
-
-When you need high-speed right-trucated wildcard support, especially when used in "quoted phrases", this is probably the data type you want to use.
-
-Like `fulltext`, fields of this type are **not** included in the `_all` field, but queries against such fields are instead expanded at search time.
-
-## About langauge-specific DOMAINS
-
-ZomboDB includes a set of 33 additional domains named after the language they're intented to represent.  Each DOMAIN uses the similarly-named Elasticsearch analyzer, and follows the analysis rules of that analyzer.
-
-The set of supported languages is:
+As noted earlier, ZomboDB provide support for all of Elasticsearch's language analyzers, exposed as Postgres DOMAINs.  This allows you to create tables with columns of type `portuguese` or `thai`, for example.  The complete set of language domains is:
 
 ```
-   arabic, armenian, basque, brazilian, 
-   bulgarian, catalan, chinese, cjk, 
-   czech, danish, dutch, english, 
-   finnish, french, galician, german, 
-   greek, hindi, hungarian, indonesian, 
-   irish, italian, latvian, norwegian, 
-   persian, portuguese, romanian, russian, 
-   sorani, spanish, swedish, turkish, 
-   thai
+arabic, armenian, basque, brazilian, bulgarian, catalan, chinese, cjk, 
+czech, danish, dutch, english, finnish, french, galician, german, greek, 
+hindi, hungarian, indonesian, irish, italian, latvian, norwegian, persian, 
+portuguese, romanian, russian, sorani, spanish, swedish, turkish, thai
 ```
 
-More details on how Elasticsearch analyzes each of these can be found in its [language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/analysis-lang-analyzer.html) documentation.
+More details on how Elasticsearch analyzes each of these can be found in its [language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html) documentation.
 
-Note that fields of langauge-specific DOMAINS are **not** included in Elasticsearch's `_all` field, but queries against `_all` are expanded at search time to include such fields.
+# Defining Custom Analyzers, Filters, Normalizers, Type Mappings
 
-# Creating Custom DOMAINS and Analyzers
+ZomboDB provides a set of SQL-level functions that allow you to define custom analyzer chains, filters, normalizers, along with custom type mappings.
 
-If none of the above DOMAINS and analyzers meet your needs, you can define your own.
+These are designed to be used with Postgres' `CREATE DOMAIN` command where the domain name exactly matches the analyzer name.
 
-ZomboDB includes a set of SQL-level functions to create an analyzer:
-
-```FUNCTION zdb_define_char_filter(name text, definition json)```
-```FUNCTION zdb_define_filter(name text, definition json)```
-```FUNCTION zdb_define_analyzer(name text, definition json)```
-
-In all cases, the `definition` argument is the JSON object definition of that particular construct.  For example, ZomboDB's `zdb_truncate_32000` filter would be defined as:
+## Analysis Definition Functions
 
 ```sql
-SELECT zdb_define_filter('zdb_truncate_32000', '{ "type": "truncate", "length":32000 }');
+FUNCTION zdb.define_analyzer(name text, definition json)
 ```
 
-The complete set of char_filters, filters, and analyzers are configured for every index you create.  Once you've defined everything necessary to build your custom analyzer, you must create a domain (ie, `CREATE DOMAIN foo AS text`) on top of Postgres' `text` type (can also be on top of `varchar(<length>)` with the **same name as the analyzer**.  Then you're free to use it as a type in your tables.
+Allows for the definition of Elasticsearch [custom analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-custom-analyzer.html).  Depending on the complexity of the analyzer you need to define, you'll likely first need to define custom filters or tokenizers, as described below.
 
-The Elasticsearch [analyzer documentation](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/analysis-analyzers.html) explains what the various parts of an analyzer are and how to define them in JSON.  
+In order to use a custom analyzer you must make a custom Postgres DOMAIN with the same name, and then you can use that DOMAIN as column type in your tables.
 
-> The important bit here is that ZomboDB requires a Postgres `DOMAIN` with the same name.
+You can also use the custom analyzer in conjunction with a custom field mapping via the `zdb.define_field_mapping()` function described below.
 
-Note that if your custom DOMAIN is defined `AS text`, fields of that type are **not** included in Elasticsearch's `_all` field, but are expanded at query time to include such fields.  However, if the custom DOMAIN is defined `AS varchar(<length>)`, the field **is** included in the `_all` field. 
+Note that making changes to any of the analysis definitions will require a `REINDEX` of any indices that use the things you changed.
 
-## About the `_all` Field
-
-ZomboDB enables Elasticsearch's `_all` field and it is configured to use ZomboDB's `phrase` analyzer.
-
-The `_all` field only includes "text" and date/timestamp fields (fields of type `text`, `varchar`, `character`, `date`, `time`, `timestamp`, `json`, `jsonb`), unless the field is of type `fulltext` or a custom DOMAIN defined `AS text`.  
-
-If the custom DOMAIN type is defined `AS varchar(<length>)` then it **is** included in the `_all` field.
-
-Note that for "text" fields not included in `_all`, ZomboDB expands queries to include such fields.  This means that in general, it's transparent to you that some fields aren't included in `_all` and also ensures that the proper analyzer is used at search time.  ZomboDB does **not** expand queries to non-"text" fields (ie, `integer`, `bigint`, `boolean`, etc).
-
-# Custom Field Mappings
-
-ZomboDB also allows you to set custom field mappings per table.field.  This begins by calling ZomboDB's `zdb_define_mapping()` function:
+---
 
 ```sql
-FUNCTION zdb_define_mapping(table_name regclass, field_name text, definition json);
+FUNCTION zdb.define_filter(name text, definition json)
 ```
 
-An example for a field named `content` might be:
+Allows for the definition of a custom Elasticsearch [token filter](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html).
+
+---
 
 ```sql
-SELECT zdb_define_mapping('my_table', 'content', '{
-          "store": false,
-          "type": "string",
-          "index_options": "positions",
-          "include_in_all": "false",
-          "analyzer": "fulltext",
-          "fielddata": {
-            "format": "disabled"
-          },
-          "norms": {
-            "enabled": false
-          }
+FUNCTION zdb.define_char_filter(name text, definition json) 
+```
+
+Allows for the definition of a custom Elasticsearch [character filter](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html).
+
+---
+
+```sql
+FUNCTION zdb.define_tokenizer(name text, definition json)
+```
+
+Allows for the definition of a custom Elasticsearch [tokenizer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html).
+
+---
+
+```sql
+FUNCTION zdb.define_normalizer(name text, definition json) 
+```
+
+Allows for the definition of a custom Elasticsearch [normalizer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-normalizers.html).
+
+---
+
+```sql
+FUNCTION zdb.define_type_mapping(type_name regtype, definition json)
+```
+
+If you need to define a type mapping for a Postgres datatype that isn't included in ZomboDB's defaults (`citext`, for example), this is the function to use.
+
+## Field-Specific Mapping Functions
+
+Rather than using DOMAIN types to map Postgres types to an Elasticsearch analyzer, you can also define field-specific mappings per table and field.
+
+This approach can be quite powerful as you can set, per field, all the mapping properties that Elasticsearch allows, and you don't need to create and manage custom DOMAIN types.
+
+
+```sql
+FUNCTION zdb.define_field_mapping(table_name regclass, field_name name, definition json) 
+```
+
+If you need to define a field mapping for a specific field in a specific table, this is the function to use.  You can specify any [custom mapping definition json](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-params.html) that is supported by Elasticsearch.
+
+Creating or changing a field mapping requires a `REINDEX` of the specified table.
+
+---
+
+```sql
+FUNCTION zdb.define_es_only_field(table_name regclass, field_name name, definition json)
+```
+
+If you want a custom field that only exists in the Elasticsearch index (perhaps as a target to the mapping [`copy_to`](https://www.elastic.co/guide/en/elasticsearch/reference/current/copy-to.html) property, you can use this.
+
+Any field you create here can be searched and used with aggregates, but won't be SELECT-able by Postgres.
+
+Creating or changing an Elasticearch-only field requires a `REINDEX` of the specified table.
+
+## Example
+
+```sql
+SELECT zdb.define_tokenizer('example_tokenizer', '{
+          "type": "pattern",
+          "pattern": "_"
         }');
+SELECT zdb.define_analyzer('example', '{
+          "tokenizer": "example_tokenizer"
+        }');
+CREATE DOMAIN example AS text;
+CREATE TABLE foo (
+   id serial8,
+   some_field example
+);
+CREATE INDEX idxfoo ON foo USING zombodb ((foo.*));
+INSERT INTO foo (some_field) VALUES ('this_is_a_test');
+SELECT * FROM foo WHERE foo ==> 'some_field:this';
 ```
 
-Note that this is an advanced-use feature and the mapping you provide must definitely provide all the properties you might need (type, analyzer, etc) -- it completely replaces any ZomboDB-default mapping properties for the field.
+# Testing Analyzers
 
-The Elasticsearch [mapping documentation](https://www.elastic.co/guide/en/elasticsearch/reference/1.7/mapping.html) explains in detail what can be used here.
+ZomboDB provides a few functions that can be used to evaluate how an analyzer actually tokenizes text.
 
-Note that ZomboDB **does not** store document source, and that Elasticsearch's default setting for per-field storage is false (ie, `"store":false`).  Setting `"store":true` is a waste of disk space as ZomboDB will never use it.
+```sql
+FUNCTION zdb.analyze_with_field(
+	index regclass, 
+	field name, 
+	text text) 
+RETURNS TABLE (
+	type text, 
+	token text, 
+	"position" int, 
+	start_offset int, 
+	end_offset int)
+```
 
+This function allows you to evaluate text analysis using the analyzer already defined for a particular field.
 
-# How to Apply Changes to Custom Analyzers or Field Mappings
+Examples:
 
-When you make a change to an existing custom analyzer/filter/char_filter or a field mapping, you need to `REINDEX INDEX index_name` any indexes that use the thing you changed.  Otherwise, your changes will not be visible to the underlying Elasticsearch index.
+```sql
+SELECT * FROM zdb.analyze_with_field('idxproducts', 'keywords', 'this is a test');
+ type |     token      | position | start_offset | end_offset 
+------+----------------+----------+--------------+------------
+ word | this is a test |        0 |            0 |         14
+(1 row)
+```
 
+```sql
+SELECT * FROM zdb.analyze_with_field('idxproducts', 'long_description', 'this is a test');
+    type    | token | position | start_offset | end_offset 
+------------+-------+----------+--------------+------------
+ <ALPHANUM> | this  |        0 |            0 |          4
+ <ALPHANUM> | is    |        1 |            5 |          7
+ <ALPHANUM> | a     |        2 |            8 |          9
+ <ALPHANUM> | test  |        3 |           10 |         14
+(4 rows)
+```
 
+---
 
+```sql
+FUNCTION zdb.analyze_text(
+	index regclass, 
+	analyzer text, 
+	text text) 
+RETURNS TABLE (
+	type text, 
+	token text, 
+	"position" int, 
+	start_offset int, 
+	end_offset int)
+```
 
+This function allows you to evaluate analysis using a specific analyzer name, either built-in to Elasticsearch or one of the custom analyzers you may have defined.
+
+Examples:
+
+```sql
+SELECT * FROM zdb.analyze_text('idxproducts', 'keyword', 'this is a test');
+ type |     token      | position | start_offset | end_offset 
+------+----------------+----------+--------------+------------
+ word | this is a test |        0 |            0 |         14
+```
+
+```sql
+SELECT * FROM zdb.analyze_text('idxproducts', 'standard', 'this is a test');
+    type    | token | position | start_offset | end_offset 
+------------+-------+----------+--------------+------------
+ <ALPHANUM> | this  |        0 |            0 |          4
+ <ALPHANUM> | is    |        1 |            5 |          7
+ <ALPHANUM> | a     |        2 |            8 |          9
+ <ALPHANUM> | test  |        3 |           10 |         14
+```
+
+---
+
+```sql
+FUNCTION zdb.analyze_custom(
+	index regclass, 
+	text text DEFAULT NULL, 
+	tokenizer text DEFAULT NULL, 
+	normalizer text DEFAULT NULL, 
+	filter text[] DEFAULT NULL, 
+	char_filter text[] DEFAULT NULL) 
+RETURNS TABLE (
+	type text, 
+	token text, 
+	"position" int, 
+	start_offset int, 
+	end_offset int)
+```
+
+This function allows you to dynamically define a custom analyzer and test it in real-time.
+
+Example:
+
+```sql
+SELECT * FROM zdb.analyze_custom(
+	index=>'idxproducts', 
+	text=>'This is a test, 42 https://www.zombodb.com', 
+	tokenizer=>'whitespace', 
+	filter=>ARRAY['lowercase']);
+ type |          token          | position | start_offset | end_offset 
+------+-------------------------+----------+--------------+------------
+ word | this                    |        0 |            0 |          4
+ word | is                      |        1 |            5 |          7
+ word | a                       |        2 |            8 |          9
+ word | test,                   |        3 |           10 |         15
+ word | 42                      |        4 |           16 |         18
+ word | https://www.zombodb.com |        5 |           19 |         42
+(6 rows)
+```
+
+# About Elasticsearch's `_all` Field
+
+In short, ZomboDB disables Elasticsearch's `_all` field and instead configures its own field named `zdb_all`.  By default, all non-numeric field types are added to the `zdb_all` field.
+
+ZomboDB does this to maintain compatability between Elasticsearch 5 and Elasticsearch 6, where [ES 6 deprecates the `_all` field](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-all-field.html).

@@ -1,0 +1,34 @@
+-- these do things
+SELECT count(*) FROM events WHERE events ==> 'beer';
+ count 
+-------
+    22
+(1 row)
+
+SELECT count(*) FROM events WHERE events ==| ARRAY['beer', 'wine', 'cheese'];
+ count 
+-------
+    35
+(1 row)
+
+SELECT count(*) FROM events WHERE events ==& ARRAY['foo', 'bar'];
+ count 
+-------
+    49
+(1 row)
+
+SELECT count(*) FROM events WHERE events ==! ARRAY['beer', 'wine', 'cheese'];
+ count  
+--------
+ 126210
+(1 row)
+
+-- these raise errors
+select 'a'::text ==| array['foo', 'bar']::zdbquery[];
+ERROR:  zombodb comparision function called in invalid context or lhs is not a table reference
+select 'a'::text ==& array['foo', 'bar']::zdbquery[];
+ERROR:  zombodb comparision function called in invalid context or lhs is not a table reference
+select 'a'::text ==! array['foo', 'bar']::zdbquery[];
+ERROR:  zombodb comparision function called in invalid context or lhs is not a table reference
+select 'a'::text ==> 'foo'::zdbquery;
+ERROR:  zombodb comparision function called in invalid context or lhs is not a table reference

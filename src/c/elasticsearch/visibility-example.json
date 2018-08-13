@@ -1,0 +1,205 @@
+{
+  "bool": {
+    "must_not": [
+      {
+        "ids": {
+          "values": [
+            "zdb_aborted_xids"
+          ]
+        }
+      }
+    ],
+    "should": [
+      {
+        "bool": {
+          "must": [
+            {
+              "term": {
+                "zdb_xmin": {
+                  "value": "%lu"
+                }
+              }
+            },
+            {
+              "range": {
+                "zdb_cmin": {
+                  "from": null,
+                  "to": "%d",
+                  "include_lower": true,
+                  "include_upper": false
+                }
+              }
+            },
+            {
+              "bool": {
+                "should": [
+                  {
+                    "bool": {
+                      "must_not": [
+                        {
+                          "exists": {
+                            "field": "zdb_xmax"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "bool": {
+                      "must": [
+                        {
+                          "term": {
+                            "zdb_xmax": {
+                              "value": "%lu"
+                            }
+                          }
+                        },
+                        {
+                          "range": {
+                            "zdb_cmax": {
+                              "from": "%d",
+                              "to": null,
+                              "include_lower": true,
+                              "include_upper": true
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "bool": {
+          "must": [
+            {
+              "bool": {
+                "must_not": [
+                  {
+                    "terms": {
+                      "zdb_xmin": {
+                        "index": "%s",
+                        "type": "%s",
+                        "id": "zdb_aborted_xids",
+                        "path": "zdb_aborted_xids"
+                      }
+                    }
+                  },
+                  {
+                    "terms": {
+                      "zdb_xmin": "[%s]"
+                    }
+                  },
+                  {
+                    "range": {
+                      "zdb_xmin": {
+                        "from": "%lu",
+                        "to": null,
+                        "include_lower": true,
+                        "include_upper": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "bool": {
+                "should": [
+                  {
+                    "bool": {
+                      "must_not": [
+                        {
+                          "exists": {
+                            "field": "zdb_xmax"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "bool": {
+                      "must": [
+                        {
+                          "term": {
+                            "zdb_xmax": {
+                              "value": "%lu"
+                            }
+                          }
+                        },
+                        {
+                          "range": {
+                            "zdb_cmax": {
+                              "from": "%d",
+                              "to": null,
+                              "include_lower": true,
+                              "include_upper": true
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "bool": {
+                      "must": [
+                        {
+                          "bool": {
+                            "must_not": [
+                              {
+                                "term": {
+                                  "zdb_xmax": {
+                                    "value": "%lu"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "bool": {
+                            "should": [
+                              {
+                                "terms": {
+                                  "zdb_xmax": {
+                                    "index": "%s",
+                                    "type": "%s",
+                                    "id": "zdb_aborted_xids",
+                                    "path": "zdb_aborted_xids"
+                                  }
+                                }
+                              },
+                              {
+                                "terms": {
+                                  "zdb_xmax": "[%s]"
+                                }
+                              },
+                              {
+                                "range": {
+                                  "zdb_xmax": {
+                                    "from": "%lu",
+                                    "to": null,
+                                    "include_lower": true,
+                                    "include_upper": true
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

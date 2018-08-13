@@ -1,0 +1,18 @@
+SELECT count(*) FROM events TABLESAMPLE zdb.query_sampler('idxevents', 'beer');
+ count 
+-------
+    22
+(1 row)
+
+SELECT count(*) FROM events TABLESAMPLE zdb.sampler('idxevents', 100, '');
+ count 
+-------
+   100
+(1 row)
+
+SELECT count(*) FROM events TABLESAMPLE zdb.diversified_sampler('idxevents', 100, 'id', '');
+ count 
+-------
+   100
+(1 row)
+

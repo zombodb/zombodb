@@ -1,87 +1,83 @@
-# ZomboDB Installation
+# ZomboDB Installation Instructions
 
-ZomboDB consists of two pieces.  One is a Postgres Extension (written in C and SQL/PLPGSQL), and the other is an Elasticsearch plugin (written in Java).
-
-Currently ZomboDB supports Postgres `v9.3`, `v9.4`, or `v9.5` (on x86_64 Linux) and Elasticsearch `v5.6.4`.
+ZomboDB is a 100% native Postgres extension.  Additionally, ZomboDB is released as binary `.deb` and `.rpm` packages for popular Linux distributions.  As such, installation is fairly straightforward.
 
 
-## Postgres Extension
+## Prerequisites
 
-[Download](https://github.com/zombodb/zombodb/releases/latest) the `.rpm` or `.deb` package and execute the command approporiate for your Linux distribution:
+- Postgres 10.x installed
+- libcurl >= 7.28.0 installed
+- A 64bit Intel Architecture
 
-RHEL/CentOS:
+### Installation on CentOS/RHEL
 
-```
-# sudo rpm -Uvh zombodb-X.Y.Z-1.x86_64.rpm
-```
+Download the proper `.rpm` package for your CentOS/RHEL distro from https://www.zombodb.com/releases, and simply run:
 
-Ubuntu:
-
-```
-# sudo dpkg -i zombodb-Z.Y.Z_amd64.deb
+```shell
+$ rpm -Uvh zombodb_centos_7_pg10-1.0.0_x86_64.rpm
 ```
 
-**Note:**  The Postgres extension installs a few commit and executor hooks. As such it needs to be configured as a preloaded local library.  Do this by editing  `postgresql.conf` to add the following:
+### Installation on Ubuntu/Debian
 
-```
-local_preload_libraries = 'zombodb.so'
-```
+Download the proper `.deb` package for your Ubuntu/RHEL distro from https://www.zombodb.com/releases, and simply run:
 
-> Failure to add `zombodb.so` to `local_preload_libraries` will cause unexpected things in a database that has the extension installed!)
-
-After the above is done, restart Postgres.  Then you can create the extension in a new/existing database:
-
-```
-$ psql example -c "CREATE EXTENSION zombodb;"
+```shel
+$ dpkg -i zombodb_ubuntu_xenial_pg10-1.0.0_amd64.deb
 ```
 
-## Elasticsearch Plugin
+### Installation on MacOS
 
-ZomboDB's Elasticsearch plugin needs to be installed on **all** nodes of your Elasticsearch cluster.
+For MacOS, ZomboDB can only be installed from source.  Detailed compilation instructions are outside the scope of this document, but in general simply cloning the ZomboDB repository, switching to the `master-pg10` branch and running:
 
-[Download](https://github.com/zombodb/zombodb/releases/latest) the latest release `.zip` file and use Elasticsearch's plugin utility to install ZomboDB:
-
-For Elasticsearch 1.7:
-
-```
-# cd $ES_HOME
-# sudo bin/plugin -i zombodb -u file:///path/to/zombodb-plugin-X.X.X.zip
+```shell
+$ make clean install
 ```
 
-For Elasticsearch 2.4.6:
+should do the trick.  You'll need to make sure that Postgres' `pg_config` command-line utility is in your path and that you have the extension development headers (known as PGXS) installed as well.  
 
+## `postgresql.conf` settings to consider
+
+ZomboDB defaults to zero Elasticsearch index replicas.  If you're installing for a production system you might consider setting `zdb.default_replicas` to a better value.
+
+You might also consider setting `zdb.default_elasticsearch_url`.
+
+Both of these values can be set per index, so they're not strictly necessary to set in `postgresql.conf`.
+
+Make sure to read about ZomboDB's [configuration settings](CONFIGURATION-SETTINGS.md) and its [index options](INDEX-MANAGEMENT.md#with--options).
+
+## Verifying Installation
+
+Once installed, ensure Postgres is running (it does **not** need to be restarted).  Then you can create a test database and create the ZomboDB extension.
+
+```shell
+$ createdb zdb_test
+$ psql zdb_test
+psql (10.1)
+Type "help" for help.
+
+zdb_test=# CREATE EXTENSION zombodb;
+CREATE EXTENSION
 ```
-# cd $ES_HOME
-# sudo bin/plugin install file:///path/to/zombodb-plugin-X.X.X.zip
-```
 
-There are a few configuration settings that **must** be set in `elasticsearch.yml`:
+## Upgrading ZomboDB
 
-```
-http.compression: true
-http.max_content_length: 1024mb
-```
+When a new ZomboDB version is released and you need to upgrade you should first ensure you have exclusive access to all databases that use ZomboDB -- in other words, make sure there are no active connections.
 
-`http.max_content_length` must be greater than 8192kB, but `1024mb` is a good default.
-
-The `http.compression` setting is only necessary if you set the `compression_level` option on your ZomboDB indexes.  Using HTTP compression may or may not improve indexing performance -- the deciding factor will be the bandwith/latency of the network between Postgres and Elasticsearch.  Failure to set `http.compression` when you've set a `compression_level` will cause ZomboDB to fail when it communicates with Elasticsearch.
-
-Finally, restart the node.  Repeat for every node in your cluster.
-
-
-# Upgrading
-
-Upgrading to a new version of ZomboDB basically involves repeating the installation steps above, possibly first removing the existing `zombodb` Linux package.
-
-The existing Elasticsearch plugin will need to be removed (`bin/plugin -r zombodb`) before an updated version can be installed.
-
-When upgrading the Postgres extension (`zombodb.so`) it's a good idea to make sure the database has no active connections and that you immediately run:
+Once confirmed, you can simply install the new `.deb` or `.rpm` package then for each database that has the ZomboDB extension installed, simply run:
 
 ```sql
 ALTER EXTENSION zombodb UPDATE;
 ```
 
-in every database that contains the extension.
+There will be no need to restart Postgres.
 
-> ### NOTE
-Make sure to check the Release Notes of the version you're installing to see if a `REINDEX DATABASE` is required.  Generally, this is necessary only when either of the first two version numbers change.  For example, an upgrade from v2.5.4 to v2.6.14 would require a `REINDEX DATABASE` as well as an upgrade from v2.6.14 to v3.0.0.
+While it is unlikely, should a ZomboDB version upgrade require that indices be `REINDEX`ed, that will be noted in the release notes for that version.
+
+## Elasticsearch Considerations
+
+Keep in mind that ZomboDB requires Elasticsearch 5.6+ or 6.x.
+
+Detailed advice about managing and configuring Elasticsearch clusters is outside the scope of this document, however commerical support can be purached from ZomboDB, LLC.  Feel free to contact us via https://www.zombodb.com/services.
+
+That said, ZomboDB has been tested against various cloud-hosted Elasticsearch providers such as Bonsai (https://bonsai.io) and Elastic's own [Elasticsearch Service](https://www.elastic.co/cloud/elasticsearch-service).  ZomboDB can also be used with your own internally-managed Elasticsearch clusters.
+

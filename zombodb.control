@@ -1,0 +1,8 @@
+# ZomboDB extension
+comment = 'ZomboDB:  Making Postgres and Elasticsearch work together like it''s 2018'
+default_version = '10-1.0.0b1'
+module_pathname = '$libdir/zombodb'
+relocatable = false
+schema = zdb
+superuser = false
+
