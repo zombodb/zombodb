@@ -1,1 +1,0 @@
-SELECT assert(count(*), 35560, 'syntax-numeric_field_not_null') FROM so_posts WHERE zdb('so_posts', ctid) ==> 'answer_count<>null';

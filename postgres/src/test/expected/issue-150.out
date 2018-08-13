@@ -1,7 +1,0 @@
-SELECT v->'top-tags'->'buckets'
-FROM zdb_json_aggregate('so_posts', '{ "top-tags":{"terms":{"field":"tags", "size" : 3}}}', 'java') v;
-                                                 ?column?                                                 
-----------------------------------------------------------------------------------------------------------
- [{"key":"java","doc_count":2713},{"key":"design","doc_count":695},{"key":"programming","doc_count":528}]
-(1 row)
-
