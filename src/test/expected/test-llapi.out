@@ -1,0 +1,95 @@
+CREATE TABLE llapi (
+    id serial8,
+    title text,
+    ts timestamp default now()
+);
+CREATE INDEX idxllapi ON llapi USING zombodb ((llapi.*));
+SELECT zdb.llapi_direct_insert('idxllapi', '{"field":"this will ERROR"}'::json);
+ERROR:  To use ZomboDB's low-level API you must set llapi=true on the index
+ALTER INDEX idxllapi SET (llapi=true);
+INSERT INTO llapi (title) VALUES ('This will ERROR');
+ERROR:  ZomboDB indexes that use its low-level API (llapi=true) cannot be directly inserted into
+HINT:  You probably want to call SELECT zdb.llapi_direct_insert() instead
+CREATE RULE llapi_rule AS ON INSERT TO llapi DO INSTEAD (SELECT zdb.llapi_direct_insert('idxllapi', to_json(NEW)));
+INSERT INTO llapi (title) VALUES ('one');
+ llapi_direct_insert 
+---------------------
+ 
+(1 row)
+
+INSERT INTO llapi (title) VALUES ('two');
+ llapi_direct_insert 
+---------------------
+ 
+(1 row)
+
+INSERT INTO llapi (title) VALUES ('three');
+ llapi_direct_insert 
+---------------------
+ 
+(1 row)
+
+INSERT INTO llapi (title) VALUES ('four');
+ llapi_direct_insert 
+---------------------
+ 
+(1 row)
+
+INSERT INTO llapi (title) VALUES ('five');
+ llapi_direct_insert 
+---------------------
+ 
+(1 row)
+
+BEGIN;
+INSERT INTO llapi (title) VALUES ('six - aborted');
+ llapi_direct_insert 
+---------------------
+ 
+(1 row)
+
+ABORT;
+SELECT * FROM zdb.terms('idxllapi', 'title', dsl.match_all()) ORDER BY term;
+ term  | doc_count 
+-------+-----------
+ five  |         1
+ four  |         1
+ one   |         1
+ three |         1
+ two   |         1
+(5 rows)
+
+VACUUM llapi;
+SELECT * FROM zdb.terms('idxllapi', 'title', dsl.match_all()) ORDER BY term;
+ term  | doc_count 
+-------+-----------
+ five  |         1
+ four  |         1
+ one   |         1
+ three |         1
+ two   |         1
+(5 rows)
+
+VACUUM FULL llapi;
+SELECT * FROM zdb.terms('idxllapi', 'title', dsl.match_all()) ORDER BY term;
+ term  | doc_count 
+-------+-----------
+ five  |         1
+ four  |         1
+ one   |         1
+ three |         1
+ two   |         1
+(5 rows)
+
+REINDEX INDEX idxllapi;
+SELECT * FROM zdb.terms('idxllapi', 'title', dsl.match_all()) ORDER BY term;
+ term  | doc_count 
+-------+-----------
+ five  |         1
+ four  |         1
+ one   |         1
+ three |         1
+ two   |         1
+(5 rows)
+
+DROP TABLE llapi CASCADE;

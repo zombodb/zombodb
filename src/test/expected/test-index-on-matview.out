@@ -1,0 +1,16 @@
+CREATE MATERIALIZED VIEW matview_test AS SELECT * FROM events WHERE events ==> 'beer wine cheese';
+CREATE INDEX idxmatview_test ON matview_test USING zombodb ((matview_test));
+SELECT count(*) FROM matview_test WHERE matview_test ==> 'beer';
+ count 
+-------
+    35
+(1 row)
+
+REFRESH MATERIALIZED VIEW matview_test;
+SELECT count(*) FROM matview_test WHERE matview_test ==> 'beer';
+ count 
+-------
+    35
+(1 row)
+
+DROP MATERIALIZED VIEW matview_test CASCADE;

@@ -1,0 +1,90 @@
+SELECT NULL::zdbquery;
+ zdbquery 
+----------
+ 
+(1 row)
+
+SELECT ''::zdbquery;
+ zdbquery 
+----------
+ 
+(1 row)
+
+SELECT '-1'::zdbquery;
+ zdbquery 
+----------
+ -1
+(1 row)
+
+SELECT '-1,'::zdbquery;
+ zdbquery 
+----------
+ -1,
+(1 row)
+
+SELECT 'beer'::zdbquery;
+ zdbquery 
+----------
+ beer
+(1 row)
+
+SELECT ',beer'::zdbquery;
+ zdbquery 
+----------
+ ,beer
+(1 row)
+
+SELECT '-1,beer'::zdbquery;
+ zdbquery 
+----------
+ -1,beer
+(1 row)
+
+SELECT '42,beer'::zdbquery;
+ zdbquery 
+----------
+ 42,beer
+(1 row)
+
+SELECT '{"terms":{"subject":"beer"}}'::zdbquery;
+           zdbquery           
+------------------------------
+ {"terms":{"subject":"beer"}}
+(1 row)
+
+SELECT '-1,{"terms":{"subject":"beer"}}'::zdbquery;
+            zdbquery             
+---------------------------------
+ -1,{"terms":{"subject":"beer"}}
+(1 row)
+
+SELECT '42,{"terms":{"subject":"beer"}}'::zdbquery;
+            zdbquery             
+---------------------------------
+ 42,{"terms":{"subject":"beer"}}
+(1 row)
+
+SELECT ('42,{"terms":{"subject":"beer"}}'::zdbquery)::json;
+             json             
+------------------------------
+ {"terms":{"subject":"beer"}}
+(1 row)
+
+SELECT ('42,{"terms":{"subject":"beer"}}'::zdbquery)::jsonb;
+             jsonb              
+--------------------------------
+ {"terms": {"subject": "beer"}}
+(1 row)
+
+SELECT zdb.zdbquery(42, 'beer');
+ zdbquery 
+----------
+ 42,beer
+(1 row)
+
+SELECT zdb.zdbquery(42, '{"terms":{"subject":"beer"}}'::json);
+            zdbquery             
+---------------------------------
+ 42,{"terms":{"subject":"beer"}}
+(1 row)
+

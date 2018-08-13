@@ -1,0 +1,46 @@
+ALTER INDEX idxevents SET (replicas = 1, shards=32);
+WARNING:  Number of shards changed from 5 to 32.  You must issue a REINDEX before this change will take effect
+SELECT replicas FROM zdb.index_stats WHERE index_name = zdb.index_name('idxevents');
+ replicas 
+----------
+ 1
+(1 row)
+
+ALTER INDEX idxevents SET (replicas = 0, shards=5);
+WARNING:  Number of shards changed from 32 to 5.  You must issue a REINDEX before this change will take effect
+SELECT replicas FROM zdb.index_stats WHERE index_name = zdb.index_name('idxevents');
+ replicas 
+----------
+ 0
+(1 row)
+
+ALTER INDEX idxevents SET (type_name = 'cant_chage_this');
+ERROR:  The 'type_name' index properly can only be set during CREATE INDEX
+ALTER INDEX idxevents SET (uuid = 'foo');
+ERROR:  The 'uuid' index property cannot be changed
+ALTER TABLE events ADD COLUMN foo2 text;
+SELECT (zdb.index_mapping('idxevents')->'mappings'->'doc'->'properties'->'foo2')::jsonb;
+                                          jsonb                                          
+-----------------------------------------------------------------------------------------
+ {"type": "text", "copy_to": ["zdb_all"], "analyzer": "zdb_standard", "fielddata": true}
+(1 row)
+
+ALTER TABLE events DROP COLUMN foo2;
+ALTER INDEX idxevents RESET (alias);     SELECT substring(alias, 1, strpos(alias, '-')) FROM zdb.cat_aliases WHERE index = zdb.index_name('idxevents');
+                  substring                  
+---------------------------------------------
+ contrib_regression.public.events.idxevents-
+(1 row)
+
+ALTER INDEX idxevents SET (alias='foo'); SELECT substring(alias, 1, strpos(alias, '-')) FROM zdb.cat_aliases WHERE index = zdb.index_name('idxevents');
+ substring 
+-----------
+ 
+(1 row)
+
+ALTER INDEX idxevents RESET (alias);     SELECT substring(alias, 1, strpos(alias, '-')) FROM zdb.cat_aliases WHERE index = zdb.index_name('idxevents');
+                  substring                  
+---------------------------------------------
+ contrib_regression.public.events.idxevents-
+(1 row)
+

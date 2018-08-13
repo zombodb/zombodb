@@ -1,0 +1,2 @@
+CREATE INDEX idxevents ON events USING zombodb ((events)) WITH (bulk_concurrency=2, batch_size=2097152);
+CREATE INDEX idxusers ON users USING zombodb ((users)) WITH (bulk_concurrency=2, batch_size=2097152);

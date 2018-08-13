@@ -1,0 +1,16 @@
+src/sql/bootstrap.sql
+src/sql/support-functions.sql
+src/sql/zdbquerytype.sql
+src/sql/am-api.sql
+src/sql/query-dsl.sql
+src/sql/tablesamplers.sql
+src/sql/join-support.sql
+src/sql/score-support.sql
+src/sql/highlight-support.sql
+src/sql/mvcc-visibility.sql
+src/sql/aggregates.sql
+src/sql/analyze-support.sql
+src/sql/cat-api.sql
+src/sql/mapping.sql
+src/sql/llapi.sql
+src/sql/support-views.sql

@@ -1,0 +1,27 @@
+SET enable_seqscan TO OFF;
+SET enable_indexscan TO OFF;
+SET enable_bitmapscan TO OFF;
+SET enable_indexscan TO ON;
+EXPLAIN (COSTS OFF) SELECT id FROM events WHERE events ==> 'beer' LIMIT 10;
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Limit
+   ->  Index Scan using idxevents on events
+         Index Cond: (events.* ==> 'beer'::zdbquery)
+(3 rows)
+
+SELECT 1 FROM events WHERE events ==> 'beer' LIMIT 10;
+ ?column? 
+----------
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+(10 rows)
+

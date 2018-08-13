@@ -1,0 +1,32 @@
+select zdb.highlight(ctid, 'payload.commits.message') from events where events ==> 'payload.commits.message:*beer*' order by id limit 10;
+                                                                highlight                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ {"<em>Format tweaking, added beer</em>"}
+ {"<em>Format tweaking, added beer</em>"}
+ {"<em>Format tweaking, added beer</em>"}
+ {"<em>Format tweaking, added beer</em>"}
+ {"<em>Formatting beer fields</em>"}
+ {"<em>Hauler bugfix for hauler bugfix :beers:</em>"}
+ {"<em>Dont get brewery_guid from beers_t when it's not needed</em>","<em>More useful beers GetAll and Get integration test cases</em>"}
+ {"<em>Adjusting show view for beer</em>"}
+ {"<em>Fixing search beer</em>"}
+ {"<em>Refactoring beer search</em>"}
+(10 rows)
+
+set enable_indexscan to off;
+set enable_bitmapscan to off;
+select zdb.highlight(ctid, 'payload.commits.message') from events where events ==> 'payload.commits.message:*beer*' order by id limit 10;
+                                                                highlight                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ {"<em>Format tweaking, added beer</em>"}
+ {"<em>Format tweaking, added beer</em>"}
+ {"<em>Format tweaking, added beer</em>"}
+ {"<em>Format tweaking, added beer</em>"}
+ {"<em>Formatting beer fields</em>"}
+ {"<em>Hauler bugfix for hauler bugfix :beers:</em>"}
+ {"<em>Dont get brewery_guid from beers_t when it's not needed</em>","<em>More useful beers GetAll and Get integration test cases</em>"}
+ {"<em>Adjusting show view for beer</em>"}
+ {"<em>Fixing search beer</em>"}
+ {"<em>Refactoring beer search</em>"}
+(10 rows)
+
