@@ -60,7 +60,7 @@ installcheck-setup: src/test/sql/load-data.sql
 # "make clean"
 #
 
-EXTRA_CLEAN += src/sql/$(EXTENSION)--$(EXTVERSION).sql target/
+EXTRA_CLEAN += src/sql/$(EXTENSION)--$(EXTVERSION).sql
 
 #
 # build targets
