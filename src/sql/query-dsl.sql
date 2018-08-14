@@ -9,6 +9,7 @@ $$;
 -- all of these should be created in the 'dsl' schema
 --
 CREATE SCHEMA dsl;
+GRANT ALL ON SCHEMA dsl TO PUBLIC;
 
 CREATE OR REPLACE FUNCTION dsl.match_all(boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('match_all', json_build_object('boost', boost)))::zdbquery;
