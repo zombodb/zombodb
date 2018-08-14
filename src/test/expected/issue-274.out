@@ -1,5 +1,5 @@
-CREATE ROLE issue274;
-ERROR:  role "issue274" already exists
+DROP ROLE IF EXISTS issue274;
+CREATE ROLE issue274 WITH CREATEROLE;
 SET ROLE issue274;
 SELECT 'test'::zdb.fulltext;
  fulltext 
@@ -13,5 +13,3 @@ SELECT dsl.match_all();
  {"match_all":{}}
 (1 row)
 
-DROP ROLE issue274;
-ERROR:  permission denied to drop role
