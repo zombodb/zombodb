@@ -4,5 +4,5 @@ default_version = '10-1.0.0b2'
 module_pathname = '$libdir/zombodb'
 relocatable = false
 schema = zdb
-superuser = false
+superuser = true
 

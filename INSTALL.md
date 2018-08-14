@@ -49,6 +49,9 @@ Make sure to read about ZomboDB's [configuration settings](CONFIGURATION-SETTING
 
 Once installed, ensure Postgres is running (it does **not** need to be restarted).  Then you can create a test database and create the ZomboDB extension.
 
+Note that a Postgres "superuser" must issue the `CREATE EXTENSION zombodb;` statement.
+
+
 ```shell
 $ createdb zdb_test
 $ psql zdb_test
