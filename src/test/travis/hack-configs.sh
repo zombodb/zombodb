@@ -2,7 +2,7 @@
 
 
 cat << DONE >> /etc/postgresql/10/main/postgresql.conf
-client_min_messages=notice
+client_min_messages=warning
 autovacuum=off
 fsync=off
 zdb.default_elasticsearch_url = 'http://localhost:9200/'
