@@ -44,7 +44,7 @@ src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list
 # regression testing vars
 #
 
-REGRESS = $(shell if [ "x${TEST}" != "x" ] ; then echo --use-existing ${TEST} ; else (echo --use-existing && ls src/test/sql/test-*.sql | cut -f4 -d/ | cut -f1 -d . | sort) ; fi)
+REGRESS = $(shell if [ "x${TEST}" != "x" ] ; then echo --use-existing ${TEST} ; else (echo --use-existing && ls src/test/sql/test-*.sql src/test/sql/issue-*.sql | cut -f4 -d/ | cut -f1 -d . | sort) ; fi)
 REGRESS_OPTS = --inputdir=src/test
 
 src/test/sql/load-data.sql: src/test/sql/load-data.tmpl
