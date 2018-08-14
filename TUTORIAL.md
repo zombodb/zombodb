@@ -21,7 +21,7 @@ Lets begin with a new database named ``tutorial``.
 ```
 $ createdb tutorial
 $ psql tutorial
-psql (9.5.x)
+psql (10.1)
 Type "help" for help.
 
 tutorial=# 
