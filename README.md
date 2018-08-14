@@ -34,7 +34,8 @@ Commerical support for all versions of ZomboDB is available by [contacting Zombo
 
 ## Quick Links
 
- - [Installation Instructions](INSTALL.md), [Getting Started Tutorial](TUTORIAL.md)
+ - [Installation Instructions](INSTALL.md)
+ - [Getting Started Tutorial](TUTORIAL.md)
  - [Important Things to Know](THINGS-TO-KNOW.md)
  - [Query DSL](QUERY-DSL.md)
  - [Aggregations](AGGREGATIONS.md), [Table Samplers](TABLE-SAMPLERS.md), [Scoring and Highlighting](SCORING-HIGHLIGHTING.md)
