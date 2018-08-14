@@ -61,8 +61,5 @@ VACUUM c;
 -- should cause a DocumentAlreadyExists ERROR from Elasticsearch if this is bugged
 INSERT INTO c (c_id) VALUES (5);
 DROP TABLE a CASCADE;
-NOTICE:  drop cascades to 2 other objects
-DETAIL:  drop cascades to constraint b_fk_id on table b
-drop cascades to constraint c_fk_id on table c
 DROP TABLE b CASCADE;
 DROP TABLE c CASCADE;
