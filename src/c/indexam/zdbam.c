@@ -401,6 +401,11 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 									address = get_object_address(drop->removeType, object, &rel, AccessExclusiveLock,
 																 drop->missing_ok);
 
+									if (address.objectId == InvalidOid) {
+										/* the object doesn't exist, so there's nothing we need to do */
+										break;
+									}
+
 									tmp = getObjectIdentityParts(&address, &names, &args);
 									pfree(tmp);
 									switch (drop->removeType) {

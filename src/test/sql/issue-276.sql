@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS does_not_exist;
+DROP TABLE IF EXISTS does_not_exist;
+DROP SCHEMA IF EXISTS does_not_exist CASCADE;
