@@ -523,7 +523,7 @@ TupleDesc extract_tuple_desc_from_index_expressions(List *expressions) {
 			if (tpe->typtype != 'c') {
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
-								errmsg("ZomboDB Lite index definitions that use a function must use one that "
+								errmsg("ZomboDB index definitions that use a function must use one that "
 									   "returns a composite type")));
 			}
 

@@ -826,7 +826,7 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	definition_error:
 	ereport(ERROR,
 			(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
-					errmsg("ZomboDB Lite index definitions must have one column that is a whole row reference to the "
+					errmsg("ZomboDB index definitions must have one column that is a whole row reference to the "
 						   "table being indexed (ie, '(table_name.*)' or a function call that returns a "
 						   "composite type")));
 
@@ -1163,7 +1163,7 @@ static void amcostestimate(struct PlannerInfo *root, struct IndexPath *path, dou
 
 	/*
 	 * we subtract random_page_cost from the total cost because Postgres assumes we'll read at least
-	 * one index page, and that's just not true for ZomboDB Lite -- we have no pages on disk
+	 * one index page, and that's just not true for ZomboDB -- we have no pages on disk
 	 *
 	 * Assuming default values for random_page_cost and seq_page_cost, this should always
 	 * get our IndexScans set to a lower cost than a sequential scan, which we don't necessarily prefer,
