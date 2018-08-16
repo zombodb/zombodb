@@ -22,7 +22,7 @@ EXTENSION = zombodb
 EXTVERSION = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
 MODULE_big = $(EXTENSION)
 DATA = $(wildcard src/sql/$(EXTENSION)--*--*.sql) src/sql/$(EXTENSION)--$(EXTVERSION).sql
-PGFILEDESC = "ZomboDB Lite"
+PGFILEDESC = "ZomboDB"
 
 #
 # object files 

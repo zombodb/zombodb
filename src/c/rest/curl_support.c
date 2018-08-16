@@ -79,7 +79,7 @@ static void curl_cleanup_callback(XactEvent event, void *arg) {
 /*
  * Initialize libcurl support for the current session.
  *
- * Should only be called once -- when ZomboDB Lite is loaded by the active backend
+ * Should only be called once -- when ZomboDB is loaded by the active backend
  */
 void curl_support_init(void) {
 	CURLcode rc;

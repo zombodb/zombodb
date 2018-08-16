@@ -19,7 +19,7 @@ CREATE OPERATOR pg_catalog.==> (
     LEFTARG = anyelement,
     RIGHTARG = zdbquery
 );
-COMMENT ON OPERATOR pg_catalog.==>(anyelement, zdbquery) IS 'ZomboDB Lite text search operator for Elasticsearch queries';
+COMMENT ON OPERATOR pg_catalog.==>(anyelement, zdbquery) IS 'ZomboDB text search operator for Elasticsearch queries';
 
 CREATE OPERATOR pg_catalog.==| (
     PROCEDURE = zdb.anyelement_cmpfunc_array_should,
@@ -27,7 +27,7 @@ CREATE OPERATOR pg_catalog.==| (
     LEFTARG = anyelement,
     RIGHTARG = zdbquery[]
 );
-COMMENT ON OPERATOR pg_catalog.==|(anyelement, zdbquery[]) IS 'ZomboDB Lite array "should" text search operator for Elasticsearch queries';
+COMMENT ON OPERATOR pg_catalog.==|(anyelement, zdbquery[]) IS 'ZomboDB array "should" text search operator for Elasticsearch queries';
 
 CREATE OPERATOR pg_catalog.==& (
     PROCEDURE = zdb.anyelement_cmpfunc_array_must,
@@ -35,7 +35,7 @@ CREATE OPERATOR pg_catalog.==& (
     LEFTARG = anyelement,
     RIGHTARG = zdbquery[]
 );
-COMMENT ON OPERATOR pg_catalog.==&(anyelement, zdbquery[]) IS 'ZomboDB Lite array "must" text search operator for Elasticsearch queries';
+COMMENT ON OPERATOR pg_catalog.==&(anyelement, zdbquery[]) IS 'ZomboDB array "must" text search operator for Elasticsearch queries';
 
 CREATE OPERATOR pg_catalog.==! (
     PROCEDURE = zdb.anyelement_cmpfunc_array_not,
@@ -43,7 +43,7 @@ CREATE OPERATOR pg_catalog.==! (
     LEFTARG = anyelement,
     RIGHTARG = zdbquery[]
 );
-COMMENT ON OPERATOR pg_catalog.==!(anyelement, zdbquery[]) IS 'ZomboDB Lite array "not" text search operator for Elasticsearch queries';
+COMMENT ON OPERATOR pg_catalog.==!(anyelement, zdbquery[]) IS 'ZomboDB array "not" text search operator for Elasticsearch queries';
 
 CREATE OPERATOR CLASS anyelement_text_ops DEFAULT FOR TYPE anyelement USING zombodb AS
     OPERATOR 1 pg_catalog.==>(anyelement, zdbquery),
