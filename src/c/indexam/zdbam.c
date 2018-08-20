@@ -166,6 +166,20 @@ static void finish_inserts() {
 	insert_contexts = NULL;
 }
 
+static void subxact_callback(SubXactEvent event, SubTransactionId mySubid, SubTransactionId parentSubid, void *arg) {
+	switch (event) {
+		case SUBXACT_EVENT_START_SUB:
+			elog(NOTICE, "START: top xid=%d, parent=%d, sub=%d, curr=%d", GetTopTransactionId(), parentSubid, mySubid, GetCurrentTransactionId());
+			break;
+		case SUBXACT_EVENT_ABORT_SUB:
+			elog(NOTICE, "ABORT: top xid=%d, parent=%d, sub=%d, curr=%d", GetTopTransactionId(), parentSubid, mySubid, GetCurrentTransactionId());
+			break;
+		default:
+			break;
+	}
+}
+
+
 /*lint -esym 715,arg ignore unused param */
 static void xact_commit_callback(XactEvent event, void *arg) {
 	/* when about to commit, finish any inserts we might not yet have sent to Elasticsearch */
@@ -686,6 +700,7 @@ void zdb_aminit(void) {
 
 	/* register xact callbacks and planner hooks */
 	RegisterXactCallback(xact_commit_callback, NULL);
+	RegisterSubXactCallback(subxact_callback, NULL);
 
 	prev_ExecutorStartHook  = ExecutorStart_hook;
 	prev_ExecutorEndHook    = ExecutorEnd_hook;
