@@ -157,7 +157,7 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
     public String getNestedPath() {
         if (fieldname == null)
             return null;
-        int idx = fieldname.indexOf('.');
+        int idx = fieldname.lastIndexOf('.');
         if (idx == -1)
             return null;
         return fieldname.substring(0, idx);

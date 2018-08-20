@@ -85,4 +85,36 @@ WHERE zdb('issue272', ctid) ==> 'data.obj1.key1=val1 WITH data.obj1.key2=val1';
     | }
 (1 row)
 
+-- should also return id=1
+select * from issue272 where zdb('issue272', ctid) ==> 'data.obj1.key1:val1' and id = 1;
+ id |         data          
+----+-----------------------
+  1 | {                    +
+    |   "obj1": [          +
+    |     {                +
+    |       "key1": "val1",+
+    |       "key2": "val1" +
+    |     },               +
+    |     {                +
+    |       "key1": "val2",+
+    |       "key2": "val2" +
+    |     },               +
+    |     {                +
+    |       "key1": "val1",+
+    |       "key2": "val2" +
+    |     }                +
+    |   ]                  +
+    | }
+(1 row)
+
+-- should return all values for data.obj1.key1
+select * from zdb_tally('issue272', 'data.obj1.key1', '^.*', '', 5000, 'term');
+ term  | count 
+-------+-------
+ val1  |     2
+ val10 |     2
+ val2  |     1
+ val20 |     1
+(4 rows)
+
 DROP TABLE issue272 CASCADE;

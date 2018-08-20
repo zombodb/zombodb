@@ -1707,7 +1707,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
                         "          }\n" +
                         "        },\n" +
-                        "        \"path\" : \"review_data_ben\"\n" +
+                        "        \"path\" : \"review_data_ben.coding\"\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"nested\" : {\n" +

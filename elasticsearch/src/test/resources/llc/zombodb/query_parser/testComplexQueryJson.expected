@@ -25,7 +25,7 @@
                           }
                         }
                       },
-                      "path" : "long",
+                      "path" : "long.dotted",
                       "ignore_unmapped" : false,
                       "score_mode" : "avg",
                       "boost" : 1.0

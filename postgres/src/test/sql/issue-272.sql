@@ -66,4 +66,13 @@ SELECT *
 FROM issue272
 WHERE zdb('issue272', ctid) ==> 'data.obj1.key1=val1 WITH data.obj1.key2=val1';
 
+
+-- should also return id=1
+select * from issue272 where zdb('issue272', ctid) ==> 'data.obj1.key1:val1' and id = 1;
+
+
+-- should return all values for data.obj1.key1
+select * from zdb_tally('issue272', 'data.obj1.key1', '^.*', '', 5000, 'term');
+
+
 DROP TABLE issue272 CASCADE;
