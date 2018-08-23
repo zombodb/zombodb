@@ -1731,18 +1731,53 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  \"nested\" : {\n" +
                         "    \"query\" : {\n" +
                         "      \"bool\" : {\n" +
-                        "        \"must\" : [ {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"review_data_ben.review_data_id\" : 67115\n" +
+                        "        \"must\" : [\n" +
+                        "          {\n" +
+                        "            \"term\" : {\n" +
+                        "              \"review_data_ben.review_data_id\" : {\n" +
+                        "                \"value\" : 67115,\n" +
+                        "                \"boost\" : 1.0\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          },\n" +
+                        "          {\n" +
+                        "            \"nested\" : {\n" +
+                        "              \"query\" : {\n" +
+                        "                \"bool\" : {\n" +
+                        "                  \"must\" : [\n" +
+                        "                    {\n" +
+                        "                      \"terms\" : {\n" +
+                        "                        \"review_data_ben.coding.responsiveness\" : [\n" +
+                        "                          \"responsive\",\n" +
+                        "                          \"potentially responsive\",\n" +
+                        "                          \"not responsive\",\n" +
+                        "                          \"unreviewable\"\n" +
+                        "                        ],\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  ],\n" +
+                        "                  \"disable_coord\" : false,\n" +
+                        "                  \"adjust_pure_negative\" : true,\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
+                        "              },\n" +
+                        "              \"path\" : \"review_data_ben.coding\",\n" +
+                        "              \"ignore_unmapped\" : false,\n" +
+                        "              \"score_mode\" : \"avg\",\n" +
+                        "              \"boost\" : 1.0\n" +
+                        "            }\n" +
                         "          }\n" +
-                        "        }, {\n" +
-                        "          \"terms\" : {\n" +
-                        "            \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
-                        "          }\n" +
-                        "        } ]\n" +
+                        "        ],\n" +
+                        "        \"disable_coord\" : false,\n" +
+                        "        \"adjust_pure_negative\" : true,\n" +
+                        "        \"boost\" : 1.0\n" +
                         "      }\n" +
                         "    },\n" +
-                        "    \"path\" : \"review_data_ben\"\n" +
+                        "    \"path\" : \"review_data_ben\",\n" +
+                        "    \"ignore_unmapped\" : false,\n" +
+                        "    \"score_mode\" : \"avg\",\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -2054,34 +2089,84 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  \"nested\" : {\n" +
                         "    \"query\" : {\n" +
                         "      \"bool\" : {\n" +
-                        "        \"must\" : [ {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"should\" : [ {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"review_data.owner_username\" : \"e_ridge\"\n" +
+                        "        \"must\" : [\n" +
+                        "          {\n" +
+                        "            \"bool\" : {\n" +
+                        "              \"should\" : [\n" +
+                        "                {\n" +
+                        "                  \"nested\" : {\n" +
+                        "                    \"query\" : {\n" +
+                        "                      \"bool\" : {\n" +
+                        "                        \"must\" : [\n" +
+                        "                          {\n" +
+                        "                            \"term\" : {\n" +
+                        "                              \"review_data.owner_username\" : {\n" +
+                        "                                \"value\" : \"e_ridge\",\n" +
+                        "                                \"boost\" : 1.0\n" +
+                        "                              }\n" +
+                        "                            }\n" +
+                        "                          },\n" +
+                        "                          {\n" +
+                        "                            \"terms\" : {\n" +
+                        "                              \"review_data.status_name\" : [\n" +
+                        "                                \"review_updated\",\n" +
+                        "                                \"review_checked_out\"\n" +
+                        "                              ],\n" +
+                        "                              \"boost\" : 1.0\n" +
+                        "                            }\n" +
+                        "                          }\n" +
+                        "                        ],\n" +
+                        "                        \"disable_coord\" : false,\n" +
+                        "                        \"adjust_pure_negative\" : true,\n" +
+                        "                        \"boost\" : 1.0\n" +
+                        "                      }\n" +
+                        "                    },\n" +
+                        "                    \"path\" : \"review_data\",\n" +
+                        "                    \"ignore_unmapped\" : false,\n" +
+                        "                    \"score_mode\" : \"avg\",\n" +
+                        "                    \"boost\" : 1.0\n" +
                         "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"terms\" : {\n" +
-                        "                    \"review_data.status_name\" : [ \"review_updated\", \"review_checked_out\" ]\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"nested\" : {\n" +
+                        "                    \"query\" : {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"review_data.status_name\" : {\n" +
+                        "                          \"value\" : \"review_ready\",\n" +
+                        "                          \"boost\" : 1.0\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    },\n" +
+                        "                    \"path\" : \"review_data\",\n" +
+                        "                    \"ignore_unmapped\" : false,\n" +
+                        "                    \"score_mode\" : \"avg\",\n" +
+                        "                    \"boost\" : 1.0\n" +
                         "                  }\n" +
-                        "                } ]\n" +
+                        "                }\n" +
+                        "              ],\n" +
+                        "              \"disable_coord\" : false,\n" +
+                        "              \"adjust_pure_negative\" : true,\n" +
+                        "              \"boost\" : 1.0\n" +
+                        "            }\n" +
+                        "          },\n" +
+                        "          {\n" +
+                        "            \"term\" : {\n" +
+                        "              \"review_data.project_id\" : {\n" +
+                        "                \"value\" : 1040,\n" +
+                        "                \"boost\" : 1.0\n" +
                         "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"review_data.status_name\" : \"review_ready\"\n" +
-                        "              }\n" +
-                        "            } ]\n" +
+                        "            }\n" +
                         "          }\n" +
-                        "        }, {\n" +
-                        "          \"term\" : {\n" +
-                        "            \"review_data.project_id\" : 1040\n" +
-                        "          }\n" +
-                        "        } ]\n" +
+                        "        ],\n" +
+                        "        \"disable_coord\" : false,\n" +
+                        "        \"adjust_pure_negative\" : true,\n" +
+                        "        \"boost\" : 1.0\n" +
                         "      }\n" +
                         "    },\n" +
-                        "    \"path\" : \"review_data\"\n" +
+                        "    \"path\" : \"review_data\",\n" +
+                        "    \"ignore_unmapped\" : false,\n" +
+                        "    \"score_mode\" : \"avg\",\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -2954,73 +3039,162 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         assertJson("nested.exact_field:(a with b with (c or d with e)) and nested2.exact_field:(a with b)",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"must\" : [ {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"nested.exact_field\" : \"a\"\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"nested.exact_field\" : \"b\"\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"should\" : [ {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"nested.exact_field\" : \"c\"\n" +
-                        "                  }\n" +
-                        "                }, {\n" +
+                        "    \"must\" : [\n" +
+                        "      {\n" +
+                        "        \"nested\" : {\n" +
+                        "          \"query\" : {\n" +
+                        "            \"bool\" : {\n" +
+                        "              \"must\" : [\n" +
+                        "                {\n" +
                         "                  \"bool\" : {\n" +
-                        "                    \"must\" : {\n" +
-                        "                      \"bool\" : {\n" +
-                        "                        \"must\" : [ {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"nested.exact_field\" : \"d\"\n" +
+                        "                    \"must\" : [\n" +
+                        "                      {\n" +
+                        "                        \"term\" : {\n" +
+                        "                          \"nested.exact_field\" : {\n" +
+                        "                            \"value\" : \"a\",\n" +
+                        "                            \"boost\" : 1.0\n" +
                         "                          }\n" +
-                        "                        }, {\n" +
-                        "                          \"term\" : {\n" +
-                        "                            \"nested.exact_field\" : \"e\"\n" +
+                        "                        }\n" +
+                        "                      },\n" +
+                        "                      {\n" +
+                        "                        \"term\" : {\n" +
+                        "                          \"nested.exact_field\" : {\n" +
+                        "                            \"value\" : \"b\",\n" +
+                        "                            \"boost\" : 1.0\n" +
                         "                          }\n" +
-                        "                        } ]\n" +
+                        "                        }\n" +
                         "                      }\n" +
-                        "                    }\n" +
+                        "                    ],\n" +
+                        "                    \"disable_coord\" : false,\n" +
+                        "                    \"adjust_pure_negative\" : true,\n" +
+                        "                    \"boost\" : 1.0\n" +
                         "                  }\n" +
-                        "                } ]\n" +
-                        "              }\n" +
-                        "            } ]\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"path\" : \"nested\"\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [ {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"nested2.exact_field\" : \"a\"\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"bool\" : {\n" +
+                        "                    \"should\" : [\n" +
+                        "                      {\n" +
+                        "                        \"nested\" : {\n" +
+                        "                          \"query\" : {\n" +
+                        "                            \"term\" : {\n" +
+                        "                              \"nested.exact_field\" : {\n" +
+                        "                                \"value\" : \"c\",\n" +
+                        "                                \"boost\" : 1.0\n" +
+                        "                              }\n" +
+                        "                            }\n" +
+                        "                          },\n" +
+                        "                          \"path\" : \"nested\",\n" +
+                        "                          \"ignore_unmapped\" : false,\n" +
+                        "                          \"score_mode\" : \"avg\",\n" +
+                        "                          \"boost\" : 1.0\n" +
+                        "                        }\n" +
+                        "                      },\n" +
+                        "                      {\n" +
+                        "                        \"nested\" : {\n" +
+                        "                          \"query\" : {\n" +
+                        "                            \"bool\" : {\n" +
+                        "                              \"must\" : [\n" +
+                        "                                {\n" +
+                        "                                  \"bool\" : {\n" +
+                        "                                    \"must\" : [\n" +
+                        "                                      {\n" +
+                        "                                        \"term\" : {\n" +
+                        "                                          \"nested.exact_field\" : {\n" +
+                        "                                            \"value\" : \"d\",\n" +
+                        "                                            \"boost\" : 1.0\n" +
+                        "                                          }\n" +
+                        "                                        }\n" +
+                        "                                      },\n" +
+                        "                                      {\n" +
+                        "                                        \"term\" : {\n" +
+                        "                                          \"nested.exact_field\" : {\n" +
+                        "                                            \"value\" : \"e\",\n" +
+                        "                                            \"boost\" : 1.0\n" +
+                        "                                          }\n" +
+                        "                                        }\n" +
+                        "                                      }\n" +
+                        "                                    ],\n" +
+                        "                                    \"disable_coord\" : false,\n" +
+                        "                                    \"adjust_pure_negative\" : true,\n" +
+                        "                                    \"boost\" : 1.0\n" +
+                        "                                  }\n" +
+                        "                                }\n" +
+                        "                              ],\n" +
+                        "                              \"disable_coord\" : false,\n" +
+                        "                              \"adjust_pure_negative\" : true,\n" +
+                        "                              \"boost\" : 1.0\n" +
+                        "                            }\n" +
+                        "                          },\n" +
+                        "                          \"path\" : \"nested\",\n" +
+                        "                          \"ignore_unmapped\" : false,\n" +
+                        "                          \"score_mode\" : \"avg\",\n" +
+                        "                          \"boost\" : 1.0\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    ],\n" +
+                        "                    \"disable_coord\" : false,\n" +
+                        "                    \"adjust_pure_negative\" : true,\n" +
+                        "                    \"boost\" : 1.0\n" +
                         "                  }\n" +
-                        "                }, {\n" +
-                        "                  \"term\" : {\n" +
-                        "                    \"nested2.exact_field\" : \"b\"\n" +
-                        "                  }\n" +
-                        "                } ]\n" +
-                        "              }\n" +
+                        "                }\n" +
+                        "              ],\n" +
+                        "              \"disable_coord\" : false,\n" +
+                        "              \"adjust_pure_negative\" : true,\n" +
+                        "              \"boost\" : 1.0\n" +
                         "            }\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"path\" : \"nested2\"\n" +
+                        "          },\n" +
+                        "          \"path\" : \"nested\",\n" +
+                        "          \"ignore_unmapped\" : false,\n" +
+                        "          \"score_mode\" : \"avg\",\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"nested\" : {\n" +
+                        "          \"query\" : {\n" +
+                        "            \"bool\" : {\n" +
+                        "              \"must\" : [\n" +
+                        "                {\n" +
+                        "                  \"bool\" : {\n" +
+                        "                    \"must\" : [\n" +
+                        "                      {\n" +
+                        "                        \"term\" : {\n" +
+                        "                          \"nested2.exact_field\" : {\n" +
+                        "                            \"value\" : \"a\",\n" +
+                        "                            \"boost\" : 1.0\n" +
+                        "                          }\n" +
+                        "                        }\n" +
+                        "                      },\n" +
+                        "                      {\n" +
+                        "                        \"term\" : {\n" +
+                        "                          \"nested2.exact_field\" : {\n" +
+                        "                            \"value\" : \"b\",\n" +
+                        "                            \"boost\" : 1.0\n" +
+                        "                          }\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    ],\n" +
+                        "                    \"disable_coord\" : false,\n" +
+                        "                    \"adjust_pure_negative\" : true,\n" +
+                        "                    \"boost\" : 1.0\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              ],\n" +
+                        "              \"disable_coord\" : false,\n" +
+                        "              \"adjust_pure_negative\" : true,\n" +
+                        "              \"boost\" : 1.0\n" +
+                        "            }\n" +
+                        "          },\n" +
+                        "          \"path\" : \"nested2\",\n" +
+                        "          \"ignore_unmapped\" : false,\n" +
+                        "          \"score_mode\" : \"avg\",\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
                         "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );
@@ -5627,6 +5801,122 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (fieldname=_all, operator=CONTAINS, value=beer, index=db.schema.table.index)\n" +
                         "            Word (fieldname=_all, operator=CONTAINS, value=wine, index=db.schema.table.index)\n" +
                         "            Word (fieldname=_all, operator=CONTAINS, value=cheese, index=db.schema.table.index)");
+    }
+
+    @Test
+    public void testIssue272_AST_WITH() throws Exception {
+        assertAST("(data.obj1.key1=val1 with data.obj1.key2=val1) with data.top_key:1",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      With\n" +
+                        "         Number (fieldname=data.top_key, operator=CONTAINS, value=1, index=db.schema.table.index)\n" +
+                        "         With\n" +
+                        "            Word (fieldname=data.obj1.key1, operator=EQ, value=val1, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=data.obj1.key2, operator=EQ, value=val1, index=db.schema.table.index)");
+    }
+
+    @Test
+    public void testIssue272_AST_WITH2() throws Exception {
+        assertAST("(data.obj1.key1=val1 with data.obj2.key2=val1) with data.top_key:1",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      With\n" +
+                        "         Number (fieldname=data.top_key, operator=CONTAINS, value=1, index=db.schema.table.index)\n" +
+                        "         With\n" +
+                        "            Word (fieldname=data.obj1.key1, operator=EQ, value=val1, index=db.schema.table.index)\n" +
+                        "         With\n" +
+                        "            Word (fieldname=data.obj2.key2, operator=EQ, value=val1, index=db.schema.table.index)");
+    }
+
+    @Test
+    public void testIssue272_AST_OR() throws Exception {
+        assertAST("data.top_key:1 with (data.obj1.key1=val1 or data.top_key=val1)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      With\n" +
+                        "         Number (fieldname=data.top_key, operator=CONTAINS, value=1, index=db.schema.table.index)\n" +
+                        "         Or\n" +
+                        "            Word (fieldname=data.top_key, operator=EQ, value=val1, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=data.obj1.key1, operator=EQ, value=val1, index=db.schema.table.index)");
+    }
+
+    @Test
+    public void testIssue272_AST_AND() throws Exception {
+        assertAST("data.top_key:1 with (data.obj1.key1=val1 and data.obj1.key2=val1)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      With\n" +
+                        "         Number (fieldname=data.top_key, operator=CONTAINS, value=1, index=db.schema.table.index)\n" +
+                        "         And\n" +
+                        "            Word (fieldname=data.obj1.key1, operator=EQ, value=val1, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=data.obj1.key2, operator=EQ, value=val1, index=db.schema.table.index)");
+    }
+
+    @Test
+    public void testIssue272_Json() throws Exception {
+        assertJson("data.top_key:1 with (data.obj1.key1=val1 WITH data.obj1.key2=val1)",
+                "{\n" +
+                        "  \"nested\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [\n" +
+                        "          {\n" +
+                        "            \"term\" : {\n" +
+                        "              \"data.top_key\" : {\n" +
+                        "                \"value\" : 1,\n" +
+                        "                \"boost\" : 1.0\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          },\n" +
+                        "          {\n" +
+                        "            \"nested\" : {\n" +
+                        "              \"query\" : {\n" +
+                        "                \"bool\" : {\n" +
+                        "                  \"must\" : [\n" +
+                        "                    {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"data.obj1.key1\" : {\n" +
+                        "                          \"value\" : \"val1\",\n" +
+                        "                          \"boost\" : 1.0\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    },\n" +
+                        "                    {\n" +
+                        "                      \"term\" : {\n" +
+                        "                        \"data.obj1.key2\" : {\n" +
+                        "                          \"value\" : \"val1\",\n" +
+                        "                          \"boost\" : 1.0\n" +
+                        "                        }\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  ],\n" +
+                        "                  \"disable_coord\" : false,\n" +
+                        "                  \"adjust_pure_negative\" : true,\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
+                        "              },\n" +
+                        "              \"path\" : \"data.obj1\",\n" +
+                        "              \"ignore_unmapped\" : false,\n" +
+                        "              \"score_mode\" : \"avg\",\n" +
+                        "              \"boost\" : 1.0\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        ],\n" +
+                        "        \"disable_coord\" : false,\n" +
+                        "        \"adjust_pure_negative\" : true,\n" +
+                        "        \"boost\" : 1.0\n" +
+                        "      }\n" +
+                        "    },\n" +
+                        "    \"path\" : \"data\",\n" +
+                        "    \"ignore_unmapped\" : false,\n" +
+                        "    \"score_mode\" : \"avg\",\n" +
+                        "    \"boost\" : 1.0\n" +
+                        "  }\n" +
+                        "}");
     }
 
 }

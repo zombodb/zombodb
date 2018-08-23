@@ -28,6 +28,7 @@ SELECT zdb_define_mapping('issue272', 'data', '{
 CREATE INDEX idxissue272 ON issue272 USING zombodb (zdb('issue272', ctid), zdb(issue272)) WITH (url='localhost:9200/');
 
 INSERT INTO issue272 (data) VALUES ('{
+  "top_key": 1,
   "obj1": [
     {
       "key1": "val1",
@@ -45,6 +46,7 @@ INSERT INTO issue272 (data) VALUES ('{
 }');
 
 INSERT INTO issue272 (data) VALUES ('{
+  "top_key": 2,
   "obj1": [
     {
       "key1": "val10",
@@ -74,5 +76,13 @@ select * from issue272 where zdb('issue272', ctid) ==> 'data.obj1.key1:val1' and
 -- should return all values for data.obj1.key1
 select * from zdb_tally('issue272', 'data.obj1.key1', '^.*', '', 5000, 'term');
 
+-- should return id=1
+SELECT * FROM issue272 WHERE zdb('issue272', ctid) ==> 'data.obj1.key1=val1 with data.obj1.key2=val1 with data.top_key=1';
+
+-- should return "val1"
+select * from zdb_tally('issue272', 'data.obj1.key1', true, '^.*', 'data.obj1.key1=val1 with data.obj1.key2=val1 with data.top_key=1', 5000, 'term');
+
+-- should return "val1" and "val2"
+select * from zdb_tally('issue272', 'data.obj1.key1', false, '^.*', 'data.obj1.key1=val1 with data.obj1.key2=val1 with data.top_key=1', 5000, 'term');
 
 DROP TABLE issue272 CASCADE;

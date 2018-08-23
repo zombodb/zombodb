@@ -643,42 +643,17 @@ public abstract class QueryRewriter {
         return fb;
     }
 
-    private int withDepth = 0;
-
     private QueryBuilder build(ASTWith node) {
-        List<String> nestedPaths = null;
+        BoolQueryBuilder bqb = boolQuery();
+        String path = null;
 
-        if (withDepth == 0)
-            nestedPaths = Utils.validateSameNestedPath(node);
-
-        BoolQueryBuilder fb = boolQuery();
-
-        withDepth++;
-        try {
-            for (QueryParserNode child : node) {
-                fb.must(build(child));
-            }
-        } finally {
-            withDepth--;
+        for (QueryParserNode child : node) {
+            if (path == null)
+                path = child.getNestedPath();
+            bqb.must(build(child));
         }
 
-        if (withDepth == 0) {
-            if (shouldJoinNestedFilter()) {
-                if (nestedPaths == null || nestedPaths.isEmpty())
-                    throw new RuntimeException("Never determined nested paths");
-
-                QueryBuilder qb = fb;
-                Collections.reverse(nestedPaths);
-                for (String path : nestedPaths) {
-                    qb = nestedQuery(path, qb, ScoreMode.Avg);
-                }
-                return qb;
-            } else {
-                return fb;
-            }
-        } else {
-            return fb;
-        }
+        return shouldJoinNestedFilter() ? nestedQuery(path, bqb, ScoreMode.Avg) : bqb;
     }
 
     private QueryBuilder build(ASTOr node) {
@@ -717,8 +692,6 @@ public abstract class QueryRewriter {
         }
         return qb;
     }
-
-    private final String nested = null;
 
     QueryBuilder build(ASTExpansion node) {
         QueryBuilder expansionBuilder = build(node.getQuery());
@@ -1203,28 +1176,27 @@ public abstract class QueryRewriter {
     }
 
     private QueryBuilder maybeNest(QueryParserNode node, QueryBuilder fb) {
-        if (withDepth == 0 && node.isNested(metadataManager)) {
+        if (!(node.jjtGetParent() instanceof ASTWith) && node.isNested(metadataManager)) {
             if (shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(), fb, ScoreMode.Avg);
             else
                 return fb;
-        } else if (!node.isNested(metadataManager)) {
-            if (_isBuildingAggregate)
-                return matchAllQuery();
-            return fb;  // it's not nested, so just return
+        } else {
+            if (!node.isNested(metadataManager)) {
+                if (_isBuildingAggregate)
+                    return matchAllQuery();
+                return fb;  // it's not nested, so just return
+            } else {
+                if (_isBuildingAggregate) {
+                    if (tree.getAggregate().getNestedPath().equals(node.getNestedPath()))
+                        return fb;  // it's the same nested object as the aggregate itself
+                    else
+                        return matchAllQuery(); // it's a different nested object, so we can just ignore it
+                }
+
+                return fb;
+            }
         }
-
-
-        if (nested != null) {
-            // we are currently nesting, so make sure this node's path
-            // matches the one we're in
-            if (node.getNestedPath().equals(nested))
-                return fb;  // since we're already nesting, no need to do anything
-            else
-                throw new QueryRewriteException("Attempt to use nested path '" + node.getNestedPath() + "' inside '" + nested + "'");
-        }
-
-        return fb;
     }
 
 

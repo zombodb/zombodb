@@ -148,10 +148,9 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
     public boolean isNested(IndexMetadataManager metadataManager) {
         if (fieldname != null && fieldname.contains(".")) {
             IndexMetadata md = metadataManager.getMetadataForField(fieldname);
-            if (md != null && md.isMultiField(fieldname))
-                return false;
+            return md == null || !md.isMultiField(fieldname);
         }
-        return fieldname != null && fieldname.contains(".");
+        return false;
     }
 
     public String getNestedPath() {
@@ -161,23 +160,6 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         if (idx == -1)
             return null;
         return fieldname.substring(0, idx);
-    }
-
-    public List<String> getNestedPaths() {
-        if (fieldname == null || !fieldname.contains("."))
-            return Collections.emptyList();
-
-        List<String> rc = new ArrayList<>();
-        String[] parts = fieldname.split("[.]");
-        StringBuilder tmp = new StringBuilder();
-
-        for (int i = 0; i < parts.length - 1; i++) {
-            if (i > 0) tmp.append('.');
-            tmp.append(parts[i]);
-            rc.add(tmp.toString());
-        }
-
-        return rc;
     }
 
     public ASTIndexLink getIndexLink() {
@@ -214,15 +196,15 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
         return null;
     }
 
-    public <T> Collection<T> getChildrenOfType(Class<T> t) {
+    public <T extends QueryParserNode> List<T> getChildrenOfType(Class<T> t) {
         return getChildrenOfType(this, t, new ArrayList<T>(), true);
     }
 
-    public <T> Collection<T> getChildrenOfType(Class<T> t, boolean recurse) {
+    public <T extends QueryParserNode> List<T> getChildrenOfType(Class<T> t, boolean recurse) {
         return getChildrenOfType(this, t, new ArrayList<T>(), recurse);
     }
 
-    private <T> List<T> getChildrenOfType(QueryParserNode node, Class t, List<T> list, boolean recurse) {
+    private <T extends QueryParserNode> List<T> getChildrenOfType(QueryParserNode node, Class t, List<T> list, boolean recurse) {
         for (QueryParserNode child : node) {
             boolean found = t.isAssignableFrom(child.getClass());
 

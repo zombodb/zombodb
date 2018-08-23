@@ -390,35 +390,6 @@ public class Utils {
         return arrayData;
     }
 
-    public static List<String> validateSameNestedPath(ASTWith node) {
-        QueryParserNode[] anyNode = new QueryParserNode[1];
-        validateSameNestedPath(node, null, anyNode);
-        return anyNode[0].getNestedPaths();
-    }
-
-    private static String validateSameNestedPath(QueryParserNode node, String nestedPath, QueryParserNode[] anyNode) {
-        if (!node.hasChildren())
-            return nestedPath;
-
-        for (QueryParserNode child : node) {
-            if (nestedPath == null) {
-                nestedPath = child.getNestedPath();
-                if (nestedPath != null && anyNode[0] == null)
-                    anyNode[0] = child;
-            }
-
-            if (child.hasChildren())
-                nestedPath = validateSameNestedPath(child, nestedPath, anyNode);
-            else if (nestedPath != null && !nestedPath.equals(child.getNestedPath()))
-                throw new RuntimeException("WITH chain must all belong to the same nested object");
-        }
-
-        if (nestedPath == null)
-            throw new RuntimeException("WITH chain must all belong to a nested object");
-
-        return nestedPath;
-    }
-
     public static QueryParserNode rewriteToken(Client client, IndexMetadataManager metadataManager, QueryParserNode node) throws RuntimeException {
         List<String> initialAnalyze;
         boolean hasWildcards = node instanceof ASTFuzzy;

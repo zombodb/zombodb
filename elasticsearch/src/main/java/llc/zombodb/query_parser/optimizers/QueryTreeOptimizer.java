@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,6 +39,7 @@ public class QueryTreeOptimizer {
         pullOutNodesOfType(tree, ASTSuggest.class, true);
         pullOutNodesOfType(tree, ASTOptions.class, true);
         pullOutNodesOfType(tree, ASTFieldLists.class, true);
+        validateWithOperators(tree);
         reduce(tree);
         validateAndFixProximityChainFieldnames(tree);
         expandFieldLists(tree, tree.getFieldLists());
@@ -50,6 +51,10 @@ public class QueryTreeOptimizer {
 
         reduce(tree);
         convertGeneratedExpansionsToASTOr(tree);
+
+        reduceWiths(tree);
+        sortWithOperators(tree);
+        generateWithNodesByPath(tree);
     }
 
     private void pullOutNodesOfType(ASTQueryTree tree, Class type, boolean recurse) {
@@ -170,7 +175,8 @@ public class QueryTreeOptimizer {
 
         if (root instanceof ASTAnd || root instanceof ASTOr) {
             boolean isAnd = root instanceof ASTAnd;
-            begin: while(true) {
+            begin:
+            while (true) {
                 for (int i = 0, many = root.getChildren().size(); i < many; i++) {
                     QueryParserNode child = root.getChild(i);
 
@@ -209,6 +215,20 @@ public class QueryTreeOptimizer {
         }
 
         parent.renumber();
+    }
+
+    static void reduceWiths(QueryParserNode root) {
+        for (QueryParserNode child : root)
+            reduceWiths(child);
+
+        if (root instanceof ASTWith) {
+            Node parent = root.jjtGetParent();
+            if (parent instanceof ASTWith) {
+                ((ASTWith) parent).removeNode(root);
+                ((ASTWith) parent).renumber();
+                ((ASTWith) parent).adoptChildren(root);
+            }
+        }
     }
 
     private void pullOutNullsFromArrays(QueryParserNode root) {
@@ -404,4 +424,105 @@ public class QueryTreeOptimizer {
         return stack;
     }
 
+    private void validateWithOperators(ASTQueryTree tree) {
+        for (ASTWith child : tree.getChildrenOfType(ASTWith.class)) {
+            // this will throw if the base paths don't match
+            child.validateNestedPaths();
+        }
+    }
+
+    private void sortWithOperators(QueryParserNode root) {
+        List<? extends QueryParserNode> nodes = root.getChildrenOfType(ASTWith.class);
+
+        if (root instanceof ASTQueryTree && nodes.isEmpty())
+            return;
+
+        if (nodes.isEmpty() && root.getChildren() != null) {
+            List<Node> children = new ArrayList<>(root.getChildren().values());
+            List<QueryParserNode> resort = new ArrayList<>();
+
+            sortChildrenByNestedPath(children, resort);
+
+            // reassign the children in order of ascending path length
+            root.getChildren().clear();
+            int i = 0;
+            for (Node node : children)
+                root.jjtAddChild(node, i++);
+
+            for (QueryParserNode node : resort)
+                sortWithOperators(node);
+
+        } else {
+            for (QueryParserNode with : nodes) {
+                List<Node> children = new ArrayList<>((with.getChildren().values()));
+                List<QueryParserNode> resort = new ArrayList<>();
+
+                sortChildrenByNestedPath(children, resort);
+
+                // reassign the children in order of ascending path length
+                with.getChildren().clear();
+                int i = 0;
+                for (Node node : children)
+                    with.jjtAddChild(node, i++);
+
+                for (QueryParserNode node : resort)
+                    sortWithOperators(node);
+
+            }
+        }
+    }
+
+    private void sortChildrenByNestedPath(List<Node> children, List<QueryParserNode> resort) {
+        children.sort((o1, o2) -> {
+            QueryParserNode a = (QueryParserNode) o1;
+            QueryParserNode b = (QueryParserNode) o2;
+            String aPath = a.getNestedPath();
+            String bPath = b.getNestedPath();
+
+            if (aPath == null)
+                resort.add(a);
+            if (bPath == null)
+                resort.add(b);
+
+            if (aPath == null || bPath == null)
+                return 0;
+
+            return aPath.compareTo(bPath);
+        });
+    }
+
+    private void generateWithNodesByPath(ASTQueryTree tree) {
+        for (ASTWith with : tree.getChildrenOfType(ASTWith.class)) {
+            generateWithNodesByPath(tree, with, with);
+        }
+    }
+
+    private void generateWithNodesByPath(ASTQueryTree tree, ASTWith with, QueryParserNode root) {
+        String currentPath = null;
+        ASTWith currentWith = with;
+        for (Node node : new ArrayList<>(root.getChildren().values())) {
+            QueryParserNode child = (QueryParserNode) node;
+
+            if (child.getNestedPath() == null) {
+                continue;
+            } else {
+
+                if (currentPath == null) {
+                    currentPath = child.getNestedPath();
+                } else if (!child.getNestedPath().equals(currentPath)) {
+//                    if (currentWith == with) {
+                        currentWith = new ASTWith(QueryParserTreeConstants.JJTWITH);
+                        root.replaceChild(child, currentWith);
+                        currentPath = child.getNestedPath();
+//                    }
+
+                    currentWith.jjtAddChild(child, currentWith.jjtGetNumChildren());
+                } else if (currentWith != with) {
+                    currentWith.jjtAddChild(child, currentWith.jjtGetNumChildren());
+                    root.removeNode(child);
+                    root.renumber();
+                }
+            }
+        }
+    }
 }
