@@ -42,7 +42,11 @@ INSERT INTO issue272 (data) VALUES ('{
       "key1": "val1",
       "key2": "val2"
     }
-  ]
+  ],
+  "not_nested_obj": {
+    "bool_field": true,
+    "num_field": 1
+  }
 }');
 
 INSERT INTO issue272 (data) VALUES ('{
@@ -60,7 +64,11 @@ INSERT INTO issue272 (data) VALUES ('{
       "key1": "val10",
       "key2": "val20"
     }
-  ]
+  ],
+  "not_nested_obj": {
+    "bool_field": true,
+    "num_field": 2
+  }
 }');
 
 -- should return id=1
@@ -84,5 +92,8 @@ select * from zdb_tally('issue272', 'data.obj1.key1', true, '^.*', 'data.obj1.ke
 
 -- should return "val1" and "val2"
 select * from zdb_tally('issue272', 'data.obj1.key1', false, '^.*', 'data.obj1.key1=val1 with data.obj1.key2=val1 with data.top_key=1', 5000, 'term');
+
+-- should return id=1 and id=2
+SELECT id FROM issue272 WHERE zdb('issue272', ctid) ==> 'data.not_nested_obj.bool_field:true' order by id;
 
 DROP TABLE issue272 CASCADE;

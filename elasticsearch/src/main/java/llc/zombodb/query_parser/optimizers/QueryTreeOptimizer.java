@@ -427,7 +427,7 @@ public class QueryTreeOptimizer {
     private void validateWithOperators(ASTQueryTree tree) {
         for (ASTWith child : tree.getChildrenOfType(ASTWith.class)) {
             // this will throw if the base paths don't match
-            child.validateNestedPaths();
+            child.validateNestedPaths(metadataManager);
         }
     }
 
@@ -476,18 +476,21 @@ public class QueryTreeOptimizer {
         children.sort((o1, o2) -> {
             QueryParserNode a = (QueryParserNode) o1;
             QueryParserNode b = (QueryParserNode) o2;
-            String aPath = a.getNestedPath();
-            String bPath = b.getNestedPath();
+            String aPath = a.getNestedPath(metadataManager);
+            String bPath = b.getNestedPath(metadataManager);
 
             if (aPath == null)
                 resort.add(a);
             if (bPath == null)
                 resort.add(b);
 
-            if (aPath == null || bPath == null)
+            if (a.getFieldname() == null || b.getFieldname() == null)
                 return 0;
 
-            return aPath.compareTo(bPath);
+            int alen = a.getFieldname().split("\\.").length;
+            int blen = b.getFieldname().split("\\.").length;
+            int cmp = alen - blen;
+            return cmp == 0 ? a.getFieldname().compareTo(b.getFieldname()) : cmp;
         });
     }
 
@@ -503,17 +506,17 @@ public class QueryTreeOptimizer {
         for (Node node : new ArrayList<>(root.getChildren().values())) {
             QueryParserNode child = (QueryParserNode) node;
 
-            if (child.getNestedPath() == null) {
+            if (child.getNestedPath(metadataManager) == null) {
                 continue;
             } else {
 
                 if (currentPath == null) {
-                    currentPath = child.getNestedPath();
-                } else if (!child.getNestedPath().equals(currentPath)) {
+                    currentPath = child.getNestedPath(metadataManager);
+                } else if (!child.getNestedPath(metadataManager).equals(currentPath)) {
 //                    if (currentWith == with) {
                         currentWith = new ASTWith(QueryParserTreeConstants.JJTWITH);
                         root.replaceChild(child, currentWith);
-                        currentPath = child.getNestedPath();
+                        currentPath = child.getNestedPath(metadataManager);
 //                    }
 
                     currentWith.jjtAddChild(child, currentWith.jjtGetNumChildren());

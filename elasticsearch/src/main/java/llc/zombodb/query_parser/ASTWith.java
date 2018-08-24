@@ -2,6 +2,8 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=false,NODE_PREFIX=AST,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package llc.zombodb.query_parser;
 
+import llc.zombodb.query_parser.metadata.IndexMetadataManager;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,10 +25,14 @@ class ASTWith extends llc.zombodb.query_parser.QueryParserNode {
     visitor.visit(this, data);
   }
 
-  public List<String> validateNestedPaths() {
-    List<String> paths = validateNestedPaths(this, new ArrayList<>());
+  public List<String> validateNestedPaths(IndexMetadataManager metadataManager) {
+    List<String> paths = validateNestedPaths(metadataManager, this, new ArrayList<>());
     if (paths.size() == 1)
       return paths;
+
+    if (paths.isEmpty()) {
+      throw new RuntimeException("No fields in\n" + dumpAsString() + " are actually nested");
+    }
 
     // validate that the paths are the same
     String base = null;
@@ -44,14 +50,14 @@ class ASTWith extends llc.zombodb.query_parser.QueryParserNode {
     return paths;
   }
 
-  private List<String> validateNestedPaths(QueryParserNode node, List<String> paths) {
-    String path = node.getNestedPath();
+  private List<String> validateNestedPaths(IndexMetadataManager metadataManager, QueryParserNode node, List<String> paths) {
+    String path = node.getNestedPath(metadataManager);
     if (path != null) {
       if (!paths.contains(path))
         paths.add(path);
     }
     for (QueryParserNode child : node) {
-      validateNestedPaths(child, paths);
+      validateNestedPaths(metadataManager, child, paths);
     }
 
     return paths;

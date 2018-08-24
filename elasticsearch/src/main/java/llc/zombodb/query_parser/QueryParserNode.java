@@ -148,18 +148,20 @@ public class QueryParserNode extends SimpleNode implements Iterable<QueryParserN
     public boolean isNested(IndexMetadataManager metadataManager) {
         if (fieldname != null && fieldname.contains(".")) {
             IndexMetadata md = metadataManager.getMetadataForField(fieldname);
-            return md == null || !md.isMultiField(fieldname);
+            return md == null ||    // w/o index metadata we just assume it's nested
+                    md.isNested(fieldname); // otherwise we can actually check
         }
+
+        // no field or it doesn't contain a ".", so it can't possibly be nested
         return false;
     }
 
-    public String getNestedPath() {
-        if (fieldname == null)
+    public String getNestedPath(IndexMetadataManager metadataManager) {
+        if (!isNested(metadataManager))
             return null;
-        int idx = fieldname.lastIndexOf('.');
-        if (idx == -1)
-            return null;
-        return fieldname.substring(0, idx);
+
+        IndexMetadata md = metadataManager.getMetadataForField(fieldname);
+        return md != null ? md.getMaximalNestedPath(fieldname) : null;
     }
 
     public ASTIndexLink getIndexLink() {

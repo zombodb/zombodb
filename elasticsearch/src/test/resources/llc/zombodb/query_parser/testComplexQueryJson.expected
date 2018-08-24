@@ -16,19 +16,11 @@
                     }
                   },
                   {
-                    "nested" : {
-                      "query" : {
-                        "term" : {
-                          "long.dotted.field" : {
-                            "value" : "foo",
-                            "boost" : 1.0
-                          }
-                        }
-                      },
-                      "path" : "long.dotted",
-                      "ignore_unmapped" : false,
-                      "score_mode" : "avg",
-                      "boost" : 1.0
+                    "term" : {
+                      "long.dotted.field" : {
+                        "value" : "foo",
+                        "boost" : 1.0
+                      }
                     }
                   },
                   {

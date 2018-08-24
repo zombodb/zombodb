@@ -314,13 +314,13 @@ public abstract class QueryRewriter {
 
         if (metadataManager.getMetadataForField(agg.getFieldname()).isNested(agg.getFieldname())) {
             if (agg.isSpecifiedAsNested()) {
-                ab = nested("nested", agg.getNestedPath())
+                ab = nested("nested", agg.getNestedPath(metadataManager))
                         .subAggregation(
                                 filter("filter", build(tree))
                                         .subAggregation(ab).subAggregation(missing("missing").field(getAggregateFieldName(agg)))
                         );
             } else {
-                ab = nested("nested", agg.getNestedPath())
+                ab = nested("nested", agg.getNestedPath(metadataManager))
                         .subAggregation(ab).subAggregation(missing("missing").field(getAggregateFieldName(agg)));
             }
         }
@@ -649,7 +649,7 @@ public abstract class QueryRewriter {
 
         for (QueryParserNode child : node) {
             if (path == null)
-                path = child.getNestedPath();
+                path = child.getNestedPath(metadataManager);
             bqb.must(build(child));
         }
 
@@ -1178,7 +1178,7 @@ public abstract class QueryRewriter {
     private QueryBuilder maybeNest(QueryParserNode node, QueryBuilder fb) {
         if (!(node.jjtGetParent() instanceof ASTWith) && node.isNested(metadataManager)) {
             if (shouldJoinNestedFilter())
-                return nestedQuery(node.getNestedPath(), fb, ScoreMode.Avg);
+                return nestedQuery(node.getNestedPath(metadataManager), fb, ScoreMode.Avg);
             else
                 return fb;
         } else {
@@ -1188,7 +1188,7 @@ public abstract class QueryRewriter {
                 return fb;  // it's not nested, so just return
             } else {
                 if (_isBuildingAggregate) {
-                    if (tree.getAggregate().getNestedPath().equals(node.getNestedPath()))
+                    if (tree.getAggregate().getNestedPath(metadataManager).equals(node.getNestedPath(metadataManager)))
                         return fb;  // it's the same nested object as the aggregate itself
                     else
                         return matchAllQuery(); // it's a different nested object, so we can just ignore it

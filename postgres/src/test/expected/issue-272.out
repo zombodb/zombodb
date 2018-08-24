@@ -44,7 +44,11 @@ INSERT INTO issue272 (data) VALUES ('{
       "key1": "val1",
       "key2": "val2"
     }
-  ]
+  ],
+  "not_nested_obj": {
+    "bool_field": true,
+    "num_field": 1
+  }
 }');
 INSERT INTO issue272 (data) VALUES ('{
   "top_key": 2,
@@ -61,53 +65,65 @@ INSERT INTO issue272 (data) VALUES ('{
       "key1": "val10",
       "key2": "val20"
     }
-  ]
+  ],
+  "not_nested_obj": {
+    "bool_field": true,
+    "num_field": 2
+  }
 }');
 -- should return id=1
 SELECT *
 FROM issue272
 WHERE zdb('issue272', ctid) ==> 'data.obj1.key1=val1 WITH data.obj1.key2=val1';
- id |         data          
-----+-----------------------
-  1 | {                    +
-    |   "top_key": 1,      +
-    |   "obj1": [          +
-    |     {                +
-    |       "key1": "val1",+
-    |       "key2": "val1" +
-    |     },               +
-    |     {                +
-    |       "key1": "val2",+
-    |       "key2": "val2" +
-    |     },               +
-    |     {                +
-    |       "key1": "val1",+
-    |       "key2": "val2" +
-    |     }                +
-    |   ]                  +
+ id |          data           
+----+-------------------------
+  1 | {                      +
+    |   "top_key": 1,        +
+    |   "obj1": [            +
+    |     {                  +
+    |       "key1": "val1",  +
+    |       "key2": "val1"   +
+    |     },                 +
+    |     {                  +
+    |       "key1": "val2",  +
+    |       "key2": "val2"   +
+    |     },                 +
+    |     {                  +
+    |       "key1": "val1",  +
+    |       "key2": "val2"   +
+    |     }                  +
+    |   ],                   +
+    |   "not_nested_obj": {  +
+    |     "bool_field": true,+
+    |     "num_field": 1     +
+    |   }                    +
     | }
 (1 row)
 
 -- should also return id=1
 select * from issue272 where zdb('issue272', ctid) ==> 'data.obj1.key1:val1' and id = 1;
- id |         data          
-----+-----------------------
-  1 | {                    +
-    |   "top_key": 1,      +
-    |   "obj1": [          +
-    |     {                +
-    |       "key1": "val1",+
-    |       "key2": "val1" +
-    |     },               +
-    |     {                +
-    |       "key1": "val2",+
-    |       "key2": "val2" +
-    |     },               +
-    |     {                +
-    |       "key1": "val1",+
-    |       "key2": "val2" +
-    |     }                +
-    |   ]                  +
+ id |          data           
+----+-------------------------
+  1 | {                      +
+    |   "top_key": 1,        +
+    |   "obj1": [            +
+    |     {                  +
+    |       "key1": "val1",  +
+    |       "key2": "val1"   +
+    |     },                 +
+    |     {                  +
+    |       "key1": "val2",  +
+    |       "key2": "val2"   +
+    |     },                 +
+    |     {                  +
+    |       "key1": "val1",  +
+    |       "key2": "val2"   +
+    |     }                  +
+    |   ],                   +
+    |   "not_nested_obj": {  +
+    |     "bool_field": true,+
+    |     "num_field": 1     +
+    |   }                    +
     | }
 (1 row)
 
@@ -123,24 +139,28 @@ select * from zdb_tally('issue272', 'data.obj1.key1', '^.*', '', 5000, 'term');
 
 -- should return id=1
 SELECT * FROM issue272 WHERE zdb('issue272', ctid) ==> 'data.obj1.key1=val1 with data.obj1.key2=val1 with data.top_key=1';
- id |         data          
-----+-----------------------
-  1 | {                    +
-    |   "top_key": 1,      +
-    |   "obj1": [          +
-    |     {                +
-    |       "key1": "val1",+
-    |       "key2": "val1" +
-    |     },               +
-    |     {                +
-    |       "key1": "val2",+
-    |       "key2": "val2" +
-    |     },               +
-    |     {                +
-    |       "key1": "val1",+
-    |       "key2": "val2" +
-    |     }                +
-    |   ]                  +
+ id |          data           
+----+-------------------------
+  1 | {                      +
+    |   "top_key": 1,        +
+    |   "obj1": [            +
+    |     {                  +
+    |       "key1": "val1",  +
+    |       "key2": "val1"   +
+    |     },                 +
+    |     {                  +
+    |       "key1": "val2",  +
+    |       "key2": "val2"   +
+    |     },                 +
+    |     {                  +
+    |       "key1": "val1",  +
+    |       "key2": "val2"   +
+    |     }                  +
+    |   ],                   +
+    |   "not_nested_obj": {  +
+    |     "bool_field": true,+
+    |     "num_field": 1     +
+    |   }                    +
     | }
 (1 row)
 
@@ -157,6 +177,14 @@ select * from zdb_tally('issue272', 'data.obj1.key1', false, '^.*', 'data.obj1.k
 ------+-------
  val1 |     2
  val2 |     1
+(2 rows)
+
+-- should return id=1 and id=2
+SELECT id FROM issue272 WHERE zdb('issue272', ctid) ==> 'data.not_nested_obj.bool_field:true' order by id;
+ id 
+----
+  1
+  2
 (2 rows)
 
 DROP TABLE issue272 CASCADE;

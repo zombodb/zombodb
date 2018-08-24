@@ -1707,7 +1707,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            \"review_data_ben.coding.responsiveness\" : [ \"responsive\", \"potentially responsive\", \"not responsive\", \"unreviewable\" ]\n" +
                         "          }\n" +
                         "        },\n" +
-                        "        \"path\" : \"review_data_ben.coding\"\n" +
+                        "        \"path\" : \"review_data_ben\"\n" +
                         "      }\n" +
                         "    }, {\n" +
                         "      \"nested\" : {\n" +
@@ -1741,30 +1741,13 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            }\n" +
                         "          },\n" +
                         "          {\n" +
-                        "            \"nested\" : {\n" +
-                        "              \"query\" : {\n" +
-                        "                \"bool\" : {\n" +
-                        "                  \"must\" : [\n" +
-                        "                    {\n" +
-                        "                      \"terms\" : {\n" +
-                        "                        \"review_data_ben.coding.responsiveness\" : [\n" +
-                        "                          \"responsive\",\n" +
-                        "                          \"potentially responsive\",\n" +
-                        "                          \"not responsive\",\n" +
-                        "                          \"unreviewable\"\n" +
-                        "                        ],\n" +
-                        "                        \"boost\" : 1.0\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  ],\n" +
-                        "                  \"disable_coord\" : false,\n" +
-                        "                  \"adjust_pure_negative\" : true,\n" +
-                        "                  \"boost\" : 1.0\n" +
-                        "                }\n" +
-                        "              },\n" +
-                        "              \"path\" : \"review_data_ben.coding\",\n" +
-                        "              \"ignore_unmapped\" : false,\n" +
-                        "              \"score_mode\" : \"avg\",\n" +
+                        "            \"terms\" : {\n" +
+                        "              \"review_data_ben.coding.responsiveness\" : [\n" +
+                        "                \"responsive\",\n" +
+                        "                \"potentially responsive\",\n" +
+                        "                \"not responsive\",\n" +
+                        "                \"unreviewable\"\n" +
+                        "              ],\n" +
                         "              \"boost\" : 1.0\n" +
                         "            }\n" +
                         "          }\n" +
@@ -3278,57 +3261,125 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         ")",
                 "{\n" +
                         "  \"bool\" : {\n" +
-                        "    \"should\" : [ {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"internal_data.internal_set_tag_id\" : [ 369, 370, 371, 298, 367, 295, 296 ]\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"internal_data.state_id\" : 4424\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"internal_data.assigned_reviewers\" : \"j_weber\"\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"internal_data.status_name\" : [ \"internal_checked_out\", \"internal_ready\" ]\n" +
-                        "              }\n" +
-                        "            } ]\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"path\" : \"internal_data\"\n" +
+                        "    \"should\" : [\n" +
+                        "      {\n" +
+                        "        \"nested\" : {\n" +
+                        "          \"query\" : {\n" +
+                        "            \"bool\" : {\n" +
+                        "              \"must\" : [\n" +
+                        "                {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"internal_data.assigned_reviewers\" : {\n" +
+                        "                      \"value\" : \"j_weber\",\n" +
+                        "                      \"boost\" : 1.0\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"internal_data.internal_set_tag_id\" : [\n" +
+                        "                      369,\n" +
+                        "                      370,\n" +
+                        "                      371,\n" +
+                        "                      298,\n" +
+                        "                      367,\n" +
+                        "                      295,\n" +
+                        "                      296\n" +
+                        "                    ],\n" +
+                        "                    \"boost\" : 1.0\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"internal_data.state_id\" : {\n" +
+                        "                      \"value\" : 4424,\n" +
+                        "                      \"boost\" : 1.0\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"internal_data.status_name\" : [\n" +
+                        "                      \"internal_checked_out\",\n" +
+                        "                      \"internal_ready\"\n" +
+                        "                    ],\n" +
+                        "                    \"boost\" : 1.0\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              ],\n" +
+                        "              \"disable_coord\" : false,\n" +
+                        "              \"adjust_pure_negative\" : true,\n" +
+                        "              \"boost\" : 1.0\n" +
+                        "            }\n" +
+                        "          },\n" +
+                        "          \"path\" : \"internal_data\",\n" +
+                        "          \"ignore_unmapped\" : false,\n" +
+                        "          \"score_mode\" : \"avg\",\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"nested\" : {\n" +
+                        "          \"query\" : {\n" +
+                        "            \"bool\" : {\n" +
+                        "              \"must\" : [\n" +
+                        "                {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"internal_data.internal_set_tag_id\" : [\n" +
+                        "                      369,\n" +
+                        "                      370,\n" +
+                        "                      371,\n" +
+                        "                      298,\n" +
+                        "                      367,\n" +
+                        "                      295,\n" +
+                        "                      296\n" +
+                        "                    ],\n" +
+                        "                    \"boost\" : 1.0\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"internal_data.owner_username\" : {\n" +
+                        "                      \"value\" : \"j_weber\",\n" +
+                        "                      \"boost\" : 1.0\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"term\" : {\n" +
+                        "                    \"internal_data.state_id\" : {\n" +
+                        "                      \"value\" : 4424,\n" +
+                        "                      \"boost\" : 1.0\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"terms\" : {\n" +
+                        "                    \"internal_data.status_name\" : [\n" +
+                        "                      \"internal_ready\",\n" +
+                        "                      \"internal_updated\",\n" +
+                        "                      \"internal_checked_out\",\n" +
+                        "                      \"exception\"\n" +
+                        "                    ],\n" +
+                        "                    \"boost\" : 1.0\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              ],\n" +
+                        "              \"disable_coord\" : false,\n" +
+                        "              \"adjust_pure_negative\" : true,\n" +
+                        "              \"boost\" : 1.0\n" +
+                        "            }\n" +
+                        "          },\n" +
+                        "          \"path\" : \"internal_data\",\n" +
+                        "          \"ignore_unmapped\" : false,\n" +
+                        "          \"score_mode\" : \"avg\",\n" +
+                        "          \"boost\" : 1.0\n" +
+                        "        }\n" +
                         "      }\n" +
-                        "    }, {\n" +
-                        "      \"nested\" : {\n" +
-                        "        \"query\" : {\n" +
-                        "          \"bool\" : {\n" +
-                        "            \"must\" : [ {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"internal_data.internal_set_tag_id\" : [ 369, 370, 371, 298, 367, 295, 296 ]\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"internal_data.state_id\" : 4424\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"terms\" : {\n" +
-                        "                \"internal_data.status_name\" : [ \"internal_ready\", \"internal_updated\", \"internal_checked_out\", \"exception\" ]\n" +
-                        "              }\n" +
-                        "            }, {\n" +
-                        "              \"term\" : {\n" +
-                        "                \"internal_data.owner_username\" : \"j_weber\"\n" +
-                        "              }\n" +
-                        "            } ]\n" +
-                        "          }\n" +
-                        "        },\n" +
-                        "        \"path\" : \"internal_data\"\n" +
-                        "      }\n" +
-                        "    } ]\n" +
+                        "    ],\n" +
+                        "    \"disable_coord\" : false,\n" +
+                        "    \"adjust_pure_negative\" : true,\n" +
+                        "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}"
         );

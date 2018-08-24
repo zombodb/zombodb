@@ -1,19 +1,39 @@
 {
   "mappings": {
     "data": {
+      "dynamic_templates": [
+        {
+          "strings": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 10921,
+              "normalizer": "exact"
+            }
+          }
+        },
+        {
+          "dates": {
+            "match_mapping_type": "date",
+            "mapping": {
+              "type": "keyword",
+              "normalizer": "exact",
+              "fields": {
+                "date": {
+                  "type": "date",
+                  "format": "HH:mm:ss.SSSSSSSSSSZ||HH:mm:ss.SSSSSSSSSZ||HH:mm:ss.SSSSSSSSZ||HH:mm:ss.SSSSSSSZ||HH:mm:ss.SSSSSSZ||HH:mm:ss.SSSSSZ||HH:mm:ss.SSSSZ||HH:mm:ss.SSSZ||HH:mm:ss.SSZ||HH:mm:ss.SZ||HH:mm:ssZ"
+                }
+              }
+            }
+          }
+        }
+      ],
       "_source": {
         "enabled": false
       },
       "_all": {
         "enabled": true,
         "analyzer": "phrase"
-      },
-      "_field_names": {
-        "enabled": false,
-        "type": "_field_names"
-      },
-      "_parent": {
-        "type": "xact"
       },
       "_meta": {
         "primary_key": "id"
@@ -105,6 +125,44 @@
         "unanalyzed_field": {
           "type": "string",
           "index": "not_analyzed"
+        },
+        "review_data": {
+          "type": "nested"
+        },
+        "review_data_ben": {
+          "type": "nested"
+        },
+        "review_data_cv623beta": {
+          "type": "nested"
+        },
+        "review_data_ridge": {
+          "type": "nested"
+        },
+        "nested_group": {
+          "type": "nested"
+        },
+        "internal_data": {
+          "type": "nested"
+        },
+        "details": {
+          "type": "nested"
+        },
+        "nested": {
+          "type": "nested"
+        },
+        "nested2": {
+          "type": "nested"
+        },
+        "nested_field": {
+          "type": "nested"
+        },
+        "data": {
+          "type": "nested",
+          "properties": {
+            "obj1": {
+              "type": "nested"
+            }
+          }
         }
       }
     }
@@ -114,6 +172,13 @@
     "number_of_shards": 5,
     "number_of_replicas": 0,
     "analysis": {
+      "normalizer": {
+        "exact": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": ["lowercase"]
+        }
+      },
       "filter": {
         "truncate_32000": {
           "type": "truncate",
@@ -177,7 +242,7 @@
             "shingle_filter_search"
           ]
         }
-    }
+      }
     }
   }
 }

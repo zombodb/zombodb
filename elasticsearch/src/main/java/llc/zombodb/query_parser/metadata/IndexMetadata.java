@@ -91,10 +91,10 @@ public class IndexMetadata {
         if (fieldname == null)
             fieldname = "_all";
 
-        return fields.containsKey(fieldname) || isMultiField(fieldname) || isNested(fieldname);
+        return fields.containsKey(fieldname) || isMultiField(fieldname) || (isNested(fieldname) && containsNested(fieldname));
     }
 
-    public boolean isNested(String fieldname) {
+    private boolean containsNested(String fieldname) {
         if (fieldname == null)
             return false;
         if (!fieldname.contains("."))
@@ -118,6 +118,69 @@ public class IndexMetadata {
         }
 
         return true;
+    }
+
+    public boolean isNested(String fieldname) {
+        if (fieldname == null)
+            return false;
+        if (!fieldname.contains("."))
+            return false;
+        if (isMultiField(fieldname))
+            return false;
+
+        Map fields = this.fields;
+        while (fieldname.contains(".")) {
+            String base = fieldname.substring(0, fieldname.indexOf('.'));
+            fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
+
+            Object value = fields.get(base);
+            if (value == null)
+                return false;
+            else if (value instanceof Map) {
+                if ("nested".equals(((Map) value).get("type")))
+                    return true;
+
+                fields = (Map) ((Map) value).get("properties");
+                if (fields == null)
+                    return false;
+            }
+        }
+
+        return false;
+    }
+
+    public String getMaximalNestedPath(String fieldname) {
+        if (!isNested(fieldname))
+            return null;
+
+        String path = null;
+        Map parent = null;
+        Map fields = this.fields;
+        while (fieldname.contains(".")) {
+            String base = fieldname.substring(0, fieldname.indexOf('.'));
+            fieldname = fieldname.substring(fieldname.indexOf('.') + 1);
+
+            Object value = fields.get(base);
+            if (value == null)
+                return path;
+            else if (value instanceof Map) {
+                parent = (Map) value;
+
+                if (!"nested".equals(parent.get("type")))
+                    return path;
+
+                if (path == null)
+                    path = base;
+                else
+                    path += "." + base;
+
+                fields = (Map) ((Map) value).get("properties");
+                if (fields == null)
+                    return path;
+            }
+        }
+
+        return path;
     }
 
     public boolean isNestedObjectField(String fieldname) {
