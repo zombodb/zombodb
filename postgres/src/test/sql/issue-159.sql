@@ -310,5 +310,7 @@ SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<v
 --correctly returns 2, 4, 5, 8, 9
 SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<var_bigint_expand_group=<this.index>var_bigint_expand_group>( ( var_text_1 = "yellow") #filter(var_boolean:FALSE)) ) )' ORDER BY pk_data;
 
+-- a test against issue #272, make sure highlighting works
+select * from zdb_highlight('issue_159.consolidated_record_view', 'vol_json.animal:snakes with vol_json.food:beer', 'pk_data IN (1,4,5,9)', '{}'::text[]) order by "primaryKey", "fieldName", "arrayIndex", term, position, "startOffset", "endOffset";
 
 DROP SCHEMA issue_159 CASCADE;

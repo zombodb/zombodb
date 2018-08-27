@@ -346,6 +346,28 @@ SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<v
        9
 (5 rows)
 
+-- a test against issue #272, make sure highlighting works
+select * from zdb_highlight('issue_159.consolidated_record_view', 'vol_json.animal:snakes with vol_json.food:beer', 'pk_data IN (1,4,5,9)', '{}'::text[]) order by "primaryKey", "fieldName", "arrayIndex", term, position, "startOffset", "endOffset";
+ primaryKey |    fieldName    | arrayIndex |  term  |    type    | position | startOffset | endOffset |              clause               
+------------+-----------------+------------+--------+------------+----------+-------------+-----------+-----------------------------------
+ 1          | vol_json.animal |          0 | snakes | <ALPHANUM> |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
+ 1          | vol_json.animal |          1 | snakes | <ALPHANUM> |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
+ 1          | vol_json.food   |          0 | beer   | <ALPHANUM> |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
+ 1          | vol_json.food   |          1 | beer   | <ALPHANUM> |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
+ 4          | vol_json.animal |          0 | snakes | <ALPHANUM> |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
+ 4          | vol_json.animal |          1 | snakes | <ALPHANUM> |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
+ 4          | vol_json.food   |          0 | beer   | <ALPHANUM> |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
+ 4          | vol_json.food   |          1 | beer   | <ALPHANUM> |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
+ 5          | vol_json.animal |          0 | snakes | <ALPHANUM> |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
+ 5          | vol_json.animal |          1 | snakes | <ALPHANUM> |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
+ 5          | vol_json.food   |          0 | beer   | <ALPHANUM> |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
+ 5          | vol_json.food   |          1 | beer   | <ALPHANUM> |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
+ 9          | vol_json.animal |          0 | snakes | <ALPHANUM> |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
+ 9          | vol_json.animal |          1 | snakes | <ALPHANUM> |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
+ 9          | vol_json.food   |          0 | beer   | <ALPHANUM> |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
+ 9          | vol_json.food   |          1 | beer   | <ALPHANUM> |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
+(16 rows)
+
 DROP SCHEMA issue_159 CASCADE;
 NOTICE:  drop cascades to 4 other objects
 DETAIL:  drop cascades to table issue_159.data
