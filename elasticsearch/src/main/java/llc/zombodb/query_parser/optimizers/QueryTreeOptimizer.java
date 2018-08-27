@@ -39,7 +39,7 @@ public class QueryTreeOptimizer {
         pullOutNodesOfType(tree, ASTSuggest.class, true);
         pullOutNodesOfType(tree, ASTOptions.class, true);
         pullOutNodesOfType(tree, ASTFieldLists.class, true);
-        validateWithOperators(tree);
+
         reduce(tree);
         validateAndFixProximityChainFieldnames(tree);
         expandFieldLists(tree, tree.getFieldLists());
@@ -422,13 +422,6 @@ public class QueryTreeOptimizer {
             }
         }
         return stack;
-    }
-
-    private void validateWithOperators(ASTQueryTree tree) {
-        for (ASTWith child : tree.getChildrenOfType(ASTWith.class)) {
-            // this will throw if the base paths don't match
-            child.validateNestedPaths(metadataManager);
-        }
     }
 
     private void sortWithOperators(QueryParserNode root) {
