@@ -544,8 +544,6 @@ void ElasticsearchBulkMarkTransactionInProgress(ElasticsearchBulkContext *contex
 void ElasticsearchBulkMarkTransactionCommitted(ElasticsearchBulkContext *context) {
 	uint64 xid = convert_xid(GetCurrentTransactionId());
 
-	bulk_prologue(context, false);
-
 	appendStringInfo(context->current->buff,
 					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"_retry_on_conflict\":128}}\n");
 	appendStringInfo(context->current->buff, ""
@@ -557,7 +555,6 @@ void ElasticsearchBulkMarkTransactionCommitted(ElasticsearchBulkContext *context
 							   "}"
 							   "}\n", xid);
 	context->nxid++;
-	bulk_epilogue(context);
 }
 
 void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context) {

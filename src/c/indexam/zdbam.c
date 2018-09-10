@@ -160,8 +160,12 @@ static void finish_inserts() {
 	foreach (lc, insert_contexts) {
 		ZDBIndexChangeContext *context = lfirst(lc);
 
-		if (IsBatchMode())
+		if (IsBatchMode() && context->esContext->nrequests == 0) {
 			ElasticsearchBulkMarkTransactionCommitted(context->esContext);
+
+			/* no ned to remember this index anymore as we're able to mark it as committed in the only batch */
+			touched_indexes = list_delete_oid(touched_indexes, context->indexRelid);
+		}
 
 		ElasticsearchFinishBulkProcess(context->esContext);
 	}
@@ -178,27 +182,34 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 		case XACT_EVENT_PRE_PREPARE: {
 			ListCell *lc;
 
+			HOLD_INTERRUPTS();
+
 			if (IsBatchMode() && insert_contexts != NULL) {
-				HOLD_INTERRUPTS();
+				/*
+				 * this might remove entries from 'touched_indexes' if they mark-as-committed doc
+				 * can also be sent
+				 */
 				finish_inserts();
-				RESUME_INTERRUPTS();
 			}
 
-			if (!IsBatchMode()) {
-				foreach(lc, touched_indexes) {
-					Oid      relid    = lfirst_oid(lc);
-					Relation indexRel = RelationIdGetRelation(relid);
+			/*
+			 * For any indexes we touched that need to have this transaction id marked as committed,
+			 * do that now
+			 */
+			foreach(lc, touched_indexes) {
+				Oid      relid    = lfirst_oid(lc);
+				Relation indexRel = RelationIdGetRelation(relid);
 
-					ElasticsearchCommitCurrentTransaction(indexRel);
-
-					RelationClose(indexRel);
-				}
+				ElasticsearchCommitCurrentTransaction(indexRel);
+				RelationClose(indexRel);
 			}
 
 			foreach(lc, to_drop) {
 				char *index_url = lfirst(lc);
 				ElasticsearchDeleteIndexDirect(index_url);
 			}
+
+			RESUME_INTERRUPTS();
 		}
 			break;
 		default:
