@@ -29,6 +29,8 @@
 #define ItemPointerToUint64(ht_ctid) ((((uint64)(ItemPointerGetBlockNumber(ht_ctid))) << 32) | ((uint32)(ItemPointerGetOffsetNumber(ht_ctid))))
 #define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
+#define IsBatchMode() (zdb_batch_mode_guc || IsTransactionBlock() == false)
+
 void freeStringInfo(StringInfo si);
 Oid get_base_type_oid(Oid typeOid);
 TupleDesc lookup_composite_tupdesc(Datum composite);

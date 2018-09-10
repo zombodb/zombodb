@@ -541,6 +541,24 @@ void ElasticsearchBulkMarkTransactionInProgress(ElasticsearchBulkContext *contex
 	bulk_epilogue(context);
 }
 
+void ElasticsearchBulkMarkTransactionCommitted(ElasticsearchBulkContext *context) {
+	uint64 xid = convert_xid(GetCurrentTransactionId());
+
+	bulk_prologue(context, false);
+
+	appendStringInfo(context->current->buff,
+					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"_retry_on_conflict\":128}}\n");
+	appendStringInfo(context->current->buff, ""
+							   "{"
+							   "\"script\":{"
+							   "\"source\":\"ctx._source.zdb_aborted_xids.remove(ctx._source.zdb_aborted_xids.indexOf(params.XID));\","
+							   "\"params\":{\"XID\":%lu},"
+							   "\"lang\":\"painless\""
+							   "}"
+							   "}\n", xid);
+	context->nxid++;
+	bulk_epilogue(context);
+}
 
 void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context) {
 	StringInfo request = makeStringInfo();

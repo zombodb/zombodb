@@ -160,6 +160,9 @@ static void finish_inserts() {
 	foreach (lc, insert_contexts) {
 		ZDBIndexChangeContext *context = lfirst(lc);
 
+		if (IsBatchMode())
+			ElasticsearchBulkMarkTransactionCommitted(context->esContext);
+
 		ElasticsearchFinishBulkProcess(context->esContext);
 	}
 
@@ -175,19 +178,21 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 		case XACT_EVENT_PRE_PREPARE: {
 			ListCell *lc;
 
-			if (zdb_batch_mode_guc && insert_contexts != NULL) {
+			if (IsBatchMode() && insert_contexts != NULL) {
 				HOLD_INTERRUPTS();
 				finish_inserts();
 				RESUME_INTERRUPTS();
 			}
 
-			foreach(lc, touched_indexes) {
-				Oid      relid    = lfirst_oid(lc);
-				Relation indexRel = RelationIdGetRelation(relid);
+			if (!IsBatchMode()) {
+				foreach(lc, touched_indexes) {
+					Oid      relid    = lfirst_oid(lc);
+					Relation indexRel = RelationIdGetRelation(relid);
 
-				ElasticsearchCommitCurrentTransaction(indexRel);
+					ElasticsearchCommitCurrentTransaction(indexRel);
 
-				RelationClose(indexRel);
+					RelationClose(indexRel);
+				}
 			}
 
 			foreach(lc, to_drop) {
@@ -282,7 +287,7 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc) {
 	if (executor_depth == 0) {
 
 		/* if we've inserted into some indexes and we're not in batch mode, then process the inserts */
-		if (insert_contexts != NULL && !zdb_batch_mode_guc) {
+		if (insert_contexts != NULL && !IsBatchMode()) {
 			finish_inserts();
 		}
 
@@ -501,7 +506,7 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 		 * If the statement has finished and we've inserted into some indexes and we're not
 		 * in batch mode, then process the inserts
 		 */
-		if (insert_contexts != NULL && !zdb_batch_mode_guc) {
+		if (insert_contexts != NULL && !IsBatchMode()) {
 			finish_inserts();
 		}
 
@@ -896,7 +901,7 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 	 *
 	 * If we're in batch mode, that means TopTransactionContext, otherwise our TopQueryContext is just fine
 	 */
-	oldContext = MemoryContextSwitchTo(zdb_batch_mode_guc ? TopTransactionContext : TopQueryContext);
+	oldContext = MemoryContextSwitchTo(IsBatchMode() ? TopTransactionContext : TopQueryContext);
 
 	insertContext = checkout_insert_context(indexRelation, values[0], isnull[0]);
 
@@ -1465,7 +1470,7 @@ static void handle_trigger(Oid indexRelId, ItemPointer targetCtid) {
 	ZDBIndexChangeContext *context;
 	Relation              indexRel;
 
-	oldContext = MemoryContextSwitchTo(zdb_batch_mode_guc ? TopTransactionContext : TopQueryContext);
+	oldContext = MemoryContextSwitchTo(IsBatchMode() ? TopTransactionContext : TopQueryContext);
 	indexRel   = zdb_open_index(indexRelId, AccessShareLock);
 
 	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
