@@ -847,6 +847,14 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	if (!tupleIsAlive)
 		return;
 
+	if (HeapTupleIsHeapOnly(htup)) {
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+						errmsg("Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL <tablename>; and then create the index",
+							   ItemPointerGetBlockNumber(&(htup->t_self)),
+							   ItemPointerGetOffsetNumber(&(htup->t_self)))));
+	}
+
 	if (ZDBIndexOptionsGetLLAPI(indexRel)) {
 		ereport(ERROR,
 				(errcode(ERRCODE_DATA_EXCEPTION),
