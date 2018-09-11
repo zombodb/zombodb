@@ -1322,34 +1322,6 @@ static IndexScanDesc ambeginscan(Relation indexRelation, int nkeys, int norderby
 	return scan;
 }
 
-static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
-	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
-	int64          ntuples  = 0;
-
-	while (context->scrollContext->cnt < context->scrollContext->total) {
-		ItemPointerData ctid;
-		float4          score;
-		ZDBScoreKey     key;
-		ZDBScoreEntry   *entry;
-		bool            found;
-
-		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
-
-		ItemPointerCopy(&ctid, &key.ctid);
-
-		if (context->wantScores) {
-			entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
-			ItemPointerCopy(&ctid, &entry->key.ctid);
-			entry->score = score;
-		}
-
-		tbm_add_tuples(tbm, &ctid, 1, false);
-		ntuples++;
-	}
-
-	return ntuples;
-}
-
 /*lint -esym 715,orderbys,norderbys ignore unused param */
 static void amrescan(IndexScanDesc scan, ScanKey keys, int nkeys, ScanKey orderbys, int norderbys) {
 	ZDBScanContext *context   = (ZDBScanContext *) scan->opaque;
@@ -1459,6 +1431,34 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	}
 
 	return true;
+}
+
+static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
+	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
+	int64          ntuples  = 0;
+
+	while (context->scrollContext->cnt < context->scrollContext->total) {
+		ItemPointerData ctid;
+		float4          score;
+		ZDBScoreKey     key;
+		ZDBScoreEntry   *entry;
+		bool            found;
+
+		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
+
+		ItemPointerCopy(&ctid, &key.ctid);
+
+		if (context->wantScores) {
+			entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
+			ItemPointerCopy(&ctid, &entry->key.ctid);
+			entry->score = score;
+		}
+
+		tbm_add_tuples(tbm, &ctid, 1, false);
+		ntuples++;
+	}
+
+	return ntuples;
 }
 
 static void amendscan(IndexScanDesc scan) {
