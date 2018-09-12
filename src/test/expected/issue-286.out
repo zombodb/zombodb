@@ -1,0 +1,158 @@
+with sub as (select zdb.score(ctid) <> 0 as got_score, id from events where events ==> 'beer' order by id)
+select * from sub;
+ got_score |   id   
+-----------+--------
+ t         |    108
+ t         |   1405
+ t         |   3222
+ t         |   3722
+ t         |   6309
+ t         |  29273
+ t         |  34736
+ t         |  41451
+ t         |  42539
+ t         |  42540
+ t         |  43172
+ t         |  43949
+ t         |  44947
+ t         |  45989
+ t         |  47633
+ t         |  50733
+ t         | 115758
+ t         | 118517
+ t         | 121100
+ t         | 122357
+ t         | 123756
+ t         | 123764
+(22 rows)
+
+select got_score > 0, count(*) from (
+    with one as (select zdb.score(ctid) as got_score, id from events where events ==> 'beer' order by id),
+         two as (select -1, id from users where users ==> 'test'),   -- should not request scores from ES
+         three as (select -1, id from events where events ==> 'three')   -- should not request scores from ES
+    select * from one union all select * from two union all select * from three order by id
+) x group by 1 order by 1;
+ ?column? | count 
+----------+-------
+ f        |   240
+ t        |    22
+(2 rows)
+
+create or replace function test_286 () returns bigint language sql as $$
+    with sub as (select zdb.score(ctid) <> 0 as got_score, id from events where events ==> 'beer' order by id)
+    select count(*) from sub where got_score;
+$$;
+select test_286();
+ test_286 
+----------
+       22
+(1 row)
+
+select id from events where events ==> 'beer' and zdb.score(ctid) > 0.0 order by id;
+   id   
+--------
+    108
+   1405
+   3222
+   3722
+   6309
+  29273
+  34736
+  41451
+  42539
+  42540
+  43172
+  43949
+  44947
+  45989
+  47633
+  50733
+ 115758
+ 118517
+ 121100
+ 122357
+ 123756
+ 123764
+(22 rows)
+
+select * from (select id from events where events ==> 'beer' order by zdb.score(ctid)) x order by id;
+   id   
+--------
+    108
+   1405
+   3222
+   3722
+   6309
+  29273
+  34736
+  41451
+  42539
+  42540
+  43172
+  43949
+  44947
+  45989
+  47633
+  50733
+ 115758
+ 118517
+ 121100
+ 122357
+ 123756
+ 123764
+(22 rows)
+
+select * from (select id from events where events ==> 'beer' order by zdb.score(ctid) asc) x order by id;
+   id   
+--------
+    108
+   1405
+   3222
+   3722
+   6309
+  29273
+  34736
+  41451
+  42539
+  42540
+  43172
+  43949
+  44947
+  45989
+  47633
+  50733
+ 115758
+ 118517
+ 121100
+ 122357
+ 123756
+ 123764
+(22 rows)
+
+select * from (select id from events where events ==> 'beer' order by zdb.score(ctid) desc) x order by id;
+   id   
+--------
+    108
+   1405
+   3222
+   3722
+   6309
+  29273
+  34736
+  41451
+  42539
+  42540
+  43172
+  43949
+  44947
+  45989
+  47633
+  50733
+ 115758
+ 118517
+ 121100
+ 122357
+ 123756
+ 123764
+(22 rows)
+

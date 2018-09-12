@@ -57,6 +57,7 @@ typedef struct ZDBBuildStateData {
 }                                     ZDBBuildStateData;
 
 typedef struct ZDBScanContext {
+	bool                       needsInit;
 	ElasticsearchScrollContext *scrollContext;
 	float4                     lastScore;
 	ItemPointerData            lastCtid;
@@ -64,6 +65,7 @@ typedef struct ZDBScanContext {
 	HTAB                       *highlightLookup;
 	bool                       wantScores;
 	bool                       wantHighlights;
+	ZDBQueryType               *query;
 }                                     ZDBScanContext;
 
 PG_FUNCTION_INFO_V1(zdb_delete_trigger);
@@ -1310,10 +1312,9 @@ static List *highlight_cb(ItemPointer ctid, Name field, void *arg) {
 }
 
 static IndexScanDesc ambeginscan(Relation indexRelation, int nkeys, int norderbys) {
-	IndexScanDesc  scan;
+	IndexScanDesc  scan = RelationGetIndexScan(indexRelation, nkeys, norderbys);
 	ZDBScanContext *context;
 
-	scan    = RelationGetIndexScan(indexRelation, nkeys, norderbys);
 	context = palloc0(sizeof(ZDBScanContext));
 
 	scan->xs_itupdesc = RelationGetDescr(indexRelation);
@@ -1322,52 +1323,67 @@ static IndexScanDesc ambeginscan(Relation indexRelation, int nkeys, int norderby
 	return scan;
 }
 
+static inline void do_search_for_scan(IndexScanDesc scan) {
+	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
+
+	if (context->needsInit) {
+		Relation  heapRel    = scan->heapRelation;
+		char      *sortField;
+		SortByDir sortdir    = SORTBY_DEFAULT;
+		uint64    limit      = 0;
+		bool      wantScores;
+		List      *highlights;
+
+		if (scan->heapRelation == NULL)
+			heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
+
+		wantScores = current_scan_wants_scores(scan, heapRel);
+		highlights = extract_highlight_info(RelationGetRelid(scan->indexRelation));
+		sortField  = find_sort_and_limit_for_scan(scan, &sortdir, &limit);
+
+		if (limit == 0)
+			limit = find_limit_for_scan(scan);
+
+		if (context->scrollContext != NULL) {
+			ElasticsearchCloseScroll(context->scrollContext);
+		}
+
+		context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, context->query, false, true, wantScores,
+														  limit,
+														  sortField, sortdir, highlights, NULL, 0);
+		context->wantHighlights = highlights != NULL;
+		context->wantScores     = wantScores;
+		if (context->wantScores) {
+			context->scoreLookup = scoring_create_lookup_table(TopTransactionContext, "bitmap scores");
+			scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, context, CurrentMemoryContext);
+		}
+
+		if (context->wantHighlights) {
+			context->highlightLookup = highlight_create_lookup_table(TopTransactionContext, "highlights");
+			highlight_register_callback(RelationGetRelid(heapRel), highlight_cb, context, CurrentMemoryContext);
+		}
+
+		if (scan->heapRelation == NULL)
+			RelationClose(heapRel);
+
+		context->needsInit = false;
+	}
+}
+
 /*lint -esym 715,orderbys,norderbys ignore unused param */
 static void amrescan(IndexScanDesc scan, ScanKey keys, int nkeys, ScanKey orderbys, int norderbys) {
-	ZDBScanContext *context   = (ZDBScanContext *) scan->opaque;
-	ZDBQueryType   *query     = scan_keys_to_query_dsl(keys, nkeys);
-	Relation       heapRel    = scan->heapRelation;
-	char           *sortField;
-	SortByDir      sortdir    = SORTBY_DEFAULT;
-	uint64         limit      = 0;
-	bool           wantScores = current_query_wants_scores();
-	List           *highlights;
+	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
 
-	if (scan->heapRelation == NULL)
-		heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
-
-	highlights = extract_highlight_info(RelationGetRelid(scan->indexRelation));
-	sortField  = find_sort_and_limit_for_scan(scan, &sortdir, &limit);
-
-	if (limit == 0)
-		limit = find_limit_for_scan(scan);
-
-	if (context->scrollContext != NULL) {
-		ElasticsearchCloseScroll(context->scrollContext);
-	}
-
-	context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, query, false, true, wantScores, limit,
-													  sortField, sortdir, highlights, NULL, 0);
-	context->wantHighlights = highlights != NULL;
-	context->wantScores     = wantScores;
-	if (context->wantScores) {
-		context->scoreLookup = scoring_create_lookup_table(TopTransactionContext, "bitmap scores");
-		scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, context, CurrentMemoryContext);
-	}
-
-	if (context->wantHighlights) {
-		context->highlightLookup = highlight_create_lookup_table(TopTransactionContext, "highlights");
-		highlight_register_callback(RelationGetRelid(heapRel), highlight_cb, context, CurrentMemoryContext);
-	}
-
-	if (scan->heapRelation == NULL)
-		RelationClose(heapRel);
+	context->query         = scan_keys_to_query_dsl(keys, nkeys);
+	context->needsInit     = true;
 }
 
 /*lint -esym 715,direction ignore unused param */
 static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	ZDBScanContext  *context = (ZDBScanContext *) scan->opaque;
 	zdb_json_object highlights;
+
+	do_search_for_scan(scan);
 
 	/* zdb indexes are never lossy */
 	scan->xs_recheck = false;
@@ -1437,6 +1453,8 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
 	int64          ntuples  = 0;
 
+	do_search_for_scan(scan);
+
 	while (context->scrollContext->cnt < context->scrollContext->total) {
 		ItemPointerData ctid;
 		float4          score;
@@ -1463,6 +1481,9 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 
 static void amendscan(IndexScanDesc scan) {
 	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
+
+	if (context->query != NULL)
+		pfree(context->query);
 
 	if (context->scrollContext != NULL)
 		ElasticsearchCloseScroll(context->scrollContext);

@@ -16,9 +16,13 @@
 
 #include "scoring.h"
 
+#include "access/relscan.h"
 #include "access/xact.h"
+#include "catalog/index.h"
+#include "nodes/nodeFuncs.h"
 #include "parser/parsetree.h"
 #include "parser/parse_func.h"
+#include "utils/rel.h"
 
 PG_FUNCTION_INFO_V1(zdb_score);
 
@@ -29,6 +33,15 @@ typedef struct ZDBScoringSupportData {
 	List *callback_data;
 } ZDBScoringSupportData;
 
+typedef struct WantScoresWalkerContext {
+	Oid           funcOid;
+	IndexScanDesc scan;
+	Oid 		  heapRelid;
+	bool          foundFunc;
+	bool          foundScan;
+	int           depth;
+	int           funcDepth;
+} WantScoresWalkerContext;
 
 extern List *currentQueryStack;
 
@@ -106,30 +119,144 @@ static float4 scoring_lookup_score(Oid heapOid, ItemPointer ctid) {
 	return score;
 }
 
-bool current_query_wants_scores(void) {
-	MemoryContext tmpContext = AllocSetContextCreate(CurrentMemoryContext, "want_scores", ALLOCSET_DEFAULT_SIZES);
-	MemoryContext oldContext = MemoryContextSwitchTo(tmpContext);
-	QueryDesc     *queryDesc = (QueryDesc *) linitial(currentQueryStack);
-	char          *find;
-	char          *queryDescString;
-	Oid           arg[]      = {TIDOID};
-	bool          rc;
+static bool want_scores_expr_walker(Node *node, WantScoresWalkerContext *context) {
+	if (node == NULL)
+		return false;
 
-	queryDescString = nodeToString(queryDesc->plannedstmt->planTree);
+	if (IsA(node, FuncExpr)) {
+		FuncExpr *funcExpr = (FuncExpr *) node;
 
-	/*
-	 * We're looking for a function expression (FuncExpr) somewhere
-	 * in the plan that references our zdb_score(tid) function
-	 */
+		if (funcExpr->funcid == context->funcOid) {
+			Node *arg = linitial(funcExpr->args);
 
-	find = psprintf("{FUNCEXPR :funcid %d ",
-					LookupFuncName(lappend(lappend(NIL, makeString("zdb")), makeString("score")), 1, arg, true));
-	rc   = strstr(queryDescString, find) != 0;
+			if (IsA(arg, Var)) {
+				QueryDesc     *currentQuery = linitial(currentQueryStack);
+				RangeTblEntry *rentry;
+				Var           *var          = (Var *) arg;
 
-	MemoryContextSwitchTo(oldContext);
-	MemoryContextDelete(tmpContext);
+				rentry = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
+
+				if (rentry->relid == context->heapRelid) {
+					context->foundFunc = true;
+					context->funcDepth = context->depth;
+				}
+
+				return true;
+			} else {
+				elog(ERROR, "argument to zdb.score() must be the 'ctid' system column");
+			}
+		}
+	}
+
+	return expression_tree_walker(node, want_scores_expr_walker, context);
+}
+
+static bool want_scores_walker(PlanState *state, WantScoresWalkerContext *context) {
+	ListCell *lc = NULL;
+	bool     rc;
+
+	if (state == NULL)
+		return false;
+
+	foreach(lc, state->plan->targetlist) {
+		(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
+	}
+
+	if (context->scan != NULL && context->depth >= context->funcDepth) {
+		if (IsA(state, IndexScanState)) {
+			IndexScanState *iss = (IndexScanState *) state;
+
+			if (iss->iss_ScanDesc == context->scan) {
+				IndexScan *scan = (IndexScan *) state->plan;
+
+				context->foundScan = true;
+
+				foreach(lc, state->plan->targetlist) {
+					(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
+				}
+
+				(void) expression_tree_walker((Node *) scan->indexqual, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.qual, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
+			}
+		} else if (IsA(state, IndexOnlyScanState)) {
+			IndexOnlyScanState *iss = (IndexOnlyScanState *) state;
+
+			if (iss->ioss_ScanDesc == context->scan) {
+				IndexOnlyScan *scan = (IndexOnlyScan *) state->plan;
+
+				context->foundScan = true;
+
+				foreach(lc, state->plan->targetlist) {
+					(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
+				}
+
+				(void) expression_tree_walker((Node *) scan->indexqual, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.qual, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
+			}
+		} else if (IsA(state, BitmapIndexScanState)) {
+			BitmapIndexScanState *iss = (BitmapIndexScanState *) state;
+
+			if (iss->biss_ScanDesc == context->scan) {
+				BitmapIndexScan *scan = (BitmapIndexScan *) state->plan;
+
+				context->foundScan = true;
+
+				foreach(lc, state->plan->targetlist) {
+					(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
+				}
+
+				(void) expression_tree_walker((Node *) scan->indexqual, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.qual, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
+			}
+		}
+	} else if (IsA(state, SeqScanState)) {
+		SeqScanState *sss = (SeqScanState *) state;
+
+		if (RelationGetRelid(sss->ss.ss_currentRelation) == context->heapRelid) {
+			SeqScan *scan = (SeqScan *) state->plan;
+
+			context->foundScan = true;
+
+			foreach(lc, state->plan->targetlist) {
+				(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
+			}
+
+			(void) expression_tree_walker((Node *) scan->plan.qual, want_scores_expr_walker, context);
+			(void) expression_tree_walker((Node *) scan->plan.righttree, want_scores_expr_walker, context);
+			(void) expression_tree_walker((Node *) scan->plan.righttree, want_scores_expr_walker, context);
+		}
+
+	}
+
+	context->depth++;
+	rc = planstate_tree_walker(state, want_scores_walker, context);
+	context->depth--;
 
 	return rc;
+}
+
+bool current_scan_wants_scores(IndexScanDesc scan, Relation heapRel) {
+	static Oid              arg[]      = {TIDOID};
+	QueryDesc               *queryDesc = (QueryDesc *) linitial(currentQueryStack);
+	WantScoresWalkerContext context;
+
+	context.heapRelid = RelationGetRelid(heapRel);
+	context.funcOid   = LookupFuncName(lappend(lappend(NIL, makeString("zdb")), makeString("score")), 1, arg, true);
+	context.scan      = scan;
+	context.foundFunc = false;
+	context.foundScan = false;
+	context.depth     = 0;
+	context.funcDepth = -1;
+
+	(void) want_scores_walker(queryDesc->planstate, &context);
+
+	return context.foundFunc & context.foundScan;
 }
 
 Datum zdb_score(PG_FUNCTION_ARGS) {
