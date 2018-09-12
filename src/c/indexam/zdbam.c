@@ -1338,7 +1338,7 @@ static inline void do_search_for_scan(IndexScanDesc scan) {
 			heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
 
 		wantScores = current_scan_wants_scores(scan, heapRel);
-		highlights = extract_highlight_info(RelationGetRelid(scan->indexRelation));
+		highlights = extract_highlight_info(scan, RelationGetRelid(heapRel));
 		sortField  = find_sort_and_limit_for_scan(scan, &sortdir, &limit);
 
 		if (limit == 0)

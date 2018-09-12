@@ -39,7 +39,7 @@ typedef List *(*highlight_lookup_callback)(ItemPointer ctid, Name field, void *a
 
 void highlight_support_init(void);
 void highlight_support_cleanup(void);
-List *extract_highlight_info(Oid indexRelId);
+List *extract_highlight_info(IndexScanDesc scan, Oid healRelid);
 void save_highlights(HTAB *hash, ItemPointer ctid, zdb_json_object highlights);
 HTAB *highlight_create_lookup_table(MemoryContext memoryContext, char *name);
 void highlight_register_callback(Oid heapOid, highlight_lookup_callback callback, void *callback_data, MemoryContext memoryContext);

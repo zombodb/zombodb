@@ -84,7 +84,7 @@ static HTAB *create_ctid_map(Relation heapRel, Relation indexRel, ZDBQueryType *
 	HTAB                       *highlightHash = highlight_create_lookup_table(memoryContext, "highlights from seqscan");
 
 	scroll = ElasticsearchOpenScroll(indexRel, query, false, false, current_scan_wants_scores(NULL, heapRel), 0, NULL,
-									 SORTBY_DEFAULT, extract_highlight_info(RelationGetRelid(indexRel)), NULL, 0);
+									 SORTBY_DEFAULT, extract_highlight_info(NULL, RelationGetRelid(heapRel)), NULL, 0);
 	scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, scoreHash, memoryContext);
 	highlight_register_callback(RelationGetRelid(heapRel), highlight_cb, highlightHash, memoryContext);
 
