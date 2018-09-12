@@ -72,6 +72,8 @@ static bool find_highlights_expr_walker(Node *node, HighlightWalkerContext *cont
 				Node             *second = lsecond(funcExpr->args);
 				Node             *third  = lthird(funcExpr->args);
 				ZDBHighlightInfo *info   = palloc0(sizeof(ZDBHighlightInfo));
+				ListCell         *lc;
+				bool             exists  = false;
 
 				if (IsA(first, Var)) {
 					Var *var = (Var *) first;
@@ -126,7 +128,17 @@ static bool find_highlights_expr_walker(Node *node, HighlightWalkerContext *cont
 				}
 
 
-				context->highlights = lappend(context->highlights, info);
+				foreach(lc, context->highlights) {
+					ZDBHighlightInfo *tmp = lfirst(lc);
+
+					if (strcmp(tmp->name, info->name) == 0) {
+						exists = true;
+						break;
+					}
+				}
+
+				if (!exists)
+					context->highlights = lappend(context->highlights, info);
 
 			} else {
 				ereport(ERROR,
