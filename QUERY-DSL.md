@@ -760,6 +760,19 @@ Filters documents that have fields that match any of the provided terms (not ana
 ---
 
 ```sql
+FUNCTION dsl.terms_array (
+	field name,
+	"values" anyarray)
+RETURNS zdbquery
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html
+
+Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for an array of any kind of Postgres datatype.
+ 
+---
+
+```sql
 FUNCTION dsl.terms_lookup (
 	field name,
 	index text,

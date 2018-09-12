@@ -1,0 +1,1 @@
+SELECT dsl.terms_array('field', '{1,2}'::numeric[]);

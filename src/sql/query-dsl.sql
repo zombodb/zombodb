@@ -52,6 +52,9 @@ $$;
 CREATE OR REPLACE FUNCTION dsl.terms(field name, VARIADIC "values" numeric[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('terms', json_build_object(field, "values")))::zdbquery;
 $$;
+CREATE OR REPLACE FUNCTION dsl.terms_array(field name, "values" anyarray) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT json_strip_nulls(json_build_object('terms', json_build_object(field, "values")))::zdbquery;
+$$;
 
 
 CREATE TYPE dsl.esqdsl_terms_lookup AS (index text, type text, path text, id text);
