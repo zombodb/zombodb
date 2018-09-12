@@ -314,7 +314,7 @@ char *find_sort_and_limit_for_scan(IndexScanDesc scan, SortByDir *direction, uin
 
 	if (si.attname != NULL) {
 
-		if (strstr(si.attname, "zdb_score") != 0) {
+		if (strstr(si.attname, "zdb.score") != 0) {
 			*direction = si.direction;
 			*limit     = si.limit;
 
