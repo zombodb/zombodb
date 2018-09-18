@@ -801,6 +801,11 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 		void   *zdb_ctid;
 		uint64 ctidAs64bits;
 
+		if (context->fields == NULL)
+			ereport(ERROR,
+					(errcode(ERRCODE_INTERNAL_ERROR),
+							errmsg("No fields found in this hit entry")));
+
 		zdb_ctid     = get_json_object_array(context->fields, "zdb_ctid", false);
 		ctidAs64bits = get_json_array_element_uint64(zdb_ctid, 0, context->jsonMemoryContext);
 
