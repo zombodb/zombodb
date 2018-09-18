@@ -808,6 +808,7 @@ public abstract class QueryRewriter {
             // for queries like:  WHERE ... ==> 'json_field = NULL'
             switch (node.getOperator()) {
                 case EQ:
+                case CONTAINS:
                     return boolQuery().mustNot(nestedQuery(fieldname, boolQuery().mustNot(existsQuery(fieldname + ".zdb_always_exists")), ScoreMode.None));
                 case NE:
                     return nestedQuery(fieldname, boolQuery().mustNot(existsQuery(fieldname + ".zdb_always_exists")), ScoreMode.None);
