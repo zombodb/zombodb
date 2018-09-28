@@ -28,6 +28,9 @@
 
 #include "json.h"
 
+#include "postgres.h"
+#include "mb/pg_wchar.h"
+#include "lib/stringinfo.h"
 #include <stdlib.h>
 
 // work around MSVC 2013 and lower not having strtoull
@@ -90,7 +93,7 @@ static int json_hexadecimal_digit(const char c) {
 
 static int json_hexadecimal_value(const char *c, const unsigned long size, unsigned long *result) {
 	const char *p;
-	int digit;
+	int        digit;
 
 	if (size > sizeof(unsigned long) * 2) {
 		return 0;
@@ -350,9 +353,8 @@ static int json_get_string_size(struct json_parse_state_s *state,
 						offset += 2;
 						data_size += 2;
 					} else if (codepoint >= 0xd800 && codepoint <= 0xdfff) {
-						state->error  = json_parse_error_invalid_string_escape_sequence;
-						state->offset = offset;
-						return 1;
+						offset += 4;
+						data_size += 4;
 					} else {
 						offset += 3;
 						data_size += 3;
@@ -935,6 +937,7 @@ static void json_parse_string(struct json_parse_state_s *state,
 	const char    quote_to_use = '\'' == src[offset] ? '\'' : '"';
 	char          *data        = state->data;
 	unsigned long codepoint;
+	long hi_surrogate = -1;
 
 	string->string = data;
 
@@ -962,6 +965,21 @@ static void json_parse_string(struct json_parse_state_s *state,
 					} else if (codepoint <= 0x7ffu) {
 						data[bytes_written++] = (char) (0xc0u | (codepoint >> 6)); // 110xxxxx
 						data[bytes_written++] = (char) (0x80u | (codepoint & 0x3fu)); // 10xxxxxx
+					} else if (codepoint >= 0xd800 && codepoint <= 0xdbff) {
+						hi_surrogate = (codepoint & 0x3ff) << 10;
+						continue;
+					} else if (codepoint >= 0xdc00 && codepoint <= 0xdfff) {
+						char tmp[5];
+						int i, len;
+
+						codepoint = 0x10000 + hi_surrogate + (codepoint & 0x3ff);
+						unicode_to_utf8((pg_wchar) codepoint, (unsigned char *) tmp);
+						len = pg_utf_mblen((unsigned char *) tmp);
+
+						for (i=0; i<len; i++)
+							data[bytes_written++] = tmp[i];
+
+						hi_surrogate = -1;
 					} else {
 						// we assume the value was validated and thus is within the valid range
 						data[bytes_written++] = (char) (0xe0u | (codepoint >> 12)); // 1110xxxx
