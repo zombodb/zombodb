@@ -541,6 +541,21 @@ void ElasticsearchBulkMarkTransactionInProgress(ElasticsearchBulkContext *contex
 	bulk_epilogue(context);
 }
 
+void ElasticsearchBulkMarkTransactionCommitted(ElasticsearchBulkContext *context) {
+	uint64 xid = convert_xid(GetCurrentTransactionId());
+
+	appendStringInfo(context->current->buff,
+					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"_retry_on_conflict\":128}}\n");
+	appendStringInfo(context->current->buff, ""
+							   "{"
+							   "\"script\":{"
+							   "\"source\":\"ctx._source.zdb_aborted_xids.remove(ctx._source.zdb_aborted_xids.indexOf(params.XID));\","
+							   "\"params\":{\"XID\":%lu},"
+							   "\"lang\":\"painless\""
+							   "}"
+							   "}\n", xid);
+	context->nxid++;
+}
 
 void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context) {
 	StringInfo request = makeStringInfo();
@@ -785,6 +800,11 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 	} else if (ctid != NULL) {
 		void   *zdb_ctid;
 		uint64 ctidAs64bits;
+
+		if (context->fields == NULL)
+			ereport(ERROR,
+					(errcode(ERRCODE_INTERNAL_ERROR),
+							errmsg("No fields found in this hit entry")));
 
 		zdb_ctid     = get_json_object_array(context->fields, "zdb_ctid", false);
 		ctidAs64bits = get_json_array_element_uint64(zdb_ctid, 0, context->jsonMemoryContext);

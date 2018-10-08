@@ -46,7 +46,7 @@ for image in `ls docker/` ; do
     echo ${image} | grep centos 2>&1 > /dev/null
     if [ "$?" == "0" ] ; then
         echo "     building rpm package"
-        fpm -s dir -t rpm -n zombodb -v ${VERSION} -p ${ARTIFACTDIR}/zombodb_${OS_DIST}${OS_VER}_pg10-${VERSION}_1.x86_64.rpm -a x86_64 . || exit 1
+        fpm -s dir -t rpm -n zombodb -v ${VERSION} --rpm-os linux -p ${ARTIFACTDIR}/zombodb_${OS_DIST}${OS_VER}_pg10-${VERSION}_1.x86_64.rpm -a x86_64 . || exit 1
     else
         echo "     building deb package"
         fpm --deb-no-default-config-files -s dir -t deb -n zombodb -v ${VERSION} -p ${ARTIFACTDIR}/zombodb_${OS_VER}_pg10-${VERSION}_amd64.deb -a amd64 . || exit 1

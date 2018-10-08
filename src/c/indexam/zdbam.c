@@ -57,6 +57,7 @@ typedef struct ZDBBuildStateData {
 }                                     ZDBBuildStateData;
 
 typedef struct ZDBScanContext {
+	bool                       needsInit;
 	ElasticsearchScrollContext *scrollContext;
 	float4                     lastScore;
 	ItemPointerData            lastCtid;
@@ -64,6 +65,7 @@ typedef struct ZDBScanContext {
 	HTAB                       *highlightLookup;
 	bool                       wantScores;
 	bool                       wantHighlights;
+	ZDBQueryType               *query;
 }                                     ZDBScanContext;
 
 PG_FUNCTION_INFO_V1(zdb_delete_trigger);
@@ -160,6 +162,13 @@ static void finish_inserts() {
 	foreach (lc, insert_contexts) {
 		ZDBIndexChangeContext *context = lfirst(lc);
 
+		if (IsBatchMode() && context->esContext->nrequests == 0) {
+			ElasticsearchBulkMarkTransactionCommitted(context->esContext);
+
+			/* no ned to remember this index anymore as we're able to mark it as committed in the only batch */
+			touched_indexes = list_delete_oid(touched_indexes, context->indexRelid);
+		}
+
 		ElasticsearchFinishBulkProcess(context->esContext);
 	}
 
@@ -189,18 +198,25 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 		case XACT_EVENT_PRE_PREPARE: {
 			ListCell *lc;
 
-			if (zdb_batch_mode_guc && insert_contexts != NULL) {
-				HOLD_INTERRUPTS();
+			HOLD_INTERRUPTS();
+
+			if (IsBatchMode() && insert_contexts != NULL) {
+				/*
+				 * this might remove entries from 'touched_indexes' if they mark-as-committed doc
+				 * can also be sent
+				 */
 				finish_inserts();
-				RESUME_INTERRUPTS();
 			}
 
+			/*
+			 * For any indexes we touched that need to have this transaction id marked as committed,
+			 * do that now
+			 */
 			foreach(lc, touched_indexes) {
 				Oid      relid    = lfirst_oid(lc);
 				Relation indexRel = RelationIdGetRelation(relid);
 
 				ElasticsearchCommitCurrentTransaction(indexRel);
-
 				RelationClose(indexRel);
 			}
 
@@ -208,6 +224,8 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 				char *index_url = lfirst(lc);
 				ElasticsearchDeleteIndexDirect(index_url);
 			}
+
+			RESUME_INTERRUPTS();
 		}
 			break;
 		default:
@@ -296,7 +314,7 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc) {
 	if (executor_depth == 0) {
 
 		/* if we've inserted into some indexes and we're not in batch mode, then process the inserts */
-		if (insert_contexts != NULL && !zdb_batch_mode_guc) {
+		if (insert_contexts != NULL && !IsBatchMode()) {
 			finish_inserts();
 		}
 
@@ -515,7 +533,7 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 		 * If the statement has finished and we've inserted into some indexes and we're not
 		 * in batch mode, then process the inserts
 		 */
-		if (insert_contexts != NULL && !zdb_batch_mode_guc) {
+		if (insert_contexts != NULL && !IsBatchMode()) {
 			finish_inserts();
 		}
 
@@ -862,6 +880,14 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	if (!tupleIsAlive)
 		return;
 
+	if (HeapTupleIsHeapOnly(htup)) {
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+						errmsg("Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL <tablename>; and then create the index",
+							   ItemPointerGetBlockNumber(&(htup->t_self)),
+							   ItemPointerGetOffsetNumber(&(htup->t_self)))));
+	}
+
 	if (ZDBIndexOptionsGetLLAPI(indexRel)) {
 		ereport(ERROR,
 				(errcode(ERRCODE_DATA_EXCEPTION),
@@ -903,7 +929,7 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 	 *
 	 * If we're in batch mode, that means TopTransactionContext, otherwise our TopQueryContext is just fine
 	 */
-	oldContext = MemoryContextSwitchTo(zdb_batch_mode_guc ? TopTransactionContext : TopQueryContext);
+	oldContext = MemoryContextSwitchTo(IsBatchMode() ? TopTransactionContext : TopQueryContext);
 
 	insertContext = checkout_insert_context(indexRelation, values[0], isnull[0]);
 
@@ -1301,10 +1327,9 @@ static List *highlight_cb(ItemPointer ctid, Name field, void *arg) {
 }
 
 static IndexScanDesc ambeginscan(Relation indexRelation, int nkeys, int norderbys) {
-	IndexScanDesc  scan;
+	IndexScanDesc  scan = RelationGetIndexScan(indexRelation, nkeys, norderbys);
 	ZDBScanContext *context;
 
-	scan    = RelationGetIndexScan(indexRelation, nkeys, norderbys);
 	context = palloc0(sizeof(ZDBScanContext));
 
 	scan->xs_itupdesc = RelationGetDescr(indexRelation);
@@ -1313,80 +1338,67 @@ static IndexScanDesc ambeginscan(Relation indexRelation, int nkeys, int norderby
 	return scan;
 }
 
-static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
+static inline void do_search_for_scan(IndexScanDesc scan) {
 	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
-	int64          ntuples  = 0;
 
-	while (context->scrollContext->cnt < context->scrollContext->total) {
-		ItemPointerData ctid;
-		float4          score;
-		ZDBScoreKey     key;
-		ZDBScoreEntry   *entry;
-		bool            found;
+	if (context->needsInit) {
+		Relation  heapRel    = scan->heapRelation;
+		char      *sortField;
+		SortByDir sortdir    = SORTBY_DEFAULT;
+		uint64    limit      = 0;
+		bool      wantScores;
+		List      *highlights;
 
-		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
+		if (scan->heapRelation == NULL)
+			heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
 
-		ItemPointerCopy(&ctid, &key.ctid);
+		wantScores = current_scan_wants_scores(scan, heapRel);
+		highlights = extract_highlight_info(scan, RelationGetRelid(heapRel));
+		sortField  = find_sort_and_limit_for_scan(scan, &sortdir, &limit);
 
-		if (context->wantScores) {
-			entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
-			ItemPointerCopy(&ctid, &entry->key.ctid);
-			entry->score = score;
+		if (limit == 0)
+			limit = find_limit_for_scan(scan);
+
+		if (context->scrollContext != NULL) {
+			ElasticsearchCloseScroll(context->scrollContext);
 		}
 
-		tbm_add_tuples(tbm, &ctid, 1, false);
-		ntuples++;
-	}
+		context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, context->query, false, true, wantScores,
+														  limit,
+														  sortField, sortdir, highlights, NULL, 0);
+		context->wantHighlights = highlights != NULL;
+		context->wantScores     = wantScores;
+		if (context->wantScores) {
+			context->scoreLookup = scoring_create_lookup_table(TopTransactionContext, "bitmap scores");
+			scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, context, CurrentMemoryContext);
+		}
 
-	return ntuples;
+		if (context->wantHighlights) {
+			context->highlightLookup = highlight_create_lookup_table(TopTransactionContext, "highlights");
+			highlight_register_callback(RelationGetRelid(heapRel), highlight_cb, context, CurrentMemoryContext);
+		}
+
+		if (scan->heapRelation == NULL)
+			RelationClose(heapRel);
+
+		context->needsInit = false;
+	}
 }
 
 /*lint -esym 715,orderbys,norderbys ignore unused param */
 static void amrescan(IndexScanDesc scan, ScanKey keys, int nkeys, ScanKey orderbys, int norderbys) {
-	ZDBScanContext *context   = (ZDBScanContext *) scan->opaque;
-	ZDBQueryType   *query     = scan_keys_to_query_dsl(keys, nkeys);
-	Relation       heapRel    = scan->heapRelation;
-	char           *sortField;
-	SortByDir      sortdir    = SORTBY_DEFAULT;
-	uint64         limit      = 0;
-	bool           wantScores = current_query_wants_scores();
-	List           *highlights;
+	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
 
-	if (scan->heapRelation == NULL)
-		heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
-
-	highlights = extract_highlight_info(RelationGetRelid(scan->indexRelation));
-	sortField  = find_sort_and_limit_for_scan(scan, &sortdir, &limit);
-
-	if (limit == 0)
-		limit = find_limit_for_scan(scan);
-
-	if (context->scrollContext != NULL) {
-		ElasticsearchCloseScroll(context->scrollContext);
-	}
-
-	context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, query, false, true, wantScores, limit,
-													  sortField, sortdir, highlights, NULL, 0);
-	context->wantHighlights = highlights != NULL;
-	context->wantScores     = wantScores;
-	if (context->wantScores) {
-		context->scoreLookup = scoring_create_lookup_table(TopTransactionContext, "bitmap scores");
-		scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, context, CurrentMemoryContext);
-	}
-
-	if (context->wantHighlights) {
-		context->highlightLookup = highlight_create_lookup_table(TopTransactionContext, "highlights");
-		highlight_register_callback(RelationGetRelid(heapRel), highlight_cb, context, CurrentMemoryContext);
-	}
-
-	if (scan->heapRelation == NULL)
-		RelationClose(heapRel);
+	context->query         = scan_keys_to_query_dsl(keys, nkeys);
+	context->needsInit     = true;
 }
 
 /*lint -esym 715,direction ignore unused param */
 static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	ZDBScanContext  *context = (ZDBScanContext *) scan->opaque;
 	zdb_json_object highlights;
+
+	do_search_for_scan(scan);
 
 	/* zdb indexes are never lossy */
 	scan->xs_recheck = false;
@@ -1452,8 +1464,41 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	return true;
 }
 
+static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
+	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
+	int64          ntuples  = 0;
+
+	do_search_for_scan(scan);
+
+	while (context->scrollContext->cnt < context->scrollContext->total) {
+		ItemPointerData ctid;
+		float4          score;
+		ZDBScoreKey     key;
+		ZDBScoreEntry   *entry;
+		bool            found;
+
+		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
+
+		ItemPointerCopy(&ctid, &key.ctid);
+
+		if (context->wantScores) {
+			entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
+			ItemPointerCopy(&ctid, &entry->key.ctid);
+			entry->score = score;
+		}
+
+		tbm_add_tuples(tbm, &ctid, 1, false);
+		ntuples++;
+	}
+
+	return ntuples;
+}
+
 static void amendscan(IndexScanDesc scan) {
 	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
+
+	if (context->query != NULL)
+		pfree(context->query);
 
 	if (context->scrollContext != NULL)
 		ElasticsearchCloseScroll(context->scrollContext);
@@ -1472,7 +1517,7 @@ static void handle_trigger(Oid indexRelId, ItemPointer targetCtid) {
 	ZDBIndexChangeContext *context;
 	Relation              indexRel;
 
-	oldContext = MemoryContextSwitchTo(zdb_batch_mode_guc ? TopTransactionContext : TopQueryContext);
+	oldContext = MemoryContextSwitchTo(IsBatchMode() ? TopTransactionContext : TopQueryContext);
 	indexRel   = zdb_open_index(indexRelId, AccessShareLock);
 
 	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);

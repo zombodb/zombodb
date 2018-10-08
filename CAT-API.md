@@ -4,7 +4,7 @@ ZomboDB exposes all of the Elasticsearch `_cat/` API endpoints as a set of typed
 
 The cat API views also support ZomboDB indices from multiple Elasticsearch clusters (ie, indices have different `url` parameters).
 
-Using the cat API view SQL is extremely powerful as all the columns are propertly typed and SQL aggregates can be used to perform more complex analysis and roll-ups of the raw cat API data.
+The cat API views are extremely powerful as all the columns are properly typed and SQL aggregates can be used to perform more complex analysis and roll-ups of the raw cat API data.
 
 ## VIEW zdb.index_stats
 

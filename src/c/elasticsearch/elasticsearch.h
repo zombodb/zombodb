@@ -92,6 +92,7 @@ void ElasticsearchBulkVacuumXmax(ElasticsearchBulkContext *context, char *_id, u
 void ElasticsearchBulkDeleteRowByXmin(ElasticsearchBulkContext *context, char *_id, uint64 xmin);
 void ElasticsearchBulkDeleteRowByXmax(ElasticsearchBulkContext *context, char *_id, uint64 xmax);
 void ElasticsearchBulkMarkTransactionInProgress(ElasticsearchBulkContext *context);
+void ElasticsearchBulkMarkTransactionCommitted(ElasticsearchBulkContext *context);
 void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context);
 
 uint64 ElasticsearchCountAllDocs(Relation indexRel);

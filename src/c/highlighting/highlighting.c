@@ -23,9 +23,14 @@
 #include "parser/parse_func.h"
 
 typedef struct HighlightWalkerContext {
-	Oid  indexRelId;
-	Oid  funcOid;
-	List *highlights;
+	Oid           heapRelid;
+	Oid           funcOid;
+	IndexScanDesc scan;
+	bool          foundScan;
+	bool          foundFunc;
+	int           funcDepth;
+	int           depth;
+	List          *highlights;
 } HighlightWalkerContext;
 
 typedef struct ZDBHighlightSupportData {
@@ -54,106 +59,201 @@ void highlight_support_cleanup(void) {
 	highlightEntries = NULL;
 }
 
-
-static bool find_highlights_walker(PlanState *planState, HighlightWalkerContext *context) {
-	Plan     *plan;
-	ListCell *lc;
-
-	if (planState == NULL)
+static bool find_highlights_expr_walker(Node *node, HighlightWalkerContext *context) {
+	if (node == NULL)
 		return false;
 
-	plan = planState->plan;
+	if (IsA(node, FuncExpr)) {
+		FuncExpr *funcExpr = (FuncExpr *) node;
 
-	foreach (lc, plan->targetlist) {
-		TargetEntry *te = lfirst(lc);
+		if (funcExpr->funcid == context->funcOid) {
+			if (list_length(funcExpr->args) == 3) {
+				Node             *first  = lfirst(list_head(funcExpr->args));
+				Node             *second = lsecond(funcExpr->args);
+				Node             *third  = lthird(funcExpr->args);
+				ZDBHighlightInfo *info   = palloc0(sizeof(ZDBHighlightInfo));
+				ListCell         *lc;
+				bool             exists  = false;
 
-		if (IsA(te->expr, FuncExpr)) {
-			FuncExpr *funcExpr = (FuncExpr *) te->expr;
+				if (IsA(first, Var)) {
+					Var *var = (Var *) first;
+					if (var->vartype == TIDOID) {
+						QueryDesc     *currentQuery = linitial(currentQueryStack);
+						RangeTblEntry *rentry       = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
 
-			if (funcExpr->funcid == context->funcOid) {
-				if (list_length(funcExpr->args) == 3) {
-					Node             *first  = lfirst(list_head(funcExpr->args));
-					Node             *second = lsecond(funcExpr->args);
-					Node             *third  = lthird(funcExpr->args);
-					ZDBHighlightInfo *info   = palloc0(sizeof(ZDBHighlightInfo));
-
-					if (IsA(first, Var)) {
-						Var *var = (Var *) first;
-						if (var->vartype == TIDOID) {
-							QueryDesc     *currentQuery = linitial(currentQueryStack);
-							RangeTblEntry *rentry       = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
-
-							if (rentry->relid != IndexGetRelation(context->indexRelId, false)) {
-								/* it's not for the table we're looking for */
-								return false;
-							}
-
-						} else {
-							ereport(ERROR,
-									(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
-											errmsg("first argument to zdb_highlight() must be a 'ctid' column")));
+						if (rentry->relid != context->heapRelid) {
+							/* it's not for the table we're looking for */
+							return false;
 						}
+
 					} else {
 						ereport(ERROR,
 								(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
 										errmsg("first argument to zdb_highlight() must be a 'ctid' column")));
 					}
-
-					if (IsA(second, Const)) {
-						Const *arg = (Const *) second;
-						if (arg->consttype == NAMEOID) {
-							info->name = DatumGetName(arg->constvalue)->data;
-						} else {
-							ereport(ERROR,
-									(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
-											errmsg("second argument to zdb_highlight() must be of type 'text'")));
-						}
-					} else {
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
-										errmsg("second argument to zdb_highlight() must be a constant value of type 'text'")));
-					}
-
-					if (IsA(third, Const)) {
-						Const *arg = (Const *) third;
-						if (arg->consttype == JSONOID) {
-							info->json = TextDatumGetCString(arg->constvalue);
-						} else {
-							ereport(ERROR,
-									(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
-											errmsg("third argument to zdb_highlight() must be of type 'json'")));
-						}
-					} else {
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
-										errmsg("third argument to zdb_highlight() must be a constant value of type 'json'")));
-					}
-
-
-					context->highlights = lappend(context->highlights, info);
-
 				} else {
 					ereport(ERROR,
-							(errcode(ERRCODE_TOO_MANY_ARGUMENTS),
-									errmsg("zdb_highlight() function must have exactly three arguments")));
+							(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
+									errmsg("first argument to zdb_highlight() must be a 'ctid' column")));
 				}
+
+				if (IsA(second, Const)) {
+					Const *arg = (Const *) second;
+					if (arg->consttype == NAMEOID) {
+						info->name = DatumGetName(arg->constvalue)->data;
+					} else {
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
+										errmsg("second argument to zdb_highlight() must be of type 'text'")));
+					}
+				} else {
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
+									errmsg("second argument to zdb_highlight() must be a constant value of type 'text'")));
+				}
+
+				if (IsA(third, Const)) {
+					Const *arg = (Const *) third;
+					if (arg->consttype == JSONOID) {
+						info->json = TextDatumGetCString(arg->constvalue);
+					} else {
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
+										errmsg("third argument to zdb_highlight() must be of type 'json'")));
+					}
+				} else {
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
+									errmsg("third argument to zdb_highlight() must be a constant value of type 'json'")));
+				}
+
+
+				foreach(lc, context->highlights) {
+					ZDBHighlightInfo *tmp = lfirst(lc);
+
+					if (strcmp(tmp->name, info->name) == 0) {
+						exists = true;
+						break;
+					}
+				}
+
+				if (!exists)
+					context->highlights = lappend(context->highlights, info);
+
+			} else {
+				ereport(ERROR,
+						(errcode(ERRCODE_TOO_MANY_ARGUMENTS),
+								errmsg("zdb_highlight() function must have exactly three arguments")));
 			}
 		}
 	}
 
-
-	return planstate_tree_walker(planState, find_highlights_walker, context);
+	return expression_tree_walker(node, find_highlights_expr_walker, context);
 }
 
-List *extract_highlight_info(Oid indexRelId) {
+static bool find_highlights_walker(PlanState *state, HighlightWalkerContext *context) {
+	ListCell *lc;
+	bool     rc;
+
+	if (state == NULL)
+		return false;
+
+	foreach (lc, state->plan->targetlist) {
+		(void) expression_tree_walker(lfirst(lc), find_highlights_expr_walker, context);
+	}
+
+	if (context->scan != NULL && context->depth >= context->funcDepth) {
+		if (IsA(state, IndexScanState)) {
+			IndexScanState *iss = (IndexScanState *) state;
+
+			if (iss->iss_ScanDesc == context->scan) {
+				IndexScan *scan = (IndexScan *) state->plan;
+
+				context->foundScan = true;
+
+				foreach(lc, state->plan->targetlist) {
+					(void) expression_tree_walker(lfirst(lc), find_highlights_expr_walker, context);
+				}
+
+				(void) expression_tree_walker((Node *) scan->indexqual, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.qual, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, find_highlights_expr_walker, context);
+			}
+		} else if (IsA(state, IndexOnlyScanState)) {
+			IndexOnlyScanState *iss = (IndexOnlyScanState *) state;
+
+			if (iss->ioss_ScanDesc == context->scan) {
+				IndexOnlyScan *scan = (IndexOnlyScan *) state->plan;
+
+				context->foundScan = true;
+
+				foreach(lc, state->plan->targetlist) {
+					(void) expression_tree_walker(lfirst(lc), find_highlights_expr_walker, context);
+				}
+
+				(void) expression_tree_walker((Node *) scan->indexqual, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.qual, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, find_highlights_expr_walker, context);
+			}
+		} else if (IsA(state, BitmapIndexScanState)) {
+			BitmapIndexScanState *iss = (BitmapIndexScanState *) state;
+
+			if (iss->biss_ScanDesc == context->scan) {
+				BitmapIndexScan *scan = (BitmapIndexScan *) state->plan;
+
+				context->foundScan = true;
+
+				foreach(lc, state->plan->targetlist) {
+					(void) expression_tree_walker(lfirst(lc), find_highlights_expr_walker, context);
+				}
+
+				(void) expression_tree_walker((Node *) scan->indexqual, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.qual, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, find_highlights_expr_walker, context);
+				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, find_highlights_expr_walker, context);
+			}
+		}
+	} else if (IsA(state, SeqScanState)) {
+		SeqScanState *sss = (SeqScanState *) state;
+
+		if (RelationGetRelid(sss->ss.ss_currentRelation) == context->heapRelid) {
+			SeqScan *scan = (SeqScan *) state->plan;
+
+			context->foundScan = true;
+
+			foreach(lc, state->plan->targetlist) {
+				(void) expression_tree_walker(lfirst(lc), find_highlights_expr_walker, context);
+			}
+
+			(void) expression_tree_walker((Node *) scan->plan.qual, find_highlights_expr_walker, context);
+			(void) expression_tree_walker((Node *) scan->plan.righttree, find_highlights_expr_walker, context);
+			(void) expression_tree_walker((Node *) scan->plan.righttree, find_highlights_expr_walker, context);
+		}
+	}
+
+	context->depth++;
+	rc = planstate_tree_walker(state, find_highlights_walker, context);
+	context->depth--;
+
+	return rc;
+}
+
+List *extract_highlight_info(IndexScanDesc scan, Oid healRelid) {
 	QueryDesc              *queryDesc = (QueryDesc *) linitial(currentQueryStack);
 	HighlightWalkerContext context;
 	Oid                    argtypes[] = {TIDOID, NAMEOID, JSONOID};
 
-	context.indexRelId = indexRelId;
+	context.heapRelid  = healRelid;
+	context.scan       = scan;
 	context.funcOid    = LookupFuncName(lappend(lappend(NIL, makeString("zdb")), makeString("highlight")), 3, argtypes,
 										false);
 	context.highlights = NULL;
+	context.foundScan  = false;
+	context.foundFunc  = false;
+	context.funcDepth  = 0;
+	context.depth      = 0;
 
 	find_highlights_walker(queryDesc->planstate, &context);
 

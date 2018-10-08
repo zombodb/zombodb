@@ -25,7 +25,7 @@
 #define JSON_ERROR(e) \
     ereport(ERROR, \
             (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION), \
-                    errmsg("Error parsing json: code=%u", (e).error)));
+                    errmsg("Error parsing json: code=%ld", (e).error)));
 
 
 void json_support_init(void) {
@@ -41,7 +41,7 @@ bool is_json(char *input) {
 	struct json_value_s *jv;
 	bool                rc;
 
-	jv = json_parse_ex(input, strlen(input), json_alloc, NULL, NULL);
+	jv = json_parse_ex(input, strlen(input), 0, json_alloc, NULL, NULL);
 	rc = jv != NULL && jv->type == json_type_object;
 
 	if (jv != NULL)
@@ -54,7 +54,7 @@ void *parse_json_object(StringInfo jsonString, MemoryContext memcxt) {
 	struct json_value_s        *jv;
 	struct json_parse_result_s result;
 
-	jv = json_parse_ex(jsonString->data, (size_t) jsonString->len, json_alloc, NULL, &result);
+	jv = json_parse_ex(jsonString->data, (size_t) jsonString->len, 0, json_alloc, NULL, &result);
 	if (jv == NULL)
 		JSON_ERROR(result);
 
@@ -68,7 +68,7 @@ void *parse_json_object_from_string(char *jsonString, MemoryContext memcxt) {
 	struct json_value_s        *jv;
 	struct json_parse_result_s result;
 
-	jv = json_parse_ex(jsonString, strlen(jsonString), json_alloc, NULL, &result);
+	jv = json_parse_ex(jsonString, strlen(jsonString), 0, json_alloc, NULL, &result);
 	if (jv == NULL)
 		JSON_ERROR(result);
 

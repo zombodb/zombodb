@@ -56,6 +56,12 @@ Additionally, the triggers have a catalog dependency on the ZomboDB index, so wh
 
 This should be a worry-free thing, but it's something to know.
 
+### Heap Only Tuples (HOT) are not Supported
+
+Postgres [Heap Only Tuples](https://github.com/postgres/postgres/blob/master/src/backend/access/heap/README.HOT) are not (currently) supported by ZomboDB.  If a `CREATE INDEX` statement finds a HOT-updated row, the statement will ERROR and instruct you to `VACUUM FULL` your table before you can successfully run the `CREATE INDEX` statement.
+
+Once a `USING zombodb` index is created, rows won't be HOT-updated, so this only applies to creating new ZomboDB indices on tables that had been previously updated.
+
 ### External Tools Like Kibana are Supported
 
 Not only tools like Kibana, but you can search ZomboDB-managed indices with curl, if you want.  But there's a catch...

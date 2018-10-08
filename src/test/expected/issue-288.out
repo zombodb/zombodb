@@ -1,0 +1,6 @@
+SELECT dsl.terms_array('field', '{1,2}'::numeric[]);
+        terms_array        
+---------------------------
+ {"terms":{"field":[1,2]}}
+(1 row)
+
