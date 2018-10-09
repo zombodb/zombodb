@@ -14,5 +14,40 @@ select txid_current() is not null;  -- burn current xid
 savepoint foo;
 update issue273 set id = id where id = 1;  -- gets next xid value
 commit; -- results in ERROR because "next xid value" doesn't exist in events' list of aborted xids.
-ERROR:  unexpected http response code from remote server.  code=400, response={"error":{"root_cause":[{"type":"remote_transport_exception","reason":"[OxNDdMz][127.0.0.1:9300][indices:data/write/update[s]]"}],"type":"illegal_argument_exception","reason":"failed to execute script","caused_by":{"type":"script_exception","reason":"runtime error","script_stack":[],"script":"ctx._source.zdb_aborted_xids.remove(ctx._source.zdb_aborted_xids.indexOf(params.XID));","lang":"painless","caused_by":{"type":"array_index_out_of_bounds_exception","reason":null}}},"status":400}
+begin;
+insert into issue273(id) values (2);
+savepoint three;
+insert into issue273(id) values (3);
+rollback to three;
+insert into issue273(id) values (4);
+commit;
+select * from issue273 order by id;
+ id |      data      
+----+----------------
+  1 | this is a test
+  2 | 
+  4 | 
+(3 rows)
+
+select * from zdb.terms('idxissue273', 'id', dsl.match_all(), 1000, 'term');
+ term | doc_count 
+------+-----------
+ 1    |         1
+ 2    |         1
+ 4    |         1
+(3 rows)
+
+SELECT jsonb_array_length((zdb.request('idxissue273', 'doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
+ jsonb_array_length 
+--------------------
+                  1
+(1 row)
+
+VACUUM issue273;
+SELECT jsonb_array_length((zdb.request('idxissue273', 'doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
+ jsonb_array_length 
+--------------------
+                  0
+(1 row)
+
 DROP TABLE issue273;

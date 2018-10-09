@@ -1,5 +1,4 @@
 VACUUM events;
-SET zdb.batch_mode TO ON;
 BEGIN;
 UPDATE events SET id = id WHERE id = 1;
 UPDATE events SET id = id WHERE id = 2;

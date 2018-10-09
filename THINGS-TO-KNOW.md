@@ -6,7 +6,7 @@ Postgres<-->Elasticsearch integrations are usually implemented in application co
 
 ZomboDB ties into Postgres' Index Access Method API, which means it's synchronous.  This is not to say that ZomboDB isn't also concurrent -- it most definitely is.  However, any COPY/INSERT/UPDATE/DELETE in a given Postgres session against a table with a ZomboDB index will round-trip to Elasticsearch.
 
-ZomboDB does, however, batch Elasticsearch indexing requests by statement (**not** by row).  It can also batch by transaction if `zdb.batch_mode` is on.  This reduces the number of round trips to Elasticsearch to the minimal amount.
+ZomboDB does, however, batch Elasticsearch indexing requests by transaction (**not** by row).  This approach reduces the number of round trips to Elasticsearch to the minimal amount.  If during a transaction, a batch needs to be sent to Elasticsearch in order to properly a search (a SELECT or aggregate function) then ZomboDB will do that automatically.
 
 Because ZomboDB is an index type, it (along with help from Postgres) guarantees MVCC correctness across all queries that use it.  This includes normal WHERE clause conditions along with SQL-functions that perform Elasticsearch-specifc aggregates that are wholly solved within the Elasticsearch cluster.
 

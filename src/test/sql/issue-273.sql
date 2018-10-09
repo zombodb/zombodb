@@ -9,4 +9,22 @@ select txid_current() is not null;  -- burn current xid
 savepoint foo;
 update issue273 set id = id where id = 1;  -- gets next xid value
 commit; -- results in ERROR because "next xid value" doesn't exist in events' list of aborted xids.
+
+
+begin;
+insert into issue273(id) values (2);
+savepoint three;
+insert into issue273(id) values (3);
+rollback to three;
+insert into issue273(id) values (4);
+commit;
+
+select * from issue273 order by id;
+select * from zdb.terms('idxissue273', 'id', dsl.match_all(), 1000, 'term');
+
+SELECT jsonb_array_length((zdb.request('idxissue273', 'doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
+VACUUM issue273;
+SELECT jsonb_array_length((zdb.request('idxissue273', 'doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
+
+
 DROP TABLE issue273;

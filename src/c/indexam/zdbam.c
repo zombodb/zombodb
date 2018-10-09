@@ -134,17 +134,15 @@ static void validate_uuid(char *str) {
 PG_FUNCTION_INFO_V1(zdb_amhandler);
 
 static List                     *insert_contexts        = NULL;
-static List                     *touched_indexes        = NULL;
 static List                     *to_drop                = NULL;
+static List                     *aborted_xids           = NULL;
 static ExecutorStart_hook_type  prev_ExecutorStartHook  = NULL;
 static ExecutorEnd_hook_type    prev_ExecutorEndHook    = NULL;
 static ExecutorRun_hook_type    prev_ExecutorRunHook    = NULL;
 static ExecutorFinish_hook_type prev_ExecutorFinishHook = NULL;
 static ProcessUtility_hook_type prev_ProcessUtilityHook = NULL;
 static int                      executor_depth          = 0;
-static MemoryContext            TopQueryContext         = NULL;
 
-bool zdb_batch_mode_guc;
 int  ZDB_LOG_LEVEL;
 char *zdb_default_elasticsearch_url_guc;
 int  zdb_default_row_estimation_guc;
@@ -156,33 +154,36 @@ relopt_kind RELOPT_KIND_ZDB;
 
 List *currentQueryStack = NULL;
 
-static void finish_inserts() {
+void finish_inserts(bool is_commit) {
 	ListCell *lc;
 
 	foreach (lc, insert_contexts) {
 		ZDBIndexChangeContext *context = lfirst(lc);
+		ListCell *lc2;
 
-		if (IsBatchMode() && context->esContext->nrequests == 0) {
-			ElasticsearchBulkMarkTransactionCommitted(context->esContext);
-
-			/* no ned to remember this index anymore as we're able to mark it as committed in the only batch */
-			touched_indexes = list_delete_oid(touched_indexes, context->indexRelid);
+		foreach(lc2, aborted_xids) {
+			list_delete_int(context->esContext->usedXids, lfirst_int(lc2));
 		}
 
-		ElasticsearchFinishBulkProcess(context->esContext);
+		ElasticsearchFinishBulkProcess(context->esContext, is_commit);
 	}
 
-	insert_contexts = NULL;
 }
 
 static void subxact_callback(SubXactEvent event, SubTransactionId mySubid, SubTransactionId parentSubid, void *arg) {
 	switch (event) {
-		case SUBXACT_EVENT_START_SUB:
-			elog(NOTICE, "START: top xid=%d, parent=%d, sub=%d, curr=%d", GetTopTransactionId(), parentSubid, mySubid, GetCurrentTransactionId());
-			break;
-		case SUBXACT_EVENT_ABORT_SUB:
-			elog(NOTICE, "ABORT: top xid=%d, parent=%d, sub=%d, curr=%d", GetTopTransactionId(), parentSubid, mySubid, GetCurrentTransactionId());
-			break;
+		case SUBXACT_EVENT_ABORT_SUB: {
+			TransactionId curr_xid = GetCurrentTransactionIdIfAny();
+
+			if (curr_xid != InvalidTransactionId) {
+				MemoryContext oldContext;
+
+				oldContext = MemoryContextSwitchTo(TopTransactionContext);
+				aborted_xids = lappend_int(aborted_xids, curr_xid);
+				MemoryContextSwitchTo(oldContext);
+			}
+		} break;
+
 		default:
 			break;
 	}
@@ -200,25 +201,7 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 
 			HOLD_INTERRUPTS();
 
-			if (IsBatchMode() && insert_contexts != NULL) {
-				/*
-				 * this might remove entries from 'touched_indexes' if they mark-as-committed doc
-				 * can also be sent
-				 */
-				finish_inserts();
-			}
-
-			/*
-			 * For any indexes we touched that need to have this transaction id marked as committed,
-			 * do that now
-			 */
-			foreach(lc, touched_indexes) {
-				Oid      relid    = lfirst_oid(lc);
-				Relation indexRel = RelationIdGetRelation(relid);
-
-				ElasticsearchCommitCurrentTransaction(indexRel);
-				RelationClose(indexRel);
-			}
+			finish_inserts(true);
 
 			foreach(lc, to_drop) {
 				char *index_url = lfirst(lc);
@@ -241,10 +224,9 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 		case XACT_EVENT_PREPARE:
 			executor_depth    = 0;
 			insert_contexts   = NULL;
-			touched_indexes   = NULL;
 			to_drop           = NULL;
+			aborted_xids      = NULL;
 			currentQueryStack = NULL;
-			TopQueryContext   = NULL;
 			break;
 		default:
 			break;
@@ -289,18 +271,6 @@ static void zdb_executor_start_hook(QueryDesc *queryDesc, int eflags) {
 				PG_RE_THROW();
 			}
 	PG_END_TRY();
-
-	/*
-	 * When executor_depth is zero, we want to hold onto the MemoryContext of the query
-	 * and remember it as our "TopQueryContext", as we'll allocate certain per-statement
-	 * state there.
-	 */
-	if (executor_depth == 0) {
-		Assert(TopQueryContext == NULL);
-		Assert(queryDesc->estate->es_query_cxt != NULL);
-
-		TopQueryContext = queryDesc->estate->es_query_cxt;
-	}
 }
 
 static void zdb_executor_end_hook(QueryDesc *queryDesc) {
@@ -313,16 +283,10 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc) {
 	 */
 	if (executor_depth == 0) {
 
-		/* if we've inserted into some indexes and we're not in batch mode, then process the inserts */
-		if (insert_contexts != NULL && !IsBatchMode()) {
-			finish_inserts();
-		}
-
 		/* cleanup any score and highlight tracking we might have */
 		scoring_support_cleanup();
 		highlight_support_cleanup();
 
-		TopQueryContext   = NULL;
 		currentQueryStack = NULL;
 	}
 
@@ -388,12 +352,6 @@ static void run_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 }
 
 static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *queryString, ProcessUtilityContext context, ParamListInfo params, QueryEnvironment *queryEnv, DestReceiver *dest, char *completionTag) {
-	if (executor_depth == 0) {
-		Assert(TopQueryContext == NULL);
-
-		TopQueryContext = CurrentMemoryContext;
-	}
-
 	executor_depth++;
 	PG_TRY();
 			{
@@ -529,45 +487,12 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 	PG_END_TRY();
 
 	if (executor_depth == 0) {
-		/*
-		 * If the statement has finished and we've inserted into some indexes and we're not
-		 * in batch mode, then process the inserts
-		 */
-		if (insert_contexts != NULL && !IsBatchMode()) {
-			finish_inserts();
-		}
-
 		/* cleanup any score and highlight tracking we might have */
 		scoring_support_cleanup();
 		highlight_support_cleanup();
 
-		TopQueryContext   = NULL;
 		currentQueryStack = NULL;
 	}
-}
-
-static void touch_index(Relation indexRelation, ElasticsearchBulkContext *context) {
-	MemoryContext oldContext;
-
-	/*
-	 * remember that we're touching this index so we can mark our transaction as committed upon COMMIT
-	 *
-	 * That's also why we switch to TopTransactionContext -- we need this to survive until xact commit
-	 */
-
-	oldContext = MemoryContextSwitchTo(TopTransactionContext);
-
-	if (!list_member_oid(touched_indexes, RelationGetRelid(indexRelation))) {
-		/*
-		 * this is the first time we've touched this index during this transaction
-		 * so we need to remember it and also mark the transaction as in-progress
-		 * within Elasticsearch
-		 */
-		touched_indexes = lappend_oid(touched_indexes, RelationGetRelid(indexRelation));
-		ElasticsearchBulkMarkTransactionInProgress(context);
-	}
-
-	MemoryContextSwitchTo(oldContext);
 }
 
 ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row, bool isnull) {
@@ -613,9 +538,6 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 	context->esContext  = ElasticsearchStartBulkProcess(indexRelation, NULL, tupdesc, false);
 
 	insert_contexts = lappend(insert_contexts, context);
-
-	/* note that we're touching this index for cleanup during xact commit */
-	touch_index(indexRelation, context->esContext);
 
 	if (tupdesc != NULL)
 		ReleaseTupleDesc(tupdesc);
@@ -672,8 +594,6 @@ static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableN
 
 void zdb_aminit(void) {
 	/* define the GUCs we'll use */
-	DefineCustomBoolVariable("zdb.batch_mode", "Batch INSERT/UPDATE/COPY changes until transaction commit", NULL,
-							 &zdb_batch_mode_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
 	DefineCustomBoolVariable("zdb.curl_verbose", "Put libcurl into verbose mode", NULL,
 							 &zdb_curl_verbose_guc, false, PGC_USERSET, 0, NULL, NULL, NULL);
 	DefineCustomEnumVariable("zdb.log_level", "ZomboDB's logging level", NULL, &ZDB_LOG_LEVEL, DEBUG1,
@@ -832,7 +752,7 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	 * Now we insert data into our index
 	 */
 	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, true, zdbbuildCallback, &buildstate);
-	ElasticsearchFinishBulkProcess(buildstate.esContext);
+	ElasticsearchFinishBulkProcess(buildstate.esContext, true);
 
 	/* Finish up with elasticsearch index creation */
 	ElasticsearchFinalizeIndexCreation(indexRelation);
@@ -926,10 +846,8 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 	/*
 	 * when actually indexing the record (sending it to Elasticsearch) we need to be in a MemoryContext
 	 * that's still active when we want to call ElasticsearchFinishBulkProcess().
-	 *
-	 * If we're in batch mode, that means TopTransactionContext, otherwise our TopQueryContext is just fine
 	 */
-	oldContext = MemoryContextSwitchTo(IsBatchMode() ? TopTransactionContext : TopQueryContext);
+	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
 	insertContext = checkout_insert_context(indexRelation, values[0], isnull[0]);
 
@@ -1111,7 +1029,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				ElasticsearchCloseScroll(scroll);
 
 				/* finish the bulk process for vacuuming */
-				ElasticsearchFinishBulkProcess(bulk);
+				ElasticsearchFinishBulkProcess(bulk, true);
 
 				/*
 				 * Finally, any "zdb_aborted_xid" value we have can be removed if it's
@@ -1517,7 +1435,7 @@ static void handle_trigger(Oid indexRelId, ItemPointer targetCtid) {
 	ZDBIndexChangeContext *context;
 	Relation              indexRel;
 
-	oldContext = MemoryContextSwitchTo(IsBatchMode() ? TopTransactionContext : TopQueryContext);
+	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	indexRel   = zdb_open_index(indexRelId, AccessShareLock);
 
 	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
