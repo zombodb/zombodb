@@ -41,8 +41,22 @@
 #define __DBL_MIN__ 2.2250738585072014e-308
 #define __DECIMAL_DIG__ __LDBL_DECIMAL_DIG__
 #define __DYNAMIC__ 1
-#define __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ 101300
+#define __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ 101400
 #define __FINITE_MATH_ONLY__ 0
+#define __FLT16_DECIMAL_DIG__ 5
+#define __FLT16_DENORM_MIN__ 5.9604644775390625e-8F16
+#define __FLT16_DIG__ 3
+#define __FLT16_EPSILON__ 9.765625e-4F16
+#define __FLT16_HAS_DENORM__ 1
+#define __FLT16_HAS_INFINITY__ 1
+#define __FLT16_HAS_QUIET_NAN__ 1
+#define __FLT16_MANT_DIG__ 11
+#define __FLT16_MAX_10_EXP__ 4
+#define __FLT16_MAX_EXP__ 15
+#define __FLT16_MAX__ 6.5504e+4F16
+#define __FLT16_MIN_10_EXP__ (-13)
+#define __FLT16_MIN_EXP__ (-14)
+#define __FLT16_MIN__ 6.103515625e-5F16
 #define __FLT_DECIMAL_DIG__ 9
 #define __FLT_DENORM_MIN__ 1.40129846e-45F
 #define __FLT_DIG__ 6
@@ -81,12 +95,12 @@
 #define __GNUC_STDC_INLINE__ 1
 #define __GNUC__ 4
 #define __GXX_ABI_VERSION 1002
-#define __INT16_C_SUFFIX__
+#define __INT16_C_SUFFIX__ 
 #define __INT16_FMTd__ "hd"
 #define __INT16_FMTi__ "hi"
 #define __INT16_MAX__ 32767
 #define __INT16_TYPE__ short
-#define __INT32_C_SUFFIX__
+#define __INT32_C_SUFFIX__ 
 #define __INT32_FMTd__ "d"
 #define __INT32_FMTi__ "i"
 #define __INT32_MAX__ 2147483647
@@ -96,7 +110,7 @@
 #define __INT64_FMTi__ "lli"
 #define __INT64_MAX__ 9223372036854775807LL
 #define __INT64_TYPE__ long long int
-#define __INT8_C_SUFFIX__
+#define __INT8_C_SUFFIX__ 
 #define __INT8_FMTd__ "hhd"
 #define __INT8_FMTi__ "hhi"
 #define __INT8_MAX__ 127
@@ -168,6 +182,11 @@
 #define __NO_INLINE__ 1
 #define __NO_MATH_INLINES 1
 #define __OBJC_BOOL_IS_BOOL 0
+#define __OPENCL_MEMORY_SCOPE_ALL_SVM_DEVICES 3
+#define __OPENCL_MEMORY_SCOPE_DEVICE 2
+#define __OPENCL_MEMORY_SCOPE_SUB_GROUP 4
+#define __OPENCL_MEMORY_SCOPE_WORK_GROUP 1
+#define __OPENCL_MEMORY_SCOPE_WORK_ITEM 0
 #define __ORDER_BIG_ENDIAN__ 4321
 #define __ORDER_LITTLE_ENDIAN__ 1234
 #define __ORDER_PDP_ENDIAN__ 3412
@@ -179,7 +198,7 @@
 #define __PTRDIFF_MAX__ 9223372036854775807L
 #define __PTRDIFF_TYPE__ long int
 #define __PTRDIFF_WIDTH__ 64
-#define __REGISTER_PREFIX__
+#define __REGISTER_PREFIX__ 
 #define __SCHAR_MAX__ 127
 #define __SHRT_MAX__ 32767
 #define __SIG_ATOMIC_MAX__ 2147483647
@@ -218,7 +237,7 @@
 #define __STDC_UTF_32__ 1
 #define __STDC_VERSION__ 201112L
 #define __STDC__ 1
-#define __UINT16_C_SUFFIX__
+#define __UINT16_C_SUFFIX__ 
 #define __UINT16_FMTX__ "hX"
 #define __UINT16_FMTo__ "ho"
 #define __UINT16_FMTu__ "hu"
@@ -239,7 +258,7 @@
 #define __UINT64_FMTx__ "llx"
 #define __UINT64_MAX__ 18446744073709551615ULL
 #define __UINT64_TYPE__ long long unsigned int
-#define __UINT8_C_SUFFIX__
+#define __UINT8_C_SUFFIX__ 
 #define __UINT8_FMTX__ "hhX"
 #define __UINT8_FMTo__ "hho"
 #define __UINT8_FMTu__ "hhu"
@@ -310,21 +329,22 @@
 #define __UINT_LEAST8_MAX__ 255
 #define __UINT_LEAST8_TYPE__ unsigned char
 #define __USER_LABEL_PREFIX__ _
-#define __VERSION__ "4.2.1 Compatible Apple LLVM 9.1.0 (clang-902.0.39.2)"
+#define __VERSION__ "4.2.1 Compatible Apple LLVM 10.0.0 (clang-1000.11.45.2)"
 #define __WCHAR_MAX__ 2147483647
 #define __WCHAR_TYPE__ int
 #define __WCHAR_WIDTH__ 32
+#define __WINT_MAX__ 2147483647
 #define __WINT_TYPE__ int
 #define __WINT_WIDTH__ 32
 #define __amd64 1
 #define __amd64__ 1
-#define __apple_build_version__ 9020039
+#define __apple_build_version__ 10001145
 #define __block __attribute__((__blocks__(byref)))
 #define __clang__ 1
-#define __clang_major__ 9
-#define __clang_minor__ 1
+#define __clang_major__ 10
+#define __clang_minor__ 0
 #define __clang_patchlevel__ 0
-#define __clang_version__ "9.1.0 (clang-902.0.39.2)"
+#define __clang_version__ "10.0.0 (clang-1000.11.45.2)"
 #define __core2 1
 #define __core2__ 1
 #define __llvm__ 1
@@ -332,9 +352,9 @@
 #define __null_unspecified _Null_unspecified
 #define __nullable _Nullable
 #define __pic__ 2
-#define __strong
+#define __strong 
 #define __tune_core2__ 1
-#define __unsafe_unretained
+#define __unsafe_unretained 
 #define __weak __attribute__((objc_gc(weak)))
 #define __x86_64 1
 #define __x86_64__ 1
