@@ -162,7 +162,7 @@ void finish_inserts(bool is_commit) {
 		ListCell *lc2;
 
 		foreach(lc2, aborted_xids) {
-			list_delete_int(context->esContext->usedXids, lfirst_int(lc2));
+			(void) list_delete_int(context->esContext->usedXids, lfirst_int(lc2));
 		}
 
 		ElasticsearchFinishBulkProcess(context->esContext, is_commit);
@@ -192,6 +192,7 @@ ArrayType *collect_used_xids(MemoryContext memoryContext) {
 	return DatumGetArrayTypeP(makeArrayResult(astate, memoryContext));
 }
 
+/*lint -esym 715,mySubid,parentSubid,arg ignore unused param */
 static void subxact_callback(SubXactEvent event, SubTransactionId mySubid, SubTransactionId parentSubid, void *arg) {
 	switch (event) {
 		case SUBXACT_EVENT_ABORT_SUB: {
@@ -201,7 +202,7 @@ static void subxact_callback(SubXactEvent event, SubTransactionId mySubid, SubTr
 				MemoryContext oldContext;
 
 				oldContext = MemoryContextSwitchTo(TopTransactionContext);
-				aborted_xids = lappend_int(aborted_xids, curr_xid);
+				aborted_xids = lappend_int(aborted_xids, (int) curr_xid);
 				MemoryContextSwitchTo(oldContext);
 			}
 		} break;
