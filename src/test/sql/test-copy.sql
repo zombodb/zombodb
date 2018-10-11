@@ -21,13 +21,9 @@ COPY copy_test(pkey) FROM STDIN;
 
 SELECT pkey FROM copy_test WHERE copy_test ==> range(field=>'pkey', gte=>0) ORDER BY pkey;
 
-/*
- test it with batch mode off (the default) in a transaction
- We should see the results from the select
- */
+/* Within the transaction We should see the results from the select */
 TRUNCATE TABLE copy_test;
 BEGIN;
-SET zdb.batch_mode TO off;
 COPY copy_test(pkey) FROM STDIN;
 4
 5
@@ -37,22 +33,7 @@ COPY copy_test(pkey) FROM STDIN;
 SELECT pkey FROM copy_test WHERE copy_test ==> range(field=>'pkey', gte=>0) ORDER BY pkey;
 COMMIT;
 
-
-/*
- test it with batch mode on in a transaction
- We should NOT see the results from the select until we commit
- */
-TRUNCATE TABLE copy_test;
-BEGIN;
-SET zdb.batch_mode TO on;
-COPY copy_test(pkey) FROM STDIN;
-4
-5
-6
-\.
-
-SELECT pkey FROM copy_test WHERE copy_test ==> range(field=>'pkey', gte=>0) ORDER BY pkey;
-COMMIT;
+/* and we should see the results after the commit */
 SELECT pkey FROM copy_test WHERE copy_test ==> range(field=>'pkey', gte=>0) ORDER BY pkey;
 
 DROP TABLE copy_test;

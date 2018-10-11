@@ -30,8 +30,6 @@
 
 #include "postgres.h"
 #include "mb/pg_wchar.h"
-#include "lib/stringinfo.h"
-#include <stdlib.h>
 
 // work around MSVC 2013 and lower not having strtoull
 #if defined(_MSC_VER) && (_MSC_VER <= 1800)

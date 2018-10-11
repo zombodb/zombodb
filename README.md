@@ -18,11 +18,6 @@ This is a new version of ZomboDB that only supports Postgres 10 and doesn't requ
 
 If you've used ZomboDB before, you'll learn that this is a different and more advanced product. Please review all the documentation as many things (including SQL syntax and query language) have changed.
 
-Since this is beta software, there's a short TODO-list:
-
-- Support Postgres sub-transactions (`SAVEPOINT` and `ROLLBACK TO SAVEPOINT`)
-- Eliminate the `zdb.batch_mode` setting by automatically batching index modifications and writing to Elasticsearch prior to an index query while in an open transaction or at transaction commit.
-
 Previous versions that support Postgres <=9.5 are still available, from these branches:
 
 - [Support for Elasticsearch 5.6](https://github.com/zombodb/zombodb/tree/master-es5.6)

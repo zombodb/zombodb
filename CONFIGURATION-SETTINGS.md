@@ -36,21 +36,6 @@ Defines the number of replicas all new indices should have.  Changing this value
 The below settings may be set in `postgresql.conf`, but they can also be changed per session/transaction using Postgres `SET key TO value` command;
 
 
-
-```
-zdb.batch_mode
-
-Type: boolean
-Default: false
-```
-
-When sychronizing changes from COPY/INSERT/UPDATE/DELETE statements to Elasticsearch, ZomboDB does so at the end of each *statement*.  For long-running transactions that modify lots of individual rows, it may make sense to turn `zdb.batch_mode` to on.  This indicates that ZDB should batch Elasticsearch index synchronization changes until the transaction `COMMIT`s.  This can significantly improve performance in these kinds of situations.
-
-Note that if `zdb.batch_mode` is on, ZomboDB queries won't see the index changes until after the controlling transaction commits.
-
-
-
-
 ```
 zdb.default_row_estimate
 

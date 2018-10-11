@@ -19,6 +19,7 @@
 #include "elasticsearch/querygen.h"
 #include "highlighting/highlighting.h"
 #include "rest/rest.h"
+#include "indexam/zdbam.h"
 
 #include "access/transam.h"
 #include "access/xact.h"
@@ -323,6 +324,7 @@ ElasticsearchBulkContext *ElasticsearchStartBulkProcess(Relation indexRel, char 
 	context->bulkConcurrency  = ZDBIndexOptionsGetBulkConcurrency(indexRel);
 	context->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
 	context->shouldRefresh    = strcmp("-1", ZDBIndexOptionsGetRefreshInterval(indexRel)) == 0;
+	context->ignoreVersionConflicts = ignore_version_conflicts;
 	context->rest             = rest_multi_init(context->bulkConcurrency, ignore_version_conflicts);
 
 	for (i = 0; i < context->bulkConcurrency + 1; i++)
@@ -346,9 +348,46 @@ ElasticsearchBulkContext *ElasticsearchStartBulkProcess(Relation indexRel, char 
 	return context;
 }
 
+static inline void mark_transaction_in_progress(ElasticsearchBulkContext *context, TransactionId curr_xid) {
+	uint64 xid = convert_xid(curr_xid);
+
+	appendStringInfo(context->current->buff,
+					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"_retry_on_conflict\":128}}\n");
+	appendStringInfo(context->current->buff,
+					 "{\"upsert\":{\"zdb_aborted_xids\":[%lu]},"
+					 "\"script\":{\"source\":\"ctx._source.zdb_aborted_xids.add(params.XID);\",\"lang\":\"painless\",\"params\":{\"XID\":%lu}}}\n",
+					 xid, xid);
+
+	context->nxid++;
+}
+
+static inline void remember_curr_xid(ElasticsearchBulkContext *context) {
+	TransactionId curr_xid = GetCurrentTransactionId();
+
+	if (context->lastUsedXid != curr_xid) {
+		if (!list_member_int(context->usedXids, curr_xid)) {
+			/*
+			 * we haven't seen this transaction id yet, so remember it and also mark
+			 * it as in-progress in the index
+			 */
+			MemoryContext oldContext;
+
+			oldContext = MemoryContextSwitchTo(TopTransactionContext);
+			context->usedXids    = lappend_int(context->usedXids, curr_xid);
+			context->lastUsedXid = curr_xid;
+			MemoryContextSwitchTo(oldContext);
+
+			mark_transaction_in_progress(context, curr_xid);
+		}
+	}
+}
+
 static inline void bulk_prologue(ElasticsearchBulkContext *context, bool is_final) {
 	if (rest_multi_perform(context->rest))
 		rest_multi_partial_cleanup(context->rest, false, true);
+
+	if (!is_final)
+		remember_curr_xid(context);
 
 	if (context->current->buff->len >= context->batchSize || context->nrows == MAX_DOCS_PER_REQUEST || is_final) {
 		StringInfo request = makeStringInfo();
@@ -525,40 +564,50 @@ void ElasticsearchBulkDeleteRowByXmax(ElasticsearchBulkContext *context, char *_
 	bulk_epilogue(context);
 }
 
-void ElasticsearchBulkMarkTransactionInProgress(ElasticsearchBulkContext *context) {
-	uint64 xid = convert_xid(GetCurrentTransactionId());
-
-	bulk_prologue(context, false);
-
-	appendStringInfo(context->current->buff,
-					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"_retry_on_conflict\":128}}\n");
-	appendStringInfo(context->current->buff,
-					 "{\"upsert\":{\"zdb_aborted_xids\":[%lu]},"
-					 "\"script\":{\"source\":\"ctx._source.zdb_aborted_xids.add(params.XID);\",\"lang\":\"painless\",\"params\":{\"XID\":%lu}}}\n",
-					 xid, xid);
-
-	context->nxid++;
-	bulk_epilogue(context);
-}
-
-void ElasticsearchBulkMarkTransactionCommitted(ElasticsearchBulkContext *context) {
-	uint64 xid = convert_xid(GetCurrentTransactionId());
+static void mark_transaction_committed(ElasticsearchBulkContext *context, TransactionId which_xid) {
+	uint64 xid = convert_xid(which_xid);
 
 	appendStringInfo(context->current->buff,
 					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"_retry_on_conflict\":128}}\n");
 	appendStringInfo(context->current->buff, ""
-							   "{"
-							   "\"script\":{"
-							   "\"source\":\"ctx._source.zdb_aborted_xids.remove(ctx._source.zdb_aborted_xids.indexOf(params.XID));\","
-							   "\"params\":{\"XID\":%lu},"
-							   "\"lang\":\"painless\""
-							   "}"
-							   "}\n", xid);
+											 "{"
+											 "\"script\":{"
+											 "\"source\":\"ctx._source.zdb_aborted_xids.remove(ctx._source.zdb_aborted_xids.indexOf(params.XID));\","
+											 "\"params\":{\"XID\":%lu},"
+											 "\"lang\":\"painless\""
+											 "}"
+											 "}\n", xid);
 	context->nxid++;
 }
 
-void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context) {
-	StringInfo request = makeStringInfo();
+void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_commit) {
+	StringInfo request  = makeStringInfo();
+	bool       did_xids = false;
+
+	if (is_commit) {
+		if (context->rest->available == context->rest->nhandles) {
+			/*
+			 * we don't have any active requests, so if we can fit
+			 * all our used_xids into the current bulk request, then do so
+			 */
+			if (context->nindex + context->nupdate + context->nxid + list_length(context->usedXids) <
+				MAX_DOCS_PER_REQUEST) {
+				/* the fist, so we can add them here to mark the used transaction ids as committed */
+				ListCell *lc;
+
+				foreach (lc, context->usedXids) {
+					mark_transaction_committed(context, (TransactionId) lfirst_int(lc));
+				}
+
+				did_xids = true;
+			} else {
+				/* we can't mark them as committed now, but we will below when everything else is done
+				 * so go ahead and note that we're going to do another request
+				 */
+				context->nrequests++;
+			}
+		}
+	}
 
 	if (context->current->buff->len > 0) {
 		/* we have more data to send to ES via curl */
@@ -590,6 +639,30 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context) {
 	/* after this call, context->rest is no longer usable */
 	rest_multi_partial_cleanup(context->rest, true, false);
 
+	if (!is_commit) {
+		/* reset the context->rest struct so that this bulk process can still be used again */
+		context->rest = rest_multi_init(context->bulkConcurrency, context->ignoreVersionConflicts);
+		context->rest->pool = context->pool;
+	}
+
+	if (is_commit && !did_xids) {
+		/*
+		 * we couldn't mark transactions as committed above, so do it now that all outstanding
+		 * multi-rest calls are finished
+		 */
+		StringInfo endpoint = makeStringInfo();
+		ListCell   *lc;
+
+		context->current = checkout_batch_pool(context);
+		foreach (lc, context->usedXids) {
+			mark_transaction_committed(context, (TransactionId) lfirst_int(lc));
+		}
+
+		appendStringInfo(endpoint, "%s%s/%s/_bulk?filter_path=%s", context->url, context->esIndexName,
+						 context->typeName, ES_BULK_RESPONSE_FILTER);
+		rest_call("POST", endpoint, context->current->buff, context->compressionLevel);
+	}
+
 	if (context->shouldRefresh && context->nrequests > 1) {
 		/* we did more than 1 request, so force a full refresh across the entire index */
 		resetStringInfo(request);
@@ -599,9 +672,11 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context) {
 
 	freeStringInfo(request);
 
-	pfree(context->esIndexName);
-	pfree(context->pgIndexName);
-	pfree(context);
+	if (is_commit) {
+		pfree(context->esIndexName);
+		pfree(context->pgIndexName);
+		pfree(context);
+	}
 }
 
 uint64 ElasticsearchCountAllDocs(Relation indexRel) {
@@ -652,6 +727,8 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	void                       *jsonResponse, *hitsObject;
 	char                       *error;
 	int                        i;
+
+	finish_inserts(false);
 
 	/* we'll assume we want scoring if we have a limit, so that we get the top scoring docs when the limit is applied */
 	needScore = needScore || limit > 0;
@@ -835,35 +912,6 @@ void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext) {
 	pfree(scrollContext);
 }
 
-void ElasticsearchCommitCurrentTransaction(Relation indexRel) {
-	StringInfo request  = makeStringInfo();
-	StringInfo postData = makeStringInfo();
-	StringInfo response;
-	uint64     xid      = convert_xid(GetCurrentTransactionId());
-
-	appendStringInfo(postData, ""
-							   "{"
-							   "\"script\":{"
-							   "\"source\":\"ctx._source.zdb_aborted_xids.remove(ctx._source.zdb_aborted_xids.indexOf(params.XID));\","
-							   "\"params\":{\"XID\":%lu},"
-							   "\"lang\":\"painless\""
-							   "}"
-							   "}", xid);
-
-	appendStringInfo(request, "%s%s/%s/zdb_aborted_xids/_update?retry_on_conflict=128",
-					 ZDBIndexOptionsGetUrl(indexRel),
-					 ZDBIndexOptionsGetIndexName(indexRel),
-					 ZDBIndexOptionsGetTypeName(indexRel));
-	if (strcmp("-1", ZDBIndexOptionsGetRefreshInterval(indexRel)) == 0)
-		appendStringInfo(request, "&refresh=true");
-
-	response = rest_call("POST", request, postData, ZDBIndexOptionsGetCompressionLevel(indexRel));
-
-	freeStringInfo(response);
-	freeStringInfo(request);
-	freeStringInfo(postData);
-}
-
 void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *xids) {
 	if (list_length(xids) > 0) {
 		StringInfo xidsArray  = makeStringInfo();
@@ -902,8 +950,8 @@ void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *x
 }
 
 char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query) {
-	StringInfo request    = makeStringInfo();
-	StringInfo postData   = makeStringInfo();
+	StringInfo request  = makeStringInfo();
+	StringInfo postData = makeStringInfo();
 	StringInfo response;
 
 	appendStringInfo(postData, "{\"profile\":true, \"query\":%s}", convert_to_query_dsl(indexRel, query));
@@ -927,6 +975,8 @@ uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query) {
 
 	validate_alias(indexRel);
 
+	finish_inserts(false);
+
 	appendStringInfo(postData, "{\"query\":%s}", convert_to_query_dsl(indexRel, query));
 
 	appendStringInfo(request, "%s%s/_count?filter_path=count", ZDBIndexOptionsGetUrl(indexRel),
@@ -949,6 +999,8 @@ static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, b
 	StringInfo response;
 
 	validate_alias(indexRel);
+
+	finish_inserts(false);
 
 	appendStringInfoCharMacro(postData, '{');
 	if (query != NULL)
@@ -1014,6 +1066,8 @@ static StringInfo terms_agg_only_keys(Relation indexRel, char *field, ZDBQueryTy
 	StringInfo request      = makeStringInfo();
 	StringInfo postData     = makeStringInfo();
 	StringInfo response;
+
+	finish_inserts(false);
 
 	if (size == 0)
 		size = INT32_MAX;

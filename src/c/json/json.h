@@ -36,7 +36,7 @@
 #pragma warning(disable : 4820)
 #endif
 
-#include <stddef.h>
+#include "postgres.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,7 +121,7 @@ enum json_parse_flags_e {
 // Parse a JSON text file, returning a pointer to the root of the JSON
 // structure. json_parse performs 1 call to malloc for the entire encoding.
 // Returns 0 if an error occurred (malformed JSON input, or malloc failed)
-struct json_value_s *json_parse(const void *src, size_t src_size);
+//struct json_value_s *json_parse(const void *src, size_t src_size);
 
 // Parse a JSON text file, returning a pointer to the root of the JSON
 // structure. json_parse performs 1 call to malloc for the entire encoding.
@@ -139,7 +139,7 @@ struct json_value_s *json_parse_ex(const void *src, size_t src_size,
 // json_write_minified performs 1 call to malloc for the entire encoding.
 // Return 0 if an error occurred (malformed JSON input, or malloc failed).
 // The out_size parameter is optional as the utf-8 string is null terminated.
-void *json_write_minified(const struct json_value_s *value, size_t *out_size);
+//void *json_write_minified(const struct json_value_s *value, size_t *out_size);
 
 // Write out a pretty JSON utf-8 string. This string is encoded such that the
 // resultant JSON is pretty in that it is easily human readable. The indent and
@@ -150,8 +150,8 @@ void *json_write_minified(const struct json_value_s *value, size_t *out_size);
 // json_write_pretty performs 1 call to malloc for the entire encoding.
 // Return 0 if an error occurred (malformed JSON input, or malloc failed).
 // The out_size parameter is optional as the utf-8 string is null terminated.
-void *json_write_pretty(const struct json_value_s *value, const char *indent,
-						const char *newline, size_t *out_size);
+//void *json_write_pretty(const struct json_value_s *value, const char *indent,
+//						const char *newline, size_t *out_size);
 
 // The various types JSON values can be. Used to identify what a value is
 enum json_type_e {

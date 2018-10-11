@@ -37,6 +37,7 @@ typedef struct ElasticsearchBulkContext {
 	bool           containsJson;
 	bool           containsJsonIsSet;
 	bool           shouldRefresh;
+	bool           ignoreVersionConflicts;
 	MultiRestState *rest;
 	PostDataEntry  *current;
 	int            nrequests;
@@ -48,6 +49,8 @@ typedef struct ElasticsearchBulkContext {
 	int            nvacuum;
 	int            nxid;
 	StringInfo     pool[MAX_CURL_HANDLES];
+	TransactionId  lastUsedXid;
+	List           *usedXids;	/* should be allocated in TopTransactionContext */
 } ElasticsearchBulkContext;
 
 typedef struct ElasticsearchScrollContext {
@@ -91,9 +94,7 @@ void ElasticsearchBulkUpdateTuple(ElasticsearchBulkContext *context, ItemPointer
 void ElasticsearchBulkVacuumXmax(ElasticsearchBulkContext *context, char *_id, uint64 expected_xmax);
 void ElasticsearchBulkDeleteRowByXmin(ElasticsearchBulkContext *context, char *_id, uint64 xmin);
 void ElasticsearchBulkDeleteRowByXmax(ElasticsearchBulkContext *context, char *_id, uint64 xmax);
-void ElasticsearchBulkMarkTransactionInProgress(ElasticsearchBulkContext *context);
-void ElasticsearchBulkMarkTransactionCommitted(ElasticsearchBulkContext *context);
-void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context);
+void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_commit);
 
 uint64 ElasticsearchCountAllDocs(Relation indexRel);
 uint64 ElasticsearchEstimateSelectivity(Relation indexRel, ZDBQueryType *query);
@@ -102,7 +103,6 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPointer ctid, char **_id, float4 *score, zdb_json_object *highlights);
 void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext);
 
-void ElasticsearchCommitCurrentTransaction(Relation indexRel);
 void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *xids);
 
 char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query);
