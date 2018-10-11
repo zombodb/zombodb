@@ -13,10 +13,16 @@ commit; -- results in ERROR because "next xid value" doesn't exist in events' li
 
 begin;
 insert into issue273(id) values (2);
+select * from issue273 order by id;
+select * from zdb.terms('idxissue273', 'id', dsl.match_all(), 1000, 'term');
 savepoint three;
 insert into issue273(id) values (3);
+select * from issue273 order by id;
+select * from zdb.terms('idxissue273', 'id', dsl.match_all(), 1000, 'term');
 rollback to three;
 insert into issue273(id) values (4);
+select * from issue273 order by id;
+select * from zdb.terms('idxissue273', 'id', dsl.match_all(), 1000, 'term');
 commit;
 
 select * from issue273 order by id;

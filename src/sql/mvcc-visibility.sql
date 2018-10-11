@@ -29,7 +29,7 @@ CREATE OR REPLACE FUNCTION vac_aborted_xmax(index regclass, type text, xmax bigi
 $$;
 
 CREATE OR REPLACE FUNCTION internal_visibility_clause(index regclass) RETURNS zdbquery PARALLEL SAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_internal_visibility_clause';
-CREATE OR REPLACE FUNCTION visibility_clause(myXid bigint, myXmax bigint, myCid int, active_xids bigint[], index regclass, type text) RETURNS zdbquery PARALLEL SAFE STABLE STRICT LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION visibility_clause(myXid bigint[], myXmax bigint, myCid int, active_xids bigint[], index regclass, type text) RETURNS zdbquery PARALLEL SAFE STABLE STRICT LANGUAGE sql AS $$
 /*
 * ((Xmin == my-transaction &&				inserted by the current transaction
 *	 Cmin < my-command &&					before this command, and
@@ -68,12 +68,12 @@ CREATE OR REPLACE FUNCTION visibility_clause(myXid bigint, myXmax bigint, myCid 
       dsl.noteq('_id:zdb_aborted_xids'),
       dsl.should(
           dsl.must(
-              dsl.term('zdb_xmin', myXid),
+              dsl.terms('zdb_xmin', VARIADIC myXid),
               dsl.range(field => 'zdb_cmin', lt => myCid),
               dsl.should(
                   dsl.field_missing('zdb_xmax'),
                   dsl.must(
-                      dsl.term('zdb_xmax', myXid),
+                      dsl.terms('zdb_xmax', VARIADIC myXid),
                       dsl.range(field => 'zdb_cmax', gte => myCid)
                   )
               )
@@ -86,11 +86,11 @@ CREATE OR REPLACE FUNCTION visibility_clause(myXid bigint, myXmax bigint, myCid 
                   dsl.should(
                       dsl.field_missing('zdb_xmax'),
                       dsl.must(
-                          dsl.term('zdb_xmax', myXid),
+                          dsl.terms('zdb_xmax', VARIADIC myXid),
                           dsl.range(field => 'zdb_cmax', gte => myCid)
                       ),
                       dsl.must(
-                          dsl.noteq(dsl.term('zdb_xmax', myXid)),
+                          dsl.noteq(dsl.terms('zdb_xmax', VARIADIC myXid)),
                           dsl.should(
                               dsl.terms_lookup('zdb_xmax', zdb.index_name(index), type, 'zdb_aborted_xids', 'zdb_aborted_xids'),
                               dsl.terms('zdb_xmax', VARIADIC active_xids),

@@ -170,6 +170,28 @@ void finish_inserts(bool is_commit) {
 
 }
 
+ArrayType *collect_used_xids(MemoryContext memoryContext) {
+	ListCell *lc;
+	ArrayBuildState *astate = NULL;
+
+	foreach (lc, insert_contexts) {
+		ZDBIndexChangeContext *context = lfirst(lc);
+		ListCell *lc2;
+
+		foreach (lc2, context->esContext->usedXids) {
+			uint64 xid = convert_xid((TransactionId) lfirst_int(lc2));
+
+			if (!list_member_int(aborted_xids, lfirst_int(lc2))) {
+				astate = accumArrayResult(astate, UInt64GetDatum(xid), false, INT8OID, memoryContext);
+			}
+		}
+	}
+
+	astate = accumArrayResult(astate, UInt64GetDatum(GetCurrentTransactionIdIfAny()), false, INT8OID, memoryContext);
+
+	return DatumGetArrayTypeP(makeArrayResult(astate, memoryContext));
+}
+
 static void subxact_callback(SubXactEvent event, SubTransactionId mySubid, SubTransactionId parentSubid, void *arg) {
 	switch (event) {
 		case SUBXACT_EVENT_ABORT_SUB: {

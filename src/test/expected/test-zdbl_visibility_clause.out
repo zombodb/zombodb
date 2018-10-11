@@ -1,4 +1,4 @@
-select jsonb_pretty(regexp_replace(zdb.visibility_clause(42, 99, 0, ARRAY[1,2,3,4,5]::bigint[], 'idxevents', 'doc')::text, '"index":".*?"', '"index":"xxx"', 'g')::jsonb);
+select jsonb_pretty(regexp_replace(zdb.visibility_clause(ARRAY[42]::bigint[], 99, 0, ARRAY[1,2,3,4,5]::bigint[], 'idxevents', 'doc')::text, '"index":".*?"', '"index":"xxx"', 'g')::jsonb);
                                                         jsonb_pretty                                                         
 -----------------------------------------------------------------------------------------------------------------------------
  {                                                                                                                          +
@@ -22,10 +22,10 @@ select jsonb_pretty(regexp_replace(zdb.visibility_clause(42, 99, 0, ARRAY[1,2,3,
                              "bool": {                                                                                      +
                                  "must": [                                                                                  +
                                      {                                                                                      +
-                                         "term": {                                                                          +
-                                             "zdb_xmin": {                                                                  +
-                                                 "value": 42                                                                +
-                                             }                                                                              +
+                                         "terms": {                                                                         +
+                                             "zdb_xmin": [                                                                  +
+                                                 42                                                                         +
+                                             ]                                                                              +
                                          }                                                                                  +
                                      },                                                                                     +
                                      {                                                                                      +
@@ -53,10 +53,10 @@ select jsonb_pretty(regexp_replace(zdb.visibility_clause(42, 99, 0, ARRAY[1,2,3,
                                                      "bool": {                                                              +
                                                          "must": [                                                          +
                                                              {                                                              +
-                                                                 "term": {                                                  +
-                                                                     "zdb_xmax": {                                          +
-                                                                         "value": 42                                        +
-                                                                     }                                                      +
+                                                                 "terms": {                                                 +
+                                                                     "zdb_xmax": [                                          +
+                                                                         42                                                 +
+                                                                     ]                                                      +
                                                                  }                                                          +
                                                              },                                                             +
                                                              {                                                              +
@@ -145,10 +145,10 @@ select jsonb_pretty(regexp_replace(zdb.visibility_clause(42, 99, 0, ARRAY[1,2,3,
                                                                  "bool": {                                                  +
                                                                      "must": [                                              +
                                                                          {                                                  +
-                                                                             "term": {                                      +
-                                                                                 "zdb_xmax": {                              +
-                                                                                     "value": 42                            +
-                                                                                 }                                          +
+                                                                             "terms": {                                     +
+                                                                                 "zdb_xmax": [                              +
+                                                                                     42                                     +
+                                                                                 ]                                          +
                                                                              }                                              +
                                                                          },                                                 +
                                                                          {                                                  +
@@ -168,10 +168,10 @@ select jsonb_pretty(regexp_replace(zdb.visibility_clause(42, 99, 0, ARRAY[1,2,3,
                                                                              "bool": {                                      +
                                                                                  "must_not": [                              +
                                                                                      {                                      +
-                                                                                         "term": {                          +
-                                                                                             "zdb_xmax": {                  +
-                                                                                                 "value": 42                +
-                                                                                             }                              +
+                                                                                         "terms": {                         +
+                                                                                             "zdb_xmax": [                  +
+                                                                                                 42                         +
+                                                                                             ]                              +
                                                                                          }                                  +
                                                                                      }                                      +
                                                                                  ]                                          +

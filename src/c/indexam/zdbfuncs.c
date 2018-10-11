@@ -18,6 +18,7 @@
 
 #include "elasticsearch/elasticsearch.h"
 #include "elasticsearch/querygen.h"
+#include "indexam/zdbam.h"
 
 #include "access/xact.h"
 #include "nodes/relation.h"
@@ -326,7 +327,7 @@ Datum zdb_internal_visibility_clause(PG_FUNCTION_ARGS) {
 		Oid             indexRelOid = PG_GETARG_OID(0);
 		Snapshot        snapshot    = GetTransactionSnapshot();
 		CommandId       commandId   = GetCurrentCommandId(false);
-		uint64          xid         = convert_xid(GetCurrentTransactionIdIfAny());
+		ArrayType       *myXids     = collect_used_xids(tmpContext);
 		uint64          xmax        = convert_xid(snapshot->xmax);
 		ArrayBuildState *astate     = initArrayResult(INT8OID, tmpContext, false);
 		Relation        indexRel;
@@ -348,11 +349,11 @@ Datum zdb_internal_visibility_clause(PG_FUNCTION_ARGS) {
 
 		/* find our visibility query SQL function */
 		zdb_visibility_clause = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-				"zdb.visibility_clause(bigint, bigint, int, bigint[], regclass, text)")));
+				"zdb.visibility_clause(bigint[], bigint, int, bigint[], regclass, text)")));
 
 		/* ... and call it */
 		vis = (ZDBQueryType *) DatumGetTextP(
-				OidFunctionCall6(zdb_visibility_clause, UInt64GetDatum(xid), UInt64GetDatum(xmax),
+				OidFunctionCall6(zdb_visibility_clause, PointerGetDatum(myXids), UInt64GetDatum(xmax),
 								 CommandIdGetDatum(commandId),
 								 makeArrayResult(astate, tmpContext),
 								 ObjectIdGetDatum(RelationGetRelid(indexRel)),
