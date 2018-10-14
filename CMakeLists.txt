@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(zdbl)
+project(zombodb)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -46,6 +46,6 @@ set(SOURCE_FILES
 
 include_directories(src/c /usr/local/src/pg10/src/include /usr/local/src/pg10/src/backend)
 
-add_library(zdbl ${SOURCE_FILES})
+add_library(zombodb ${SOURCE_FILES})
 
 

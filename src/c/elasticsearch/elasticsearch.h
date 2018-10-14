@@ -57,7 +57,7 @@ typedef struct ElasticsearchScrollContext {
 	MemoryContext jsonMemoryContext;      /* where are json objects allocated? */
 	char          *url;
 	int           compressionLevel;
-	bool          usingId;    /* is this scroll using _id instead of zdbl_id? */
+	bool          usingId;    /* is this scroll using _id instead of zdb_id? */
 	const char    *scrollId;
 	bool          hasHighlights;
 	uint64        total;      /* total number of hits across all scroll context's */
