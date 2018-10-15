@@ -33,6 +33,8 @@ PG_FUNCTION_INFO_V1(zdbquery_from_jsonb);
 PG_FUNCTION_INFO_V1(zdbquery_to_json);
 PG_FUNCTION_INFO_V1(zdbquery_to_jsonb);
 
+PG_FUNCTION_INFO_V1(zdb_set_query_property);
+
 static bool zdbquery_string_is_zdb(char *query) {
 	if (!is_json(query))
 		return false;
@@ -45,7 +47,7 @@ static bool zdbquery_string_is_zdb(char *query) {
 }
 
 static bool zdbquery_has_no_options(ZDBQueryType *query) {
-	return zdbquery_get_limmit(query) == 0 &&
+	return zdbuquery_get_limit(query) == 0 &&
 		   zdbquery_get_offset(query) == 0 &&
 		   zdbquery_get_maxscore(query) == 0.0 &&
 		   zdbquery_get_row_estimate(query) == zdb_default_row_estimation_guc &&
@@ -146,15 +148,23 @@ Datum zdbquery_to_jsonb(PG_FUNCTION_ARGS) {
 	PG_RETURN_DATUM(DirectFunctionCall1(jsonb_in, CStringGetDatum(zdbquery_to_minimal_json(query))));
 }
 
-int zdbquery_get_row_estimate(ZDBQueryType *query) {
+static uint64 zdbquery_get_raw_row_estimate(ZDBQueryType *query) {
 	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
-	int estimate = (int) get_json_object_uint64(json, "row_estimate", true);
+	uint64 estimate = get_json_object_uint64(json, "row_estimate", true);
+
+	pfree(json);
+	return estimate;
+}
+
+uint64 zdbquery_get_row_estimate(ZDBQueryType *query) {
+	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	uint64 estimate = get_json_object_uint64(json, "row_estimate", true);
 
 	if (estimate == 0)
-		estimate = (int) get_json_object_uint64(json, "limit", true);
+		estimate = get_json_object_uint64(json, "limit", true);
 
 	if (estimate == 0)
-		estimate = zdb_default_row_estimation_guc;
+		estimate = (uint64) zdb_default_row_estimation_guc;
 
 	pfree(json);
 	return estimate;
@@ -162,23 +172,23 @@ int zdbquery_get_row_estimate(ZDBQueryType *query) {
 
 double zdbquery_get_maxscore(ZDBQueryType *query) {
 	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
-	double maxscore = get_json_object_real(json, "maxscore");
+	float8 maxscore = get_json_object_real(json, "maxscore");
 
 	pfree(json);
 	return maxscore;
 }
 
-int zdbquery_get_limmit(ZDBQueryType *query) {
+uint64 zdbuquery_get_limit(ZDBQueryType *query) {
 	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
-	int estimate = (int) get_json_object_uint64(json, "limit", true);
+	uint64 estimate = get_json_object_uint64(json, "limit", true);
 
 	pfree(json);
 	return estimate;
 }
 
-int zdbquery_get_offset(ZDBQueryType *query) {
+uint64 zdbquery_get_offset(ZDBQueryType *query) {
 	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
-	int estimate = (int) get_json_object_uint64(json, "offset", true);
+	uint64 estimate = get_json_object_uint64(json, "offset", true);
 
 	pfree(json);
 	return estimate;
@@ -216,4 +226,126 @@ char *zdbquery_get_query(ZDBQueryType *query) {
 
 	pfree(json);
 	return queryString;
+}
+
+#define ZDBQUERY_MAX_KEYS 7
+typedef enum zdbquery_properties {
+	zdbquery_limit = 0,
+	zdbquery_offset,
+	zdbquery_maxoffset,
+	zdbquery_sort_field,
+	zdbquery_sort_direction,
+	zdbquery_row_estimate,
+	zdbquery_query_dsl
+} zdbquery_properties;
+
+static zdbquery_properties zdbquery_key_to_propenum(char *key) {
+	if (strcmp(key, "limit") == 0) {
+		return zdbquery_limit;
+	} else if (strcmp(key, "offset") == 0) {
+		return zdbquery_offset;
+	} else if (strcmp(key, "maxscore") == 0) {
+		return zdbquery_maxoffset;
+	} else if (strcmp(key, "sort_field") == 0) {
+		return zdbquery_sort_field;
+	} else if (strcmp(key, "sort_direction") == 0) {
+		return zdbquery_sort_direction;
+	} else if (strcmp(key, "row_estimate") == 0) {
+		return zdbquery_row_estimate;
+	} else if (strcmp(key, "query_dsl") == 0) {
+		return zdbquery_query_dsl;
+	}
+
+	elog(ERROR, "unrecognized zdbquery property: %s", key);
+}
+
+Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
+	char *key = GET_STR(PG_GETARG_TEXT_P(0));
+	char *value = GET_STR(PG_GETARG_TEXT_P(1));
+	ZDBQueryType *input = (ZDBQueryType *) PG_GETARG_VARLENA_P(2);
+	zdbquery_properties prop = zdbquery_key_to_propenum(key);
+	StringInfo query = makeStringInfo();
+	int i;
+
+	appendStringInfoChar(query, '{');
+	for (i=0; i<ZDBQUERY_MAX_KEYS; i++) {
+
+		switch(i) {
+			case zdbquery_limit: {
+				uint64 limit = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value))) : zdbuquery_get_limit(input);
+
+				if (limit > 0) {
+					if (query->len > 1)
+						appendStringInfoChar(query, ',');
+					appendStringInfo(query, "\"limit\":%lu", limit);
+				}
+			} break;
+
+			case zdbquery_offset: {
+				uint64 offset = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value))) :zdbquery_get_offset(input);
+
+				if (offset > 0) {
+					if (query->len > 1)
+						appendStringInfoChar(query, ',');
+					appendStringInfo(query, "\"offset\":%lu", offset);
+				}
+			} break;
+
+			case zdbquery_maxoffset: {
+				float8 maxscore = prop == i ? DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(value))) :zdbquery_get_maxscore(input);
+
+				if (maxscore > 0.0) {
+					if (query->len > 1)
+						appendStringInfoChar(query, ',');
+					appendStringInfo(query, "\"maxscore\":%f", maxscore);
+				}
+			} break;
+
+			case zdbquery_sort_field: {
+				char *sort_field = prop == i ? value : zdbquery_get_sort_field(input);
+
+				if (sort_field != NULL) {
+					if (query->len > 1)
+						appendStringInfoChar(query, ',');
+					appendStringInfo(query, "\"sort_field\":\"%s\"", sort_field);
+				}
+			} break;
+
+			case zdbquery_sort_direction: {
+				char *sort_direction = prop == i ? value : zdbquery_get_sort_direction(input);
+
+				if (sort_direction != NULL) {
+					if (query->len > 1)
+						appendStringInfoChar(query, ',');
+					appendStringInfo(query, "\"sort_direction\":\"%s\"", sort_direction);
+				}
+			} break;
+
+			case zdbquery_row_estimate: {
+				uint64 row_estimate = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value))) :zdbquery_get_raw_row_estimate(input);
+
+				if (row_estimate > 0) {
+					if (query->len > 1)
+						appendStringInfoChar(query, ',');
+					appendStringInfo(query, "\"row_estimate\":%lu", row_estimate);
+				}
+			} break;
+
+			case zdbquery_query_dsl: {
+				char *query_dsl = prop == i ? value : zdbquery_get_query(input);
+
+				if (query_dsl != NULL) {
+					if (query->len > 1)
+						appendStringInfoChar(query, ',');
+					appendStringInfo(query, "\"query_dsl\":%s", query_dsl);
+				}
+			} break;
+
+			default:
+				elog(ERROR, "unexpected property index: %d", i);
+		}
+	}
+	appendStringInfoChar(query, '}');
+
+	PG_RETURN_POINTER(MakeZDBQuery(query->data));
 }
