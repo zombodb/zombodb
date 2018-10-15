@@ -800,11 +800,11 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	context->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
 
 	context->usingId       = use_id;
-	context->scrollId      = get_json_object_string(jsonResponse, "_scroll_id");
+	context->scrollId      = get_json_object_string(jsonResponse, "_scroll_id", false);
 	context->hasHighlights = highlights != NULL;
 	context->cnt           = 0;
 	context->currpos       = 0;
-	context->total         = get_json_object_uint64(hitsObject, "total");
+	context->total         = get_json_object_uint64(hitsObject, "total", false);
 	context->limit         = limit;
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;
@@ -854,7 +854,7 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 
 		hitsObject = get_json_object_object(jsonResponse, "hits", false);
 
-		context->scrollId = get_json_object_string(jsonResponse, "_scroll_id");
+		context->scrollId = get_json_object_string(jsonResponse, "_scroll_id", false);
 		context->currpos  = 0;
 		context->hits     = get_json_object_array(hitsObject, "hits", false);
 		context->nhits    = context->hits == NULL ? 0 : get_json_array_length(context->hits);
@@ -873,7 +873,7 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 	context->fields   = get_json_object_object(context->hitEntry, "fields", true);
 
 	if (context->usingId) {
-		es_id = (char *) get_json_object_string(context->hitEntry, "_id");
+		es_id = (char *) get_json_object_string(context->hitEntry, "_id", false);
 	} else if (ctid != NULL) {
 		void   *zdb_ctid;
 		uint64 ctidAs64bits;
@@ -983,7 +983,7 @@ uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query) {
 					 ZDBIndexOptionsGetAlias(indexRel));
 	response = rest_call("POST", request, postData, ZDBIndexOptionsGetCompressionLevel(indexRel));
 	json     = parse_json_object(response, CurrentMemoryContext);
-	count    = get_json_object_uint64(json, "count");
+	count    = get_json_object_uint64(json, "count", false);
 
 	pfree(json);
 	freeStringInfo(response);

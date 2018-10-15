@@ -143,7 +143,7 @@ static Datum do_cmpfunc(ZDBQueryType *userQuery, HTAB *cmpFuncHash, Oid typeoid,
 		MemoryContext oldContext = MemoryContextSwitchTo(currentQuery->estate->es_query_cxt);
 
 		memset(&key, 0, sizeof(CmpFuncKey));
-		snprintf(key.key, CMP_FUNC_ENTRY_KEYSIZE, "%s", userQuery->query_string);
+		snprintf(key.key, CMP_FUNC_ENTRY_KEYSIZE, "%s", zdbquery_get_query(userQuery));
 
 		if (cmpFuncHash == NULL) {
 			HASHCTL ctl;

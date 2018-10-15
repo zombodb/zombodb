@@ -112,7 +112,7 @@ void *get_json_object_object(void *object, char *key, bool missingOk) {
 					errmsg("json value for object key '%s' is not an object", key)));
 }
 
-const char *get_json_object_string(void *object, char *key) {
+const char *get_json_object_string(void *object, char *key, bool missingOk) {
 	struct json_value_s          *json = object;
 	struct json_object_s         *obj  = (struct json_object_s *) json->payload;
 	struct json_object_element_s *elem;
@@ -123,6 +123,9 @@ const char *get_json_object_string(void *object, char *key) {
 			return str->string;
 		}
 	}
+
+	if (missingOk)
+		return NULL;
 
 	ereport(ERROR,
 			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
@@ -165,7 +168,7 @@ const char *get_json_object_string_force(void *object, char *key) {
 					errmsg("no such key '%s' in json object", key)));
 }
 
-uint64 get_json_object_uint64(void *object, char *key) {
+uint64 get_json_object_uint64(void *object, char *key, bool missingOk) {
 	struct json_value_s          *json = object;
 	struct json_object_s         *obj  = (struct json_object_s *) json->payload;
 	struct json_object_element_s *elem;
@@ -177,6 +180,29 @@ uint64 get_json_object_uint64(void *object, char *key) {
 			return DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(number->number)));
 		}
 	}
+
+	if (missingOk)
+		return 0;
+
+	ereport(ERROR,
+			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					errmsg("no such key '%s' in json object", key)));
+}
+
+bool get_json_object_bool(void *object, char *key, bool missingOk) {
+	struct json_value_s          *json = object;
+	struct json_object_s         *obj  = (struct json_object_s *) json->payload;
+	struct json_object_element_s *elem;
+
+	for (elem = obj->start; elem != NULL; elem = elem->next) {
+		if (strcmp(key, elem->name->string) == 0) {
+			struct json_value_s *value = elem->value;
+			return value->type == json_type_true;
+		}
+	}
+
+	if (missingOk)
+		return false;
 
 	ereport(ERROR,
 			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
@@ -282,3 +308,11 @@ const char *get_json_array_element_string(void *array, int idx, MemoryContext me
 
 	return ((struct json_string_s *) list[idx]->value->payload)->string;
 }
+
+char *write_json(void *object) {
+	struct json_value_s *json = (struct json_value_s *) object;
+	size_t size;
+
+	return json_write_minified(json, &size);
+}
+

@@ -168,20 +168,26 @@ Datum zdb_restrict(PG_FUNCTION_ARGS) {
 	/* if 'right' is a Const we can estimate the selectivity of the query to be executed */
 	if (IsA(right, Const)) {
 		Const        *rconst   = (Const *) right;
-		ZDBQueryType *zdbquery = (ZDBQueryType *) DatumGetPointer(rconst->constvalue);
 
-		if (zdbquery->count_estimation < 1) {
-			/* we need to ask Elasticsearch to estimate our selectivity */
-			Relation indexRel;
-
-			/*lint -esym 644,ldata  ldata is defined above in the if (IsA(Var)) block */
-			indexRel      = find_index_relation(heapRel, ldata.atttype, AccessShareLock);
-			countEstimate = ElasticsearchEstimateSelectivity(indexRel, zdbquery);
-			relation_close(indexRel, AccessShareLock);
+		if (type_is_array(rconst->consttype)) {
+			countEstimate = (uint64) zdb_default_row_estimation_guc;
 		} else {
-			/* we'll just use the hardcoded value in the query */
-			if (zdbquery->count_estimation > 1)
-				countEstimate = (uint64) (int) zdbquery->count_estimation;
+			ZDBQueryType *zdbquery = (ZDBQueryType *) DatumGetPointer(rconst->constvalue);
+			int          estimate  = zdbquery_get_row_estimate(zdbquery);
+
+			if (estimate < 1) {
+				/* we need to ask Elasticsearch to estimate our selectivity */
+				Relation indexRel;
+
+				/*lint -esym 644,ldata  ldata is defined above in the if (IsA(Var)) block */
+				indexRel      = find_index_relation(heapRel, ldata.atttype, AccessShareLock);
+				countEstimate = ElasticsearchEstimateSelectivity(indexRel, zdbquery);
+				relation_close(indexRel, AccessShareLock);
+			} else {
+				/* we'll just use the hardcoded value in the query */
+				if (estimate > 1)
+					countEstimate = (uint64) estimate;
+			}
 		}
 	}
 
@@ -309,9 +315,9 @@ Datum zdb_profile_query(PG_FUNCTION_ARGS) {
 
 Datum zdb_to_query_dsl(PG_FUNCTION_ARGS) {
 	ZDBQueryType *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(0);
-	char         *dsl   = convert_to_query_dsl_not_wrapped(query->query_string);
+	char         *dsl   = zdbquery_get_query(query);
 
-	PG_RETURN_POINTER(MakeZDBQuery(dsl));
+	PG_RETURN_POINTER(DirectFunctionCall1(json_in, CStringGetDatum(dsl)));
 }
 
 Datum zdb_json_build_object_wrapper(PG_FUNCTION_ARGS) {
@@ -365,11 +371,10 @@ Datum zdb_internal_visibility_clause(PG_FUNCTION_ARGS) {
 		MemoryContextSwitchTo(oldContext);
 
 		/* and copy the 'vis'ibility query into this context so we can return it */
-		len    = strlen(vis->query_string);
+		len = strlen(vis->json);
 		output = palloc0(sizeof(ZDBQueryType) + len + 1);
 		output->vl_len_          = vis->vl_len_;
-		output->count_estimation = vis->count_estimation;
-		memcpy(output->query_string, vis->query_string, len);
+		memcpy(output->json, vis->json, len);
 	}
 	MemoryContextDelete(tmpContext);
 

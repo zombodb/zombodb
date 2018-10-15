@@ -115,7 +115,7 @@ BlockNumber common_NextSampleBlock(SampleScanState *node) {
 		return InvalidBlockNumber;
 
 	elem = get_json_array_element_object(context->buckets, context->currelem, CurrentMemoryContext);
-	ctid = get_json_object_uint64(elem, "key");
+	ctid = get_json_object_uint64(elem, "key", false);
 	context->block = (BlockNumber) (ctid >> 32);
 
 	return context->block;
@@ -131,7 +131,7 @@ OffsetNumber common_NextSampleTuple(SampleScanState *node, BlockNumber blockno, 
 		return InvalidOffsetNumber;
 
 	elem = get_json_array_element_object(context->buckets, context->currelem, CurrentMemoryContext);
-	ctid = get_json_object_uint64(elem, "key");
+	ctid = get_json_object_uint64(elem, "key", false);
 
 	if (context->block != (BlockNumber) (ctid >> 32))
 		return InvalidOffsetNumber;

@@ -341,7 +341,7 @@ static bool contains_version_conflict_error(const MultiRestState *state, int i) 
 					if (update) {
 						void *error = get_json_object_object(update, "error", true);
 						if (error) {
-							const char *type = get_json_object_string(error, "type");
+							const char *type = get_json_object_string(error, "type", false);
 							if (type) {
 								if (strcmp("version_conflict_engine_exception", type) == 0) {
 									ignoreError = true;

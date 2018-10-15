@@ -17,8 +17,10 @@
 #include "zombodb.h"
 
 #include "elasticsearch/querygen.h"
+#include "json/json_support.h"
 
 #include "utils/jsonb.h"
+#include "utils/json.h"
 #include "libpq/pqformat.h"
 
 PG_FUNCTION_INFO_V1(zdbquery_in);
@@ -28,122 +30,101 @@ PG_FUNCTION_INFO_V1(zdbquery_send);
 
 PG_FUNCTION_INFO_V1(zdbquery_from_text);
 PG_FUNCTION_INFO_V1(zdbquery_from_jsonb);
-PG_FUNCTION_INFO_V1(zdbquery_ctor);
 PG_FUNCTION_INFO_V1(zdbquery_to_json);
 PG_FUNCTION_INFO_V1(zdbquery_to_jsonb);
 
-ZDBQueryType *zdbquery_in_direct(char *input) {
-	size_t       len     = strlen(input);
-	ZDBQueryType *result = palloc0(sizeof(ZDBQueryType) + len + 1);
+static bool zdbquery_string_is_zdb(char *query) {
+	if (!is_json(query))
+		return false;
 
-	result->count_estimation = zdb_default_row_estimation_guc;
-	memcpy(result->query_string, input, len + 1);
+	void *json = parse_json_object_from_string(query, CurrentMemoryContext);
+	bool is_zdb = get_json_object_object(json, "query_dsl", true) != NULL;
+
+	pfree(json);
+	return is_zdb;
+}
+
+static bool zdbquery_has_no_options(ZDBQueryType *query) {
+	return zdbquery_get_limmit(query) == 0 &&
+		   zdbquery_get_offset(query) == 0 &&
+		   zdbquery_get_maxscore(query) == 0.0 &&
+		   zdbquery_get_row_estimate(query) == zdb_default_row_estimation_guc &&
+		   zdbquery_get_sort_field(query) == NULL &&
+		   zdbquery_get_sort_direction(query) == NULL;
+}
+
+static char *zdbquery_to_minimal_json(ZDBQueryType *query) {
+	/*
+	 * for brevity, especially in EXPLAIN output, output only the actual ES query if the query
+	 * has no other ZDB-specific options
+	 */
+	if (zdbquery_has_no_options(query))
+		return zdbquery_get_query(query);
+	else
+		return query->json;
+}
+
+ZDBQueryType *zdbquery_in_direct(char *input) {
+	size_t       len;
+	ZDBQueryType *result;
+	char *json;
+
+	if (zdbquery_string_is_zdb(input)) {
+		/* it's already in the format we expect */
+		json = input;
+	} else {
+		/* we need to build it ourself */
+		json = psprintf("{\"query_dsl\":%s}", convert_to_query_dsl_not_wrapped(input));
+	}
+
+	len = strlen(json);
+	result = palloc0(sizeof(ZDBQueryType) + len + 1);
+
+	memcpy(result->json, json, len + 1);
 	SET_VARSIZE(result, sizeof(ZDBQueryType) + len + 1);
 	return result;
 }
 
 Datum zdbquery_in(PG_FUNCTION_ARGS) {
-	char         *input   = PG_GETARG_CSTRING(0);
-	size_t       len      = strlen(input);
-	StringInfo   estimate = makeStringInfo();
-	ZDBQueryType *result;
-	size_t       i;
-
-	/* read the count estimation value */
-	for (i = 0; i < len; i++) {
-		char ch = input[i];
-
-		if (ch == '-' || (ch >= '0' && ch <= '9')) {
-			/* build the row estimate */
-			appendStringInfoChar(estimate, ch);
-		} else if (ch == ',') {
-			/* skip the comma and get out -- we found the estimate */
-			i++;
-			break;
-		} else if (ch == '{') {
-			/* looks like the query is just json */
-			i = 0;
-			resetStringInfo(estimate);
-			break;
-		}
-	}
-
-	if (i >= len || estimate->len == 0) {
-		/* no count estimate was provided so hardcode to 2500 */
-		resetStringInfo(estimate);
-		appendStringInfo(estimate, "%d", zdb_default_row_estimation_guc);
-		i = 0;
-	}
-
-	/* subtract off the characters we consumed while reading the count estimate */
-	len -= i;
-
-	result = (ZDBQueryType *) palloc0(sizeof(ZDBQueryType) + len + 1);
-	result->count_estimation = DatumGetInt32(DirectFunctionCall1(int4in, CStringGetDatum(estimate->data)));
-	memcpy(result->query_string, input + i, len + 1);
-	SET_VARSIZE(result, sizeof(ZDBQueryType) + len + 1);
-
-	PG_RETURN_POINTER(result);
+	return PointerGetDatum(zdbquery_in_direct(PG_GETARG_CSTRING(0)));
 }
 
 Datum zdbquery_out(PG_FUNCTION_ARGS) {
 	ZDBQueryType *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(0);
-	char         *result;
+	char *queryJson = zdbquery_to_minimal_json(query);
+	void *json = parse_json_object_from_string(queryJson, CurrentMemoryContext);
+	void *queryStringClause = get_json_object_object(json, "query_string", true);
 
-	/*
-	 * for brevity, especially in EXPLAIN output, only output the count estimation if
-	 * it's different than our default GUC setting
-	 */
-	if (query->count_estimation == zdb_default_row_estimation_guc)
-		result = psprintf("%s", query->query_string);
-	else
-		result = psprintf("%d,%s", query->count_estimation, query->query_string);
+	if (queryStringClause != NULL) {
+		/* peek inside the "query_string" clause and pluck out its "query" */
+		char *queryValue = pstrdup((char *) get_json_object_string(queryStringClause, "query", false));
 
-	PG_RETURN_CSTRING(result);
+		pfree(json);
+		PG_RETURN_CSTRING(queryValue);
+	}
+
+	pfree(json);
+	PG_RETURN_CSTRING(pstrdup(queryJson));
 }
 
 Datum zdbquery_recv(PG_FUNCTION_ARGS) {
-	StringInfo   buf = (StringInfo) PG_GETARG_POINTER(0);
-	ZDBQueryType *result;
-	int32        count_estimation;
-	const char   *query;
-	size_t       len;
+	StringInfo   msg = (StringInfo) PG_GETARG_POINTER(0);
 
-	count_estimation = (int32) pq_getmsgint(buf, 4);
-	query            = pq_getmsgstring(buf);
-	len              = strlen(query);
-
-	result = (ZDBQueryType *) palloc0(sizeof(ZDBQueryType) + len + 1);
-	result->count_estimation = count_estimation;
-	memcpy(result->query_string, query, len);
-	SET_VARSIZE(result, sizeof(ZDBQueryType) + len + 1);
-
-	PG_RETURN_POINTER(result);
+	PG_RETURN_POINTER(zdbquery_in_direct((char *) pq_getmsgstring(msg)));
 }
 
 Datum zdbquery_send(PG_FUNCTION_ARGS) {
 	ZDBQueryType   *zdbquery = (ZDBQueryType *) PG_GETARG_POINTER(0);
-	StringInfoData buf;
+	StringInfoData msg;
 
-	pq_begintypsend(&buf);
-	pq_sendint(&buf, zdbquery->count_estimation, 4);
-	pq_sendstring(&buf, zdbquery->query_string);
-	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
+	pq_begintypsend(&msg);
+	pq_sendstring(&msg, zdbquery->json);
+	PG_RETURN_BYTEA_P(pq_endtypsend(&msg));
 }
 
 Datum zdbquery_from_text(PG_FUNCTION_ARGS) {
 	char         *input = GET_STR(PG_GETARG_TEXT_P(0));
-	size_t       len    = strlen(input);
-	ZDBQueryType *zdbquery;
-
-	zdbquery = palloc0(sizeof(ZDBQueryType) + len + 1);
-
-	/* we assume, when casting from a text/json value, that we'll return 'zdb_default_row_estimation_guc' rows */
-	zdbquery->count_estimation = zdb_default_row_estimation_guc;
-	memcpy(zdbquery->query_string, input, len);
-	SET_VARSIZE(zdbquery, sizeof(ZDBQueryType) + len + 1);
-
-	PG_RETURN_POINTER(zdbquery);
+	PG_RETURN_POINTER(zdbquery_in_direct(input));
 }
 
 Datum zdbquery_from_jsonb(PG_FUNCTION_ARGS) {
@@ -155,29 +136,84 @@ Datum zdbquery_from_jsonb(PG_FUNCTION_ARGS) {
 	return DirectFunctionCall1(zdbquery_from_text, json_as_text);
 }
 
-Datum zdbquery_ctor(PG_FUNCTION_ARGS) {
-	int32        count_estimation = PG_GETARG_INT32(0);
-	char         *query           = GET_STR(PG_GETARG_TEXT_P(1));
-	size_t       len              = strlen(query);
-	ZDBQueryType *zdbquery;
-
-	zdbquery = palloc0(sizeof(ZDBQueryType) + len + 1);
-	zdbquery->count_estimation = count_estimation;
-	memcpy(zdbquery->query_string, query, len);
-	SET_VARSIZE(zdbquery, sizeof(ZDBQueryType) + len + 1);
-
-	PG_RETURN_POINTER(zdbquery);
-}
-
-
 Datum zdbquery_to_json(PG_FUNCTION_ARGS) {
 	ZDBQueryType *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(0);
-	char         *dsl   = convert_to_query_dsl_not_wrapped(query->query_string);
-	PG_RETURN_DATUM(DirectFunctionCall1(json_in, CStringGetDatum(dsl)));
+	PG_RETURN_DATUM(DirectFunctionCall1(json_in, CStringGetDatum(zdbquery_to_minimal_json(query))));
 }
 
 Datum zdbquery_to_jsonb(PG_FUNCTION_ARGS) {
 	ZDBQueryType *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(0);
-	char         *dsl   = convert_to_query_dsl_not_wrapped(query->query_string);
-	PG_RETURN_DATUM(DirectFunctionCall1(jsonb_in, CStringGetDatum(dsl)));
+	PG_RETURN_DATUM(DirectFunctionCall1(jsonb_in, CStringGetDatum(zdbquery_to_minimal_json(query))));
+}
+
+int zdbquery_get_row_estimate(ZDBQueryType *query) {
+	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	int estimate = (int) get_json_object_uint64(json, "row_estimate", true);
+
+	if (estimate == 0)
+		estimate = (int) get_json_object_uint64(json, "limit", true);
+
+	if (estimate == 0)
+		estimate = zdb_default_row_estimation_guc;
+
+	pfree(json);
+	return estimate;
+}
+
+double zdbquery_get_maxscore(ZDBQueryType *query) {
+	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	double maxscore = get_json_object_real(json, "maxscore");
+
+	pfree(json);
+	return maxscore;
+}
+
+int zdbquery_get_limmit(ZDBQueryType *query) {
+	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	int estimate = (int) get_json_object_uint64(json, "limit", true);
+
+	pfree(json);
+	return estimate;
+}
+
+int zdbquery_get_offset(ZDBQueryType *query) {
+	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	int estimate = (int) get_json_object_uint64(json, "offset", true);
+
+	pfree(json);
+	return estimate;
+}
+
+char *zdbquery_get_sort_field(ZDBQueryType *query) {
+	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	char *sortField = (char *) get_json_object_string(json, "sort_field", true);
+
+	if (sortField != NULL)
+		sortField = pstrdup(sortField);
+
+	pfree(json);
+	return sortField;
+}
+
+char *zdbquery_get_sort_direction(ZDBQueryType *query) {
+	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	char *sortDirection = (char *) get_json_object_string(json, "sort_direction", true);
+
+	if (sortDirection != NULL)
+		sortDirection = pstrdup(sortDirection);
+
+	pfree(json);
+	return sortDirection;
+}
+
+char *zdbquery_get_query(ZDBQueryType *query) {
+	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void *queryObject = (char *) get_json_object_object(json, "query_dsl", true);
+	char *queryString = write_json(queryObject);
+
+	if (queryString != NULL)
+		queryString = pstrdup(queryString);
+
+	pfree(json);
+	return queryString;
 }

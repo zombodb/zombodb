@@ -26,8 +26,6 @@ CREATE CAST (json AS zdbquery) WITH FUNCTION zdbquery_from_json(json) AS IMPLICI
 CREATE CAST (jsonb AS zdbquery) WITH FUNCTION zdbquery_from_jsonb(jsonb) AS IMPLICIT;
 CREATE CAST (zdbquery AS json) WITH FUNCTION zdbquery_to_json(zdbquery) AS IMPLICIT;
 CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMPLICIT;
-CREATE OR REPLACE FUNCTION zdbquery(count_estimation integer, user_query text) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdbquery_ctor';
-CREATE OR REPLACE FUNCTION zdbquery(count_estimation integer, user_query json) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdbquery_ctor'; /* NB:  same C func as above */
 
 --
 -- query functions

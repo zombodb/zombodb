@@ -1,5 +1,5 @@
-CREATE OR REPLACE FUNCTION to_query_dsl(zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_to_query_dsl';
-CREATE OR REPLACE FUNCTION to_queries_dsl(queries zdbquery[]) RETURNS zdbquery[] PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION to_query_dsl(zdbquery) RETURNS json PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_to_query_dsl';
+CREATE OR REPLACE FUNCTION to_queries_dsl(queries zdbquery[]) RETURNS json[] PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
     SELECT array_agg(zdb.to_query_dsl(query)) FROM unnest(queries) query;
 $$;
 
