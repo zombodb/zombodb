@@ -25,6 +25,14 @@ CREATE OR REPLACE FUNCTION dsl.offset_limit("offset" bigint, "limit" bigint, que
     SELECT zdb.set_query_property('limit', "limit"::text, zdb.set_query_property('offset', "offset"::text, query));
 $$;
 
+CREATE OR REPLACE FUNCTION dsl.limit("limit" bigint, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+    SELECT zdb.set_query_property('limit', "limit"::text, query);
+$$;
+
+CREATE OR REPLACE FUNCTION dsl.offset("offset" bigint, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+    SELECT zdb.set_query_property('offset', "offset"::text, query);
+$$;
+
 CREATE TYPE dsl.es_sort_directions AS ENUM ('asc', 'desc');
 CREATE OR REPLACE FUNCTION dsl.sort(sort_field text, sort_direction dsl.es_sort_directions, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
     SELECT zdb.set_query_property('sort_direction', sort_direction::text, zdb.set_query_property('sort_field', sort_field::text, query));

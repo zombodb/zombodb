@@ -47,7 +47,7 @@ static bool zdbquery_string_is_zdb(char *query) {
 }
 
 static bool zdbquery_has_no_options(ZDBQueryType *query) {
-	return zdbuquery_get_limit(query) == 0 &&
+	return zdbquery_get_limit(query) == 0 &&
 		   zdbquery_get_offset(query) == 0 &&
 		   zdbquery_get_maxscore(query) == 0.0 &&
 		   zdbquery_get_row_estimate(query) == zdb_default_row_estimation_guc &&
@@ -178,7 +178,7 @@ double zdbquery_get_maxscore(ZDBQueryType *query) {
 	return maxscore;
 }
 
-uint64 zdbuquery_get_limit(ZDBQueryType *query) {
+uint64 zdbquery_get_limit(ZDBQueryType *query) {
 	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	uint64 estimate = get_json_object_uint64(json, "limit", true);
 
@@ -272,7 +272,8 @@ Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
 
 		switch(i) {
 			case zdbquery_limit: {
-				uint64 limit = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value))) : zdbuquery_get_limit(input);
+				uint64 limit = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value))) : zdbquery_get_limit(
+						input);
 
 				if (limit > 0) {
 					if (query->len > 1)

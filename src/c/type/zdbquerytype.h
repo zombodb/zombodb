@@ -29,7 +29,7 @@ typedef struct ZDBQueryType {
 ZDBQueryType *zdbquery_in_direct(char *input);
 
 uint64 zdbquery_get_row_estimate(ZDBQueryType *query);
-uint64 zdbuquery_get_limit(ZDBQueryType *query);
+uint64 zdbquery_get_limit(ZDBQueryType *query);
 uint64 zdbquery_get_offset(ZDBQueryType *query);
 char *zdbquery_get_sort_field(ZDBQueryType *query);
 char *zdbquery_get_sort_direction(ZDBQueryType *query);

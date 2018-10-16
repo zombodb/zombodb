@@ -99,7 +99,7 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_c
 uint64 ElasticsearchCountAllDocs(Relation indexRel);
 uint64 ElasticsearchEstimateSelectivity(Relation indexRel, ZDBQueryType *query);
 
-ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, bool needSort, bool needScore, uint64 limit, char *sortField, SortByDir direction, List *highlights, char **extraFields, int nextraFields);
+ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, bool needScore, uint64 limit, List *highlights, char **extraFields, int nextraFields);
 void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPointer ctid, char **_id, float4 *score, zdb_json_object *highlights);
 void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext);
 

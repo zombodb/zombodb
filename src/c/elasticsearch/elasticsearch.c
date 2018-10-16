@@ -717,39 +717,37 @@ uint64 ElasticsearchEstimateSelectivity(Relation indexRel, ZDBQueryType *query) 
 	return DatumGetUInt64(DirectFunctionCall1(int8in, PointerGetDatum(TextDatumGetCString(count))));
 }
 
-ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, bool needSort, bool needScore, uint64 limit, char *sortField, SortByDir direction, List *highlights, char **extraFields, int nextraFields) {
+ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, bool needScore, uint64 limit, List *highlights, char **extraFields, int nextraFields) {
 	ElasticsearchScrollContext *context       = palloc0(sizeof(ElasticsearchScrollContext));
 	char                       *queryDSL      = convert_to_query_dsl(indexRel, userQuery);
 	StringInfo                 request        = makeStringInfo();
 	StringInfo                 postData       = makeStringInfo();
 	StringInfo                 docvalueFields = makeStringInfo();
 	StringInfo                 response;
+	char *sortField, *sortDir;
+	uint64 queryLimit = zdbquery_get_limit(userQuery);
+	uint64 offset;
 	void                       *jsonResponse, *hitsObject;
 	char                       *error;
 	int                        i;
 
 	finish_inserts(false);
 
-	/* we'll assume we want scoring if we have a limit, so that we get the top scoring docs when the limit is applied */
-	needScore = needScore || limit > 0;
+	limit = queryLimit != 0 ? queryLimit : limit; /* prefer to use the limit specified in the query */
+	offset = zdbquery_get_offset(userQuery);
+	sortField = zdbquery_get_sort_field(userQuery);
+	sortDir = zdbquery_get_sort_direction(userQuery);
 
+	/* we'll assume we want scoring if we have a limit w/o a sort, so that we get the top scoring docs when the limit is applied */
+	needScore = needScore || (limit > 0 && sortField == NULL);
+
+	appendStringInfo(postData, "{\"track_scores\":%s,", needScore ? "true" : "false");
 	if (sortField != NULL) {
-		needSort = true;
-	} else if (needSort) {
-		/* need a default sorting here */
-		sortField     = needScore ? "_score" : "zdb_ctid";
-		if (direction == SORTBY_DEFAULT)
-			direction = needScore ? SORTBY_DESC : SORTBY_ASC;
+		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", sortField, sortDir);
+	} else {
+		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "_doc", needScore ? "desc" : "asc");
 	}
-
-
-	if (needSort)
-		appendStringInfo(postData, "{\"track_scores\":%s,\"sort\":[{\"%s\":\"%s\"}],\"query\":%s",
-						 needScore ? "true" : "false", sortField,
-						 direction == SORTBY_DEFAULT || direction == SORTBY_ASC ? "asc" : "desc", queryDSL);
-	else
-		appendStringInfo(postData, "{\"track_scores\":%s,\"sort\":[\"%s\"],\"query\":%s",
-						 needScore ? "true" : "false", needScore ? "_score" : "_doc", queryDSL);
+	appendStringInfo(postData, "\"query\":%s", queryDSL);
 
 	if (highlights != NULL) {
 		ListCell *lc;
@@ -777,7 +775,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 					 "%s%s/%s/_search?_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
 					 ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel),
 					 ZDBIndexOptionsGetTypeName(indexRel),
-					 limit == 0 ? MAX_DOCS_PER_REQUEST : limit, ES_SEARCH_RESPONSE_FILTER,
+					 limit == 0 ? MAX_DOCS_PER_REQUEST : Min(MAX_DOCS_PER_REQUEST, limit + offset), ES_SEARCH_RESPONSE_FILTER,
 					 highlights ? "type" : use_id ? "_id" : "_none_",
 					 docvalueFields->data);
 
@@ -812,6 +810,13 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	if (context->total > 0) {
 		context->hits  = get_json_object_array(hitsObject, "hits", false);
 		context->nhits = context->hits == NULL ? 0 : get_json_array_length(context->hits);
+
+		/* fast-forward to our 'offset' -- using the ?from= ES request parameter doesn't work with scroll requests */
+		if (offset > 0) {
+			while (offset--) {
+				ElasticsearchGetNextItemPointer(context, NULL, NULL, NULL, NULL);
+			}
+		}
 	}
 
 	pfree(queryDSL);
