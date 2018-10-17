@@ -88,12 +88,17 @@ static HTAB *create_ctid_map(Relation heapRel, Relation indexRel, ZDBQueryType *
 	scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, scoreHash, memoryContext);
 	highlight_register_callback(RelationGetRelid(heapRel), highlight_cb, highlightHash, memoryContext);
 
-	while (scroll->cnt < scroll->total) {
+	while (true) {
 		ZDBScoreKey     key;
 		ZDBScoreEntry   *entry;
 		bool            found;
 		float4          score;
 		zdb_json_object highlights;
+
+		if (scroll->limit > 0 && scroll->limitcnt >= scroll->limit)
+			break; /* we've reached our limit of live tuples */
+		else if (scroll->cnt >= scroll->total)
+			break; /* we have no more tuples to return */
 
 		ElasticsearchGetNextItemPointer(scroll, &key.ctid, NULL, &score, &highlights);
 
@@ -101,6 +106,8 @@ static HTAB *create_ctid_map(Relation heapRel, Relation indexRel, ZDBQueryType *
 		entry->score = score;
 
 		save_highlights(highlightHash, &key.ctid, highlights);
+
+		scroll->limitcnt++;
 	}
 
 	ElasticsearchCloseScroll(scroll);

@@ -829,10 +829,16 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPointer ctid, char **_id, float4 *score, zdb_json_object *highlights) {
 	char *es_id = NULL;
 
-	if (context->cnt >= context->total)
+	if (context->cnt >= context->total) {
+		if (context->limit > 0) {
+			/* we've run through all the rows AND exceeded the number of rows, so we're done */
+			return;
+		}
+
 		ereport(ERROR,
 				(errcode(ERRCODE_INTERNAL_ERROR),
 						errmsg("Attempt to read past total number of hits of %lu", context->total)));
+	}
 
 	if (context->currpos == context->nhits) {
 		/* we exhausted the current set of hits, so go get more */

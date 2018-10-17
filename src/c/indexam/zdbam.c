@@ -1401,8 +1401,13 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
 	int64          ntuples  = 0;
+	Relation heapRel = NULL;
 
 	do_search_for_scan(scan);
+
+
+	if (scan->heapRelation == NULL)
+		scan->heapRelation = heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
 
 	while (true) {
 		ItemPointerData ctid;
@@ -1419,6 +1424,7 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
 
 		ItemPointerCopy(&ctid, &key.ctid);
+		ItemPointerCopy(&ctid, &context->lastCtid);
 
 		scan_count_towards_limit(scan, context);
 
@@ -1430,6 +1436,11 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 
 		tbm_add_tuples(tbm, &ctid, 1, false);
 		ntuples++;
+	}
+
+	if (heapRel) {
+		RelationClose(heapRel);
+		scan->heapRelation = NULL;
 	}
 
 	return ntuples;
