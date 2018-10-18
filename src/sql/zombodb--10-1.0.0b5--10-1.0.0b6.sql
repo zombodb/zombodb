@@ -38,8 +38,8 @@ CREATE OR REPLACE FUNCTION dsl.sort(sort_field text, sort_direction dsl.es_sort_
     SELECT zdb.set_query_property('sort_direction', sort_direction::text, zdb.set_query_property('sort_field', sort_field::text, query));
 $$;
 
-CREATE OR REPLACE FUNCTION dsl.maxscore(maxscore real, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
-    SELECT zdb.set_query_property('maxscore', maxscore::text, query);
+CREATE OR REPLACE FUNCTION dsl.min_score(min_score real, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+    SELECT zdb.set_query_property('min_score', min_score::text, query);
 $$;
 
 CREATE OR REPLACE FUNCTION dsl.row_estimate(row_estimate real, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$

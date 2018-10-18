@@ -33,7 +33,7 @@ uint64 zdbquery_get_limit(ZDBQueryType *query);
 uint64 zdbquery_get_offset(ZDBQueryType *query);
 char *zdbquery_get_sort_field(ZDBQueryType *query);
 char *zdbquery_get_sort_direction(ZDBQueryType *query);
-double zdbquery_get_maxscore(ZDBQueryType *query);
+double zdbquery_get_min_score(ZDBQueryType *query);
 char *zdbquery_get_query(ZDBQueryType *query);
 
 

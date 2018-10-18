@@ -13,4 +13,4 @@ SELECT zdb.to_query_dsl('{"terms":{"subject":"beer"}}'::zdbquery);
 SELECT zdb.to_query_dsl('{"limit":42,"query_dsl":{"terms":{"subject":"beer"}}}'::zdbquery);
 SELECT zdb.to_query_dsl('{"query_dsl":{"terms":{"subject":"beer"}}}'::zdbquery);
 
-select dsl.row_estimate(88, dsl.maxscore(42, dsl.sort('title', 'asc', dsl.offset_limit(10, 42, 'beer'))));
+select dsl.row_estimate(88, dsl.min_score(42, dsl.sort('title', 'asc', dsl.offset_limit(10, 42, 'beer'))));

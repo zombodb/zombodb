@@ -727,6 +727,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	char *sortField, *sortDir;
 	uint64 queryLimit = zdbquery_get_limit(userQuery);
 	uint64 offset;
+	double min_score;
 	void                       *jsonResponse, *hitsObject;
 	char                       *error;
 	int                        i;
@@ -737,11 +738,15 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	offset = zdbquery_get_offset(userQuery);
 	sortField = zdbquery_get_sort_field(userQuery);
 	sortDir = zdbquery_get_sort_direction(userQuery);
+	min_score = zdbquery_get_min_score(userQuery);
 
 	/* we'll assume we want scoring if we have a limit w/o a sort, so that we get the top scoring docs when the limit is applied */
 	needScore = needScore || (limit > 0 && sortField == NULL);
 
 	appendStringInfo(postData, "{\"track_scores\":%s,", needScore ? "true" : "false");
+	if (min_score > 0) {
+		appendStringInfo(postData, "\"min_score\":%f,", min_score);
+	}
 	if (sortField != NULL) {
 		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", sortField, sortDir);
 	} else {

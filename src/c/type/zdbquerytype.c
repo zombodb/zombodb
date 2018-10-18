@@ -49,7 +49,7 @@ static bool zdbquery_string_is_zdb(char *query) {
 static bool zdbquery_has_no_options(ZDBQueryType *query) {
 	return zdbquery_get_limit(query) == 0 &&
 		   zdbquery_get_offset(query) == 0 &&
-		   zdbquery_get_maxscore(query) == 0.0 &&
+		   zdbquery_get_min_score(query) == 0.0 &&
 		   zdbquery_get_row_estimate(query) == zdb_default_row_estimation_guc &&
 		   zdbquery_get_sort_field(query) == NULL &&
 		   zdbquery_get_sort_direction(query) == NULL;
@@ -170,12 +170,12 @@ uint64 zdbquery_get_row_estimate(ZDBQueryType *query) {
 	return estimate;
 }
 
-double zdbquery_get_maxscore(ZDBQueryType *query) {
+double zdbquery_get_min_score(ZDBQueryType *query) {
 	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
-	float8 maxscore = get_json_object_real(json, "maxscore");
+	float8 min_score = get_json_object_real(json, "min_score");
 
 	pfree(json);
-	return maxscore;
+	return min_score;
 }
 
 uint64 zdbquery_get_limit(ZDBQueryType *query) {
@@ -232,7 +232,7 @@ char *zdbquery_get_query(ZDBQueryType *query) {
 typedef enum zdbquery_properties {
 	zdbquery_limit = 0,
 	zdbquery_offset,
-	zdbquery_maxoffset,
+	zdbquery_min_score,
 	zdbquery_sort_field,
 	zdbquery_sort_direction,
 	zdbquery_row_estimate,
@@ -244,8 +244,8 @@ static zdbquery_properties zdbquery_key_to_propenum(char *key) {
 		return zdbquery_limit;
 	} else if (strcmp(key, "offset") == 0) {
 		return zdbquery_offset;
-	} else if (strcmp(key, "maxscore") == 0) {
-		return zdbquery_maxoffset;
+	} else if (strcmp(key, "min_score") == 0) {
+		return zdbquery_min_score;
 	} else if (strcmp(key, "sort_field") == 0) {
 		return zdbquery_sort_field;
 	} else if (strcmp(key, "sort_direction") == 0) {
@@ -292,13 +292,13 @@ Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
 				}
 			} break;
 
-			case zdbquery_maxoffset: {
-				float8 maxscore = prop == i ? DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(value))) :zdbquery_get_maxscore(input);
+			case zdbquery_min_score: {
+				float8 min_score = prop == i ? DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(value))) :zdbquery_get_min_score(input);
 
-				if (maxscore > 0.0) {
+				if (min_score > 0.0) {
 					if (query->len > 1)
 						appendStringInfoChar(query, ',');
-					appendStringInfo(query, "\"maxscore\":%f", maxscore);
+					appendStringInfo(query, "\"min_score\":%f", min_score);
 				}
 			} break;
 
