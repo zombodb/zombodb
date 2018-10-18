@@ -807,8 +807,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	context->hasHighlights = highlights != NULL;
 	context->cnt           = 0;
 	context->currpos       = 0;
-	context->total         = get_json_object_uint64(hitsObject, "total", false);
-	context->limit         = limit;
+	context->total         = limit > 0 ? Min(limit,get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(hitsObject, "total", false);
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;
 
@@ -835,7 +834,7 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 	char *es_id = NULL;
 
 	if (context->cnt >= context->total) {
-		if (context->limit > 0) {
+		if (context->cnt == 0) {
 			/* we've run through all the rows AND exceeded the number of rows, so we're done */
 			return;
 		}

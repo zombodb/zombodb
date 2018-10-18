@@ -1318,28 +1318,6 @@ static void amrescan(IndexScanDesc scan, ScanKey keys, int nkeys, ScanKey orderb
 	context->needsInit     = true;
 }
 
-static inline void scan_count_towards_limit(ItemPointer ctid, IndexScanDesc scan, ZDBScanContext *context) {
-	/*
-	 * If we're operating within a LIMIT, we need to ensure the rows we count toward that LIMIT
-	 * are actually visible within our current snapshot, so we go to the underlying heap and
-	 * try to fetch the tuple we're about to return.  If it's found, then we count it towards
-	 * our limit.
-	 */
-	if (context->scrollContext->limit > 0) {
-		HeapTupleData tuple;
-		Buffer        buf;
-
-		ItemPointerCopy(ctid, &tuple.t_self);
-		if (heap_fetch(scan->heapRelation, scan->xs_snapshot, &tuple, &buf, false, scan->indexRelation)) {
-			/* this counts towards our limit */
-			context->scrollContext->limitcnt++;
-		}
-
-		if (BufferIsValid(buf))
-			ReleaseBuffer(buf);
-	}
-}
-
 /*lint -esym 715,direction ignore unused param */
 static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	ZDBScanContext  *context = (ZDBScanContext *) scan->opaque;
@@ -1352,9 +1330,7 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	/* zdb indexes are never lossy */
 	scan->xs_recheck = false;
 
-	if (context->scrollContext->limit > 0 && context->scrollContext->limitcnt >= context->scrollContext->limit)
-		return false; /* we've reached our limit of live tuples */
-	else if (context->scrollContext->cnt >= context->scrollContext->total)
+	if (context->scrollContext->cnt >= context->scrollContext->total)
 		return false; /* we have no more tuples to return */
 
 	/* get the next tuple from Elasticsearch */
@@ -1368,8 +1344,6 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 
 	/* tell the index scan about the tuple we're going to return */
 	ItemPointerCopy(&ctid, &scan->xs_ctup.t_self);
-
-	scan_count_towards_limit(&ctid, scan, context);
 
 	if (context->wantScores) {
 		ZDBScoreKey   key;
@@ -1409,14 +1383,10 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 		ItemPointerData ctid;
 		float4          score;
 
-		if (context->scrollContext->limit > 0 && context->scrollContext->limitcnt >= context->scrollContext->limit)
-			break; /* we've reached our limit of live tuples */
-		else if (context->scrollContext->cnt >= context->scrollContext->total)
+		if (context->scrollContext->cnt >= context->scrollContext->total)
 			break; /* we have no more tuples to return */
 
 		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
-
-		scan_count_towards_limit(&ctid, scan, context);
 
 		if (context->wantScores) {
 			ZDBScoreKey     key;
