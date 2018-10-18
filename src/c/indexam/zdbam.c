@@ -59,8 +59,6 @@ typedef struct ZDBBuildStateData {
 typedef struct ZDBScanContext {
 	bool                       needsInit;
 	ElasticsearchScrollContext *scrollContext;
-	float4                     lastScore;
-	ItemPointerData            lastCtid;
 	HTAB                       *scoreLookup;
 	HTAB                       *highlightLookup;
 	bool                       wantScores;
@@ -1223,9 +1221,6 @@ static float4 scoring_cb(ItemPointer ctid, void *arg) {
 
 	assert(ctid != NULL);
 
-	if (ItemPointerIsValid(&context->lastCtid) && ItemPointerEquals(ctid, &context->lastCtid))
-		return context->lastScore;
-
 	if (context->scoreLookup != NULL) {
 		ZDBScoreKey   key;
 		ZDBScoreEntry *entry;
@@ -1323,7 +1318,7 @@ static void amrescan(IndexScanDesc scan, ScanKey keys, int nkeys, ScanKey orderb
 	context->needsInit     = true;
 }
 
-static inline void scan_count_towards_limit(IndexScanDesc scan, ZDBScanContext *context) {
+static inline void scan_count_towards_limit(ItemPointer ctid, IndexScanDesc scan, ZDBScanContext *context) {
 	/*
 	 * If we're operating within a LIMIT, we need to ensure the rows we count toward that LIMIT
 	 * are actually visible within our current snapshot, so we go to the underlying heap and
@@ -1334,8 +1329,7 @@ static inline void scan_count_towards_limit(IndexScanDesc scan, ZDBScanContext *
 		HeapTupleData tuple;
 		Buffer        buf;
 
-		ItemPointerCopy(&context->lastCtid, &tuple.t_self);
-
+		ItemPointerCopy(ctid, &tuple.t_self);
 		if (heap_fetch(scan->heapRelation, scan->xs_snapshot, &tuple, &buf, false, scan->indexRelation)) {
 			/* this counts towards our limit */
 			context->scrollContext->limitcnt++;
@@ -1349,6 +1343,8 @@ static inline void scan_count_towards_limit(IndexScanDesc scan, ZDBScanContext *
 /*lint -esym 715,direction ignore unused param */
 static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	ZDBScanContext  *context = (ZDBScanContext *) scan->opaque;
+	ItemPointerData ctid;
+	float4 score;
 	zdb_json_object highlights;
 
 	do_search_for_scan(scan);
@@ -1362,18 +1358,18 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 		return false; /* we have no more tuples to return */
 
 	/* get the next tuple from Elasticsearch */
-	ElasticsearchGetNextItemPointer(context->scrollContext, &context->lastCtid, NULL, &context->lastScore, &highlights);
-	if (!ItemPointerIsValid(&context->lastCtid))
+	ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, &highlights);
+	if (!ItemPointerIsValid(&ctid))
 		ereport(ERROR,
 				(errcode(ERRCODE_INTERNAL_ERROR),
 						errmsg("Encounted an invalid item pointer: (%d, %d)",
-							   ItemPointerGetBlockNumber(&context->lastCtid),
-							   ItemPointerGetOffsetNumber(&context->lastCtid))));
+							   ItemPointerGetBlockNumber(&ctid),
+							   ItemPointerGetOffsetNumber(&ctid))));
 
 	/* tell the index scan about the tuple we're going to return */
-	ItemPointerCopy(&context->lastCtid, &scan->xs_ctup.t_self);
+	ItemPointerCopy(&ctid, &scan->xs_ctup.t_self);
 
-	scan_count_towards_limit(scan, context);
+	scan_count_towards_limit(&ctid, scan, context);
 
 	if (context->wantScores) {
 		ZDBScoreKey   key;
@@ -1385,14 +1381,14 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 		 * This is necessary if we are doing scoring but our IndexScan
 		 * is under, at least, a Sort node
 		 */
-		ItemPointerCopy(&context->lastCtid, &key.ctid);
+		ItemPointerCopy(&ctid, &key.ctid);
 		entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
-		ItemPointerCopy(&context->lastCtid, &entry->key.ctid);
-		entry->score = context->lastScore;
+		ItemPointerCopy(&ctid, &entry->key.ctid);
+		entry->score = score;
 	}
 
 	if (context->wantHighlights) {
-		save_highlights(context->highlightLookup, &context->lastCtid, highlights);
+		save_highlights(context->highlightLookup, &ctid, highlights);
 	}
 
 	return true;
@@ -1420,9 +1416,7 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 
 		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
 
-		ItemPointerCopy(&ctid, &context->lastCtid);
-
-		scan_count_towards_limit(scan, context);
+		scan_count_towards_limit(&ctid, scan, context);
 
 		if (context->wantScores) {
 			ZDBScoreKey     key;
