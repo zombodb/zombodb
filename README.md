@@ -51,15 +51,13 @@ Commerical support for all versions of ZomboDB is available by [contacting Zombo
     - Raw Elasticsearch QueryDSL JSON
     - ZomboDB's type-safe query builder SQL syntax
     - Any combination of the above, even in combination with standard SQL
- - Scoring Support
- - Highlighting Support
+ - [Scoring and Highlighting Support](SCORING-HIGHLIGHTING.md)
  - Support for all Elasticsearch aggregations
  - Automatic Elasticsearch Mapping Generation
     - Ability to map custom domains
     - Per-field custom mappings
     - `json/jsonb` automatically mapped as dynamic nested objects
     - Supports full set of [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
- - LIMIT/ORDER BY push-down 
  - Hot-Standby compatible
 
 
