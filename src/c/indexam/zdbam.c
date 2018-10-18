@@ -1323,7 +1323,7 @@ static void amrescan(IndexScanDesc scan, ScanKey keys, int nkeys, ScanKey orderb
 	context->needsInit     = true;
 }
 
-static void scan_count_towards_limit(IndexScanDesc scan, ZDBScanContext *context) {
+static inline void scan_count_towards_limit(IndexScanDesc scan, ZDBScanContext *context) {
 	/*
 	 * If we're operating within a LIMIT, we need to ensure the rows we count toward that LIMIT
 	 * are actually visible within our current snapshot, so we go to the underlying heap and
@@ -1412,9 +1412,6 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 	while (true) {
 		ItemPointerData ctid;
 		float4          score;
-		ZDBScoreKey     key;
-		ZDBScoreEntry   *entry;
-		bool            found;
 
 		if (context->scrollContext->limit > 0 && context->scrollContext->limitcnt >= context->scrollContext->limit)
 			break; /* we've reached our limit of live tuples */
@@ -1423,12 +1420,16 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 
 		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
 
-		ItemPointerCopy(&ctid, &key.ctid);
 		ItemPointerCopy(&ctid, &context->lastCtid);
 
 		scan_count_towards_limit(scan, context);
 
 		if (context->wantScores) {
+			ZDBScoreKey     key;
+			ZDBScoreEntry   *entry;
+			bool            found;
+
+			ItemPointerCopy(&ctid, &key.ctid);
 			entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
 			ItemPointerCopy(&ctid, &entry->key.ctid);
 			entry->score = score;
