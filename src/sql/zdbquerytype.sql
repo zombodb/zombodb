@@ -26,8 +26,6 @@ CREATE CAST (json AS zdbquery) WITH FUNCTION zdbquery_from_json(json) AS IMPLICI
 CREATE CAST (jsonb AS zdbquery) WITH FUNCTION zdbquery_from_jsonb(jsonb) AS IMPLICIT;
 CREATE CAST (zdbquery AS json) WITH FUNCTION zdbquery_to_json(zdbquery) AS IMPLICIT;
 CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMPLICIT;
-CREATE OR REPLACE FUNCTION zdbquery(count_estimation integer, user_query text) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdbquery_ctor';
-CREATE OR REPLACE FUNCTION zdbquery(count_estimation integer, user_query json) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdbquery_ctor'; /* NB:  same C func as above */
 
 --
 -- query functions
@@ -37,4 +35,5 @@ CREATE OR REPLACE FUNCTION query_raw(index regclass, query zdbquery) RETURNS SET
 CREATE OR REPLACE FUNCTION query_tids(index regclass, query zdbquery) RETURNS tid[] IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_query_tids';
 CREATE OR REPLACE FUNCTION profile_query(index regclass, query zdbquery) RETURNS json IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_profile_query';
 
+CREATE OR REPLACE FUNCTION zdb.set_query_property(property text, value text, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_set_query_property';
 

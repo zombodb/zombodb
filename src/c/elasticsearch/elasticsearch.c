@@ -717,39 +717,42 @@ uint64 ElasticsearchEstimateSelectivity(Relation indexRel, ZDBQueryType *query) 
 	return DatumGetUInt64(DirectFunctionCall1(int8in, PointerGetDatum(TextDatumGetCString(count))));
 }
 
-ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, bool needSort, bool needScore, uint64 limit, char *sortField, SortByDir direction, List *highlights, char **extraFields, int nextraFields) {
+ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, bool needScore, uint64 limit, List *highlights, char **extraFields, int nextraFields) {
 	ElasticsearchScrollContext *context       = palloc0(sizeof(ElasticsearchScrollContext));
 	char                       *queryDSL      = convert_to_query_dsl(indexRel, userQuery);
 	StringInfo                 request        = makeStringInfo();
 	StringInfo                 postData       = makeStringInfo();
 	StringInfo                 docvalueFields = makeStringInfo();
 	StringInfo                 response;
+	char *sortField, *sortDir;
+	uint64 queryLimit = zdbquery_get_limit(userQuery);
+	uint64 offset;
+	double min_score;
 	void                       *jsonResponse, *hitsObject;
 	char                       *error;
 	int                        i;
 
 	finish_inserts(false);
 
-	/* we'll assume we want scoring if we have a limit, so that we get the top scoring docs when the limit is applied */
-	needScore = needScore || limit > 0;
+	limit = queryLimit != 0 ? queryLimit : limit; /* prefer to use the limit specified in the query */
+	offset = zdbquery_get_offset(userQuery);
+	sortField = zdbquery_get_sort_field(userQuery);
+	sortDir = zdbquery_get_sort_direction(userQuery);
+	min_score = zdbquery_get_min_score(userQuery);
 
-	if (sortField != NULL) {
-		needSort = true;
-	} else if (needSort) {
-		/* need a default sorting here */
-		sortField     = needScore ? "_score" : "zdb_ctid";
-		if (direction == SORTBY_DEFAULT)
-			direction = needScore ? SORTBY_DESC : SORTBY_ASC;
+	/* we'll assume we want scoring if we have a limit w/o a sort, so that we get the top scoring docs when the limit is applied */
+	needScore = needScore || (limit > 0 && sortField == NULL);
+
+	appendStringInfo(postData, "{\"track_scores\":%s,", needScore ? "true" : "false");
+	if (min_score > 0) {
+		appendStringInfo(postData, "\"min_score\":%f,", min_score);
 	}
-
-
-	if (needSort)
-		appendStringInfo(postData, "{\"track_scores\":%s,\"sort\":[{\"%s\":\"%s\"}],\"query\":%s",
-						 needScore ? "true" : "false", sortField,
-						 direction == SORTBY_DEFAULT || direction == SORTBY_ASC ? "asc" : "desc", queryDSL);
-	else
-		appendStringInfo(postData, "{\"track_scores\":%s,\"sort\":[\"%s\"],\"query\":%s",
-						 needScore ? "true" : "false", needScore ? "_score" : "_doc", queryDSL);
+	if (sortField != NULL) {
+		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", sortField, sortDir);
+	} else {
+		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "_doc", needScore ? "desc" : "asc");
+	}
+	appendStringInfo(postData, "\"query\":%s", queryDSL);
 
 	if (highlights != NULL) {
 		ListCell *lc;
@@ -777,7 +780,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 					 "%s%s/%s/_search?_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
 					 ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel),
 					 ZDBIndexOptionsGetTypeName(indexRel),
-					 limit == 0 ? MAX_DOCS_PER_REQUEST : limit, ES_SEARCH_RESPONSE_FILTER,
+					 limit == 0 ? MAX_DOCS_PER_REQUEST : Min(MAX_DOCS_PER_REQUEST, limit + offset), ES_SEARCH_RESPONSE_FILTER,
 					 highlights ? "type" : use_id ? "_id" : "_none_",
 					 docvalueFields->data);
 
@@ -800,18 +803,24 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	context->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
 
 	context->usingId       = use_id;
-	context->scrollId      = get_json_object_string(jsonResponse, "_scroll_id");
+	context->scrollId      = get_json_object_string(jsonResponse, "_scroll_id", false);
 	context->hasHighlights = highlights != NULL;
 	context->cnt           = 0;
 	context->currpos       = 0;
-	context->total         = get_json_object_uint64(hitsObject, "total");
-	context->limit         = limit;
+	context->total         = limit > 0 ? Min(limit,get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(hitsObject, "total", false);
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;
 
 	if (context->total > 0) {
 		context->hits  = get_json_object_array(hitsObject, "hits", false);
 		context->nhits = context->hits == NULL ? 0 : get_json_array_length(context->hits);
+
+		/* fast-forward to our 'offset' -- using the ?from= ES request parameter doesn't work with scroll requests */
+		if (offset > 0) {
+			while (offset--) {
+				ElasticsearchGetNextItemPointer(context, NULL, NULL, NULL, NULL);
+			}
+		}
 	}
 
 	pfree(queryDSL);
@@ -824,10 +833,16 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPointer ctid, char **_id, float4 *score, zdb_json_object *highlights) {
 	char *es_id = NULL;
 
-	if (context->cnt >= context->total)
+	if (context->cnt >= context->total) {
+		if (context->cnt == 0) {
+			/* we've run through all the rows AND exceeded the number of rows, so we're done */
+			return;
+		}
+
 		ereport(ERROR,
 				(errcode(ERRCODE_INTERNAL_ERROR),
 						errmsg("Attempt to read past total number of hits of %lu", context->total)));
+	}
 
 	if (context->currpos == context->nhits) {
 		/* we exhausted the current set of hits, so go get more */
@@ -854,7 +869,7 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 
 		hitsObject = get_json_object_object(jsonResponse, "hits", false);
 
-		context->scrollId = get_json_object_string(jsonResponse, "_scroll_id");
+		context->scrollId = get_json_object_string(jsonResponse, "_scroll_id", false);
 		context->currpos  = 0;
 		context->hits     = get_json_object_array(hitsObject, "hits", false);
 		context->nhits    = context->hits == NULL ? 0 : get_json_array_length(context->hits);
@@ -873,7 +888,7 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 	context->fields   = get_json_object_object(context->hitEntry, "fields", true);
 
 	if (context->usingId) {
-		es_id = (char *) get_json_object_string(context->hitEntry, "_id");
+		es_id = (char *) get_json_object_string(context->hitEntry, "_id", false);
 	} else if (ctid != NULL) {
 		void   *zdb_ctid;
 		uint64 ctidAs64bits;
@@ -983,7 +998,7 @@ uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query) {
 					 ZDBIndexOptionsGetAlias(indexRel));
 	response = rest_call("POST", request, postData, ZDBIndexOptionsGetCompressionLevel(indexRel));
 	json     = parse_json_object(response, CurrentMemoryContext);
-	count    = get_json_object_uint64(json, "count");
+	count    = get_json_object_uint64(json, "count", false);
 
 	pfree(json);
 	freeStringInfo(response);

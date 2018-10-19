@@ -75,7 +75,7 @@ static ZDBQueryType *do_scan_key(ScanKey key) {
 			return array_to_not_query_dsl(DatumGetArrayTypeP(key->sk_argument));
 		case ZDB_STRATEGY_SINGLE: {
 			ZDBQueryType *query = (ZDBQueryType *) DatumGetPointer(key->sk_argument);
-			return MakeZDBQuery(convert_to_query_dsl_not_wrapped(query->query_string));
+			return MakeZDBQuery(convert_to_query_dsl_not_wrapped(zdbquery_get_query(query)));
 		}
 		default:
 			break;
@@ -99,7 +99,7 @@ static ZDBQueryType *to_bool_query(ArrayType *array, char *type) {
 		if (i > 0)
 			appendStringInfoChar(should, ',');
 
-		appendStringInfo(should, "%s", convert_to_query_dsl_not_wrapped(queries[i]->query_string));
+		appendStringInfo(should, "%s", convert_to_query_dsl_not_wrapped(zdbquery_get_query(queries[i])));
 	}
 	appendStringInfo(should, "]}}");
 
@@ -122,7 +122,7 @@ char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query) {
 	char *unwrapped;
 	char *rc;
 
-	unwrapped = convert_to_query_dsl_not_wrapped(query->query_string);
+	unwrapped = convert_to_query_dsl_not_wrapped(zdbquery_get_query(query));
 	rc        = wrap_with_visibility_query(indexRel, unwrapped);
 
 	if (unwrapped != rc)
@@ -166,7 +166,7 @@ ZDBQueryType *scan_keys_to_query_dsl(ScanKey keys, int nkeys) {
 
 				if (i > 0)
 					appendStringInfoChar(boolQuery, ',');
-				appendStringInfo(boolQuery, "%s", convert_to_query_dsl_not_wrapped(query->query_string));
+				appendStringInfo(boolQuery, "%s", convert_to_query_dsl_not_wrapped(zdbquery_get_query(query)));
 				pfree(query);
 			}
 			appendStringInfo(boolQuery, "]}}");
@@ -184,6 +184,6 @@ static char *wrap_with_visibility_query(Relation indexRel, char *query) {
 				DirectFunctionCall1(zdb_internal_visibility_clause, ObjectIdGetDatum(RelationGetRelid(indexRel))));
 
 		/* wrap the input query with the visibility query */
-		return psprintf("{\"bool\":{\"must\":[%s],\"filter\":%s}}", query, vis->query_string);
+		return psprintf("{\"bool\":{\"must\":[%s],\"filter\":%s}}", query, zdbquery_get_query(vis));
 	}
 }

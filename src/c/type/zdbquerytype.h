@@ -22,12 +22,19 @@
 
 typedef struct ZDBQueryType {
 	int32 vl_len_;        /* varlena header (do not touch directly!) */
-	int32 count_estimation;
-	char  query_string[FLEXIBLE_ARRAY_MEMBER];
+	char  json[FLEXIBLE_ARRAY_MEMBER];
 	/* query string follows */
 } ZDBQueryType;
 
 ZDBQueryType *zdbquery_in_direct(char *input);
+
+uint64 zdbquery_get_row_estimate(ZDBQueryType *query);
+uint64 zdbquery_get_limit(ZDBQueryType *query);
+uint64 zdbquery_get_offset(ZDBQueryType *query);
+char *zdbquery_get_sort_field(ZDBQueryType *query);
+char *zdbquery_get_sort_direction(ZDBQueryType *query);
+double zdbquery_get_min_score(ZDBQueryType *query);
+char *zdbquery_get_query(ZDBQueryType *query);
 
 
 #define MakeZDBQuery(cstr) zdbquery_in_direct(cstr)

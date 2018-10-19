@@ -59,8 +59,6 @@ typedef struct ZDBBuildStateData {
 typedef struct ZDBScanContext {
 	bool                       needsInit;
 	ElasticsearchScrollContext *scrollContext;
-	float4                     lastScore;
-	ItemPointerData            lastCtid;
 	HTAB                       *scoreLookup;
 	HTAB                       *highlightLookup;
 	bool                       wantScores;
@@ -978,8 +976,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, false, 0, NULL, SORTBY_DEFAULT, NULL,
-												 zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmin;
@@ -1005,8 +1002,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, false, 0, NULL, SORTBY_DEFAULT, NULL,
-												 zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmax;
@@ -1032,8 +1028,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, false, 0, NULL, SORTBY_DEFAULT, NULL,
-												 zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmax;
@@ -1058,8 +1053,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				 * Finally, any "zdb_aborted_xid" value we have can be removed if it's
 				 * known to be aborted and no longer referenced anywhere in the index
 				 */
-				scroll = ElasticsearchOpenScroll(info->index, MakeZDBQuery("_id:zdb_aborted_xids"), true, false, false,
-												 0, NULL, SORTBY_DEFAULT, NULL, zdb_aborted_fields, 1);
+				scroll = ElasticsearchOpenScroll(info->index, MakeZDBQuery("_id:zdb_aborted_xids"), true, false, 0, NULL, zdb_aborted_fields, 1);
 				while (scroll->cnt < scroll->total) {
 					void *array;
 
@@ -1227,9 +1221,6 @@ static float4 scoring_cb(ItemPointer ctid, void *arg) {
 
 	assert(ctid != NULL);
 
-	if (ItemPointerIsValid(&context->lastCtid) && ItemPointerEquals(ctid, &context->lastCtid))
-		return context->lastScore;
-
 	if (context->scoreLookup != NULL) {
 		ZDBScoreKey   key;
 		ZDBScoreEntry *entry;
@@ -1284,9 +1275,7 @@ static inline void do_search_for_scan(IndexScanDesc scan) {
 
 	if (context->needsInit) {
 		Relation  heapRel    = scan->heapRelation;
-		char      *sortField;
-		SortByDir sortdir    = SORTBY_DEFAULT;
-		uint64    limit      = 0;
+		uint64    limit;
 		bool      wantScores;
 		List      *highlights;
 
@@ -1295,18 +1284,13 @@ static inline void do_search_for_scan(IndexScanDesc scan) {
 
 		wantScores = current_scan_wants_scores(scan, heapRel);
 		highlights = extract_highlight_info(scan, RelationGetRelid(heapRel));
-		sortField  = find_sort_and_limit_for_scan(scan, &sortdir, &limit);
-
-		if (limit == 0)
-			limit = find_limit_for_scan(scan);
+		limit = find_limit_for_scan(scan);
 
 		if (context->scrollContext != NULL) {
 			ElasticsearchCloseScroll(context->scrollContext);
 		}
 
-		context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, context->query, false, true, wantScores,
-														  limit,
-														  sortField, sortdir, highlights, NULL, 0);
+		context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, context->query, false, wantScores, limit, highlights, NULL, 0);
 		context->wantHighlights = highlights != NULL;
 		context->wantScores     = wantScores;
 		if (context->wantScores) {
@@ -1337,6 +1321,8 @@ static void amrescan(IndexScanDesc scan, ScanKey keys, int nkeys, ScanKey orderb
 /*lint -esym 715,direction ignore unused param */
 static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	ZDBScanContext  *context = (ZDBScanContext *) scan->opaque;
+	ItemPointerData ctid;
+	float4 score;
 	zdb_json_object highlights;
 
 	do_search_for_scan(scan);
@@ -1344,43 +1330,20 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	/* zdb indexes are never lossy */
 	scan->xs_recheck = false;
 
-	if (context->scrollContext->limit > 0 && context->scrollContext->limitcnt >= context->scrollContext->limit)
-		return false; /* we've reached our limit of live tuples */
-	else if (context->scrollContext->cnt >= context->scrollContext->total)
+	if (context->scrollContext->cnt >= context->scrollContext->total)
 		return false; /* we have no more tuples to return */
 
 	/* get the next tuple from Elasticsearch */
-	ElasticsearchGetNextItemPointer(context->scrollContext, &context->lastCtid, NULL, &context->lastScore, &highlights);
-	if (!ItemPointerIsValid(&context->lastCtid))
+	ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, &highlights);
+	if (!ItemPointerIsValid(&ctid))
 		ereport(ERROR,
 				(errcode(ERRCODE_INTERNAL_ERROR),
 						errmsg("Encounted an invalid item pointer: (%d, %d)",
-							   ItemPointerGetBlockNumber(&context->lastCtid),
-							   ItemPointerGetOffsetNumber(&context->lastCtid))));
+							   ItemPointerGetBlockNumber(&ctid),
+							   ItemPointerGetOffsetNumber(&ctid))));
 
 	/* tell the index scan about the tuple we're going to return */
-	ItemPointerCopy(&context->lastCtid, &scan->xs_ctup.t_self);
-
-	/*
-	 * If we're operating within a LIMIT, we need to ensure the rows we count toward that LIMIT
-	 * are actually visible within our current snapshot, so we go to the underlying heap and
-	 * try to fetch the tuple we're about to return.  If it's found, then we count it towards
-	 * our limit.
-	 */
-	if (context->scrollContext->limit > 0) {
-		HeapTupleData tuple;
-		Buffer        buf;
-
-		ItemPointerCopy(&context->lastCtid, &tuple.t_self);
-
-		if (heap_fetch(scan->heapRelation, scan->xs_snapshot, &tuple, &buf, false, scan->indexRelation)) {
-			/* this counts towards our limit */
-			context->scrollContext->limitcnt++;
-		}
-
-		if (BufferIsValid(buf))
-			ReleaseBuffer(buf);
-	}
+	ItemPointerCopy(&ctid, &scan->xs_ctup.t_self);
 
 	if (context->wantScores) {
 		ZDBScoreKey   key;
@@ -1392,14 +1355,14 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 		 * This is necessary if we are doing scoring but our IndexScan
 		 * is under, at least, a Sort node
 		 */
-		ItemPointerCopy(&context->lastCtid, &key.ctid);
+		ItemPointerCopy(&ctid, &key.ctid);
 		entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
-		ItemPointerCopy(&context->lastCtid, &entry->key.ctid);
-		entry->score = context->lastScore;
+		ItemPointerCopy(&ctid, &entry->key.ctid);
+		entry->score = score;
 	}
 
 	if (context->wantHighlights) {
-		save_highlights(context->highlightLookup, &context->lastCtid, highlights);
+		save_highlights(context->highlightLookup, &ctid, highlights);
 	}
 
 	return true;
@@ -1408,21 +1371,29 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
 	int64          ntuples  = 0;
+	Relation heapRel = NULL;
 
 	do_search_for_scan(scan);
 
-	while (context->scrollContext->cnt < context->scrollContext->total) {
+
+	if (scan->heapRelation == NULL)
+		scan->heapRelation = heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
+
+	while (true) {
 		ItemPointerData ctid;
 		float4          score;
-		ZDBScoreKey     key;
-		ZDBScoreEntry   *entry;
-		bool            found;
+
+		if (context->scrollContext->cnt >= context->scrollContext->total)
+			break; /* we have no more tuples to return */
 
 		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
 
-		ItemPointerCopy(&ctid, &key.ctid);
-
 		if (context->wantScores) {
+			ZDBScoreKey     key;
+			ZDBScoreEntry   *entry;
+			bool            found;
+
+			ItemPointerCopy(&ctid, &key.ctid);
 			entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
 			ItemPointerCopy(&ctid, &entry->key.ctid);
 			entry->score = score;
@@ -1430,6 +1401,11 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 
 		tbm_add_tuples(tbm, &ctid, 1, false);
 		ntuples++;
+	}
+
+	if (heapRel) {
+		RelationClose(heapRel);
+		scan->heapRelation = NULL;
 	}
 
 	return ntuples;

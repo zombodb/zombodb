@@ -83,17 +83,20 @@ static HTAB *create_ctid_map(Relation heapRel, Relation indexRel, ZDBQueryType *
 	HTAB                       *scoreHash     = scoring_create_lookup_table(memoryContext, "scores from seqscan");
 	HTAB                       *highlightHash = highlight_create_lookup_table(memoryContext, "highlights from seqscan");
 
-	scroll = ElasticsearchOpenScroll(indexRel, query, false, false, current_scan_wants_scores(NULL, heapRel), 0, NULL,
-									 SORTBY_DEFAULT, extract_highlight_info(NULL, RelationGetRelid(heapRel)), NULL, 0);
+	scroll = ElasticsearchOpenScroll(indexRel, query, false, current_scan_wants_scores(NULL, heapRel), 0, extract_highlight_info(NULL, RelationGetRelid(heapRel)), NULL, 0);
+
 	scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, scoreHash, memoryContext);
 	highlight_register_callback(RelationGetRelid(heapRel), highlight_cb, highlightHash, memoryContext);
 
-	while (scroll->cnt < scroll->total) {
+	while (true) {
 		ZDBScoreKey     key;
 		ZDBScoreEntry   *entry;
 		bool            found;
 		float4          score;
 		zdb_json_object highlights;
+
+		if (scroll->cnt >= scroll->total)
+			break; /* we have no more tuples to return */
 
 		ElasticsearchGetNextItemPointer(scroll, &key.ctid, NULL, &score, &highlights);
 
@@ -143,7 +146,7 @@ static Datum do_cmpfunc(ZDBQueryType *userQuery, HTAB *cmpFuncHash, Oid typeoid,
 		MemoryContext oldContext = MemoryContextSwitchTo(currentQuery->estate->es_query_cxt);
 
 		memset(&key, 0, sizeof(CmpFuncKey));
-		snprintf(key.key, CMP_FUNC_ENTRY_KEYSIZE, "%s", userQuery->query_string);
+		snprintf(key.key, CMP_FUNC_ENTRY_KEYSIZE, "%s", zdbquery_get_query(userQuery));
 
 		if (cmpFuncHash == NULL) {
 			HASHCTL ctl;

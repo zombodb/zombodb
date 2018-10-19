@@ -46,14 +46,6 @@ typedef struct LimitInfo {
 	uint64 limit;
 } LimitInfo;
 
-typedef struct SortInfo {
-	IndexScanDesc desc;
-
-	uint64    limit;
-	char      *attname;
-	SortByDir direction;
-} SortInfo;
-
 /* defined in zdbam.c.  we use this to detect if we're opening a ZDB index or not */
 extern bool zdbamvalidate(Oid opclassoid);
 
@@ -230,6 +222,16 @@ static bool find_limit_for_scan_walker(PlanState *planstate, LimitInfo *context)
 
 				if (indexScanState->iss_ScanDesc == context->desc) {
 					context->limit = DatumGetUInt64(lconst->constvalue);
+					return true;
+				}
+			} else if (limitState->ps.lefttree->type == T_BitmapHeapScanState) {
+				if (limitState->ps.lefttree->lefttree->type == T_BitmapIndexScanState) {
+					BitmapIndexScanState *indexScanState = (BitmapIndexScanState *) limitState->ps.lefttree->lefttree;
+
+					if (indexScanState->biss_ScanDesc == context->desc) {
+						context->limit = DatumGetUInt64(lconst->constvalue);
+						return true;
+					}
 				}
 			}
 		}
@@ -247,106 +249,6 @@ uint64 find_limit_for_scan(IndexScanDesc scan) {
 
 	find_limit_for_scan_walker(currentQuery->planstate, &li);
 	return li.limit;
-}
-
-static bool find_sort_for_scan_walker(PlanState *planstate, SortInfo *context) {
-	Plan *plan;
-
-	if (planstate == NULL)
-		return false;
-
-	plan = planstate->plan;
-
-	if (IsA(plan, Limit)) {
-		Limit *limit = (Limit *) plan;
-
-		if (limit->limitCount != NULL && limit->limitOffset == NULL && IsA(limit->limitCount, Const)) {
-			Const *lconst = (Const *) limit->limitCount;
-			if (IsA(plan->lefttree, Result)) {
-				Result *result = (Result *) plan->lefttree;
-				if (IsA(result->plan.lefttree, Sort)) {
-
-					context->limit = DatumGetUInt64(lconst->constvalue);
-				}
-			} else if (IsA(plan->lefttree, Sort)) {
-				context->limit = DatumGetUInt64(lconst->constvalue);
-			}
-		}
-	} else if (IsA(plan, Sort)) {
-		Sort      *sort      = (Sort *) plan;
-		SortState *sortState = (SortState *) planstate;
-
-		if (IsA(plan->lefttree, IndexScan)) {
-			IndexScanState *indexScanState = (IndexScanState *) sortState->ss.ps.lefttree;
-
-			if (indexScanState->iss_ScanDesc == context->desc) {
-				QueryDesc      *currentQuery = linitial(currentQueryStack);
-				Bitmapset      *rels_used    = NULL;
-				List           *rtable       = currentQuery->plannedstmt->rtable;
-				List           *rtable_names = select_rtable_names_for_explain(rtable, rels_used);
-				List           *dpContext;
-				TargetEntry    *te;
-				TypeCacheEntry *typentry;
-
-				dpContext = set_deparse_context_planstate(deparse_context_for_plan_rtable(rtable, rtable_names),
-														  (Node *) planstate, NIL);
-				te        = get_tle_by_resno(plan->targetlist, sort->sortColIdx[0]);
-				typentry  = lookup_type_cache(exprType((Node *) te->expr),
-											  TYPECACHE_LT_OPR | TYPECACHE_GT_OPR);
-
-				context->attname   = deparse_expression((Node *) te->expr, dpContext, false, false);
-				context->direction = sort->sortOperators[0] == typentry->gt_opr ? SORTBY_DESC : SORTBY_ASC;
-			}
-		}
-	}
-
-	return planstate_tree_walker(planstate, find_sort_for_scan_walker, context);
-}
-
-char *find_sort_and_limit_for_scan(IndexScanDesc scan, SortByDir *direction, uint64 *limit) {
-	QueryDesc *currentQuery = linitial(currentQueryStack);
-	SortInfo  si;
-
-	memset(&si, 0, sizeof(SortInfo));
-	si.desc = scan;
-
-	find_sort_for_scan_walker(currentQuery->planstate, &si);
-
-	if (si.attname != NULL) {
-
-		if (strstr(si.attname, "zdb.score") != 0) {
-			*direction = si.direction;
-			*limit     = si.limit;
-
-			return NULL;
-		} else {
-			AttrNumber attno = get_attnum(RelationGetRelid(scan->heapRelation), si.attname);
-			Oid        typeid;
-
-			if (attno == InvalidAttrNumber)
-				return NULL;
-
-			typeid = get_base_type_oid(get_atttype(RelationGetRelid(scan->heapRelation), attno));
-			switch (typeid) {
-				case TEXTOID:
-				case TEXTARRAYOID:
-				case BYTEAOID:
-					/* these types can't be sorted by */
-					// NB:  In the future it'd be nice if we had some ES-index metadata tracking
-					//      to better verify if a field can be sorted on or not
-					return NULL;
-
-				default:
-					break;
-			}
-
-			*direction = si.direction;
-			*limit     = si.limit;
-
-			return si.attname;
-		}
-	}
-	return NULL;
 }
 
 /* adapted from Postgres' txid.c#convert_xid function */

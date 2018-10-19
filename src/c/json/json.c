@@ -2171,46 +2171,46 @@ static char *json_write_minified_value(const struct json_value_s *value,
 	}
 }
 
-//void *json_write_minified(const struct json_value_s *value, size_t *out_size) {
-//	size_t size      = 0;
-//	char   *data     = 0;
-//	char   *data_end = 0;
-//
-//	if (0 == value) {
-//		return 0;
-//	}
-//
-//	if (json_write_minified_get_value_size(value, &size)) {
-//		// value was malformed!
-//		return 0;
-//	}
-//
-//	size += 1; // for the '\0' null terminating character
-//
-//	data = (char *) malloc(size);
-//
-//	if (0 == data) {
-//		// malloc failed!
-//		return 0;
-//	}
-//
-//	data_end = json_write_minified_value(value, data);
-//
-//	if (0 == data_end) {
-//		// bad chi occurred!
-//		free(data);
-//		return 0;
-//	}
-//
-//	// null terminated the string
-//	*data_end = '\0';
-//
-//	if (0 != out_size) {
-//		*out_size = size;
-//	}
-//
-//	return data;
-//}
+void *json_write_minified(const struct json_value_s *value, size_t *out_size) {
+	size_t size      = 0;
+	char   *data     = 0;
+	char   *data_end = 0;
+
+	if (0 == value) {
+		return 0;
+	}
+
+	if (json_write_minified_get_value_size(value, &size)) {
+		// value was malformed!
+		return 0;
+	}
+
+	size += 1; // for the '\0' null terminating character
+
+	data = (char *) malloc(size);
+
+	if (0 == data) {
+		// malloc failed!
+		return 0;
+	}
+
+	data_end = json_write_minified_value(value, data);
+
+	if (0 == data_end) {
+		// bad chi occurred!
+		free(data);
+		return 0;
+	}
+
+	// null terminated the string
+	*data_end = '\0';
+
+	if (0 != out_size) {
+		*out_size = size;
+	}
+
+	return data;
+}
 
 static int json_write_pretty_get_value_size(const struct json_value_s *value,
 											size_t depth, size_t indent_size,

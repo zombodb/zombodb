@@ -21,7 +21,7 @@ That said, lets discuss how to write our example query using ZomboDB's supported
 
 ### Query String Syntax
 
-The Query String Syntax is a plain-text query language [implemented by Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html).  It's "google"-like in that you can simply specify free-form, unqualified words and "quoted phrases" and it figure out the matching documents.  Additionally, it supports a fairly sophsicated boolean syntax that includes field qualification, proximity, ranges, wildcards, etc.
+The Query String Syntax is a plain-text query language [implemented by Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html).  It's "google"-like in that you can simply specify free-form, unqualified words and "quoted phrases" and Elasticsearch figures out the matching documents.  Additionally, it supports a fairly sophsicated boolean syntax that includes field qualification, proximity, ranges, wildcards, etc.
 
 Using the query string syntax, searching for "cats and dogs" could be any of the following:
 
@@ -70,19 +70,19 @@ They're designed to be used with defaults in the common cases, and then otherwis
 All of the functions are briefly described below, but here's some examples for our "cats and dogs" queries, plus a few more examples.
 
 ```sql
-SELECT * FROM table WHERE table ==> must('cats', 'dogs');
-SELECT * FROM table WHERE table ==> must(term('zdb_all', 'cats'), term('zdb_all', 'dogs'));
+SELECT * FROM table WHERE table ==> dsl.must('cats', 'dogs');
+SELECT * FROM table WHERE table ==> dsl.must(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'));
 ```
 
 Behind the scenes, ZomboDB is just generating the QueryDSL JSON for you:
 
 ```sql
-SELECT must('cats', 'dogs')::json;
+SELECT dsl.must('cats', 'dogs')::json;
                                           must                                           
 -----------------------------------------------------------------------------------------
  {"bool":{"must":[{"query_string":{"query":"cats"}},{"query_string":{"query":"dogs"}}]}}
  
-SELECT must(term('zdb_all', 'cats'), term('zdb_all', 'dogs'))::json;
+SELECT dsl.must(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'))::json;
                                               must                                               
 -------------------------------------------------------------------------------------------------
  {"bool":{"must":[{"term":{"zdb_all":{"value":"cats"}}},{"term":{"zdb_all":{"value":"dogs"}}}]}}
@@ -91,13 +91,13 @@ SELECT must(term('zdb_all', 'cats'), term('zdb_all', 'dogs'))::json;
 Lets say you want to find all rows that contain cats with an age greater than 3 years.  This example shows, with the `range()` function, using Postgres "named arugments" function call syntax so that you can specifiy only the bounds of the range you need.  We're also mix-and-matching between the plain text Query String Syntax (`'cats'`) and the builder API (`must()` and `range()`):
 
 ```sql
-SELECT * FROM table WHERE table ==> must('cats', range(field=>'age', gt=>3));
+SELECT * FROM table WHERE table ==> dsl.must('cats', dsl.range(field=>'age', gt=>3));
 ```
 
 Which rewrites to:
 
 ```sql
-SELECT must('cats', range(field=>'age', gt=>3))::json;
+SELECT dsl.must('cats', dsl.range(field=>'age', gt=>3))::json;
                                         must                                        
 ------------------------------------------------------------------------------------
  {"bool":{"must":[{"query_string":{"query":"cats"}},{"range":{"age":{"gt":"3"}}}]}}
@@ -106,7 +106,7 @@ SELECT must('cats', range(field=>'age', gt=>3))::json;
 One of the more powerful benefits of the Builder API is that it allows you to generate Postgres prepared statements for your text-search queries.  For example:
 
 ```sql
-PREPARE example AS SELECT * FROM table WHERE table ==> must($1, range(field=>'age', gt=>$2));
+PREPARE example AS SELECT * FROM table WHERE table ==> dsl.must($1, dsl.range(field=>'age', gt=>$2));
 ```
 
 Now we can execute that query using a different search term and age range:
@@ -117,7 +117,77 @@ EXECUTE exampe('dogs', 7);
 EXECUTE exampe('elephants', 23);
 ```
 
-Using prepared statements is extremely important to avoid SQL-injection attacks.  ZomboDB makes this possible for your Elasticsearch QueryDSL query clauses too.  Any argument to any of the functions can become a prepared statement arugment that you can change at EXECUTE time
+Using prepared statements is extremely important to avoid SQL-injection attacks.  ZomboDB makes this possible for your Elasticsearch QueryDSL query clauses too.  Any argument to any of the functions can become a prepared statement arugment that you can change at EXECUTE time.
+
+
+### Sorting and Limiting Results
+
+ZomboDB allows you to limit the number of rows returned, and their sort order, similar to the SQL `LIMIT` and `ORDER BY` clauses, except they're specified as part of the Elasticsearch query, and the sorting/limiting happens within Elasticsearch.  In general, this is significantly faster than having Postgres do it.
+
+The following functions are designed to wrap the query you want to execute, on the outer levels.  For example, to return only 10 rows:
+
+```sql
+SELECT * FROM table WHERE table ==> dsl.limit(10, dsl.term('title', 'cat'));
+```
+
+Or to return 10 rows sorted by `id`:
+
+```sql
+SELECT * FROM table WHERE table ==> dsl.sort('id', 'asc', dsl.limit(10, dsl.term('title', 'cat')));
+```
+
+## Sort and Limit Functions
+
+```sql
+FUNCTION dsl.limit(
+	limit bigint, 
+	query zdbquery
+) RETURNS zdbquery
+```
+
+Limits the number of rows returned to the specified `limit` limit.  If the query doesn't otherwise contain a `dsl.sort()` (see below), then the results returned are first sorted by `_score` in `desc`ending order.  This ensures that ZomboDB returns the top scoring documents. 
+
+---
+
+```sql
+FUNCTION dsl.offset(
+	offset bigint, 
+	query zdbquery
+) RETURNS zdbquery
+```
+
+Similar to the SQL `OFFSET` clause, allows you to start returning results from a point other than the start.
+
+---
+
+```sql
+FUNCTION dsl.sort(
+	sort_field text, 
+	sort_direction dsl.es_sort_directions, -- one of 'asc' or 'desc'
+	query zdbquery
+) RETURNS zdbquery
+```
+
+Sort the results returned from Elasticsearch by an arbitrary field.
+
+Because the SQL standard doesn't guarantee result ordering unless the query contains an `ORDER BY` clause, you should use `ORDER BY` in conjunction with this function.  For example:
+
+```sql
+SELECT * FROM table WHERE table ==> dsl.sort('id', 'asc', 'cats AND dogs') ORDER BY id asc;
+```
+
+In practice, using `dsl.sort()` only makes sense when combined with `dsl.limit()`.
+
+---
+
+```sql 
+FUNCTION dsl.min_score(
+	min_score real, 
+	query zdbquery
+) RETURNS zdbquery
+```
+
+This allows you to specify Elastisearch's [`min_score`](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-min-score.html) search property to ensure documents with a score less than the specified value are excluded from the results.
 
 
 ## SQL Builder API Functions
