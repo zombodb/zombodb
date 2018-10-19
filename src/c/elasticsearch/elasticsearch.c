@@ -36,10 +36,10 @@
 #define ES_SEARCH_RESPONSE_FILTER "_scroll_id,_shards.failed,hits.total,hits.hits.fields.*,hits.hits._id,hits.hits._score,hits.hits.highlight.*"
 
 #define validate_alias(indexRel) \
-	do { \
+    do { \
         if (ZDBIndexOptionsGetAlias((indexRel)) == NULL) \
             elog(ERROR, "index '%s' doesn't have an alias", RelationGetRelationName((indexRel))); \
-	} while(0)
+    } while(0)
 
 
 static PostDataEntry *checkout_batch_pool(ElasticsearchBulkContext *context) {
@@ -225,8 +225,8 @@ void ElasticsearchDeleteIndexDirect(char *index_url) {
 }
 
 void ElasticsearchFinalizeIndexCreation(Relation indexRel) {
-	StringInfo request    = makeStringInfo();
-	StringInfo settings   = makeStringInfo();
+	StringInfo request  = makeStringInfo();
+	StringInfo settings = makeStringInfo();
 	StringInfo response;
 
 	appendStringInfo(settings, ""
@@ -282,9 +282,9 @@ void ElasticsearchUpdateSettings(Relation indexRel, char *oldAlias, char *newAli
 }
 
 void ElasticsearchPutMapping(Relation heapRel, Relation indexRel, TupleDesc tupdesc) {
-	StringInfo request    = makeStringInfo();
-	StringInfo settings   = makeStringInfo();
-	StringInfo mapping    = generate_mapping(heapRel, tupdesc);
+	StringInfo request  = makeStringInfo();
+	StringInfo settings = makeStringInfo();
+	StringInfo mapping  = generate_mapping(heapRel, tupdesc);
 	StringInfo response;
 
 	appendStringInfo(settings, ""
@@ -316,16 +316,16 @@ ElasticsearchBulkContext *ElasticsearchStartBulkProcess(Relation indexRel, char 
 		}
 	}
 
-	context->url              = pstrdup(ZDBIndexOptionsGetUrl(indexRel));
-	context->pgIndexName      = pstrdup(RelationGetRelationName(indexRel));
-	context->esIndexName      = pstrdup(indexName);
-	context->typeName         = pstrdup(ZDBIndexOptionsGetTypeName(indexRel));
-	context->batchSize        = ZDBIndexOptionsGetBatchSize(indexRel);
-	context->bulkConcurrency  = ZDBIndexOptionsGetBulkConcurrency(indexRel);
-	context->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
-	context->shouldRefresh    = strcmp("-1", ZDBIndexOptionsGetRefreshInterval(indexRel)) == 0;
+	context->url                    = pstrdup(ZDBIndexOptionsGetUrl(indexRel));
+	context->pgIndexName            = pstrdup(RelationGetRelationName(indexRel));
+	context->esIndexName            = pstrdup(indexName);
+	context->typeName               = pstrdup(ZDBIndexOptionsGetTypeName(indexRel));
+	context->batchSize              = ZDBIndexOptionsGetBatchSize(indexRel);
+	context->bulkConcurrency        = ZDBIndexOptionsGetBulkConcurrency(indexRel);
+	context->compressionLevel       = ZDBIndexOptionsGetCompressionLevel(indexRel);
+	context->shouldRefresh          = strcmp("-1", ZDBIndexOptionsGetRefreshInterval(indexRel)) == 0;
 	context->ignoreVersionConflicts = ignore_version_conflicts;
-	context->rest             = rest_multi_init(context->bulkConcurrency, ignore_version_conflicts);
+	context->rest                   = rest_multi_init(context->bulkConcurrency, ignore_version_conflicts);
 
 	for (i = 0; i < context->bulkConcurrency + 1; i++)
 		context->pool[i] = makeStringInfo();
@@ -641,7 +641,7 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_c
 
 	if (!is_commit) {
 		/* reset the context->rest struct so that this bulk process can still be used again */
-		context->rest = rest_multi_init(context->bulkConcurrency, context->ignoreVersionConflicts);
+		context->rest       = rest_multi_init(context->bulkConcurrency, context->ignoreVersionConflicts);
 		context->rest->pool = context->pool;
 	}
 
@@ -680,8 +680,8 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_c
 }
 
 uint64 ElasticsearchCountAllDocs(Relation indexRel) {
-	StringInfo request    = makeStringInfo();
-	StringInfo postData   = makeStringInfo();
+	StringInfo request  = makeStringInfo();
+	StringInfo postData = makeStringInfo();
 	StringInfo response;
 	Datum      count;
 
@@ -699,8 +699,8 @@ uint64 ElasticsearchCountAllDocs(Relation indexRel) {
 }
 
 uint64 ElasticsearchEstimateSelectivity(Relation indexRel, ZDBQueryType *query) {
-	StringInfo request    = makeStringInfo();
-	StringInfo postData   = makeStringInfo();
+	StringInfo request  = makeStringInfo();
+	StringInfo postData = makeStringInfo();
 	StringInfo response;
 	Datum      count;
 
@@ -724,20 +724,20 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	StringInfo                 postData       = makeStringInfo();
 	StringInfo                 docvalueFields = makeStringInfo();
 	StringInfo                 response;
-	char *sortField, *sortDir;
-	uint64 queryLimit = zdbquery_get_limit(userQuery);
-	uint64 offset;
-	double min_score;
+	char                       *sortField, *sortDir;
+	uint64                     queryLimit     = zdbquery_get_limit(userQuery);
+	uint64                     offset;
+	double                     min_score;
 	void                       *jsonResponse, *hitsObject;
 	char                       *error;
 	int                        i;
 
 	finish_inserts(false);
 
-	limit = queryLimit != 0 ? queryLimit : limit; /* prefer to use the limit specified in the query */
-	offset = zdbquery_get_offset(userQuery);
+	limit     = queryLimit != 0 ? queryLimit : limit; /* prefer to use the limit specified in the query */
+	offset    = zdbquery_get_offset(userQuery);
 	sortField = zdbquery_get_sort_field(userQuery);
-	sortDir = zdbquery_get_sort_direction(userQuery);
+	sortDir   = zdbquery_get_sort_direction(userQuery);
 	min_score = zdbquery_get_min_score(userQuery);
 
 	/* we'll assume we want scoring if we have a limit w/o a sort, so that we get the top scoring docs when the limit is applied */
@@ -750,7 +750,8 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	if (sortField != NULL) {
 		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", sortField, sortDir);
 	} else {
-		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "_doc", needScore ? "desc" : "asc");
+		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "_doc",
+						 needScore ? "desc" : "asc");
 	}
 	appendStringInfo(postData, "\"query\":%s", queryDSL);
 
@@ -780,7 +781,8 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 					 "%s%s/%s/_search?_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
 					 ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel),
 					 ZDBIndexOptionsGetTypeName(indexRel),
-					 limit == 0 ? MAX_DOCS_PER_REQUEST : Min(MAX_DOCS_PER_REQUEST, limit + offset), ES_SEARCH_RESPONSE_FILTER,
+					 limit == 0 ? MAX_DOCS_PER_REQUEST : Min(MAX_DOCS_PER_REQUEST, limit + offset),
+					 ES_SEARCH_RESPONSE_FILTER,
 					 highlights ? "type" : use_id ? "_id" : "_none_",
 					 docvalueFields->data);
 
@@ -807,7 +809,9 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	context->hasHighlights = highlights != NULL;
 	context->cnt           = 0;
 	context->currpos       = 0;
-	context->total         = limit > 0 ? Min(limit,get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(hitsObject, "total", false);
+	context->total         =
+			limit > 0 ? Min(limit, get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(
+					hitsObject, "total", false);
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;
 
@@ -929,9 +933,9 @@ void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext) {
 
 void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *xids) {
 	if (list_length(xids) > 0) {
-		StringInfo xidsArray  = makeStringInfo();
-		StringInfo request    = makeStringInfo();
-		StringInfo postData   = makeStringInfo();
+		StringInfo xidsArray = makeStringInfo();
+		StringInfo request   = makeStringInfo();
+		StringInfo postData  = makeStringInfo();
 		StringInfo response;
 		ListCell   *lc;
 
@@ -982,8 +986,8 @@ char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query) {
 }
 
 uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query) {
-	StringInfo request    = makeStringInfo();
-	StringInfo postData   = makeStringInfo();
+	StringInfo request  = makeStringInfo();
+	StringInfo postData = makeStringInfo();
 	StringInfo response;
 	void       *json;
 	uint64     count;
@@ -1009,8 +1013,8 @@ uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query) {
 }
 
 static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, bool arbitrary) {
-	StringInfo request    = makeStringInfo();
-	StringInfo postData   = makeStringInfo();
+	StringInfo request  = makeStringInfo();
+	StringInfo postData = makeStringInfo();
 	StringInfo response;
 
 	validate_alias(indexRel);

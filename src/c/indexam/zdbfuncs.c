@@ -166,7 +166,7 @@ Datum zdb_restrict(PG_FUNCTION_ARGS) {
 
 	/* if 'right' is a Const we can estimate the selectivity of the query to be executed */
 	if (IsA(right, Const)) {
-		Const        *rconst   = (Const *) right;
+		Const *rconst = (Const *) right;
 
 		if (type_is_array(rconst->consttype)) {
 			countEstimate = (uint64) zdb_default_row_estimation_guc;
@@ -369,9 +369,9 @@ Datum zdb_internal_visibility_clause(PG_FUNCTION_ARGS) {
 		MemoryContextSwitchTo(oldContext);
 
 		/* and copy the 'vis'ibility query into this context so we can return it */
-		len = strlen(vis->json);
+		len    = strlen(vis->json);
 		output = palloc0(sizeof(ZDBQueryType) + len + 1);
-		output->vl_len_          = vis->vl_len_;
+		output->vl_len_ = vis->vl_len_;
 		memcpy(output->json, vis->json, len);
 	}
 	MemoryContextDelete(tmpContext);

@@ -50,7 +50,7 @@ typedef struct ElasticsearchBulkContext {
 	int            nxid;
 	StringInfo     pool[MAX_CURL_HANDLES];
 	TransactionId  lastUsedXid;
-	List           *usedXids;	/* should be allocated in TopTransactionContext */
+	List           *usedXids;    /* should be allocated in TopTransactionContext */
 } ElasticsearchBulkContext;
 
 typedef struct ElasticsearchScrollContext {

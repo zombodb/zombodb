@@ -311,7 +311,7 @@ const char *get_json_array_element_string(void *array, int idx, MemoryContext me
 
 char *write_json(void *object) {
 	struct json_value_s *json = (struct json_value_s *) object;
-	size_t size;
+	size_t              size;
 
 	return json_write_minified(json, &size);
 }

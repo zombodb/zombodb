@@ -36,7 +36,7 @@ typedef struct ZDBScoringSupportData {
 typedef struct WantScoresWalkerContext {
 	Oid           funcOid;
 	IndexScanDesc scan;
-	Oid 		  heapRelid;
+	Oid           heapRelid;
 	bool          foundFunc;
 	bool          foundScan;
 	int           depth;

@@ -935,7 +935,7 @@ static void json_parse_string(struct json_parse_state_s *state,
 	const char    quote_to_use = '\'' == src[offset] ? '\'' : '"';
 	char          *data        = state->data;
 	unsigned long codepoint;
-	long hi_surrogate = -1;
+	long          hi_surrogate = -1;
 
 	string->string = data;
 
@@ -968,13 +968,13 @@ static void json_parse_string(struct json_parse_state_s *state,
 						continue;
 					} else if (codepoint >= 0xdc00 && codepoint <= 0xdfff) {
 						char tmp[5];
-						int i, len;
+						int  i, len;
 
 						codepoint = 0x10000 + hi_surrogate + (codepoint & 0x3ff);
 						unicode_to_utf8((pg_wchar) codepoint, (unsigned char *) tmp);
 						len = pg_utf_mblen((unsigned char *) tmp);
 
-						for (i=0; i<len; i++)
+						for (i = 0; i < len; i++)
 							data[bytes_written++] = tmp[i];
 
 						hi_surrogate = -1;

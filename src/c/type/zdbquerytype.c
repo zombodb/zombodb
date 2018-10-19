@@ -39,7 +39,7 @@ static bool zdbquery_string_is_zdb(char *query) {
 	if (!is_json(query))
 		return false;
 
-	void *json = parse_json_object_from_string(query, CurrentMemoryContext);
+	void *json  = parse_json_object_from_string(query, CurrentMemoryContext);
 	bool is_zdb = get_json_object_object(json, "query_dsl", true) != NULL;
 
 	pfree(json);
@@ -69,7 +69,7 @@ static char *zdbquery_to_minimal_json(ZDBQueryType *query) {
 ZDBQueryType *zdbquery_in_direct(char *input) {
 	size_t       len;
 	ZDBQueryType *result;
-	char *json;
+	char         *json;
 
 	if (zdbquery_string_is_zdb(input)) {
 		/* it's already in the format we expect */
@@ -79,7 +79,7 @@ ZDBQueryType *zdbquery_in_direct(char *input) {
 		json = psprintf("{\"query_dsl\":%s}", convert_to_query_dsl_not_wrapped(input));
 	}
 
-	len = strlen(json);
+	len    = strlen(json);
 	result = palloc0(sizeof(ZDBQueryType) + len + 1);
 
 	memcpy(result->json, json, len + 1);
@@ -92,10 +92,10 @@ Datum zdbquery_in(PG_FUNCTION_ARGS) {
 }
 
 Datum zdbquery_out(PG_FUNCTION_ARGS) {
-	ZDBQueryType *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(0);
-	char *queryJson = zdbquery_to_minimal_json(query);
-	void *json = parse_json_object_from_string(queryJson, CurrentMemoryContext);
-	void *queryStringClause = get_json_object_object(json, "query_string", true);
+	ZDBQueryType *query             = (ZDBQueryType *) PG_GETARG_VARLENA_P(0);
+	char         *queryJson         = zdbquery_to_minimal_json(query);
+	void         *json              = parse_json_object_from_string(queryJson, CurrentMemoryContext);
+	void         *queryStringClause = get_json_object_object(json, "query_string", true);
 
 	if (queryStringClause != NULL) {
 		/* peek inside the "query_string" clause and pluck out its "query" */
@@ -110,7 +110,7 @@ Datum zdbquery_out(PG_FUNCTION_ARGS) {
 }
 
 Datum zdbquery_recv(PG_FUNCTION_ARGS) {
-	StringInfo   msg = (StringInfo) PG_GETARG_POINTER(0);
+	StringInfo msg = (StringInfo) PG_GETARG_POINTER(0);
 
 	PG_RETURN_POINTER(zdbquery_in_direct((char *) pq_getmsgstring(msg)));
 }
@@ -125,7 +125,7 @@ Datum zdbquery_send(PG_FUNCTION_ARGS) {
 }
 
 Datum zdbquery_from_text(PG_FUNCTION_ARGS) {
-	char         *input = GET_STR(PG_GETARG_TEXT_P(0));
+	char *input = GET_STR(PG_GETARG_TEXT_P(0));
 	PG_RETURN_POINTER(zdbquery_in_direct(input));
 }
 
@@ -149,7 +149,7 @@ Datum zdbquery_to_jsonb(PG_FUNCTION_ARGS) {
 }
 
 static uint64 zdbquery_get_raw_row_estimate(ZDBQueryType *query) {
-	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void   *json    = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	uint64 estimate = get_json_object_uint64(json, "row_estimate", true);
 
 	pfree(json);
@@ -157,7 +157,7 @@ static uint64 zdbquery_get_raw_row_estimate(ZDBQueryType *query) {
 }
 
 uint64 zdbquery_get_row_estimate(ZDBQueryType *query) {
-	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void   *json    = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	uint64 estimate = get_json_object_uint64(json, "row_estimate", true);
 
 	if (estimate == 0)
@@ -171,7 +171,7 @@ uint64 zdbquery_get_row_estimate(ZDBQueryType *query) {
 }
 
 double zdbquery_get_min_score(ZDBQueryType *query) {
-	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void   *json     = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	float8 min_score = get_json_object_real(json, "min_score");
 
 	pfree(json);
@@ -179,7 +179,7 @@ double zdbquery_get_min_score(ZDBQueryType *query) {
 }
 
 uint64 zdbquery_get_limit(ZDBQueryType *query) {
-	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void   *json    = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	uint64 estimate = get_json_object_uint64(json, "limit", true);
 
 	pfree(json);
@@ -187,7 +187,7 @@ uint64 zdbquery_get_limit(ZDBQueryType *query) {
 }
 
 uint64 zdbquery_get_offset(ZDBQueryType *query) {
-	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void   *json    = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	uint64 estimate = get_json_object_uint64(json, "offset", true);
 
 	pfree(json);
@@ -195,7 +195,7 @@ uint64 zdbquery_get_offset(ZDBQueryType *query) {
 }
 
 char *zdbquery_get_sort_field(ZDBQueryType *query) {
-	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void *json      = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	char *sortField = (char *) get_json_object_string(json, "sort_field", true);
 
 	if (sortField != NULL)
@@ -206,7 +206,7 @@ char *zdbquery_get_sort_field(ZDBQueryType *query) {
 }
 
 char *zdbquery_get_sort_direction(ZDBQueryType *query) {
-	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void *json          = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	char *sortDirection = (char *) get_json_object_string(json, "sort_direction", true);
 
 	if (sortDirection != NULL)
@@ -217,7 +217,7 @@ char *zdbquery_get_sort_direction(ZDBQueryType *query) {
 }
 
 char *zdbquery_get_query(ZDBQueryType *query) {
-	void *json = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void *json        = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	void *queryObject = (char *) get_json_object_object(json, "query_dsl", true);
 	char *queryString = write_json(queryObject);
 
@@ -260,47 +260,53 @@ static zdbquery_properties zdbquery_key_to_propenum(char *key) {
 }
 
 Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
-	char *key = GET_STR(PG_GETARG_TEXT_P(0));
-	char *value = GET_STR(PG_GETARG_TEXT_P(1));
-	ZDBQueryType *input = (ZDBQueryType *) PG_GETARG_VARLENA_P(2);
-	zdbquery_properties prop = zdbquery_key_to_propenum(key);
-	StringInfo query = makeStringInfo();
-	int i;
+	char                *key   = GET_STR(PG_GETARG_TEXT_P(0));
+	char                *value = GET_STR(PG_GETARG_TEXT_P(1));
+	ZDBQueryType        *input = (ZDBQueryType *) PG_GETARG_VARLENA_P(2);
+	zdbquery_properties prop   = zdbquery_key_to_propenum(key);
+	StringInfo          query  = makeStringInfo();
+	int                 i;
 
 	appendStringInfoChar(query, '{');
-	for (i=0; i<ZDBQUERY_MAX_KEYS; i++) {
+	for (i = 0; i < ZDBQUERY_MAX_KEYS; i++) {
 
-		switch(i) {
+		switch (i) {
 			case zdbquery_limit: {
-				uint64 limit = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value))) : zdbquery_get_limit(
-						input);
+				uint64 limit = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value)))
+										 : zdbquery_get_limit(
+								input);
 
 				if (limit > 0) {
 					if (query->len > 1)
 						appendStringInfoChar(query, ',');
 					appendStringInfo(query, "\"limit\":%lu", limit);
 				}
-			} break;
+			}
+				break;
 
 			case zdbquery_offset: {
-				uint64 offset = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value))) :zdbquery_get_offset(input);
+				uint64 offset = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value)))
+										  : zdbquery_get_offset(input);
 
 				if (offset > 0) {
 					if (query->len > 1)
 						appendStringInfoChar(query, ',');
 					appendStringInfo(query, "\"offset\":%lu", offset);
 				}
-			} break;
+			}
+				break;
 
 			case zdbquery_min_score: {
-				float8 min_score = prop == i ? DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(value))) :zdbquery_get_min_score(input);
+				float8 min_score = prop == i ? DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(value)))
+											 : zdbquery_get_min_score(input);
 
 				if (min_score > 0.0) {
 					if (query->len > 1)
 						appendStringInfoChar(query, ',');
 					appendStringInfo(query, "\"min_score\":%f", min_score);
 				}
-			} break;
+			}
+				break;
 
 			case zdbquery_sort_field: {
 				char *sort_field = prop == i ? value : zdbquery_get_sort_field(input);
@@ -310,7 +316,8 @@ Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
 						appendStringInfoChar(query, ',');
 					appendStringInfo(query, "\"sort_field\":\"%s\"", sort_field);
 				}
-			} break;
+			}
+				break;
 
 			case zdbquery_sort_direction: {
 				char *sort_direction = prop == i ? value : zdbquery_get_sort_direction(input);
@@ -320,17 +327,20 @@ Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
 						appendStringInfoChar(query, ',');
 					appendStringInfo(query, "\"sort_direction\":\"%s\"", sort_direction);
 				}
-			} break;
+			}
+				break;
 
 			case zdbquery_row_estimate: {
-				uint64 row_estimate = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value))) :zdbquery_get_raw_row_estimate(input);
+				uint64 row_estimate = prop == i ? DatumGetUInt64(DirectFunctionCall1(int8in, CStringGetDatum(value)))
+												: zdbquery_get_raw_row_estimate(input);
 
 				if (row_estimate > 0) {
 					if (query->len > 1)
 						appendStringInfoChar(query, ',');
 					appendStringInfo(query, "\"row_estimate\":%lu", row_estimate);
 				}
-			} break;
+			}
+				break;
 
 			case zdbquery_query_dsl: {
 				char *query_dsl = prop == i ? value : zdbquery_get_query(input);
@@ -340,7 +350,8 @@ Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
 						appendStringInfoChar(query, ',');
 					appendStringInfo(query, "\"query_dsl\":%s", query_dsl);
 				}
-			} break;
+			}
+				break;
 
 			default:
 				elog(ERROR, "unexpected property index: %d", i);
