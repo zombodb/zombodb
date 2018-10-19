@@ -17,7 +17,6 @@
 #include "zombodb.h"
 
 #include "elasticsearch/elasticsearch.h"
-#include "elasticsearch/querygen.h"
 #include "indexam/zdbam.h"
 
 #include "access/xact.h"
@@ -173,7 +172,7 @@ Datum zdb_restrict(PG_FUNCTION_ARGS) {
 			countEstimate = (uint64) zdb_default_row_estimation_guc;
 		} else {
 			ZDBQueryType *zdbquery = (ZDBQueryType *) DatumGetPointer(rconst->constvalue);
-			int          estimate  = zdbquery_get_row_estimate(zdbquery);
+			uint64       estimate  = zdbquery_get_row_estimate(zdbquery);
 
 			if (estimate < 1) {
 				/* we need to ask Elasticsearch to estimate our selectivity */
@@ -186,7 +185,7 @@ Datum zdb_restrict(PG_FUNCTION_ARGS) {
 			} else {
 				/* we'll just use the hardcoded value in the query */
 				if (estimate > 1)
-					countEstimate = (uint64) estimate;
+					countEstimate = estimate;
 			}
 		}
 	}

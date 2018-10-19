@@ -1379,12 +1379,9 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 	if (scan->heapRelation == NULL)
 		scan->heapRelation = heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
 
-	while (true) {
+	while (context->scrollContext->cnt < context->scrollContext->total) {
 		ItemPointerData ctid;
 		float4          score;
-
-		if (context->scrollContext->cnt >= context->scrollContext->total)
-			break; /* we have no more tuples to return */
 
 		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
 
