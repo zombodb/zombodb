@@ -128,13 +128,17 @@ static Datum do_cmpfunc(ZDBQueryType *userQuery, HTAB *cmpFuncHash, Oid typeoid,
 		goto invalid_context_error;
 	}
 
-	/* find the TupleTableSlot that represents the row being evaluated in this scan */
+	/*
+	 * find the TupleTableSlot that represents the row being evaluated in this scan
+	 *
+	 * In the list of TupleTableSlots in the current executor state, the slot we're interested in
+	 * is the last non-NULL slot we find for our relation
+	 */
 	heapRel = RelationIdGetRelation(heapRelId);
 	foreach(lc, currentQuery->estate->es_tupleTable) {
 		TupleTableSlot *tmp = lfirst(lc);
 		if (tmp->tts_tuple != NULL && tmp->tts_tuple->t_tableOid == RelationGetRelid(heapRel)) {
 			slot = tmp;
-			break;
 		}
 	}
 
