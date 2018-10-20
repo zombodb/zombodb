@@ -6,7 +6,6 @@ CREATE OR REPLACE FUNCTION anyelement_cmpfunc(anyelement, zdbquery) RETURNS bool
 CREATE OR REPLACE FUNCTION anyelement_cmpfunc_array_should(anyelement, zdbquery[]) RETURNS bool PARALLEL SAFE IMMUTABLE STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_anyelement_cmpfunc_array_should';
 CREATE OR REPLACE FUNCTION anyelement_cmpfunc_array_must(anyelement, zdbquery[]) RETURNS bool PARALLEL SAFE IMMUTABLE STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_anyelement_cmpfunc_array_must';
 CREATE OR REPLACE FUNCTION anyelement_cmpfunc_array_not(anyelement, zdbquery[]) RETURNS bool PARALLEL SAFE IMMUTABLE STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_anyelement_cmpfunc_array_not';
-CREATE OR REPLACE FUNCTION tid_cmpfunc(tid, zdbquery) RETURNS bool STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_tid_cmpfunc';
 CREATE OR REPLACE FUNCTION restrict(internal, oid, internal, integer) RETURNS float8 PARALLEL SAFE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_restrict';
 CREATE OR REPLACE FUNCTION delete_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_delete_trigger';
 CREATE OR REPLACE FUNCTION update_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_update_trigger';

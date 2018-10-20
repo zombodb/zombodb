@@ -38,7 +38,6 @@ PG_FUNCTION_INFO_V1(zdb_anyelement_cmpfunc_array_should);
 PG_FUNCTION_INFO_V1(zdb_anyelement_cmpfunc_array_must);
 PG_FUNCTION_INFO_V1(zdb_anyelement_cmpfunc_array_not);
 PG_FUNCTION_INFO_V1(zdb_anyelement_cmpfunc);
-PG_FUNCTION_INFO_V1(zdb_tid_cmpfunc);
 
 extern List *currentQueryStack;
 
@@ -220,49 +219,3 @@ Datum zdb_anyelement_cmpfunc(PG_FUNCTION_ARGS) {
 	ZDBQueryType *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(1);
 	return do_cmpfunc(query, (HTAB *) fcinfo->flinfo->fn_extra, get_fn_expr_argtype(fcinfo->flinfo, 0), fcinfo);
 }
-
-Datum zdb_tid_cmpfunc(PG_FUNCTION_ARGS) {
-	ItemPointer  ctid   = (ItemPointer) PG_GETARG_POINTER(0);
-	ZDBQueryType *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(1);
-	Node         *left  = linitial(((OpExpr *) fcinfo->flinfo->fn_expr)->args);
-
-	if (IsA(left, Var)) {
-		Var           *var          = (Var *) left;
-		QueryDesc     *currentQuery = linitial(currentQueryStack);
-		RangeTblEntry *rentry       = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
-		HTAB          *hash         = (HTAB *) fcinfo->flinfo->fn_extra;
-		Oid           heapRelId;
-		Relation      heapRel;
-		bool          found;
-
-		heapRelId = rentry->relid;
-
-		heapRel = RelationIdGetRelation(heapRelId);
-		if (hash == NULL) {
-			/*
-			 * execute query using our rhs argument and turn it into a hash
-			 * and store that hash with this function for future evaluations
-			 */
-			MemoryContext oldContext = MemoryContextSwitchTo(fcinfo->flinfo->fn_mcxt);
-			Relation      indexRel;
-
-			indexRel = find_index_relation(heapRel, get_rel_type_id(heapRelId), AccessShareLock);
-			hash     = create_ctid_map(heapRel, indexRel, query, fcinfo->flinfo->fn_mcxt);
-			relation_close(indexRel, AccessShareLock);
-
-			MemoryContextSwitchTo(oldContext);
-
-			fcinfo->flinfo->fn_extra = hash;
-		}
-		RelationClose(heapRel);
-
-		/* does our hash match the tuple currently being evaluated? */
-		hash_search(hash, ctid, HASH_FIND, &found);
-
-		PG_RETURN_BOOL(found);
-	} else {
-		elog(ERROR, "zombodb tid comparision function lhs is not a direct ctid column reference");
-	}
-	/*lint -e533 we either return a bool or elog(ERROR)*/
-}
-
