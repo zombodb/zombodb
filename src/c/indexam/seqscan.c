@@ -112,7 +112,6 @@ static Datum do_cmpfunc(ZDBQueryType *userQuery, HTAB *cmpFuncHash, Oid typeoid,
 	QueryDesc      *currentQuery;
 	TupleTableSlot *slot = NULL;
 	Oid            heapRelId;
-	Relation       heapRel;
 	ListCell       *lc;
 	bool           found;
 
@@ -133,10 +132,10 @@ static Datum do_cmpfunc(ZDBQueryType *userQuery, HTAB *cmpFuncHash, Oid typeoid,
 	 * In the list of TupleTableSlots in the current executor state, the slot we're interested in
 	 * is the last non-NULL slot we find for our relation
 	 */
-	heapRel = RelationIdGetRelation(heapRelId);
 	foreach(lc, currentQuery->estate->es_tupleTable) {
 		TupleTableSlot *tmp = lfirst(lc);
-		if (tmp->tts_tuple != NULL && tmp->tts_tuple->t_tableOid == RelationGetRelid(heapRel)) {
+
+		if (tmp->tts_tuple != NULL && tmp->tts_tuple->t_tableOid == heapRelId) {
 			slot = tmp;
 		}
 	}
@@ -177,17 +176,19 @@ static Datum do_cmpfunc(ZDBQueryType *userQuery, HTAB *cmpFuncHash, Oid typeoid,
 			 * and store that hash with this function for future evaluations
 			 */
 			Relation indexRel;
+			Relation heapRel;
 
+			heapRel = relation_open(heapRelId, AccessShareLock);
 			indexRel = find_index_relation(heapRel, typeoid, AccessShareLock);
 			entry->hash = create_ctid_map(heapRel, indexRel, userQuery, currentQuery->estate->es_query_cxt);
 			relation_close(indexRel, AccessShareLock);
+			relation_close(heapRel, AccessShareLock);
 		}
 
 		/* does our hash match the tuple currently being evaluated? */
 		/*lint -e534 ignore return value */
 		hash_search(entry->hash, &slot->tts_tuple->t_self, HASH_FIND, &found);
 
-		RelationClose(heapRel);
 		MemoryContextSwitchTo(oldContext);
 
 		PG_RETURN_BOOL(found);
