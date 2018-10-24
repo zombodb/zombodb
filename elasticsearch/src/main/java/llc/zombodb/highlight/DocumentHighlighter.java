@@ -160,7 +160,7 @@ public class DocumentHighlighter {
                             analyzeData(indexName, primaryKeyFieldname, resolveAllFieldnames(null, (Map) element, new HashSet<String>()), fieldName.substring(0, fieldName.lastIndexOf('.')), (Map) element, baseDocumentData);
                         } else {
                             AnalyzeRequestBuilder rb = new AnalyzeRequestBuilder(client, AnalyzeAction.INSTANCE, indexName, String.valueOf(element).toLowerCase());
-                            rb.setAnalyzer("phrase");
+                            rb.setAnalyzer(metadataManager.getMetadataForField(fieldName).isExactAnalyzer(fieldName) ? "exact" : "phrase");
 
                             try {
                                 fields.add(new AnalyzedField(client, metadataManager, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
@@ -171,7 +171,7 @@ public class DocumentHighlighter {
                     }
                 } else {
                     AnalyzeRequestBuilder rb = new AnalyzeRequestBuilder(client, AnalyzeAction.INSTANCE, indexName, String.valueOf(value).toLowerCase());
-                    rb.setAnalyzer("phrase");
+                    rb.setAnalyzer(metadataManager.getMetadataForField(fieldName).isExactAnalyzer(fieldName) ? "exact" : "phrase");
 
                     try {
                         fields.add(new AnalyzedField(client, metadataManager, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
