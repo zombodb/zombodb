@@ -226,7 +226,7 @@ public class IndexLinkOptimizer {
         Map<String, List<ASTExpansion>> sameExpansions = new HashMap<>();
         int cnt = 0;
         for (QueryParserNode child : root) {
-            if (child instanceof ASTExpansion && !((ASTExpansion) child).isSubselect()) {
+            if (child instanceof ASTExpansion) {
                 String key = child.getIndexLink().toStringNoFieldname();
                 List<ASTExpansion> groups = sameExpansions.computeIfAbsent(key, k -> new ArrayList<>());
 
