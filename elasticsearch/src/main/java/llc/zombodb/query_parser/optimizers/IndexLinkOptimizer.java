@@ -208,11 +208,8 @@ public class IndexLinkOptimizer {
         if (root == null)
             return links;
 
-        for (QueryParserNode child : root) {
-            if (child instanceof ASTExpansion && ((ASTExpansion) child).isSubselect())
-                continue;
+        for (QueryParserNode child : root)
             collectIndexLinks(child, links);
-        }
 
         if (root.getIndexLink() != null)
             links.add(root.getIndexLink());
