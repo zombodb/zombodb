@@ -27,7 +27,7 @@ static bool lookup_field_mapping(Oid tableRelId, char *fieldname, StringInfo map
 
 	query = makeStringInfo();
 	appendStringInfo(query,
-					 "select (to_json(field_name) || ':' || definition) from zdb.mappings where table_name = %d::regclass and field_name = %s;",
+					 "select (to_json(field_name) || ':' || definition) from zdb.mappings where table_name = %u::regclass and field_name = %s;",
 					 tableRelId,
 					 TextDatumGetCString(DirectFunctionCall1(quote_literal, CStringGetTextDatum(fieldname))));
 
@@ -55,7 +55,7 @@ static bool lookup_type_mapping(Oid typeOid, char *fieldname, StringInfo mapping
 	SPI_connect();
 
 	query = makeStringInfo();
-	appendStringInfo(query, "select definition from zdb.type_mappings where type_name = (%d::regtype);",
+	appendStringInfo(query, "select definition from zdb.type_mappings where type_name = (%u::regtype);",
 					 typeOid);
 
 	if (SPI_execute(query->data, true, 2) != SPI_OK_SELECT)
@@ -144,7 +144,7 @@ static List *lookup_es_only_fields(MemoryContext cxt, Oid tableOid) {
 
 	query = makeStringInfo();
 	appendStringInfo(query,
-					 "select (to_json(field_name) || ':' || definition) from zdb.mappings WHERE table_name = %d::regclass and es_only = true;",
+					 "select (to_json(field_name) || ':' || definition) from zdb.mappings WHERE table_name = %u::regclass and es_only = true;",
 					 tableOid);
 
 	if (SPI_execute(query->data, true, 0) != SPI_OK_SELECT)
@@ -244,7 +244,7 @@ StringInfo generate_mapping(Relation heapRel, TupleDesc tupdesc) {
 				default:
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-									errmsg("Unsupported base domain type for %s: %d", typename, base_type)));
+									errmsg("Unsupported base domain type for %s: %u", typename, base_type)));
 			}
 		} else {
 			/* it's a type that we don't have built-in knowledge on how to map, so treat it as a 'keyword' */

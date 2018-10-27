@@ -69,7 +69,7 @@ char *make_alias_name(Relation indexRel, bool force_default) {
 		Relation heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(indexRel), false));
 		char     *name;
 
-		name = psprintf("%s.%s.%s.%s-%d",
+		name = psprintf("%s.%s.%s.%s-%u",
 						get_database_name(MyDatabaseId),
 						get_namespace_name(RelationGetNamespace(indexRel)),
 						RelationGetRelationName(heapRel),
@@ -85,7 +85,7 @@ static char *generate_uuid_index_name(Relation indexRel) {
 	Relation heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(indexRel), false));
 	char     *name;
 
-	name = psprintf("%d.%d.%d.%d-%lu",
+	name = psprintf("%u.%u.%u.%u-%lu",
 					MyDatabaseId,
 					RelationGetNamespace(indexRel),
 					RelationGetRelid(heapRel),
@@ -469,9 +469,9 @@ void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerDa
 	}
 
 	/* ...and cmin/cmax */
-	appendStringInfo(context->current->buff, ",\"zdb_cmin\":%d", cmin);
+	appendStringInfo(context->current->buff, ",\"zdb_cmin\":%u", cmin);
 	if (cmax != InvalidCommandId)
-		appendStringInfo(context->current->buff, ",\"zdb_cmax\":%d", cmax);
+		appendStringInfo(context->current->buff, ",\"zdb_cmax\":%u", cmax);
 
 	/* ...and xmin/xmax */
 	appendStringInfo(context->current->buff, ",\"zdb_xmin\":%lu", xmin);
