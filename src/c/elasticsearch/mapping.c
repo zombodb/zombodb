@@ -20,19 +20,22 @@
 #include "utils/typcache.h"
 
 static bool lookup_field_mapping(Oid tableRelId, char *fieldname, StringInfo mapping) {
-	StringInfo query;
-	bool       rc = false;
+	Oid   types[2]  = {REGCLASSOID, TEXTOID};
+	Datum datums[2] = {ObjectIdGetDatum(tableRelId), CStringGetTextDatum(fieldname)};
+	char  nulls[2]  = {0, 0};
+	int   res;
+	bool  rc        = false;
 
 	SPI_connect();
-
-	query = makeStringInfo();
-	appendStringInfo(query,
-					 "select (to_json(field_name) || ':' || definition) from zdb.mappings where table_name = %d::regclass and field_name = %s;",
-					 tableRelId,
-					 TextDatumGetCString(DirectFunctionCall1(quote_literal, CStringGetTextDatum(fieldname))));
-
-	if (SPI_execute(query->data, true, 2) != SPI_OK_SELECT)
-		elog(ERROR, "Problem looking up analysis thing with query: %s", query->data);
+	if ((res = SPI_execute_with_args(
+			"select (to_json(field_name) || ':' || definition) from zdb.mappings where table_name = $1::regclass and field_name = $2;",
+			2,
+			types,
+			datums,
+			nulls,
+			true,
+			1)) != SPI_OK_SELECT)
+		elog(ERROR, "Problem looking up analysis thing, result=%d", res);
 
 	if (SPI_processed > 1) {
 		elog(ERROR, "Too many mappings found");
@@ -49,17 +52,21 @@ static bool lookup_field_mapping(Oid tableRelId, char *fieldname, StringInfo map
 }
 
 static bool lookup_type_mapping(Oid typeOid, char *fieldname, StringInfo mapping) {
-	StringInfo query;
-	bool       rc = false;
+	Oid   types[1]  = {REGTYPEOID};
+	Datum datums[1] = {ObjectIdGetDatum(typeOid)};
+	char  nulls[1]  = {0};
+	int   res;
+	bool  rc        = false;
 
 	SPI_connect();
-
-	query = makeStringInfo();
-	appendStringInfo(query, "select definition from zdb.type_mappings where type_name = (%d::regtype);",
-					 typeOid);
-
-	if (SPI_execute(query->data, true, 2) != SPI_OK_SELECT)
-		elog(ERROR, "Problem looking up type mapping with query: %s", query->data);
+	if ((res = SPI_execute_with_args("select definition from zdb.type_mappings where type_name = $1::regtype;",
+									 1,
+									 types,
+									 datums,
+									 nulls,
+									 true,
+									 1)) != SPI_OK_SELECT)
+		elog(ERROR, "Problem looking up type mapping, result=%d", res);
 
 	if (SPI_processed > 1) {
 		elog(ERROR, "Too many type mappings found");
@@ -76,16 +83,21 @@ static bool lookup_type_mapping(Oid typeOid, char *fieldname, StringInfo mapping
 }
 
 static bool type_is_domain(char *type_name, Oid *base_type) {
-	bool       rc;
-	StringInfo query;
+	Oid   types[1]  = {TEXTOID};
+	Datum values[1] = {CStringGetTextDatum(type_name)};
+	char  nulls[1]  = {0};
+	int   res;
+	bool  rc;
 
 	SPI_connect();
-	query = makeStringInfo();
-	appendStringInfo(query, "SELECT typtype = 'd', typbasetype FROM pg_type WHERE oid = %s::regtype",
-					 TextDatumGetCString(DirectFunctionCall1(quote_literal, CStringGetTextDatum(type_name))));
-
-	if (SPI_execute(query->data, true, 1) != SPI_OK_SELECT)
-		elog(ERROR, "Problem determining if %s is a domain with query: %s", type_name, query->data);
+	if ((res = SPI_execute_with_args("SELECT typtype = 'd', typbasetype FROM pg_type WHERE oid = $1::regtype;",
+									 1,
+									 types,
+									 values,
+									 nulls,
+									 true,
+									 1)) != SPI_OK_SELECT)
+		elog(ERROR, "Problem determining if '%s' is a domain, result=%d", type_name, res);
 
 	if (SPI_processed == 0) {
 		rc = false;
@@ -107,17 +119,16 @@ static bool type_is_domain(char *type_name, Oid *base_type) {
 
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
-	char       *definition = "";
-	StringInfo query;
+	char *definition = "";
+	int  res;
 
 	SPI_connect();
 
-	query = makeStringInfo();
-	appendStringInfo(query, "select (to_json(name) || ':' || definition) from zdb.%s;",
-					 TextDatumGetCString(DirectFunctionCall1(quote_ident, CStringGetTextDatum(thing))));
-
-	if (SPI_execute(query->data, true, 0) != SPI_OK_SELECT)
-		elog(ERROR, "Problem looking up analysis thing with query: %s", query->data);
+	if ((res = SPI_execute(psprintf("select (to_json(name) || ':' || definition) from zdb.%s;",
+									TextDatumGetCString(DirectFunctionCall1(quote_ident, CStringGetTextDatum(thing)))),
+						   true,
+						   0)) != SPI_OK_SELECT)
+		elog(ERROR, "Problem looking up analysis thing '%s', result=%d", thing, res);
 
 	if (SPI_processed > 0) {
 		StringInfo json = makeStringInfo();
@@ -137,18 +148,22 @@ char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
 }
 
 static List *lookup_es_only_fields(MemoryContext cxt, Oid tableOid) {
-	List       *response = NULL;
-	StringInfo query;
+	Oid   types[1]  = {REGCLASSOID};
+	Datum values[1] = {tableOid};
+	char  nulls[1]  = {0};
+	List  *response = NULL;
+	int   res;
 
 	SPI_connect();
-
-	query = makeStringInfo();
-	appendStringInfo(query,
-					 "select (to_json(field_name) || ':' || definition) from zdb.mappings WHERE table_name = %d::regclass and es_only = true;",
-					 tableOid);
-
-	if (SPI_execute(query->data, true, 0) != SPI_OK_SELECT)
-		elog(ERROR, "Problem looking up es-only fields: %s", query->data);
+	if ((res = SPI_execute_with_args(
+			"select (to_json(field_name) || ':' || definition) from zdb.mappings WHERE table_name = $1::regclass and es_only = true;",
+			1,
+			types,
+			values,
+			nulls,
+			true,
+			0)) != SPI_OK_SELECT)
+		elog(ERROR, "Problem looking up es-only fields, result=%d", res);
 
 	if (SPI_processed > 0) {
 		MemoryContext oldContext = MemoryContextSwitchTo(cxt);
@@ -244,7 +259,7 @@ StringInfo generate_mapping(Relation heapRel, TupleDesc tupdesc) {
 				default:
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-									errmsg("Unsupported base domain type for %s: %d", typename, base_type)));
+									errmsg("Unsupported base domain type for %s: %u", typename, base_type)));
 			}
 		} else {
 			/* it's a type that we don't have built-in knowledge on how to map, so treat it as a 'keyword' */

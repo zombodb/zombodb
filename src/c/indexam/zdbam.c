@@ -574,7 +574,7 @@ static void create_delete_trigger(Oid heapRelOid, char *schemaName, char *tableN
 
 	SPI_connect();
 
-	appendStringInfo(triggerName, "zdb_tuple_delete_for_%d_using_%d", heapRelOid, indexRelOid);
+	appendStringInfo(triggerName, "zdb_tuple_delete_for_%u_using_%u", heapRelOid, indexRelOid);
 	appendStringInfo(sql, "SELECT * FROM pg_trigger WHERE tgname like '%s%%'", triggerName->data);
 	if (SPI_execute(sql->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0) {
 		SPI_finish();
@@ -597,7 +597,7 @@ static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableN
 
 	SPI_connect();
 
-	appendStringInfo(triggerName, "zdb_tuple_update_for_%d_using_%d", heapRelOid, indexRelOid);
+	appendStringInfo(triggerName, "zdb_tuple_update_for_%u_using_%u", heapRelOid, indexRelOid);
 	appendStringInfo(sql, "SELECT * FROM pg_trigger WHERE tgname like '%s%%'", triggerName->data);
 	if (SPI_execute(sql->data, true, 0) != SPI_OK_SELECT || SPI_processed != 0) {
 		SPI_finish();
@@ -825,7 +825,7 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	if (HeapTupleIsHeapOnly(htup)) {
 		ereport(ERROR,
 				(errcode(ERRCODE_DATA_EXCEPTION),
-						errmsg("Heap Only Tuple (HOT) found at (%d, %d).  Run VACUUM FULL <tablename>; and then create the index",
+						errmsg("Heap Only Tuple (HOT) found at (%u, %u).  Run VACUUM FULL <tablename>; and then create the index",
 							   ItemPointerGetBlockNumber(&(htup->t_self)),
 							   ItemPointerGetOffsetNumber(&(htup->t_self)))));
 	}
@@ -1341,7 +1341,7 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 	if (!ItemPointerIsValid(&ctid))
 		ereport(ERROR,
 				(errcode(ERRCODE_INTERNAL_ERROR),
-						errmsg("Encounted an invalid item pointer: (%d, %d)",
+						errmsg("Encounted an invalid item pointer: (%u, %u)",
 							   ItemPointerGetBlockNumber(&ctid),
 							   ItemPointerGetOffsetNumber(&ctid))));
 
