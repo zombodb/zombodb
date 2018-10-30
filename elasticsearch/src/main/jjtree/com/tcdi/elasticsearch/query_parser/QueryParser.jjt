@@ -134,12 +134,12 @@ PARSER_END(QueryParser)
 
 <JSON_CLOB> MORE :
 {
-      <JSON_DATA: (~[")"])+ >
+      <JSON_DATA: (~[]) >
 }
 
 <JSON_CLOB> TOKEN:
 {
-    <JSON_CLOB_END: ")"> : DEFAULT
+    <JSON_CLOB_END: "})"> : DEFAULT
 }
 
 <DEFAULT> MORE :

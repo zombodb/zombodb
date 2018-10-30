@@ -5325,6 +5325,26 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testIssue306_Json() throws Exception {
+        assertJson(
+                "({\"simple_query_string\":{\"query\":\"(java)\", \"fields\": [\"title\"]}})",
+          "{\n" +
+                        "  \"simple_query_string\" : {\n" +
+                        "    \"query\" : \"(java)\",\n" +
+                        "    \"fields\" : [\n" +
+                        "      \"title^1.0\"\n" +
+                        "    ],\n" +
+                        "    \"flags\" : -1,\n" +
+                        "    \"default_operator\" : \"or\",\n" +
+                        "    \"lenient\" : false,\n" +
+                        "    \"analyze_wildcard\" : false,\n" +
+                        "    \"boost\" : 1.0\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
     public void testIssue143_Json() throws Exception {
         assertJson(
                 "subject:(beer or wine and cheese) and ({" +
