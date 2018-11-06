@@ -420,7 +420,12 @@ TupleDesc extract_tuple_desc_from_index_expressions(IndexInfo *indexInfo) {
 		} break;
 
 		case T_RowExpr: {
-			elog(ERROR, "TODO:  Support Row Expressions in index definitions");
+			RowExpr *rowExpr = (RowExpr *) expression;
+			TypeCacheEntry *tpe;
+
+			tpe = lookup_type_cache(rowExpr->row_typeid, TYPECACHE_TUPDESC);
+			tupdesc = tpe->tupDesc;
+			IncrTupleDescRefCount(tupdesc);
 		} break;
 
 		default:
