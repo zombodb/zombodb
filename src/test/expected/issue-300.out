@@ -12,13 +12,13 @@ select sum(zdb.score(ctid)) > 0 from events where events ==> 'beer';
  t
 (1 row)
 
-select sum(zdb.score(ctid)) > 0, event_type from events where events ==> 'beer' group by event_type;
+select sum(zdb.score(ctid)) > 0, event_type from events where events ==> 'beer' group by event_type order by event_type;
  ?column? |    event_type     
 ----------+-------------------
+ t        | CreateEvent
  t        | IssueCommentEvent
  t        | IssuesEvent
- t        | CreateEvent
- t        | ReleaseEvent
  t        | PushEvent
+ t        | ReleaseEvent
 (5 rows)
 
