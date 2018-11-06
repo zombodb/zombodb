@@ -815,7 +815,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;
 
-	if (context->total > 0) {
+	if (offset < context->total) {
 		context->hits  = get_json_object_array(hitsObject, "hits", false);
 		context->nhits = context->hits == NULL ? 0 : get_json_array_length(context->hits);
 
@@ -825,6 +825,13 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 				ElasticsearchGetNextItemPointer(context, NULL, NULL, NULL, NULL);
 			}
 		}
+	} else {
+		/*
+		 * user specified an offset that's beyond the number of hits actually found, so just
+		 * pretend we don't have any hits at all
+		 */
+		context->total = 0;
+		context->nhits = 0;
 	}
 
 	pfree(queryDSL);
