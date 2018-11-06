@@ -78,3 +78,36 @@ select e.id, u.id from events e inner join users u on e.user_id = u.id where e =
  123783 | 208546
 (3 rows)
 
+   select zdb.score(e.ctid) > 0, zdb.score(u.ctid) > 0, (zdb.score(e.ctid) + zdb.score(u.ctid)) > 0, e.id, u.id
+     from events e
+left join users u on e.user_id = u.id
+    where e ==> 'beer' or u ==> 'vicjoecs'
+ order by e.id, u.id;
+ ?column? | ?column? | ?column? |   id   |   id   
+----------+----------+----------+--------+--------
+ t        | f        | t        |    108 |       
+ t        | f        | t        |   1405 |       
+ t        | f        | t        |   3222 |       
+ t        | f        | t        |   3722 |       
+ t        | f        | t        |   6309 |       
+ t        | f        | t        |  29273 |       
+ t        | f        | t        |  34736 |       
+ t        | f        | t        |  41451 |       
+ t        | f        | t        |  42539 |       
+ t        | f        | t        |  42540 |       
+ t        | f        | t        |  43172 |       
+ t        | f        | t        |  43949 |       
+ t        | f        | t        |  44947 |       
+ t        | f        | t        |  45989 |       
+ t        | f        | t        |  47633 |       
+ t        | f        | t        |  50733 |       
+ t        | f        | t        | 115758 |       
+ t        | f        | t        | 118517 |       
+ t        | f        | t        | 121100 |       
+ t        | t        | t        | 122357 | 208546
+ f        | t        | t        | 123707 | 208546
+ t        | f        | t        | 123756 |       
+ t        | f        | t        | 123764 |       
+ f        | t        | t        | 123783 | 208546
+(24 rows)
+

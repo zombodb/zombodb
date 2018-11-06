@@ -120,17 +120,22 @@ static float4 scoring_lookup_score(Oid heapOid, ItemPointer ctid) {
 }
 
 Datum zdb_score(PG_FUNCTION_ARGS) {
-	ItemPointer ctid      = (ItemPointer) PG_GETARG_POINTER(0);
-	FuncExpr    *funcExpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
-	Node        *firstArg = linitial(funcExpr->args);
-
-	if (IsA(firstArg, Var)) {
-		Var           *var          = (Var *) firstArg;
-		QueryDesc     *currentQuery = linitial(currentQueryStack);
-		RangeTblEntry *rentry       = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
-
-		PG_RETURN_FLOAT4(scoring_lookup_score(rentry->relid, ctid));
+	/* zdb.score() is not defined as strict, so we need to null-check our argument */
+	if (PG_ARGISNULL(0)) {
+		PG_RETURN_FLOAT4(0.0);
 	} else {
-		elog(ERROR, "zdb_score()'s argument is not a direct table ctid column reference");
+		ItemPointer ctid      = (ItemPointer) PG_GETARG_POINTER(0);
+		FuncExpr    *funcExpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
+		Node        *firstArg = linitial(funcExpr->args);
+
+		if (IsA(firstArg, Var)) {
+			Var           *var          = (Var *) firstArg;
+			QueryDesc     *currentQuery = linitial(currentQueryStack);
+			RangeTblEntry *rentry       = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
+
+			PG_RETURN_FLOAT4(scoring_lookup_score(rentry->relid, ctid));
+		} else {
+			elog(ERROR, "zdb_score()'s argument is not a direct table ctid column reference");
+		}
 	}
 }

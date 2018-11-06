@@ -34,3 +34,9 @@ select e.id, u.id from events e left join users u on e.user_id = u.id where e ==
 select e.id, u.id from events e right join users u on e.user_id = u.id where e ==> 'beer' or u ==> 'vicjoecs' order by 1, 2;
 select e.id, u.id from events e inner join users u on e.user_id = u.id where e ==> 'beer' or u ==> 'vicjoecs' order by 1, 2;
 
+   select zdb.score(e.ctid) > 0, zdb.score(u.ctid) > 0, (zdb.score(e.ctid) + zdb.score(u.ctid)) > 0, e.id, u.id
+     from events e
+left join users u on e.user_id = u.id
+    where e ==> 'beer' or u ==> 'vicjoecs'
+ order by e.id, u.id;
+
