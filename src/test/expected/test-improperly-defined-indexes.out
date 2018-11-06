@@ -3,9 +3,9 @@ CREATE TABLE bad_index (
     title text
 );
 CREATE INDEX idxbad_index ON bad_index USING zombodb (id, title);
-ERROR:  access method "zombodb" does not support multicolumn indexes
+ERROR:  ZomboDB index definitions must index two columns where the first is the 'ctid' system column and the second is of a record type or whole-row reference, i.e., (table_name.*)
 CREATE INDEX idxbad_index ON bad_index USING zombodb (id);
-ERROR:  ZomboDB index definitions must have one column that is a whole row reference to the table being indexed (ie, '(table_name.*)' or a function call that returns a composite type
+ERROR:  ZomboDB index definitions must index two columns where the first is the 'ctid' system column and the second is of a record type or whole-row reference, i.e., (table_name.*)
 CREATE INDEX idxbad_index ON bad_index USING zombodb (to_ascii(title));
 ERROR:  ZomboDB index definitions that use a function must use one that returns a composite type
 DROP TABLE bad_index CASCADE;

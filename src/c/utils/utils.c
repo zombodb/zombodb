@@ -20,6 +20,7 @@
 #include "access/htup_details.h"
 #include "access/reloptions.h"
 #include "access/relscan.h"
+#include "access/sysattr.h"
 #include "access/xact.h"
 #include "catalog/dependency.h"
 #include "catalog/indexing.h"
@@ -160,46 +161,20 @@ char *strip_json_ending(char *str, int len) {
 					errmsg("improper JSON format")));
 }
 
-Relation find_index_relation(Relation heapRel, Oid typeoid, LOCKMODE lock) {
+Relation find_zombodb_index(Relation heapRel) {
 	ListCell *lc;
 
 	foreach (lc, RelationGetIndexList(heapRel)) {
 		Oid      indexRelOid = lfirst_oid(lc);
-		Relation indexRel    = relation_open(indexRelOid, lock);
-		ListCell *lc2;
+		Relation indexRel    = relation_open(indexRelOid, AccessShareLock);
 
-		foreach (lc2, RelationGetIndexExpressions(indexRel)) {
-			Node *node = lfirst(lc2);
+		if (indexRel->rd_amroutine != NULL && indexRel->rd_amroutine->amvalidate == zdbamvalidate)
+			return indexRel;
 
-			if (IsA(node, Var)) {
-				Var *var = (Var *) node;
-				if (var->vartype == typeoid)
-					return indexRel;
-			} else if (IsA(node, FuncExpr)) {
-				FuncExpr *funcExpr = (FuncExpr *) node;
-
-				if (list_length(funcExpr->args) == 0) {
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
-									errmsg("lhs doesn't have enough arguments")));
-				}
-
-				if (IsA(linitial(funcExpr->args), Var)) {
-					Var *var = linitial(funcExpr->args);
-					if (var->vartype == typeoid)
-						return indexRel;
-				} else {
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
-									errmsg("lhs doesn't have the correct first argument type")));
-				}
-			}
-		}
-
-		relation_close(indexRel, AccessShareLock);
+		RelationClose(indexRel);
 	}
 
-	elog(ERROR, "Unable to locate corresponding zombodb index on '%s'", RelationGetRelationName(heapRel));
+	elog(ERROR, "Unable to locate zombodb index on '%s'", RelationGetRelationName(heapRel));
 }
 
 static bool find_limit_for_scan_walker(PlanState *planstate, LimitInfo *context) {
@@ -401,23 +376,30 @@ Relation zdb_open_index(Oid indexRelId, LOCKMODE lock) {
 	return rel;
 }
 
-TupleDesc extract_tuple_desc_from_index_expressions(List *expressions) {
-	Expr      *expr = lfirst(list_head(expressions));
-	TupleDesc tupdesc;
+TupleDesc extract_tuple_desc_from_index_expressions(IndexInfo *indexInfo) {
+	TupleDesc tupdesc = NULL;
+	Node *expression;
 
-	switch (nodeTag(expr)) {
+	if (indexInfo->ii_KeyAttrNumbers[0] != SelfItemPointerAttributeNumber) {
+		return NULL;
+	} else if (list_length(indexInfo->ii_Expressions) != 1) {
+		return NULL;
+	}
+
+	expression = (Node *) linitial(indexInfo->ii_Expressions);
+
+	switch (nodeTag(expression)) {
 
 		case T_Var: {
 			/* It's a Var, which means it's just a reference to the type represented by the table being indexed */
-			Var *var = (Var *) expr;
+			Var *var = (Var *) expression;
 
 			/* lookup the TupleDesc for the referenced Var */
 			tupdesc = lookup_rowtype_tupdesc(var->vartype, var->vartypmod);
-		}
-			break;
+		} break;
 
 		case T_FuncExpr: {
-			FuncExpr       *funcExpr = (FuncExpr *) expr;
+			FuncExpr       *funcExpr = (FuncExpr *) expression;
 			TypeCacheEntry *tpe;
 
 			/* check that the return type of this FuncExpr is a composite type */
@@ -435,8 +417,11 @@ TupleDesc extract_tuple_desc_from_index_expressions(List *expressions) {
 			 */
 			tupdesc = tpe->tupDesc;
 			IncrTupleDescRefCount(tupdesc);
-		}
-			break;
+		} break;
+
+		case T_RowExpr: {
+			elog(ERROR, "TODO:  Support Row Expressions in index definitions");
+		} break;
 
 		default:
 			return NULL;

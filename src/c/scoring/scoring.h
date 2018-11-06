@@ -35,6 +35,5 @@ void scoring_support_init(void);
 void scoring_support_cleanup(void);
 HTAB *scoring_create_lookup_table(MemoryContext memoryContext, char *name);
 void scoring_register_callback(Oid heapOid, score_lookup_callback callback, void *callback_data, MemoryContext memoryContext);
-bool current_scan_wants_scores(IndexScanDesc scan, Relation heapRel);
 
 #endif /* __ZDB_SCORING_H__ */
