@@ -596,14 +596,17 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 
 											foreach (lc2, RelationGetIndexList(rel)) {
 												Relation indexRel = RelationIdGetRelation(lfirst_oid(lc2));
-												if (index_is_zdb_index(indexRel) &&
-													!ZDBIndexOptionsGetLLAPI(indexRel)) {
-													to_drop = lappend(to_drop,
-																	  psprintf("%s%s",
-																			   ZDBIndexOptionsGetUrl(indexRel),
-																			   ZDBIndexOptionsGetIndexName(indexRel)));
+												if (indexRel != NULL) {
+													if (index_is_zdb_index(indexRel) &&
+														!ZDBIndexOptionsGetLLAPI(indexRel)) {
+														to_drop = lappend(to_drop,
+																		  psprintf("%s%s",
+																				   ZDBIndexOptionsGetUrl(indexRel),
+																				   ZDBIndexOptionsGetIndexName(
+																						   indexRel)));
+													}
+													RelationClose(indexRel);
 												}
-												RelationClose(indexRel);
 											}
 										}
 											break;
@@ -992,6 +995,16 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	char              *aliasName = ZDBIndexOptionsGetAlias(indexRelation);
 	char              *indexName;
 
+	if (already_has_zdb_index(heapRelation, indexRelation)) {
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+						errmsg("Relations can only have one ZomboDB index")));
+	} else if (list_length(indexInfo->ii_Predicate) > 0) {
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+						errmsg("ZomboDB indices cannot contain WHERE clauses")));
+	}
+
 	if (ZDBIndexOptionsGetIndexName(indexRelation) != NULL && ZDBIndexOptionsGetLLAPI(indexRelation) == true) {
 		/*
 		 * this index is a low-level API index that already has a named assigned to it, so we're just going
@@ -1063,7 +1076,7 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 
 	definition_error:
 	ereport(ERROR,
-			(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
+			(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 					errmsg("ZomboDB index definitions must index two columns where the first is the 'ctid' system "
 						   "column and the second is of a record type or whole-row reference, i.e., (table_name.*)")));
 }

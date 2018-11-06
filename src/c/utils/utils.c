@@ -165,13 +165,18 @@ Relation find_zombodb_index(Relation heapRel) {
 	ListCell *lc;
 
 	foreach (lc, RelationGetIndexList(heapRel)) {
-		Oid      indexRelOid = lfirst_oid(lc);
-		Relation indexRel    = relation_open(indexRelOid, AccessShareLock);
+		Oid      indexRelId = lfirst_oid(lc);
+		Relation indexRel    = RelationIdGetRelation(indexRelId);
 
-		if (indexRel->rd_amroutine != NULL && indexRel->rd_amroutine->amvalidate == zdbamvalidate)
-			return indexRel;
+		if (indexRel != NULL) {
+			if (indexRel->rd_amroutine != NULL && indexRel->rd_amroutine->amvalidate == zdbamvalidate) {
+				RelationClose(indexRel);
 
-		RelationClose(indexRel);
+				return relation_open(indexRelId, AccessShareLock);
+			}
+
+			RelationClose(indexRel);
+		}
 	}
 
 	elog(ERROR, "Unable to locate zombodb index on '%s'", RelationGetRelationName(heapRel));
@@ -437,6 +442,31 @@ TupleDesc extract_tuple_desc_from_index_expressions(IndexInfo *indexInfo) {
 
 bool index_is_zdb_index(Relation indexRel) {
 	return indexRel->rd_amroutine->amvalidate == zdbamvalidate;
+}
+
+bool already_has_zdb_index(Relation heapRel, Relation existingIndexRel) {
+	ListCell *lc;
+	int cnt = 0;
+
+	foreach(lc, RelationGetIndexList(heapRel)) {
+		Oid      indexRelId = lfirst_oid(lc);
+		Relation indexRel;
+
+		if (indexRelId == RelationGetRelid(existingIndexRel))
+			continue;	/* it's this index, so we won't count it */
+
+		indexRel = RelationIdGetRelation(indexRelId);
+		if (indexRel != NULL) {
+			if (indexRel->rd_amroutine != NULL && indexRel->rd_amroutine->amvalidate == zdbamvalidate)
+				cnt++;
+			RelationClose(indexRel);
+		}
+
+		if (cnt > 0)
+			return true;
+	}
+
+	return false;
 }
 
 List *lookup_zdb_indexes_in_namespace(Oid namespaceOid) {

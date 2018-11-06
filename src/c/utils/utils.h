@@ -48,6 +48,7 @@ Oid create_trigger(char *zombodbNamespace, char *schemaname, char *relname, Oid 
 Relation zdb_open_index(Oid indexRelId, LOCKMODE lock);
 TupleDesc extract_tuple_desc_from_index_expressions(IndexInfo *indexInfo);
 bool index_is_zdb_index(Relation indexRel);
+bool already_has_zdb_index(Relation heapRel, Relation indexRel);
 List *lookup_zdb_indexes_in_namespace(Oid namespaceOid);
 void set_index_option(Relation rel, char *key, char *value);
 
