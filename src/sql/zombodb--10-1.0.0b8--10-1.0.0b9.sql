@@ -47,6 +47,7 @@ UPDATE pg_opclass SET opcname = 'anyelement_zdb_ops' WHERE opcname = 'anyelement
 
 -- some functions need to be parallel unsafe
 ALTER FUNCTION score(tid) PARALLEL UNSAFE;
+ALTER FUNCTION score(tid) CALLED ON NULL INPUT; -- zdb.score() also called on null input so we can return zeros
 ALTER FUNCTION highlight(tid, name, json) PARALLEL UNSAFE;
 ALTER FUNCTION highlight(zdb.esqdsl_highlight_type, boolean, int, zdbquery, text[], text[], text, int, zdb.esqdsl_fragmenter_type, int, int, boolean, zdb.esqdsl_encoder_type, text, int, text, int, boolean, text) PARALLEL UNSAFE;
 
@@ -66,6 +67,7 @@ BEGIN
                 indnatts = 2,
                 indkey = '-1 0'::int2vector,
                 indcollation = '0 0'::oidvector,
+                indoption = '0 0'::int2vector,
                 indclass = ((SELECT oid FROM pg_opclass WHERE opcname = 'tid_zdb_ops') || ' ' || (SELECT oid FROM pg_opclass WHERE opcname = 'anyelement_zdb_ops'))::oidvector
             WHERE
                 indexrelid = r.oid;
