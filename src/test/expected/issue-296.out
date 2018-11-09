@@ -78,6 +78,24 @@ select e.id, u.id from events e inner join users u on e.user_id = u.id where e =
  123783 | 208546
 (3 rows)
 
+explain(costs off)   select zdb.score(e.ctid) > 0, zdb.score(u.ctid) > 0, (zdb.score(e.ctid) + zdb.score(u.ctid)) > 0, e.id, u.id
+     from events e
+left join users u on e.user_id = u.id
+    where e ==> 'beer' or u ==> 'vicjoecs'
+ order by e.id, u.id;
+                                         QUERY PLAN                                         
+--------------------------------------------------------------------------------------------
+ Result
+   ->  Sort
+         Sort Key: e.id, u.id
+         ->  Hash Left Join
+               Hash Cond: (e.user_id = u.id)
+               Filter: ((e.ctid ==> 'beer'::zdbquery) OR (u.ctid ==> 'vicjoecs'::zdbquery))
+               ->  Seq Scan on events e
+               ->  Hash
+                     ->  Seq Scan on users u
+(9 rows)
+
    select zdb.score(e.ctid) > 0, zdb.score(u.ctid) > 0, (zdb.score(e.ctid) + zdb.score(u.ctid)) > 0, e.id, u.id
      from events e
 left join users u on e.user_id = u.id
