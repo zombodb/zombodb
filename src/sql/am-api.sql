@@ -50,7 +50,7 @@ CREATE OPERATOR pg_catalog.==! (
 );
 COMMENT ON OPERATOR pg_catalog.==!(anyelement, zdbquery[]) IS 'ZomboDB array "not" text search operator for Elasticsearch queries';
 
-CREATE OPERATOR CLASS anyelement_text_ops DEFAULT FOR TYPE anyelement USING zombodb AS
+CREATE OPERATOR CLASS anyelement_zdb_ops DEFAULT FOR TYPE anyelement USING zombodb AS
     OPERATOR 1 pg_catalog.==>(anyelement, zdbquery),
     OPERATOR 2 pg_catalog.==|(anyelement, zdbquery[]),
     OPERATOR 3 pg_catalog.==&(anyelement, zdbquery[]),
@@ -89,7 +89,7 @@ CREATE OPERATOR pg_catalog.==! (
 );
 COMMENT ON OPERATOR pg_catalog.==!(tid, zdbquery[]) IS 'ZomboDB array "not" text search operator for Elasticsearch queries';
 
-CREATE OPERATOR CLASS tid_text_ops DEFAULT FOR TYPE tid USING zombodb AS
+CREATE OPERATOR CLASS tid_zdb_ops DEFAULT FOR TYPE tid USING zombodb AS
     OPERATOR 1 pg_catalog.==>(tid, zdbquery),
     OPERATOR 2 pg_catalog.==|(tid, zdbquery[]),
     OPERATOR 3 pg_catalog.==&(tid, zdbquery[]),
