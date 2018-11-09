@@ -43,7 +43,7 @@ CREATE OPERATOR CLASS tid_zdb_ops DEFAULT FOR TYPE tid USING zombodb AS
     STORAGE tid;
 
 -- rename the opclass
-UPDATE pg_opclass SET opcname = 'anyelement_zdb_ops' WHERE opcname = 'anyelement_text_ops';
+ALTER OPERATOR CLASS anyelement_text_ops USING zombodb RENAME TO anyelement_zdb_ops;
 
 -- some functions need to be parallel unsafe
 ALTER FUNCTION score(tid) PARALLEL UNSAFE;
