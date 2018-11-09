@@ -383,7 +383,9 @@ zdbDefineIndex(Oid relationId,
 	 * Extra checks when creating a PRIMARY KEY index.
 	 */
 	if (stmt->primary)
-		index_check_primary_key(rel, indexInfo, is_alter_table);
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("ZomboDB indices cannot be PRIMARY KEY")));
 
 	/*
 	 * We disallow indexes on system columns other than OID and CTID.  They would not
