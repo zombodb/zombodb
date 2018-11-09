@@ -33,16 +33,6 @@ typedef struct ZDBScoringSupportData {
 	List *callback_data;
 } ZDBScoringSupportData;
 
-typedef struct WantScoresWalkerContext {
-	Oid           funcOid;
-	IndexScanDesc scan;
-	Oid           heapRelid;
-	bool          foundFunc;
-	bool          foundScan;
-	int           depth;
-	int           funcDepth;
-} WantScoresWalkerContext;
-
 extern List *currentQueryStack;
 
 static List *scoreEntries = NULL;
