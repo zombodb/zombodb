@@ -336,34 +336,46 @@ static bool rewrite_walker(Node *node, RewriteWalkerContext *context) {
 	if (IsA(node, OpExpr)) {
 		OpExpr *opExpr = (OpExpr *) node;
 		Node   *arg    = (Node *) linitial(opExpr->args);
+		bool   found   = false;
 
-		if (IsA(arg, Var)) {
-			Var  *var  = (Var *) arg;
-			bool found = false;
+		if (opExpr->opfuncid == context->anyelement_cmpfunc) {
+			opExpr->opfuncid = context->tid_cmpfunc;
+			opExpr->opno     = context->tid_operator;
+			found = true;
+		} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_should) {
+			opExpr->opfuncid = context->tid_cmpfunc_array_should;
+			opExpr->opno     = context->tid_array_should_operator;
+			found = true;
+		} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_must) {
+			opExpr->opfuncid = context->tid_cmpfunc_array_must;
+			opExpr->opno     = context->tid_array_must_operator;
+			found = true;
+		} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_not) {
+			opExpr->opfuncid = context->tid_cmpfunc_array_not;
+			opExpr->opno     = context->tid_array_not_operator;
+			found = true;
+		}
 
-			if (opExpr->opfuncid == context->anyelement_cmpfunc) {
-				opExpr->opfuncid = context->tid_cmpfunc;
-				opExpr->opno     = context->tid_operator;
-				found = true;
-			} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_should) {
-				opExpr->opfuncid = context->tid_cmpfunc_array_should;
-				opExpr->opno     = context->tid_array_should_operator;
-				found = true;
-			} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_must) {
-				opExpr->opfuncid = context->tid_cmpfunc_array_must;
-				opExpr->opno     = context->tid_array_must_operator;
-				found = true;
-			} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_not) {
-				opExpr->opfuncid = context->tid_cmpfunc_array_not;
-				opExpr->opno     = context->tid_array_not_operator;
-				found = true;
-			}
+		if (found) {
+			/*
+			 * we found one of our index operators, so validate the left-hand side argument
+			 * to ensure it's a table reference, and if it is, then rewrite to the ctid column
+			 */
+			if (IsA(arg, Var)) {
+				Var *var = (Var *) arg;
 
-			if (found) {
-				var->varattno  = SelfItemPointerAttributeNumber;
-				var->vartype   = TIDOID;
-				var->varno     = var->varnoold;
-				var->varoattno = SelfItemPointerAttributeNumber;
+				if (var->varattno != SelfItemPointerAttributeNumber) {
+					if (var->varattno != 0) {
+						elog(ERROR, "Left-hand side of ==> must be a table reference or the table's 'ctid' column");
+					}
+
+					var->varattno  = SelfItemPointerAttributeNumber;
+					var->vartype   = TIDOID;
+					var->varno     = var->varnoold;
+					var->varoattno = SelfItemPointerAttributeNumber;
+				}
+			} else {
+				elog(ERROR, "Left-hand side of ==> must be a table reference");
 			}
 		}
 	} else if (IsA(node, FuncExpr)) {

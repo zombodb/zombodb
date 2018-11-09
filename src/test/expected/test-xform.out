@@ -36,11 +36,13 @@ explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5
    Index Cond: (ctid ==> 'login:falcao5'::zdbquery)
 (2 rows)
 
+explain (costs off) select * from xform_test where xform(xform_test) ==> 'login:falcao5';
+ERROR:  Left-hand side of ==> must be a table reference
 -- these can't be queried because they don't directly reference "xform_test"
 select id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
-ERROR:  zombodb comparision function called in invalid context
+ERROR:  Left-hand side of ==> must be a table reference
 select zdb.score(ctid) > 0.0 as score, id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
-ERROR:  zombodb comparision function called in invalid context
+ERROR:  Left-hand side of ==> must be a table reference
 -- but these can
 select id from xform_test where xform_test ==> 'login:falcao5' order by id;
   id   

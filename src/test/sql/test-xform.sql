@@ -29,6 +29,7 @@ set enable_seqscan to off;
 set enable_bitmapscan to off;
 set enable_indexscan to on;
 explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
+explain (costs off) select * from xform_test where xform(xform_test) ==> 'login:falcao5';
 
 -- these can't be queried because they don't directly reference "xform_test"
 select id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
