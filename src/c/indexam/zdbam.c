@@ -329,6 +329,8 @@ typedef struct RewriteWalkerContext {
 } RewriteWalkerContext;
 
 typedef struct WantScoresWalkerContext {
+	bool in_te;
+	bool in_sort;
 	Oid zdb_score;
 	bool want_scores;
 } WantScoresWalkerContext;
@@ -417,12 +419,30 @@ static bool want_scores_walker(Node *node, WantScoresWalkerContext *context) {
 	if (node == NULL)
 		return false;
 
-	if (IsA(node, FuncExpr)) {
+	if (IsA(node, TargetEntry)) {
+		bool rc;
+
+		context->in_te = true;
+		rc = expression_tree_walker(node, want_scores_walker, context);
+		context->in_te = false;
+		return rc;
+	} else if (IsA(node, SortBy)) {
+		bool rc;
+
+		context->in_sort = true;
+		rc = expression_tree_walker(node, want_scores_walker, context);
+		context->in_sort = false;
+		return rc;
+	} else if (IsA(node, FuncExpr)) {
 		FuncExpr *funcExpr = (FuncExpr *) node;
 
 		if (funcExpr->funcid == context->zdb_score) {
-			// TODO:  can we figure out which table's ctid column is the argument?
-			context->want_scores = true;
+			if (context->in_te || context->in_sort) {
+				// TODO:  can we figure out which table's ctid column is the argument?
+				context->want_scores = true;
+			} else {
+				elog(ERROR, "zdb.score() can only be used as a target entry or as a sort");
+			}
 		}
 	} else if (IsA(node, RangeTblEntry)) {
 		return false;            /* allow range_table_walker to continue */
@@ -441,6 +461,8 @@ static PlannedStmt *zdb_planner_hook(Query *parse, int cursorOptions, ParamListI
 	WantScoresWalkerContext wantScoresContext;
 
 	/* determine if the query wants scores or not */
+	wantScoresContext.in_te       = false;
+	wantScoresContext.in_sort     = false;
 	wantScoresContext.zdb_score   = ZDBFUNC("zdb", "score", 1, arg);
 	wantScoresContext.want_scores = false;
 	query_tree_walker(parse, want_scores_walker, &wantScoresContext, QTW_EXAMINE_RTES);
