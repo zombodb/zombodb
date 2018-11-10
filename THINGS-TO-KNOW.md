@@ -46,6 +46,20 @@ In order for ZomboDB to guarantee MVCC correct results it needs to track certain
 
 This means your Elasticsearch index sizes are most likely going to be measurably *larger* (perhaps close to 2x larger) than the on-disk representation in Postgres.  This is due to storing the document source plus all the indexed/analyzed terms for every field.  Keep this in mind when designing your Elasticsearch cluster.
 
+### ZomboDB Rewrites Your Queries and CREATE INDEX Statements
+
+When you write a ZomboDB query, you use the `==>` operator.  The left-hand-side of `==>` is a reference to the table you want to query, and the right-hand-side is your actual Elasticsearch query.  
+
+During the Postgres query planning phase, ZomboDB rewrites this so that the left-hand-side of `==>` is actually the `ctid` system column of the table you originally specified.
+
+For example, the query `SELECT * FROM table WHERE table ==> 'foo'` is rewritten as if you had actually specified `SELECT * FROM table WHERE table.ctid ==> 'foo'`.
+
+Addiitonally, when you create a ZomboDB index, you do so with a `CREATE INDEX` statement that is a single-column index (typically just a row reference to the table).  ZomboDB rewrites this such that the index transparently becomes a multi-column index where the first column is the table's `ctid` system column.
+
+For example, `CREATE INDEX idxfoo ON foo USING zombodb ((foo.*))` is rewritten as `CREATE INDEX idxfoo ON foo USING zombodb (ctid, (foo.*))`.
+
+These things are transparent to you, but are necessary in order for ZomboDB to support all of Postgres' various query plan types, including plans that include sequential scans and hash joins.
+
 ### ZomboDB Attaches "hidden" Triggers to Tables
 
 When you `CREATE INDEX ... ON table USING zombodb (...)` ZomboDB attaches two "hidden" triggers (they're considered `tgisinternal` triggers) to the `table`.  The triggers are FOR EACH ROW BEFORE UPDATE and DELETE triggers that track MVCC visibility changes as part of the UPDATE and DELETE statement.
