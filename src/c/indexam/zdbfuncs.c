@@ -188,7 +188,7 @@ Datum zdb_query_srf(PG_FUNCTION_ARGS) {
 
 		/* start a query against Elasticsearch, in the proper memory context for this SRF */
 		oldcontext    = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
-		scrollContext = ElasticsearchOpenScroll(indexRel, zdbquery, false, false, 0, NULL, NULL, 0);
+		scrollContext = ElasticsearchOpenScroll(indexRel, zdbquery, false, 0, NULL, NULL, 0);
 		MemoryContextSwitchTo(oldcontext);
 
 		relation_close(indexRel, AccessShareLock);
@@ -243,7 +243,7 @@ Datum zdb_query_tids(PG_FUNCTION_ARGS) {
 
 	indexRel = zdb_open_index(indexRelOid, AccessShareLock);
 
-	scrollContext = ElasticsearchOpenScroll(indexRel, userJsonQuery, false, false, 0, NULL,
+	scrollContext = ElasticsearchOpenScroll(indexRel, userJsonQuery, false, 0, NULL,
 											NULL, 0);
 
 	relation_close(indexRel, AccessShareLock);

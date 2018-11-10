@@ -71,10 +71,12 @@
 #include "commands/view.h"
 #include "executor/spi.h"
 #include "miscadmin.h"
+#include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/cost.h"
 #include "optimizer/planner.h"
 #include "parser/parse_func.h"
+#include "parser/parse_oper.h"
 #include "parser/parse_utilcmd.h"
 #include "postmaster/bgwriter.h"
 #include "rewrite/rewriteDefine.h"
@@ -207,7 +209,6 @@ int  zdb_default_replicas_guc;
 relopt_kind RELOPT_KIND_ZDB;
 
 List *currentQueryStack = NULL;
-bool currentQueryWantsScores = false;
 
 void finish_inserts(bool is_commit) {
 	ListCell *lc;
@@ -306,7 +307,6 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 			to_drop           = NULL;
 			aborted_xids      = NULL;
 			currentQueryStack = NULL;
-			currentQueryWantsScores = false;
 			break;
 		default:
 			break;
@@ -324,19 +324,23 @@ typedef struct RewriteWalkerContext {
 	Oid tid_cmpfunc_array_must, tid_array_must_operator;
 	Oid tid_cmpfunc_array_not, tid_array_not_operator;
 
-	Oid zdb_score;
-
 	bool want_scores;
+	Oid zdbquery_oid;
 } RewriteWalkerContext;
+
+typedef struct WantScoresWalkerContext {
+	Oid zdb_score;
+	bool want_scores;
+} WantScoresWalkerContext;
 
 static bool rewrite_walker(Node *node, RewriteWalkerContext *context) {
 	if (node == NULL)
 		return false;
 
 	if (IsA(node, OpExpr)) {
-		OpExpr *opExpr = (OpExpr *) node;
-		Node   *arg    = (Node *) linitial(opExpr->args);
-		bool   found   = false;
+		OpExpr *opExpr    = (OpExpr *) node;
+		Node   *firstArg  = (Node *) linitial(opExpr->args);
+		bool   found      = false;
 
 		if (opExpr->opfuncid == context->anyelement_cmpfunc) {
 			opExpr->opfuncid = context->tid_cmpfunc;
@@ -361,8 +365,8 @@ static bool rewrite_walker(Node *node, RewriteWalkerContext *context) {
 			 * we found one of our index operators, so validate the left-hand side argument
 			 * to ensure it's a table reference, and if it is, then rewrite to the ctid column
 			 */
-			if (IsA(arg, Var)) {
-				Var *var = (Var *) arg;
+			if (IsA(firstArg, Var)) {
+				Var *var = (Var *) firstArg;
 
 				if (var->varattno != SelfItemPointerAttributeNumber) {
 					if (var->varattno != 0) {
@@ -377,12 +381,28 @@ static bool rewrite_walker(Node *node, RewriteWalkerContext *context) {
 			} else {
 				elog(ERROR, "Left-hand side of ==> must be a table reference");
 			}
-		}
-	} else if (IsA(node, FuncExpr)) {
-		FuncExpr *funcExpr = (FuncExpr *) node;
 
-		if (funcExpr->funcid == context->zdb_score) {
-			context->want_scores = true;
+			if (context->want_scores) {
+				/* blindly wrap the second argument in a function call to zdb.set_query_property() */
+				Node   *secondArg = (Node *) lsecond(opExpr->args);
+				FuncExpr *funcExpr;
+				List *funcArgs = NULL;
+				Oid funcOid;
+
+				funcArgs = lappend(funcArgs,
+								   makeConst(TEXTOID, -1, InvalidOid, 11, CStringGetTextDatum("wants_score"), false,
+											 true));
+				funcArgs = lappend(funcArgs,
+								   makeConst(TEXTOID, -1, InvalidOid, 4, CStringGetTextDatum("true"), false, true));
+				funcArgs = lappend(funcArgs, secondArg);
+
+				funcOid = LookupFuncName(list_make2(makeString("zdb"), makeString("set_query_property")), 3,
+										 oids3(TEXTOID, TEXTOID, context->zdbquery_oid), true);
+
+				funcExpr = makeFuncExpr(funcOid, context->zdbquery_oid, funcArgs, InvalidOid, InvalidOid, COERCE_EXPLICIT_CALL);
+
+				list_nth_cell(opExpr->args, 1)->data.ptr_value = funcExpr;
+			}
 		}
 	} else if (IsA(node, RangeTblEntry)) {
 		return false;            /* allow range_table_walker to continue */
@@ -393,42 +413,66 @@ static bool rewrite_walker(Node *node, RewriteWalkerContext *context) {
 	return expression_tree_walker(node, rewrite_walker, context);
 }
 
+static bool want_scores_walker(Node *node, WantScoresWalkerContext *context) {
+	if (node == NULL)
+		return false;
+
+	if (IsA(node, FuncExpr)) {
+		FuncExpr *funcExpr = (FuncExpr *) node;
+
+		if (funcExpr->funcid == context->zdb_score) {
+			// TODO:  can we figure out which table's ctid column is the argument?
+			context->want_scores = true;
+		}
+	} else if (IsA(node, RangeTblEntry)) {
+		return false;            /* allow range_table_walker to continue */
+	} else if (IsA(node, Query)) {
+		return query_tree_walker((Query *) node, want_scores_walker, context, QTW_EXAMINE_RTES);
+	}
+
+	return expression_tree_walker(node, want_scores_walker, context);
+}
+
 static PlannedStmt *zdb_planner_hook(Query *parse, int cursorOptions, ParamListInfo boundParams) {
 	static Oid              arg[]      = {TIDOID};
-	RewriteWalkerContext cxt;
+	Oid zdbqueryOid = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum("zdbquery")));
+	Oid zdbqueryarrayOid = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum("zdbquery[]")));
+	RewriteWalkerContext rewriteContext;
+	WantScoresWalkerContext wantScoresContext;
 
-	cxt.anyelement_cmpfunc              = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-			"zdb.anyelement_cmpfunc(anyelement, zdbquery)")));
-	cxt.anyelement_cmpfunc_array_should = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-			"zdb.anyelement_cmpfunc_array_should(anyelement, zdbquery[])")));
-	cxt.anyelement_cmpfunc_array_must   = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-			"zdb.anyelement_cmpfunc_array_must(anyelement, zdbquery[])")));
-	cxt.anyelement_cmpfunc_array_not    = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-			"zdb.anyelement_cmpfunc_array_not(anyelement, zdbquery[])")));
+	/* determine if the query wants scores or not */
+	wantScoresContext.zdb_score   = ZDBFUNC("zdb", "score", 1, arg);
+	wantScoresContext.want_scores = false;
+	query_tree_walker(parse, want_scores_walker, &wantScoresContext, QTW_EXAMINE_RTES);
 
-	cxt.tid_cmpfunc              = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-			"zdb.tid_cmpfunc(tid, zdbquery)")));
-	cxt.tid_cmpfunc_array_should = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-			"zdb.tid_cmpfunc_array_should(tid, zdbquery[])")));
-	cxt.tid_cmpfunc_array_must   = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-			"zdb.tid_cmpfunc_array_must(tid, zdbquery[])")));
-	cxt.tid_cmpfunc_array_not    = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-			"zdb.tid_cmpfunc_array_not(tid, zdbquery[])")));
+	/* rewrite various ZDB operator comparisions */
+	rewriteContext.want_scores = wantScoresContext.want_scores;
+	rewriteContext.zdbquery_oid = zdbqueryOid;
 
-	cxt.tid_operator              = DatumGetObjectId(
-			DirectFunctionCall1(regoperatorin, CStringGetDatum("==>(tid, zdbquery)")));
-	cxt.tid_array_should_operator = DatumGetObjectId(
-			DirectFunctionCall1(regoperatorin, CStringGetDatum("==|(tid, zdbquery[])")));
-	cxt.tid_array_must_operator   = DatumGetObjectId(
-			DirectFunctionCall1(regoperatorin, CStringGetDatum("==&(tid, zdbquery[])")));
-	cxt.tid_array_not_operator    = DatumGetObjectId(
-			DirectFunctionCall1(regoperatorin, CStringGetDatum("==!(tid, zdbquery[])")));
+	rewriteContext.anyelement_cmpfunc              = ZDBFUNC("zdb", "anyelement_cmpfunc", 2,
+															 oids2(ANYELEMENTOID, zdbqueryOid));
+	rewriteContext.anyelement_cmpfunc_array_should = ZDBFUNC("zdb", "anyelement_cmpfunc_array_should", 2,
+															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+	rewriteContext.anyelement_cmpfunc_array_must   = ZDBFUNC("zdb", "anyelement_cmpfunc_array_must", 2,
+															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+	rewriteContext.anyelement_cmpfunc_array_not    = ZDBFUNC("zdb", "anyelement_cmpfunc_array_not", 2,
+															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
 
-	cxt.zdb_score = LookupFuncName(lappend(lappend(NIL, makeString("zdb")), makeString("score")), 1, arg, true);
+	rewriteContext.tid_cmpfunc                     = ZDBFUNC("zdb", "tid_cmpfunc", 2, oids2(TIDOID, zdbqueryOid));
+	rewriteContext.tid_cmpfunc_array_should        = ZDBFUNC("zdb", "tid_cmpfunc_array_should", 2,
+															 oids2(TIDOID, zdbqueryarrayOid));
+	rewriteContext.tid_cmpfunc_array_must          = ZDBFUNC("zdb", "tid_cmpfunc_array_must", 2,
+															 oids2(TIDOID, zdbqueryarrayOid));
+	rewriteContext.tid_cmpfunc_array_not           = ZDBFUNC("zdb", "tid_cmpfunc_array_not", 2,
+															 oids2(TIDOID, zdbqueryarrayOid));
 
-	query_tree_walker(parse, rewrite_walker, &cxt, QTW_EXAMINE_RTES);
+	rewriteContext.tid_operator                    = ZDBOPER("pg_catalog", "==>", zdbqueryOid);
+	rewriteContext.tid_array_should_operator       = ZDBOPER("pg_catalog", "==|", zdbqueryarrayOid);
+	rewriteContext.tid_array_must_operator         = ZDBOPER("pg_catalog", "==&", zdbqueryarrayOid);
+	rewriteContext.tid_array_not_operator          = ZDBOPER("pg_catalog", "==!", zdbqueryarrayOid);
+	query_tree_walker(parse, rewrite_walker, &rewriteContext, QTW_EXAMINE_RTES);
 
-	currentQueryWantsScores |= cxt.want_scores;
+	/* call Postgres' planner */
 	if (prev_PlannerHook)
 		return prev_PlannerHook(parse, cursorOptions, boundParams);
 	else
@@ -490,7 +534,6 @@ static void zdb_executor_end_hook(QueryDesc *queryDesc) {
 		highlight_support_cleanup();
 
 		currentQueryStack = NULL;
-		currentQueryWantsScores = false;
 	}
 
 	push_executor_info(queryDesc);
@@ -786,7 +829,6 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 		highlight_support_cleanup();
 
 		currentQueryStack = NULL;
-		currentQueryWantsScores = false;
 	}
 }
 
@@ -1271,7 +1313,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmin;
@@ -1297,7 +1339,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmax;
@@ -1323,7 +1365,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmax;
@@ -1348,8 +1390,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				 * Finally, any "zdb_aborted_xid" value we have can be removed if it's
 				 * known to be aborted and no longer referenced anywhere in the index
 				 */
-				scroll = ElasticsearchOpenScroll(info->index, MakeZDBQuery("_id:zdb_aborted_xids"), true, false, 0,
-												 NULL, zdb_aborted_fields, 1);
+				scroll = ElasticsearchOpenScroll(info->index, MakeZDBQuery("_id:zdb_aborted_xids"), true, 0, NULL, zdb_aborted_fields, 1);
 				while (scroll->cnt < scroll->total) {
 					void *array;
 
@@ -1572,7 +1613,7 @@ static inline void do_search_for_scan(IndexScanDesc scan) {
 	if (context->needsInit) {
 		Relation heapRel = scan->heapRelation;
 		uint64   limit;
-		bool     wantScores = currentQueryWantsScores;
+		bool     wantScores = zdbquery_get_wants_score(context->query);
 		List     *highlights;
 
 		if (scan->heapRelation == NULL)
@@ -1585,8 +1626,7 @@ static inline void do_search_for_scan(IndexScanDesc scan) {
 			ElasticsearchCloseScroll(context->scrollContext);
 		}
 
-		context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, context->query, false, wantScores, limit,
-														  highlights, NULL, 0);
+		context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, context->query, false, limit, highlights, NULL, 0);
 		context->wantHighlights = highlights != NULL;
 		context->wantScores     = wantScores;
 		if (context->wantScores) {

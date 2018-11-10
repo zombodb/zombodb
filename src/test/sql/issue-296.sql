@@ -46,3 +46,9 @@ left join users u on e.user_id = u.id
     where e ==> 'beer' or u ==> 'vicjoecs'
  order by e.id, u.id;
 
+   select zdb.score(e.ctid) > 0, zdb.score(u.ctid) > 0, (zdb.score(e.ctid) + zdb.score(u.ctid)) > 0, e.id, u.id
+     from events e
+left join users u on e.user_id = u.id
+    where e ==> dsl.term('zdb_all', 'beer') or u ==> 'vicjoecs'
+ order by e.id, u.id;
+

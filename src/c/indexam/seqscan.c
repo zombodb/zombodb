@@ -44,7 +44,6 @@ PG_FUNCTION_INFO_V1(zdb_tid_cmpfunc_array_not);
 PG_FUNCTION_INFO_V1(zdb_tid_cmpfunc);
 
 extern List *currentQueryStack;
-extern bool currentQueryWantsScores;
 
 static float4 scoring_cb(ItemPointer ctid, void *arg) {
 	HTAB          *hash = (HTAB *) arg;
@@ -87,7 +86,7 @@ static HTAB *create_ctid_map(Relation heapRel, Relation indexRel, ZDBQueryType *
 	HTAB                       *scoreHash     = scoring_create_lookup_table(memoryContext, "scores from seqscan");
 	HTAB                       *highlightHash = highlight_create_lookup_table(memoryContext, "highlights from seqscan");
 
-	scroll = ElasticsearchOpenScroll(indexRel, query, false, currentQueryWantsScores, 0,
+	scroll = ElasticsearchOpenScroll(indexRel, query, false, 0,
 									 extract_highlight_info(NULL, RelationGetRelid(heapRel)), NULL, 0);
 
 	scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, scoreHash, memoryContext);

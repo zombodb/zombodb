@@ -29,6 +29,22 @@
 #define ItemPointerToUint64(ht_ctid) ((((uint64)(ItemPointerGetBlockNumber(ht_ctid))) << 32) | ((uint32)(ItemPointerGetOffsetNumber(ht_ctid))))
 #define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
+#define ZDBFUNC(ns, name, nargs, argtype) LookupFuncName(list_make2(makeString((ns)), makeString((name))), (nargs), argtype, true)
+#define ZDBOPER(ns, name, argtype) LookupOperName(NULL, list_make2(makeString((ns)), makeString((name))), TIDOID, (argtype), true, 0)
+static inline Oid *oids2(Oid a, Oid b) {
+	Oid *rc = palloc(2 * sizeof(Oid));
+	rc[0] = a;
+	rc[1] = b;
+	return rc;
+}
+static inline Oid *oids3(Oid a, Oid b, Oid c) {
+	Oid *rc = palloc(3 * sizeof(Oid));
+	rc[0] = a;
+	rc[1] = b;
+	rc[2] = c;
+	return rc;
+}
+
 void freeStringInfo(StringInfo si);
 Oid get_base_type_oid(Oid typeOid);
 TupleDesc lookup_composite_tupdesc(Datum composite);
