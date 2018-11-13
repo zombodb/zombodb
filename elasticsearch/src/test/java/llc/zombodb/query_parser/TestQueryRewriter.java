@@ -3057,19 +3057,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "                  \"bool\" : {\n" +
                         "                    \"should\" : [\n" +
                         "                      {\n" +
-                        "                        \"nested\" : {\n" +
-                        "                          \"query\" : {\n" +
-                        "                            \"term\" : {\n" +
-                        "                              \"nested.exact_field\" : {\n" +
-                        "                                \"value\" : \"c\",\n" +
-                        "                                \"boost\" : 1.0\n" +
-                        "                              }\n" +
-                        "                            }\n" +
-                        "                          },\n" +
-                        "                          \"path\" : \"nested\",\n" +
-                        "                          \"ignore_unmapped\" : false,\n" +
-                        "                          \"score_mode\" : \"avg\",\n" +
-                        "                          \"boost\" : 1.0\n" +
+                        "                        \"term\" : {\n" +
+                        "                          \"nested.exact_field\" : {\n" +
+                        "                            \"value\" : \"c\",\n" +
+                        "                            \"boost\" : 1.0\n" +
+                        "                          }\n" +
                         "                        }\n" +
                         "                      },\n" +
                         "                      {\n" +

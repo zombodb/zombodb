@@ -650,14 +650,20 @@ public abstract class QueryRewriter {
         return fb;
     }
 
+    private boolean inWith = false;
     private QueryBuilder build(ASTWith node) {
         BoolQueryBuilder bqb = boolQuery();
         String path = null;
 
-        for (QueryParserNode child : node) {
-            if (path == null)
-                path = child.getNestedPath(metadataManager);
-            bqb.must(build(child));
+        inWith = true;
+        try {
+            for (QueryParserNode child : node) {
+                if (path == null)
+                    path = child.getNestedPath(metadataManager);
+                bqb.must(build(child));
+            }
+        } finally {
+            inWith = false;
         }
 
         return shouldJoinNestedFilter() ? nestedQuery(path, bqb, ScoreMode.Avg) : bqb;
@@ -1185,7 +1191,7 @@ public abstract class QueryRewriter {
 
     private QueryBuilder maybeNest(QueryParserNode node, QueryBuilder fb) {
         if (!(node.jjtGetParent() instanceof ASTWith) && node.isNested(metadataManager)) {
-            if (shouldJoinNestedFilter())
+            if (!inWith && shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(metadataManager), fb, ScoreMode.Avg);
             else
                 return fb;
