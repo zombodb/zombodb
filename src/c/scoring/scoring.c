@@ -33,16 +33,6 @@ typedef struct ZDBScoringSupportData {
 	List *callback_data;
 } ZDBScoringSupportData;
 
-typedef struct WantScoresWalkerContext {
-	Oid           funcOid;
-	IndexScanDesc scan;
-	Oid           heapRelid;
-	bool          foundFunc;
-	bool          foundScan;
-	int           depth;
-	int           funcDepth;
-} WantScoresWalkerContext;
-
 extern List *currentQueryStack;
 
 static List *scoreEntries = NULL;
@@ -119,158 +109,23 @@ static float4 scoring_lookup_score(Oid heapOid, ItemPointer ctid) {
 	return score;
 }
 
-static bool want_scores_expr_walker(Node *node, WantScoresWalkerContext *context) {
-	if (node == NULL)
-		return false;
-
-	if (IsA(node, FuncExpr)) {
-		FuncExpr *funcExpr = (FuncExpr *) node;
-
-		if (funcExpr->funcid == context->funcOid) {
-			Node *arg = linitial(funcExpr->args);
-
-			if (IsA(arg, Var)) {
-				QueryDesc     *currentQuery = linitial(currentQueryStack);
-				RangeTblEntry *rentry;
-				Var           *var          = (Var *) arg;
-
-				rentry = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
-
-				if (rentry->relid == context->heapRelid) {
-					context->foundFunc = true;
-					context->funcDepth = context->depth;
-				}
-
-				return true;
-			} else {
-				elog(ERROR, "argument to zdb.score() must be the 'ctid' system column");
-			}
-		}
-	}
-
-	return expression_tree_walker(node, want_scores_expr_walker, context);
-}
-
-static bool want_scores_walker(PlanState *state, WantScoresWalkerContext *context) {
-	ListCell *lc = NULL;
-	bool     rc;
-
-	if (state == NULL)
-		return false;
-
-	foreach(lc, state->plan->targetlist) {
-		(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
-	}
-
-	if (context->scan != NULL && context->depth >= context->funcDepth) {
-		if (IsA(state, IndexScanState)) {
-			IndexScanState *iss = (IndexScanState *) state;
-
-			if (iss->iss_ScanDesc == context->scan) {
-				IndexScan *scan = (IndexScan *) state->plan;
-
-				context->foundScan = true;
-
-				foreach(lc, state->plan->targetlist) {
-					(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
-				}
-
-				(void) expression_tree_walker((Node *) scan->indexqual, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.qual, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
-			}
-		} else if (IsA(state, IndexOnlyScanState)) {
-			IndexOnlyScanState *iss = (IndexOnlyScanState *) state;
-
-			if (iss->ioss_ScanDesc == context->scan) {
-				IndexOnlyScan *scan = (IndexOnlyScan *) state->plan;
-
-				context->foundScan = true;
-
-				foreach(lc, state->plan->targetlist) {
-					(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
-				}
-
-				(void) expression_tree_walker((Node *) scan->indexqual, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.qual, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
-			}
-		} else if (IsA(state, BitmapIndexScanState)) {
-			BitmapIndexScanState *iss = (BitmapIndexScanState *) state;
-
-			if (iss->biss_ScanDesc == context->scan) {
-				BitmapIndexScan *scan = (BitmapIndexScan *) state->plan;
-
-				context->foundScan = true;
-
-				foreach(lc, state->plan->targetlist) {
-					(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
-				}
-
-				(void) expression_tree_walker((Node *) scan->indexqual, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.qual, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
-				(void) expression_tree_walker((Node *) scan->scan.plan.righttree, want_scores_expr_walker, context);
-			}
-		}
-	} else if (IsA(state, SeqScanState)) {
-		SeqScanState *sss = (SeqScanState *) state;
-
-		if (RelationGetRelid(sss->ss.ss_currentRelation) == context->heapRelid) {
-			SeqScan *scan = (SeqScan *) state->plan;
-
-			context->foundScan = true;
-
-			foreach(lc, state->plan->targetlist) {
-				(void) expression_tree_walker(lfirst(lc), want_scores_expr_walker, context);
-			}
-
-			(void) expression_tree_walker((Node *) scan->plan.qual, want_scores_expr_walker, context);
-			(void) expression_tree_walker((Node *) scan->plan.righttree, want_scores_expr_walker, context);
-			(void) expression_tree_walker((Node *) scan->plan.righttree, want_scores_expr_walker, context);
-		}
-
-	}
-
-	context->depth++;
-	rc = planstate_tree_walker(state, want_scores_walker, context);
-	context->depth--;
-
-	return rc;
-}
-
-bool current_scan_wants_scores(IndexScanDesc scan, Relation heapRel) {
-	static Oid              arg[]      = {TIDOID};
-	QueryDesc               *queryDesc = (QueryDesc *) linitial(currentQueryStack);
-	WantScoresWalkerContext context;
-
-	context.heapRelid = RelationGetRelid(heapRel);
-	context.funcOid   = LookupFuncName(lappend(lappend(NIL, makeString("zdb")), makeString("score")), 1, arg, true);
-	context.scan      = scan;
-	context.foundFunc = false;
-	context.foundScan = false;
-	context.depth     = 0;
-	context.funcDepth = -1;
-
-	(void) want_scores_walker(queryDesc->planstate, &context);
-
-	return context.foundFunc & context.foundScan;
-}
-
 Datum zdb_score(PG_FUNCTION_ARGS) {
-	ItemPointer ctid      = (ItemPointer) PG_GETARG_POINTER(0);
-	FuncExpr    *funcExpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
-	Node        *firstArg = linitial(funcExpr->args);
-
-	if (IsA(firstArg, Var)) {
-		Var           *var          = (Var *) firstArg;
-		QueryDesc     *currentQuery = linitial(currentQueryStack);
-		RangeTblEntry *rentry       = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
-
-		PG_RETURN_FLOAT4(scoring_lookup_score(rentry->relid, ctid));
+	/* zdb.score() is not defined as strict, so we need to null-check our argument */
+	if (PG_ARGISNULL(0)) {
+		PG_RETURN_FLOAT4(0.0);
 	} else {
-		elog(ERROR, "zdb_score()'s argument is not a direct table ctid column reference");
+		ItemPointer ctid      = (ItemPointer) PG_GETARG_POINTER(0);
+		FuncExpr    *funcExpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
+		Node        *firstArg = linitial(funcExpr->args);
+
+		if (IsA(firstArg, Var)) {
+			Var           *var          = (Var *) firstArg;
+			QueryDesc     *currentQuery = linitial(currentQueryStack);
+			RangeTblEntry *rentry       = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
+
+			PG_RETURN_FLOAT4(scoring_lookup_score(rentry->relid, ctid));
+		} else {
+			elog(ERROR, "zdb_score()'s argument is not a direct table ctid column reference");
+		}
 	}
 }

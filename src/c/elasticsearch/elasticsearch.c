@@ -717,7 +717,7 @@ uint64 ElasticsearchEstimateSelectivity(Relation indexRel, ZDBQueryType *query) 
 	return DatumGetUInt64(DirectFunctionCall1(int8in, PointerGetDatum(TextDatumGetCString(count))));
 }
 
-ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, bool needScore, uint64 limit, List *highlights, char **extraFields, int nextraFields) {
+ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, uint64 limit, List *highlights, char **extraFields, int nextraFields) {
 	ElasticsearchScrollContext *context       = palloc0(sizeof(ElasticsearchScrollContext));
 	char                       *queryDSL      = convert_to_query_dsl(indexRel, userQuery);
 	StringInfo                 request        = makeStringInfo();
@@ -726,6 +726,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	StringInfo                 response;
 	char                       *sortField, *sortDir;
 	uint64                     queryLimit     = zdbquery_get_limit(userQuery);
+	bool                       needScore;
 	uint64                     offset;
 	double                     min_score;
 	void                       *jsonResponse, *hitsObject;
@@ -735,6 +736,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	finish_inserts(false);
 
 	limit     = queryLimit != 0 ? queryLimit : limit; /* prefer to use the limit specified in the query */
+	needScore = zdbquery_get_wants_score(userQuery);
 	offset    = zdbquery_get_offset(userQuery);
 	sortField = zdbquery_get_sort_field(userQuery);
 	sortDir   = zdbquery_get_sort_direction(userQuery);

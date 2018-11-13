@@ -32,6 +32,7 @@ Commerical support for all versions of ZomboDB is available by [contacting Zombo
  - [Installation Instructions](INSTALL.md)
  - [Getting Started Tutorial](TUTORIAL.md)
  - [Important Things to Know](THINGS-TO-KNOW.md)
+ - [Creating Indexes](CREATE-INDEX.md)
  - [Query DSL](QUERY-DSL.md)
  - [Aggregations](AGGREGATIONS.md), [Table Samplers](TABLE-SAMPLERS.md), [Scoring and Highlighting](SCORING-HIGHLIGHTING.md)
  - [SQL Functions](SQL-FUNCTIONS.md)
@@ -59,6 +60,14 @@ Commerical support for all versions of ZomboDB is available by [contacting Zombo
     - `json/jsonb` automatically mapped as dynamic nested objects
     - Supports full set of [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
  - Hot-Standby compatible
+
+
+## Current Limitations
+
+ - Only one ZomboDB index per table
+ - ZomboDB indexes with predicates (ie, [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are not supported
+
+These limitations may be addressed in future versions of ZomboDB
 
 
 ## System Requirements

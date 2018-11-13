@@ -20,7 +20,6 @@
 #include "scoring/scoring.h"
 
 #include "parser/parsetree.h"
-#include "utils/lsyscache.h"
 
 #define CMP_FUNC_ENTRY_KEYSIZE 8192
 
@@ -38,6 +37,11 @@ PG_FUNCTION_INFO_V1(zdb_anyelement_cmpfunc_array_should);
 PG_FUNCTION_INFO_V1(zdb_anyelement_cmpfunc_array_must);
 PG_FUNCTION_INFO_V1(zdb_anyelement_cmpfunc_array_not);
 PG_FUNCTION_INFO_V1(zdb_anyelement_cmpfunc);
+
+PG_FUNCTION_INFO_V1(zdb_tid_cmpfunc_array_should);
+PG_FUNCTION_INFO_V1(zdb_tid_cmpfunc_array_must);
+PG_FUNCTION_INFO_V1(zdb_tid_cmpfunc_array_not);
+PG_FUNCTION_INFO_V1(zdb_tid_cmpfunc);
 
 extern List *currentQueryStack;
 
@@ -82,7 +86,7 @@ static HTAB *create_ctid_map(Relation heapRel, Relation indexRel, ZDBQueryType *
 	HTAB                       *scoreHash     = scoring_create_lookup_table(memoryContext, "scores from seqscan");
 	HTAB                       *highlightHash = highlight_create_lookup_table(memoryContext, "highlights from seqscan");
 
-	scroll = ElasticsearchOpenScroll(indexRel, query, false, current_scan_wants_scores(NULL, heapRel), 0,
+	scroll = ElasticsearchOpenScroll(indexRel, query, false, 0,
 									 extract_highlight_info(NULL, RelationGetRelid(heapRel)), NULL, 0);
 
 	scoring_register_callback(RelationGetRelid(heapRel), scoring_cb, scoreHash, memoryContext);
@@ -108,115 +112,144 @@ static HTAB *create_ctid_map(Relation heapRel, Relation indexRel, ZDBQueryType *
 	return scoreHash;
 }
 
-static Datum do_cmpfunc(ZDBQueryType *userQuery, HTAB *cmpFuncHash, Oid typeoid, FunctionCallInfo fcinfo) {
-	QueryDesc      *currentQuery;
-	TupleTableSlot *slot = NULL;
-	Oid            heapRelId;
-	ListCell       *lc;
-	bool           found;
+static Datum do_cmpfunc(ItemPointer ctid, ZDBQueryType *userQuery, FmgrInfo *flinfo, Oid heapRelId) {
+	QueryDesc     *currentQuery = linitial(currentQueryStack);
+	HTAB          *hash         = (HTAB *) flinfo->fn_extra;
+	bool          found;
+	CmpFuncKey    key;
+	CmpFuncEntry  *entry        = NULL;
+	MemoryContext oldContext    = MemoryContextSwitchTo(currentQuery->estate->es_query_cxt);
 
-	if (currentQueryStack == NULL) {
-		goto invalid_context_error;
-	}
+	memset(&key, 0, sizeof(CmpFuncKey));
+	snprintf(key.key, CMP_FUNC_ENTRY_KEYSIZE, "%s", zdbquery_get_query(userQuery));
 
-	currentQuery = linitial(currentQueryStack);
+	if (hash == NULL) {
+		HASHCTL ctl;
 
-	heapRelId = get_typ_typrelid(typeoid);
-	if (heapRelId == InvalidOid) {
-		goto invalid_context_error;
-	}
+		memset(&ctl, 0, sizeof(HASHCTL));
+		ctl.hash      = string_hash;
+		ctl.keysize   = sizeof(CmpFuncKey);
+		ctl.entrysize = sizeof(CmpFuncEntry);
+		ctl.hcxt      = currentQuery->estate->es_query_cxt;    /* once this query is done, we don't care */
 
-	/*
-	 * find the TupleTableSlot that represents the row being evaluated in this scan
-	 *
-	 * In the list of TupleTableSlots in the current executor state, the slot we're interested in
-	 * is the last non-NULL slot we find for our relation
-	 */
-	foreach(lc, currentQuery->estate->es_tupleTable) {
-		TupleTableSlot *tmp = lfirst(lc);
-
-		if (tmp->tts_tuple != NULL && tmp->tts_tuple->t_tableOid == heapRelId) {
-			slot = tmp;
-		}
-	}
-
-	if (slot != NULL) {
-		CmpFuncKey    key;
-		CmpFuncEntry  *entry     = NULL;
-		MemoryContext oldContext = MemoryContextSwitchTo(currentQuery->estate->es_query_cxt);
-
-		memset(&key, 0, sizeof(CmpFuncKey));
-		snprintf(key.key, CMP_FUNC_ENTRY_KEYSIZE, "%s", zdbquery_get_query(userQuery));
-
-		if (cmpFuncHash == NULL) {
-			HASHCTL ctl;
-
-			memset(&ctl, 0, sizeof(HASHCTL));
-			ctl.hash      = string_hash;
-			ctl.keysize   = sizeof(CmpFuncKey);
-			ctl.entrysize = sizeof(CmpFuncEntry);
-			ctl.hcxt      = currentQuery->estate->es_query_cxt;    /* once this query is done, we don't care */
-
-			cmpFuncHash = hash_create("seqscan", 64, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
-			entry       = hash_search(cmpFuncHash, &key, HASH_ENTER, &found);
+		hash = flinfo->fn_extra = hash_create("seqscan", 64, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
+		entry       = hash_search(hash, &key, HASH_ENTER, &found);
+		entry->hash = NULL;
+	} else {
+		entry = hash_search(hash, &key, HASH_FIND, &found);
+		if (!found) {
+			entry = hash_search(hash, &key, HASH_ENTER, &found);
 			entry->hash = NULL;
-
-			fcinfo->flinfo->fn_extra = cmpFuncHash;
-		} else {
-			entry = hash_search(cmpFuncHash, &key, HASH_FIND, &found);
-			if (!found) {
-				entry = hash_search(cmpFuncHash, &key, HASH_ENTER, &found);
-				entry->hash = NULL;
-			}
 		}
-
-		if (entry->hash == NULL) {
-			/*
-			 * execute query using our rhs argument and turn it into a hash
-			 * and store that hash with this function for future evaluations
-			 */
-			Relation indexRel;
-			Relation heapRel;
-
-			heapRel = relation_open(heapRelId, AccessShareLock);
-			indexRel = find_index_relation(heapRel, typeoid, AccessShareLock);
-			entry->hash = create_ctid_map(heapRel, indexRel, userQuery, currentQuery->estate->es_query_cxt);
-			relation_close(indexRel, AccessShareLock);
-			relation_close(heapRel, AccessShareLock);
-		}
-
-		/* does our hash match the tuple currently being evaluated? */
-		/*lint -e534 ignore return value */
-		hash_search(entry->hash, &slot->tts_tuple->t_self, HASH_FIND, &found);
-
-		MemoryContextSwitchTo(oldContext);
-
-		PG_RETURN_BOOL(found);
 	}
 
-	invalid_context_error:
-	ereport(ERROR,
-			(errcode(ERRCODE_INTERNAL_ERROR),
-					errmsg("zombodb comparision function called in invalid context or lhs is not a table reference")));
-	/*lint -e533 we either return a bool or elog(ERROR)*/
+	if (entry->hash == NULL) {
+		/*
+		 * execute query using our rhs argument and turn it into a hash
+		 * and store that hash with this function for future evaluations
+		 */
+		Relation indexRel;
+		Relation heapRel;
+
+		heapRel  = relation_open(heapRelId, AccessShareLock);
+		indexRel = find_zombodb_index(heapRel);
+		entry->hash = create_ctid_map(heapRel, indexRel, userQuery, CurrentMemoryContext);
+		relation_close(indexRel, AccessShareLock);
+		relation_close(heapRel, AccessShareLock);
+	}
+
+	/* does our hash match the tuple currently being evaluated? */
+	/*lint -e534 ignore return value */
+	hash_search(entry->hash, ctid, HASH_FIND, &found);
+
+	MemoryContextSwitchTo(oldContext);
+
+	PG_RETURN_BOOL(found);
 }
 
 Datum zdb_anyelement_cmpfunc_array_should(PG_FUNCTION_ARGS) {
-	ZDBQueryType *query = array_to_should_query_dsl(DatumGetArrayTypeP(PG_GETARG_ARRAYTYPE_P(1)));
-	return do_cmpfunc(query, (HTAB *) fcinfo->flinfo->fn_extra, get_fn_expr_argtype(fcinfo->flinfo, 0), fcinfo);
+	ereport(ERROR,
+			(errcode(ERRCODE_INTERNAL_ERROR),
+					errmsg("zombodb comparision function called in invalid context")));
 }
 
 Datum zdb_anyelement_cmpfunc_array_must(PG_FUNCTION_ARGS) {
-	ZDBQueryType *query = array_to_must_query_dsl(DatumGetArrayTypeP(PG_GETARG_ARRAYTYPE_P(1)));
-	return do_cmpfunc(query, (HTAB *) fcinfo->flinfo->fn_extra, get_fn_expr_argtype(fcinfo->flinfo, 0), fcinfo);
+	ereport(ERROR,
+			(errcode(ERRCODE_INTERNAL_ERROR),
+					errmsg("zombodb comparision function called in invalid context")));
 }
 
 Datum zdb_anyelement_cmpfunc_array_not(PG_FUNCTION_ARGS) {
-	ZDBQueryType *query = array_to_not_query_dsl(DatumGetArrayTypeP(PG_GETARG_ARRAYTYPE_P(1)));
-	return do_cmpfunc(query, (HTAB *) fcinfo->flinfo->fn_extra, get_fn_expr_argtype(fcinfo->flinfo, 0), fcinfo);
+	ereport(ERROR,
+			(errcode(ERRCODE_INTERNAL_ERROR),
+					errmsg("zombodb comparision function called in invalid context")));
 }
 
 Datum zdb_anyelement_cmpfunc(PG_FUNCTION_ARGS) {
-	ZDBQueryType *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(1);
-	return do_cmpfunc(query, (HTAB *) fcinfo->flinfo->fn_extra, get_fn_expr_argtype(fcinfo->flinfo, 0), fcinfo);
+	ereport(ERROR,
+			(errcode(ERRCODE_INTERNAL_ERROR),
+					errmsg("zombodb comparision function called in invalid context")));
+}
+
+Datum zdb_tid_cmpfunc_array_should(PG_FUNCTION_ARGS) {
+	ZDBQueryType *query = array_to_should_query_dsl(DatumGetArrayTypeP(PG_GETARG_ARRAYTYPE_P(1)));
+	return DirectFunctionCall2(zdb_tid_cmpfunc, PG_GETARG_DATUM(0), PointerGetDatum(query));
+}
+
+Datum zdb_tid_cmpfunc_array_must(PG_FUNCTION_ARGS) {
+	ZDBQueryType *query = array_to_must_query_dsl(DatumGetArrayTypeP(PG_GETARG_ARRAYTYPE_P(1)));
+	return DirectFunctionCall2(zdb_tid_cmpfunc, PG_GETARG_DATUM(0), PointerGetDatum(query));
+}
+
+Datum zdb_tid_cmpfunc_array_not(PG_FUNCTION_ARGS) {
+	ZDBQueryType *query = array_to_not_query_dsl(DatumGetArrayTypeP(PG_GETARG_ARRAYTYPE_P(1)));
+	return DirectFunctionCall2(zdb_tid_cmpfunc, PG_GETARG_DATUM(0), PointerGetDatum(query));
+}
+
+Datum zdb_tid_cmpfunc(PG_FUNCTION_ARGS) {
+	ItemPointer   ctid   = (ItemPointer) PG_GETARG_POINTER(0);
+	ZDBQueryType  *query = (ZDBQueryType *) PG_GETARG_VARLENA_P(1);
+	QueryDesc     *currentQuery;
+	OpExpr        *opExpr;
+	Node          *arg0;
+	Var           *left;
+	RangeTblEntry *rte;
+	Index varno;
+
+	if (!ItemPointerIsValid(ctid))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+						errmsg("Invalid ItemPointer passed to zombodb comparision function")));
+	else if (!IsA(fcinfo->flinfo->fn_expr, OpExpr))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+						errmsg("zdb_tid_cmpfunc() not called as an operator expression")));
+	else if (currentQueryStack == NULL)
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+						errmsg("zdb_tid_cmpfunc() called in invalid context")));
+
+	currentQuery = linitial(currentQueryStack);
+
+	opExpr = (OpExpr *) fcinfo->flinfo->fn_expr;
+	arg0   = linitial(opExpr->args);
+	if (!IsA(arg0, Var))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+						errmsg("lhs of zdb_tid_cmpfunc() is not a Var")));
+	left = (Var *) arg0;
+	varno = left->varno;
+
+	if (left->vartype != TIDOID)
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+						errmsg("lhs of zdb_tid_cmpfunc() is not of type 'tid'")));
+
+	if (varno == INNER_VAR || varno == OUTER_VAR) {
+		varno = left->varnoold;
+	}
+
+	rte = rt_fetch(varno, currentQuery->plannedstmt->rtable);
+
+	return do_cmpfunc(ctid, query, fcinfo->flinfo, rte->relid);
 }

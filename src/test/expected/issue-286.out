@@ -49,32 +49,7 @@ select test_286();
 (1 row)
 
 select id from events where events ==> 'beer' and zdb.score(ctid) > 0.0 order by id;
-   id   
---------
-    108
-   1405
-   3222
-   3722
-   6309
-  29273
-  34736
-  41451
-  42539
-  42540
-  43172
-  43949
-  44947
-  45989
-  47633
-  50733
- 115758
- 118517
- 121100
- 122357
- 123756
- 123764
-(22 rows)
-
+ERROR:  zdb.score() can only be used as a target entry or as a sort
 select * from (select id from events where events ==> 'beer' order by zdb.score(ctid)) x order by id;
    id   
 --------

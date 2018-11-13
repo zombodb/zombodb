@@ -19,22 +19,79 @@
 #include "elasticsearch/querygen.h"
 #include "highlighting/highlighting.h"
 #include "scoring/scoring.h"
+#include "indexam/create_index.h"
 
 #include "access/amapi.h"
+#include "access/htup_details.h"
+#include "access/reloptions.h"
 #include "access/reloptions.h"
 #include "access/relscan.h"
+#include "access/sysattr.h"
+#include "access/twophase.h"
 #include "access/xact.h"
+#include "access/xact.h"
+#include "access/xlog.h"
+#include "catalog/catalog.h"
 #include "catalog/index.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_trigger.h"
+#include "catalog/toasting.h"
+#include "commands/alter.h"
+#include "commands/async.h"
+#include "commands/cluster.h"
+#include "commands/collationcmds.h"
+#include "commands/comment.h"
+#include "commands/conversioncmds.h"
+#include "commands/copy.h"
+#include "commands/createas.h"
+#include "commands/dbcommands.h"
+#include "commands/defrem.h"
+#include "commands/discard.h"
+#include "commands/event_trigger.h"
+#include "commands/explain.h"
+#include "commands/extension.h"
+#include "commands/lockcmds.h"
+#include "commands/matview.h"
+#include "commands/policy.h"
+#include "commands/portalcmds.h"
+#include "commands/prepare.h"
+#include "commands/proclang.h"
+#include "commands/publicationcmds.h"
+#include "commands/schemacmds.h"
+#include "commands/seclabel.h"
+#include "commands/sequence.h"
+#include "commands/subscriptioncmds.h"
 #include "commands/tablecmds.h"
+#include "commands/tablecmds.h"
+#include "commands/tablespace.h"
+#include "commands/trigger.h"
+#include "commands/typecmds.h"
+#include "commands/user.h"
+#include "commands/vacuum.h"
+#include "commands/view.h"
 #include "executor/spi.h"
+#include "miscadmin.h"
+#include "nodes/makefuncs.h"
+#include "nodes/nodeFuncs.h"
 #include "optimizer/cost.h"
+#include "optimizer/planner.h"
 #include "parser/parse_func.h"
-#include "tcop/utility.h"
+#include "parser/parse_oper.h"
+#include "parser/parse_utilcmd.h"
+#include "postmaster/bgwriter.h"
+#include "rewrite/rewriteDefine.h"
+#include "rewrite/rewriteRemove.h"
 #include "storage/bufmgr.h"
+#include "storage/fd.h"
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
+#include "tcop/pquery.h"
+#include "tcop/utility.h"
+#include "tcop/utility.h"
+#include "utils/acl.h"
+#include "utils/guc.h"
 #include "utils/lsyscache.h"
+#include "utils/syscache.h"
 
 static const struct config_enum_entry zdb_log_level_options[] = {
 		{"debug",   DEBUG2,  true},
@@ -139,6 +196,7 @@ static ExecutorEnd_hook_type    prev_ExecutorEndHook    = NULL;
 static ExecutorRun_hook_type    prev_ExecutorRunHook    = NULL;
 static ExecutorFinish_hook_type prev_ExecutorFinishHook = NULL;
 static ProcessUtility_hook_type prev_ProcessUtilityHook = NULL;
+static planner_hook_type        prev_PlannerHook        = NULL;
 static int                      executor_depth          = 0;
 
 int  ZDB_LOG_LEVEL;
@@ -253,6 +311,194 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 		default:
 			break;
 	}
+}
+
+typedef struct RewriteWalkerContext {
+	Oid anyelement_cmpfunc;
+	Oid anyelement_cmpfunc_array_should;
+	Oid anyelement_cmpfunc_array_must;
+	Oid anyelement_cmpfunc_array_not;
+
+	Oid tid_cmpfunc, tid_operator;
+	Oid tid_cmpfunc_array_should, tid_array_should_operator;
+	Oid tid_cmpfunc_array_must, tid_array_must_operator;
+	Oid tid_cmpfunc_array_not, tid_array_not_operator;
+
+	bool want_scores;
+	Oid zdbquery_oid;
+} RewriteWalkerContext;
+
+typedef struct WantScoresWalkerContext {
+	bool in_te;
+	bool in_sort;
+	Oid zdb_score;
+	bool want_scores;
+} WantScoresWalkerContext;
+
+static bool rewrite_walker(Node *node, RewriteWalkerContext *context) {
+	if (node == NULL)
+		return false;
+
+	if (IsA(node, OpExpr)) {
+		OpExpr *opExpr    = (OpExpr *) node;
+		Node   *firstArg  = (Node *) linitial(opExpr->args);
+		bool   found      = false;
+
+		if (opExpr->opfuncid == context->anyelement_cmpfunc) {
+			opExpr->opfuncid = context->tid_cmpfunc;
+			opExpr->opno     = context->tid_operator;
+			found = true;
+		} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_should) {
+			opExpr->opfuncid = context->tid_cmpfunc_array_should;
+			opExpr->opno     = context->tid_array_should_operator;
+			found = true;
+		} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_must) {
+			opExpr->opfuncid = context->tid_cmpfunc_array_must;
+			opExpr->opno     = context->tid_array_must_operator;
+			found = true;
+		} else if (opExpr->opfuncid == context->anyelement_cmpfunc_array_not) {
+			opExpr->opfuncid = context->tid_cmpfunc_array_not;
+			opExpr->opno     = context->tid_array_not_operator;
+			found = true;
+		}
+
+		if (found) {
+			/*
+			 * we found one of our index operators, so validate the left-hand side argument
+			 * to ensure it's a table reference, and if it is, then rewrite to the ctid column
+			 */
+			if (IsA(firstArg, Var)) {
+				Var *var = (Var *) firstArg;
+
+				if (var->varattno != SelfItemPointerAttributeNumber) {
+					if (var->varattno != 0) {
+						elog(ERROR, "Left-hand side of ==> must be a table reference or the table's 'ctid' column");
+					}
+
+					var->varattno  = SelfItemPointerAttributeNumber;
+					var->vartype   = TIDOID;
+					var->varno     = var->varnoold;
+					var->varoattno = SelfItemPointerAttributeNumber;
+				}
+			} else {
+				elog(ERROR, "Left-hand side of ==> must be a table reference");
+			}
+
+			if (context->want_scores) {
+				/* blindly wrap the second argument in a function call to zdb.set_query_property() */
+				Node   *secondArg = (Node *) lsecond(opExpr->args);
+				FuncExpr *funcExpr;
+				List *funcArgs = NULL;
+				Oid funcOid;
+
+				funcArgs = lappend(funcArgs,
+								   makeConst(TEXTOID, -1, InvalidOid, 11, CStringGetTextDatum("wants_score"), false,
+											 true));
+				funcArgs = lappend(funcArgs,
+								   makeConst(TEXTOID, -1, InvalidOid, 4, CStringGetTextDatum("true"), false, true));
+				funcArgs = lappend(funcArgs, secondArg);
+
+				funcOid = LookupFuncName(list_make2(makeString("zdb"), makeString("set_query_property")), 3,
+										 oids3(TEXTOID, TEXTOID, context->zdbquery_oid), true);
+
+				funcExpr = makeFuncExpr(funcOid, context->zdbquery_oid, funcArgs, InvalidOid, InvalidOid, COERCE_EXPLICIT_CALL);
+
+				list_nth_cell(opExpr->args, 1)->data.ptr_value = funcExpr;
+			}
+		}
+	} else if (IsA(node, RangeTblEntry)) {
+		return false;            /* allow range_table_walker to continue */
+	} else if (IsA(node, Query)) {
+		return query_tree_walker((Query *) node, rewrite_walker, context, QTW_EXAMINE_RTES);
+	}
+
+	return expression_tree_walker(node, rewrite_walker, context);
+}
+
+static bool want_scores_walker(Node *node, WantScoresWalkerContext *context) {
+	if (node == NULL)
+		return false;
+
+	if (IsA(node, TargetEntry)) {
+		bool rc;
+
+		context->in_te = true;
+		rc = expression_tree_walker(node, want_scores_walker, context);
+		context->in_te = false;
+		return rc;
+	} else if (IsA(node, SortBy)) {
+		bool rc;
+
+		context->in_sort = true;
+		rc = expression_tree_walker(node, want_scores_walker, context);
+		context->in_sort = false;
+		return rc;
+	} else if (IsA(node, FuncExpr)) {
+		FuncExpr *funcExpr = (FuncExpr *) node;
+
+		if (funcExpr->funcid == context->zdb_score) {
+			if (context->in_te || context->in_sort) {
+				// TODO:  can we figure out which table's ctid column is the argument?
+				context->want_scores = true;
+			} else {
+				elog(ERROR, "zdb.score() can only be used as a target entry or as a sort");
+			}
+		}
+	} else if (IsA(node, RangeTblEntry)) {
+		return false;            /* allow range_table_walker to continue */
+	} else if (IsA(node, Query)) {
+		return query_tree_walker((Query *) node, want_scores_walker, context, QTW_EXAMINE_RTES);
+	}
+
+	return expression_tree_walker(node, want_scores_walker, context);
+}
+
+static PlannedStmt *zdb_planner_hook(Query *parse, int cursorOptions, ParamListInfo boundParams) {
+	static Oid              arg[]      = {TIDOID};
+	Oid zdbqueryOid = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum("zdbquery")));
+	Oid zdbqueryarrayOid = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum("zdbquery[]")));
+	RewriteWalkerContext rewriteContext;
+	WantScoresWalkerContext wantScoresContext;
+
+	/* determine if the query wants scores or not */
+	wantScoresContext.in_te       = false;
+	wantScoresContext.in_sort     = false;
+	wantScoresContext.zdb_score   = ZDBFUNC("zdb", "score", 1, arg);
+	wantScoresContext.want_scores = false;
+	query_tree_walker(parse, want_scores_walker, &wantScoresContext, QTW_EXAMINE_RTES);
+
+	/* rewrite various ZDB operator comparisions */
+	rewriteContext.want_scores = wantScoresContext.want_scores;
+	rewriteContext.zdbquery_oid = zdbqueryOid;
+
+	rewriteContext.anyelement_cmpfunc              = ZDBFUNC("zdb", "anyelement_cmpfunc", 2,
+															 oids2(ANYELEMENTOID, zdbqueryOid));
+	rewriteContext.anyelement_cmpfunc_array_should = ZDBFUNC("zdb", "anyelement_cmpfunc_array_should", 2,
+															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+	rewriteContext.anyelement_cmpfunc_array_must   = ZDBFUNC("zdb", "anyelement_cmpfunc_array_must", 2,
+															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+	rewriteContext.anyelement_cmpfunc_array_not    = ZDBFUNC("zdb", "anyelement_cmpfunc_array_not", 2,
+															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+
+	rewriteContext.tid_cmpfunc                     = ZDBFUNC("zdb", "tid_cmpfunc", 2, oids2(TIDOID, zdbqueryOid));
+	rewriteContext.tid_cmpfunc_array_should        = ZDBFUNC("zdb", "tid_cmpfunc_array_should", 2,
+															 oids2(TIDOID, zdbqueryarrayOid));
+	rewriteContext.tid_cmpfunc_array_must          = ZDBFUNC("zdb", "tid_cmpfunc_array_must", 2,
+															 oids2(TIDOID, zdbqueryarrayOid));
+	rewriteContext.tid_cmpfunc_array_not           = ZDBFUNC("zdb", "tid_cmpfunc_array_not", 2,
+															 oids2(TIDOID, zdbqueryarrayOid));
+
+	rewriteContext.tid_operator                    = ZDBOPER("pg_catalog", "==>", zdbqueryOid);
+	rewriteContext.tid_array_should_operator       = ZDBOPER("pg_catalog", "==|", zdbqueryarrayOid);
+	rewriteContext.tid_array_must_operator         = ZDBOPER("pg_catalog", "==&", zdbqueryarrayOid);
+	rewriteContext.tid_array_not_operator          = ZDBOPER("pg_catalog", "==!", zdbqueryarrayOid);
+	query_tree_walker(parse, rewrite_walker, &rewriteContext, QTW_EXAMINE_RTES);
+
+	/* call Postgres' planner */
+	if (prev_PlannerHook)
+		return prev_PlannerHook(parse, cursorOptions, boundParams);
+	else
+		return standard_planner(parse, cursorOptions, boundParams);
 }
 
 static void push_executor_info(QueryDesc *queryDesc) {
@@ -427,14 +673,17 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 
 											foreach (lc2, RelationGetIndexList(rel)) {
 												Relation indexRel = RelationIdGetRelation(lfirst_oid(lc2));
-												if (index_is_zdb_index(indexRel) &&
-													!ZDBIndexOptionsGetLLAPI(indexRel)) {
-													to_drop = lappend(to_drop,
-																	  psprintf("%s%s",
-																			   ZDBIndexOptionsGetUrl(indexRel),
-																			   ZDBIndexOptionsGetIndexName(indexRel)));
+												if (indexRel != NULL) {
+													if (index_is_zdb_index(indexRel) &&
+														!ZDBIndexOptionsGetLLAPI(indexRel)) {
+														to_drop = lappend(to_drop,
+																		  psprintf("%s%s",
+																				   ZDBIndexOptionsGetUrl(indexRel),
+																				   ZDBIndexOptionsGetIndexName(
+																						   indexRel)));
+													}
+													RelationClose(indexRel);
 												}
-												RelationClose(indexRel);
 											}
 										}
 											break;
@@ -491,6 +740,94 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 						MemoryContextSwitchTo(oldContext);
 						run_process_utility_hook(parsetree, queryString, context, params, queryEnv, dest,
 												 completionTag);
+					}
+						break;
+
+					case T_IndexStmt:    /* CREATE INDEX */
+					{
+						IndexStmt *stmt = (IndexStmt *) parsetree->utilityStmt;
+
+						if (strcmp("zombodb", stmt->accessMethod) != 0) {
+							/* it's not a zombodb index so do the default Postgres stuff */
+							run_process_utility_hook(parsetree, queryString, context, params, queryEnv, dest,
+													 completionTag);
+							break;
+						} else {
+							Oid           relid;
+							LOCKMODE      lockmode;
+							ObjectAddress address;
+
+							if (list_length(stmt->indexParams) == 1) {
+								/*
+								 * The CREATE INDEX statement only specified one column, so we're
+								 * going to convert it to two columns by making a Var reference to
+								 * the 'ctid' system column as the first column, and moving the
+								 * one column here to the second column.
+								 *
+								 * We're not going to care about if what we do is correct because that'll
+								 * be properly checked in our ambuild() function.
+								 */
+								IndexElem *newElem      = makeNode(IndexElem);
+								IndexElem *exisitngElem = (IndexElem *) linitial(stmt->indexParams);
+								List      *newParams    = NIL;
+
+								newElem->name           = pstrdup("ctid");
+								newElem->indexcolname   = pstrdup("ctid");
+								newElem->nulls_ordering = SORTBY_NULLS_DEFAULT;
+								newElem->ordering       = SORTBY_DEFAULT;
+								newElem->opclass        = NIL; // TODO:  Probably need to fill this in
+
+								newParams = lappend(newParams, newElem);
+								newParams = lappend(newParams, exisitngElem);
+
+								stmt->indexParams = newParams;
+							}
+
+							if (stmt->concurrent)
+								PreventTransactionChain(context == PROCESS_UTILITY_TOPLEVEL,
+														"CREATE INDEX CONCURRENTLY");
+
+							/*
+							 * Look up the relation OID just once, right here at the
+							 * beginning, so that we don't end up repeating the name
+							 * lookup later and latching onto a different relation
+							 * partway through.  To avoid lock upgrade hazards, it's
+							 * important that we take the strongest lock that will
+							 * eventually be needed here, so the lockmode calculation
+							 * needs to match what DefineIndex() does.
+							 */
+							lockmode = stmt->concurrent ? ShareUpdateExclusiveLock
+														: ShareLock;
+							relid =
+									RangeVarGetRelidExtended(stmt->relation, lockmode,
+															 false, false,
+															 RangeVarCallbackOwnsRelation,
+															 NULL);
+
+							/* Run parse analysis ... */
+							stmt = transformIndexStmt(relid, stmt, queryString);
+
+							/* ... and do it */
+							EventTriggerAlterTableStart(parsetree->utilityStmt);
+							address =
+									zdbDefineIndex(relid,    /* OID of heap relation */
+												   stmt,
+												   InvalidOid, /* no predefined OID */
+												   false,    /* is_alter_table */
+												   true,    /* check_rights */
+												   true,    /* check_not_in_use */
+												   false,    /* skip_build */
+												   false); /* quiet */
+
+							/*
+							 * Add the CREATE INDEX node itself to stash right away;
+							 * if there were any commands stashed in the ALTER TABLE
+							 * code, we need them to appear after this one.
+							 */
+							EventTriggerCollectSimpleCommand(address, InvalidObjectAddress,
+															 parsetree->utilityStmt);
+							EventTriggerAlterTableEnd();
+						}
 					}
 						break;
 
@@ -667,12 +1004,14 @@ void zdb_aminit(void) {
 	prev_ExecutorRunHook    = ExecutorRun_hook;
 	prev_ExecutorFinishHook = ExecutorFinish_hook;
 	prev_ProcessUtilityHook = ProcessUtility_hook;
+	prev_PlannerHook        = planner_hook;
 
 	ExecutorStart_hook  = zdb_executor_start_hook;
 	ExecutorEnd_hook    = zdb_executor_end_hook;
 	ExecutorRun_hook    = zdb_executor_run_hook;
 	ExecutorFinish_hook = zdb_executor_finish_hook;
 	ProcessUtility_hook = zdb_process_utility_hook;
+	planner_hook        = zdb_planner_hook;
 }
 
 Datum zdb_amhandler(PG_FUNCTION_ARGS) {
@@ -684,7 +1023,7 @@ Datum zdb_amhandler(PG_FUNCTION_ARGS) {
 	amroutine->amcanorderbyop = false;
 	amroutine->amcanbackward  = false;
 	amroutine->amcanunique    = false;
-	amroutine->amcanmulticol  = false;
+	amroutine->amcanmulticol  = true;
 	amroutine->amoptionalkey  = false;
 	amroutine->amsearcharray  = true;
 	amroutine->amsearchnulls  = false;
@@ -732,6 +1071,16 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	char              *aliasName = ZDBIndexOptionsGetAlias(indexRelation);
 	char              *indexName;
 
+	if (already_has_zdb_index(heapRelation, indexRelation)) {
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+						errmsg("Relations can only have one ZomboDB index")));
+	} else if (list_length(indexInfo->ii_Predicate) > 0) {
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+						errmsg("ZomboDB indices cannot contain WHERE clauses")));
+	}
+
 	if (ZDBIndexOptionsGetIndexName(indexRelation) != NULL && ZDBIndexOptionsGetLLAPI(indexRelation) == true) {
 		/*
 		 * this index is a low-level API index that already has a named assigned to it, so we're just going
@@ -744,10 +1093,13 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	if (indexInfo->ii_Expressions == NULL) {
 		/* index definitely isn't defined correctly */
 		goto definition_error;
+	} else if (indexInfo->ii_NumIndexAttrs != 2) {
+		/* index doesn't have correct number of expressions (which is 2) */
+		goto definition_error;
 	}
 
 	/* index might be defined correctly, we'll validate below */
-	tupdesc = extract_tuple_desc_from_index_expressions(indexInfo->ii_Expressions);
+	tupdesc = extract_tuple_desc_from_index_expressions(indexInfo);
 	if (tupdesc == NULL)
 		goto definition_error;
 
@@ -800,11 +1152,9 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 
 	definition_error:
 	ereport(ERROR,
-			(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
-					errmsg("ZomboDB index definitions must have one column that is a whole row reference to the "
-						   "table being indexed (ie, '(table_name.*)' or a function call that returns a "
-						   "composite type")));
-
+			(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+					errmsg("ZomboDB index definitions must index two columns where the first is the 'ctid' system "
+						   "column and the second is of a record type or whole-row reference, i.e., (table_name.*)")));
 }
 
 static void ambuildempty(Relation indexRelation) {
@@ -839,10 +1189,14 @@ static void zdbbuildCallback(Relation indexRel, HeapTuple htup, Datum *values, b
 	if (isnull[0]) {
 		ereport(ERROR,
 				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+						errmsg("ctid is null")));
+	} else if (isnull[1]) {
+		ereport(ERROR,
+				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
 						errmsg("row is null")));
 	}
 
-	index_record(buildstate->esContext, buildstate->memoryContext, &htup->t_self, values[0], htup);
+	index_record(buildstate->esContext, buildstate->memoryContext, &htup->t_self, values[1], htup);
 	buildstate->indtuples++;
 }
 
@@ -862,6 +1216,10 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 	if (isnull[0]) {
 		ereport(ERROR,
 				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+						errmsg("ctid is null")));
+	} else if (isnull[1]) {
+		ereport(ERROR,
+				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
 						errmsg("row is null")));
 	}
 
@@ -871,9 +1229,9 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 	 */
 	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
-	insertContext = checkout_insert_context(indexRelation, values[0], isnull[0]);
+	insertContext = checkout_insert_context(indexRelation, values[1], isnull[1]);
 
-	index_record(insertContext->esContext, insertContext->scratch, heap_tid, values[0], NULL);
+	index_record(insertContext->esContext, insertContext->scratch, heap_tid, values[1], NULL);
 	MemoryContextSwitchTo(oldContext);
 
 	return true;
@@ -977,7 +1335,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmin;
@@ -1003,7 +1361,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmax;
@@ -1029,7 +1387,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 										 ObjectIdGetDatum(RelationGetRelid(info->index)),
 										 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(info->index)),
 										 Int64GetDatum(convert_xid(oldestXmin))));
-				scroll = ElasticsearchOpenScroll(info->index, query, true, false, 0, NULL, zdb_x_fields, 2);
+				scroll = ElasticsearchOpenScroll(info->index, query, true, 0, NULL, zdb_x_fields, 2);
 				while (scroll->cnt < scroll->total) {
 					char          *_id;
 					TransactionId xmax;
@@ -1054,8 +1412,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				 * Finally, any "zdb_aborted_xid" value we have can be removed if it's
 				 * known to be aborted and no longer referenced anywhere in the index
 				 */
-				scroll = ElasticsearchOpenScroll(info->index, MakeZDBQuery("_id:zdb_aborted_xids"), true, false, 0,
-												 NULL, zdb_aborted_fields, 1);
+				scroll = ElasticsearchOpenScroll(info->index, MakeZDBQuery("_id:zdb_aborted_xids"), true, 0, NULL, zdb_aborted_fields, 1);
 				while (scroll->cnt < scroll->total) {
 					void *array;
 
@@ -1278,13 +1635,12 @@ static inline void do_search_for_scan(IndexScanDesc scan) {
 	if (context->needsInit) {
 		Relation heapRel = scan->heapRelation;
 		uint64   limit;
-		bool     wantScores;
+		bool     wantScores = zdbquery_get_wants_score(context->query);
 		List     *highlights;
 
 		if (scan->heapRelation == NULL)
 			heapRel = RelationIdGetRelation(IndexGetRelation(RelationGetRelid(scan->indexRelation), false));
 
-		wantScores = current_scan_wants_scores(scan, heapRel);
 		highlights = extract_highlight_info(scan, RelationGetRelid(heapRel));
 		limit      = find_limit_for_scan(scan);
 
@@ -1292,8 +1648,7 @@ static inline void do_search_for_scan(IndexScanDesc scan) {
 			ElasticsearchCloseScroll(context->scrollContext);
 		}
 
-		context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, context->query, false, wantScores, limit,
-														  highlights, NULL, 0);
+		context->scrollContext  = ElasticsearchOpenScroll(scan->indexRelation, context->query, false, limit, highlights, NULL, 0);
 		context->wantHighlights = highlights != NULL;
 		context->wantScores     = wantScores;
 		if (context->wantScores) {
@@ -1372,9 +1727,10 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 }
 
 static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
-	ZDBScanContext *context = (ZDBScanContext *) scan->opaque;
-	int64          ntuples  = 0;
-	Relation       heapRel  = NULL;
+	ZDBScanContext  *context = (ZDBScanContext *) scan->opaque;
+	int64           ntuples  = 0;
+	Relation        heapRel  = NULL;
+	zdb_json_object highlights;
 
 	do_search_for_scan(scan);
 
@@ -1387,7 +1743,7 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 		ItemPointerData ctid;
 		float4          score;
 
-		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, NULL);
+		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, &highlights);
 
 		if (context->wantScores) {
 			ZDBScoreKey   key;
@@ -1398,6 +1754,10 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 			entry = hash_search(context->scoreLookup, &key, HASH_ENTER, &found);
 			ItemPointerCopy(&ctid, &entry->key.ctid);
 			entry->score = score;
+		}
+
+		if (context->wantHighlights) {
+			save_highlights(context->highlightLookup, &ctid, highlights);
 		}
 
 		tbm_add_tuples(tbm, &ctid, 1, false);
@@ -1558,8 +1918,9 @@ static void apply_alter_statement(PlannedStmt *parsetree, char *url, uint32 shar
 				indexRel = relation_open(relid, lockmode);
 				if (index_is_zdb_index(indexRel)) {
 					TupleDesc tupdesc;
+					IndexInfo *indexInfo = BuildIndexInfo(indexRel);
 
-					tupdesc = extract_tuple_desc_from_index_expressions(RelationGetIndexExpressions(indexRel));
+					tupdesc = extract_tuple_desc_from_index_expressions(indexInfo);
 					ElasticsearchPutMapping(heapRel, indexRel, tupdesc);
 					ReleaseTupleDesc(tupdesc);
 				}

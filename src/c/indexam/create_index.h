@@ -14,26 +14,19 @@
  * limitations under the License.
  */
 
-#ifndef __ZDB_SCORING_H__
-#define __ZDB_SCORING_H__
+#ifndef __ZOMBODB_CREATE_INDEX_H__
+#define __ZOMBODB_CREATE_INDEX_H__
 
 #include "zombodb.h"
 
-typedef struct ZDBScoreKey {
-	ItemPointerData ctid;
-} ZDBScoreKey;
+ObjectAddress
+zdbDefineIndex(Oid relationId,
+			   IndexStmt *stmt,
+			   Oid indexRelationId,
+			   bool is_alter_table,
+			   bool check_rights,
+			   bool check_not_in_use,
+			   bool skip_build,
+			   bool quiet);
 
-typedef struct ZDBScoreEntry {
-	ZDBScoreKey key;
-	float4      score;
-} ZDBScoreEntry;
-
-
-typedef float4 (*score_lookup_callback)(ItemPointer ctid, void *arg);
-
-void scoring_support_init(void);
-void scoring_support_cleanup(void);
-HTAB *scoring_create_lookup_table(MemoryContext memoryContext, char *name);
-void scoring_register_callback(Oid heapOid, score_lookup_callback callback, void *callback_data, MemoryContext memoryContext);
-
-#endif /* __ZDB_SCORING_H__ */
+#endif /* __ZOMBODB_CREATE_INDEX_H__ */

@@ -15,28 +15,42 @@ CREATE OR REPLACE FUNCTION xform(data xform_test) RETURNS xform_test_view IMMUTA
 $$;
 CREATE INDEX idxxform_test ON xform_test USING zombodb (xform(xform_test));
 -- this should be a sequential scan
+set enable_indexscan to off;
+set enable_bitmapscan to off;
+set enable_seqscan to on;
 explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
-                       QUERY PLAN                       
---------------------------------------------------------
+                   QUERY PLAN                   
+------------------------------------------------
  Seq Scan on xform_test
-   Filter: (xform_test.* ==> 'login:falcao5'::zdbquery)
+   Filter: (ctid ==> 'login:falcao5'::zdbquery)
 (2 rows)
 
 -- and this an index scan
-explain (costs off) select * from xform_test where xform(xform_test) ==> 'login:falcao5';
-                            QUERY PLAN                             
--------------------------------------------------------------------
+set enable_seqscan to off;
+set enable_bitmapscan to off;
+set enable_indexscan to on;
+explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
+                     QUERY PLAN                     
+----------------------------------------------------
  Index Scan using idxxform_test on xform_test
-   Index Cond: (xform(xform_test.*) ==> 'login:falcao5'::zdbquery)
+   Index Cond: (ctid ==> 'login:falcao5'::zdbquery)
 (2 rows)
 
+explain (costs off) select * from xform_test where xform(xform_test) ==> 'login:falcao5';
+ERROR:  Left-hand side of ==> must be a table reference
+-- these can't be queried because they don't directly reference "xform_test"
 select id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
+ERROR:  Left-hand side of ==> must be a table reference
+select zdb.score(ctid) > 0.0 as score, id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
+ERROR:  Left-hand side of ==> must be a table reference
+-- but these can
+select id from xform_test where xform_test ==> 'login:falcao5' order by id;
   id   
 -------
  67151
 (1 row)
 
-select zdb.score(ctid) > 0.0 as score, id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
+select zdb.score(ctid) > 0.0 as score, id from xform_test where xform_test ==> 'login:falcao5' order by id;
  score |  id   
 -------+-------
  t     | 67151

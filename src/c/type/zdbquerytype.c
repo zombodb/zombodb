@@ -52,7 +52,8 @@ static bool zdbquery_has_no_options(ZDBQueryType *query) {
 		   zdbquery_get_min_score(query) == 0.0 &&
 		   zdbquery_get_row_estimate(query) == zdb_default_row_estimation_guc &&
 		   zdbquery_get_sort_field(query) == NULL &&
-		   zdbquery_get_sort_direction(query) == NULL;
+		   zdbquery_get_sort_direction(query) == NULL &&
+		   zdbquery_get_wants_score(query) == false;
 }
 
 static char *zdbquery_to_minimal_json(ZDBQueryType *query) {
@@ -156,6 +157,14 @@ static uint64 zdbquery_get_raw_row_estimate(ZDBQueryType *query) {
 	return estimate;
 }
 
+bool zdbquery_get_wants_score(ZDBQueryType *query) {
+	void   *json    = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	bool wants_score = get_json_object_bool(json, "wants_score", true);
+
+	pfree(json);
+	return wants_score;
+}
+
 uint64 zdbquery_get_row_estimate(ZDBQueryType *query) {
 	void   *json    = parse_json_object_from_string(query->json, CurrentMemoryContext);
 	uint64 estimate = get_json_object_uint64(json, "row_estimate", true);
@@ -228,7 +237,7 @@ char *zdbquery_get_query(ZDBQueryType *query) {
 	return queryString;
 }
 
-#define ZDBQUERY_MAX_KEYS 7
+#define ZDBQUERY_MAX_KEYS 8
 typedef enum zdbquery_properties {
 	zdbquery_limit = 0,
 	zdbquery_offset,
@@ -236,7 +245,8 @@ typedef enum zdbquery_properties {
 	zdbquery_sort_field,
 	zdbquery_sort_direction,
 	zdbquery_row_estimate,
-	zdbquery_query_dsl
+	zdbquery_query_dsl,
+	zdbquery_wants_score
 } zdbquery_properties;
 
 static zdbquery_properties zdbquery_key_to_propenum(char *key) {
@@ -254,6 +264,8 @@ static zdbquery_properties zdbquery_key_to_propenum(char *key) {
 		return zdbquery_row_estimate;
 	} else if (strcmp(key, "query_dsl") == 0) {
 		return zdbquery_query_dsl;
+	} else if (strcmp(key, "wants_score") == 0) {
+		return zdbquery_wants_score;
 	}
 
 	elog(ERROR, "unrecognized zdbquery property: %s", key);
@@ -349,6 +361,18 @@ Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
 					if (query->len > 1)
 						appendStringInfoChar(query, ',');
 					appendStringInfo(query, "\"query_dsl\":%s", query_dsl);
+				}
+			}
+				break;
+
+			case zdbquery_wants_score: {
+				bool wants_score = prop == i ? DatumGetBool(DirectFunctionCall1(boolin, CStringGetDatum(value)))
+											 : zdbquery_get_wants_score(input);
+
+				if (wants_score) {
+					if (query->len > 1)
+						appendStringInfoChar(query, ',');
+					appendStringInfo(query, "\"wants_score\":true");
 				}
 			}
 				break;

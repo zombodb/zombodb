@@ -52,7 +52,7 @@ CREATE OR REPLACE FUNCTION highlight(
 
     matched_fields boolean DEFAULT NULL,
     "order" text DEFAULT NULL
-) RETURNS json PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+) RETURNS json PARALLEL UNSAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(row_to_json(
              ROW(type, number_of_fragments, pre_tags, post_tags, tags_schema,
                 require_field_match, highlight_query, no_match_size, fragmenter,
@@ -62,4 +62,4 @@ CREATE OR REPLACE FUNCTION highlight(
         )::zdb.esqdsl_highlight)
     );
 $$;
-CREATE OR REPLACE FUNCTION highlight(ctid tid, field name, highlight_definition json DEFAULT highlight()) RETURNS text[] PARALLEL SAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_highlight';
+CREATE OR REPLACE FUNCTION highlight(ctid tid, field name, highlight_definition json DEFAULT highlight()) RETURNS text[] PARALLEL UNSAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_highlight';
