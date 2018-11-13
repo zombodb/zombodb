@@ -34,8 +34,8 @@ import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
  */
 class ZomboDBQueryRewriter extends QueryRewriter {
 
-    public ZomboDBQueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-        super(client, indexName, contentRegistry, input, canDoSingleIndex, needVisibilityOnTopLevel);
+    public ZomboDBQueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel, boolean wantScores) {
+        super(client, indexName, contentRegistry, input, canDoSingleIndex, needVisibilityOnTopLevel, wantScores);
     }
 
     @Override

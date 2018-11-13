@@ -27,7 +27,6 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
@@ -115,8 +114,11 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, false, false);
+            query = buildJsonQueryFromRequestContent(client, request, false, false, wantScores);
             parseEnd = System.nanoTime();
+
+            // could have changed due to a #limit(_score ...) in the query
+            wantScores = query.wantScores();
 
             if (!wantScores && !query.hasLimit()) {
                 // we don't want scores and we don't have a limit to apply
@@ -190,7 +192,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel, boolean wantScores) {
         String queryString = request.content().utf8ToString();
         String indexName = request.param("index");
 
@@ -199,10 +201,10 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 // silence an error from Elasticsearch about an unused request parameter
                 // TODO:  should we use 'preference' in FastTerms and/or CrossJoin somehow?
                 String preference = request.param("preference");
-                QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel);
-                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit());
+                QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel, wantScores);
+                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit(), qr.wantScores());
             } else {
-                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null);
+                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null, wantScores);
             }
         } catch (Exception e) {
             throw new RuntimeException(queryString, e);

@@ -20,7 +20,6 @@ import llc.zombodb.rest.search.ZomboDBTIDResponseAction;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -50,7 +49,7 @@ public class ZomboDBQueryAction extends BaseRestHandler {
         boolean profile = request.paramAsBoolean("profile", false);
 
         try {
-            QueryAndIndexPair queryAndIndex = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, true);
+            QueryAndIndexPair queryAndIndex = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, true, false);
 
             if (profile) {
                 return channel -> SearchAction.INSTANCE.newRequestBuilder(client)

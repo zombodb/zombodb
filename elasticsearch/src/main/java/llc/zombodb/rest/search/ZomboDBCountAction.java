@@ -21,7 +21,6 @@ import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
@@ -56,7 +55,7 @@ public class ZomboDBCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, false);
+            query = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, false, false);
             if (query.hasLimit() && isSelectivityQuery) {
                 count = query.getLimit().getLimit();
             } else {
