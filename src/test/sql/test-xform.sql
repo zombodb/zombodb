@@ -19,13 +19,24 @@ $$;
 CREATE INDEX idxxform_test ON xform_test USING zombodb (xform(xform_test));
 
 -- this should be a sequential scan
+set enable_indexscan to off;
+set enable_bitmapscan to off;
+set enable_seqscan to on;
 explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
 
 -- and this an index scan
+set enable_seqscan to off;
+set enable_bitmapscan to off;
+set enable_indexscan to on;
+explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
 explain (costs off) select * from xform_test where xform(xform_test) ==> 'login:falcao5';
 
+-- these can't be queried because they don't directly reference "xform_test"
 select id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
 select zdb.score(ctid) > 0.0 as score, id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
 
+-- but these can
+select id from xform_test where xform_test ==> 'login:falcao5' order by id;
+select zdb.score(ctid) > 0.0 as score, id from xform_test where xform_test ==> 'login:falcao5' order by id;
 
 DROP TABLE xform_test CASCADE;

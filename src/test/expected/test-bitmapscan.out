@@ -3,15 +3,15 @@ SET enable_indexscan TO OFF;
 SET enable_bitmapscan TO OFF;
 SET enable_bitmapscan TO ON;
 EXPLAIN (COSTS OFF) SELECT id FROM events WHERE events ==> 'beer' ORDER BY id LIMIT 10;
-                           QUERY PLAN                            
------------------------------------------------------------------
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Limit
    ->  Sort
          Sort Key: id
          ->  Bitmap Heap Scan on events
-               Recheck Cond: (events.* ==> 'beer'::zdbquery)
+               Recheck Cond: (ctid ==> 'beer'::zdbquery)
                ->  Bitmap Index Scan on idxevents
-                     Index Cond: (events.* ==> 'beer'::zdbquery)
+                     Index Cond: (ctid ==> 'beer'::zdbquery)
 (7 rows)
 
 SELECT id FROM events WHERE events ==> 'beer' ORDER BY id LIMIT 10;

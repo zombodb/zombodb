@@ -25,10 +25,10 @@ SELECT count(*) FROM events WHERE events ==! ARRAY['beer', 'wine', 'cheese'];
 
 -- these raise errors
 select 'a'::text ==| array['foo', 'bar']::zdbquery[];
-ERROR:  zombodb comparision function called in invalid context or lhs is not a table reference
+ERROR:  Left-hand side of ==> must be a table reference
 select 'a'::text ==& array['foo', 'bar']::zdbquery[];
-ERROR:  zombodb comparision function called in invalid context or lhs is not a table reference
+ERROR:  Left-hand side of ==> must be a table reference
 select 'a'::text ==! array['foo', 'bar']::zdbquery[];
-ERROR:  zombodb comparision function called in invalid context or lhs is not a table reference
+ERROR:  Left-hand side of ==> must be a table reference
 select 'a'::text ==> 'foo'::zdbquery;
-ERROR:  zombodb comparision function called in invalid context or lhs is not a table reference
+ERROR:  Left-hand side of ==> must be a table reference

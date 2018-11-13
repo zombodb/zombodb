@@ -111,88 +111,57 @@ Datum zdb_restrict(PG_FUNCTION_ARGS) {
 //	Oid              operator    = PG_GETARG_OID(1);
 	List             *args         = (List *) PG_GETARG_POINTER(2);
 	int              varRelid      = PG_GETARG_INT32(3);
-	float8           selectivity;
+	float8           selectivity   = 0.0;
 	Node             *left         = (Node *) linitial(args);
 	Node             *right        = (Node *) lsecond(args);
-	Oid              relationOid   = InvalidOid;
+	Oid              heapRelId     = InvalidOid;
 	VariableStatData ldata;
 	Relation         heapRel;
 	uint64           countEstimate = 1;
 
-	if (IsA(left, FuncExpr)) {
-		/*
-		 * The lhs of the operator is a function, so ensure it has one argument
-		 * and then pretend our left argument is the first argument to the function
-		 */
-		FuncExpr *funcExpr = (FuncExpr *) left;
-
-		if (list_length(funcExpr->args) != 1) {
-			ereport(ERROR,
-					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-							errmsg("Function must have one argument")));
-		}
-
-		left = linitial(funcExpr->args);
-	}
-
-	/* 'left' should be a Var.  Otherwise we need to bail */
 	if (IsA(left, Var)) {
 		examine_variable(root, left, varRelid, &ldata);
 
-		if (ldata.rel == NULL) {
-			relationOid = get_typ_typrelid(ldata.vartype);
-			if (relationOid == InvalidOid)
-				PG_RETURN_FLOAT8(1.0);
-		} else if (ldata.vartype == TIDOID) {
+		if (ldata.vartype == TIDOID && ldata.rel != NULL) {
 			RangeTblEntry *rentry = planner_rt_fetch(ldata.rel->relid, root);
 
-			relationOid = rentry->relid;
-		} else {
-			relationOid = get_typ_typrelid(ldata.atttype);
-
-			if (relationOid == InvalidOid) {
-				ereport(ERROR,
-						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-								errmsg("Left-hand-side of ==> must be a row reference or a function")));
-			}
+			heapRelId = rentry->relid;
 		}
-	} else {
-		ereport(ERROR,
-				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-						errmsg("Left-hand-side of ==> must be a row reference or a function")));
 	}
 
-	heapRel = RelationIdGetRelation(relationOid);
+	if (heapRelId != InvalidOid) {
+		heapRel = RelationIdGetRelation(heapRelId);
 
-	/* if 'right' is a Const we can estimate the selectivity of the query to be executed */
-	if (IsA(right, Const)) {
-		Const *rconst = (Const *) right;
+		/* if 'right' is a Const we can estimate the selectivity of the query to be executed */
+		if (IsA(right, Const)) {
+			Const *rconst = (Const *) right;
 
-		if (type_is_array(rconst->consttype)) {
-			countEstimate = (uint64) zdb_default_row_estimation_guc;
-		} else {
-			ZDBQueryType *zdbquery = (ZDBQueryType *) DatumGetPointer(rconst->constvalue);
-			uint64       estimate  = zdbquery_get_row_estimate(zdbquery);
-
-			if (estimate < 1) {
-				/* we need to ask Elasticsearch to estimate our selectivity */
-				Relation indexRel;
-
-				/*lint -esym 644,ldata  ldata is defined above in the if (IsA(Var)) block */
-				indexRel      = find_index_relation(heapRel, ldata.atttype, AccessShareLock);
-				countEstimate = ElasticsearchEstimateSelectivity(indexRel, zdbquery);
-				relation_close(indexRel, AccessShareLock);
+			if (type_is_array(rconst->consttype)) {
+				countEstimate = (uint64) zdb_default_row_estimation_guc;
 			} else {
-				/* we'll just use the hardcoded value in the query */
-				if (estimate > 1)
-					countEstimate = estimate;
+				ZDBQueryType *zdbquery = (ZDBQueryType *) DatumGetPointer(rconst->constvalue);
+				uint64       estimate  = zdbquery_get_row_estimate(zdbquery);
+
+				if (estimate < 1) {
+					/* we need to ask Elasticsearch to estimate our selectivity */
+					Relation indexRel;
+
+					/*lint -esym 644,ldata  ldata is defined above in the if (IsA(Var)) block */
+					indexRel      = find_zombodb_index(heapRel);
+					countEstimate = ElasticsearchEstimateSelectivity(indexRel, zdbquery);
+					relation_close(indexRel, AccessShareLock);
+				} else {
+					/* we'll just use the hardcoded value in the query */
+					if (estimate > 1)
+						countEstimate = estimate;
+				}
 			}
 		}
-	}
 
-	/* Assume we'll always return at least 1 row */
-	selectivity = (float8) countEstimate / (float8) Max(heapRel->rd_rel->reltuples, 1.0);
-	RelationClose(heapRel);
+		/* Assume we'll always return at least 1 row */
+		selectivity = (float8) countEstimate / (float8) Max(heapRel->rd_rel->reltuples, 1.0);
+		RelationClose(heapRel);
+	}
 
 	/* keep selectivity in bounds */
 	selectivity = Max(0, Min(1, selectivity));
@@ -219,7 +188,7 @@ Datum zdb_query_srf(PG_FUNCTION_ARGS) {
 
 		/* start a query against Elasticsearch, in the proper memory context for this SRF */
 		oldcontext    = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
-		scrollContext = ElasticsearchOpenScroll(indexRel, zdbquery, false, false, 0, NULL, NULL, 0);
+		scrollContext = ElasticsearchOpenScroll(indexRel, zdbquery, false, 0, NULL, NULL, 0);
 		MemoryContextSwitchTo(oldcontext);
 
 		relation_close(indexRel, AccessShareLock);
@@ -274,7 +243,7 @@ Datum zdb_query_tids(PG_FUNCTION_ARGS) {
 
 	indexRel = zdb_open_index(indexRelOid, AccessShareLock);
 
-	scrollContext = ElasticsearchOpenScroll(indexRel, userJsonQuery, false, false, 0, NULL,
+	scrollContext = ElasticsearchOpenScroll(indexRel, userJsonQuery, false, 0, NULL,
 											NULL, 0);
 
 	relation_close(indexRel, AccessShareLock);

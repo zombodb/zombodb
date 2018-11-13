@@ -10,7 +10,7 @@
 *.swp
 .DS_store
 foo.*
-src/sql/zombodb--10-1.0.0b8.sql
+src/sql/zombodb--10-1.0.0b9.sql
 results/
 regression.*
 cmake-build-debug/

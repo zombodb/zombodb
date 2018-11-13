@@ -42,7 +42,9 @@ set(SOURCE_FILES
         src/c/utils/utils.c
         src/c/utils/utils.h
         src/c/zombodb.c
-        src/c/indexam/llapi.c)
+        src/c/indexam/llapi.c
+        src/c/indexam/create_index.c
+        src/c/indexam/create_index.h)
 
 include_directories(src/c /usr/local/src/pg10/src/include /usr/local/src/pg10/src/backend)
 
