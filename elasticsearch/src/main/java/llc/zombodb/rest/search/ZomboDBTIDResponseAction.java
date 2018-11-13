@@ -103,7 +103,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-        boolean wantScores = request.paramAsBoolean("scores", true);
+        final boolean wantScores = request.paramAsBoolean("scores", true);
         boolean needSort = request.paramAsBoolean("sort", true);
         long totalStart = System.nanoTime();
         BinaryTIDResponse tids;
@@ -116,9 +116,6 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             parseStart = System.nanoTime();
             query = buildJsonQueryFromRequestContent(client, request, false, false, wantScores);
             parseEnd = System.nanoTime();
-
-            // could have changed due to a #limit(_score ...) in the query
-            wantScores = query.wantScores();
 
             if (!wantScores && !query.hasLimit()) {
                 // we don't want scores and we don't have a limit to apply
@@ -147,7 +144,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 builder.setIndices(query.getIndexName());
                 builder.setTypes("data");
                 builder.setPreference(request.param("preference"));
-                builder.setTrackScores(wantScores);
+                builder.setTrackScores(query.wantScores()); // query.wantScores() accounts for a #limit(_score)
                 builder.setRequestCache(true);
                 builder.addDocValueField("_zdb_id");    // this is the only field we need
                 builder.addStoredField("_none_");       // don't get any _underscore fields like _id
