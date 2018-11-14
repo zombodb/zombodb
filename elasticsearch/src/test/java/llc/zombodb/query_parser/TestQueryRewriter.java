@@ -5982,5 +5982,12 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "}");
     }
 
+    @Test
+    public void testIssue311() throws Exception {
+        assertJson("issue311.tags:(\"acute\") with issue311.text:(\"heart attack\")",
+                ""
+        );
+    }
+
 }
 
