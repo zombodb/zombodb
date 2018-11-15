@@ -39,7 +39,7 @@ SELECT zdb_define_mapping('issue311', 'data', '{
 
 CREATE INDEX idxissue311 ON issue311 USING zombodb (zdb('issue311', ctid), zdb(issue311)) WITH (url='localhost:9200/');
 INSERT INTO issue311 (data) VALUES ('[{"tags":["a", "b"], "text":"this is a test"}]');
-SELECT id FROM issue311 WHERE zdb('issue311', ctid) ==> 'data.tags:a WITH data.text:"a test"';
+SELECT id FROM issue311 WHERE zdb('issue311', ctid) ==> 'data.text:a WITH data.text:"a test"';
  id 
 ----
   1
