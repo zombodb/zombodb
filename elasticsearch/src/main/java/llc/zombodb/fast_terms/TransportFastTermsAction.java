@@ -37,6 +37,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.engine.Engine;
+import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.index.shard.IndexShard;
 import org.elasticsearch.index.shard.IndexShardNotStartedException;
@@ -159,8 +160,12 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                 IndexSearcher searcher = new IndexSearcher(engine.reader());
                 QueryShardContext context = indicesService.indexServiceSafe(index).newQueryShardContext(shardId, engine.reader(), System::currentTimeMillis);
                 Query query = context.toQuery(request.getRequest().query()).query();
+                MappedFieldType mappedFieldType = context.fieldMapper(fieldname);
 
-                switch (context.fieldMapper(fieldname).typeName()) {
+                if (mappedFieldType == null)
+                    throw new RuntimeException(fieldname + " does not exist in " + index.getName());
+
+                switch (mappedFieldType.typeName()) {
                     case "integer":
                         type = FastTermsResponse.DataType.INT;
                         collector = new NumberCollector(fieldname);
