@@ -22,8 +22,22 @@ CREATE VIEW test AS
   FROM so_posts;
 
 
-
-SELECT count(*) FROM test WHERE zdb ==> '#expand<inventory_count=<this.index>inventory_count>(beer)';
+DO LANGUAGE plpgsql $$
+DECLARE
+  err text;
+BEGIN
+  BEGIN
+    SELECT count(*) FROM test WHERE zdb ==> '#expand<inventory_count=<this.index>inventory_count>(beer)';
+  EXCEPTION WHEN others THEN
+    GET STACKED DIAGNOSTICS err = MESSAGE_TEXT;
+    IF err ILIKE '%does_not_exist does not exist in contrib_regression.public.so_users.idxso_users%' THEN
+      RAISE NOTICE 'found correct error message from Elasticsearch';
+    ELSE
+      RAISE EXCEPTION '%', err;
+    END IF;
+  END;
+END;
+$$;
 
 DROP INDEX idxtest;
 CREATE INDEX idxtest
