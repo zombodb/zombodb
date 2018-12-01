@@ -34,6 +34,7 @@
 #include "catalog/catalog.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_trigger.h"
 #include "catalog/toasting.h"
 #include "commands/alter.h"
@@ -392,10 +393,11 @@ static bool rewrite_walker(Node *node, RewriteWalkerContext *context) {
 				Oid funcOid;
 
 				funcArgs = lappend(funcArgs,
-								   makeConst(TEXTOID, -1, InvalidOid, 11, CStringGetTextDatum("wants_score"), false,
-											 true));
+								   makeConst(TEXTOID, -1, DEFAULT_COLLATION_OID, -1, CStringGetTextDatum("wants_score"),
+											 false, false));
 				funcArgs = lappend(funcArgs,
-								   makeConst(TEXTOID, -1, InvalidOid, 4, CStringGetTextDatum("true"), false, true));
+								   makeConst(TEXTOID, -1, DEFAULT_COLLATION_OID, -1, CStringGetTextDatum("true"), false,
+											 false));
 				funcArgs = lappend(funcArgs, secondArg);
 
 				funcOid = LookupFuncName(list_make2(makeString("zdb"), makeString("set_query_property")), 3,
