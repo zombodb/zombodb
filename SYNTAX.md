@@ -447,7 +447,7 @@ because less data is being passed around between Elasticsearch and Postgres.
 
 The clause to use in a text query is:  
 ```
-#limit(sort_field asc|desc, offset_val, limit_val)
+#limit(sort_field1 asc|desc, sort_field2 asc|desc, ..., sort_fieldN asc|desc, offset_val, limit_val)
 ```
 
 A complete example is:
@@ -484,3 +484,4 @@ ORDER BY zdb_score('table', ctid) DESC;
 
 Note that we had to order the result using the `zdb_score()` function (which is documented in [SQL-API.md](SQL-API.md)).
 
+The ability to specify multiple sort fields is supported and can be used to provide deterministic result ordering so that `#limit()` can be used to do pagination, akin to how one might do the same using Postgres OFFSET/LIMIT clauses.
