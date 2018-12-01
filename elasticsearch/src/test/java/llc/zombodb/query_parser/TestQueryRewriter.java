@@ -5718,20 +5718,20 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testLimit() throws Exception {
         assertAST("#limit(exact_field desc, 12, 42)",
                 "QueryTree\n" +
-                        "   Limit (index=db.schema.table.index)\n" +
-                        "      LimitFieldname (value=exact_field, index=db.schema.table.index)\n" +
-                        "      SortDirection (value=desc, index=db.schema.table.index)\n" +
-                        "      Number (value=12, index=db.schema.table.index)\n" +
-                        "      Number (value=42, index=db.schema.table.index)"
+                        "   Limit\n" +
+                        "      LimitFieldname (value=exact_field)\n" +
+                        "      SortDirection (value=desc)\n" +
+                        "      Number (value=12)\n" +
+                        "      Number (value=42)"
         );
 
         assertAST("(#limit(exact_field desc, 12, 42) a or b)",
                 "QueryTree\n" +
-                        "   Limit (index=db.schema.table.index)\n" +
-                        "      LimitFieldname (value=exact_field, index=db.schema.table.index)\n" +
-                        "      SortDirection (value=desc, index=db.schema.table.index)\n" +
-                        "      Number (value=12, index=db.schema.table.index)\n" +
-                        "      Number (value=42, index=db.schema.table.index)\n" +
+                        "   Limit\n" +
+                        "      LimitFieldname (value=exact_field)\n" +
+                        "      SortDirection (value=desc)\n" +
+                        "      Number (value=12)\n" +
+                        "      Number (value=42)\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
                         "      Or\n" +
@@ -5758,6 +5758,23 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  }\n" +
                         "}"
         );
+    }
+
+    @Test
+    public void testIssue316() throws Exception {
+        assertAST("#limit(a asc, b desc, c asc, d asc, 0, 10)",
+                "QueryTree\n" +
+                        "   Limit\n" +
+                        "      LimitFieldname (value=a)\n" +
+                        "      SortDirection (value=asc)\n" +
+                        "      LimitFieldname (value=b)\n" +
+                        "      SortDirection (value=desc)\n" +
+                        "      LimitFieldname (value=c)\n" +
+                        "      SortDirection (value=asc)\n" +
+                        "      LimitFieldname (value=d)\n" +
+                        "      SortDirection (value=asc)\n" +
+                        "      Number (value=0)\n" +
+                        "      Number (value=10)");
     }
 
     @Test

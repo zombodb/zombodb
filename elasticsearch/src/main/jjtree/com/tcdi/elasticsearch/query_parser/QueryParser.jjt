@@ -331,7 +331,7 @@ void Options() : {}
 void Limit() : {}
 {
     (
-        <LIMIT> "(" (LimitFieldname()) SortDirection() "," Number() "," Number() ")"
+        <LIMIT> "(" (LimitFieldname()) SortDirection() (LOOKAHEAD(2) "," (LimitFieldname()) SortDirection())* "," Number() "," Number() ")"
     ) #Limit
 }
 

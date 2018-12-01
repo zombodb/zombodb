@@ -18,6 +18,7 @@ package llc.zombodb.rest.search;
 
 import llc.zombodb.fast_terms.FastTermsAction;
 import llc.zombodb.fast_terms.FastTermsResponse;
+import llc.zombodb.query_parser.ASTLimit;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import llc.zombodb.query_parser.utils.Utils;
 import llc.zombodb.rest.QueryAndIndexPair;
@@ -156,7 +157,8 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
                 if (query.hasLimit()) {
                     builder.setSearchType(SearchType.DEFAULT);
-                    builder.addSort(query.getLimit().getFieldname(), "asc".equals(query.getLimit().getSortDirection()) ? SortOrder.ASC : SortOrder.DESC);
+                    for (ASTLimit.Sorts sort: query.getLimit().getSorts())
+                        builder.addSort(sort.fieldname, "asc".equals(sort.direction) ? SortOrder.ASC : SortOrder.DESC);
                     builder.setFrom(query.getLimit().getOffset());
                     builder.setSize(query.getLimit().getLimit());
                 } else {
