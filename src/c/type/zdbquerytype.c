@@ -36,11 +36,14 @@ PG_FUNCTION_INFO_V1(zdbquery_to_jsonb);
 PG_FUNCTION_INFO_V1(zdb_set_query_property);
 
 static bool zdbquery_string_is_zdb(char *query) {
+	void *json;
+	bool is_zdb;
+
 	if (!is_json(query))
 		return false;
 
-	void *json  = parse_json_object_from_string(query, CurrentMemoryContext);
-	bool is_zdb = get_json_object_object(json, "query_dsl", true) != NULL;
+	json = parse_json_object_from_string(query, CurrentMemoryContext);
+	is_zdb = get_json_object_object(json, "query_dsl", true) != NULL;
 
 	pfree(json);
 	return is_zdb;
