@@ -759,6 +759,10 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 							LOCKMODE      lockmode;
 							ObjectAddress address;
 
+							if (stmt->concurrent)
+								ereport(ERROR, (errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+										errmsg("ZomboDB indices cannot be created CONCURRENTLY")));
+
 							if (list_length(stmt->indexParams) == 1) {
 								/*
 								 * The CREATE INDEX statement only specified one column, so we're

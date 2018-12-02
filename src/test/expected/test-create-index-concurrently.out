@@ -1,0 +1,4 @@
+CREATE TABLE foo AS SELECT * FROM events LIMIT 10;
+CREATE INDEX CONCURRENTLY idxfoo ON foo USING zombodb ((foo.*));
+ERROR:  ZomboDB indices cannot be created CONCURRENTLY
+DROP TABLE foo CASCADE;
