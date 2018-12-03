@@ -70,19 +70,19 @@ They're designed to be used with defaults in the common cases, and then otherwis
 All of the functions are briefly described below, but here's some examples for our "cats and dogs" queries, plus a few more examples.
 
 ```sql
-SELECT * FROM table WHERE table ==> dsl.must('cats', 'dogs');
-SELECT * FROM table WHERE table ==> dsl.must(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'));
+SELECT * FROM table WHERE table ==> dsl.and('cats', 'dogs');
+SELECT * FROM table WHERE table ==> dsl.and(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'));
 ```
 
 Behind the scenes, ZomboDB is just generating the QueryDSL JSON for you:
 
 ```sql
-SELECT dsl.must('cats', 'dogs')::json;
+SELECT dsl.and('cats', 'dogs')::json;
                                           must                                           
 -----------------------------------------------------------------------------------------
  {"bool":{"must":[{"query_string":{"query":"cats"}},{"query_string":{"query":"dogs"}}]}}
  
-SELECT dsl.must(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'))::json;
+SELECT dsl.and(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'))::json;
                                               must                                               
 -------------------------------------------------------------------------------------------------
  {"bool":{"must":[{"term":{"zdb_all":{"value":"cats"}}},{"term":{"zdb_all":{"value":"dogs"}}}]}}
@@ -91,13 +91,13 @@ SELECT dsl.must(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'))::json;
 Lets say you want to find all rows that contain cats with an age greater than 3 years.  This example shows, with the `range()` function, using Postgres "named arugments" function call syntax so that you can specifiy only the bounds of the range you need.  We're also mix-and-matching between the plain text Query String Syntax (`'cats'`) and the builder API (`must()` and `range()`):
 
 ```sql
-SELECT * FROM table WHERE table ==> dsl.must('cats', dsl.range(field=>'age', gt=>3));
+SELECT * FROM table WHERE table ==> dsl.and('cats', dsl.range(field=>'age', gt=>3));
 ```
 
 Which rewrites to:
 
 ```sql
-SELECT dsl.must('cats', dsl.range(field=>'age', gt=>3))::json;
+SELECT dsl.and('cats', dsl.range(field=>'age', gt=>3))::json;
                                         must                                        
 ------------------------------------------------------------------------------------
  {"bool":{"must":[{"query_string":{"query":"cats"}},{"range":{"age":{"gt":"3"}}}]}}
@@ -106,7 +106,7 @@ SELECT dsl.must('cats', dsl.range(field=>'age', gt=>3))::json;
 One of the more powerful benefits of the Builder API is that it allows you to generate Postgres prepared statements for your text-search queries.  For example:
 
 ```sql
-PREPARE example AS SELECT * FROM table WHERE table ==> dsl.must($1, dsl.range(field=>'age', gt=>$2));
+PREPARE example AS SELECT * FROM table WHERE table ==> dsl.and($1, dsl.range(field=>'age', gt=>$2));
 ```
 
 Now we can execute that query using a different search term and age range:
@@ -138,6 +138,8 @@ SELECT * FROM table WHERE table ==> dsl.sort('id', 'asc', dsl.limit(10, dsl.term
 
 ## Sort and Limit Functions
 
+#### `dsl.limit()`
+
 ```sql
 FUNCTION dsl.limit(
 	limit bigint, 
@@ -149,6 +151,8 @@ Limits the number of rows returned to the specified `limit` limit.  If the query
 
 ---
 
+#### `dsl.offset()`
+
 ```sql
 FUNCTION dsl.offset(
 	offset bigint, 
@@ -159,6 +163,8 @@ FUNCTION dsl.offset(
 Similar to the SQL `OFFSET` clause, allows you to start returning results from a point other than the start.
 
 ---
+
+#### `dsl.sort()`
 
 ```sql
 FUNCTION dsl.sort(
@@ -180,6 +186,8 @@ In practice, using `dsl.sort()` only makes sense when combined with `dsl.limit()
 
 ---
 
+#### `dsl.min_score()`
+
 ```sql 
 FUNCTION dsl.min_score(
 	min_score real, 
@@ -192,6 +200,143 @@ This allows you to specify Elastisearch's [`min_score`](https://www.elastic.co/g
 
 ## SQL Builder API Functions
 
+### Simple Boolean Function
+
+#### `dsl.and()`
+
+```sql
+FUNCTION dsl.and(
+	VARIADIC queries zdbquery[]
+) RETURNS zdbquery
+```
+
+Generates an Elasticsearch `bool` query where all the arguments are part of the `must` clause.
+
+--- 
+
+#### `dsl.or()`
+
+```sql
+FUNCTION dsl.or(
+	VARIADIC queries zdbquery[]
+) RETURNS zdbquery
+```
+
+Generates an Elasticsearch `bool` query where all the arguments are part of the `should` clause.
+
+--- 
+
+#### `dsl.not()`
+
+```sql
+FUNCTION dsl.not(
+	VARIADIC queries zdbquery[]
+) RETURNS zdbquery
+```
+
+Generates an Elasticsearch `bool` query where all the arguments are part of the `must_not` clause.
+
+
+### Elasticsearch "bool" Query Support
+
+#### `dsl.bool()`
+
+```sql
+FUNCTION dsl.bool(
+	must dsl.esqdsl_must DEFAULT NULL, 
+	must_not dsl.esqdsl_must_not DEFAULT NULL, 
+	should dsl.esqdsl_should DEFAULT NULL, 
+	filter dsl.esqdsl_filter DEFAULT NULL
+) RETURNS zdbquery
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
+
+This function represents the Elasticsearch `bool` query, where each sub-clause must be specified using matching SQL functions named `dsl.must()`, `dsl.must_not()`, `dsl.should()`, and `dsl.filter()`.
+
+Each of the arguments to `dsl.bool()` are optional.  As such, this function is designed to be used with Postgres' "named arguments" function-call syntax.    
+
+Example:
+
+```sql
+SELECT dsl.bool(
+        must=>dsl.must('beer', 'wine', 'cheese'),
+        must_not=>dsl.must_not('beer', 'wine', 'cheese'),
+        should=>dsl.should('beer', 'wine', 'cheese'),
+        filter=>dsl.filter('beer', 'wine', 'cheese')
+    );
+```
+
+---
+
+#### `dsl.must()`
+
+```sql
+FUNCTION dsl.must (
+	VARIADIC queries zdbquery[])
+RETURNS dsl.esqdsl_must
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
+
+This is the `must` clause of the Elasticsearch QueryDSL `bool` query.  The queries must appear in matching documents and will contribute to the score.
+
+This function is designed to be used with the `must` argument of `dsl.bool()`.
+
+---
+
+#### `dsl.must_not()`
+
+```sql
+FUNCTION dsl.must_not (
+	VARIADIC queries zdbquery[])
+RETURNS dsl.esqdsl_must_not
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
+
+This is the `must_not` clause of the Elasticsearch QueryDSL `bool` query.  The queries must not appear in the matching documents. Clauses are executed in filter context meaning that scoring is ignored and clauses are considered for caching. Because scoring is ignored, a score of 0 for all documents is returned.
+
+This function is designed to be used with the `must_not` argument of `dsl.bool()`.
+
+---
+
+#### `dsl.should()`
+
+```sql
+FUNCTION dsl.should (
+	VARIADIC queries zdbquery[])
+RETURNS dsl.esqdsl_should
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
+
+This is the `should` clause of the Elasticsearch QueryDSL `bool` query.  The queries should appear in matching documents and will contribute to the score.
+
+This function is designed to be used with the `should` argument of `dsl.bool()`.
+
+---
+
+#### `dsl.filter()`
+
+```sql
+FUNCTION dsl.filter (
+	VARIADIC queries zdbquery[])
+RETURNS dsl.esqdsl_filter
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
+
+This is the `filter` object of an Elasticsearch QueryDSL `bool`.
+
+The clause (query) must appear in matching documents. However unlike must the score of the query will be ignored. Filter clauses are executed in filter context, meaning that scoring is ignored and clauses are considered for caching.
+ 
+This function is designed to be used with the `filter` argument of `dsl.bool()`.
+
+### Elasticsearch Query DSL Support
+   
+#### `dsl.boosting()`
+    
 ```sql
 FUNCTION dsl.boosting (
 	positive zdbquery,
@@ -205,6 +350,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosti
 The boosting query can be used to effectively demote results that match a given query. Unlike the "NOT" clause in bool query, this still selects documents that contain undesirable terms, but reduces their overall score.
  
 ---
+
+#### `dsl.common()`
 
 ```sql
 FUNCTION dsl.common (
@@ -223,6 +370,8 @@ The common terms query is a modern alternative to stopwords which improves the p
  
 ---
 
+#### `dsl.constant_score()`
+
 ```sql
 FUNCTION dsl.constant_score (
 	query zdbquery,
@@ -235,6 +384,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-consta
 A query that wraps another query and simply returns a constant score equal to the query boost for every document in the filter. Maps to Lucene ConstantScoreQuery.
  
 ---
+
+#### `dsl.dis_max()`
 
 ```sql
 FUNCTION dsl.dis_max (
@@ -250,6 +401,8 @@ A query that generates the union of documents produced by its subqueries, and th
  
 ---
 
+#### `dsl.field_exists()`
+
 ```sql
 FUNCTION dsl.field_exists (
 	field name)
@@ -263,6 +416,8 @@ Returns documents that have at least one non-null value in the specified field
  
 ---
 
+#### `dsl.field_missing()`
+
 ```sql
 FUNCTION dsl.field_missing (
 	field name)
@@ -273,19 +428,7 @@ The inverse of `dsl.field_exists()`.  Returns documents that have no value in th
  
 ---
 
-```sql
-FUNCTION dsl.filter (
-	VARIADIC queries zdbquery[])
-RETURNS zdbquery
-```
-
-https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
-
-This is the `filter` object of an Elasticsearch QueryDSL `bool`.
-
-The clause (query) must appear in matching documents. However unlike must the score of the query will be ignored. Filter clauses are executed in filter context, meaning that scoring is ignored and clauses are considered for caching.
- 
----
+#### `dsl.fuzzy()`
 
 ```sql
 FUNCTION dsl.fuzzy (
@@ -304,6 +447,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-fuzzy-
 The fuzzy query uses similarity based on Levenshtein edit distance.
  
 ---
+
+#### `dsl.match()`
 
 ```sql
 FUNCTION dsl.match (
@@ -330,6 +475,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-
  
 ---
 
+#### `dsl.match_all()`
+
 ```sql
 FUNCTION dsl.match_all (
 	boost real DEFAULT NULL)
@@ -342,6 +489,8 @@ The most simple query, which matches all documents, giving them all a _score of 
  
 ---
 
+#### `dsl.match_none()`
+
 ```sql
 FUNCTION dsl.match_none ()
 RETURNS zdbquery
@@ -350,6 +499,8 @@ RETURNS zdbquery
 The inverse of `dsl.match_all()`.  Matches no documents.
  
 ---
+
+#### `dsl.match_phrase()`
 
 ```sql
 FUNCTION dsl.match_phrase (
@@ -367,6 +518,8 @@ The `match_phrase` query analyzes the text and creates a phrase query out of the
  
 ---
 
+#### `dsl.match_phrase_prefix()`
+
 ```sql
 FUNCTION dsl.match_phrase_prefix (
 	field name,
@@ -383,6 +536,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-
 `ds.match_phrase_prefix()` is the same as `dsl.match_phrase()`, except that it allows for prefix matches on the last term in the text.
  
 ---
+
+#### `dsl.more_like_this()`
 
 ```sql
 FUNCTION dsl.more_like_this (
@@ -411,6 +566,8 @@ The More Like This Query finds documents that are "like" a given set of document
 This form takes a single blob of text as the source document. 
  
 ---
+
+#### `dsl.more_like_this()`
 
 ```sql
 FUNCTION dsl.more_like_this (
@@ -441,6 +598,8 @@ This form takes multiple snippets of text as the source documents.
  
 ---
 
+#### `dsl.multi_match()`
+
 ```sql
 FUNCTION dsl.multi_match (
 	fields name[],
@@ -467,29 +626,7 @@ The `multi_match` query builds on the match query to allow multi-field queries.
  
 ---
 
-```sql
-FUNCTION dsl.must (
-	VARIADIC queries zdbquery[])
-RETURNS zdbquery
-```
-
-https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
-
-This is the `must` clause of the Elasticsearch QueryDSL `bool` query.  The queries must appear in matching documents and will contribute to the score.
- 
----
-
-```sql
-FUNCTION dsl.must_not (
-	VARIADIC queries zdbquery[])
-RETURNS zdbquery
-```
-
-https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
-
-This is the `must_not` clause of the Elasticsearch QueryDSL `bool` query.  The queries must not appear in the matching documents. Clauses are executed in filter context meaning that scoring is ignored and clauses are considered for caching. Because scoring is ignored, a score of 0 for all documents is returned.
-
----
+#### `dsl.query_string()`
 
 ```sql
 FUNCTION dsl.query_string(
@@ -524,6 +661,8 @@ A query that uses a query parser in order to parse its content.  The query_strin
  
 ---
 
+#### `dsl.nested()`
+
 ```sql
 FUNCTION dsl.nested (
 	path name,
@@ -538,15 +677,19 @@ Nested query allows to query nested objects / docs (see nested mapping). The que
  
 ---
 
+#### `dsl.noteq()`
+
 ```sql
 FUNCTION dsl.noteq (
 	query zdbquery)
 RETURNS zdbquery
 ```
 
-Short-hand form of `dsl.must_not()`.
+Generates a `bool` query where the argument is the only member of the `bool` query's `must_not` clause.
  
 ---
+
+#### `dsl.phrase()`
 
 ```sql
 FUNCTION dsl.phrase (
@@ -562,6 +705,8 @@ Short-hand form of `dsl.match_phrase()`.
  
 ---
 
+#### `dsl.prefix()`
+
 ```sql
 FUNCTION dsl.prefix (
 	field name,
@@ -575,6 +720,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-prefix
 Matches documents that have fields containing terms with a specified prefix (not analyzed).
  
 ---
+
+#### `dsl.range()`
 
 ```sql
 FUNCTION dsl.range (
@@ -592,6 +739,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-
 Matches documents with fields that have terms within a certain range.  This form is for numeric values.
  
 ---
+
+#### `dsl.range()`
 
 ```sql
 FUNCTION dsl.range (
@@ -611,6 +760,8 @@ Matches documents with fields that have terms within a certain range.  This form
  
 ---
 
+#### `dsl.regexp()`
+
 ```sql
 FUNCTION dsl.regexp (
 	field name,
@@ -627,6 +778,8 @@ The regexp query allows you to use regular expression term queries.
  
 ---
 
+#### `dsl.script()`
+
 ```sql
 FUNCTION dsl.script (
 	source_code text,
@@ -641,18 +794,7 @@ A query allowing to define scripts as queries. They are typically used in a filt
  
 ---
 
-```sql
-FUNCTION dsl.should (
-	VARIADIC queries zdbquery[])
-RETURNS zdbquery
-```
-
-https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
-
-This is the `should` clause of the Elasticsearch QueryDSL `bool` query.  The queries should appear in matching documents and will contribute to the score.
-
- 
----
+#### `dsl.span_containing()`
 
 ```sql
 FUNCTION dsl.span_containing (
@@ -667,6 +809,8 @@ Returns matches which enclose another span query.
  
 ---
 
+#### `dsl.span_first()`
+
 ```sql
 FUNCTION dsl.span_first (
 	query zdbquery,
@@ -679,6 +823,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-f
 Matches spans near the beginning of a field.
  
 ---
+
+#### `dsl.span_masking()`
 
 ```sql
 FUNCTION dsl.span_masking (
@@ -693,6 +839,8 @@ Wrapper to allow span queries to participate in composite single-field span quer
  
 ---
 
+#### `dsl.span_multi()`
+
 ```sql
 FUNCTION dsl.span_multi (
 	query zdbquery)
@@ -704,6 +852,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-m
 Allows you to wrap a multi term query (one of `dsl.wildcard()`, `dsl.fuzzy()`, `dsl.prefix()`, `dsl.range()` or `dsl.regexp()` query) as a span query, so it can be nested. 
  
 ---
+
+#### `dsl.span_near()`
 
 ```sql
 FUNCTION dsl.span_near (
@@ -718,6 +868,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-n
 Matches spans which are near one another. One can specify slop, the maximum number of intervening unmatched positions, as well as whether matches are required to be in-order.
  
 ---
+
+#### `dsl.span_not()`
 
 ```sql
 FUNCTION dsl.span_not (
@@ -735,6 +887,8 @@ Removes matches which overlap with another span query or which are within x toke
  
 ---
 
+#### `dsl.span_or()`
+
 ```sql
 FUNCTION dsl.span_or (
 	VARIADIC clauses zdbquery[])
@@ -746,6 +900,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-o
 Matches the union of its span clauses.
  
 ---
+
+#### `dsl.span_term()`
 
 ```sql
 FUNCTION dsl.span_term (
@@ -761,6 +917,8 @@ Matches spans containing a term.
  
 ---
 
+#### `dsl.span_within()`
+
 ```sql
 FUNCTION dsl.span_within (
 	little zdbquery,
@@ -773,6 +931,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-w
 Returns matches which are enclosed inside another span query.
  
 ---
+
+#### `dsl.term()`
 
 ```sql
 FUNCTION dsl.term (
@@ -787,6 +947,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-term-q
 The term query finds documents that contain the **exact** term specified in the inverted index.  This form is for numeric terms. 
  
 ---
+
+#### `dsl.term()`
 
 ```sql
 FUNCTION dsl.term (
@@ -803,6 +965,8 @@ The term query finds documents that contain the **exact** term specified in the 
  
 ---
 
+#### `dsl.terms()`
+
 ```sql
 FUNCTION dsl.terms (
 	field name,
@@ -815,6 +979,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-
 Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for numeric terms.
  
 ---
+
+#### `dsl.terms()`
 
 ```sql
 FUNCTION dsl.terms (
@@ -829,6 +995,8 @@ Filters documents that have fields that match any of the provided terms (not ana
  
 ---
 
+#### `dsl.terms_array()`
+
 ```sql
 FUNCTION dsl.terms_array (
 	field name,
@@ -841,6 +1009,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-
 Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for an array of any kind of Postgres datatype.
  
 ---
+
+#### `dsl.terms_lookup()`
 
 ```sql
 FUNCTION dsl.terms_lookup (
@@ -857,6 +1027,8 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-
 When it’s needed to specify a terms filter with a lot of terms it can be beneficial to fetch those term values from a document in an index.
 
 ---
+
+#### `dsl.wildcard()`
 
 ```sql
 FUNCTION dsl.wildcard (
