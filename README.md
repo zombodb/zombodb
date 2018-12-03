@@ -50,10 +50,10 @@ Commerical support for all versions of ZomboDB is available by [contacting Zombo
  - Query using
     - Elasticsearch's [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax)
     - Raw Elasticsearch QueryDSL JSON
-    - ZomboDB's type-safe query builder SQL syntax
+    - ZomboDB's type-safe [query builder SQL syntax](QUERY-DSL.md)
     - Any combination of the above, even in combination with standard SQL
  - [Scoring and Highlighting Support](SCORING-HIGHLIGHTING.md)
- - Support for all Elasticsearch aggregations
+ - [Support for all Elasticsearch aggregations](AGGREGATIONS.md)
  - Automatic Elasticsearch Mapping Generation
     - Ability to map custom domains
     - Per-field custom mappings
@@ -66,8 +66,9 @@ Commerical support for all versions of ZomboDB is available by [contacting Zombo
 
  - Only one ZomboDB index per table
  - ZomboDB indexes with predicates (ie, [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are not supported
+ - `CREATE INDEX CONCURRENTLY` is not supported
 
-These limitations may be addressed in future versions of ZomboDB
+These limitations may be addressed in future versions of ZomboDB.
 
 
 ## System Requirements
