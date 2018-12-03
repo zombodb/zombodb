@@ -4,14 +4,14 @@ UPDATE events SET id = id WHERE id = 1;
 UPDATE events SET id = id WHERE id = 2;
 UPDATE events SET id = id WHERE id = 3;
 COMMIT;
-SELECT zdb.count('idxevents', should(terms('id', 1), terms('id', 2), terms('id', 3)));
+SELECT zdb.count('idxevents', dsl.or(terms('id', 1), terms('id', 2), terms('id', 3)));
  count 
 -------
      3
 (1 row)
 
 VACUUM events;
-SELECT zdb.count('idxevents', should(terms('id', 1), terms('id', 2), terms('id', 3)));
+SELECT zdb.count('idxevents', dsl.or(terms('id', 1), terms('id', 2), terms('id', 3)));
  count 
 -------
      3

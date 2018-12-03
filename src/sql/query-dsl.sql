@@ -44,20 +44,38 @@ CREATE OR REPLACE FUNCTION dsl.match_none() RETURNS zdbquery PARALLEL SAFE IMMUT
 $$;
 
 CREATE TYPE dsl.esqdsl_bool AS (should zdbquery[], must zdbquery[], must_not zdbquery[], filter zdbquery[]);
-CREATE OR REPLACE FUNCTION dsl.should(VARIADIC queries zdbquery[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
-    SELECT json_strip_nulls(json_build_object('bool', ROW(queries, NULL, NULL, NULL)::dsl.esqdsl_bool))::zdbquery;
+CREATE TYPE dsl.esqdsl_must AS (queries zdbquery[]);
+CREATE TYPE dsl.esqdsl_must_not AS (queries zdbquery[]);
+CREATE TYPE dsl.esqdsl_should AS (queries zdbquery[]);
+CREATE TYPE dsl.esqdsl_filter AS (queries zdbquery[]);
+
+CREATE OR REPLACE FUNCTION dsl.bool(must dsl.esqdsl_must DEFAULT NULL, must_not dsl.esqdsl_must_not DEFAULT NULL, should dsl.esqdsl_should DEFAULT NULL, filter dsl.esqdsl_filter DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT json_strip_nulls(json_build_object('bool', json_build_object('must', must.queries, 'must_not', must_not.queries, 'should', should.queries, 'filter', filter.queries)))::zdbquery;
 $$;
-CREATE OR REPLACE FUNCTION dsl.must(VARIADIC queries zdbquery[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
-    SELECT json_strip_nulls(json_build_object('bool', ROW(NULL, queries, NULL, NULL)::dsl.esqdsl_bool))::zdbquery;
+
+CREATE OR REPLACE FUNCTION dsl.should(VARIADIC queries zdbquery[]) RETURNS dsl.esqdsl_should PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT ROW(queries)::dsl.esqdsl_should;
 $$;
-CREATE OR REPLACE FUNCTION dsl.must_not(VARIADIC queries zdbquery[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
-    SELECT json_strip_nulls(json_build_object('bool', ROW(NULL, NULL, queries, NULL)::dsl.esqdsl_bool))::zdbquery;
+CREATE OR REPLACE FUNCTION dsl.must(VARIADIC queries zdbquery[]) RETURNS dsl.esqdsl_must PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT ROW(queries)::dsl.esqdsl_must;
 $$;
-CREATE OR REPLACE FUNCTION dsl.filter(VARIADIC queries zdbquery[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
-    SELECT json_strip_nulls(json_build_object('bool', ROW(NULL, NULL, NULL, queries)::dsl.esqdsl_bool))::zdbquery;
+CREATE OR REPLACE FUNCTION dsl.must_not(VARIADIC queries zdbquery[]) RETURNS dsl.esqdsl_must_not PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT ROW(queries)::dsl.esqdsl_must_not;
+$$;
+CREATE OR REPLACE FUNCTION dsl.filter(VARIADIC queries zdbquery[]) RETURNS dsl.esqdsl_filter PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT ROW(queries)::dsl.esqdsl_filter;
 $$;
 CREATE OR REPLACE FUNCTION dsl.noteq(query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
-    SELECT dsl.must_not(VARIADIC ARRAY[query]);
+    SELECT dsl.bool(must_not=>dsl.must_not(query));
+$$;
+CREATE OR REPLACE FUNCTION dsl.not(VARIADIC queries zdbquery[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT dsl.bool(must_not=>dsl.must_not(VARIADIC queries));
+$$;
+CREATE OR REPLACE FUNCTION dsl.and(VARIADIC queries zdbquery[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT dsl.bool(must=>dsl.must(VARIADIC queries));
+$$;
+CREATE OR REPLACE FUNCTION dsl.or(VARIADIC queries zdbquery[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT dsl.bool(should=>dsl.should(VARIADIC queries));
 $$;
 
 
