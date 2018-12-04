@@ -18,10 +18,10 @@ SELECT dsl.not('beer', 'wine', 'cheese');
 
 SELECT jsonb_pretty(
     dsl.bool(
-        must=>dsl.must('beer', 'wine', 'cheese'),
-        must_not=>dsl.must_not('beer', 'wine', 'cheese'),
-        should=>dsl.should('beer', 'wine', 'cheese'),
-        filter=>dsl.filter('beer', 'wine', 'cheese')
+        dsl.must('beer', 'wine', 'cheese'),
+        dsl.must_not('beer', 'wine', 'cheese'),
+        dsl.should('beer', 'wine', 'cheese'),
+        dsl.filter('beer', 'wine', 'cheese')
     )
 );
              jsonb_pretty              
@@ -102,7 +102,7 @@ SELECT jsonb_pretty(
 
 SELECT jsonb_pretty(
     dsl.bool(
-        must=>dsl.must('beer', 'wine', 'cheese')
+        dsl.must('beer', 'wine', 'cheese')
     )
 );
              jsonb_pretty              
@@ -132,7 +132,7 @@ SELECT jsonb_pretty(
 
 SELECT jsonb_pretty(
     dsl.bool(
-        must_not=>dsl.must_not('beer', 'wine', 'cheese')
+        dsl.must_not('beer', 'wine', 'cheese')
     )
 );
              jsonb_pretty              
@@ -162,7 +162,7 @@ SELECT jsonb_pretty(
 
 SELECT jsonb_pretty(
     dsl.bool(
-        should=>dsl.should('beer', 'wine', 'cheese')
+        dsl.should('beer', 'wine', 'cheese')
     )
 );
              jsonb_pretty              
@@ -192,7 +192,135 @@ SELECT jsonb_pretty(
 
 SELECT jsonb_pretty(
     dsl.bool(
-        filter=>dsl.filter('beer', 'wine', 'cheese')
+        dsl.filter('beer', 'wine', 'cheese')
+    )
+);
+             jsonb_pretty              
+---------------------------------------
+ {                                    +
+     "bool": {                        +
+         "filter": [                  +
+             {                        +
+                 "query_string": {    +
+                     "query": "beer"  +
+                 }                    +
+             },                       +
+             {                        +
+                 "query_string": {    +
+                     "query": "wine"  +
+                 }                    +
+             },                       +
+             {                        +
+                 "query_string": {    +
+                     "query": "cheese"+
+                 }                    +
+             }                        +
+         ]                            +
+     }                                +
+ }
+(1 row)
+
+SELECT jsonb_pretty(
+    dsl.bool(
+        dsl.must('beer'),
+        dsl.must('wine'),
+        dsl.must('cheese')
+    )
+);
+             jsonb_pretty              
+---------------------------------------
+ {                                    +
+     "bool": {                        +
+         "must": [                    +
+             {                        +
+                 "query_string": {    +
+                     "query": "beer"  +
+                 }                    +
+             },                       +
+             {                        +
+                 "query_string": {    +
+                     "query": "wine"  +
+                 }                    +
+             },                       +
+             {                        +
+                 "query_string": {    +
+                     "query": "cheese"+
+                 }                    +
+             }                        +
+         ]                            +
+     }                                +
+ }
+(1 row)
+
+SELECT jsonb_pretty(
+    dsl.bool(
+        dsl.must_not('beer'),
+        dsl.must_not('wine'),
+        dsl.must_not('cheese')
+    )
+);
+             jsonb_pretty              
+---------------------------------------
+ {                                    +
+     "bool": {                        +
+         "must_not": [                +
+             {                        +
+                 "query_string": {    +
+                     "query": "beer"  +
+                 }                    +
+             },                       +
+             {                        +
+                 "query_string": {    +
+                     "query": "wine"  +
+                 }                    +
+             },                       +
+             {                        +
+                 "query_string": {    +
+                     "query": "cheese"+
+                 }                    +
+             }                        +
+         ]                            +
+     }                                +
+ }
+(1 row)
+
+SELECT jsonb_pretty(
+    dsl.bool(
+        dsl.should('beer'),
+        dsl.should('wine'),
+        dsl.should('cheese')
+    )
+);
+             jsonb_pretty              
+---------------------------------------
+ {                                    +
+     "bool": {                        +
+         "should": [                  +
+             {                        +
+                 "query_string": {    +
+                     "query": "beer"  +
+                 }                    +
+             },                       +
+             {                        +
+                 "query_string": {    +
+                     "query": "wine"  +
+                 }                    +
+             },                       +
+             {                        +
+                 "query_string": {    +
+                     "query": "cheese"+
+                 }                    +
+             }                        +
+         ]                            +
+     }                                +
+ }
+(1 row)
+
+SELECT jsonb_pretty(
+    dsl.bool(
+        dsl.filter('beer'),
+        dsl.filter('wine'),
+        dsl.filter('cheese')
     )
 );
              jsonb_pretty              

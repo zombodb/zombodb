@@ -200,7 +200,7 @@ This allows you to specify Elastisearch's [`min_score`](https://www.elastic.co/g
 
 ## SQL Builder API Functions
 
-### Simple Boolean Function
+### Simple Boolean Functions
 
 #### `dsl.and()`
 
@@ -243,29 +243,120 @@ Generates an Elasticsearch `bool` query where all the arguments are part of the 
 
 ```sql
 FUNCTION dsl.bool(
-	must dsl.esqdsl_must DEFAULT NULL, 
-	must_not dsl.esqdsl_must_not DEFAULT NULL, 
-	should dsl.esqdsl_should DEFAULT NULL, 
-	filter dsl.esqdsl_filter DEFAULT NULL
+	VARIADIC queries dsl.esqdsl_bool_part
 ) RETURNS zdbquery
 ```
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
 
-This function represents the Elasticsearch `bool` query, where each sub-clause must be specified using matching SQL functions named `dsl.must()`, `dsl.must_not()`, `dsl.should()`, and `dsl.filter()`.
+This function represents the Elasticsearch `bool` query.  It takes one or more "boolean part" queries, which are generated using the SQL functions named `dsl.must()`, `dsl.must_not()`, `dsl.should()`, and `dsl.filter()`.
 
-Each of the arguments to `dsl.bool()` are optional.  As such, this function is designed to be used with Postgres' "named arguments" function-call syntax.    
+Multiple usages of the same boolean part will be merged together automatically.
 
 Example:
 
 ```sql
 SELECT dsl.bool(
-        must=>dsl.must('beer', 'wine', 'cheese'),
-        must_not=>dsl.must_not('beer', 'wine', 'cheese'),
-        should=>dsl.should('beer', 'wine', 'cheese'),
-        filter=>dsl.filter('beer', 'wine', 'cheese')
+        dsl.must('beer', 'wine', 'cheese'),
+        dsl.must_not('beer', 'wine', 'cheese'),
+        dsl.should('beer', 'wine', 'cheese'),
+        dsl.filter('beer', 'wine', 'cheese'),
+        dsl.must('lettuce', 'tomato', 'bread') -- we used dsl.must() above too!
     );
 ```
+
+Which ultimately generates the following Elasticsearch QueryDSL:
+
+```json
+{
+  "bool": {
+    "filter": [
+      {
+        "query_string": {
+          "query": "beer"
+        }
+      },
+      {
+        "query_string": {
+          "query": "wine"
+        }
+      },
+      {
+        "query_string": {
+          "query": "cheese"
+        }
+      }
+    ],
+    "must": [
+      {
+        "query_string": {
+          "query": "beer"
+        }
+      },
+      {
+        "query_string": {
+          "query": "wine"
+        }
+      },
+      {
+        "query_string": {
+          "query": "cheese"
+        }
+      },
+      {
+        "query_string": {
+          "query": "lettuce"
+        }
+      },
+      {
+        "query_string": {
+          "query": "tomato"
+        }
+      },
+      {
+        "query_string": {
+          "query": "bread"
+        }
+      }
+    ],
+    "must_not": [
+      {
+        "query_string": {
+          "query": "beer"
+        }
+      },
+      {
+        "query_string": {
+          "query": "wine"
+        }
+      },
+      {
+        "query_string": {
+          "query": "cheese"
+        }
+      }
+    ],
+    "should": [
+      {
+        "query_string": {
+          "query": "beer"
+        }
+      },
+      {
+        "query_string": {
+          "query": "wine"
+        }
+      },
+      {
+        "query_string": {
+          "query": "cheese"
+        }
+      }
+    ]
+  }
+}
+```
+
 
 ---
 
@@ -281,7 +372,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-q
 
 This is the `must` clause of the Elasticsearch QueryDSL `bool` query.  The queries must appear in matching documents and will contribute to the score.
 
-This function is designed to be used with the `must` argument of `dsl.bool()`.
+This function is designed to be used with the `must` argument of `dsl.bool()`.  Its arguments can be or or more of any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
 
 ---
 
@@ -297,7 +388,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-q
 
 This is the `must_not` clause of the Elasticsearch QueryDSL `bool` query.  The queries must not appear in the matching documents. Clauses are executed in filter context meaning that scoring is ignored and clauses are considered for caching. Because scoring is ignored, a score of 0 for all documents is returned.
 
-This function is designed to be used with the `must_not` argument of `dsl.bool()`.
+This function is designed to be used with the `must_not` argument of `dsl.bool()`.  Its arguments can be or or more of any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
 
 ---
 
@@ -313,7 +404,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-q
 
 This is the `should` clause of the Elasticsearch QueryDSL `bool` query.  The queries should appear in matching documents and will contribute to the score.
 
-This function is designed to be used with the `should` argument of `dsl.bool()`.
+This function is designed to be used with the `should` argument of `dsl.bool()`.  Its arguments can be or or more of any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
 
 ---
 
@@ -331,7 +422,7 @@ This is the `filter` object of an Elasticsearch QueryDSL `bool`.
 
 The clause (query) must appear in matching documents. However unlike must the score of the query will be ignored. Filter clauses are executed in filter context, meaning that scoring is ignored and clauses are considered for caching.
  
-This function is designed to be used with the `filter` argument of `dsl.bool()`.
+This function is designed to be used with the `filter` argument of `dsl.bool()`.  Its arguments can be or or more of any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
 
 ### Elasticsearch Query DSL Support
    
