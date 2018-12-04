@@ -1,6 +1,3 @@
---
--- simple cross-index join support... requires both dsl and agg functions already created
---
 CREATE OR REPLACE FUNCTION dsl.join(left_field name, index regclass, right_field name, query zdbquery, size int DEFAULT 0) RETURNS zdbquery PARALLEL SAFE STABLE LANGUAGE plpgsql AS $$
 BEGIN
     IF size > 0 THEN

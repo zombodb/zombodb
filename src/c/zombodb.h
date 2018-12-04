@@ -32,6 +32,6 @@
 #include "utils/utils.h"
 #include <assert.h>
 
-#define ZDB_VERSION "10-1.0.0b11"
+#define ZDB_VERSION "10-1.0.0b12"
 
 #endif /* __ZDB_ZDB__H__ */
