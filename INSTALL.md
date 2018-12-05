@@ -80,7 +80,7 @@ While it is unlikely, should a ZomboDB version upgrade require that indices be `
 
 Keep in mind that ZomboDB requires Elasticsearch 5.6+ or 6.x.
 
-Detailed advice about managing and configuring Elasticsearch clusters is outside the scope of this document, however commerical support can be purached from ZomboDB, LLC.  Feel free to contact us via https://www.zombodb.com/services.
+Detailed advice about managing and configuring Elasticsearch clusters is outside the scope of this document, however commerical support can be purchased from ZomboDB, LLC.  Feel free to contact us via https://www.zombodb.com/services.
 
 That said, ZomboDB has been tested against various cloud-hosted Elasticsearch providers such as Bonsai (https://bonsai.io) and Elastic's own [Elasticsearch Service](https://www.elastic.co/cloud/elasticsearch-service).  ZomboDB can also be used with your own internally-managed Elasticsearch clusters.
 
