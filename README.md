@@ -12,20 +12,6 @@ It doesn’t matter if you’re using an Elasticsearch cloud provider or managin
 
 ZomboDB allows you to use the power and scalability of Elasticsearch directly from Postgres.  You don’t have to manage transactions between Postgres and Elasticsearch, asynchronous indexing pipelines, complex reindexing processes, or multiple data-access code paths -- ZomboDB does it all for you.
 
-## Currently BETA
-
-This is a new version of ZomboDB that only supports Postgres 10 and doesn't require an Elasticsearch plugin.  As such, it's currently a beta release, with a production-ready release planned for the near future.
-
-If you've used ZomboDB before, you'll learn that this is a different and more advanced product. Please review all the documentation as many things (including SQL syntax and query language) have changed.
-
-Previous versions that support Postgres <=9.5 are still available, from these branches:
-
-- [Support for Elasticsearch 5.6](https://github.com/zombodb/zombodb/tree/master-es5.6)
-- [Support for Elasticsearch 2.4](https://github.com/zombodb/zombodb/tree/master-es2.4)
-- [Support for Elasticsearch 1.7](https://github.com/zombodb/zombodb/tree/master-es1.7)
-
-Commerical support for all versions of ZomboDB is available by [contacting ZomboDB, LLC](https://www.zombodb.com/services/).
-
 
 ## Quick Links
 
@@ -146,6 +132,19 @@ SELECT *
  - Twitter: [@zombodb](https://twitter.com/zombodb/)
  - via Github Issues and Pull Requests
  - https://www.zombodb.com/services/ or info@zombodb.com for commercial support
+
+## Older Versions
+
+This version of ZomboDB only supports Postgres 10 and doesn't require an Elasticsearch plugin.  
+
+Previous versions that support Postgres <=9.5, and require an Elasticsearch plugin, are still available, from these branches:
+
+- [Support for Elasticsearch 5.6](https://github.com/zombodb/zombodb/tree/master-es5.6) (active)
+- [Support for Elasticsearch 2.4](https://github.com/zombodb/zombodb/tree/master-es2.4) (unsupported)
+- [Support for Elasticsearch 1.7](https://github.com/zombodb/zombodb/tree/master-es1.7) (unsupported)
+
+Commerical support for all versions of ZomboDB is available by [contacting ZomboDB, LLC](https://www.zombodb.com/services/).
+
 
  
 ## History
