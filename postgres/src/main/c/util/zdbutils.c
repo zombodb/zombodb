@@ -49,14 +49,23 @@ typedef struct {
     uint32        epoch;
 } TxidEpoch;
 
+char *lookup_zdb_namespace(void) {
+    if (SPI_execute("select nspname from pg_namespace where oid = (select extnamespace from pg_extension where extname = 'zombodb');", true, 1) != SPI_OK_SELECT || SPI_processed != 1)
+        elog(ERROR, "Cannot determine ZomboDB's namespace");
+
+    return SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
+}
+
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
     char       *definition = "";
     StringInfo query;
+    char *ns;
 
     SPI_connect();
 
+    ns = lookup_zdb_namespace();
     query = makeStringInfo();
-    appendStringInfo(query, "select (to_json(name) || ':' || definition) from %s;", TextDatumGetCString(DirectFunctionCall1(quote_ident, CStringGetTextDatum(thing))));
+    appendStringInfo(query, "select (to_json(name) || ':' || definition) from %s.%s;", TextDatumGetCString(DirectFunctionCall1(quote_ident, CStringGetTextDatum(ns))), TextDatumGetCString(DirectFunctionCall1(quote_ident, CStringGetTextDatum(thing))));
 
     if (SPI_execute(query->data, true, 0) != SPI_OK_SELECT)
         elog(ERROR, "Problem looking up analysis thing with query: %s", query->data);
@@ -81,11 +90,13 @@ char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
 char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname) {
     char       *definition = NULL;
     StringInfo query;
+    char *ns;
 
     SPI_connect();
 
+    ns = lookup_zdb_namespace();
     query = makeStringInfo();
-    appendStringInfo(query, "select definition from zdb_mappings where table_name = %d::regclass and field_name = %s;", tableRelId, TextDatumGetCString(DirectFunctionCall1(quote_literal, CStringGetTextDatum(fieldname))));
+    appendStringInfo(query, "select definition from %s.zdb_mappings where table_name = %d::regclass and field_name = %s;", TextDatumGetCString(DirectFunctionCall1(quote_ident, CStringGetTextDatum(ns))), tableRelId, TextDatumGetCString(DirectFunctionCall1(quote_literal, CStringGetTextDatum(fieldname))));
 
     if (SPI_execute(query->data, true, 2) != SPI_OK_SELECT)
         elog(ERROR, "Problem looking up analysis thing with query: %s", query->data);
