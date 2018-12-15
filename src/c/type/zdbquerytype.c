@@ -54,8 +54,7 @@ static bool zdbquery_has_no_options(ZDBQueryType *query) {
 		   zdbquery_get_offset(query) == 0 &&
 		   zdbquery_get_min_score(query) == 0.0 &&
 		   zdbquery_get_row_estimate(query) == zdb_default_row_estimation_guc &&
-		   zdbquery_get_sort_field(query) == NULL &&
-		   zdbquery_get_sort_direction(query) == NULL &&
+		   zdbquery_get_sort_json(query) == NULL &&
 		   zdbquery_get_wants_score(query) == false;
 }
 
@@ -206,26 +205,16 @@ uint64 zdbquery_get_offset(ZDBQueryType *query) {
 	return estimate;
 }
 
-char *zdbquery_get_sort_field(ZDBQueryType *query) {
-	void *json      = parse_json_object_from_string(query->json, CurrentMemoryContext);
-	char *sortField = (char *) get_json_object_string(json, "sort_field", true);
+char *zdbquery_get_sort_json(ZDBQueryType *query) {
+	void *json        = parse_json_object_from_string(query->json, CurrentMemoryContext);
+	void *sortObject = (char *) get_json_object_object(json, "sort_json", true);
+	char *sortString = write_json(sortObject);
 
-	if (sortField != NULL)
-		sortField = pstrdup(sortField);
-
-	pfree(json);
-	return sortField;
-}
-
-char *zdbquery_get_sort_direction(ZDBQueryType *query) {
-	void *json          = parse_json_object_from_string(query->json, CurrentMemoryContext);
-	char *sortDirection = (char *) get_json_object_string(json, "sort_direction", true);
-
-	if (sortDirection != NULL)
-		sortDirection = pstrdup(sortDirection);
+	if (sortString != NULL)
+		sortString = pstrdup(sortString);
 
 	pfree(json);
-	return sortDirection;
+	return sortString;
 }
 
 char *zdbquery_get_query(ZDBQueryType *query) {
@@ -240,13 +229,12 @@ char *zdbquery_get_query(ZDBQueryType *query) {
 	return queryString;
 }
 
-#define ZDBQUERY_MAX_KEYS 8
+#define ZDBQUERY_MAX_KEYS 7
 typedef enum zdbquery_properties {
 	zdbquery_limit = 0,
 	zdbquery_offset,
 	zdbquery_min_score,
-	zdbquery_sort_field,
-	zdbquery_sort_direction,
+	zdbquery_sort_json,
 	zdbquery_row_estimate,
 	zdbquery_query_dsl,
 	zdbquery_wants_score
@@ -259,10 +247,8 @@ static zdbquery_properties zdbquery_key_to_propenum(char *key) {
 		return zdbquery_offset;
 	} else if (strcmp(key, "min_score") == 0) {
 		return zdbquery_min_score;
-	} else if (strcmp(key, "sort_field") == 0) {
-		return zdbquery_sort_field;
-	} else if (strcmp(key, "sort_direction") == 0) {
-		return zdbquery_sort_direction;
+	} else if (strcmp(key, "sort_json") == 0) {
+		return zdbquery_sort_json;
 	} else if (strcmp(key, "row_estimate") == 0) {
 		return zdbquery_row_estimate;
 	} else if (strcmp(key, "query_dsl") == 0) {
@@ -323,24 +309,14 @@ Datum zdb_set_query_property(PG_FUNCTION_ARGS) {
 			}
 				break;
 
-			case zdbquery_sort_field: {
-				char *sort_field = prop == i ? value : zdbquery_get_sort_field(input);
+			case zdbquery_sort_json: {
+				char *sort_json = prop == i ? value : zdbquery_get_sort_json(input);
 
-				if (sort_field != NULL) {
+				if (sort_json != NULL) {
 					if (query->len > 1)
 						appendStringInfoChar(query, ',');
-					appendStringInfo(query, "\"sort_field\":\"%s\"", sort_field);
-				}
-			}
-				break;
 
-			case zdbquery_sort_direction: {
-				char *sort_direction = prop == i ? value : zdbquery_get_sort_direction(input);
-
-				if (sort_direction != NULL) {
-					if (query->len > 1)
-						appendStringInfoChar(query, ',');
-					appendStringInfo(query, "\"sort_direction\":\"%s\"", sort_direction);
+					appendStringInfo(query, "\"sort_json\":%s", sort_json);
 				}
 			}
 				break;

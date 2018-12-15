@@ -184,6 +184,108 @@ SELECT * FROM table WHERE table ==> dsl.sort('id', 'asc', 'cats AND dogs') ORDER
 
 In practice, using `dsl.sort()` only makes sense when combined with `dsl.limit()`.
 
+There's an overloaded version of `dsl.sort()` (described below) that allows for more complex sorting descriptors.
+
+---
+
+#### `dsl.sd()`
+
+```sql
+FUNCTION dsl.sd(
+	field text, 
+	"order" dsl.es_sort_directions, 
+	mode dsl.es_sort_modes DEFAULT NULL
+) RETURNS dsl.es_sort_descriptor
+```
+
+`dsl.sd()` (which is short for "sort descriptor") allows you to contruct an object that represents sorting.  It is designed to be used as the arguments to `dsl.sort_many(zdbquery, VARIADIC dsl.es_sort_descriptor[])` (defined below).
+
+The possible values for the `mode` argument are `min`, `max`, `sum`, `avg`,  and `median`.  These are documented here:  https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html#_sort_mode_option
+
+Example:
+
+```sql
+SELECT * FROM table WHERE table ==> dsl.sort(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('price', 'desc', 'avg'));
+```
+
+---
+
+#### `dsl.sd_nested()`
+
+```sql
+FUNCTION dsl.sd_nested(
+	field text, "order" 
+	dsl.es_sort_directions, 
+	nested_path text, 
+	nested_filter zdbquery DEFAULT NULL, 
+	mode dsl.es_sort_modes DEFAULT NULL
+) RETURNS dsl.es_sort_descriptor
+```
+
+`dsl.sd_nested()` (which is short for "nested field sort descriptor") allows you to contruct an object that represents sorting for a nested field.  It is designed to be used as an argument to `dsl.sort_many(zdbquery, VARIADIC dsl.es_sort_descriptor[])` (defined below).
+
+The possible values for the `mode` argument are `min`, `max`, `sum`, `avg`,  and `median`.  These are documented here:  https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html#_sort_mode_option
+
+Example:
+
+```sql
+SELECT * FROM table WHERE table ==> dsl.sort(dsl.match_all(), dsl.sd_nested('offer.price', 'asc', 'offer', dsl.match_all(), 'avg'), dsl.sd('id', 'desc', 'avg'));
+```
+
+The above would first sort the results by the average value from the nested field `offer.price` in ascending order, and then by `id` in descending order.
+
+---
+
+#### `dsl.sort_many()`
+
+```sql
+FUNCTION dsl.sort_many(
+	query zdbquery, 
+	VARIADIC descriptors dsl.es_sort_descriptor[]
+) RETURNS zdbquery
+```
+
+This is similar to the `dsl.sort()` function described above, however it requires the query be the first argument and allows for a variable list of sort descriptors, that should be generated using the `dsl.sd()` or `dsl.sd_nested()` functions.
+
+Example:
+
+```sql
+SELECT * FROM table WHERE table ==> dsl.sort_many(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('price', 'desc', 'avg'));
+```
+
+---
+
+#### `dsl.sort_direct()`
+
+```sql
+FUNCTION dsl.sort_direct(
+	sort_json json, 
+	query zdbquery
+) RETURNS zdbquery
+```
+
+This function allows you to specify direct json to describe how Elasticsearch should sort the results.
+
+In the Elasticearch `_search` request body, this is the top-level `"sort"` property (https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-sort.html#nested-sorting).
+
+Example:
+
+```sql
+SELECT * FROM table WHERE table ==> dsl.sort_direct('{
+        "_script" : {
+            "type" : "number",
+            "script" : {
+                "lang": "painless",
+                "source": "doc[''field_name''].value * params.factor",
+                "params" : {
+                    "factor" : 1.1
+                }
+            },
+            "order" : "asc"
+        }
+    }', dsl.match_all());
+```
+
 ---
 
 #### `dsl.min_score()`

@@ -724,7 +724,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	StringInfo                 postData       = makeStringInfo();
 	StringInfo                 docvalueFields = makeStringInfo();
 	StringInfo                 response;
-	char                       *sortField, *sortDir;
+	char                       *sortJson;
 	uint64                     queryLimit     = zdbquery_get_limit(userQuery);
 	bool                       needScore;
 	uint64                     offset;
@@ -738,19 +738,18 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	limit     = queryLimit != 0 ? queryLimit : limit; /* prefer to use the limit specified in the query */
 	needScore = zdbquery_get_wants_score(userQuery);
 	offset    = zdbquery_get_offset(userQuery);
-	sortField = zdbquery_get_sort_field(userQuery);
-	sortDir   = zdbquery_get_sort_direction(userQuery);
+	sortJson  = zdbquery_get_sort_json(userQuery);
 	min_score = zdbquery_get_min_score(userQuery);
 
 	/* we'll assume we want scoring if we have a limit w/o a sort, so that we get the top scoring docs when the limit is applied */
-	needScore = needScore || (limit > 0 && sortField == NULL);
+	needScore = needScore || (limit > 0 && sortJson == NULL);
 
 	appendStringInfo(postData, "{\"track_scores\":%s,", needScore ? "true" : "false");
 	if (min_score > 0) {
 		appendStringInfo(postData, "\"min_score\":%f,", min_score);
 	}
-	if (sortField != NULL) {
-		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", sortField, sortDir);
+	if (sortJson != NULL) {
+		appendStringInfo(postData, "\"sort\":%s,", sortJson);
 	} else {
 		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "_doc",
 						 needScore ? "desc" : "asc");

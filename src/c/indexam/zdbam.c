@@ -456,45 +456,56 @@ static bool want_scores_walker(Node *node, WantScoresWalkerContext *context) {
 }
 
 static PlannedStmt *zdb_planner_hook(Query *parse, int cursorOptions, ParamListInfo boundParams) {
-	static Oid              arg[]      = {TIDOID};
-	Oid zdbqueryOid = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum("zdbquery")));
-	Oid zdbqueryarrayOid = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum("zdbquery[]")));
-	RewriteWalkerContext rewriteContext;
+	static Oid              arg[] = {TIDOID};
+	Oid                     zdbqueryOid;
+	Oid                     zdbqueryarrayOid;
+	RewriteWalkerContext    rewriteContext;
 	WantScoresWalkerContext wantScoresContext;
 
-	/* determine if the query wants scores or not */
-	wantScoresContext.in_te       = false;
-	wantScoresContext.in_sort     = false;
-	wantScoresContext.zdb_score   = ZDBFUNC("zdb", "score", 1, arg);
-	wantScoresContext.want_scores = false;
-	query_tree_walker(parse, want_scores_walker, &wantScoresContext, QTW_EXAMINE_RTES);
+	zdbqueryOid = TypenameGetTypid("zdbquery");
+	zdbqueryarrayOid = TypenameGetTypid("_zdbquery");
 
-	/* rewrite various ZDB operator comparisions */
-	rewriteContext.want_scores = wantScoresContext.want_scores;
-	rewriteContext.zdbquery_oid = zdbqueryOid;
+	if (zdbqueryOid != InvalidOid && zdbqueryarrayOid != InvalidOid) {
 
-	rewriteContext.anyelement_cmpfunc              = ZDBFUNC("zdb", "anyelement_cmpfunc", 2,
-															 oids2(ANYELEMENTOID, zdbqueryOid));
-	rewriteContext.anyelement_cmpfunc_array_should = ZDBFUNC("zdb", "anyelement_cmpfunc_array_should", 2,
-															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
-	rewriteContext.anyelement_cmpfunc_array_must   = ZDBFUNC("zdb", "anyelement_cmpfunc_array_must", 2,
-															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
-	rewriteContext.anyelement_cmpfunc_array_not    = ZDBFUNC("zdb", "anyelement_cmpfunc_array_not", 2,
-															 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+		/* determine if the query wants scores or not */
+		wantScoresContext.in_te       = false;
+		wantScoresContext.in_sort     = false;
+		wantScoresContext.zdb_score   = ZDBFUNC("zdb", "score", 1, arg);
+		wantScoresContext.want_scores = false;
+		query_tree_walker(parse, want_scores_walker, &wantScoresContext, QTW_EXAMINE_RTES);
 
-	rewriteContext.tid_cmpfunc                     = ZDBFUNC("zdb", "tid_cmpfunc", 2, oids2(TIDOID, zdbqueryOid));
-	rewriteContext.tid_cmpfunc_array_should        = ZDBFUNC("zdb", "tid_cmpfunc_array_should", 2,
-															 oids2(TIDOID, zdbqueryarrayOid));
-	rewriteContext.tid_cmpfunc_array_must          = ZDBFUNC("zdb", "tid_cmpfunc_array_must", 2,
-															 oids2(TIDOID, zdbqueryarrayOid));
-	rewriteContext.tid_cmpfunc_array_not           = ZDBFUNC("zdb", "tid_cmpfunc_array_not", 2,
-															 oids2(TIDOID, zdbqueryarrayOid));
+		/* rewrite various ZDB operator comparisions */
+		rewriteContext.want_scores  = wantScoresContext.want_scores;
+		rewriteContext.zdbquery_oid = zdbqueryOid;
 
-	rewriteContext.tid_operator                    = ZDBOPER("pg_catalog", "==>", zdbqueryOid);
-	rewriteContext.tid_array_should_operator       = ZDBOPER("pg_catalog", "==|", zdbqueryarrayOid);
-	rewriteContext.tid_array_must_operator         = ZDBOPER("pg_catalog", "==&", zdbqueryarrayOid);
-	rewriteContext.tid_array_not_operator          = ZDBOPER("pg_catalog", "==!", zdbqueryarrayOid);
-	query_tree_walker(parse, rewrite_walker, &rewriteContext, QTW_EXAMINE_RTES);
+		rewriteContext.anyelement_cmpfunc              = ZDBFUNC("zdb", "anyelement_cmpfunc", 2,
+																 oids2(ANYELEMENTOID, zdbqueryOid));
+		rewriteContext.anyelement_cmpfunc_array_should = ZDBFUNC("zdb", "anyelement_cmpfunc_array_should", 2,
+																 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+		rewriteContext.anyelement_cmpfunc_array_must   = ZDBFUNC("zdb", "anyelement_cmpfunc_array_must", 2,
+																 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+		rewriteContext.anyelement_cmpfunc_array_not    = ZDBFUNC("zdb", "anyelement_cmpfunc_array_not", 2,
+																 oids2(ANYELEMENTOID, zdbqueryarrayOid));
+
+		rewriteContext.tid_cmpfunc              = ZDBFUNC("zdb", "tid_cmpfunc", 2, oids2(TIDOID, zdbqueryOid));
+		rewriteContext.tid_cmpfunc_array_should = ZDBFUNC("zdb", "tid_cmpfunc_array_should", 2,
+														  oids2(TIDOID, zdbqueryarrayOid));
+		rewriteContext.tid_cmpfunc_array_must   = ZDBFUNC("zdb", "tid_cmpfunc_array_must", 2,
+														  oids2(TIDOID, zdbqueryarrayOid));
+		rewriteContext.tid_cmpfunc_array_not    = ZDBFUNC("zdb", "tid_cmpfunc_array_not", 2,
+														  oids2(TIDOID, zdbqueryarrayOid));
+
+		rewriteContext.tid_operator              = ZDBOPER("pg_catalog", "==>", zdbqueryOid);
+		rewriteContext.tid_array_should_operator = ZDBOPER("pg_catalog", "==|", zdbqueryarrayOid);
+		rewriteContext.tid_array_must_operator   = ZDBOPER("pg_catalog", "==&", zdbqueryarrayOid);
+		rewriteContext.tid_array_not_operator    = ZDBOPER("pg_catalog", "==!", zdbqueryarrayOid);
+		query_tree_walker(parse, rewrite_walker, &rewriteContext, QTW_EXAMINE_RTES);
+	} else {
+		if (zdbqueryOid == InvalidOid)
+			elog(LOG, "[zombodb] Cannot find type named 'zdbquery'");
+		if (zdbqueryarrayOid == InvalidOid)
+			elog(LOG, "[zombodb] Cannot find type named '_zdbquery' ('zdbquery[]')");
+	}
 
 	/* call Postgres' planner */
 	if (prev_PlannerHook)
