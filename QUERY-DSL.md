@@ -205,7 +205,7 @@ The possible values for the `mode` argument are `min`, `max`, `sum`, `avg`,  and
 Example:
 
 ```sql
-SELECT * FROM table WHERE table ==> dsl.sort(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('price', 'desc', 'avg'));
+SELECT * FROM table WHERE table ==> dsl.sort_many(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('price', 'desc', 'avg'));
 ```
 
 ---
@@ -229,7 +229,7 @@ The possible values for the `mode` argument are `min`, `max`, `sum`, `avg`,  and
 Example:
 
 ```sql
-SELECT * FROM table WHERE table ==> dsl.sort(dsl.match_all(), dsl.sd_nested('offer.price', 'asc', 'offer', dsl.match_all(), 'avg'), dsl.sd('id', 'desc', 'avg'));
+SELECT * FROM table WHERE table ==> dsl.sort_many(dsl.match_all(), dsl.sd_nested('offer.price', 'asc', 'offer', dsl.match_all(), 'avg'), dsl.sd('id', 'desc', 'avg'));
 ```
 
 The above would first sort the results by the average value from the nested field `offer.price` in ascending order, and then by `id` in descending order.
