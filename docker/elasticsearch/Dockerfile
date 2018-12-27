@@ -9,7 +9,7 @@
 FROM java:8
 
 ENV ES_PKG_NAME elasticsearch-5.6.4
-ENV ZOMBODB_VER 5.6.4-1.0.10
+ENV ZOMBODB_VER 5.6.4-1.0.11
 
 # need a non-root user to run elasticsearch
 RUN useradd -ms /bin/bash elastic
