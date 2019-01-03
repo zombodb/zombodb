@@ -200,6 +200,8 @@ static ProcessUtility_hook_type prev_ProcessUtilityHook = NULL;
 static planner_hook_type        prev_PlannerHook        = NULL;
 static int                      executor_depth          = 0;
 
+bool zdb_is_performing_vacuum = false;
+
 int  ZDB_LOG_LEVEL;
 char *zdb_default_elasticsearch_url_guc;
 int  zdb_default_row_estimation_guc;
@@ -1328,6 +1330,7 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				int                        deleted = 0, xmaxes_reset = 0;
 
 				zdb_ignore_visibility_guc = true;
+                zdb_is_performing_vacuum  = true;
 
 				if (strcmp(ZDBIndexOptionsGetRefreshInterval(info->index), "-1") != 0) {
 					/*
@@ -1481,10 +1484,12 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				}
 
 				zdb_ignore_visibility_guc = savedIgnoreVisibility;
+                zdb_is_performing_vacuum  = false;
 			}
 		PG_CATCH();
 			{
 				zdb_ignore_visibility_guc = savedIgnoreVisibility;
+                zdb_is_performing_vacuum  = false;
 				PG_RE_THROW();
 			}
 	PG_END_TRY();

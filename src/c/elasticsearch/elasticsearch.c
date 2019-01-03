@@ -704,7 +704,7 @@ uint64 ElasticsearchEstimateSelectivity(Relation indexRel, ZDBQueryType *query) 
 	StringInfo response;
 	Datum      count;
 
-	appendStringInfo(postData, "{\"query\":%s}", convert_to_query_dsl(indexRel, query));
+	appendStringInfo(postData, "{\"query\":%s}", convert_to_query_dsl(indexRel, query, false));
 	appendStringInfo(request,
 					 "%s%s/%s/_count?filter_path=count",
 					 ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel),
@@ -719,7 +719,7 @@ uint64 ElasticsearchEstimateSelectivity(Relation indexRel, ZDBQueryType *query) 
 
 ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryType *userQuery, bool use_id, uint64 limit, List *highlights, char **extraFields, int nextraFields) {
 	ElasticsearchScrollContext *context       = palloc0(sizeof(ElasticsearchScrollContext));
-	char                       *queryDSL      = convert_to_query_dsl(indexRel, userQuery);
+    char                       *queryDSL;
 	StringInfo                 request        = makeStringInfo();
 	StringInfo                 postData       = makeStringInfo();
 	StringInfo                 docvalueFields = makeStringInfo();
@@ -741,7 +741,9 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	sortJson  = zdbquery_get_sort_json(userQuery);
 	min_score = zdbquery_get_min_score(userQuery);
 
-	/* we'll assume we want scoring if we have a limit w/o a sort, so that we get the top scoring docs when the limit is applied */
+    queryDSL = convert_to_query_dsl(indexRel, userQuery, limit > 0);
+
+    /* we'll assume we want scoring if we have a limit w/o a sort, so that we get the top scoring docs when the limit is applied */
 	needScore = needScore || (limit > 0 && sortJson == NULL);
 
 	appendStringInfo(postData, "{\"track_scores\":%s,", needScore ? "true" : "false");
@@ -981,7 +983,7 @@ char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query) {
 	StringInfo postData = makeStringInfo();
 	StringInfo response;
 
-	appendStringInfo(postData, "{\"profile\":true, \"query\":%s}", convert_to_query_dsl(indexRel, query));
+	appendStringInfo(postData, "{\"profile\":true, \"query\":%s}", convert_to_query_dsl(indexRel, query, false));
 
 	appendStringInfo(request, "%s%s/_search?size=0&filter_path=profile&pretty", ZDBIndexOptionsGetUrl(indexRel),
 					 ZDBIndexOptionsGetIndexName(indexRel));
@@ -1004,7 +1006,7 @@ uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query) {
 
 	finish_inserts(false);
 
-	appendStringInfo(postData, "{\"query\":%s}", convert_to_query_dsl(indexRel, query));
+	appendStringInfo(postData, "{\"query\":%s}", convert_to_query_dsl(indexRel, query, true));
 
 	appendStringInfo(request, "%s%s/_count?filter_path=count", ZDBIndexOptionsGetUrl(indexRel),
 					 ZDBIndexOptionsGetAlias(indexRel));
@@ -1031,7 +1033,7 @@ static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, b
 
 	appendStringInfoCharMacro(postData, '{');
 	if (query != NULL)
-		appendStringInfo(postData, "\"query\":%s,", convert_to_query_dsl(indexRel, query));
+		appendStringInfo(postData, "\"query\":%s,", convert_to_query_dsl(indexRel, query, true));
 
 	if (arbitrary) {
 		appendStringInfo(postData, "\"aggs\":%s", agg);
@@ -1101,7 +1103,7 @@ static StringInfo terms_agg_only_keys(Relation indexRel, char *field, ZDBQueryTy
 
 	appendStringInfoCharMacro(postData, '{');
 	if (query != NULL)
-		appendStringInfo(postData, "\"query\":%s,", convert_to_query_dsl(indexRel, query));
+		appendStringInfo(postData, "\"query\":%s,", convert_to_query_dsl(indexRel, query, true));
 
 	appendStringInfo(postData, "\"aggs\":{\"the_agg\":{\"terms\":{\"field\":\"%s\",\"size\":%lu%s}}}", field, size,
 					 orderClause);
@@ -1271,7 +1273,7 @@ char *ElasticsearchFilters(Relation indexRel, char **labels, ZDBQueryType **filt
 	appendStringInfo(agg, "{\"filters\":{\"filters\":{");
 	for (i = 0; i < nfilters; i++) {
 		if (i > 0) appendStringInfoCharMacro(agg, ',');
-		appendStringInfo(agg, "\"%s\":%s", labels[i], convert_to_query_dsl(indexRel, filters[i]));
+		appendStringInfo(agg, "\"%s\":%s", labels[i], convert_to_query_dsl(indexRel, filters[i], true));
 	}
 	appendStringInfo(agg, "}}}");
 
@@ -1305,7 +1307,7 @@ char *ElasticsearchAdjacencyMatrix(Relation indexRel, char **labels, ZDBQueryTyp
 	appendStringInfo(agg, "{\"adjacency_matrix\":{\"filters\":{");
 	for (i = 0; i < nfilters; i++) {
 		if (i > 0) appendStringInfoCharMacro(agg, ',');
-		appendStringInfo(agg, "\"%s\":%s", labels[i], convert_to_query_dsl(indexRel, filters[i]));
+		appendStringInfo(agg, "\"%s\":%s", labels[i], convert_to_query_dsl(indexRel, filters[i], true));
 	}
 	appendStringInfo(agg, "}}}");
 

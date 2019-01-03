@@ -20,7 +20,7 @@
 #include "zombodb.h"
 
 char *convert_to_query_dsl_not_wrapped(char *input);
-char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query);
+char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query, bool apply_visibility);
 ZDBQueryType *array_to_should_query_dsl(ArrayType *array);
 ZDBQueryType *array_to_must_query_dsl(ArrayType *array);
 ZDBQueryType *array_to_not_query_dsl(ArrayType *array);

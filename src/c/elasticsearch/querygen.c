@@ -26,6 +26,7 @@ extern Datum zdb_internal_visibility_clause(PG_FUNCTION_ARGS);
 extern bool zdb_ignore_visibility_guc;
 
 static char *wrap_with_visibility_query(Relation indexRel, char *query);
+static char *wrap_with_fast_visibility_query(Relation indexRel, char *query);
 
 char *convert_to_query_dsl_not_wrapped(char *input) {
 	/* trim away whitespace from the query */
@@ -118,12 +119,16 @@ ZDBQueryType *array_to_not_query_dsl(ArrayType *array) {
 	return to_bool_query(array, "must_not");
 }
 
-char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query) {
+char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query, bool apply_visibility) {
 	char *unwrapped;
 	char *rc;
 
 	unwrapped = convert_to_query_dsl_not_wrapped(zdbquery_get_query(query));
-	rc        = wrap_with_visibility_query(indexRel, unwrapped);
+	if (apply_visibility) {
+		rc = wrap_with_visibility_query(indexRel, unwrapped);
+	} else {
+		rc = wrap_with_fast_visibility_query(indexRel, unwrapped);
+	}
 
 	if (unwrapped != rc)
 		pfree(unwrapped);
@@ -186,4 +191,11 @@ static char *wrap_with_visibility_query(Relation indexRel, char *query) {
 		/* wrap the input query with the visibility query */
 		return psprintf("{\"bool\":{\"must\":[%s],\"filter\":%s}}", query, zdbquery_get_query(vis));
 	}
+}
+
+static char *wrap_with_fast_visibility_query(Relation indexRel, char *query) {
+	if (zdb_is_performing_vacuum)
+		return query;
+	
+    return psprintf("{\"bool\":{\"must\":[%s],\"filter\":[{\"exists\":{\"field\":\"zdb_ctid\"}}]}}", query);
 }
