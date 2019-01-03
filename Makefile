@@ -27,7 +27,7 @@ PGFILEDESC = "ZomboDB"
 #
 # object files 
 #
-PG_CPPFLAGS += -Isrc/c/ -O0
+PG_CPPFLAGS += -Isrc/c/
 SHLIB_LINK += -lcurl -lz
 OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g)
 
