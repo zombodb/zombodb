@@ -127,7 +127,7 @@ This approach can be quite powerful as you can set, per field, all the mapping p
 
 
 ```sql
-FUNCTION zdb.define_field_mapping(table_name regclass, field_name name, definition json) 
+FUNCTION zdb.define_field_mapping(table_name regclass, field_name text, definition json) 
 ```
 
 If you need to define a field mapping for a specific field in a specific table, this is the function to use.  You can specify any [custom mapping definition json](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-params.html) that is supported by Elasticsearch.
@@ -137,7 +137,7 @@ Creating or changing a field mapping requires a `REINDEX` of the specified table
 ---
 
 ```sql
-FUNCTION zdb.define_es_only_field(table_name regclass, field_name name, definition json)
+FUNCTION zdb.define_es_only_field(table_name regclass, field_name text, definition json)
 ```
 
 If you want a custom field that only exists in the Elasticsearch index (perhaps as a target to the mapping [`copy_to`](https://www.elastic.co/guide/en/elasticsearch/reference/current/copy-to.html) property, you can use this.
@@ -173,7 +173,7 @@ ZomboDB provides a few functions that can be used to evaluate how an analyzer ac
 ```sql
 FUNCTION zdb.analyze_with_field(
 	index regclass, 
-	field name, 
+	field text, 
 	text text) 
 RETURNS TABLE (
 	type text, 
