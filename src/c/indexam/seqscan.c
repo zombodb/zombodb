@@ -99,7 +99,8 @@ static HTAB *create_ctid_map(Relation heapRel, Relation indexRel, ZDBQueryType *
 		float4          score;
 		zdb_json_object highlights;
 
-		ElasticsearchGetNextItemPointer(scroll, &key.ctid, NULL, &score, &highlights);
+		if (!ElasticsearchGetNextItemPointer(scroll, &key.ctid, NULL, &score, &highlights))
+			break;
 
 		entry = hash_search(scoreHash, &key, HASH_ENTER, &found);
 		entry->score = score;

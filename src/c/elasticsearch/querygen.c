@@ -118,12 +118,16 @@ ZDBQueryType *array_to_not_query_dsl(ArrayType *array) {
 	return to_bool_query(array, "must_not");
 }
 
-char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query) {
+char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query, bool apply_visibility) {
 	char *unwrapped;
 	char *rc;
 
 	unwrapped = convert_to_query_dsl_not_wrapped(zdbquery_get_query(query));
-	rc        = wrap_with_visibility_query(indexRel, unwrapped);
+	if (apply_visibility) {
+		rc = wrap_with_visibility_query(indexRel, unwrapped);
+	} else {
+		rc = unwrapped;
+	}
 
 	if (unwrapped != rc)
 		pfree(unwrapped);

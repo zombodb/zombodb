@@ -1,0 +1,14 @@
+SET zdb.ignore_visibility TO off;
+SELECT count(*) FROM events WHERE events ==> dsl.match_all();
+ count  
+--------
+ 126245
+(1 row)
+
+SET zdb.ignore_visibility TO on;
+SELECT count(*) FROM events WHERE events ==> dsl.match_all();
+ count  
+--------
+ 126245
+(1 row)
+
