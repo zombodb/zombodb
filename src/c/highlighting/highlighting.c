@@ -99,8 +99,8 @@ static bool find_highlights_expr_walker(Node *node, HighlightWalkerContext *cont
 
 				if (IsA(second, Const)) {
 					Const *arg = (Const *) second;
-					if (arg->consttype == NAMEOID) {
-						info->name = DatumGetName(arg->constvalue)->data;
+					if (arg->consttype == TEXTOID) {
+						info->name = pstrdup(TextDatumGetCString(arg->constvalue));
 					} else {
 						ereport(ERROR,
 								(errcode(ERRCODE_INVALID_ARGUMENT_FOR_NTH_VALUE),
@@ -243,7 +243,7 @@ static bool find_highlights_walker(PlanState *state, HighlightWalkerContext *con
 List *extract_highlight_info(IndexScanDesc scan, Oid healRelid) {
 	QueryDesc              *queryDesc = (QueryDesc *) linitial(currentQueryStack);
 	HighlightWalkerContext context;
-	Oid                    argtypes[] = {TIDOID, NAMEOID, JSONOID};
+	Oid                    argtypes[] = {TIDOID, TEXTOID, JSONOID};
 
 	context.heapRelid  = healRelid;
 	context.scan       = scan;
@@ -331,7 +331,7 @@ void highlight_register_callback(Oid heapOid, highlight_lookup_callback callback
 	MemoryContextSwitchTo(oldContext);
 }
 
-static Datum highlight_lookup_highlights(Oid heapOid, ItemPointer ctid, Name field) {
+static Datum highlight_lookup_highlights(Oid heapOid, ItemPointer ctid, ZDBHighlightFieldnameData *field) {
 	ListCell        *lc, *lc2, *lc3;
 	ArrayBuildState *astate = initArrayResult(TEXTOID, CurrentMemoryContext, false);
 
@@ -360,7 +360,7 @@ static Datum highlight_lookup_highlights(Oid heapOid, ItemPointer ctid, Name fie
 
 Datum zdb_highlight(PG_FUNCTION_ARGS) {
 	ItemPointer ctid      = (ItemPointer) PG_GETARG_POINTER(0);
-	Name        field     = PG_GETARG_NAME(1);
+	char        *fieldName = GET_STR(PG_GETARG_TEXT_P(1));
 	FuncExpr    *funcExpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
 	Node        *firstArg = linitial(funcExpr->args);
 
@@ -368,6 +368,8 @@ Datum zdb_highlight(PG_FUNCTION_ARGS) {
 		Var           *var          = (Var *) firstArg;
 		QueryDesc     *currentQuery = linitial(currentQueryStack);
 		RangeTblEntry *rentry       = rt_fetch(var->varnoold, currentQuery->plannedstmt->rtable);
+		ZDBHighlightFieldnameData *field = palloc0(sizeof(ZDBHighlightFieldnameData));
+		memcpy(field->data, fieldName, Min(sizeof(ZDBHighlightFieldnameData), strlen(fieldName)));
 
 		PG_RETURN_DATUM(highlight_lookup_highlights(rentry->relid, ctid, field));
 	} else {

@@ -61,7 +61,7 @@ static float4 scoring_cb(ItemPointer ctid, void *arg) {
 	return 0.0;
 }
 
-static List *highlight_cb(ItemPointer ctid, Name field, void *arg) {
+static List *highlight_cb(ItemPointer ctid, ZDBHighlightFieldnameData *field, void *arg) {
 	HTAB              *hash = (HTAB *) arg;
 	ZDBHighlightKey   key;
 	ZDBHighlightEntry *entry;
@@ -71,7 +71,7 @@ static List *highlight_cb(ItemPointer ctid, Name field, void *arg) {
 	assert(field != NULL);
 
 	memset(&key, 0, sizeof(ZDBHighlightKey));
-	memcpy(&key.field, field, NAMEDATALEN);
+	memcpy(&key.field.data, field->data, HIGHLIGHT_FIELD_MAX_LENGTH);
 	ItemPointerCopy(ctid, &key.ctid);
 
 	entry = hash_search(hash, &key, HASH_FIND, &found);

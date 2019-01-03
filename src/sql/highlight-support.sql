@@ -62,4 +62,4 @@ CREATE OR REPLACE FUNCTION highlight(
         )::zdb.esqdsl_highlight)
     );
 $$;
-CREATE OR REPLACE FUNCTION highlight(ctid tid, field name, highlight_definition json DEFAULT highlight()) RETURNS text[] PARALLEL UNSAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_highlight';
+CREATE OR REPLACE FUNCTION highlight(ctid tid, field text, highlight_definition json DEFAULT highlight()) RETURNS text[] PARALLEL UNSAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_highlight';

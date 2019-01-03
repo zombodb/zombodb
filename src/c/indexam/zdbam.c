@@ -1611,7 +1611,7 @@ static float4 scoring_cb(ItemPointer ctid, void *arg) {
 	return 0;
 }
 
-static List *highlight_cb(ItemPointer ctid, Name field, void *arg) {
+static List *highlight_cb(ItemPointer ctid, ZDBHighlightFieldnameData *field, void *arg) {
 	ZDBScanContext *context = (ZDBScanContext *) arg;
 
 	assert(ctid != NULL);
@@ -1624,7 +1624,7 @@ static List *highlight_cb(ItemPointer ctid, Name field, void *arg) {
 
 		memset(&key, 0, sizeof(ZDBHighlightKey));
 		ItemPointerCopy(ctid, &key.ctid);
-		memcpy(&key.field, field, sizeof(NameData));
+		memcpy(&key.field.data, field->data, HIGHLIGHT_FIELD_MAX_LENGTH);
 
 		entry = hash_search(context->highlightLookup, &key, HASH_FIND, &found);
 		if (entry != NULL && found)

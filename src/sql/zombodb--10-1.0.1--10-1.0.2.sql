@@ -25,6 +25,7 @@ DROP FUNCTION dsl.nested;
 DROP FUNCTION dsl.span_term;
 DROP FUNCTION dsl.span_masking;
 DROP TYPE dsl.esqdsl_nested;
+DROP FUNCTION zdb.highlight(tid, name, json);
 
 --
 -- replace functions and types
@@ -145,6 +146,7 @@ CREATE OR REPLACE FUNCTION dsl.span_masking(field text, query zdbquery) RETURNS 
     SELECT json_strip_nulls(json_build_object('field_masking_span', json_build_object('query', query, 'field', field)))::zdbquery;
 $$;
 
+CREATE OR REPLACE FUNCTION highlight(ctid tid, field text, highlight_definition json DEFAULT highlight()) RETURNS text[] PARALLEL UNSAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_highlight';
 
 
 
