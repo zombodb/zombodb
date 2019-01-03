@@ -32,7 +32,7 @@ CREATE TABLE normalizers (
 
 CREATE TABLE mappings (
   table_name regclass NOT NULL,
-  field_name name NOT NULL,
+  field_name text NOT NULL,
   definition jsonb NOT NULL,
   es_only boolean NOT NULL DEFAULT false,
   PRIMARY KEY (table_name, field_name)
@@ -77,12 +77,12 @@ CREATE OR REPLACE FUNCTION define_normalizer(name text, definition json) RETURNS
   INSERT INTO zdb.normalizers(name, definition) VALUES ($1, $2);
 $$;
 
-CREATE OR REPLACE FUNCTION  define_field_mapping(table_name regclass, field_name name, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
+CREATE OR REPLACE FUNCTION define_field_mapping(table_name regclass, field_name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
   DELETE FROM zdb.mappings WHERE table_name = $1 AND field_name = $2;
   INSERT INTO zdb.mappings(table_name, field_name, definition) VALUES ($1, $2, $3);
 $$;
 
-CREATE OR REPLACE FUNCTION define_es_only_field(table_name regclass, field_name name, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
+CREATE OR REPLACE FUNCTION define_es_only_field(table_name regclass, field_name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
   DELETE FROM zdb.mappings WHERE table_name = $1 AND field_name = $2;
   INSERT INTO zdb.mappings(table_name, field_name, definition, es_only) VALUES ($1, $2, $3, true);
 $$;

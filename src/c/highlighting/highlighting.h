@@ -25,9 +25,14 @@ typedef struct ZDBHighlightInfo {
 	char *json;
 } ZDBHighlightInfo;
 
+#define HIGHLIGHT_FIELD_MAX_LENGTH 8192
+typedef struct ZDBHighlightFieldnameData {
+	char data[HIGHLIGHT_FIELD_MAX_LENGTH];
+} ZDBHighlightFieldnameData;
+
 typedef struct ZDBHighlightKey {
 	ItemPointerData ctid;
-	NameData        field;
+	ZDBHighlightFieldnameData field;
 } ZDBHighlightKey;
 
 typedef struct ZDBHighlightEntry {
@@ -35,7 +40,7 @@ typedef struct ZDBHighlightEntry {
 	List            *highlights;
 } ZDBHighlightEntry;
 
-typedef List *(*highlight_lookup_callback)(ItemPointer ctid, Name field, void *arg);
+typedef List *(*highlight_lookup_callback)(ItemPointer ctid, ZDBHighlightFieldnameData *field, void *arg);
 
 void highlight_support_init(void);
 void highlight_support_cleanup(void);

@@ -123,37 +123,37 @@ $$;
 
 CREATE TYPE dsl.esqdsl_term_text AS (value text, boost real);
 CREATE TYPE dsl.esqdsl_term_numeric AS (value numeric, boost real);
-CREATE OR REPLACE FUNCTION dsl.term(field name, value text, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.term(field text, value text, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('term', json_build_object(field, ROW(value, boost)::dsl.esqdsl_term_text)))::zdbquery;
 $$;
-CREATE OR REPLACE FUNCTION dsl.term(field name, value numeric, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.term(field text, value numeric, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('term', json_build_object(field, ROW(value, boost)::dsl.esqdsl_term_numeric)))::zdbquery;
 $$;
 
 
-CREATE OR REPLACE FUNCTION dsl.terms(field name, VARIADIC "values" text[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.terms(field text, VARIADIC "values" text[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('terms', json_build_object(field, "values")))::zdbquery;
 $$;
-CREATE OR REPLACE FUNCTION dsl.terms(field name, VARIADIC "values" numeric[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.terms(field text, VARIADIC "values" numeric[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('terms', json_build_object(field, "values")))::zdbquery;
 $$;
-CREATE OR REPLACE FUNCTION dsl.terms_array(field name, "values" anyarray) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.terms_array(field text, "values" anyarray) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('terms', json_build_object(field, "values")))::zdbquery;
 $$;
 
 
 CREATE TYPE dsl.esqdsl_terms_lookup AS (index text, type text, path text, id text);
-CREATE OR REPLACE FUNCTION dsl.terms_lookup(field name, index text, type text, path text, id text) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.terms_lookup(field text, index text, type text, path text, id text) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('terms', json_build_object(field, ROW(index, type, path, id)::dsl.esqdsl_terms_lookup)))::zdbquery;
 $$;
 
 
 CREATE TYPE dsl.esqdsl_range_text AS (lt text, gt text, lte text, gte text, boost real);
 CREATE TYPE dsl.esqdsl_range_numeric AS (lt numeric, gt numeric, lte numeric, gte numeric, boost real);
-CREATE OR REPLACE FUNCTION dsl.range(field name, lt text DEFAULT NULL, gt text DEFAULT NULL, lte text DEFAULT NULL, gte text DEFAULT NULL, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.range(field text, lt text DEFAULT NULL, gt text DEFAULT NULL, lte text DEFAULT NULL, gte text DEFAULT NULL, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('range', json_build_object(field, ROW(lt, gt, lte, gte, boost)::dsl.esqdsl_range_text)))::zdbquery;
 $$;
-CREATE OR REPLACE FUNCTION dsl.range(field name, lt numeric DEFAULT NULL, gt numeric DEFAULT NULL, lte numeric DEFAULT NULL, gte numeric DEFAULT NULL, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.range(field text, lt numeric DEFAULT NULL, gt numeric DEFAULT NULL, lte numeric DEFAULT NULL, gte numeric DEFAULT NULL, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('range', json_build_object(field, ROW(lt, gt, lte, gte, boost)::dsl.esqdsl_range_text)))::zdbquery;
 $$;
 
@@ -168,26 +168,26 @@ $$;
 
 
 CREATE TYPE dsl.esqdsl_prefix AS (value text, boost real);
-CREATE OR REPLACE FUNCTION dsl.prefix(field name, prefix text, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.prefix(field text, prefix text, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('prefix', json_build_object(field, ROW(prefix, boost)::dsl.esqdsl_prefix)))::zdbquery;
 $$;
 
 
 CREATE TYPE dsl.esqdsl_wildcard AS (value text, boost real);
-CREATE OR REPLACE FUNCTION dsl.wildcard(field name, wildcard text, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.wildcard(field text, wildcard text, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('wildcard', json_build_object(field, ROW(wildcard, boost)::dsl.esqdsl_wildcard)))::zdbquery;
 $$;
 
 
 CREATE TYPE dsl.es_regexp_flags AS ENUM ('ALL', 'ANYSTRING', 'COMPLEMENT', 'EMPTY', 'INTERSECTION', 'INTERVAL', 'NONE');
 CREATE TYPE dsl.esqdsl_regexp AS (value text, flags text, max_determined_states int, boost real);
-CREATE OR REPLACE FUNCTION dsl.regexp(field name, regexp text, boost real DEFAULT NULL, flags dsl.es_regexp_flags[] DEFAULT NULL, max_determinized_states int DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.regexp(field text, regexp text, boost real DEFAULT NULL, flags dsl.es_regexp_flags[] DEFAULT NULL, max_determinized_states int DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('regexp', json_build_object(field, ROW(regexp, (SELECT array_to_string(array_agg(DISTINCT flag), '|') FROM unnest(flags) flag), max_determinized_states, boost)::dsl.esqdsl_regexp)))::zdbquery;
 $$;
 
 
 CREATE TYPE dsl.esqdsl_fuzzy AS (value text, boost real, fuzziness int, prefix_length int, max_expansions int, transpositions boolean);
-CREATE OR REPLACE FUNCTION dsl.fuzzy(field name, value text, boost real DEFAULT NULL, fuzziness int DEFAULT NULL, prefix_length int DEFAULT NULL, max_expansions int DEFAULT NULL, transpositions boolean DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.fuzzy(field text, value text, boost real DEFAULT NULL, fuzziness int DEFAULT NULL, prefix_length int DEFAULT NULL, max_expansions int DEFAULT NULL, transpositions boolean DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('fuzzy', json_build_object(field, ROW(value, boost, fuzziness, prefix_length, max_expansions, transpositions)::dsl.esqdsl_fuzzy)))::zdbquery;
 $$;
 
@@ -195,22 +195,22 @@ $$;
 CREATE TYPE dsl.es_match_zero_terms_query AS ENUM ('none', 'all');
 CREATE TYPE dsl.es_match_operator AS ENUM ('and', 'or');
 CREATE TYPE dsl.esqdsl_match AS (query text, boost real, analyzer text, minimum_should_match text, lenient boolean, fuzziness int, fuzzy_rewrite text, fuzzy_transpositions boolean, prefix_length int, zero_terms_query dsl.es_match_zero_terms_query, cutoff_frequency real, operator dsl.es_match_operator, auto_generate_synonyms_phrase_query boolean);
-CREATE OR REPLACE FUNCTION dsl.match(field name, query text, boost real DEFAULT NULL, analyzer text DEFAULT NULL, minimum_should_match text DEFAULT NULL, lenient boolean DEFAULT NULL, fuzziness int DEFAULT NULL, fuzzy_rewrite text DEFAULT NULL, fuzzy_transpositions boolean DEFAULT NULL, prefix_length int DEFAULT NULL, zero_terms_query dsl.es_match_zero_terms_query DEFAULT NULL, cutoff_frequency real DEFAULT NULL, operator dsl.es_match_operator DEFAULT NULL, auto_generate_synonyms_phrase_query boolean DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.match(field text, query text, boost real DEFAULT NULL, analyzer text DEFAULT NULL, minimum_should_match text DEFAULT NULL, lenient boolean DEFAULT NULL, fuzziness int DEFAULT NULL, fuzzy_rewrite text DEFAULT NULL, fuzzy_transpositions boolean DEFAULT NULL, prefix_length int DEFAULT NULL, zero_terms_query dsl.es_match_zero_terms_query DEFAULT NULL, cutoff_frequency real DEFAULT NULL, operator dsl.es_match_operator DEFAULT NULL, auto_generate_synonyms_phrase_query boolean DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('match', json_build_object(field, ROW(query, boost, analyzer, minimum_should_match, lenient, fuzziness, fuzzy_rewrite, fuzzy_transpositions, prefix_length, zero_terms_query, cutoff_frequency, operator, auto_generate_synonyms_phrase_query)::dsl.esqdsl_match)))::zdbquery;
 $$;
 
 
 CREATE TYPE dsl.esqdsl_match_phrase AS (query text, boost real, slop int, analyzer text);
-CREATE OR REPLACE FUNCTION dsl.match_phrase(field name, query text, boost real DEFAULT NULL, slop int DEFAULT NULL, analyzer text DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.match_phrase(field text, query text, boost real DEFAULT NULL, slop int DEFAULT NULL, analyzer text DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('match_phrase', json_build_object(field, ROW(query, boost, slop, analyzer)::dsl.esqdsl_match_phrase)))::zdbquery;
 $$;
-CREATE OR REPLACE FUNCTION dsl.phrase(field name, query text, boost real DEFAULT NULL, slop int DEFAULT NULL, analyzer text DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.phrase(field text, query text, boost real DEFAULT NULL, slop int DEFAULT NULL, analyzer text DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT dsl.match_phrase(field, query, boost, slop, analyzer);
 $$;
 
 
 CREATE TYPE dsl.esqdsl_match_phrase_prefix AS (query text, boost real, slop int, analyzer text, max_expansions int);
-CREATE OR REPLACE FUNCTION dsl.match_phrase_prefix(field name, query text, boost real DEFAULT NULL, slop int DEFAULT NULL, analyzer text DEFAULT NULL, max_expansions int DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.match_phrase_prefix(field text, query text, boost real DEFAULT NULL, slop int DEFAULT NULL, analyzer text DEFAULT NULL, max_expansions int DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('match_phrase_prefix', json_build_object(field, ROW(query, boost, slop, analyzer, max_expansions)::dsl.esqdsl_match_phrase_prefix)))::zdbquery;
 $$;
 
@@ -223,7 +223,7 @@ $$;
 
 
 CREATE TYPE dsl.esqdsl_common AS (query text, boost real, cutoff_frequency real, analyzer text, minimum_should_match text);
-CREATE OR REPLACE FUNCTION dsl.common(field name, query text, boost real DEFAULT NULL, cutoff_frequency real DEFAULT NULL, analyzer text DEFAULT NULL, minimum_should_match text DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.common(field text, query text, boost real DEFAULT NULL, cutoff_frequency real DEFAULT NULL, analyzer text DEFAULT NULL, minimum_should_match text DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('common', json_build_object(field, ROW(query, boost, cutoff_frequency, analyzer, minimum_should_match)::dsl.esqdsl_common)))::zdbquery;
 $$;
 
@@ -278,12 +278,12 @@ CREATE OR REPLACE FUNCTION dsl.boosting(positive zdbquery, negative zdbquery, ne
 $$;
 
 CREATE TYPE dsl.es_nested_score_mode AS ENUM ('avg', 'sum', 'min', 'max', 'none');
-CREATE TYPE dsl.esqdsl_nested AS (path name, query zdbquery, score_mode dsl.es_nested_score_mode);
-CREATE OR REPLACE FUNCTION dsl.nested(path name, query zdbquery, score_mode dsl.es_nested_score_mode DEFAULT 'avg'::dsl.es_nested_score_mode) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE TYPE dsl.esqdsl_nested AS (path text, query zdbquery, score_mode dsl.es_nested_score_mode);
+CREATE OR REPLACE FUNCTION dsl.nested(path text, query zdbquery, score_mode dsl.es_nested_score_mode DEFAULT 'avg'::dsl.es_nested_score_mode) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('nested', ROW(path, query, score_mode)::dsl.esqdsl_nested))::zdbquery;
 $$;
 
-CREATE OR REPLACE FUNCTION dsl.span_term(field name, value text, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.span_term(field text, value text, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('span_term', json_build_object(field, ROW(value, boost)::dsl.esqdsl_term_text)))::zdbquery;
 $$;
 CREATE OR REPLACE FUNCTION dsl.span_multi(query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
@@ -311,7 +311,7 @@ $$;
 CREATE OR REPLACE FUNCTION dsl.span_within(little zdbquery, big zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('span_within', json_build_object('little', little, 'big', big)))::zdbquery;
 $$;
-CREATE OR REPLACE FUNCTION dsl.span_masking(field name, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION dsl.span_masking(field text, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('field_masking_span', json_build_object('query', query, 'field', field)))::zdbquery;
 $$;
 

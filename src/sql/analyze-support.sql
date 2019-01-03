@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION analyze_custom(index regclass, text text DEFAULT NULL
            (tokens->>'end_offset')::int
       FROM jsonb_array_elements((zdb.request(index, '_analyze', 'GET', json_strip_nulls(json_build_object('tokenizer', tokenizer, 'normalizer', normalizer, 'text', text, 'filter', filter, 'char_filter', char_filter))::text)::jsonb)->'tokens') tokens;
 $$;
-CREATE OR REPLACE FUNCTION analyze_with_field(index regclass, field name, text text) RETURNS TABLE (type text, token text, "position" int, start_offset int, end_offset int) PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+CREATE OR REPLACE FUNCTION analyze_with_field(index regclass, field text, text text) RETURNS TABLE (type text, token text, "position" int, start_offset int, end_offset int) PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
     SELECT tokens->>'type',
            tokens->>'token',
            (tokens->>'position')::int,

@@ -548,7 +548,7 @@ The boosting query can be used to effectively demote results that match a given 
 
 ```sql
 FUNCTION dsl.common (
-	field name,
+	field text,
 	query text,
 	boost real DEFAULT NULL,
 	cutoff_frequency real DEFAULT NULL,
@@ -598,7 +598,7 @@ A query that generates the union of documents produced by its subqueries, and th
 
 ```sql
 FUNCTION dsl.field_exists (
-	field name)
+	field text)
 RETURNS zdbquery
 ```
 
@@ -613,7 +613,7 @@ Returns documents that have at least one non-null value in the specified field
 
 ```sql
 FUNCTION dsl.field_missing (
-	field name)
+	field text)
 RETURNS zdbquery
 ```
 
@@ -625,7 +625,7 @@ The inverse of `dsl.field_exists()`.  Returns documents that have no value in th
 
 ```sql
 FUNCTION dsl.fuzzy (
-	field name,
+	field text,
 	value text,
 	boost real DEFAULT NULL,
 	fuzziness integer DEFAULT NULL,
@@ -645,7 +645,7 @@ The fuzzy query uses similarity based on Levenshtein edit distance.
 
 ```sql
 FUNCTION dsl.match (
-	field name,
+	field text,
 	query text,
 	boost real DEFAULT NULL,
 	analyzer text DEFAULT NULL,
@@ -697,7 +697,7 @@ The inverse of `dsl.match_all()`.  Matches no documents.
 
 ```sql
 FUNCTION dsl.match_phrase (
-	field name,
+	field text,
 	query text,
 	boost real DEFAULT NULL,
 	slop integer DEFAULT NULL,
@@ -715,7 +715,7 @@ The `match_phrase` query analyzes the text and creates a phrase query out of the
 
 ```sql
 FUNCTION dsl.match_phrase_prefix (
-	field name,
+	field text,
 	query text,
 	boost real DEFAULT NULL,
 	slop integer DEFAULT NULL,
@@ -735,7 +735,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-
 ```sql
 FUNCTION dsl.more_like_this (
 	"like" text,
-	fields name[] DEFAULT NULL,
+	fields text[] DEFAULT NULL,
 	stop_words text[] DEFAULT ARRAY[...],
 	boost real DEFAULT NULL,
 	unlike text DEFAULT NULL,
@@ -765,7 +765,7 @@ This form takes a single blob of text as the source document.
 ```sql
 FUNCTION dsl.more_like_this (
 	"like" text[],
-	fields name[] DEFAULT NULL,
+	fields text[] DEFAULT NULL,
 	stop_words text[] DEFAULT ARRAY[...],
 	boost real DEFAULT NULL,
 	unlike text DEFAULT NULL,
@@ -795,7 +795,7 @@ This form takes multiple snippets of text as the source documents.
 
 ```sql
 FUNCTION dsl.multi_match (
-	fields name[],
+	fields text[],
 	query text,
 	boost real DEFAULT NULL,
 	type dsl.es_multi_match_type DEFAULT NULL,
@@ -858,7 +858,7 @@ A query that uses a query parser in order to parse its content.  The query_strin
 
 ```sql
 FUNCTION dsl.nested (
-	path name,
+	path text,
 	query zdbquery,
 	score_mode dsl.es_nested_score_mode DEFAULT 'avg'::dsl.es_nested_score_mode)
 RETURNS zdbquery
@@ -886,7 +886,7 @@ Generates a `bool` query where the argument is the only member of the `bool` que
 
 ```sql
 FUNCTION dsl.phrase (
-	field name,
+	field text,
 	query text,
 	boost real DEFAULT NULL,
 	slop integer DEFAULT NULL,
@@ -902,7 +902,7 @@ Short-hand form of `dsl.match_phrase()`.
 
 ```sql
 FUNCTION dsl.prefix (
-	field name,
+	field text,
 	prefix text,
 	boost real DEFAULT NULL)
 RETURNS zdbquery
@@ -918,7 +918,7 @@ Matches documents that have fields containing terms with a specified prefix (not
 
 ```sql
 FUNCTION dsl.range (
-	field name,
+	field text,
 	lt numeric DEFAULT NULL,
 	gt numeric DEFAULT NULL,
 	lte numeric DEFAULT NULL,
@@ -937,7 +937,7 @@ Matches documents with fields that have terms within a certain range.  This form
 
 ```sql
 FUNCTION dsl.range (
-	field name,
+	field text,
 	lt text DEFAULT NULL,
 	gt text DEFAULT NULL,
 	lte text DEFAULT NULL,
@@ -957,7 +957,7 @@ Matches documents with fields that have terms within a certain range.  This form
 
 ```sql
 FUNCTION dsl.regexp (
-	field name,
+	field text,
 	regexp text,
 	boost real DEFAULT NULL,
 	flags dsl.es_regexp_flags[] DEFAULT NULL,
@@ -1021,7 +1021,7 @@ Matches spans near the beginning of a field.
 
 ```sql
 FUNCTION dsl.span_masking (
-	field name,
+	field text,
 	query zdbquery)
 RETURNS zdbquery
 ```
@@ -1098,7 +1098,7 @@ Matches the union of its span clauses.
 
 ```sql
 FUNCTION dsl.span_term (
-	field name,
+	field text,
 	value text,
 	boost real DEFAULT NULL)
 RETURNS zdbquery
@@ -1129,7 +1129,7 @@ Returns matches which are enclosed inside another span query.
 
 ```sql
 FUNCTION dsl.term (
-	field name,
+	field text,
 	value numeric,
 	boost real DEFAULT NULL)
 RETURNS zdbquery
@@ -1145,7 +1145,7 @@ The term query finds documents that contain the **exact** term specified in the 
 
 ```sql
 FUNCTION dsl.term (
-	field name,
+	field text,
 	value text,
 	boost real DEFAULT NULL)
 RETURNS zdbquery
@@ -1162,7 +1162,7 @@ The term query finds documents that contain the **exact** term specified in the 
 
 ```sql
 FUNCTION dsl.terms (
-	field name,
+	field text,
 	VARIADIC "values" numeric[])
 RETURNS zdbquery
 ```
@@ -1177,7 +1177,7 @@ Filters documents that have fields that match any of the provided terms (not ana
 
 ```sql
 FUNCTION dsl.terms (
-	field name,
+	field text,
 	VARIADIC "values" text[])
 RETURNS zdbquery
 ```
@@ -1192,7 +1192,7 @@ Filters documents that have fields that match any of the provided terms (not ana
 
 ```sql
 FUNCTION dsl.terms_array (
-	field name,
+	field text,
 	"values" anyarray)
 RETURNS zdbquery
 ```
@@ -1207,7 +1207,7 @@ Filters documents that have fields that match any of the provided terms (not ana
 
 ```sql
 FUNCTION dsl.terms_lookup (
-	field name,
+	field text,
 	index text,
 	type text,
 	path text,
@@ -1225,7 +1225,7 @@ When it’s needed to specify a terms filter with a lot of terms it can be benef
 
 ```sql
 FUNCTION dsl.wildcard (
-	field name,
+	field text,
 	wildcard text,
 	boost real DEFAULT NULL)
 RETURNS zdbquery
