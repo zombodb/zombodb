@@ -200,8 +200,6 @@ static ProcessUtility_hook_type prev_ProcessUtilityHook = NULL;
 static planner_hook_type        prev_PlannerHook        = NULL;
 static int                      executor_depth          = 0;
 
-bool zdb_is_performing_vacuum = false;
-
 int  ZDB_LOG_LEVEL;
 char *zdb_default_elasticsearch_url_guc;
 int  zdb_default_row_estimation_guc;
@@ -1330,7 +1328,6 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				int                        deleted = 0, xmaxes_reset = 0;
 
 				zdb_ignore_visibility_guc = true;
-                zdb_is_performing_vacuum  = true;
 
 				if (strcmp(ZDBIndexOptionsGetRefreshInterval(info->index), "-1") != 0) {
 					/*
@@ -1360,7 +1357,9 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 					char          *_id;
 					TransactionId xmin;
 
-					ElasticsearchGetNextItemPointer(scroll, NULL, &_id, NULL, NULL);
+					if (!ElasticsearchGetNextItemPointer(scroll, NULL, &_id, NULL, NULL))
+						break;
+
 					xmin = (TransactionId) get_json_first_array_uint64(scroll->fields, "zdb_xmin");
 
 					if (TransactionIdPrecedes(xmin, oldestXmin) && TransactionIdDidAbort(xmin) &&
@@ -1386,7 +1385,9 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 					char          *_id;
 					TransactionId xmax;
 
-					ElasticsearchGetNextItemPointer(scroll, NULL, &_id, NULL, NULL);
+					if (!ElasticsearchGetNextItemPointer(scroll, NULL, &_id, NULL, NULL))
+						break;
+
 					xmax = (TransactionId) get_json_first_array_uint64(scroll->fields, "zdb_xmax");
 
 					if (TransactionIdPrecedes(xmax, oldestXmin) && TransactionIdDidCommit(xmax) &&
@@ -1413,7 +1414,9 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 					TransactionId xmax;
 					uint64        xmax64;
 
-					ElasticsearchGetNextItemPointer(scroll, NULL, &_id, NULL, NULL);
+					if (!ElasticsearchGetNextItemPointer(scroll, NULL, &_id, NULL, NULL))
+						break;
+
 					xmax64 = get_json_first_array_uint64(scroll->fields, "zdb_xmax");
 					xmax   = (TransactionId) xmax64;
 
@@ -1436,7 +1439,9 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				while (scroll->cnt < scroll->total) {
 					void *array;
 
-					ElasticsearchGetNextItemPointer(scroll, NULL, NULL, NULL, NULL);
+					if (!ElasticsearchGetNextItemPointer(scroll, NULL, NULL, NULL, NULL))
+						break;
+
 					if (scroll->fields == NULL)
 						continue;
 
@@ -1484,12 +1489,10 @@ static IndexBulkDeleteResult *zdb_vacuum_internal(IndexVacuumInfo *info, IndexBu
 				}
 
 				zdb_ignore_visibility_guc = savedIgnoreVisibility;
-                zdb_is_performing_vacuum  = false;
 			}
 		PG_CATCH();
 			{
 				zdb_ignore_visibility_guc = savedIgnoreVisibility;
-                zdb_is_performing_vacuum  = false;
 				PG_RE_THROW();
 			}
 	PG_END_TRY();
@@ -1714,7 +1717,9 @@ static bool amgettuple(IndexScanDesc scan, ScanDirection direction) {
 		return false; /* we have no more tuples to return */
 
 	/* get the next tuple from Elasticsearch */
-	ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, &highlights);
+	if (!ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, &highlights))
+		return false;
+
 	if (!ItemPointerIsValid(&ctid))
 		ereport(ERROR,
 				(errcode(ERRCODE_INTERNAL_ERROR),
@@ -1765,7 +1770,8 @@ static int64 amgetbitmap(IndexScanDesc scan, TIDBitmap *tbm) {
 		ItemPointerData ctid;
 		float4          score;
 
-		ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, &highlights);
+		if (!ElasticsearchGetNextItemPointer(context->scrollContext, &ctid, NULL, &score, &highlights))
+			break;
 
 		if (context->wantScores) {
 			ZDBScoreKey   key;

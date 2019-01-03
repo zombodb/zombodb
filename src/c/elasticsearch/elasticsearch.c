@@ -825,7 +825,8 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 		/* fast-forward to our 'offset' -- using the ?from= ES request parameter doesn't work with scroll requests */
 		if (offset > 0) {
 			while (offset--) {
-				ElasticsearchGetNextItemPointer(context, NULL, NULL, NULL, NULL);
+				if (!ElasticsearchGetNextItemPointer(context, NULL, NULL, NULL, NULL))
+					break;
 			}
 		}
 	} else {
@@ -844,13 +845,15 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	return context;
 }
 
-void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPointer ctid, char **_id, float4 *score, zdb_json_object *highlights) {
+bool ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPointer ctid, char **_id, float4 *score, zdb_json_object *highlights) {
 	char *es_id = NULL;
+
+start_over:
 
 	if (context->cnt >= context->total) {
 		if (context->cnt == 0) {
 			/* we've run through all the rows AND exceeded the number of rows, so we're done */
-			return;
+			return false;
 		}
 
 		ereport(ERROR,
@@ -907,10 +910,18 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 		void   *zdb_ctid;
 		uint64 ctidAs64bits;
 
-		if (context->fields == NULL)
-			ereport(ERROR,
-					(errcode(ERRCODE_INTERNAL_ERROR),
-							errmsg("No fields found in this hit entry")));
+		if (context->fields == NULL) {
+		    /* there's no 'fields' block for this hit entry, which, by omission, indicates
+		     * that this is the hit for the "zdb_aborted_xids" document, so we can just blindly
+		     * skip to the next one
+		     */
+			context->cnt++;
+			context->currpos++;
+			if (context->cnt >= context->total)
+				return false;
+
+            goto start_over;
+        }
 
 		zdb_ctid     = get_json_object_array(context->fields, "zdb_ctid", false);
 		ctidAs64bits = get_json_array_element_uint64(zdb_ctid, 0, context->jsonMemoryContext);
@@ -934,6 +945,8 @@ void ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 	if (highlights != NULL) {
 		*highlights = context->hasHighlights ? get_json_object_object(context->hitEntry, "highlight", true) : NULL;
 	}
+
+	return true;
 }
 
 void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext) {

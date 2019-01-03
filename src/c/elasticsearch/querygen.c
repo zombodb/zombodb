@@ -26,7 +26,6 @@ extern Datum zdb_internal_visibility_clause(PG_FUNCTION_ARGS);
 extern bool zdb_ignore_visibility_guc;
 
 static char *wrap_with_visibility_query(Relation indexRel, char *query);
-static char *wrap_with_fast_visibility_query(Relation indexRel, char *query);
 
 char *convert_to_query_dsl_not_wrapped(char *input) {
 	/* trim away whitespace from the query */
@@ -127,7 +126,7 @@ char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query, bool apply_vi
 	if (apply_visibility) {
 		rc = wrap_with_visibility_query(indexRel, unwrapped);
 	} else {
-		rc = wrap_with_fast_visibility_query(indexRel, unwrapped);
+		rc = unwrapped;
 	}
 
 	if (unwrapped != rc)
@@ -191,11 +190,4 @@ static char *wrap_with_visibility_query(Relation indexRel, char *query) {
 		/* wrap the input query with the visibility query */
 		return psprintf("{\"bool\":{\"must\":[%s],\"filter\":%s}}", query, zdbquery_get_query(vis));
 	}
-}
-
-static char *wrap_with_fast_visibility_query(Relation indexRel, char *query) {
-	if (zdb_is_performing_vacuum)
-		return query;
-	
-    return psprintf("{\"bool\":{\"must\":[%s],\"filter\":[{\"exists\":{\"field\":\"zdb_ctid\"}}]}}", query);
 }

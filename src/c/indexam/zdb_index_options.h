@@ -50,7 +50,6 @@ typedef struct {
 extern char *zdb_default_elasticsearch_url_guc;
 extern int  zdb_default_row_estimation_guc;
 extern int  zdb_default_replicas_guc;
-extern bool zdb_is_performing_vacuum;
 
 static inline char *ZDBIndexOptionsGetUrl(Relation rel) {
 	char *url = ZDBIndexOptionsGetUrlMacro(rel);

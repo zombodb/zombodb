@@ -222,11 +222,13 @@ Datum zdb_query_srf(PG_FUNCTION_ARGS) {
 		oldContext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
 		ctid = palloc(sizeof(ItemPointerData));
-		ElasticsearchGetNextItemPointer(scrollContext, ctid, NULL, NULL, NULL);
+		if (!ElasticsearchGetNextItemPointer(scrollContext, ctid, NULL, NULL, NULL))
+			goto done;
 
 		MemoryContextSwitchTo(oldContext);
 		SRF_RETURN_NEXT(funcctx, PointerGetDatum(ctid));
 	} else {
+done:
 		/* all done */
 		ElasticsearchCloseScroll((ElasticsearchScrollContext *) funcctx->user_fctx);
 		SRF_RETURN_DONE(funcctx);
@@ -251,7 +253,8 @@ Datum zdb_query_tids(PG_FUNCTION_ARGS) {
 	for (i = 0; i < scrollContext->total; i++) {
 		ItemPointerData ctid;
 
-		ElasticsearchGetNextItemPointer(scrollContext, &ctid, NULL, NULL, NULL);
+		if (!ElasticsearchGetNextItemPointer(scrollContext, &ctid, NULL, NULL, NULL))
+			break;
 
 		astate = accumArrayResult(astate,
 								  PointerGetDatum(&ctid),
