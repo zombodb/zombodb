@@ -24,8 +24,7 @@ StringInfo rest_call(char *method, StringInfo url, StringInfo postData, int comp
 MultiRestState *rest_multi_init(int nhandles, bool ignore_version_conflicts);
 int rest_multi_perform(MultiRestState *state);
 void rest_multi_call(MultiRestState *state, char *method, StringInfo url, PostDataEntry *postData, int compressionLevel);
-bool rest_multi_is_available(MultiRestState *state);
-bool rest_multi_all_done(MultiRestState *state);
+void rest_multi_wait_for_all_done(MultiRestState *state);
 void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast);
 
 #endif /* __ZDB_REST_H__ */

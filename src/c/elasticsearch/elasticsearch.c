@@ -630,10 +630,7 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_c
 
 	/* wait for all outstanding HTTP requests to finish */
 	if (context->nrequests > 0) {
-		while (!rest_multi_all_done(context->rest)) {
-			rest_multi_is_available(context->rest);
-			CHECK_FOR_INTERRUPTS();
-		}
+		rest_multi_wait_for_all_done(context->rest);
 	}
 
 	/* after this call, context->rest is no longer usable */

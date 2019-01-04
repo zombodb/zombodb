@@ -109,13 +109,14 @@ MultiRestState *rest_multi_init(int nhandles, bool ignore_version_conflicts) {
 }
 
 int rest_multi_perform(MultiRestState *state) {
-	int       still_running;
-	CURLMcode rc;
+	int still_running;
+	CURLMcode mc;
 
-	do {
-		rc = curl_multi_perform(state->multi_handle, &still_running);
+	while ((mc = curl_multi_perform(state->multi_handle, &still_running)) == CURLM_CALL_MULTI_PERFORM)
 		CHECK_FOR_INTERRUPTS();
-	} while (rc == CURLM_CALL_MULTI_PERFORM);
+
+	if (mc != CURLM_OK)
+		elog(ERROR, "curl_multi_perform failed.  code=%d", mc);
 
 	return still_running;
 }
@@ -210,29 +211,44 @@ void rest_multi_call(MultiRestState *state, char *method, StringInfo url, PostDa
 	}
 }
 
-bool rest_multi_is_available(MultiRestState *state) {
-	CURLM *multi_handle         = state->multi_handle;
-	int   still_running, numfds = 0;
+void rest_multi_wait_for_all_done(MultiRestState *state) {
+    int still_running;
+    int repeats = 0;
 
-	/* Has something finished? */
-	still_running = rest_multi_perform(state);
-	if (still_running < state->nhandles)
-		return true;
+    do {
+        CURLMcode mc;
+        int numfds = 0;
 
-	/* Not yet, so wait for some action to be performed by curl */
-	curl_multi_wait(multi_handle, NULL, 0, 1000, &numfds);
-	if (numfds == 0)    /* no action, so get out now */
-		return false;
+        while ((mc = curl_multi_perform(state->multi_handle, &still_running)) == CURLM_CALL_MULTI_PERFORM)
+            CHECK_FOR_INTERRUPTS();
+        if (mc != CURLM_OK) {
+            elog(ERROR, "curl_multi_perform failed.  code=%d", mc);
+        }
 
-	/* see if something has finished */
-	still_running = rest_multi_perform(state);
-	return still_running < state->nhandles;
-}
+        /* wait for activity, timeout or "nothing" */
+        mc = curl_multi_wait(state->multi_handle, NULL, 0, 10000, &numfds);
+        if (mc != CURLM_OK) {
+            elog(ERROR, "curl_multi_wait failed.  code=%d", mc);
+        }
 
-bool rest_multi_all_done(MultiRestState *state) {
-	int still_running;
-	still_running = rest_multi_perform(state);
-	return still_running == 0;
+        /*
+         * 'numfds' being zero means either a timeout or no file descriptors to
+         * wait for. Try timeout on first occurrence, then assume no file
+         * descriptors and no file descriptors to wait for means sleep
+         */
+        if (!numfds) {
+            repeats++;
+            if (repeats > 1) {
+                if (still_running == 0) {
+                    return;
+                }
+                pg_usleep(100);
+            }
+        } else {
+            repeats = 0;
+        }
+
+    } while (still_running);
 }
 
 void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast) {

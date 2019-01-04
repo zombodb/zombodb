@@ -1824,14 +1824,14 @@ static void handle_trigger(Oid indexRelId, ItemPointer targetCtid) {
 	Relation              indexRel;
 
 	oldContext = MemoryContextSwitchTo(TopTransactionContext);
-	indexRel   = zdb_open_index(indexRelId, AccessShareLock);
+	indexRel   = RelationIdGetRelation(indexRelId);
 
 	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
 
 	ElasticsearchBulkUpdateTuple(context->esContext, targetCtid, NULL, GetCurrentCommandId(true),
 								 convert_xid(GetCurrentTransactionId()));
 
-	relation_close(indexRel, AccessShareLock);
+	RelationClose(indexRel);
 	MemoryContextSwitchTo(oldContext);
 }
 
