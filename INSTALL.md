@@ -43,19 +43,8 @@ ZomboDB's Elasticsearch plugin needs to be installed on **all** nodes of your El
 
 ```
 # cd $ES_HOME
-# sudo bin/plugin -i zombodb -u file:///path/to/zombodb-plugin-X.X.X.zip
+# sudo bin/elasticsearch-plugin install file:///path/to/zombodb-plugin-X.X.X.zip
 ```
-
-There are a few configuration settings that **must** be set in `elasticsearch.yml`:
-
-```
-http.compression: true
-http.max_content_length: 1024mb
-```
-
-`http.max_content_length` must be greater than 8192kB, but `1024mb` is a good default.
-
-The `http.compression` setting is only necessary if you set the `compression_level` option on your ZomboDB indexes.  Using HTTP compression may or may not improve indexing performance -- the deciding factor will be the bandwith/latency of the network between Postgres and Elasticsearch.  Failure to set `http.compression` when you've set a `compression_level` will cause ZomboDB to fail when it communicates with Elasticsearch.
 
 Finally, restart the node.  Repeat for every node in your cluster.
 
@@ -64,7 +53,7 @@ Finally, restart the node.  Repeat for every node in your cluster.
 
 Upgrading to a new version of ZomboDB basically involves repeating the installation steps above, possibly first removing the existing `zombodb` Linux package.
 
-The existing Elasticsearch plugin will need to be removed (`bin/plugin -r zombodb`) before an updated version can be installed.
+The existing Elasticsearch plugin will need to be removed (`bin/elasticsearch-plugin remove zombodb`) before an updated version can be installed.
 
 When upgrading the Postgres extension (`zombodb.so`) it's a good idea to make sure the database has no active connections and that you immediately run:
 
