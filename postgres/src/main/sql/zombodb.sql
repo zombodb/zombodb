@@ -118,7 +118,7 @@ CREATE VIEW zdb_index_stats AS
         zdb_es_direct_request(indexrelid, 'GET', '_stats')::json                                  stats,
         zdb_es_direct_request(indexrelid, 'GET', '_settings')::json                               settings
       FROM pg_index
-      WHERE pg_get_indexdef(indexrelid) ILIKE '%zombodb%'
+      WHERE indexrelid IN (SELECT oid FROM pg_class WHERE relam = (SELECT oid FROM pg_am WHERE amname = 'zombodb'))
   )
   SELECT
     index_name,
@@ -147,7 +147,7 @@ CREATE VIEW zdb_index_stats_fast AS
         zdb_es_direct_request(indexrelid, 'GET', '_stats')::json                                  stats,
         zdb_es_direct_request(indexrelid, 'GET', '_settings')::json                               settings
       FROM pg_index
-      WHERE pg_get_indexdef(indexrelid) ILIKE '%zombodb%'
+      WHERE indexrelid IN (SELECT oid FROM pg_class WHERE relam = (SELECT oid FROM pg_am WHERE amname = 'zombodb'))
   )
   SELECT
     index_name,
