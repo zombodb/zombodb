@@ -1,0 +1,6 @@
+select json_build_object('tag', (select 1), 'score', zdb.score(ctid) > 0) from events where events ==> 'beer' order by id limit 1;
+      json_build_object      
+-----------------------------
+ {"tag" : 1, "score" : true}
+(1 row)
+

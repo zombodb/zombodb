@@ -330,8 +330,8 @@ typedef struct RewriteWalkerContext {
 } RewriteWalkerContext;
 
 typedef struct WantScoresWalkerContext {
-	bool in_te;
-	bool in_sort;
+	int in_te;
+	int in_sort;
 	Oid zdb_score;
 	bool want_scores;
 } WantScoresWalkerContext;
@@ -424,16 +424,16 @@ static bool want_scores_walker(Node *node, WantScoresWalkerContext *context) {
 	if (IsA(node, TargetEntry)) {
 		bool rc;
 
-		context->in_te = true;
+		context->in_te++;
 		rc = expression_tree_walker(node, want_scores_walker, context);
-		context->in_te = false;
+		context->in_te--;
 		return rc;
 	} else if (IsA(node, SortBy)) {
 		bool rc;
 
-		context->in_sort = true;
+		context->in_sort++;
 		rc = expression_tree_walker(node, want_scores_walker, context);
-		context->in_sort = false;
+		context->in_sort--;
 		return rc;
 	} else if (IsA(node, FuncExpr)) {
 		FuncExpr *funcExpr = (FuncExpr *) node;
@@ -468,10 +468,8 @@ static PlannedStmt *zdb_planner_hook(Query *parse, int cursorOptions, ParamListI
 	if (zdbqueryOid != InvalidOid && zdbqueryarrayOid != InvalidOid) {
 
 		/* determine if the query wants scores or not */
-		wantScoresContext.in_te       = false;
-		wantScoresContext.in_sort     = false;
+		MemSet(&wantScoresContext, 0, sizeof(WantScoresWalkerContext));
 		wantScoresContext.zdb_score   = ZDBFUNC("zdb", "score", 1, arg);
-		wantScoresContext.want_scores = false;
 		query_tree_walker(parse, want_scores_walker, &wantScoresContext, QTW_EXAMINE_RTES);
 
 		/* rewrite various ZDB operator comparisions */
