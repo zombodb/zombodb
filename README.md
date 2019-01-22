@@ -161,7 +161,6 @@ Elasticsearch was chosen as the backing search index because of its horizontal s
 
 ZomboDB was open-sourced in July 2015 and has since been used in numerous production systems of various sizes and complexity.
 
-
 ## License
 
 Copyright 2018 ZomboDB, LLC
