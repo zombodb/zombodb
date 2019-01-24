@@ -351,22 +351,14 @@ select * from zdb_highlight('issue_159.consolidated_record_view', 'vol_json.anim
  primaryKey |    fieldName    | arrayIndex |  term  | type | position | startOffset | endOffset |              clause               
 ------------+-----------------+------------+--------+------+----------+-------------+-----------+-----------------------------------
  1          | vol_json.animal |          0 | snakes | word |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
- 1          | vol_json.animal |          1 | snakes | word |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
  1          | vol_json.food   |          0 | beer   | word |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
- 1          | vol_json.food   |          1 | beer   | word |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
  4          | vol_json.animal |          0 | snakes | word |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
- 4          | vol_json.animal |          1 | snakes | word |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
  4          | vol_json.food   |          0 | beer   | word |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
- 4          | vol_json.food   |          1 | beer   | word |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
  5          | vol_json.animal |          0 | snakes | word |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
- 5          | vol_json.animal |          1 | snakes | word |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
  5          | vol_json.food   |          0 | beer   | word |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
- 5          | vol_json.food   |          1 | beer   | word |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
  9          | vol_json.animal |          0 | snakes | word |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
- 9          | vol_json.animal |          1 | snakes | word |        1 |           0 |         6 | vol_json.animal CONTAINS "snakes"
  9          | vol_json.food   |          0 | beer   | word |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
- 9          | vol_json.food   |          1 | beer   | word |        1 |           0 |         4 | vol_json.food CONTAINS "beer"
-(16 rows)
+(8 rows)
 
 DROP SCHEMA issue_159 CASCADE;
 NOTICE:  drop cascades to 4 other objects

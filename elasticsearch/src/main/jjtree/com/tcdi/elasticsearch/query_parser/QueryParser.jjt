@@ -638,10 +638,14 @@ FieldnameAndOperator OptionalFieldname() :
     )
     {
         if (fn != null) {
+            usedFieldnames.add(fn.fieldName);
             return new FieldnameAndOperator(fn.fieldName, op.image);
         } else {
-            usedFieldnames.add("_all");
-            return fieldnameStack.isEmpty() ? new FieldnameAndOperator("_all", ":") : fieldnameStack.peek();
+            FieldnameAndOperator fao = fieldnameStack.isEmpty() ? new FieldnameAndOperator("_all", ":") : fieldnameStack.peek();
+            if (!fieldnameStack.isEmpty())
+                usedFieldnames.add(fao.fieldname);
+
+            return fao;
         }
     }
 }
