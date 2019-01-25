@@ -50,10 +50,26 @@ typedef struct {
 } TxidEpoch;
 
 char *lookup_zdb_namespace(void) {
-    if (SPI_execute("select nspname from pg_namespace where oid = (select extnamespace from pg_extension where extname = 'zombodb');", true, 1) != SPI_OK_SELECT || SPI_processed != 1)
-        elog(ERROR, "Cannot determine ZomboDB's namespace");
+    int rc;
+
+    if ( (rc = SPI_execute("select nspname from pg_namespace where oid = (select extnamespace from pg_extension where extname = 'zombodb');", true, 1)) != SPI_OK_SELECT || SPI_processed != 1)
+        elog(ERROR, "Cannot determine ZomboDB's namespace, rc=%d, processed=%d", rc, SPI_processed);
 
     return SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
+}
+
+char *qualify_zdb_typename(char *typename) {
+    char *rc;
+    StringInfo s;
+    MemoryContext cxt = CurrentMemoryContext;
+
+    SPI_connect();
+    s = makeStringInfo();
+    appendStringInfo(s, "%s.%s", lookup_zdb_namespace(), typename);
+    rc = MemoryContextStrdup(cxt, s->data);
+    SPI_finish();
+
+    return rc;
 }
 
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
