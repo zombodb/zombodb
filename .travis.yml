@@ -8,6 +8,9 @@ env:
 sudo: required
 dist: trusty
 
+notifications:
+  slack: zombodb:M95qGlYZ9x9ufL6L3oRxyGBm
+
 before_install:
   - sudo apt-get purge -y elasticsearch
   - sudo apt-get update -y -qq
