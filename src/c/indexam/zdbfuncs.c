@@ -38,6 +38,8 @@ PG_FUNCTION_INFO_V1(zdb_to_query_dsl);
 PG_FUNCTION_INFO_V1(zdb_json_build_object_wrapper);
 PG_FUNCTION_INFO_V1(zdb_internal_visibility_clause);
 
+#define zdb_array_to_json(array) DirectFunctionCall1(array_to_json, array)
+
 Datum zdb_index_name(PG_FUNCTION_ARGS) {
 	Oid      indexRelId = PG_GETARG_OID(0);
 	Relation indexRel;
@@ -294,59 +296,261 @@ Datum zdb_json_build_object_wrapper(PG_FUNCTION_ARGS) {
 	return json_build_object(fcinfo);
 }
 
+
 Datum zdb_internal_visibility_clause(PG_FUNCTION_ARGS) {
-	MemoryContext tmpContext = AllocSetContextCreate(CurrentMemoryContext, "visibility_clause", ALLOCSET_DEFAULT_SIZES);
-	MemoryContext oldContext = MemoryContextSwitchTo(tmpContext);
-	ZDBQueryType  *output;
+    MemoryContext   tmpContext  = AllocSetContextCreate(CurrentMemoryContext, "visibility_clause",
+                                                        ALLOCSET_DEFAULT_SIZES);
+    Oid             indexRelOid = PG_GETARG_OID(0);
+    Snapshot        snapshot    = GetTransactionSnapshot();
+    CommandId       commandId   = GetCurrentCommandId(false);
+    uint64          xmax        = convert_xid(snapshot->xmax);
+    Datum           myXids      = collect_used_xids(tmpContext);
+    Datum           activeXids;
+    StringInfo      query       = makeStringInfo();
+    ArrayBuildState *astate     = initArrayResult(INT8OID, tmpContext, false);
+    Relation        indexRel;
 
-	{
-		Oid             indexRelOid = PG_GETARG_OID(0);
-		Snapshot        snapshot    = GetTransactionSnapshot();
-		CommandId       commandId   = GetCurrentCommandId(false);
-		ArrayType       *myXids     = collect_used_xids(tmpContext);
-		uint64          xmax        = convert_xid(snapshot->xmax);
-		ArrayBuildState *astate     = initArrayResult(INT8OID, tmpContext, false);
-		Relation        indexRel;
-		Oid             zdb_visibility_clause;
-		ZDBQueryType    *vis;
-		size_t          len;
+    indexRel   = RelationIdGetRelation(indexRelOid);
 
-		indexRel = zdb_open_index(indexRelOid, AccessShareLock);
+    /* build up an array of active transaction ids */
+    if (snapshot->xcnt > 0) {
+        uint32 i;
 
-		/* build up an array of active transaction ids */
-		if (snapshot->xcnt > 0) {
-			uint32 i;
+        for (i = 0; i < snapshot->xcnt; i++) {
+            astate = accumArrayResult(astate, UInt64GetDatum(convert_xid(snapshot->xip[i])), false, INT8OID,
+                                      tmpContext);
+        }
+    }
+    activeXids = makeArrayResult(astate, tmpContext);
 
-			for (i = 0; i < snapshot->xcnt; i++) {
-				astate = accumArrayResult(astate, UInt64GetDatum(convert_xid(snapshot->xip[i])), false, INT8OID,
-										  tmpContext);
-			}
-		}
+    appendStringInfo(query, "{"
+                            "  \"bool\": {"
+                            "    \"must\": ["
+                            "      {"
+                            "        \"bool\": {"
+                            "          \"must_not\": ["
+                            "            {"
+                            "              \"query_string\": {"
+                            "                \"query\": \"_id:zdb_aborted_xids\""
+                            "              }"
+                            "            }"
+                            "          ]"
+                            "        }"
+                            "      },"
+                            "      {"
+                            "        \"bool\": {"
+                            "          \"should\": ["
+                            "            {"
+                            "              \"bool\": {"
+                            "                \"must\": ["
+                            "                  {"
+                            "                    \"terms\": {"
+                            "                      \"zdb_xmin\": %s"
+                            "                    }"
+                            "                  },"
+                            "                  {"
+                            "                    \"range\": {"
+                            "                      \"zdb_cmin\": {"
+                            "                        \"lt\": %u"
+                            "                      }"
+                            "                    }"
+                            "                  },"
+                            "                  {"
+                            "                    \"bool\": {"
+                            "                      \"should\": ["
+                            "                        {"
+                            "                          \"bool\": {"
+                            "                            \"must_not\": ["
+                            "                              {"
+                            "                                \"exists\": {"
+                            "                                  \"field\": \"zdb_xmax\""
+                            "                                }"
+                            "                              }"
+                            "                            ]"
+                            "                          }"
+                            "                        },"
+                            "                        {"
+                            "                          \"bool\": {"
+                            "                            \"must\": ["
+                            "                              {"
+                            "                                \"terms\": {"
+                            "                                  \"zdb_xmax\": %s"
+                            "                                }"
+                            "                              },"
+                            "                              {"
+                            "                                \"range\": {"
+                            "                                  \"zdb_cmax\": {"
+                            "                                    \"gte\": %u"
+                            "                                  }"
+                            "                                }"
+                            "                              }"
+                            "                            ]"
+                            "                          }"
+                            "                        }"
+                            "                      ]"
+                            "                    }"
+                            "                  }"
+                            "                ]"
+                            "              }"
+                            "            },"
+                            "            {"
+                            "              \"bool\": {"
+                            "                \"must\": ["
+                            "                  {"
+                            "                    \"bool\": {"
+                            "                      \"must\": ["
+                            "                        {"
+                            "                          \"bool\": {"
+                            "                            \"must_not\": ["
+                            "                              {"
+                            "                                \"terms\": {"
+                            "                                  \"zdb_xmin\": {"
+                            "                                    \"index\": \"%s\","
+                            "                                    \"type\": \"%s\","
+                            "                                    \"path\": \"zdb_aborted_xids\","
+                            "                                    \"id\": \"zdb_aborted_xids\""
+                            "                                  }"
+                            "                                }"
+                            "                              }"
+                            "                            ]"
+                            "                          }"
+                            "                        },"
+                            "                        {"
+                            "                          \"bool\": {"
+                            "                            \"must_not\": ["
+                            "                              {"
+                            "                                \"terms\": {"
+                            "                                  \"zdb_xmin\": %s"
+                            "                                }"
+                            "                              }"
+                            "                            ]"
+                            "                          }"
+                            "                        },"
+                            "                        {"
+                            "                          \"bool\": {"
+                            "                            \"must_not\": ["
+                            "                              {"
+                            "                                \"range\": {"
+                            "                                  \"zdb_xmin\": {"
+                            "                                    \"gte\": %ld"
+                            "                                  }"
+                            "                                }"
+                            "                              }"
+                            "                            ]"
+                            "                          }"
+                            "                        },"
+                            "                        {"
+                            "                          \"bool\": {"
+                            "                            \"should\": ["
+                            "                              {"
+                            "                                \"bool\": {"
+                            "                                  \"must_not\": ["
+                            "                                    {"
+                            "                                      \"exists\": {"
+                            "                                        \"field\": \"zdb_xmax\""
+                            "                                      }"
+                            "                                    }"
+                            "                                  ]"
+                            "                                }"
+                            "                              },"
+                            "                              {"
+                            "                                \"bool\": {"
+                            "                                  \"must\": ["
+                            "                                    {"
+                            "                                      \"terms\": {"
+                            "                                        \"zdb_xmax\": %s"
+                            "                                      }"
+                            "                                    },"
+                            "                                    {"
+                            "                                      \"range\": {"
+                            "                                        \"zdb_cmax\": {"
+                            "                                          \"gte\": %u"
+                            "                                        }"
+                            "                                      }"
+                            "                                    }"
+                            "                                  ]"
+                            "                                }"
+                            "                              },"
+                            "                              {"
+                            "                                \"bool\": {"
+                            "                                  \"must\": ["
+                            "                                    {"
+                            "                                      \"bool\": {"
+                            "                                        \"must_not\": ["
+                            "                                          {"
+                            "                                            \"terms\": {"
+                            "                                              \"zdb_xmax\": %s"
+                            "                                            }"
+                            "                                          }"
+                            "                                        ]"
+                            "                                      }"
+                            "                                    },"
+                            "                                    {"
+                            "                                      \"bool\": {"
+                            "                                        \"should\": ["
+                            "                                          {"
+                            "                                            \"terms\": {"
+                            "                                              \"zdb_xmax\": {"
+                            "                                                \"index\": \"%s\","
+                            "                                                \"type\": \"%s\","
+                            "                                                \"path\": \"zdb_aborted_xids\","
+                            "                                                \"id\": \"zdb_aborted_xids\""
+                            "                                              }"
+                            "                                            }"
+                            "                                          },"
+                            "                                          {"
+                            "                                            \"terms\": {"
+                            "                                              \"zdb_xmax\": %s"
+                            "                                            }"
+                            "                                          },"
+                            "                                          {"
+                            "                                            \"range\": {"
+                            "                                              \"zdb_xmax\": {"
+                            "                                                \"gte\": %ld"
+                            "                                              }"
+                            "                                            }"
+                            "                                          }"
+                            "                                        ]"
+                            "                                      }"
+                            "                                    }"
+                            "                                  ]"
+                            "                                }"
+                            "                              }"
+                            "                            ]"
+                            "                          }"
+                            "                        }"
+                            "                      ]"
+                            "                    }"
+                            "                  }"
+                            "                ]"
+                            "              }"
+                            "            }"
+                            "          ]"
+                            "        }"
+                            "      }"
+                            "    ]"
+                            "  }"
+                            "}",
+                     TextDatumGetCString(zdb_array_to_json(myXids)),
+                     commandId,
+                     TextDatumGetCString(zdb_array_to_json(myXids)),
+                     commandId,
+                     ZDBIndexOptionsGetIndexName(indexRel),
+                     ZDBIndexOptionsGetTypeName(indexRel),
+                     TextDatumGetCString(zdb_array_to_json(activeXids)),
+                     xmax,
+                     TextDatumGetCString(zdb_array_to_json(myXids)),
+                     commandId,
+                     TextDatumGetCString(zdb_array_to_json(myXids)),
+                     ZDBIndexOptionsGetIndexName(indexRel),
+                     ZDBIndexOptionsGetTypeName(indexRel),
+                     TextDatumGetCString(zdb_array_to_json(activeXids)),
+                     xmax
 
-		/* find our visibility query SQL function */
-		zdb_visibility_clause = DatumGetObjectId(DirectFunctionCall1(regprocedurein, CStringGetDatum(
-				"zdb.visibility_clause(bigint[], bigint, int, bigint[], regclass, text)")));
+    );
 
-		/* ... and call it */
-		vis = (ZDBQueryType *) DatumGetTextP(
-				OidFunctionCall6(zdb_visibility_clause, PointerGetDatum(myXids), UInt64GetDatum(xmax),
-								 CommandIdGetDatum(commandId),
-								 makeArrayResult(astate, tmpContext),
-								 ObjectIdGetDatum(RelationGetRelid(indexRel)),
-								 CStringGetTextDatum(ZDBIndexOptionsGetTypeName(indexRel))));
+    RelationClose(indexRel);
+    MemoryContextDelete(tmpContext);
 
-		relation_close(indexRel, AccessShareLock);
-
-		/* switch back to the original memory context */
-		MemoryContextSwitchTo(oldContext);
-
-		/* and copy the 'vis'ibility query into this context so we can return it */
-		len    = strlen(vis->json);
-		output = palloc0(sizeof(ZDBQueryType) + len + 1);
-		output->vl_len_ = vis->vl_len_;
-		memcpy(output->json, vis->json, len);
-	}
-	MemoryContextDelete(tmpContext);
-
-	PG_RETURN_POINTER(output);
+    PG_RETURN_POINTER(MakeZDBQuery(query->data));
 }

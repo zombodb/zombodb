@@ -1,1 +1,0 @@
-select jsonb_pretty(regexp_replace(zdb.visibility_clause(ARRAY[42]::bigint[], 99, 0, ARRAY[1,2,3,4,5]::bigint[], 'idxevents', 'doc')::text, '"index":".*?"', '"index":"xxx"', 'g')::jsonb);

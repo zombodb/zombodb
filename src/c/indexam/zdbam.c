@@ -227,7 +227,7 @@ void finish_inserts(bool is_commit) {
 
 }
 
-ArrayType *collect_used_xids(MemoryContext memoryContext) {
+Datum collect_used_xids(MemoryContext memoryContext) {
 	ListCell        *lc;
 	ArrayBuildState *astate = NULL;
 
@@ -246,7 +246,7 @@ ArrayType *collect_used_xids(MemoryContext memoryContext) {
 
 	astate = accumArrayResult(astate, UInt64GetDatum(GetCurrentTransactionIdIfAny()), false, INT8OID, memoryContext);
 
-	return DatumGetArrayTypeP(makeArrayResult(astate, memoryContext));
+	return makeArrayResult(astate, memoryContext);
 }
 
 /*lint -esym 715,mySubid,parentSubid,arg ignore unused param */

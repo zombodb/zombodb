@@ -31,6 +31,6 @@ typedef struct ZDBIndexChangeContext {
 
 ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row, bool isnull);
 void finish_inserts(bool is_commit);
-ArrayType *collect_used_xids(MemoryContext context);
+Datum collect_used_xids(MemoryContext memoryContext);
 
 #endif /* __ZDB_ZDBAM_H__ */
