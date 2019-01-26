@@ -7,6 +7,10 @@ env:
 sudo: required
 dist: trusty
 
+notifications:
+  slack: zombodb:M95qGlYZ9x9ufL6L3oRxyGBm
+
+
 before_install:
   - export BUILD_HOME=`pwd`
   - free
