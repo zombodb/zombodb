@@ -163,7 +163,7 @@ ZomboDB was open-sourced in July 2015 and has since been used in numerous produc
 
 ## License
 
-Copyright 2018 ZomboDB, LLC
+Copyright 2018-2019 ZomboDB, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
