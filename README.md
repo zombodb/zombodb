@@ -1,5 +1,5 @@
 [![logo](logo.png)](https://www.zombodb.com/) 
-###### Making Postgres and Elasticsearch work together like it's 2018
+###### Making Postgres and Elasticsearch work together like it's 2019
 [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.com/zombodb/zombodb)
 
 ZomboDB brings powerful text-search and analytics features to Postgres by using Elasticsearch as an index type.  Its comprehensive query language and SQL functions enable new and creative ways to query your relational data.
