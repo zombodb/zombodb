@@ -7,6 +7,10 @@ env:
 sudo: required
 dist: trusty
 
+notifications:
+  slack: zombodb:M95qGlYZ9x9ufL6L3oRxyGBm
+
+
 before_install:
   - export BUILD_HOME=`pwd`
   - free
@@ -55,7 +59,6 @@ script:
   - sudo cat /var/log/syslog
   - cat /etc/postgresql/9.5/main/postgresql.conf
   - sleep 10
-  - curl localhost:9200/
   - cd ${BUILD_HOME}/postgres
   - make installcheck
 

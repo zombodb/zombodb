@@ -58,8 +58,8 @@ import static org.elasticsearch.search.aggregations.AggregationBuilders.*;
 public abstract class QueryRewriter {
 
     public static class Factory {
-        public static QueryRewriter create(RestRequest restRequest, Client client, String indexName, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
-            return new ZomboDBQueryRewriter(client, indexName, restRequest.getXContentRegistry(), input, canDoSingleIndex, needVisibilityOnTopLevel);
+        public static QueryRewriter create(RestRequest restRequest, Client client, String indexName, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel, boolean wantScores) {
+            return new ZomboDBQueryRewriter(client, indexName, restRequest.getXContentRegistry(), input, canDoSingleIndex, needVisibilityOnTopLevel, wantScores);
         }
     }
 
@@ -128,8 +128,9 @@ public abstract class QueryRewriter {
 
     final IndexMetadataManager metadataManager;
     private boolean hasJsonAggregate = false;
+    private final boolean wantScores;
 
-    public QueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+    public QueryRewriter(Client client, String indexName, NamedXContentRegistry contentRegistry, String input, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel, boolean wantScores) {
         this.client = client;
         this.contentRegistry = contentRegistry;
         this.needVisibilityOnTopLevel = needVisibilityOnTopLevel;
@@ -176,6 +177,8 @@ public abstract class QueryRewriter {
 
         metadataManager.loadExpansionMappings(tree);
         performOptimizations(client);
+
+        this.wantScores = wantScores || (getLimit() != null && "_score".equals(getLimit().getFieldname()));
     }
 
     /**
@@ -198,6 +201,10 @@ public abstract class QueryRewriter {
 
     public ASTLimit getLimit() {
         return tree.getLimit();
+    }
+
+    public boolean wantScores() {
+        return wantScores;
     }
 
     public QueryBuilder rewriteQuery() {
@@ -643,14 +650,20 @@ public abstract class QueryRewriter {
         return fb;
     }
 
+    private boolean inWith = false;
     private QueryBuilder build(ASTWith node) {
         BoolQueryBuilder bqb = boolQuery();
         String path = null;
 
-        for (QueryParserNode child : node) {
-            if (path == null)
-                path = child.getNestedPath(metadataManager);
-            bqb.must(build(child));
+        inWith = true;
+        try {
+            for (QueryParserNode child : node) {
+                if (path == null)
+                    path = child.getNestedPath(metadataManager);
+                bqb.must(build(child));
+            }
+        } finally {
+            inWith = false;
         }
 
         return shouldJoinNestedFilter() ? nestedQuery(path, bqb, ScoreMode.Avg) : bqb;
@@ -1178,7 +1191,7 @@ public abstract class QueryRewriter {
 
     private QueryBuilder maybeNest(QueryParserNode node, QueryBuilder fb) {
         if (!(node.jjtGetParent() instanceof ASTWith) && node.isNested(metadataManager)) {
-            if (shouldJoinNestedFilter())
+            if (!inWith && shouldJoinNestedFilter())
                 return nestedQuery(node.getNestedPath(metadataManager), fb, ScoreMode.Avg);
             else
                 return fb;
@@ -1229,8 +1242,8 @@ public abstract class QueryRewriter {
         if (visibility == null)
             return query;
 
-        return
-                constantScoreQuery(boolQuery()
+        return wantScores ?
+                boolQuery()
                         .must(query)
                         .mustNot(
                                 visibility()
@@ -1239,6 +1252,18 @@ public abstract class QueryRewriter {
                                         .xmax(visibility.getXmax())
                                         .commandId(visibility.getCommandId())
                                         .activeXids(visibility.getActiveXids())
-                        ));
+                        ) :
+                constantScoreQuery(
+                        boolQuery()
+                                .must(query)
+                                .mustNot(
+                                        visibility()
+                                                .myXid(visibility.getMyXid())
+                                                .xmin(visibility.getXmin())
+                                                .xmax(visibility.getXmax())
+                                                .commandId(visibility.getCommandId())
+                                                .activeXids(visibility.getActiveXids())
+                                )
+                );
     }
 }

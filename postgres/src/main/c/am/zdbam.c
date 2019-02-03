@@ -352,16 +352,6 @@ static void create_trigger_dependency(Oid indexRelOid, Oid triggerOid) {
     recordDependencyOn(&triggerAddress, &indexAddress, DEPENDENCY_INTERNAL);
 }
 
-static char *lookup_zdb_namespace(void) {
-    StringInfo sql = makeStringInfo();
-
-    appendStringInfo(sql, "select nspname from pg_namespace where oid = (select extnamespace from pg_extension where extname = 'zombodb');");
-    if (SPI_execute(sql->data, true, 1) != SPI_OK_SELECT || SPI_processed != 1)
-        elog(ERROR, "Cannot determine ZomboDB's namespace");
-
-    return SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
-}
-
 static void create_update_trigger(Oid heapRelOid, char *schemaName, char *tableName, Oid indexRelOid) {
     StringInfo sql = makeStringInfo();
 	StringInfo triggerName = makeStringInfo();

@@ -276,11 +276,16 @@ public class QueryTreeOptimizer {
         boolean needsRenumber = false;
         for (int i = 0, many = root.getChildren().size(); i < many; i++) {
             QueryParserNode child = root.getChild(i);
+            String analyzer = null;
+
             if (child instanceof ASTAggregate)
                 continue;
 
             if (child.isNested(metadataManager) && root instanceof ASTAnd)
                 continue;
+
+            if (child.getFieldname() != null)
+                analyzer = metadataManager.getMetadataForField(child.getFieldname()).getSearchAnalyzer(child.getFieldname());
 
             if (child instanceof ASTWord || child instanceof ASTPhrase || child instanceof ASTNumber || child instanceof ASTBoolean || child instanceof ASTArray) {
                 if (child.getOperator() == QueryParserNode.Operator.CONTAINS || child.getOperator() == QueryParserNode.Operator.EQ || child.getOperator() == QueryParserNode.Operator.NE) {
@@ -289,6 +294,9 @@ public class QueryTreeOptimizer {
 
                     if (child.getBoost() != root.getBoost())
                         continue;
+
+                    if (child instanceof ASTPhrase && !"exact".equals(analyzer))
+                        continue;   // can't merge phrases for fields that aren't known to be 'exact'
 
                     array = null;
                     for (ASTArray a : arraysByField.values()) {

@@ -163,6 +163,20 @@
               "type": "nested"
             }
           }
+        },
+        "issue311": {
+          "type": "nested",
+          "properties": {
+            "tags": {
+              "type" : "keyword",
+              "ignore_above" : 10921
+            },
+            "text": {
+              "type" : "text",
+              "analyzer" : "fulltext",
+              "include_in_all" : false
+            }
+          }
         }
       }
     }

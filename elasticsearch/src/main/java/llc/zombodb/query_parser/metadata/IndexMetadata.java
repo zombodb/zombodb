@@ -259,6 +259,10 @@ public class IndexMetadata {
         return getAnalyzerOfType(fieldname, "search");
     }
 
+    public boolean isExactAnalyzer(String fieldname) {
+        return "exact".equals(getSearchAnalyzer(fieldname));
+    }
+
     public String getIndexAnalyzer(String fieldname) {
         return getAnalyzerOfType(fieldname, "index");
     }

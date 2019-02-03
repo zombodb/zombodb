@@ -455,7 +455,7 @@ char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQue
     StringInfo query;
     StringInfo endpoint           = makeStringInfo();
     StringInfo response;
-    bool       useInvisibilityMap = strstr(userQuery, "#expand") != NULL || indexDescriptor->options != NULL;
+    bool       useInvisibilityMap = strstr(userQuery, "#subselect") != NULL || strstr(userQuery, "#limit") != NULL || strstr(userQuery, "#options") != NULL || strstr(userQuery, "#expand") != NULL || indexDescriptor->options != NULL;
 
     appendStringInfo(endpoint, "%s%s/_zdbquery", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
     if (indexDescriptor->searchPreference != NULL)
@@ -575,7 +575,7 @@ ZDBSearchResponse *elasticsearch_searchIndex(ZDBIndexDescriptor *indexDescriptor
     StringInfo        response;
     ZDBSearchResponse *hits;
     ZDBScore          max_score;
-    bool              useInvisibilityMap = strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
+    bool              useInvisibilityMap = strstr(queries[0], "#subselect") != NULL || strstr(queries[0], "#limit") != NULL || strstr(queries[0], "#options") != NULL || strstr(queries[0], "#expand") != NULL || indexDescriptor->options != NULL;
 	int               expected_bytes_len;
 
     appendStringInfo(endpoint, "%s%s/_pgtid?scores=%s&sort=%s", indexDescriptor->url, indexDescriptor->fullyQualifiedName, wantScores ? "true" : "false", needSort ? "true" : "false");

@@ -134,12 +134,12 @@ PARSER_END(QueryParser)
 
 <JSON_CLOB> MORE :
 {
-      <JSON_DATA: (~[")"])+ >
+      <JSON_DATA: (~[]) >
 }
 
 <JSON_CLOB> TOKEN:
 {
-    <JSON_CLOB_END: ")"> : DEFAULT
+    <JSON_CLOB_END: "})"> : DEFAULT
 }
 
 <DEFAULT> MORE :
@@ -331,7 +331,7 @@ void Options() : {}
 void Limit() : {}
 {
     (
-        <LIMIT> "(" (LimitFieldname()) SortDirection() "," Number() "," Number() ")"
+        <LIMIT> "(" (LimitFieldname()) SortDirection() (LOOKAHEAD(2) "," (LimitFieldname()) SortDirection())* "," Number() "," Number() ")"
     ) #Limit
 }
 
@@ -638,10 +638,14 @@ FieldnameAndOperator OptionalFieldname() :
     )
     {
         if (fn != null) {
+            usedFieldnames.add(fn.fieldName);
             return new FieldnameAndOperator(fn.fieldName, op.image);
         } else {
-            usedFieldnames.add("_all");
-            return fieldnameStack.isEmpty() ? new FieldnameAndOperator("_all", ":") : fieldnameStack.peek();
+            FieldnameAndOperator fao = fieldnameStack.isEmpty() ? new FieldnameAndOperator("_all", ":") : fieldnameStack.peek();
+            if (!fieldnameStack.isEmpty())
+                usedFieldnames.add(fao.fieldname);
+
+            return fao;
         }
     }
 }

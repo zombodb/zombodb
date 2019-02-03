@@ -22,6 +22,7 @@ import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ObjectParser;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.index.query.AbstractQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryParseContext;
@@ -124,7 +125,11 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
     @Override
     protected Query doToQuery(QueryShardContext context) {
-        return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, canOptimizeJoins, context.fieldMapper(leftFieldname).typeName(), context.getShardId(), query, context.getClient(), fastTerms);
+        MappedFieldType fieldType = context.fieldMapper(leftFieldname);
+
+        if (fieldType == null)
+            throw new RuntimeException(context.index().getName() + " does not contain '" + leftFieldname + "'");
+        return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, canOptimizeJoins, fieldType.typeName(), context.getShardId(), query, context.getClient(), fastTerms);
     }
 
     @Override

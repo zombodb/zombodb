@@ -2,8 +2,20 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=false,NODE_PREFIX=AST,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package llc.zombodb.query_parser;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public
 class ASTLimit extends QueryParserNode {
+  public static class Sorts {
+    public final String fieldname;
+    public final String direction;
+
+    private Sorts(String fieldname, String direction) {
+      this.fieldname = fieldname;
+      this.direction = direction;
+    }
+  }
   public ASTLimit(int id) {
     super(id);
   }
@@ -13,20 +25,21 @@ class ASTLimit extends QueryParserNode {
   }
 
 
-  public String getFieldname() {
-    return String.valueOf(getChild(0).getValue());
-  }
+  public List<Sorts> getSorts() {
+    List<Sorts> l = new ArrayList<>();
 
-  public String getSortDirection() {
-    return String.valueOf(getChild(1).getValue());
+    for (int i=0; i<jjtGetNumChildren()-2; i+=2) {
+      l.add(new Sorts(String.valueOf(getChild(i).getValue()), String.valueOf(getChild(i+1).getValue())));
+    }
+    return l;
   }
 
   public int getOffset() {
-    return Integer.valueOf(String.valueOf(getChild(2).getValue()));
+    return Integer.valueOf(String.valueOf(getChild(jjtGetNumChildren()-2).getValue()));
   }
 
   public int getLimit() {
-    return Integer.valueOf(String.valueOf(getChild(3).getValue()));
+    return Integer.valueOf(String.valueOf(getChild(jjtGetNumChildren()-1).getValue()));
   }
 
 

@@ -3057,19 +3057,11 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "                  \"bool\" : {\n" +
                         "                    \"should\" : [\n" +
                         "                      {\n" +
-                        "                        \"nested\" : {\n" +
-                        "                          \"query\" : {\n" +
-                        "                            \"term\" : {\n" +
-                        "                              \"nested.exact_field\" : {\n" +
-                        "                                \"value\" : \"c\",\n" +
-                        "                                \"boost\" : 1.0\n" +
-                        "                              }\n" +
-                        "                            }\n" +
-                        "                          },\n" +
-                        "                          \"path\" : \"nested\",\n" +
-                        "                          \"ignore_unmapped\" : false,\n" +
-                        "                          \"score_mode\" : \"avg\",\n" +
-                        "                          \"boost\" : 1.0\n" +
+                        "                        \"term\" : {\n" +
+                        "                          \"nested.exact_field\" : {\n" +
+                        "                            \"value\" : \"c\",\n" +
+                        "                            \"boost\" : 1.0\n" +
+                        "                          }\n" +
                         "                        }\n" +
                         "                      },\n" +
                         "                      {\n" +
@@ -3485,75 +3477,19 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "        \"bool\" : {\n" +
                         "          \"must\" : [\n" +
                         "            {\n" +
-                        "              \"match_phrase\" : {\n" +
+                        "              \"term\" : {\n" +
                         "                \"phrase_field\" : {\n" +
-                        "                  \"query\" : \"phrase value\",\n" +
-                        "                  \"slop\" : 0,\n" +
+                        "                  \"value\" : \"literal_term\",\n" +
                         "                  \"boost\" : 1.0\n" +
                         "                }\n" +
                         "              }\n" +
                         "            },\n" +
                         "            {\n" +
-                        "              \"span_near\" : {\n" +
-                        "                \"clauses\" : [\n" +
-                        "                  {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"phrase\",\n" +
-                        "                        \"boost\" : 1.0\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  },\n" +
-                        "                  {\n" +
-                        "                    \"span_term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"with\",\n" +
-                        "                        \"boost\" : 1.0\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  },\n" +
-                        "                  {\n" +
-                        "                    \"span_multi\" : {\n" +
-                        "                      \"match\" : {\n" +
-                        "                        \"wildcard\" : {\n" +
-                        "                          \"phrase_field\" : {\n" +
-                        "                            \"wildcard\" : \"*wildcard*\",\n" +
-                        "                            \"boost\" : 1.0\n" +
-                        "                          }\n" +
-                        "                        }\n" +
-                        "                      },\n" +
-                        "                      \"boost\" : 1.0\n" +
-                        "                    }\n" +
-                        "                  }\n" +
-                        "                ],\n" +
-                        "                \"slop\" : 0,\n" +
-                        "                \"in_order\" : true,\n" +
-                        "                \"boost\" : 1.0\n" +
-                        "              }\n" +
-                        "            },\n" +
-                        "            {\n" +
-                        "              \"bool\" : {\n" +
-                        "                \"must\" : [\n" +
-                        "                  {\n" +
-                        "                    \"term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"literal_term\",\n" +
-                        "                        \"boost\" : 1.0\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  },\n" +
-                        "                  {\n" +
-                        "                    \"term\" : {\n" +
-                        "                      \"phrase_field\" : {\n" +
-                        "                        \"value\" : \"quoted_term\",\n" +
-                        "                        \"boost\" : 1.0\n" +
-                        "                      }\n" +
-                        "                    }\n" +
-                        "                  }\n" +
-                        "                ],\n" +
-                        "                \"disable_coord\" : false,\n" +
-                        "                \"adjust_pure_negative\" : true,\n" +
-                        "                \"boost\" : 1.0\n" +
+                        "              \"term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"quoted_term\",\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
                         "              }\n" +
                         "            }\n" +
                         "          ],\n" +
@@ -3588,6 +3524,53 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            \"transpositions\" : false,\n" +
                         "            \"boost\" : 1.0\n" +
                         "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"match_phrase\" : {\n" +
+                        "          \"phrase_field\" : {\n" +
+                        "            \"query\" : \"phrase value\",\n" +
+                        "            \"slop\" : 0,\n" +
+                        "            \"boost\" : 1.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        \"span_near\" : {\n" +
+                        "          \"clauses\" : [\n" +
+                        "            {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"phrase\",\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"span_term\" : {\n" +
+                        "                \"phrase_field\" : {\n" +
+                        "                  \"value\" : \"with\",\n" +
+                        "                  \"boost\" : 1.0\n" +
+                        "                }\n" +
+                        "              }\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"span_multi\" : {\n" +
+                        "                \"match\" : {\n" +
+                        "                  \"wildcard\" : {\n" +
+                        "                    \"phrase_field\" : {\n" +
+                        "                      \"wildcard\" : \"*wildcard*\",\n" +
+                        "                      \"boost\" : 1.0\n" +
+                        "                    }\n" +
+                        "                  }\n" +
+                        "                },\n" +
+                        "                \"boost\" : 1.0\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          ],\n" +
+                        "          \"slop\" : 0,\n" +
+                        "          \"in_order\" : true,\n" +
+                        "          \"boost\" : 1.0\n" +
                         "        }\n" +
                         "      }\n" +
                         "    ],\n" +
@@ -5231,8 +5214,7 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      id=<db.schema.table.index>id\n" +
                         "      And\n" +
                         "         Phrase (fieldname=english_field, operator=CONTAINS, value=I''ll see you later, index=db.schema.table.index)\n" +
-                        "         Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
-                        "            Word (fieldname=english_field, operator=CONTAINS, value=darl, index=db.schema.table.index)");
+                        "         Word (fieldname=english_field, operator=CONTAINS, value=darl, index=db.schema.table.index)");
     }
 
     @Test
@@ -5321,6 +5303,26 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "   Or\n" +
                         "      JsonQuery (value={\"term\":{\"_all\":\"java\"}})\n" +
                         "      JsonQuery (value={ \"term\":{\"_all\":\"joe\"} })"
+        );
+    }
+
+    @Test
+    public void testIssue306_Json() throws Exception {
+        assertJson(
+                "({\"simple_query_string\":{\"query\":\"(java)\", \"fields\": [\"title\"]}})",
+          "{\n" +
+                        "  \"simple_query_string\" : {\n" +
+                        "    \"query\" : \"(java)\",\n" +
+                        "    \"fields\" : [\n" +
+                        "      \"title^1.0\"\n" +
+                        "    ],\n" +
+                        "    \"flags\" : -1,\n" +
+                        "    \"default_operator\" : \"or\",\n" +
+                        "    \"lenient\" : false,\n" +
+                        "    \"analyze_wildcard\" : false,\n" +
+                        "    \"boost\" : 1.0\n" +
+                        "  }\n" +
+                        "}"
         );
     }
 
@@ -5716,20 +5718,20 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     public void testLimit() throws Exception {
         assertAST("#limit(exact_field desc, 12, 42)",
                 "QueryTree\n" +
-                        "   Limit (index=db.schema.table.index)\n" +
-                        "      LimitFieldname (value=exact_field, index=db.schema.table.index)\n" +
-                        "      SortDirection (value=desc, index=db.schema.table.index)\n" +
-                        "      Number (value=12, index=db.schema.table.index)\n" +
-                        "      Number (value=42, index=db.schema.table.index)"
+                        "   Limit\n" +
+                        "      LimitFieldname (value=exact_field)\n" +
+                        "      SortDirection (value=desc)\n" +
+                        "      Number (value=12)\n" +
+                        "      Number (value=42)"
         );
 
         assertAST("(#limit(exact_field desc, 12, 42) a or b)",
                 "QueryTree\n" +
-                        "   Limit (index=db.schema.table.index)\n" +
-                        "      LimitFieldname (value=exact_field, index=db.schema.table.index)\n" +
-                        "      SortDirection (value=desc, index=db.schema.table.index)\n" +
-                        "      Number (value=12, index=db.schema.table.index)\n" +
-                        "      Number (value=42, index=db.schema.table.index)\n" +
+                        "   Limit\n" +
+                        "      LimitFieldname (value=exact_field)\n" +
+                        "      SortDirection (value=desc)\n" +
+                        "      Number (value=12)\n" +
+                        "      Number (value=42)\n" +
                         "   Expansion\n" +
                         "      id=<db.schema.table.index>id\n" +
                         "      Or\n" +
@@ -5756,6 +5758,23 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  }\n" +
                         "}"
         );
+    }
+
+    @Test
+    public void testIssue316() throws Exception {
+        assertAST("#limit(a asc, b desc, c asc, d asc, 0, 10)",
+                "QueryTree\n" +
+                        "   Limit\n" +
+                        "      LimitFieldname (value=a)\n" +
+                        "      SortDirection (value=asc)\n" +
+                        "      LimitFieldname (value=b)\n" +
+                        "      SortDirection (value=desc)\n" +
+                        "      LimitFieldname (value=c)\n" +
+                        "      SortDirection (value=asc)\n" +
+                        "      LimitFieldname (value=d)\n" +
+                        "      SortDirection (value=asc)\n" +
+                        "      Number (value=0)\n" +
+                        "      Number (value=10)");
     }
 
     @Test
@@ -5968,6 +5987,46 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "    \"boost\" : 1.0\n" +
                         "  }\n" +
                         "}");
+    }
+
+    @Test
+    public void testIssue311() throws Exception {
+        assertJson("issue311.text:(\"acute\") with issue311.text:(\"heart attack\")",
+                "{\n" +
+                        "  \"nested\" : {\n" +
+                        "    \"query\" : {\n" +
+                        "      \"bool\" : {\n" +
+                        "        \"must\" : [\n" +
+                        "          {\n" +
+                        "            \"term\" : {\n" +
+                        "              \"issue311.text\" : {\n" +
+                        "                \"value\" : \"acute\",\n" +
+                        "                \"boost\" : 1.0\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          },\n" +
+                        "          {\n" +
+                        "            \"match_phrase\" : {\n" +
+                        "              \"issue311.text\" : {\n" +
+                        "                \"query\" : \"heart attack\",\n" +
+                        "                \"slop\" : 0,\n" +
+                        "                \"boost\" : 1.0\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        ],\n" +
+                        "        \"disable_coord\" : false,\n" +
+                        "        \"adjust_pure_negative\" : true,\n" +
+                        "        \"boost\" : 1.0\n" +
+                        "      }\n" +
+                        "    },\n" +
+                        "    \"path\" : \"issue311\",\n" +
+                        "    \"ignore_unmapped\" : false,\n" +
+                        "    \"score_mode\" : \"avg\",\n" +
+                        "    \"boost\" : 1.0\n" +
+                        "  }\n" +
+                        "}"
+        );
     }
 
 }

@@ -18,6 +18,7 @@ package llc.zombodb.rest.search;
 
 import llc.zombodb.fast_terms.FastTermsAction;
 import llc.zombodb.fast_terms.FastTermsResponse;
+import llc.zombodb.query_parser.ASTLimit;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import llc.zombodb.query_parser.utils.Utils;
 import llc.zombodb.rest.QueryAndIndexPair;
@@ -27,7 +28,6 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
@@ -104,7 +104,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-        boolean wantScores = request.paramAsBoolean("scores", true);
+        final boolean wantScores = request.paramAsBoolean("scores", true);
         boolean needSort = request.paramAsBoolean("sort", true);
         long totalStart = System.nanoTime();
         BinaryTIDResponse tids;
@@ -115,7 +115,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, false, false);
+            query = buildJsonQueryFromRequestContent(client, request, false, false, wantScores);
             parseEnd = System.nanoTime();
 
             if (!wantScores && !query.hasLimit()) {
@@ -145,7 +145,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 builder.setIndices(query.getIndexName());
                 builder.setTypes("data");
                 builder.setPreference(request.param("preference"));
-                builder.setTrackScores(wantScores);
+                builder.setTrackScores(query.wantScores()); // query.wantScores() accounts for a #limit(_score)
                 builder.setRequestCache(true);
                 builder.addDocValueField("_zdb_id");    // this is the only field we need
                 builder.addStoredField("_none_");       // don't get any _underscore fields like _id
@@ -157,7 +157,8 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
                 if (query.hasLimit()) {
                     builder.setSearchType(SearchType.DEFAULT);
-                    builder.addSort(query.getLimit().getFieldname(), "asc".equals(query.getLimit().getSortDirection()) ? SortOrder.ASC : SortOrder.DESC);
+                    for (ASTLimit.Sorts sort: query.getLimit().getSorts())
+                        builder.addSort(sort.fieldname, "asc".equals(sort.direction) ? SortOrder.ASC : SortOrder.DESC);
                     builder.setFrom(query.getLimit().getOffset());
                     builder.setSize(query.getLimit().getLimit());
                 } else {
@@ -190,7 +191,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel, boolean wantScores) {
         String queryString = request.content().utf8ToString();
         String indexName = request.param("index");
 
@@ -199,10 +200,10 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 // silence an error from Elasticsearch about an unused request parameter
                 // TODO:  should we use 'preference' in FastTerms and/or CrossJoin somehow?
                 String preference = request.param("preference");
-                QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel);
-                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit());
+                QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel, wantScores);
+                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit(), qr.wantScores());
             } else {
-                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null);
+                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null, wantScores);
             }
         } catch (Exception e) {
             throw new RuntimeException(queryString, e);

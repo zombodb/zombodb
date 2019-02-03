@@ -226,7 +226,7 @@ public class IndexLinkOptimizer {
         Map<String, List<ASTExpansion>> sameExpansions = new HashMap<>();
         int cnt = 0;
         for (QueryParserNode child : root) {
-            if (child instanceof ASTExpansion) {
+            if (child instanceof ASTExpansion && !((ASTExpansion) child).isSubselect()) {
                 String key = child.getIndexLink().toStringNoFieldname();
                 List<ASTExpansion> groups = sameExpansions.computeIfAbsent(key, k -> new ArrayList<>());
 
@@ -295,7 +295,7 @@ public class IndexLinkOptimizer {
 
                         @Override
                         public String getIndexName() {
-                            return metadataManager.findField(link.getLeftFieldname()).getIndexName();
+                            return metadataManager.findField(link.getRightFieldname()).getIndexName();
                         }
 
                         @Override
@@ -322,22 +322,29 @@ public class IndexLinkOptimizer {
 
                     if (!link.getIndexName().equals(parentLink.getIndexName())) {
                         Stack<Dijkstra.NamedIndex> path = metadataManager.calculatePath(newLink, parentLink);
-                        if (path.size() == 2) {
-                            Dijkstra.NamedIndex top = path.pop();
+                        QueryParserNode parent = (QueryParserNode) node.jjtGetParent();
+                        QueryParserNode root = node;
+
+                        while (!path.isEmpty()) {
                             Dijkstra.NamedIndex bottom = path.pop();
-                            String leftFieldname = bottom.index.split("[:]")[1];
-                            String rightFieldname = top.index.split("[:]")[1];
-                            String indexName = top.index.split("[:]")[0];
+                            if (!bottom.index.contains(":"))
+                                continue;
+                            Dijkstra.NamedIndex top = path.pop();
+
+                            String leftFieldname = top.index.split("[:]")[1];
+                            String rightFieldname = bottom.index.split("[:]")[1];
+                            String indexName = bottom.index.split("[:]")[0];
 
                             ASTIndexLink intermediateLink = ASTIndexLink.create(leftFieldname, indexName, null, rightFieldname);
                             ASTExpansion expansion = new ASTExpansion(QueryParserTreeConstants.JJTEXPANSION);
-                            ((QueryParserNode) node.jjtGetParent()).replaceChild(node, expansion);
 
                             expansion.jjtAddChild(intermediateLink, 0);
-                            expansion.jjtAddChild(node, 1);
+                            expansion.jjtAddChild(root, 1);
+                            root = expansion;
                         }
-                    }
 
+                        parent.replaceChild(node, root);
+                    }
                 }
             }
         }

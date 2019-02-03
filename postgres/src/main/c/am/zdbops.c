@@ -27,6 +27,7 @@
 #include "rewrite/rewriteHandler.h"
 #endif
 
+#include "catalog/namespace.h"
 #include "nodes/makefuncs.h"
 #include "utils/builtins.h"
 #include "utils/json.h"
@@ -500,7 +501,11 @@ Datum zdb_internal_profile_query(PG_FUNCTION_ARGS) {
 }
 
 Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdesc, bool isAnonymous) {
-    StringInfo result = makeStringInfo();
+    Oid        phraseOid               = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum(qualify_zdb_typename("phrase"))));
+    Oid        phraseArrayOid          = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum(qualify_zdb_typename("phrase_array"))));
+    Oid        fulltextOid             = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum(qualify_zdb_typename("fulltext"))));
+    Oid        fulltextWithShinglesOid = DatumGetObjectId(DirectFunctionCall1(regtypein, CStringGetDatum(qualify_zdb_typename("fulltext_with_shingles"))));
+    StringInfo result                  = makeStringInfo();
     char       *json;
     int        i;
 
@@ -577,13 +582,13 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
         typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(tupdesc->attrs[i]->atttypid)));
         appendStringInfo(result, "\"%s\": {", name);
 
-        if (strcmp("fulltext", typename) == 0) {
+        if (strcmp("fulltext", typename) == 0 || tupdesc->attrs[i]->atttypid == fulltextOid) {
             /* phrase-indexed field */
             appendStringInfo(result, "\"type\": \"text\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
             appendStringInfo(result, "\"include_in_all\": \"false\",");
             appendStringInfo(result, "\"analyzer\": \"fulltext\"");
-		} else if (strcmp("fulltext_with_shingles", typename) == 0) {
+		} else if (strcmp("fulltext_with_shingles", typename) == 0 || tupdesc->attrs[i]->atttypid == fulltextWithShinglesOid) {
             /* phrase-indexed field */
             appendStringInfo(result, "\"type\": \"text\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");
@@ -591,7 +596,7 @@ Datum make_es_mapping(ZDBIndexDescriptor *desc, Oid tableRelId, TupleDesc tupdes
             appendStringInfo(result, "\"analyzer\": \"fulltext_with_shingles\",");
             appendStringInfo(result, "\"search_analyzer\": \"fulltext_with_shingles_search\"");
 
-        } else if (strcmp("phrase", typename) == 0 || strcmp("phrase_array", typename) == 0) {
+        } else if (strcmp("phrase", typename) == 0 || strcmp("phrase_array", typename) == 0 || tupdesc->attrs[i]->atttypid == phraseOid || tupdesc->attrs[i]->atttypid == phraseArrayOid) {
             /* phrase-indexed field */
             appendStringInfo(result, "\"type\": \"text\",");
             appendStringInfo(result, "\"index_options\": \"positions\",");

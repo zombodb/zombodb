@@ -178,8 +178,9 @@ public class AnalyzedField {
         }
 
         void keep(ASTPhrase phrase) {
+            boolean isExact = metadataManager.getMetadataForField(fieldName).isExactAnalyzer(fieldName);
             String value = String.valueOf(phrase.getValue());
-            final List<String> tokens = Utils.simpleTokenize(value);
+            final List<String> tokens = isExact ? Collections.singletonList(value) : Utils.simpleTokenize(value);
             QueryParserNode toKeep;
 
             if (phrase.getOperator() == QueryParserNode.Operator.REGEX) {
@@ -187,7 +188,7 @@ public class AnalyzedField {
                 return;
             }
 
-            if (!phrase.isBeenSubparsed() && tokens.size() == 1 && !Utils.isComplexTerm(value)) {
+            if (!phrase.isBeenSubparsed() && tokens.size() == 1 && (isExact || !Utils.isComplexTerm(value))) {
                 // single-token phrase, so rewrite as a word
                 try {
                     AnalyzeResponse analyzed = analyzePhrase(tokens.get(0));
@@ -582,8 +583,12 @@ public class AnalyzedField {
 
     private AnalyzeResponse analyzePhrase(String value) {
         try {
-            // AnalyzeRequest request = new AnalyzeRequestBuilder(client.admin().indices(), indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
-            AnalyzeRequest request = new AnalyzeRequestBuilder(client, AnalyzeAction.INSTANCE, indexName, String.valueOf(value).toLowerCase()).setAnalyzer("phrase").request();
+            AnalyzeRequest request = new AnalyzeRequestBuilder(
+                    client,
+                    AnalyzeAction.INSTANCE,
+                    indexName,
+                    String.valueOf(value).toLowerCase()
+            ).setAnalyzer(metadataManager.getMetadataForField(fieldName).isExactAnalyzer(fieldName) ? "exact" : "phrase").request();
             return client.admin().indices().analyze(request).get();
         } catch (Exception e) {
             throw new RuntimeException(e);

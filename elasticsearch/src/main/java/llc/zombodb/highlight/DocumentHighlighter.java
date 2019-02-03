@@ -157,10 +157,11 @@ public class DocumentHighlighter {
                         if (element instanceof Map) {
                             if (!fieldName.contains("."))
                                 continue;
-                            analyzeData(indexName, primaryKeyFieldname, resolveAllFieldnames(null, (Map) element, new HashSet<String>()), fieldName.substring(0, fieldName.lastIndexOf('.')), (Map) element, baseDocumentData);
+                            String fieldFieldnamePart = fieldName.substring(fieldName.indexOf('.')+1);
+                            analyzeData(indexName, primaryKeyFieldname, Collections.singleton(fieldFieldnamePart), fieldName.substring(0, fieldName.lastIndexOf('.')), (Map) element, baseDocumentData);
                         } else {
                             AnalyzeRequestBuilder rb = new AnalyzeRequestBuilder(client, AnalyzeAction.INSTANCE, indexName, String.valueOf(element).toLowerCase());
-                            rb.setAnalyzer("phrase");
+                            rb.setAnalyzer(metadataManager.getMetadataForField(fieldName).isExactAnalyzer(fieldName) ? "exact" : "phrase");
 
                             try {
                                 fields.add(new AnalyzedField(client, metadataManager, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx++, client.admin().indices().analyze(rb.request()).get()));
@@ -171,7 +172,7 @@ public class DocumentHighlighter {
                     }
                 } else {
                     AnalyzeRequestBuilder rb = new AnalyzeRequestBuilder(client, AnalyzeAction.INSTANCE, indexName, String.valueOf(value).toLowerCase());
-                    rb.setAnalyzer("phrase");
+                    rb.setAnalyzer(metadataManager.getMetadataForField(fieldName).isExactAnalyzer(fieldName) ? "exact" : "phrase");
 
                     try {
                         fields.add(new AnalyzedField(client, metadataManager, indexName, baseDocumentData.get(primaryKeyFieldname), baseFn == null ? fieldName : baseFn + "." + fieldName, idx, client.admin().indices().analyze(rb.request()).get()));
