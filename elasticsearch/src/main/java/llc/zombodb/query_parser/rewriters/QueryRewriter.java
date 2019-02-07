@@ -783,13 +783,11 @@ public abstract class QueryRewriter {
                         value = Long.valueOf(String.valueOf(value));
                     } catch (Exception e2) {
                         try {
-                            value = Float.valueOf(String.valueOf(value));
+                            // we'll just stop at double.  might as well
+                            // get the most precision we can out of the value
+                            value = Double.valueOf(String.valueOf(value));
                         } catch (Exception e3) {
-                            try {
-                                value = Double.valueOf(String.valueOf(value));
-                            } catch (Exception e4) {
-                                // value stays unchanged
-                            }
+                            // value stays unchanged
                         }
                     }
                 }
