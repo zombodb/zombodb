@@ -39,6 +39,31 @@ static ZDBScore *zdb_lookup_score(Oid index_relid, ItemPointer ctid);
 
 static HTAB *bitmapScores = NULL;
 
+static uint32 zdbbitmapscorekey_hash(const void *key, Size keysize) {
+    ZDBBitmapScoreKey *k = (ZDBBitmapScoreKey *) key;
+
+    return (uint32) (k->index_relid ^ 31 +
+                                      ItemPointerGetBlockNumber(&k->ctid) ^ 31 +
+                                                                            ItemPointerGetOffsetNumber(&k->ctid));
+}
+
+static int zdbbitmapscorekey_match(const void *key1, const void *key2, Size keysize) {
+    ZDBBitmapScoreKey *a = (ZDBBitmapScoreKey *) key1;
+    ZDBBitmapScoreKey *b = (ZDBBitmapScoreKey *) key2;
+
+    return (a->index_relid == b->index_relid && ItemPointerEquals(&a->ctid, &b->ctid)) ? 0 : 1;
+}
+
+static void *zdbbitmapscorekey_copy(void *d, const void *s, Size keysize) {
+    ZDBBitmapScoreKey *src  = (ZDBBitmapScoreKey *) s;
+    ZDBBitmapScoreKey *dest = (ZDBBitmapScoreKey *) d;
+
+    dest->index_relid = src->index_relid;
+    ItemPointerCopy(&src->ctid, &dest->ctid);
+
+    return dest;
+}
+
 void zdb_reset_scores(void) {
     bitmapScores = NULL;
 }
@@ -56,9 +81,11 @@ void zdb_record_score(Oid index_relid, ItemPointer ctid, ZDBScore score) {
         ctl.keysize   = sizeof(ZDBBitmapScoreKey);
         ctl.entrysize = sizeof(ZDBBitmapScoreEntry);
         ctl.hcxt      = TopTransactionContext;
-        ctl.hash      = tag_hash;
+        ctl.hash      = zdbbitmapscorekey_hash;
+        ctl.match     = zdbbitmapscorekey_match;
+        ctl.keycopy   = zdbbitmapscorekey_copy;
 
-        bitmapScores = hash_create("zdb bitmap scores", 32768, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
+        bitmapScores = hash_create("zdb bitmap scores", 100, &ctl, HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT | HASH_COMPARE | HASH_KEYCOPY);
     }
 
     key.index_relid = index_relid;
