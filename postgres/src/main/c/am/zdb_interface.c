@@ -173,6 +173,7 @@ void zdb_index_init(void) {
     add_int_reloption(RELOPT_KIND_ZDB, "default_row_estimate", "Estimate the average number of rows returned by a ZDB query", zdb_default_row_estimate_guc, -1, INT32_MAX);
 	add_bool_reloption(RELOPT_KIND_ZDB, "store", "Should ZomboDB store the raw JSON source in Elasticsearch?", false);
 	add_string_reloption(RELOPT_KIND_ZDB, "block_routing_field", "Which field should ZomboDB use to group rows in shards", NULL, validate_block_routing_field);
+    add_bool_reloption(RELOPT_KIND_ZDB, "always_join_with_docvalues", "Should ZomboDB exclusively perform cross-join joins using docvalues?", false);
 }
 
 ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
@@ -217,7 +218,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->optimizeAfter      = ZDBIndexOptionsGetOptimizeAfter(indexRel);
     desc->defaultRowEstimate = ZDBIndexOptionsGetDefaultRowEstimate(indexRel);
     desc->store              = ZDBIndexOptionsGetStore(indexRel);
-
+    desc->alwaysJoinWithDocValues = ZDBIndexOptionsAlwaysJoinWithDocValues(indexRel);
     if (desc->isShadow) {
         /* but some properties come from the index we're shadowing */
         Oid      shadowRelid = DatumGetObjectId(DirectFunctionCall1(regclassin, PointerGetDatum(ZDBIndexOptionsGetShadow(indexRel))));

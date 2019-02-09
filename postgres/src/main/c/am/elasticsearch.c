@@ -307,7 +307,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_source\": { \"enabled\": %s },"
             "          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\" },"
+            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\", \"always_join_with_docvalues\": %s },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s,"
             _DEFAULT_MAPPING_
@@ -331,6 +331,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
                      lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false),
 					 indexDescriptor->alwaysResolveJoins ? "true" : "false",
                      indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null",
+					 indexDescriptor->alwaysJoinWithDocValues ? "true" : "false",
 					 fieldProperties, shards,
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
@@ -410,7 +411,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "   \"data\": {"
             "      \"_source\": { \"enabled\": %s },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\" },"
+            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\", \"always_join_with_docvalues\": %s },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"
             "    },"
@@ -420,6 +421,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
                      pkey,
                      indexDescriptor->alwaysResolveJoins ? "true" : "false",
                      indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null",
+                     indexDescriptor->alwaysJoinWithDocValues ? "true" : "false",
                      properties
     );
 

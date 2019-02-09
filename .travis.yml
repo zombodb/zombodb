@@ -60,6 +60,10 @@ script:
   - cat /etc/postgresql/9.5/main/postgresql.conf
   - sleep 10
   - cd ${BUILD_HOME}/postgres
+# need to skip the issue-338 test b/c it references a remote cluster that doesn't exist here in travis
+  - echo skipping issue-338 test
+  - grep -v issue-338 src/test/tests.list > /tmp/skipped-tests
+  - cp /tmp/skipped-tests src/test/tests.list
   - make installcheck
 
 after_failure:

@@ -77,6 +77,7 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     .leftFieldname(link.getLeftFieldname())
                     .rightFieldname(link.getRightFieldname())
                     .canOptimizeJoins(canOptimizeForJoins)
+                    .alwaysJoinWithDocValues(metadataManager.getMetadataForMyIndex().alwaysJoinWithDocValues())
                     .query(applyVisibility(build(node.getQuery()))));
         }
 

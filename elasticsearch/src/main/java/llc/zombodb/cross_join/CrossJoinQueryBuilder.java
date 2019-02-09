@@ -41,6 +41,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
     protected String rightFieldname;
     protected QueryBuilder query;
     protected boolean canOptimizeJoins;
+    protected boolean alwaysJoinWithDocValues;
     protected FastTermsResponse fastTerms;
 
     public CrossJoinQueryBuilder() {
@@ -55,6 +56,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         rightFieldname = in.readString();
         query = in.readNamedWriteable(QueryBuilder.class);
         canOptimizeJoins = in.readBoolean();
+        alwaysJoinWithDocValues = in.readBoolean();
         if (in.readBoolean())
             fastTerms = new FastTermsResponse(in);
     }
@@ -98,6 +100,15 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         return this;
     }
 
+    public boolean alwaysJoinWithDocValues() {
+        return alwaysJoinWithDocValues;
+    }
+
+    public CrossJoinQueryBuilder alwaysJoinWithDocValues(boolean alwaysJoinWithDocValues) {
+        this.alwaysJoinWithDocValues = alwaysJoinWithDocValues;
+        return this;
+    }
+
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
         out.writeString(index);
@@ -106,6 +117,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         out.writeString(rightFieldname);
         out.writeNamedWriteable(query);
         out.writeBoolean(canOptimizeJoins);
+        out.writeBoolean(alwaysJoinWithDocValues);
         out.writeBoolean(fastTerms != null);
         if (fastTerms != null)
             fastTerms.writeTo(out);
@@ -119,6 +131,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         builder.field("left_fieldname", leftFieldname);
         builder.field("right_fieldname", rightFieldname);
         builder.field("can_optimize_joins", canOptimizeJoins);
+        builder.field("always_join_with_docvalues", alwaysJoinWithDocValues);
         builder.field("query", query);
         builder.endObject();
     }
@@ -129,7 +142,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
         if (fieldType == null)
             throw new RuntimeException(context.index().getName() + " does not contain '" + leftFieldname + "'");
-        return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, canOptimizeJoins, fieldType.typeName(), context.getShardId(), query, context.getClient(), fastTerms);
+        return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, canOptimizeJoins, alwaysJoinWithDocValues, fieldType.typeName(), context.getShardId(), query, context.getClient(), fastTerms);
     }
 
     @Override
@@ -139,12 +152,13 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
                 Objects.equals(leftFieldname, other.leftFieldname) &&
                 Objects.equals(rightFieldname, other.rightFieldname) &&
                 Objects.equals(query, other.query) &&
-                Objects.equals(canOptimizeJoins, other.canOptimizeJoins);
+                Objects.equals(canOptimizeJoins, other.canOptimizeJoins) &&
+                Objects.equals(alwaysJoinWithDocValues, other.alwaysJoinWithDocValues);
     }
 
     @Override
     protected int doHashCode() {
-        return Objects.hash(index, type, leftFieldname, rightFieldname, query, canOptimizeJoins);
+        return Objects.hash(index, type, leftFieldname, rightFieldname, query, canOptimizeJoins, alwaysJoinWithDocValues);
     }
 
     @Override
