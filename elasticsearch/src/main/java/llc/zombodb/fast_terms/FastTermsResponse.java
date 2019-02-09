@@ -45,7 +45,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     private NumberArrayLookup[] lookups = new NumberArrayLookup[0];
     private Object[][] strings = new Object[0][];
     private int[] numStrings = new int[0];
-    private ObjectArrayList<String> stringArray;
 
     public FastTermsResponse() {
 
@@ -166,15 +165,11 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     }
 
 
-    public synchronized ObjectArrayList<String> getStringArray() {
-        if (stringArray == null) {
-            StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, numStrings);
-            stringArray = new ObjectArrayList<String>(sorter.getTotal());
-            while (sorter.hasNext())
-                stringArray.add(sorter.next());
-            strings = null;
-        }
-
+    public ObjectArrayList<String> getStringArray() {
+        StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, numStrings);
+        ObjectArrayList<String> stringArray = new ObjectArrayList<>(sorter.getTotal());
+        while (sorter.hasNext())
+            stringArray.add(sorter.next());
         return stringArray;
     }
 
@@ -255,8 +250,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     @Override
     public int hashCode() {
-        int hash = Objects.hash(index, dataType, numShards, Arrays.deepHashCode(lookups),
-                Arrays.deepHashCode(strings), stringArray);
+        int hash = Objects.hash(index, dataType, numShards, Arrays.deepHashCode(lookups));
         hash = 31 * hash + Arrays.hashCode(numStrings);
         return hash;
     }
@@ -272,8 +266,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 Objects.equals(numShards, other.numShards) &&
                 Objects.deepEquals(lookups, other.lookups) &&
                 Objects.deepEquals(strings, other.strings) &&
-                Objects.deepEquals(numStrings, other.numStrings) &&
-                Objects.equals(stringArray, other.stringArray);
+                Objects.deepEquals(numStrings, other.numStrings);
     }
 
 }

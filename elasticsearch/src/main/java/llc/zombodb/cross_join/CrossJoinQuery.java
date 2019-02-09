@@ -177,7 +177,7 @@ class CrossJoinQuery extends Query {
         try {
             String key = (canOptimizeJoins ? thisShardId : -1) + ":" + index + ":" + type + ":" + rightFieldname + ":" + query;
 
-            return CACHE.computeIfAbsent(searcher,
+            FastTermsResponse response = CACHE.computeIfAbsent(searcher,
                     loader -> CacheBuilder.<String, FastTermsResponse>builder()
                             .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
                             .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
@@ -190,6 +190,17 @@ class CrossJoinQuery extends Query {
                                     .setQuery(query)
                                     .setSourceShard(canOptimizeJoins ? thisShardId : -1)
                                     .get(TimeValue.timeValueSeconds(300)));
+
+            if (response.getFailedShards() > 0) {
+                // if there was at least one failure, report and re-throw the first
+                // Note that even after we walk down to the original cause, the stacktrace is already lost.
+                Throwable cause = response.getShardFailures()[0].getCause();
+                while (cause.getCause() != null) {
+                    cause = cause.getCause();
+                }
+                throw new RuntimeException(cause);
+            }
+            return response;
         } catch (ExecutionException ee) {
             throw new RuntimeException(ee);
         }
