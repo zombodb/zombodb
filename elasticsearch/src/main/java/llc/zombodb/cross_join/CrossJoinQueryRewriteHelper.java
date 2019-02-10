@@ -163,8 +163,12 @@ class CrossJoinQueryRewriteHelper {
         List<Range> rangeList = new ArrayList<>();
 
         for (long[] range : ranges) {
-            for (int i = 0; i < range.length; i += 2)
-                rangeList.add(new Range(range[i], range[i + 1]));
+            for (int i = 0; i < range.length; i += 2) {
+                if (i+1 == range.length)
+                    rangeList.add(new Range(range[i], range[i]));
+                else
+                    rangeList.add(new Range(range[i], range[i + 1]));
+            }
         }
 
         // sort lowest to highest and merge together adjacent ranges

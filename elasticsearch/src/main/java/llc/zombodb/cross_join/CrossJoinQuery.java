@@ -50,13 +50,14 @@ class CrossJoinQuery extends Query {
     private final String fieldType;
     private final int thisShardId;
     private final boolean canOptimizeJoins;
+    private final boolean alwaysJoinWithDocValues;
     private final QueryBuilder query;
     private final Client client;
     private transient FastTermsResponse fastTerms;
     private transient Weight weight;
     private transient boolean didRewrite;
 
-    CrossJoinQuery(String index, String type, String leftFieldname, String rightFieldname, boolean canOptimizeJoins, String fieldType, int thisShardId, QueryBuilder query, Client client, FastTermsResponse fastTerms) {
+    CrossJoinQuery(String index, String type, String leftFieldname, String rightFieldname, boolean canOptimizeJoins, boolean alwaysJoinWithDocValues, String fieldType, int thisShardId, QueryBuilder query, Client client, FastTermsResponse fastTerms) {
         this.index = index;
         this.type = type;
         this.leftFieldname = leftFieldname;
@@ -64,6 +65,7 @@ class CrossJoinQuery extends Query {
         this.fieldType = fieldType;
         this.thisShardId = thisShardId;
         this.canOptimizeJoins = canOptimizeJoins;
+        this.alwaysJoinWithDocValues = alwaysJoinWithDocValues;
         this.query = query;
         this.client = client;
         this.fastTerms = fastTerms;
@@ -101,17 +103,20 @@ class CrossJoinQuery extends Query {
                     fastTerms = getFastTerms(searcher, index, type, rightFieldname, query, canOptimizeJoins);
                 }
 
-                if (!didRewrite) {
-                    didRewrite = true;
+                // this condition exists only so we can exercise issue #338
+                if (!alwaysJoinWithDocValues) {
+                    if (!didRewrite) {
+                        didRewrite = true;
 
-                    // attempt to rewrite the query into something less complicated
-                    Query rewritten = CrossJoinQueryRewriteHelper.rewriteQuery(CrossJoinQuery.this, fastTerms);
-                    if (rewritten != CrossJoinQuery.this)
-                        weight = new ConstantScoreQuery(rewritten).createWeight(searcher, needsScores);
+                        // attempt to rewrite the query into something less complicated
+                        Query rewritten = CrossJoinQueryRewriteHelper.rewriteQuery(CrossJoinQuery.this, fastTerms);
+                        if (rewritten != CrossJoinQuery.this)
+                            weight = new ConstantScoreQuery(rewritten).createWeight(searcher, needsScores);
+                    }
+
+                    if (weight != null)
+                        return weight.scorer(context);
                 }
-
-                if (weight != null)
-                    return weight.scorer(context);
 
                 // we have to do it the hard way by grovelling through doc values
                 BitSet bitset = CrossJoinQueryExecutor.execute(
@@ -177,7 +182,7 @@ class CrossJoinQuery extends Query {
         try {
             String key = (canOptimizeJoins ? thisShardId : -1) + ":" + index + ":" + type + ":" + rightFieldname + ":" + query;
 
-            return CACHE.computeIfAbsent(searcher,
+            FastTermsResponse response = CACHE.computeIfAbsent(searcher,
                     loader -> CacheBuilder.<String, FastTermsResponse>builder()
                             .setExpireAfterAccess(TimeValue.timeValueMinutes(1))
                             .setExpireAfterWrite(TimeValue.timeValueMinutes(1))
@@ -190,6 +195,17 @@ class CrossJoinQuery extends Query {
                                     .setQuery(query)
                                     .setSourceShard(canOptimizeJoins ? thisShardId : -1)
                                     .get(TimeValue.timeValueSeconds(300)));
+
+            if (response.getFailedShards() > 0) {
+                // if there was at least one failure, report and re-throw the first
+                // Note that even after we walk down to the original cause, the stacktrace is already lost.
+                Throwable cause = response.getShardFailures()[0].getCause();
+                while (cause.getCause() != null) {
+                    cause = cause.getCause();
+                }
+                throw new RuntimeException(cause);
+            }
+            return response;
         } catch (ExecutionException ee) {
             throw new RuntimeException(ee);
         }

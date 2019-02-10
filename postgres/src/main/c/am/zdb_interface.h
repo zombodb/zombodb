@@ -52,6 +52,7 @@ typedef struct {
 	int   defaultRowEstimate;
 	bool  store;
 	int   blockRoutingFieldOffset;
+	bool  alwaysJoinWithDocValues;
 } ZDBIndexOptions;
 
 #define ZDBIndexOptionsGetUrl(relation) \
@@ -116,6 +117,9 @@ typedef struct {
     ((relation)->rd_options && ((ZDBIndexOptions *) relation->rd_options)->blockRoutingFieldOffset > 0 ? \
       (char *) ((ZDBIndexOptions *) relation->rd_options) + ((ZDBIndexOptions *) relation->rd_options)->blockRoutingFieldOffset : (NULL))
 
+#define ZDBIndexOptionsAlwaysJoinWithDocValues(relation) \
+    (relation)->rd_options ? ((ZDBIndexOptions *) relation->rd_options)->alwaysJoinWithDocValues : false
+
 typedef struct ZDBIndexImplementation ZDBIndexImplementation;
 
 typedef struct {
@@ -145,6 +149,7 @@ typedef struct {
 	int  defaultRowEstimate;
 	bool store;
 	char *blockRoutingField;
+    bool alwaysJoinWithDocValues;
 
     char *fieldLists;
 

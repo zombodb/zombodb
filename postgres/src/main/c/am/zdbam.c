@@ -924,6 +924,7 @@ Datum zdboptions(PG_FUNCTION_ARGS) {
                                                 {"default_row_estimate", RELOPT_TYPE_INT,    offsetof(ZDBIndexOptions, defaultRowEstimate)},
                                                 {"store",                RELOPT_TYPE_BOOL,   offsetof(ZDBIndexOptions, store)},
 												{"block_routing_field",   RELOPT_TYPE_STRING, offsetof(ZDBIndexOptions, blockRoutingFieldOffset)},
+												{"always_join_with_docvalues",   RELOPT_TYPE_BOOL, offsetof(ZDBIndexOptions, alwaysJoinWithDocValues)},
     };
 
     options = parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB, &numoptions);
