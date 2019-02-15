@@ -1,6 +1,8 @@
 package llc.zombodb.utils;
 
 import com.carrotsearch.hppc.LongArrayList;
+import com.carrotsearch.hppc.LongScatterSet;
+import com.carrotsearch.hppc.cursors.LongCursor;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Streamable;
@@ -32,9 +34,13 @@ public class NumberArrayLookup implements Streamable {
         }
     }
 
-    private List<long[]> longs;
-    private List<Integer> longLengths;
-    private int countOfLongs = -1;
+    public static class MyLongScatterSet extends LongScatterSet implements java.io.Serializable {
+        public MyLongScatterSet(int expectedElements) {
+            super(expectedElements);
+        }
+    }
+
+    private MyLongScatterSet longset;
     private BitSet bitset;
     private LongArrayList ranges;
     private int countOfBits = -1;
@@ -54,19 +60,17 @@ public class NumberArrayLookup implements Streamable {
     public NumberArrayLookup(long min, long max) {
         long range = max - min;
 
-        this.min = min;
-
         if (range >= Integer.MIN_VALUE && range < Integer.MAX_VALUE - 1) {
             // the range of longs can scale to fit within 32 bits
             // so we're free to use a bitset
             this.bitset = new BitSet((int) range + 1);
-            this.longs = null;
-            this.longLengths = null;
+            this.longset = null;
+            this.min = min;
         } else {
             // we have to do something else
             this.bitset = null;
-            this.longs = new ArrayList<>();
-            this.longLengths = new ArrayList<>();
+            this.longset = new MyLongScatterSet(32768);
+            this.min = 0;
         }
     }
 
@@ -114,9 +118,8 @@ public class NumberArrayLookup implements Streamable {
                 }
             }
         } else {
-            Arrays.sort(bits, 0, length);
-            longs.add(bits);
-            longLengths.add(length);
+            for (int i=0; i<length; i++)
+                longset.add(bits[i]);
         }
     }
 
@@ -143,12 +146,7 @@ public class NumberArrayLookup implements Streamable {
             // value is in our bitset
             return true;
         } else {
-            for (int i = 0; i < longs.size(); i++) {
-                int length = longLengths.get(i);
-                if (Arrays.binarySearch(longs.get(i), 0, length, value) >= 0)
-                    return true;
-            }
-            return false;
+            return longset.contains(value);
         }
     }
 
@@ -175,15 +173,7 @@ public class NumberArrayLookup implements Streamable {
     }
 
     public int getCountOfLongs() {
-        if (countOfLongs == -1) {
-            countOfLongs = 0;
-            if (longLengths != null) {
-                for (int length : longLengths)
-                    countOfLongs += length;
-            }
-        }
-
-        return countOfLongs;
+        return longset.size();
     }
 
     public int getValueCount() {
@@ -244,14 +234,15 @@ public class NumberArrayLookup implements Streamable {
 
             return LongIterator.create(iterators);
 
-        } else if (longs.size() > 0) {
-            long[][] arrays = new long[longs.size()][];
-            int[] lengths = new int[longs.size()];
-            for (int i = 0; i < arrays.length; i++) {
-                arrays[i] = longs.get(i);
-                lengths[i] = longLengths.get(i);
+        } else if (longset.size() > 0) {
+            long[] values = new long[longset.size()];
+
+            int i=0;
+            for (LongCursor longCursor : longset) {
+                values[i++] = longCursor.value;
             }
-            return new LongArrayMergeSortIterator(arrays, lengths);
+            Arrays.sort(values);
+            return new LongArrayMergeSortIterator(new long[][] { values }, new int[] { values.length});
         }
 
         // we have nothing to return so just return an empty iterator
@@ -292,13 +283,15 @@ public class NumberArrayLookup implements Streamable {
                 }
             }
         } else {
-            int numlongs = in.readVInt();
-
-            longs = new ArrayList<>(numlongs);
-            longLengths = new ArrayList<>(numlongs);
-            for (int i = 0; i < numlongs; i++) {
-                longs.add(DeltaEncoder.decode_longs_from_deltas(in));
-                longLengths.add(longs.get(i).length);
+            int numbytes = in.readVInt();
+            byte[] bytes = new byte[numbytes];
+            in.readBytes(bytes, 0, numbytes);
+            try (ObjectInputStream oin = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+                try {
+                    longset = (MyLongScatterSet) oin.readObject();
+                } catch (ClassNotFoundException cnfe) {
+                    throw new IOException(cnfe);
+                }
             }
         }
 
@@ -325,9 +318,13 @@ public class NumberArrayLookup implements Streamable {
             out.writeVInt(baos.getNumBytes());
             out.writeBytes(baos.getBytes(), 0, baos.getNumBytes());
         } else {
-            out.writeVInt(longs.size());
-            for (int i = 0; i < longs.size(); i++)
-                DeltaEncoder.encode_longs_as_deltas(longs.get(i), longLengths.get(i), out);
+            NoCopyByteArrayOutputStream baos = new NoCopyByteArrayOutputStream(4096);
+            try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+                oos.writeObject(longset);
+                oos.flush();
+            }
+            out.writeVInt(baos.getNumBytes());
+            out.writeBytes(baos.getBytes(), 0, baos.getNumBytes());
         }
 
         out.writeBoolean(ranges != null);
@@ -340,10 +337,7 @@ public class NumberArrayLookup implements Streamable {
     public int hashCode() {
         int hash = 1;
 
-        if (longs != null)
-            for (long[] l : longs)
-                hash = 31 * hash + Arrays.hashCode(l);
-        return 31 * hash + Objects.hash(longLengths, countOfLongs, bitset, ranges, countOfBits, countOfRanges, min);
+        return 31 * hash + Objects.hash(longset, longset, bitset, ranges, countOfBits, countOfRanges, min);
     }
 
     @Override
@@ -352,19 +346,7 @@ public class NumberArrayLookup implements Streamable {
             return false;
 
         NumberArrayLookup other = (NumberArrayLookup) obj;
-        if (longs != null && other.longs != null) {
-            if (longs.size() != other.longs.size())
-                return false;
-
-            for (int i = 0; i < longs.size(); i++)
-                if (!Arrays.equals(longs.get(i), other.longs.get(i)))
-                    return false;
-        } else {
-            return false;
-        }
-
-        return Objects.equals(longLengths, other.longLengths) &&
-                Objects.equals(countOfLongs, other.countOfLongs) &&
+        return Objects.equals(longset, other.longset) &&
                 Objects.equals(bitset, other.bitset) &&
                 Objects.equals(ranges, other.ranges) &&
                 Objects.equals(countOfBits, other.countOfBits) &&
