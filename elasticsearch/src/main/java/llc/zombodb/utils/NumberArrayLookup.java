@@ -1,5 +1,6 @@
 package llc.zombodb.utils;
 
+import com.carrotsearch.hppc.HashOrderMixing;
 import com.carrotsearch.hppc.LongArrayList;
 import com.carrotsearch.hppc.LongScatterSet;
 import com.carrotsearch.hppc.cursors.LongCursor;
@@ -34,13 +35,42 @@ public class NumberArrayLookup implements Streamable {
         }
     }
 
-    public static class MyLongScatterSet extends LongScatterSet implements java.io.Serializable {
-        public MyLongScatterSet(int expectedElements) {
+    public static class StreamableLongScatterSet extends LongScatterSet implements Streamable {
+
+        StreamableLongScatterSet(StreamInput in) throws IOException {
+            super();
+            readFrom(in);
+        }
+
+        StreamableLongScatterSet(int expectedElements) {
             super(expectedElements);
+        }
+
+        @Override
+        public void readFrom(StreamInput in) throws IOException {
+            keys = in.readVLongArray();
+            assigned = in.readVInt();
+            mask = in.readVInt();
+            keyMixer = in.readVInt();
+            resizeAt = in.readVInt();
+            hasEmptyKey = in.readBoolean();
+            loadFactor = in.readDouble();
+            orderMixer = HashOrderMixing.none();
+        }
+
+        @Override
+        public void writeTo(StreamOutput out) throws IOException {
+            out.writeVLongArray(this.keys);
+            out.writeVInt(assigned);
+            out.writeVInt(mask);
+            out.writeVInt(keyMixer);
+            out.writeVInt(resizeAt);
+            out.writeBoolean(hasEmptyKey);
+            out.writeDouble(loadFactor);
         }
     }
 
-    private MyLongScatterSet longset;
+    private StreamableLongScatterSet longset;
     private BitSet bitset;
     private LongArrayList ranges;
     private int countOfBits = -1;
@@ -69,7 +99,7 @@ public class NumberArrayLookup implements Streamable {
         } else {
             // we have to do something else
             this.bitset = null;
-            this.longset = new MyLongScatterSet(32768);
+            this.longset = new StreamableLongScatterSet(32768);
             this.min = 0;
         }
     }
@@ -78,9 +108,6 @@ public class NumberArrayLookup implements Streamable {
         return ranges == null ? null : ranges.buffer;
     }
 
-    /**
-     * May sort the incoming long[] of bits using {@link java.util.Arrays#sort(long[])}
-     */
     public void setAll(long[] bits, int length) {
         if (bitset != null) {
             for (int i = 0; i < length; i++)
@@ -283,16 +310,7 @@ public class NumberArrayLookup implements Streamable {
                 }
             }
         } else {
-            int numbytes = in.readVInt();
-            byte[] bytes = new byte[numbytes];
-            in.readBytes(bytes, 0, numbytes);
-            try (ObjectInputStream oin = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-                try {
-                    longset = (MyLongScatterSet) oin.readObject();
-                } catch (ClassNotFoundException cnfe) {
-                    throw new IOException(cnfe);
-                }
-            }
+            longset = new StreamableLongScatterSet(in);
         }
 
         if (in.readBoolean()) {
@@ -318,13 +336,7 @@ public class NumberArrayLookup implements Streamable {
             out.writeVInt(baos.getNumBytes());
             out.writeBytes(baos.getBytes(), 0, baos.getNumBytes());
         } else {
-            NoCopyByteArrayOutputStream baos = new NoCopyByteArrayOutputStream(4096);
-            try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-                oos.writeObject(longset);
-                oos.flush();
-            }
-            out.writeVInt(baos.getNumBytes());
-            out.writeBytes(baos.getBytes(), 0, baos.getNumBytes());
+            longset.writeTo(out);
         }
 
         out.writeBoolean(ranges != null);
