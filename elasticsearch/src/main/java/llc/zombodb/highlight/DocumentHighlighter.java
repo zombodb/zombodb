@@ -16,16 +16,32 @@
  */
 package llc.zombodb.highlight;
 
-import llc.zombodb.query_parser.*;
-import llc.zombodb.query_parser.metadata.IndexMetadataManager;
-import llc.zombodb.query_parser.utils.Utils;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.client.Client;
 
-import java.io.StringReader;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
+import llc.zombodb.query_parser.ASTAnd;
+import llc.zombodb.query_parser.ASTBoolQuery;
+import llc.zombodb.query_parser.ASTExpansion;
+import llc.zombodb.query_parser.ASTNot;
+import llc.zombodb.query_parser.ASTOr;
+import llc.zombodb.query_parser.ASTQueryTree;
+import llc.zombodb.query_parser.ASTWith;
+import llc.zombodb.query_parser.ParseException;
+import llc.zombodb.query_parser.QueryParser;
+import llc.zombodb.query_parser.QueryParserNode;
+import llc.zombodb.query_parser.metadata.IndexMetadataManager;
+import llc.zombodb.query_parser.utils.Utils;
 
 public class DocumentHighlighter {
 

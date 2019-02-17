@@ -15,12 +15,12 @@
  */
 package llc.zombodb.rest;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.routing.OperationRouting;
 import org.elasticsearch.cluster.service.ClusterService;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class RoutingHelper {
     private static final Map<String, String[]> ROUTING_TABLE = new ConcurrentHashMap<>();

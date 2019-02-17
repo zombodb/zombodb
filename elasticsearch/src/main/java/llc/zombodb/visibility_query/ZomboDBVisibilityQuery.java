@@ -15,15 +15,20 @@
  */
 package llc.zombodb.visibility_query;
 
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.*;
-import org.apache.lucene.util.BitDocIdSet;
-import org.apache.lucene.util.FixedBitSet;
-
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.BitDocIdSet;
+import org.apache.lucene.util.FixedBitSet;
 
 class ZomboDBVisibilityQuery extends Query {
 

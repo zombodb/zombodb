@@ -16,22 +16,41 @@
  */
 package llc.zombodb.query_parser.utils;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import llc.zombodb.query_parser.*;
-import llc.zombodb.query_parser.metadata.IndexMetadataManager;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.io.stream.StreamInput;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import llc.zombodb.query_parser.ASTFuzzy;
+import llc.zombodb.query_parser.ASTNot;
+import llc.zombodb.query_parser.ASTNotNull;
+import llc.zombodb.query_parser.ASTPhrase;
+import llc.zombodb.query_parser.ASTPrefix;
+import llc.zombodb.query_parser.ASTProximity;
+import llc.zombodb.query_parser.ASTQueryTree;
+import llc.zombodb.query_parser.ASTWildcard;
+import llc.zombodb.query_parser.ASTWord;
+import llc.zombodb.query_parser.QueryParser;
+import llc.zombodb.query_parser.QueryParserNode;
+import llc.zombodb.query_parser.QueryParserTreeConstants;
+import llc.zombodb.query_parser.metadata.IndexMetadataManager;
 
 public class Utils {
     private static final char[] NEEDS_ESCAPES = new char[]{'A', 'a', 'O', 'o', 'W', 'w', '\t', '\n', '\r', '\f', '$', '^', '/', ':', '=', '<', '>', '!', '#', '@', '(', ')', '"', '\'', '.', ',', '&', '[', ']'};

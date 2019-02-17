@@ -16,11 +16,42 @@
  */
 package llc.zombodb.query_parser.optimizers;
 
-import llc.zombodb.query_parser.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+import java.util.TreeMap;
+
+import llc.zombodb.query_parser.ASTAggregate;
+import llc.zombodb.query_parser.ASTAnd;
+import llc.zombodb.query_parser.ASTArray;
+import llc.zombodb.query_parser.ASTBoolean;
+import llc.zombodb.query_parser.ASTExpansion;
+import llc.zombodb.query_parser.ASTFieldListEntry;
+import llc.zombodb.query_parser.ASTFieldLists;
+import llc.zombodb.query_parser.ASTFilter;
+import llc.zombodb.query_parser.ASTIndexLink;
+import llc.zombodb.query_parser.ASTLimit;
+import llc.zombodb.query_parser.ASTNot;
+import llc.zombodb.query_parser.ASTNull;
+import llc.zombodb.query_parser.ASTNumber;
+import llc.zombodb.query_parser.ASTOptions;
+import llc.zombodb.query_parser.ASTOr;
+import llc.zombodb.query_parser.ASTPhrase;
+import llc.zombodb.query_parser.ASTProximity;
+import llc.zombodb.query_parser.ASTQueryTree;
+import llc.zombodb.query_parser.ASTSuggest;
+import llc.zombodb.query_parser.ASTVisibility;
+import llc.zombodb.query_parser.ASTWith;
+import llc.zombodb.query_parser.ASTWord;
+import llc.zombodb.query_parser.Node;
+import llc.zombodb.query_parser.QueryParserNode;
+import llc.zombodb.query_parser.QueryParserTreeConstants;
 import llc.zombodb.query_parser.metadata.FieldAndIndexPair;
 import llc.zombodb.query_parser.metadata.IndexMetadataManager;
-
-import java.util.*;
 
 public class QueryTreeOptimizer {
     private final ASTQueryTree tree;

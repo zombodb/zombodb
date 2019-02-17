@@ -15,12 +15,12 @@
  */
 package llc.zombodb.fast_terms;
 
+import java.io.IOException;
+
 import org.elasticsearch.action.support.broadcast.BroadcastShardRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.index.shard.ShardId;
-
-import java.io.IOException;
 
 public class ShardFastTermsRequest extends BroadcastShardRequest{
     private String index;

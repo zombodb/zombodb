@@ -15,7 +15,10 @@
  */
 package llc.zombodb.cross_join;
 
-import llc.zombodb.fast_terms.FastTermsResponse;
+import java.io.IOException;
+import java.util.Objects;
+import java.util.Optional;
+
 import org.apache.lucene.search.Query;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -28,9 +31,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryShardContext;
 
-import java.io.IOException;
-import java.util.Objects;
-import java.util.Optional;
+import llc.zombodb.fast_terms.FastTermsResponse;
 
 public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBuilder> {
     public static final String NAME = "cross_join";

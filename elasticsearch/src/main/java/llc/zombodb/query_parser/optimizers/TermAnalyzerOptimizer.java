@@ -15,13 +15,30 @@
  */
 package llc.zombodb.query_parser.optimizers;
 
-import llc.zombodb.query_parser.*;
-import llc.zombodb.query_parser.metadata.IndexMetadataManager;
-import llc.zombodb.query_parser.utils.Utils;
-import org.elasticsearch.client.Client;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.elasticsearch.client.Client;
+
+import llc.zombodb.query_parser.ASTAggregate;
+import llc.zombodb.query_parser.ASTAnd;
+import llc.zombodb.query_parser.ASTArray;
+import llc.zombodb.query_parser.ASTBoolean;
+import llc.zombodb.query_parser.ASTFieldLists;
+import llc.zombodb.query_parser.ASTFuzzy;
+import llc.zombodb.query_parser.ASTLimit;
+import llc.zombodb.query_parser.ASTNumber;
+import llc.zombodb.query_parser.ASTOptions;
+import llc.zombodb.query_parser.ASTOr;
+import llc.zombodb.query_parser.ASTPhrase;
+import llc.zombodb.query_parser.ASTPrefix;
+import llc.zombodb.query_parser.ASTQueryTree;
+import llc.zombodb.query_parser.ASTWildcard;
+import llc.zombodb.query_parser.ASTWord;
+import llc.zombodb.query_parser.QueryParserNode;
+import llc.zombodb.query_parser.QueryParserTreeConstants;
+import llc.zombodb.query_parser.metadata.IndexMetadataManager;
+import llc.zombodb.query_parser.utils.Utils;
 
 public class TermAnalyzerOptimizer {
 

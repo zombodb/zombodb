@@ -16,22 +16,10 @@
  */
 package llc.zombodb;
 
-import llc.zombodb.cross_join.CrossJoinQueryBuilder;
-import llc.zombodb.fast_terms.FastTermsAction;
-import llc.zombodb.fast_terms.TransportFastTermsAction;
-import llc.zombodb.rest.admin.ZomboDBMappingAction;
-import llc.zombodb.rest.admin.ZomboDBQueryAction;
-import llc.zombodb.rest.highlight.ZomboDBDocumentHighlighterAction;
-import llc.zombodb.rest.search.ZomboDBAggregationAction;
-import llc.zombodb.rest.search.ZomboDBCountAction;
-import llc.zombodb.rest.search.ZomboDBMultiSearchAction;
-import llc.zombodb.rest.search.ZomboDBTIDResponseAction;
-import llc.zombodb.rest.vacuum.ZomboDBGetXidVacuumCandidatesAction;
-import llc.zombodb.rest.vacuum.ZomboDBVacuumCleanupAction;
-import llc.zombodb.rest.xact.ZomboDBBulkAction;
-import llc.zombodb.rest.xact.ZomboDBCommitXIDAction;
-import llc.zombodb.rest.xact.ZomboDBDeleteTuplesAction;
-import llc.zombodb.visibility_query.ZomboDBVisibilityQueryBuilder;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.client.Client;
@@ -55,9 +43,22 @@ import org.xbib.elasticsearch.action.termlist.TermlistAction;
 import org.xbib.elasticsearch.action.termlist.TransportTermlistAction;
 import org.xbib.elasticsearch.rest.action.termlist.RestTermlistAction;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import llc.zombodb.cross_join.CrossJoinQueryBuilder;
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.TransportFastTermsAction;
+import llc.zombodb.rest.admin.ZomboDBMappingAction;
+import llc.zombodb.rest.admin.ZomboDBQueryAction;
+import llc.zombodb.rest.highlight.ZomboDBDocumentHighlighterAction;
+import llc.zombodb.rest.search.ZomboDBAggregationAction;
+import llc.zombodb.rest.search.ZomboDBCountAction;
+import llc.zombodb.rest.search.ZomboDBMultiSearchAction;
+import llc.zombodb.rest.search.ZomboDBTIDResponseAction;
+import llc.zombodb.rest.vacuum.ZomboDBGetXidVacuumCandidatesAction;
+import llc.zombodb.rest.vacuum.ZomboDBVacuumCleanupAction;
+import llc.zombodb.rest.xact.ZomboDBBulkAction;
+import llc.zombodb.rest.xact.ZomboDBCommitXIDAction;
+import llc.zombodb.rest.xact.ZomboDBDeleteTuplesAction;
+import llc.zombodb.visibility_query.ZomboDBVisibilityQueryBuilder;
 
 public class ZomboDBPlugin extends Plugin implements ActionPlugin, SearchPlugin {
 

@@ -16,11 +16,17 @@
  */
 package llc.zombodb.query_parser;
 
+import java.util.AbstractCollection;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 import llc.zombodb.query_parser.metadata.IndexMetadata;
 import llc.zombodb.query_parser.metadata.IndexMetadataManager;
 import llc.zombodb.query_parser.utils.Utils;
-
-import java.util.*;
 
 public class QueryParserNode extends SimpleNode implements Iterable<QueryParserNode>, Cloneable {
     public enum Operator {

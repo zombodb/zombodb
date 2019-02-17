@@ -15,6 +15,11 @@
  */
 package llc.zombodb.visibility_query;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.Optional;
+
 import org.apache.lucene.search.Query;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -24,11 +29,6 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.AbstractQueryBuilder;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryShardContext;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Optional;
 
 public class ZomboDBVisibilityQueryBuilder extends AbstractQueryBuilder<ZomboDBVisibilityQueryBuilder> {
     public static final String NAME = "visibility";

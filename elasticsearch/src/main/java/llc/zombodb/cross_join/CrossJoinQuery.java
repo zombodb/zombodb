@@ -15,11 +15,20 @@
  */
 package llc.zombodb.cross_join;
 
-import llc.zombodb.fast_terms.FastTermsAction;
-import llc.zombodb.fast_terms.FastTermsResponse;
+import java.io.IOException;
+import java.util.Objects;
+import java.util.Stack;
+import java.util.concurrent.ExecutionException;
+
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSet;
 import org.elasticsearch.client.Client;
@@ -30,10 +39,8 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 
-import java.io.IOException;
-import java.util.Objects;
-import java.util.Stack;
-import java.util.concurrent.ExecutionException;
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.FastTermsResponse;
 
 class CrossJoinQuery extends Query {
     // a two-level cache for caching FastTermResponse objects so we can avoid re-executing them if the IndexSearcher

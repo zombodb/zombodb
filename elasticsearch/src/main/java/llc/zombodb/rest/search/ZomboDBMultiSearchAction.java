@@ -15,14 +15,13 @@
  */
 package llc.zombodb.rest.search;
 
-import llc.zombodb.query_parser.rewriters.QueryRewriter;
-import llc.zombodb.query_parser.utils.Utils;
+import java.io.IOException;
+
 import org.elasticsearch.action.search.MultiSearchAction;
 import org.elasticsearch.action.search.MultiSearchRequestBuilder;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
@@ -30,7 +29,8 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 
-import java.io.IOException;
+import llc.zombodb.query_parser.rewriters.QueryRewriter;
+import llc.zombodb.query_parser.utils.Utils;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;

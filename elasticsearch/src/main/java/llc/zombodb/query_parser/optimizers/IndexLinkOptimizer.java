@@ -16,14 +16,34 @@
  */
 package llc.zombodb.query_parser.optimizers;
 
-import llc.zombodb.query_parser.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.elasticsearch.client.Client;
+
+import llc.zombodb.query_parser.ASTAggregate;
+import llc.zombodb.query_parser.ASTAnd;
+import llc.zombodb.query_parser.ASTArray;
+import llc.zombodb.query_parser.ASTExpansion;
+import llc.zombodb.query_parser.ASTFieldLists;
+import llc.zombodb.query_parser.ASTIndexLink;
+import llc.zombodb.query_parser.ASTLimit;
+import llc.zombodb.query_parser.ASTNot;
+import llc.zombodb.query_parser.ASTOptions;
+import llc.zombodb.query_parser.ASTOr;
+import llc.zombodb.query_parser.ASTQueryTree;
+import llc.zombodb.query_parser.ASTSuggest;
+import llc.zombodb.query_parser.QueryParserNode;
+import llc.zombodb.query_parser.QueryParserTreeConstants;
 import llc.zombodb.query_parser.metadata.Dijkstra;
 import llc.zombodb.query_parser.metadata.IndexMetadataManager;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
-import org.elasticsearch.client.Client;
-
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class IndexLinkOptimizer {
     private static final Map<String, Long> COUNT_ESTIMATE_CACHE = new ConcurrentHashMap<>(1000);

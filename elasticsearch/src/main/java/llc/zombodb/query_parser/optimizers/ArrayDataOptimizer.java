@@ -15,15 +15,15 @@
  */
 package llc.zombodb.query_parser.optimizers;
 
+import java.io.StringReader;
+import java.util.Locale;
+import java.util.Map;
+
 import llc.zombodb.query_parser.ASTArrayData;
 import llc.zombodb.query_parser.ASTQueryTree;
 import llc.zombodb.query_parser.QueryParser;
 import llc.zombodb.query_parser.QueryParserNode;
 import llc.zombodb.query_parser.metadata.IndexMetadataManager;
-
-import java.io.StringReader;
-import java.util.Locale;
-import java.util.Map;
 
 public class ArrayDataOptimizer {
 

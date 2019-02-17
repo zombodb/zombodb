@@ -15,9 +15,13 @@
  */
 package llc.zombodb.fast_terms;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.PrimitiveIterator;
+
 import com.carrotsearch.hppc.ObjectArrayList;
-import llc.zombodb.utils.NumberArrayLookup;
-import llc.zombodb.utils.StringArrayMergeSortIterator;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -27,8 +31,8 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestActions;
 
-import java.io.IOException;
-import java.util.*;
+import llc.zombodb.utils.NumberArrayLookup;
+import llc.zombodb.utils.StringArrayMergeSortIterator;
 
 public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject {
     public enum DataType {

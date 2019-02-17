@@ -15,14 +15,23 @@
  */
 package llc.zombodb.cross_join;
 
-import llc.zombodb.fast_terms.FastTermsResponse;
-import llc.zombodb.utils.IteratorHelper;
+import java.util.AbstractCollection;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.PrimitiveIterator;
+
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.PointInSetQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.util.BytesRef;
 
-import java.util.*;
+import llc.zombodb.fast_terms.FastTermsResponse;
 
 class CrossJoinQueryRewriteHelper {
 

@@ -15,12 +15,12 @@
  */
 package llc.zombodb.fast_terms;
 
+import java.io.IOException;
+
 import org.elasticsearch.action.support.broadcast.BroadcastRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.index.query.QueryBuilder;
-
-import java.io.IOException;
 
 public class FastTermsRequest extends BroadcastRequest<FastTermsRequest> {
     private String[] types;

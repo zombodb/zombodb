@@ -15,10 +15,16 @@
  */
 package llc.zombodb.fast_terms.collectors;
 
-import llc.zombodb.visibility_query.ZomboDBTermsCollector;
-import org.apache.lucene.index.*;
-
 import java.io.IOException;
+
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+
+import llc.zombodb.visibility_query.ZomboDBTermsCollector;
 
 public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
 
