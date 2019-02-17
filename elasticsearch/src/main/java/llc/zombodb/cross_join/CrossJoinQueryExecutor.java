@@ -15,13 +15,12 @@
  */
 package llc.zombodb.cross_join;
 
-import java.io.IOException;
-
+import llc.zombodb.cross_join.collectors.CrossJoinCollector;
+import llc.zombodb.fast_terms.FastTermsResponse;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 
-import llc.zombodb.cross_join.collectors.CrossJoinCollector;
-import llc.zombodb.fast_terms.FastTermsResponse;
+import java.io.IOException;
 
 class CrossJoinQueryExecutor {
 

@@ -15,9 +15,8 @@
  */
 package llc.zombodb.fast_terms.collectors;
 
-import org.apache.lucene.index.DocValuesType;
-
 import llc.zombodb.utils.IntOrLongBitmap;
+import org.apache.lucene.index.DocValuesType;
 
 public class NumberCollector extends FastTermsCollector<IntOrLongBitmap> {
 

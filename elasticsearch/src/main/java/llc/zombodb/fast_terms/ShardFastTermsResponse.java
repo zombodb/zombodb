@@ -15,17 +15,17 @@
  */
 package llc.zombodb.fast_terms;
 
-import java.io.IOException;
-import java.util.Arrays;
-
+import llc.zombodb.fast_terms.collectors.FastTermsCollector;
+import llc.zombodb.utils.IntOrLongBitmap;
+import llc.zombodb.utils.NumberArrayLookup;
 import org.elasticsearch.action.support.broadcast.BroadcastShardResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.index.shard.ShardId;
+import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
-import llc.zombodb.fast_terms.collectors.FastTermsCollector;
-import llc.zombodb.utils.IntOrLongBitmap;
-import llc.zombodb.utils.NumberArrayLookup;
+import java.io.IOException;
+import java.util.Arrays;
 
 public class ShardFastTermsResponse extends BroadcastShardResponse {
 

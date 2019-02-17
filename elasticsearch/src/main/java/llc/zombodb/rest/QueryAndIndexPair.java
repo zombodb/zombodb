@@ -15,9 +15,8 @@
  */
 package llc.zombodb.rest;
 
-import org.elasticsearch.index.query.QueryBuilder;
-
 import llc.zombodb.query_parser.ASTLimit;
+import org.elasticsearch.index.query.QueryBuilder;
 
 public class QueryAndIndexPair {
     private final QueryBuilder query;

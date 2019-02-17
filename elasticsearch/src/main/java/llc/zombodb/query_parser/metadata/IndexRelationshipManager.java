@@ -15,14 +15,9 @@
  */
 package llc.zombodb.query_parser.metadata;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import llc.zombodb.query_parser.ASTIndexLink;
+
+import java.util.*;
 
 public class IndexRelationshipManager {
 

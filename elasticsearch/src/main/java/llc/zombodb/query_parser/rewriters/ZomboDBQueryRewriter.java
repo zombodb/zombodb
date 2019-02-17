@@ -15,17 +15,16 @@
  */
 package llc.zombodb.query_parser.rewriters;
 
-import org.elasticsearch.client.Client;
-import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-
 import llc.zombodb.cross_join.CrossJoinQueryBuilder;
 import llc.zombodb.query_parser.ASTExpansion;
 import llc.zombodb.query_parser.ASTIndexLink;
 import llc.zombodb.query_parser.QueryParserNode;
 import llc.zombodb.query_parser.metadata.IndexMetadata;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
 
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;

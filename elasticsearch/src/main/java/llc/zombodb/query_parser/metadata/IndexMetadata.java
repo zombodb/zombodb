@@ -16,13 +16,12 @@
  */
 package llc.zombodb.query_parser.metadata;
 
+import llc.zombodb.query_parser.ASTIndexLink;
+import org.elasticsearch.cluster.metadata.MappingMetaData;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-
-import org.elasticsearch.cluster.metadata.MappingMetaData;
-
-import llc.zombodb.query_parser.ASTIndexLink;
 
 public class IndexMetadata {
 

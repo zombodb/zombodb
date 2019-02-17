@@ -13,15 +13,15 @@
  */
 package org.xbib.elasticsearch.action.termlist;
 
-import java.io.IOException;
-import java.io.Serializable;
-
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Streamable;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+
+import java.io.IOException;
+import java.io.Serializable;
 
 public class TermInfo implements Streamable, ToXContent, Serializable {
 

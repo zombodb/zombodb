@@ -15,13 +15,9 @@
  */
 package llc.zombodb.fast_terms;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReferenceArray;
-
+import llc.zombodb.fast_terms.collectors.FastTermsCollector;
+import llc.zombodb.fast_terms.collectors.NumberCollector;
+import llc.zombodb.fast_terms.collectors.StringCollector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.elasticsearch.ElasticsearchException;
@@ -50,9 +46,12 @@ import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
-import llc.zombodb.fast_terms.collectors.FastTermsCollector;
-import llc.zombodb.fast_terms.collectors.NumberCollector;
-import llc.zombodb.fast_terms.collectors.StringCollector;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public class TransportFastTermsAction extends TransportBroadcastAction<FastTermsRequest, FastTermsResponse, ShardFastTermsRequest, ShardFastTermsResponse> {
 

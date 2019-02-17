@@ -16,35 +16,16 @@
  */
 package llc.zombodb.highlight;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
-
+import llc.zombodb.query_parser.*;
+import llc.zombodb.query_parser.metadata.IndexMetadataManager;
+import llc.zombodb.query_parser.utils.Utils;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequest;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeRequestBuilder;
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.client.Client;
 
-import llc.zombodb.query_parser.ASTArray;
-import llc.zombodb.query_parser.ASTBoolean;
-import llc.zombodb.query_parser.ASTFuzzy;
-import llc.zombodb.query_parser.ASTNotNull;
-import llc.zombodb.query_parser.ASTNull;
-import llc.zombodb.query_parser.ASTNumber;
-import llc.zombodb.query_parser.ASTOr;
-import llc.zombodb.query_parser.ASTPhrase;
-import llc.zombodb.query_parser.ASTPrefix;
-import llc.zombodb.query_parser.ASTProximity;
-import llc.zombodb.query_parser.ASTWildcard;
-import llc.zombodb.query_parser.ASTWord;
-import llc.zombodb.query_parser.QueryParserNode;
-import llc.zombodb.query_parser.QueryParserTreeConstants;
-import llc.zombodb.query_parser.metadata.IndexMetadataManager;
-import llc.zombodb.query_parser.utils.Utils;
+import java.util.*;
 
 public class AnalyzedField {
 

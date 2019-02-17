@@ -15,14 +15,8 @@
  */
 package llc.zombodb.rest.vacuum;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import llc.zombodb.rest.RoutingHelper;
+import llc.zombodb.rest.xact.ZomboDBBulkAction;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -46,8 +40,13 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.SearchHit;
 
-import llc.zombodb.rest.RoutingHelper;
-import llc.zombodb.rest.xact.ZomboDBBulkAction;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.elasticsearch.index.query.QueryBuilders.termsQuery;
 import static org.elasticsearch.rest.RestRequest.Method.POST;

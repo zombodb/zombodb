@@ -15,16 +15,16 @@
  */
 package llc.zombodb.visibility_query;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryParser;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 class ZomboDBVisibilityQueryParser implements QueryParser<ZomboDBVisibilityQueryBuilder>, Writeable.Reader<ZomboDBVisibilityQueryBuilder> {
 

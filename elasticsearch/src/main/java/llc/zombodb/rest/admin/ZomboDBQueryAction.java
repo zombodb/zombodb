@@ -15,8 +15,8 @@
  */
 package llc.zombodb.rest.admin;
 
-import java.io.IOException;
-
+import llc.zombodb.rest.QueryAndIndexPair;
+import llc.zombodb.rest.search.ZomboDBTIDResponseAction;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.client.node.NodeClient;
@@ -24,15 +24,10 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.BytesRestResponse;
-import org.elasticsearch.rest.RestController;
-import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.RestStatusToXContentListener;
 
-import llc.zombodb.rest.QueryAndIndexPair;
-import llc.zombodb.rest.search.ZomboDBTIDResponseAction;
+import java.io.IOException;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;

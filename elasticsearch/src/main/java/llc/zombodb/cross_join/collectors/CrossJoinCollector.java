@@ -15,20 +15,14 @@
  */
 package llc.zombodb.cross_join.collectors;
 
-import java.io.IOException;
-
 import com.carrotsearch.hppc.ObjectArrayList;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.index.SortedSetDocValues;
+import llc.zombodb.utils.NumberArrayLookup;
+import org.apache.lucene.index.*;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
-import llc.zombodb.utils.NumberArrayLookup;
+import java.io.IOException;
 
 public abstract class CrossJoinCollector {
 

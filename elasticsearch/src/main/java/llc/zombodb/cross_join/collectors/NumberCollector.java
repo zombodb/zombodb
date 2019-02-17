@@ -15,11 +15,10 @@
  */
 package llc.zombodb.cross_join.collectors;
 
-import java.io.IOException;
-
+import llc.zombodb.utils.NumberArrayLookup;
 import org.apache.lucene.index.LeafReaderContext;
 
-import llc.zombodb.utils.NumberArrayLookup;
+import java.io.IOException;
 
 class NumberCollector extends CrossJoinCollector {
 

@@ -15,12 +15,12 @@
  */
 package llc.zombodb.cross_join.collectors;
 
-import java.io.IOException;
-import java.util.Arrays;
-
 import com.carrotsearch.hppc.ObjectArrayList;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BytesRef;
+
+import java.io.IOException;
+import java.util.Arrays;
 
 class StringCollector extends CrossJoinCollector {
 

@@ -16,13 +16,7 @@
  */
 package llc.zombodb.query_parser.metadata;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
-
+import llc.zombodb.query_parser.*;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsAction;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsAction;
@@ -30,11 +24,7 @@ import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.client.Client;
 
-import llc.zombodb.query_parser.ASTExpansion;
-import llc.zombodb.query_parser.ASTIndexLink;
-import llc.zombodb.query_parser.ASTOptions;
-import llc.zombodb.query_parser.ASTQueryTree;
-import llc.zombodb.query_parser.QueryParserNode;
+import java.util.*;
 
 public class IndexMetadataManager {
 
