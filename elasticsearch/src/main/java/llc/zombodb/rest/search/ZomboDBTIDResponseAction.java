@@ -339,6 +339,9 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
         long end = System.currentTimeMillis();
 
+        if (many > 0 && idx == 0)
+            throw new RuntimeException("Underflow building binary response");
+
         return new BinaryTIDResponse(bytes, many, (end - start) / 1000D, -1.0D);
     }
 
