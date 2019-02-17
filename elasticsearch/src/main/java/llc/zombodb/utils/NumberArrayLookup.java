@@ -21,20 +21,6 @@ import org.elasticsearch.common.io.stream.Streamable;
  */
 public class NumberArrayLookup implements Streamable {
 
-    private static class NoCopyByteArrayOutputStream extends ByteArrayOutputStream {
-        NoCopyByteArrayOutputStream(int size) {
-            super(size);
-        }
-
-        byte[] getBytes() {
-            return buf;
-        }
-
-        int getNumBytes() {
-            return count;
-        }
-    }
-
     private IntOrLongBitmap bitmap;
 
     public static NumberArrayLookup fromStreamInput(StreamInput in) throws IOException {
@@ -68,27 +54,19 @@ public class NumberArrayLookup implements Streamable {
 
     @Override
     public void readFrom(StreamInput in) throws IOException {
-        int numbytes = in.readVInt();
-        byte[] bytes = new byte[numbytes];
-        in.readBytes(bytes, 0, numbytes);
-        try (ObjectInputStream oin = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-            try {
-                bitmap = (IntOrLongBitmap) oin.readObject();
-            } catch (ClassNotFoundException cnfe) {
-                throw new IOException(cnfe);
-            }
+        try {
+            ObjectInputStream ois = new ObjectInputStream(in);
+            bitmap = new IntOrLongBitmap(ois);
+        } catch (ClassNotFoundException cnfe) {
+            throw new IOException(cnfe);
         }
     }
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
-        NoCopyByteArrayOutputStream baos = new NoCopyByteArrayOutputStream(4096);
-        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            oos.writeObject(bitmap);
-            oos.flush();
-        }
-        out.writeVInt(baos.getNumBytes());
-        out.writeBytes(baos.getBytes(), 0, baos.getNumBytes());
+        ObjectOutputStream oos = new ObjectOutputStream(out);
+        bitmap.writeExternal(oos);
+        oos.flush();
     }
 
     @Override

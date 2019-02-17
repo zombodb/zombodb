@@ -2,6 +2,7 @@ package llc.zombodb.utils;
 
 import java.io.IOException;
 import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -13,9 +14,25 @@ import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 public class IntOrLongBitmap implements java.io.Externalizable {
-    private BitSet ints = new BitSet();
-    private BitSet scaledints = new BitSet();
-    private Roaring64NavigableMap longs = make_longs();
+    private BitSet ints;
+    private BitSet scaledints;
+    private Roaring64NavigableMap longs;
+
+    private static Roaring64NavigableMap make_longs() {
+        // IMPORTANT:  we must have signed longs here, so the ctor arg must be 'true'
+        // Otherwise we won't maintain sorting the way we need
+        return new Roaring64NavigableMap(true);
+    }
+
+    public IntOrLongBitmap(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        readExternal(ois);
+    }
+
+    public IntOrLongBitmap() {
+        ints = new BitSet();
+        scaledints = new BitSet();
+        longs = make_longs();
+    }
 
     public void add(long value) {
 
@@ -98,6 +115,8 @@ public class IntOrLongBitmap implements java.io.Externalizable {
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         ints = (BitSet) in.readObject();
         scaledints = (BitSet) in.readObject();
+
+        longs = make_longs();
         longs.readExternal(in);
     }
 
@@ -152,11 +171,4 @@ public class IntOrLongBitmap implements java.io.Externalizable {
             }
         };
     }
-
-    private static Roaring64NavigableMap make_longs() {
-        // IMPORTANT:  we must have signed longs here, so the ctor arg must be 'true'
-        // Otherwise we won't maintain sorting the way we need
-        return new Roaring64NavigableMap(true);
-    }
-
 }
