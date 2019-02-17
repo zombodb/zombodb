@@ -1,13 +1,13 @@
 package llc.zombodb.utils;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.PrimitiveIterator;
+
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Streamable;
-import org.elasticsearch.common.logging.Loggers;
-import org.roaringbitmap.longlong.Roaring64NavigableMap;
-
-import java.io.*;
-import java.util.PrimitiveIterator;
 
 /**
  * Allows quick lookup for a value in an array of longs.
