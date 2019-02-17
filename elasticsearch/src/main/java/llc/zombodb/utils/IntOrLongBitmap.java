@@ -5,23 +5,28 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.PrimitiveIterator;
 
+import org.roaringbitmap.IntIterator;
+import org.roaringbitmap.RoaringBitmap;
 import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 public class IntOrLongBitmap implements java.io.Externalizable {
-    private BitSet ints;
-    private BitSet scaledints;
+    private RoaringBitmap ints;
+    private RoaringBitmap scaledints;
     private Roaring64NavigableMap longs;
 
-    private static Roaring64NavigableMap make_longs() {
+    private static Roaring64NavigableMap make64bitBitmap() {
         // IMPORTANT:  we must have signed longs here, so the ctor arg must be 'true'
         // Otherwise we won't maintain sorting the way we need
         return new Roaring64NavigableMap(true);
+    }
+
+    private static RoaringBitmap mak32bitBitmap() {
+        return new RoaringBitmap();
     }
 
     public IntOrLongBitmap(ObjectInputStream ois) throws IOException, ClassNotFoundException {
@@ -29,9 +34,9 @@ public class IntOrLongBitmap implements java.io.Externalizable {
     }
 
     public IntOrLongBitmap() {
-        ints = new BitSet();
-        scaledints = new BitSet();
-        longs = make_longs();
+        ints = mak32bitBitmap();
+        scaledints = mak32bitBitmap();
+        longs = make64bitBitmap();
     }
 
     public void add(long value) {
@@ -41,13 +46,13 @@ public class IntOrLongBitmap implements java.io.Externalizable {
             longs.addLong(value);
         } else if (value < Integer.MAX_VALUE) {
             // positive ints get stored as ints
-            ints.set((int) value);
+            ints.add((int) value);
         } else {
             long diff = value - Integer.MAX_VALUE;
 
             if (diff < Integer.MAX_VALUE) {
                 // we can scale it
-                scaledints.set((int) diff);
+                scaledints.add((int) diff);
             } else {
                 // it's a long
                 longs.addLong(value);
@@ -60,12 +65,12 @@ public class IntOrLongBitmap implements java.io.Externalizable {
             return longs.contains(value);
         } else {
             if (value < Integer.MAX_VALUE) {
-                return ints.get((int) value);
+                return ints.contains((int) value);
             } else {
                 long diff = value - Integer.MAX_VALUE;
 
                 if (diff < Integer.MAX_VALUE) {
-                    return scaledints.get((int) diff);
+                    return scaledints.contains((int) diff);
                 } else {
                     return longs.contains(value);
                 }
@@ -76,8 +81,8 @@ public class IntOrLongBitmap implements java.io.Externalizable {
     public int size() {
         int size = 0;
 
-        size += ints.cardinality();
-        size += scaledints.cardinality();
+        size += ints.getCardinality();
+        size += scaledints.getCardinality();
         size += longs.getIntCardinality();
 
         return size;
@@ -106,52 +111,56 @@ public class IntOrLongBitmap implements java.io.Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeObject(ints);
-        out.writeObject(scaledints);
-        longs.writeExternal(out);
+        ints.runOptimize();
+        ints.serialize(out);
+
+        scaledints.runOptimize();
+        scaledints.serialize(out);
+
+        longs.runOptimize();
+        longs.serialize(out);
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ints = (BitSet) in.readObject();
-        scaledints = (BitSet) in.readObject();
+    public void readExternal(ObjectInput in) throws IOException {
+        ints = mak32bitBitmap();
+        ints.deserialize(in);
 
-        longs = make_longs();
-        longs.readExternal(in);
+        scaledints = mak32bitBitmap();
+        scaledints.deserialize(in);
+
+        longs = make64bitBitmap();
+        longs.deserialize(in);
     }
 
     private PrimitiveIterator.OfLong ints_iterator() {
         return new PrimitiveIterator.OfLong() {
-            private int value = ints.nextSetBit(0);
+            private IntIterator itr = ints.getIntIterator();
 
             @Override
             public boolean hasNext() {
-                return value >= 0;
+                return itr.hasNext();
             }
 
             @Override
             public long nextLong() {
-                long value = this.value;
-                this.value = ints.nextSetBit(this.value + 1);
-                return value;
+                return itr.next();
             }
         };
     }
 
     private PrimitiveIterator.OfLong scaledints_iterator() {
         return new PrimitiveIterator.OfLong() {
-            private int value = scaledints.nextSetBit(0);
+            private IntIterator itr = scaledints.getIntIterator();
 
             @Override
             public boolean hasNext() {
-                return value >= 0;
+                return itr.hasNext();
             }
 
             @Override
             public long nextLong() {
-                long value = this.value;
-                this.value = scaledints.nextSetBit(this.value + 1);
-                return value + Integer.MAX_VALUE; // make sure to scale the value
+                return itr.next() + Integer.MAX_VALUE;
             }
         };
     }
