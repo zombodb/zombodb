@@ -675,19 +675,12 @@ CREATE TABLE zdb_tokenizers (
   definition json NOT NULL
 );
 
-CREATE TABLE zdb_pipelines (
-  table_name regclass NOT NULL PRIMARY KEY,
-  name text NOT NULL,
-  definition json NOT NULL
-);
-
 SELECT pg_catalog.pg_extension_config_dump('zdb_filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_char_filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_analyzers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_normalizers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb_mappings', '');
 SELECT pg_catalog.pg_extension_config_dump('zdb_tokenizers', '');
-SELECT pg_catalog.pg_extension_config_dump('zdb_pipelines', '');
 
 CREATE OR REPLACE FUNCTION zdb_define_filter(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
   DELETE FROM zdb_filters WHERE name = $1;
@@ -717,15 +710,6 @@ $$;
 CREATE OR REPLACE FUNCTION zdb_define_tokenizer(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
   DELETE FROM zdb_tokenizers WHERE name = $1;
   INSERT INTO zdb_tokenizers(name, definition) VALUES ($1, $2);
-$$;
-
-CREATE OR REPLACE FUNCTION zdb_define_pipeline(table_name regclass, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
-   DELETE FROM zdb_pipelines WHERE table_name = $1;
-   INSERT INTO zdb_pipelines(table_name, name, definition) VALUES ($1, $1 || '-' || txid_current(), $2);
-$$;
-
-CREATE OR REPLACE FUNCTION zdb_delete_pipeline(table_name regclass) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
-  DELETE FROM zdb_pipelines WHERE table_name = $1;
 $$;
 
 INSERT INTO zdb_filters(name, definition, is_default) VALUES (
