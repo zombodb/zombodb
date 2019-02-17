@@ -57,9 +57,7 @@ public class TestXXXArrayMergeSortIterator {
                             max = values[j];
                     }
                 }
-                longs[i] = new NumberArrayLookup(min, max);
-                longs[i].setAll(values, many);
-
+                longs[i] = new NumberArrayLookup(min, max, values, many);
             }
 
             NumberArrayLookupMergeSortIterator itr = new NumberArrayLookupMergeSortIterator(longs);

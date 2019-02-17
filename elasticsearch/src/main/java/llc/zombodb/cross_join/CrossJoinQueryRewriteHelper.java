@@ -18,7 +18,6 @@ package llc.zombodb.cross_join;
 import llc.zombodb.fast_terms.FastTermsResponse;
 import llc.zombodb.utils.LongIterator;
 import llc.zombodb.utils.NumberArrayLookupMergeSortIterator;
-import llc.zombodb.utils.PushbackIterator;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.*;
@@ -108,9 +107,9 @@ class CrossJoinQueryRewriteHelper {
 
     static Query rewriteQuery(CrossJoinQuery crossJoin, FastTermsResponse fastTerms) {
 
-        if (fastTerms.getTotalDataCount() == 0)
+        if (fastTerms.getDocCount() == 0)
             return new MatchNoDocsQuery();
-        else if (fastTerms.getPointCount() > 50_000)
+        else if (fastTerms.getDocCount() > 50_000)
             return crossJoin;   // 50k points is about the break-even point in terms of performance v/s just scanning all DocValues
 
         //
@@ -118,9 +117,9 @@ class CrossJoinQueryRewriteHelper {
         //
         switch (fastTerms.getDataType()) {
             case INT:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), fastTerms.getRanges(), new IntRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), new IntRangeAndSetQueryCreator());
             case LONG:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), fastTerms.getRanges(), new LongRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), new LongRangeAndSetQueryCreator());
             case STRING: {
                 BooleanQuery.Builder builder = new BooleanQuery.Builder();
                 for (int shardId = 0; shardId < fastTerms.getNumShards(); shardId++) {
@@ -159,43 +158,8 @@ class CrossJoinQueryRewriteHelper {
         }
     }
 
-    private static Query buildRangeOrSetQuery(String field, NumberArrayLookupMergeSortIterator itr, Collection<long[]> ranges, RangeAndSetQueryCreator queryCreator) {
-        List<Range> rangeList = new ArrayList<>();
-
-        for (long[] range : ranges) {
-            for (int i = 0; i < range.length; i += 2) {
-                if (i+1 == range.length)
-                    rangeList.add(new Range(range[i], range[i]));
-                else
-                    rangeList.add(new Range(range[i], range[i + 1]));
-            }
-        }
-
-        // sort lowest to highest and merge together adjacent ranges
-        rangeList.sort((o1, o2) -> Long.compare(o1.end, o2.start));
-
-        for (PushbackIterator<Range> i = new PushbackIterator<>(rangeList.iterator()); i.hasNext(); ) {
-            Range a = i.next();
-            if (!i.hasNext())
-                break;
-            Range b = i.next();
-
-            if (a.end + 1 == b.start) {
-                // these two ranges can be merged
-                a.end = b.end;
-
-                // and we don't need 'b' anymore
-                i.remove();
-
-                // but we want to see if 'a' can merge with the next range
-                i.push(a);
-            }
-        }
-
+    private static Query buildRangeOrSetQuery(String field, NumberArrayLookupMergeSortIterator itr, RangeAndSetQueryCreator queryCreator) {
         List<Query> clauses = new ArrayList<>();
-        for (Range range : rangeList) {
-            clauses.add(queryCreator.newRangeQuery(field, range.start, range.end));
-        }
 
         if (itr.hasNext()) {
             clauses.add(queryCreator.newSetQuery(field, itr));

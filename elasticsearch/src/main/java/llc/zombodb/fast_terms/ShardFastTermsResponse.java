@@ -21,6 +21,7 @@ import org.elasticsearch.action.support.broadcast.BroadcastShardResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.index.shard.ShardId;
+import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -47,8 +48,7 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         switch (dataType) {
             case INT:
             case LONG:
-                bitset = new NumberArrayLookup(collector.getMin(), collector.getMax());
-                bitset.setAll((long[]) collector.getData(), collector.getDataCount());
+                bitset = new NumberArrayLookup((Roaring64NavigableMap) collector.getData());
                 break;
             case STRING:
                 strings = (Object[]) collector.getData();
@@ -92,7 +92,7 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
                 case LONG:
                     if (in.readBoolean()) {
                         bitset = NumberArrayLookup.fromStreamInput(in);
-                        dataCount = bitset.getValueCount();
+                        dataCount = bitset.size();
                     }
                     break;
                 case STRING:

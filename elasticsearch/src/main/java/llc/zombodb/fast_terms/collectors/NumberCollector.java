@@ -17,17 +17,16 @@ package llc.zombodb.fast_terms.collectors;
 
 import com.carrotsearch.hppc.LongArrayList;
 import org.apache.lucene.index.DocValuesType;
+import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
-public class NumberCollector extends FastTermsCollector<long[]> {
+public class NumberCollector extends FastTermsCollector<Roaring64NavigableMap> {
 
     private class NumericDocValuesCollector implements InternalCollector {
         public void collect(int doc) {
             if (numeric == null)
                 return;
 
-            long value = numeric.get(doc);
-            setMinMax(value);
-            data.add(value);
+            data.add(numeric.get(doc));
         }
     }
 
@@ -38,27 +37,28 @@ public class NumberCollector extends FastTermsCollector<long[]> {
 
             sortedNumeric.setDocument(doc);
             int cnt = sortedNumeric.count();
-            for (int i = 0; i < cnt; i++) {
-                long value = sortedNumeric.valueAt(i);
-                setMinMax(value);
-                data.add(value);
-            }
+            for (int i = 0; i < cnt; i++)
+                data.add(sortedNumeric.valueAt(i));
         }
     }
 
-    private final LongArrayList data = new LongArrayList();
+    /**
+     * IMPORTANT:  we must have signed longs here, so the ctor arg must be true
+     * Otherwise we won't maintain sorting the way we need
+     */
+    private final Roaring64NavigableMap data = new Roaring64NavigableMap(true);
     private InternalCollector collector;
 
     public NumberCollector(String fieldname) {
         super(fieldname);
     }
 
-    public long[] getData() {
-        return data.buffer;
+    public Roaring64NavigableMap getData() {
+        return data;
     }
 
     public int getDataCount() {
-        return data.size();
+        return data.getIntCardinality();
     }
 
     @Override

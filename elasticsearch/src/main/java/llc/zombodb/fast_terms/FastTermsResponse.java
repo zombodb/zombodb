@@ -99,19 +99,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return lookups;
     }
 
-    public Collection<long[]> getRanges() {
-        List<long[]> rc = new ArrayList<>();
-        for (NumberArrayLookup nal : lookups) {
-            long[] ranges = nal.getRanges();
-            if (ranges != null) {
-                rc.add(ranges);
-            }
-        }
-
-        return rc;
-    }
-
-    public int getPointCount() {
+    public int getDocCount() {
         if (dataType == DataType.NONE)
             return 0;
 
@@ -119,10 +107,8 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
             case INT:
             case LONG: {
                 int total = 0;
-                for (NumberArrayLookup nal : lookups) {
-                    int len = nal.getCountOfBits();
-                    total += len > 0 ? len : nal.getCountOfLongs();
-                }
+                for (NumberArrayLookup nal : lookups)
+                    total += nal.size();
                 return total;
             }
 
@@ -137,33 +123,6 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 throw new RuntimeException("Unexpected data type: " + dataType);
         }
     }
-
-    public int getTotalDataCount() {
-        if (dataType == DataType.NONE)
-            return 0;
-
-        switch (dataType) {
-            case INT:
-            case LONG: {
-                int total = 0;
-                for (NumberArrayLookup nal : lookups) {
-                    total +=  nal.getValueCount();
-                }
-                return total;
-            }
-
-            case STRING: {
-                int total = 0;
-                for (int cnt : numStrings)
-                    total += cnt;
-                return total;
-            }
-
-            default:
-                throw new RuntimeException("Unexpected data type: " + dataType);
-        }
-    }
-
 
     public ObjectArrayList<String> getStringArray() {
         StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, numStrings);

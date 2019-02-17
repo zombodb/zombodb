@@ -9,7 +9,7 @@ public class NumberArrayLookupMergeSortIterator implements LongIterator {
         LongIterator[] iterators = new LongIterator[lookups.length];
         for (int i=0; i<lookups.length; i++) {
             iterators[i] = lookups[i].iterator();
-            total += lookups[i].getValueCount();
+            total += lookups[i].size();
         }
 
         wrapped = LongIterator.create(iterators);

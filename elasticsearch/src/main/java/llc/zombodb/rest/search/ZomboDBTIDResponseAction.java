@@ -301,7 +301,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
     }
 
     private BinaryTIDResponse buildBinaryResponse(FastTermsResponse response) {
-        int many = response.getTotalDataCount();
+        int many = response.getDocCount();
 
         long start = System.currentTimeMillis();
         byte[] bytes = new byte[
