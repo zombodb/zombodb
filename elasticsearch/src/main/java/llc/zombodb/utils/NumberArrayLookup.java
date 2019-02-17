@@ -62,8 +62,8 @@ public class NumberArrayLookup implements Streamable {
         return bitmap.size();
     }
 
-    public PrimitiveIterator.OfLong iterator() {
-        return bitmap.iterator();
+    public PrimitiveIterator.OfLong[] iterators() {
+        return bitmap.iterators();
     }
 
     @Override

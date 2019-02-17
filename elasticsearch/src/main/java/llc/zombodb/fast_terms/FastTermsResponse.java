@@ -31,6 +31,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestActions;
 
+import llc.zombodb.utils.IteratorHelper;
 import llc.zombodb.utils.NumberArrayLookup;
 import llc.zombodb.utils.StringArrayMergeSortIterator;
 
@@ -106,7 +107,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     public PrimitiveIterator.OfLong[] getNumberLookupIterators() {
         PrimitiveIterator.OfLong[] iterators = new PrimitiveIterator.OfLong[lookups.length];
         for (int i=0; i<lookups.length; i++)
-            iterators[i] = lookups[i].iterator();
+            iterators[i] = IteratorHelper.create(lookups[i].iterators());
         return iterators;
     }
 

@@ -3,88 +3,77 @@ package llc.zombodb.utils;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.PrimitiveIterator;
 
-import org.roaringbitmap.IntIterator;
-import org.roaringbitmap.PeekableIntIterator;
-import org.roaringbitmap.RoaringBitmap;
 import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 public class IntOrLongBitmap implements java.io.Externalizable {
-    private Roaring64NavigableMap longs;
-    private RoaringBitmap ints = new RoaringBitmap();
+    private BitSet ints = new BitSet();
+    private BitSet scaledints = new BitSet();
+    private Roaring64NavigableMap longs = make_longs();
 
     public void add(long value) {
-        if (longs == null && value >= 0 && value <= Integer.MAX_VALUE) {
-            // it fits within the space of a positive Integer (and we're still using ints)
-            // so just carry on
-            ints.add((int) value);
+
+        if (value < 0) {
+            // negative numbers get stored as longs
+            longs.addLong(value);
+        } else if (value < Integer.MAX_VALUE) {
+            // positive ints get stored as ints
+            ints.set((int) value);
         } else {
-            // we've either flipped to using longs already
-            // or we need to do that now
-            try {
+            long diff = value - Integer.MAX_VALUE;
+
+            if (diff < Integer.MAX_VALUE) {
+                // we can scale it
+                scaledints.set((int) diff);
+            } else {
+                // it's a long
                 longs.addLong(value);
-            } catch (NullPointerException npe) {
-                // IMPORTANT:  we must have signed longs here, so the ctor arg must be 'true'
-                // Otherwise we won't maintain sorting the way we need
-                longs = new Roaring64NavigableMap(true);
-
-                // copy any ints we might already have into the longs
-                for (IntIterator itr = ints.getIntIterator(); itr.hasNext(); )
-                    longs.addLong(itr.next());
-
-                // add the value the user wanted to add in the first place
-                longs.addLong(value);
-
-                // finally, we don't need/want "ints" anymore
-                ints = null;
             }
         }
     }
 
     public boolean contains(long value) {
-        return longs != null ? longs.contains(value) : ints.contains((int) value);
+        if (value < 0) {
+            return longs.contains(value);
+        } else {
+            if (value < Integer.MAX_VALUE) {
+                return ints.get((int) value);
+            } else {
+                long diff = value - Integer.MAX_VALUE;
+
+                if (diff < Integer.MAX_VALUE) {
+                    return scaledints.get((int) diff);
+                } else {
+                    return longs.contains(value);
+                }
+            }
+        }
     }
 
     public int size() {
-        return longs != null ? longs.getIntCardinality() : ints.getCardinality();
+        int size = 0;
+
+        size += ints.cardinality();
+        size += scaledints.cardinality();
+        size += longs.getIntCardinality();
+
+        return size;
     }
 
-    public PrimitiveIterator.OfLong iterator() {
-        return longs != null ?
-                new PrimitiveIterator.OfLong() {
-                    final LongIterator itr = longs.getLongIterator();
-
-                    @Override
-                    public boolean hasNext() {
-                        return itr.hasNext();
-                    }
-
-                    @Override
-                    public long nextLong() {
-                        return itr.next();
-                    }
-                } :
-                new PrimitiveIterator.OfLong() {
-                    final PeekableIntIterator itr = ints.getIntIterator();
-
-                    @Override
-                    public boolean hasNext() {
-                        return itr.hasNext();
-                    }
-
-                    @Override
-                    public long nextLong() {
-                        return itr.next();
-                    }
-                };
+    PrimitiveIterator.OfLong[] iterators() {
+        List<PrimitiveIterator.OfLong> iterators = Arrays.asList(ints_iterator(), scaledints_iterator(), longs_iterator());
+        return iterators.toArray(new PrimitiveIterator.OfLong[0]);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(ints, longs);
+        return Objects.hash(ints, scaledints, longs);
     }
 
     @Override
@@ -94,30 +83,80 @@ public class IntOrLongBitmap implements java.io.Externalizable {
 
         IntOrLongBitmap other = (IntOrLongBitmap) obj;
         return Objects.equals(this.ints, other.ints) &&
+                Objects.equals(this.scaledints, other.scaledints) &&
                 Objects.equals(this.longs, other.longs);
     }
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeBoolean(ints != null);
-        out.writeBoolean(longs != null);
-
-        if (ints != null)
-            ints.writeExternal(out);
-        if (longs != null)
-            longs.writeExternal(out);
+        out.writeObject(ints);
+        out.writeObject(scaledints);
+        longs.writeExternal(out);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        boolean haveInts = in.readBoolean();
-        boolean haveLongs = in.readBoolean();
-
-        if (haveInts)
-            ints.readExternal(in);
-        if (haveLongs) {
-            longs = new Roaring64NavigableMap(true);
-            longs.readExternal(in);
-        }
+        ints = (BitSet) in.readObject();
+        scaledints = (BitSet) in.readObject();
+        longs.readExternal(in);
     }
+
+    private PrimitiveIterator.OfLong ints_iterator() {
+        return new PrimitiveIterator.OfLong() {
+            private int value = ints.nextSetBit(0);
+
+            @Override
+            public boolean hasNext() {
+                return value >= 0;
+            }
+
+            @Override
+            public long nextLong() {
+                long value = this.value;
+                this.value = ints.nextSetBit(this.value + 1);
+                return value;
+            }
+        };
+    }
+
+    private PrimitiveIterator.OfLong scaledints_iterator() {
+        return new PrimitiveIterator.OfLong() {
+            private int value = scaledints.nextSetBit(0);
+
+            @Override
+            public boolean hasNext() {
+                return value >= 0;
+            }
+
+            @Override
+            public long nextLong() {
+                long value = this.value;
+                this.value = scaledints.nextSetBit(this.value + 1);
+                return value + Integer.MAX_VALUE; // make sure to scale the value
+            }
+        };
+    }
+
+    private PrimitiveIterator.OfLong longs_iterator() {
+        return new PrimitiveIterator.OfLong() {
+            final LongIterator itr = longs.getLongIterator();
+
+            @Override
+            public boolean hasNext() {
+                return itr.hasNext();
+            }
+
+            @Override
+            public long nextLong() {
+                return itr.next();
+            }
+        };
+    }
+
+    private static Roaring64NavigableMap make_longs() {
+        // IMPORTANT:  we must have signed longs here, so the ctor arg must be 'true'
+        // Otherwise we won't maintain sorting the way we need
+        return new Roaring64NavigableMap(true);
+    }
+
 }

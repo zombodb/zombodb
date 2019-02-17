@@ -32,6 +32,7 @@ import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.util.BytesRef;
 
 import llc.zombodb.fast_terms.FastTermsResponse;
+import llc.zombodb.utils.NumberArrayLookup;
 
 class CrossJoinQueryRewriteHelper {
 
@@ -107,9 +108,9 @@ class CrossJoinQueryRewriteHelper {
         //
         switch (fastTerms.getDataType()) {
             case INT:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), fastTerms.getNumberLookupIterators(), new IntRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), fastTerms.getNumberLookup(), new IntRangeAndSetQueryCreator());
             case LONG:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), fastTerms.getNumberLookupIterators(), new LongRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), fastTerms.getNumberLookup(), new LongRangeAndSetQueryCreator());
             case STRING: {
                 BooleanQuery.Builder builder = new BooleanQuery.Builder();
                 for (int shardId = 0; shardId < fastTerms.getNumShards(); shardId++) {
@@ -148,18 +149,17 @@ class CrossJoinQueryRewriteHelper {
         }
     }
 
-    private static Query buildRangeOrSetQuery(String field, PrimitiveIterator.OfLong[] iterators, RangeAndSetQueryCreator queryCreator) {
+    private static Query buildRangeOrSetQuery(String field, NumberArrayLookup[] lookups, RangeAndSetQueryCreator queryCreator) {
         List<Query> clauses = new ArrayList<>();
 
-        for (PrimitiveIterator.OfLong itr : iterators) {
-            if (itr.hasNext()) {
-                clauses.add(queryCreator.newSetQuery(field, itr));
-            } else {
-                clauses.add(new MatchNoDocsQuery());
+        for (NumberArrayLookup nal : lookups) {
+            for (PrimitiveIterator.OfLong itr : nal.iterators()) {
+                if (itr.hasNext())
+                    clauses.add(queryCreator.newSetQuery(field, itr));
             }
         }
 
-        return buildQuery(clauses);
+        return clauses.isEmpty() ? new MatchNoDocsQuery() : buildQuery(clauses);
     }
 
     private static Query buildQuery(List<Query> clauses) {

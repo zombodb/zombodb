@@ -10,16 +10,12 @@ public interface IteratorHelper {
 
             @Override
             public boolean hasNext() {
-                if (current >= iterators.length)
-                    return false;
-                else if (iterators[current].hasNext())
-                    return true;
-                else {
+                while (current < iterators.length) {
+                    if (iterators[current].hasNext())
+                        return true;
                     current++;
-                    if (current >= iterators.length)
-                        return false;
-                    return iterators[current].hasNext();
                 }
+                return false;
             }
 
             @Override
