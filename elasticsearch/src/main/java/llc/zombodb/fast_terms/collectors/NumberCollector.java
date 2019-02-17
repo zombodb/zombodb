@@ -16,10 +16,11 @@
 package llc.zombodb.fast_terms.collectors;
 
 import com.carrotsearch.hppc.LongArrayList;
+import llc.zombodb.utils.IntOrLongBitmap;
 import org.apache.lucene.index.DocValuesType;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
-public class NumberCollector extends FastTermsCollector<Roaring64NavigableMap> {
+public class NumberCollector extends FastTermsCollector<IntOrLongBitmap> {
 
     private class NumericDocValuesCollector implements InternalCollector {
         public void collect(int doc) {
@@ -46,19 +47,19 @@ public class NumberCollector extends FastTermsCollector<Roaring64NavigableMap> {
      * IMPORTANT:  we must have signed longs here, so the ctor arg must be true
      * Otherwise we won't maintain sorting the way we need
      */
-    private final Roaring64NavigableMap data = new Roaring64NavigableMap(true);
+    private final IntOrLongBitmap data = new IntOrLongBitmap();
     private InternalCollector collector;
 
     public NumberCollector(String fieldname) {
         super(fieldname);
     }
 
-    public Roaring64NavigableMap getData() {
+    public IntOrLongBitmap getData() {
         return data;
     }
 
     public int getDataCount() {
-        return data.getIntCardinality();
+        return data.size();
     }
 
     @Override

@@ -1,19 +1,13 @@
 package llc.zombodb.utils;
 
-import com.carrotsearch.hppc.HashOrderMixing;
-import com.carrotsearch.hppc.LongArrayList;
-import com.carrotsearch.hppc.LongScatterSet;
-import com.carrotsearch.hppc.cursors.LongCursor;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Streamable;
-import org.roaringbitmap.RoaringBitmap;
-import org.roaringbitmap.longlong.LongBitmapDataProvider;
+import org.elasticsearch.common.logging.Loggers;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 import java.io.*;
-import java.util.*;
-import java.util.stream.LongStream;
+import java.util.PrimitiveIterator;
 
 /**
  * Allows quick lookup for a value in an array of longs.
@@ -39,7 +33,14 @@ public class NumberArrayLookup implements Streamable {
         }
     }
 
-    private Roaring64NavigableMap longs;
+    private IntOrLongBitmap bitmap;
+
+    public static PrimitiveIterator.OfLong iterators(NumberArrayLookup[] nals) {
+        PrimitiveIterator.OfLong[] iterators = new PrimitiveIterator.OfLong[nals.length];
+        for (int i=0; i<nals.length; i++)
+            iterators[i] = nals[i].iterator();
+        return IteratorHelper.create(iterators);
+    }
 
     public static NumberArrayLookup fromStreamInput(StreamInput in) throws IOException {
         NumberArrayLookup nal = new NumberArrayLookup();
@@ -51,55 +52,23 @@ public class NumberArrayLookup implements Streamable {
         // noop
     }
 
-    public NumberArrayLookup(Roaring64NavigableMap bitmap) {
-        longs = bitmap;
+    public NumberArrayLookup(IntOrLongBitmap bitmap) {
+        this.bitmap = bitmap;
     }
-
-    /* exists for testing */
-    NumberArrayLookup(long min, long max, long[] values, int many) {
-        longs = new Roaring64NavigableMap(true);
-        for (int i=0; i<many; i++)
-            longs.addLong(values[i]);
-    }
-
 
     /**
      * Is the specific value contained within?
      */
     public boolean get(long value) {
-        return longs.contains(value);
+        return bitmap.contains(value);
     }
 
     public int size() {
-        return longs.getIntCardinality();
+        return bitmap.size();
     }
 
-    public LongIterator iterator() {
-        final org.roaringbitmap.longlong.LongIterator itr = longs.getLongIterator();
-        return new LongIterator() {
-            private long pushed;
-            private boolean hasPushed;
-
-            @Override
-            public boolean hasNext() {
-                return hasPushed || itr.hasNext();
-            }
-
-            @Override
-            public long next() {
-                if (hasPushed) {
-                    hasPushed = false;
-                    return pushed;
-                }
-                return itr.next();
-            }
-
-            @Override
-            public void push(long value) {
-                pushed = value;
-                hasPushed = true;
-            }
-        };
+    public PrimitiveIterator.OfLong iterator() {
+        return bitmap.iterator();
     }
 
     @Override
@@ -109,7 +78,7 @@ public class NumberArrayLookup implements Streamable {
         in.readBytes(bytes, 0, numbytes);
         try (ObjectInputStream oin = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
             try {
-                longs = (Roaring64NavigableMap) oin.readObject();
+                bitmap = (IntOrLongBitmap) oin.readObject();
             } catch (ClassNotFoundException cnfe) {
                 throw new IOException(cnfe);
             }
@@ -120,7 +89,7 @@ public class NumberArrayLookup implements Streamable {
     public void writeTo(StreamOutput out) throws IOException {
         NoCopyByteArrayOutputStream baos = new NoCopyByteArrayOutputStream(4096);
         try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            oos.writeObject(longs);
+            oos.writeObject(bitmap);
             oos.flush();
         }
         out.writeVInt(baos.getNumBytes());
@@ -129,7 +98,7 @@ public class NumberArrayLookup implements Streamable {
 
     @Override
     public int hashCode() {
-        return longs.hashCode();
+        return bitmap.hashCode();
     }
 
     @Override
@@ -138,6 +107,6 @@ public class NumberArrayLookup implements Streamable {
             return false;
 
         NumberArrayLookup other = (NumberArrayLookup) obj;
-        return longs.equals(other.longs);
+        return bitmap.equals(other.bitmap);
     }
 }

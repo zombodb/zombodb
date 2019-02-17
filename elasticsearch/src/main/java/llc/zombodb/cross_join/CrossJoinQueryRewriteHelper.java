@@ -16,8 +16,7 @@
 package llc.zombodb.cross_join;
 
 import llc.zombodb.fast_terms.FastTermsResponse;
-import llc.zombodb.utils.LongIterator;
-import llc.zombodb.utils.NumberArrayLookupMergeSortIterator;
+import llc.zombodb.utils.IteratorHelper;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.*;
@@ -26,28 +25,14 @@ import org.apache.lucene.util.BytesRef;
 import java.util.*;
 
 class CrossJoinQueryRewriteHelper {
-    static class Range {
-        private long start, end;
-
-        public Range(long start, long end) {
-            this.start = start;
-            this.end = end;
-        }
-    }
 
     interface RangeAndSetQueryCreator {
-        Query newRangeQuery(String field, long low, long high);
-        Query newSetQuery(String field, LongIterator itr);
+        Query newSetQuery(String field, PrimitiveIterator.OfLong itr);
     }
 
     static class LongRangeAndSetQueryCreator implements RangeAndSetQueryCreator {
         @Override
-        public Query newRangeQuery(String field, long low, long high) {
-            return LongPoint.newRangeQuery(field, low, high);
-        }
-
-        @Override
-        public Query newSetQuery(String field, LongIterator itr) {
+        public Query newSetQuery(String field, PrimitiveIterator.OfLong itr) {
             final BytesRef encoded = new BytesRef(new byte[Long.BYTES]);
 
             return new PointInSetQuery(field, 1, Long.BYTES,
@@ -58,7 +43,7 @@ class CrossJoinQueryRewriteHelper {
                             if (!itr.hasNext()) {
                                 return null;
                             } else {
-                                LongPoint.encodeDimension(itr.next(), encoded.bytes, 0);
+                                LongPoint.encodeDimension(itr.nextLong(), encoded.bytes, 0);
                                 return encoded;
                             }
                         }
@@ -73,13 +58,9 @@ class CrossJoinQueryRewriteHelper {
     }
 
     static class IntRangeAndSetQueryCreator implements RangeAndSetQueryCreator {
-        @Override
-        public Query newRangeQuery(String field, long low, long high) {
-            return IntPoint.newRangeQuery(field, (int) low, (int) high);
-        }
 
         @Override
-        public Query newSetQuery(String field, LongIterator itr) {
+        public Query newSetQuery(String field, PrimitiveIterator.OfLong itr) {
             final BytesRef encoded = new BytesRef(new byte[Integer.BYTES]);
 
             return new PointInSetQuery(field, 1, Integer.BYTES,
@@ -90,7 +71,7 @@ class CrossJoinQueryRewriteHelper {
                             if (!itr.hasNext()) {
                                 return null;
                             } else {
-                                IntPoint.encodeDimension((int) itr.next(), encoded.bytes, 0);
+                                IntPoint.encodeDimension((int) itr.nextLong(), encoded.bytes, 0);
                                 return encoded;
                             }
                         }
@@ -117,9 +98,9 @@ class CrossJoinQueryRewriteHelper {
         //
         switch (fastTerms.getDataType()) {
             case INT:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), new IntRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), fastTerms.getNumberLookupIterators(), new IntRangeAndSetQueryCreator());
             case LONG:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), new LongRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), fastTerms.getNumberLookupIterators(), new LongRangeAndSetQueryCreator());
             case STRING: {
                 BooleanQuery.Builder builder = new BooleanQuery.Builder();
                 for (int shardId = 0; shardId < fastTerms.getNumShards(); shardId++) {
@@ -158,11 +139,15 @@ class CrossJoinQueryRewriteHelper {
         }
     }
 
-    private static Query buildRangeOrSetQuery(String field, NumberArrayLookupMergeSortIterator itr, RangeAndSetQueryCreator queryCreator) {
+    private static Query buildRangeOrSetQuery(String field, PrimitiveIterator.OfLong[] iterators, RangeAndSetQueryCreator queryCreator) {
         List<Query> clauses = new ArrayList<>();
 
-        if (itr.hasNext()) {
-            clauses.add(queryCreator.newSetQuery(field, itr));
+        for (PrimitiveIterator.OfLong itr : iterators) {
+            if (itr.hasNext()) {
+                clauses.add(queryCreator.newSetQuery(field, itr));
+            } else {
+                clauses.add(new MatchNoDocsQuery());
+            }
         }
 
         return buildQuery(clauses);
@@ -176,7 +161,7 @@ class CrossJoinQueryRewriteHelper {
             BooleanQuery.Builder builder = top = new BooleanQuery.Builder();
             int cnt = 0;
             for (Query q : clauses) {
-                if (cnt++ >= BooleanQuery.getMaxClauseCount()-1) {
+                if (cnt++ >= BooleanQuery.getMaxClauseCount() - 1) {
                     BooleanQuery.Builder tmp = new BooleanQuery.Builder();
                     tmp.add(builder.build(), BooleanClause.Occur.SHOULD);
                     builder = tmp;

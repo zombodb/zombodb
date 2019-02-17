@@ -99,6 +99,13 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return lookups;
     }
 
+    public PrimitiveIterator.OfLong[] getNumberLookupIterators() {
+        PrimitiveIterator.OfLong[] iterators = new PrimitiveIterator.OfLong[lookups.length];
+        for (int i=0; i<lookups.length; i++)
+            iterators[i] = lookups[i].iterator();
+        return iterators;
+    }
+
     public int getDocCount() {
         if (dataType == DataType.NONE)
             return 0;

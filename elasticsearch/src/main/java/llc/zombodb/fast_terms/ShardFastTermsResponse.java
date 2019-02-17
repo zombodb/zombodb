@@ -16,6 +16,7 @@
 package llc.zombodb.fast_terms;
 
 import llc.zombodb.fast_terms.collectors.FastTermsCollector;
+import llc.zombodb.utils.IntOrLongBitmap;
 import llc.zombodb.utils.NumberArrayLookup;
 import org.elasticsearch.action.support.broadcast.BroadcastShardResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -48,7 +49,7 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         switch (dataType) {
             case INT:
             case LONG:
-                bitset = new NumberArrayLookup((Roaring64NavigableMap) collector.getData());
+                bitset = new NumberArrayLookup((IntOrLongBitmap) collector.getData());
                 break;
             case STRING:
                 strings = (Object[]) collector.getData();

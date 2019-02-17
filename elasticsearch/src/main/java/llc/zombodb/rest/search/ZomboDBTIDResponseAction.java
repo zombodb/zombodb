@@ -22,8 +22,7 @@ import llc.zombodb.query_parser.ASTLimit;
 import llc.zombodb.query_parser.rewriters.QueryRewriter;
 import llc.zombodb.query_parser.utils.Utils;
 import llc.zombodb.rest.QueryAndIndexPair;
-import llc.zombodb.utils.LongIterator;
-import llc.zombodb.utils.NumberArrayLookupMergeSortIterator;
+import llc.zombodb.utils.IteratorHelper;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.client.Client;
@@ -40,6 +39,7 @@ import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.PrimitiveIterator;
 
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -315,8 +315,8 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         first_byte = offset;
 
         int idx = 0;
-        for (LongIterator itr = new NumberArrayLookupMergeSortIterator(response.getNumberLookup()); itr.hasNext();) {
-            long _zdb_id = itr.next();
+        for (PrimitiveIterator.OfLong itr = IteratorHelper.create(response.getNumberLookupIterators()); itr.hasNext();) {
+            long _zdb_id = itr.nextLong();
             int blockno = (int) (_zdb_id >> 32);
             char offno = (char) _zdb_id;
 

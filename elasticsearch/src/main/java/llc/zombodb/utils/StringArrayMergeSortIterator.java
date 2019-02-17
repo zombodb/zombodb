@@ -24,8 +24,6 @@ public class StringArrayMergeSortIterator {
     private final int finalTotal;
     private int total;
 
-    private String pushback;
-
     public StringArrayMergeSortIterator(Object[][] arrays, int[] lengths) {
         this.arrays = arrays;
         this.counters = new int[arrays.length];
@@ -35,17 +33,7 @@ public class StringArrayMergeSortIterator {
         this.finalTotal = total;
     }
 
-    public void push(String value) {
-        pushback = value;
-    }
-
     public String next() {
-        if (pushback != null) {
-            String tmp = pushback;
-            pushback = null;
-            return tmp;
-        }
-
         --total;
 
         // find first array that we haven't exhausted
@@ -66,7 +54,7 @@ public class StringArrayMergeSortIterator {
     }
 
     public boolean hasNext() {
-        return total > 0 || pushback != null;
+        return total > 0;
     }
 
     public int getTotal() {
