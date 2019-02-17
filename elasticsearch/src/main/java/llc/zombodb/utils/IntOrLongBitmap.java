@@ -12,8 +12,12 @@ import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 public class IntOrLongBitmap implements java.io.Externalizable {
-    private final RoaringBitmap ints = new RoaringBitmap();
+    /**
+     * IMPORTANT:  we must have signed longs here, so the ctor arg must be true
+     * Otherwise we won't maintain sorting the way we need
+     */
     private final Roaring64NavigableMap longs = new Roaring64NavigableMap(true);
+    private final RoaringBitmap ints = new RoaringBitmap();
 
     public void add(long value) {
         if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE)

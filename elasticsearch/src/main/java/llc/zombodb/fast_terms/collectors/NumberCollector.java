@@ -15,10 +15,8 @@
  */
 package llc.zombodb.fast_terms.collectors;
 
-import com.carrotsearch.hppc.LongArrayList;
 import llc.zombodb.utils.IntOrLongBitmap;
 import org.apache.lucene.index.DocValuesType;
-import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 public class NumberCollector extends FastTermsCollector<IntOrLongBitmap> {
 
@@ -43,10 +41,6 @@ public class NumberCollector extends FastTermsCollector<IntOrLongBitmap> {
         }
     }
 
-    /**
-     * IMPORTANT:  we must have signed longs here, so the ctor arg must be true
-     * Otherwise we won't maintain sorting the way we need
-     */
     private final IntOrLongBitmap data = new IntOrLongBitmap();
     private InternalCollector collector;
 
