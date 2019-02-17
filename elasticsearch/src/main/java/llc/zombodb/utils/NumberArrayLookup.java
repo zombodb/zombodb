@@ -21,13 +21,6 @@ public class NumberArrayLookup implements Streamable {
 
     private IntOrLongBitmap bitmap;
 
-    public static PrimitiveIterator.OfLong iterators(NumberArrayLookup[] nals) {
-        PrimitiveIterator.OfLong[] iterators = new PrimitiveIterator.OfLong[nals.length];
-        for (int i=0; i<nals.length; i++)
-            iterators[i] = nals[i].iterator();
-        return IteratorHelper.create(iterators);
-    }
-
     public static NumberArrayLookup fromStreamInput(StreamInput in) throws IOException {
         NumberArrayLookup nal = new NumberArrayLookup();
         nal.readFrom(in);
