@@ -118,6 +118,9 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 return size;
             }
 
+            case NONE:
+                return 0;
+
             default:
                 throw new RuntimeException("Unexpected data type: " + dataType);
         }
@@ -125,7 +128,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     public PrimitiveIterator.OfLong[] getNumberLookupIterators() {
         PrimitiveIterator.OfLong[] iterators = new PrimitiveIterator.OfLong[lookups.length];
-        for (int i=0; i<lookups.length; i++)
+        for (int i = 0; i < lookups.length; i++)
             iterators[i] = IteratorHelper.create(lookups[i].iterators());
         return iterators;
     }
@@ -169,26 +172,19 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         dataType = in.readEnum(DataType.class);
         switch (dataType) {
             case INT:
-            case LONG:
+            case LONG: {
                 lookups = new NumberArrayLookup[numShards];
+                for (int i = 0; i < numShards; i++)
+                    lookups[i] = NumberArrayLookup.fromStreamInput(in);
                 break;
-            case STRING:
-                strings = new CompactHashSet<>();
-                break;
-        }
+            }
 
-        for (int shardId=0; shardId<numShards; shardId++) {
-            switch (dataType) {
-                case INT:
-                case LONG:
-                    lookups[shardId] = NumberArrayLookup.fromStreamInput(in);
-                    break;
-                case STRING:
-                    strings = new CompactHashSet<>();
-                    int len = in.readVInt();
-                    for (int i=0; i<len; i++)
-                        strings.add(in.readString());
-                    break;
+            case STRING: {
+                strings = new CompactHashSet<>();
+                int len = in.readVInt();
+                for (int i = 0; i < len; i++)
+                    strings.add(in.readString());
+                break;
             }
         }
     }
@@ -200,17 +196,21 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         out.writeString(index);
         out.writeVInt(numShards);
         out.writeEnum(dataType);
-        for (int shardId=0; shardId<numShards; shardId++) {
-            switch (dataType) {
-                case INT:
-                case LONG:
-                    lookups[shardId].writeTo(out);
-                    break;
-                case STRING:
-                    out.writeVInt(strings.size());
-                    for (String s : strings)
-                        out.writeString(s);
-                    break;
+
+        switch (dataType) {
+            case INT:
+            case LONG: {
+                for (int i = 0; i < numShards; i++) {
+                    lookups[i].writeTo(out);
+                }
+                break;
+            }
+
+            case STRING: {
+                out.writeVInt(strings.size());
+                for (String s : strings)
+                    out.writeString(s);
+                break;
             }
         }
     }
@@ -243,7 +243,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 Objects.equals(dataType, other.dataType) &&
                 Objects.equals(numShards, other.numShards) &&
                 Objects.deepEquals(lookups, other.lookups) &&
-                Objects.deepEquals(strings, other.strings);
+                Objects.equals(strings, other.strings);
     }
 
     public FastTermsResponse throwShardFailure() {
