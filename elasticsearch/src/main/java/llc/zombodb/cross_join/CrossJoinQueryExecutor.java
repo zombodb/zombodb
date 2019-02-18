@@ -34,7 +34,7 @@ class CrossJoinQueryExecutor {
                 collector = CrossJoinCollector.create(context, fieldname, fastTerms.getNumberLookup());
                 break;
             case "keyword":
-                collector = CrossJoinCollector.create(context, fieldname, fastTerms.getStringArray());
+                collector = CrossJoinCollector.create(context, fieldname, fastTerms.getStrings());
                 break;
             default:
                 throw new RuntimeException("Unsupported field type [" + fieldType + "] for [" + fieldname + "]");

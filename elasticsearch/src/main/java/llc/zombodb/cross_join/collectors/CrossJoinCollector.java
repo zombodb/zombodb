@@ -16,6 +16,8 @@
 package llc.zombodb.cross_join.collectors;
 
 import com.carrotsearch.hppc.ObjectArrayList;
+
+import llc.zombodb.utils.CompactHashSet;
 import llc.zombodb.utils.NumberArrayLookup;
 import org.apache.lucene.index.*;
 import org.apache.lucene.util.BitSet;
@@ -40,7 +42,7 @@ public abstract class CrossJoinCollector {
         return new NumberCollector(context, fieldname, bitSets);
     }
 
-    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, ObjectArrayList<String> strings) throws IOException {
+    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, CompactHashSet<String> strings) throws IOException {
         return new StringCollector(context, fieldname, strings);
     }
 

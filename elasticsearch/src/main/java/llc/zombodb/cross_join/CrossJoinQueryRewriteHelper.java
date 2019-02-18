@@ -114,9 +114,8 @@ class CrossJoinQueryRewriteHelper {
             case STRING: {
                 BooleanQuery.Builder builder = new BooleanQuery.Builder();
                 for (int shardId = 0; shardId < fastTerms.getNumShards(); shardId++) {
-                    int count = fastTerms.getStringCount(shardId);
-                    if (count > 0) {
-                        final Object[] strings = fastTerms.getStrings(shardId);
+                    final String[] sortedStrings = fastTerms.getSortedStrings();
+                    if (sortedStrings.length > 0) {
                         builder.add(new TermInSetQuery(crossJoin.getLeftFieldname(), new AbstractCollection<BytesRef>() {
                             @Override
                             public Iterator<BytesRef> iterator() {
@@ -125,19 +124,19 @@ class CrossJoinQueryRewriteHelper {
 
                                     @Override
                                     public boolean hasNext() {
-                                        return idx < count;
+                                        return idx < sortedStrings.length;
                                     }
 
                                     @Override
                                     public BytesRef next() {
-                                        return new BytesRef(String.valueOf(strings[idx++]));
+                                        return new BytesRef(String.valueOf(sortedStrings[idx++]));
                                     }
                                 };
                             }
 
                             @Override
                             public int size() {
-                                return count;
+                                return sortedStrings.length;
                             }
                         }), BooleanClause.Occur.SHOULD);
                     }

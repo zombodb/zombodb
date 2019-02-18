@@ -134,7 +134,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         builder.field("always_join_with_docvalues", alwaysJoinWithDocValues);
         builder.field("query", query);
         if (fastTerms != null)
-            builder.field("fast_Terms", fastTerms.getDocCount() + " matching docs");
+            builder.field("fast_Terms", fastTerms.getDocCount() + " matching terms");
         builder.endObject();
     }
 

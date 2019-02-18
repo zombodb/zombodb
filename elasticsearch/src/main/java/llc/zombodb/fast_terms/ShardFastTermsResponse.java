@@ -16,6 +16,7 @@
 package llc.zombodb.fast_terms;
 
 import llc.zombodb.fast_terms.collectors.FastTermsCollector;
+import llc.zombodb.utils.CompactHashSet;
 import llc.zombodb.utils.IntOrLongBitmap;
 import llc.zombodb.utils.NumberArrayLookup;
 import org.elasticsearch.action.support.broadcast.BroadcastShardResponse;
@@ -32,7 +33,7 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
     private FastTermsResponse.DataType dataType;
     private int dataCount;
     private NumberArrayLookup bitset;
-    private Object[] strings;
+    private CompactHashSet<String> strings;
 
     ShardFastTermsResponse() {
         super();
@@ -52,12 +53,7 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
                 bitset = new NumberArrayLookup((IntOrLongBitmap) collector.getData());
                 break;
             case STRING:
-                strings = (Object[]) collector.getData();
-                Arrays.sort(strings, 0, dataCount, (o1, o2) -> {
-                    String a = (String) o1;
-                    String b = (String) o2;
-                    return a.compareTo(b);
-                });
+                strings = (CompactHashSet<String>) collector.getData();
                 break;
         }
     }
@@ -98,8 +94,11 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
                     break;
                 case STRING:
                     if (in.readBoolean()) {
-                        strings = in.readStringArray();
-                        dataCount = strings.length;
+                        strings = new CompactHashSet<>();
+                        int size = in.readVInt();
+                        for (int i=0; i<size; i++)
+                            strings.add(in.readString());
+                        dataCount = strings.size();
                     }
                     break;
             }
@@ -131,9 +130,9 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
     }
 
     private void write_strings(StreamOutput out) throws IOException {
-        out.writeVInt(dataCount);
-        for (int i=0; i<dataCount; i++)
-            out.writeString(String.valueOf(strings[i]));
+        out.writeVInt(strings.size());
+        for (String s : strings)
+            out.writeString(s);
     }
 
 }

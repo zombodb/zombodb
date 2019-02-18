@@ -20,7 +20,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 
 import llc.zombodb.utils.CompactHashSet;
 
-public class StringCollector extends FastTermsCollector<Object[]> {
+public class StringCollector extends FastTermsCollector<CompactHashSet> {
 
     private class SortedDocValuesCollector implements InternalCollector {
         @Override
@@ -52,8 +52,8 @@ public class StringCollector extends FastTermsCollector<Object[]> {
         super(fieldname);
     }
 
-    public Object[] getData() {
-        return data.toArray();
+    public CompactHashSet<String> getData() {
+        return data;
     }
 
     @Override

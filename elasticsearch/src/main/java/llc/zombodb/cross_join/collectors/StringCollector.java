@@ -22,21 +22,19 @@ import org.apache.lucene.util.BytesRef;
 import java.io.IOException;
 import java.util.Arrays;
 
+import llc.zombodb.utils.CompactHashSet;
+
 class StringCollector extends CrossJoinCollector {
 
-    private final ObjectArrayList strings;
+    private final CompactHashSet strings;
 
-    StringCollector(LeafReaderContext context, String fieldname, ObjectArrayList<String> strings) throws IOException {
+    StringCollector(LeafReaderContext context, String fieldname, CompactHashSet<String> strings) throws IOException {
         super(context, fieldname);
         this.strings = strings;
     }
 
     @Override
     public boolean accept(BytesRef value) {
-        return Arrays.binarySearch(strings.buffer, 0, strings.elementsCount, value.utf8ToString(), (o1, o2) -> {
-            String a = (String) o1;
-            String b = (String) o2;
-            return a.compareTo(b);
-        }) >= 0;
+        return strings.contains(value.utf8ToString());
     }
 }

@@ -20,8 +20,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.PrimitiveIterator;
+import java.util.Set;
 
-import com.carrotsearch.hppc.ObjectArrayList;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -31,9 +31,9 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestActions;
 
+import llc.zombodb.utils.CompactHashSet;
 import llc.zombodb.utils.IteratorHelper;
 import llc.zombodb.utils.NumberArrayLookup;
-import llc.zombodb.utils.StringArrayMergeSortIterator;
 
 public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject {
     public enum DataType {
@@ -48,8 +48,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     private int numShards;
 
     private NumberArrayLookup[] lookups = new NumberArrayLookup[0];
-    private Object[][] strings = new Object[0][];
-    private int[] numStrings = new int[0];
+    private CompactHashSet<String> strings = new CompactHashSet<>();
 
     public FastTermsResponse() {
 
@@ -73,21 +72,19 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 lookups = new NumberArrayLookup[shardCount];
                 break;
             case STRING:
-                strings = new Object[shardCount][];
-                numStrings = new int[shardCount];
+                strings = new CompactHashSet<>();
                 break;
         }
     }
 
-    void addData(int shardId, Object data, int count) {
+    void addData(int shardId, Object data) {
         switch (dataType) {
             case INT:
             case LONG:
                 lookups[shardId] = (NumberArrayLookup) data;
                 break;
             case STRING:
-                strings[shardId] = (Object[]) data;
-                numStrings[shardId] = count;
+                strings.addAll((CompactHashSet<String>) data);
                 break;
         }
     }
@@ -125,10 +122,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
             }
 
             case STRING: {
-                int total = 0;
-                for (int cnt : numStrings)
-                    total += cnt;
-                return total;
+                return strings.size();
             }
 
             default:
@@ -136,20 +130,12 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         }
     }
 
-    public ObjectArrayList<String> getStringArray() {
-        StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, numStrings);
-        ObjectArrayList<String> stringArray = new ObjectArrayList<>(sorter.getTotal());
-        while (sorter.hasNext())
-            stringArray.add(sorter.next());
-        return stringArray;
+    public CompactHashSet<String> getStrings() {
+        return strings;
     }
 
-    public Object[] getStrings(int shardId) {
-        return strings[shardId];
-    }
-
-    public int getStringCount(int shardId) {
-        return numStrings[shardId];
+    public String[] getSortedStrings() {
+        return strings.stream().sorted().toArray(String[]::new);
     }
 
     @Override
@@ -165,8 +151,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 lookups = new NumberArrayLookup[numShards];
                 break;
             case STRING:
-                strings = new Object[numShards][];
-                numStrings = new int[numShards];
+                strings = new CompactHashSet<>();
                 break;
         }
 
@@ -177,8 +162,10 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                     lookups[shardId] = NumberArrayLookup.fromStreamInput(in);
                     break;
                 case STRING:
-                    strings[shardId] = in.readStringArray();
-                    numStrings[shardId] = strings[shardId].length;
+                    strings = new CompactHashSet<>();
+                    int len = in.readVInt();
+                    for (int i=0; i<len; i++)
+                        strings.add(in.readString());
                     break;
             }
         }
@@ -198,9 +185,9 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                     lookups[shardId].writeTo(out);
                     break;
                 case STRING:
-                    out.writeVInt(numStrings[shardId]);
-                    for (int i = 0; i< numStrings[shardId]; i++)
-                        out.writeString(String.valueOf(strings[shardId][i]));
+                    out.writeVInt(strings.size());
+                    for (String s : strings)
+                        out.writeString(s);
                     break;
             }
         }
@@ -221,9 +208,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     @Override
     public int hashCode() {
-        int hash = Objects.hash(index, dataType, numShards, Arrays.deepHashCode(lookups));
-        hash = 31 * hash + Arrays.hashCode(numStrings);
-        return hash;
+        return Objects.hash(index, dataType, numShards, Arrays.deepHashCode(lookups), strings);
     }
 
     @Override
@@ -236,8 +221,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 Objects.equals(dataType, other.dataType) &&
                 Objects.equals(numShards, other.numShards) &&
                 Objects.deepEquals(lookups, other.lookups) &&
-                Objects.deepEquals(strings, other.strings) &&
-                Objects.deepEquals(numStrings, other.numStrings);
+                Objects.deepEquals(strings, other.strings);
     }
 
 }

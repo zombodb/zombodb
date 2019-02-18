@@ -127,7 +127,7 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
         FastTermsResponse response = new FastTermsResponse(request.indices()[0], successful.size(), successfulShards, failedShards, shardFailures, dataType);
         for (int i = 0; i < successful.size(); i++) {
             ShardFastTermsResponse shardResponse = successful.get(i);
-            response.addData(i, shardResponse.getData(), shardResponse.getDataCount());
+            response.addData(i, shardResponse.getData());
         }
         return response;
     }
