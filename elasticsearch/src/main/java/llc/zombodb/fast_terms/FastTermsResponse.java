@@ -224,4 +224,18 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
                 Objects.deepEquals(strings, other.strings);
     }
 
+    public FastTermsResponse throwShardFailure() {
+        if (getFailedShards() > 0) {
+            // if there was at least one failure, report and re-throw the first
+            // Note that even after we walk down to the original cause, the stacktrace is already lost.
+            Throwable cause = getShardFailures()[0].getCause();
+            while (cause.getCause() != null) {
+                cause = cause.getCause();
+            }
+            throw new RuntimeException(cause);
+        }
+
+        return this;
+    }
+
 }

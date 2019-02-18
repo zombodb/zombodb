@@ -82,7 +82,7 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     .setIndices(link.getIndexName())
                     .setFieldname(link.getRightFieldname())
                     .setTypes("data")
-                    .setQuery(applyVisibility(build(node.getQuery()))).get();
+                    .setQuery(applyVisibility(build(node.getQuery()))).get().throwShardFailure();
 
             qb = new ConstantScoreQueryBuilder(new CrossJoinQueryBuilder()
                     .index(link.getIndexName())
