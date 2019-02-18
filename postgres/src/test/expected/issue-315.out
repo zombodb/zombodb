@@ -34,77 +34,32 @@ select * from a where zdb('a', ctid) ==> '#expand<b_group_id=<this.index>b_group
 
 set zombodb.ignore_visibility to on; /* to avoid transient xact data in query output */
 select zdb_dump_query('a', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)');
-                               zdb_dump_query                                
------------------------------------------------------------------------------
- {                                                                          +
-   "constant_score" : {                                                     +
-     "filter" : {                                                           +
-       "cross_join" : {                                                     +
-         "index" : "contrib_regression.public.mapping.idxmapping",          +
-         "type" : "data",                                                   +
-         "left_fieldname" : "fk_a_to_map",                                  +
-         "right_fieldname" : "pk_map",                                      +
-         "can_optimize_joins" : false,                                      +
-         "always_join_with_docvalues" : false,                              +
-         "query" : {                                                        +
-           "constant_score" : {                                             +
-             "filter" : {                                                   +
-               "cross_join" : {                                             +
-                 "index" : "contrib_regression.public.b.idxb",              +
-                 "type" : "data",                                           +
-                 "left_fieldname" : "fk_map_to_b",                          +
-                 "right_fieldname" : "pk_b_id",                             +
-                 "can_optimize_joins" : false,                              +
-                 "always_join_with_docvalues" : false,                      +
-                 "query" : {                                                +
-                   "bool" : {                                               +
-                     "should" : [                                           +
-                       {                                                    +
-                         "constant_score" : {                               +
-                           "filter" : {                                     +
-                             "cross_join" : {                               +
-                               "index" : "contrib_regression.public.b.idxb",+
-                               "type" : "data",                             +
-                               "left_fieldname" : "b_group_id",             +
-                               "right_fieldname" : "b_group_id",            +
-                               "can_optimize_joins" : false,                +
-                               "always_join_with_docvalues" : false,        +
-                               "query" : {                                  +
-                                 "term" : {                                 +
-                                   "pk_b_id" : {                            +
-                                     "value" : 100,                         +
-                                     "boost" : 1.0                          +
-                                   }                                        +
-                                 }                                          +
-                               }                                            +
-                             }                                              +
-                           },                                               +
-                           "boost" : 1.0                                    +
-                         }                                                  +
-                       },                                                   +
-                       {                                                    +
-                         "term" : {                                         +
-                           "pk_b_id" : {                                    +
-                             "value" : 100,                                 +
-                             "boost" : 1.0                                  +
-                           }                                                +
-                         }                                                  +
-                       }                                                    +
-                     ],                                                     +
-                     "disable_coord" : false,                               +
-                     "adjust_pure_negative" : true,                         +
-                     "boost" : 1.0                                          +
-                   }                                                        +
-                 }                                                          +
-               }                                                            +
-             },                                                             +
-             "boost" : 1.0                                                  +
-           }                                                                +
-         }                                                                  +
-       }                                                                    +
-     },                                                                     +
-     "boost" : 1.0                                                          +
-   }                                                                        +
+                          zdb_dump_query                           
+-------------------------------------------------------------------
+ {                                                                +
+   "constant_score" : {                                           +
+     "filter" : {                                                 +
+       "cross_join" : {                                           +
+         "index" : "contrib_regression.public.mapping.idxmapping",+
+         "type" : "data",                                         +
+         "left_fieldname" : "fk_a_to_map",                        +
+         "right_fieldname" : "pk_map",                            +
+         "can_optimize_joins" : false,                            +
+         "always_join_with_docvalues" : false,                    +
+         "query" : {                                              +
+           "match_none" : {                                       +
+             "boost" : 1.0                                        +
+           }                                                      +
+         },                                                       +
+         "fast_terms" : {                                         +
+           "matching_terms" : 2,                                  +
+           "data_type" : "LONG",                                  +
+           "estimated_byte_size" : 62                             +
+         }                                                        +
+       }                                                          +
+     },                                                           +
+     "boost" : 1.0                                                +
+   }                                                              +
  }
 (1 row)
 
