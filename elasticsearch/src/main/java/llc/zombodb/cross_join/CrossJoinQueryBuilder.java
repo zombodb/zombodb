@@ -86,7 +86,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         return this;
     }
 
-    protected CrossJoinQueryBuilder fastTerms(FastTermsResponse fastTerms) {
+    public CrossJoinQueryBuilder fastTerms(FastTermsResponse fastTerms) {
         this.fastTerms = fastTerms;
         return this;
     }
@@ -133,6 +133,8 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         builder.field("can_optimize_joins", canOptimizeJoins);
         builder.field("always_join_with_docvalues", alwaysJoinWithDocValues);
         builder.field("query", query);
+        if (fastTerms != null)
+            builder.field("fast_Terms", fastTerms.getDocCount() + " matching docs");
         builder.endObject();
     }
 
