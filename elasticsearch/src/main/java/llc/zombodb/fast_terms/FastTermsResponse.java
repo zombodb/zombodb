@@ -101,6 +101,28 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return lookups;
     }
 
+    public long estimateByteSize() {
+        switch (dataType) {
+            case INT:
+            case LONG: {
+                long size = 0;
+                for (NumberArrayLookup nal : lookups)
+                    size += nal.estimateByteSize();
+                return size;
+            }
+
+            case STRING: {
+                long size = 0;
+                for (String s : strings)
+                    size += s.length();
+                return size;
+            }
+
+            default:
+                throw new RuntimeException("Unexpected data type: " + dataType);
+        }
+    }
+
     public PrimitiveIterator.OfLong[] getNumberLookupIterators() {
         PrimitiveIterator.OfLong[] iterators = new PrimitiveIterator.OfLong[lookups.length];
         for (int i=0; i<lookups.length; i++)

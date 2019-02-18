@@ -29,6 +29,8 @@ import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryShardContext;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -133,8 +135,13 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         builder.field("can_optimize_joins", canOptimizeJoins);
         builder.field("always_join_with_docvalues", alwaysJoinWithDocValues);
         builder.field("query", query);
-        if (fastTerms != null)
-            builder.field("fast_Terms", fastTerms.getDocCount() + " matching terms");
+        if (fastTerms != null) {
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("matching_terms", fastTerms.getDocCount());
+            stats.put("data_type", fastTerms.getDataType().name());
+            stats.put("estimated_byte_size", fastTerms.estimateByteSize());
+            builder.field("fast_terms", stats);
+        }
         builder.endObject();
     }
 

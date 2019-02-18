@@ -180,4 +180,8 @@ public class IntOrLongBitmap implements java.io.Externalizable {
             }
         };
     }
+
+    public long estimateByteSize() {
+        return ints.serializedSizeInBytes() + scaledints.serializedSizeInBytes() + longs.serializedSizeInBytes();
+    }
 }

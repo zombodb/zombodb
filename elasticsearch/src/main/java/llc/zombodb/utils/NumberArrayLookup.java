@@ -80,4 +80,8 @@ public class NumberArrayLookup implements Streamable {
         NumberArrayLookup other = (NumberArrayLookup) obj;
         return bitmap.equals(other.bitmap);
     }
+
+    public long estimateByteSize() {
+        return bitmap.estimateByteSize();
+    }
 }
