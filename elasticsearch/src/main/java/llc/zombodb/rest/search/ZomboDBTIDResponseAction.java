@@ -16,15 +16,17 @@
  */
 package llc.zombodb.rest.search;
 
-import llc.zombodb.fast_terms.FastTermsAction;
-import llc.zombodb.fast_terms.FastTermsResponse;
-import llc.zombodb.query_parser.ASTLimit;
-import llc.zombodb.query_parser.rewriters.QueryRewriter;
-import llc.zombodb.query_parser.utils.Utils;
-import llc.zombodb.rest.QueryAndIndexPair;
-import llc.zombodb.utils.IteratorHelper;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.PrimitiveIterator;
+
 import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.search.*;
+import org.elasticsearch.action.search.SearchAction;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchScrollAction;
+import org.elasticsearch.action.search.SearchScrollRequestBuilder;
+import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
@@ -33,13 +35,20 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.rest.*;
+import org.elasticsearch.rest.BaseRestHandler;
+import org.elasticsearch.rest.BytesRestResponse;
+import org.elasticsearch.rest.RestController;
+import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.PrimitiveIterator;
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.FastTermsResponse;
+import llc.zombodb.query_parser.ASTLimit;
+import llc.zombodb.query_parser.rewriters.QueryRewriter;
+import llc.zombodb.query_parser.utils.Utils;
+import llc.zombodb.rest.QueryAndIndexPair;
 
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -315,7 +324,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         first_byte = offset;
 
         int idx = 0;
-        for (PrimitiveIterator.OfLong itr = response.getNumberLookupIterators(); itr.hasNext();) {
+        for (PrimitiveIterator.OfLong itr = response.getNumbersIterator(); itr.hasNext();) {
             long _zdb_id = itr.nextLong();
             int blockno = (int) (_zdb_id >> 32);
             char offno = (char) _zdb_id;

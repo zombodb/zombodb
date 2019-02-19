@@ -45,14 +45,14 @@ public class StringCollector extends FastTermsCollector<CompactHashSet> {
         }
     }
 
-    private final CompactHashSet<String> data = new CompactHashSet<>();
+    private final CompactHashSet data = new CompactHashSet();
     private InternalCollector collector;
 
     public StringCollector(String fieldname) {
         super(fieldname);
     }
 
-    public CompactHashSet<String> getData() {
+    public CompactHashSet getData() {
         return data;
     }
 

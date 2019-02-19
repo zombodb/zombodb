@@ -15,12 +15,10 @@
  */
 package llc.zombodb.cross_join.collectors;
 
-import com.carrotsearch.hppc.ObjectArrayList;
+import java.io.IOException;
+
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BytesRef;
-
-import java.io.IOException;
-import java.util.Arrays;
 
 import llc.zombodb.utils.CompactHashSet;
 
@@ -28,7 +26,7 @@ class StringCollector extends CrossJoinCollector {
 
     private final CompactHashSet strings;
 
-    StringCollector(LeafReaderContext context, String fieldname, CompactHashSet<String> strings) throws IOException {
+    StringCollector(LeafReaderContext context, String fieldname, CompactHashSet strings) throws IOException {
         super(context, fieldname);
         this.strings = strings;
     }

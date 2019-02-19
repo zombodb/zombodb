@@ -15,10 +15,11 @@
  */
 package llc.zombodb.fast_terms.collectors;
 
-import llc.zombodb.utils.IntOrLongBitmap;
 import org.apache.lucene.index.DocValuesType;
 
-public class NumberCollector extends FastTermsCollector<IntOrLongBitmap> {
+import llc.zombodb.utils.NumberBitmap;
+
+public class NumberCollector extends FastTermsCollector<NumberBitmap> {
 
     private class NumericDocValuesCollector implements InternalCollector {
         public void collect(int doc) {
@@ -41,14 +42,14 @@ public class NumberCollector extends FastTermsCollector<IntOrLongBitmap> {
         }
     }
 
-    private final IntOrLongBitmap data = new IntOrLongBitmap();
+    private final NumberBitmap data = new NumberBitmap();
     private InternalCollector collector;
 
     public NumberCollector(String fieldname) {
         super(fieldname);
     }
 
-    public IntOrLongBitmap getData() {
+    public NumberBitmap getData() {
         return data;
     }
 

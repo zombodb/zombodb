@@ -15,25 +15,23 @@
  */
 package llc.zombodb.fast_terms;
 
-import llc.zombodb.fast_terms.collectors.FastTermsCollector;
-import llc.zombodb.utils.CompactHashSet;
-import llc.zombodb.utils.IntOrLongBitmap;
-import llc.zombodb.utils.NumberArrayLookup;
+import java.io.IOException;
+
 import org.elasticsearch.action.support.broadcast.BroadcastShardResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.index.shard.ShardId;
-import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
-import java.io.IOException;
-import java.util.Arrays;
+import llc.zombodb.fast_terms.collectors.FastTermsCollector;
+import llc.zombodb.utils.CompactHashSet;
+import llc.zombodb.utils.NumberBitmap;
 
 public class ShardFastTermsResponse extends BroadcastShardResponse {
 
     private FastTermsResponse.DataType dataType;
     private int dataCount;
-    private NumberArrayLookup bitset;
-    private CompactHashSet<String> strings;
+    private NumberBitmap bitset;
+    private CompactHashSet strings;
 
     ShardFastTermsResponse() {
         super();
@@ -52,10 +50,10 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         switch (dataType) {
             case INT:
             case LONG:
-                bitset = new NumberArrayLookup((IntOrLongBitmap) collector.getData());
+                bitset = (NumberBitmap) collector.getData();
                 break;
             case STRING:
-                strings = (CompactHashSet<String>) collector.getData();
+                strings = (CompactHashSet) collector.getData();
                 break;
         }
     }
@@ -90,16 +88,13 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
                 case INT:
                 case LONG:
                     if (in.readBoolean()) {
-                        bitset = NumberArrayLookup.fromStreamInput(in);
+                        bitset = new NumberBitmap(in);
                         dataCount = bitset.size();
                     }
                     break;
                 case STRING:
                     if (in.readBoolean()) {
-                        strings = new CompactHashSet<>();
-                        int size = in.readVInt();
-                        for (int i=0; i<size; i++)
-                            strings.add(in.readString());
+                        strings = new CompactHashSet(in);
                         dataCount = strings.size();
                     }
                     break;
@@ -124,17 +119,11 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
                 case STRING:
                     out.writeBoolean(strings != null);
                     if (strings != null) {
-                        write_strings(out);
+                        strings.writeTo(out);
                     }
                     break;
             }
         }
-    }
-
-    private void write_strings(StreamOutput out) throws IOException {
-        out.writeVInt(strings.size());
-        for (String s : strings)
-            out.writeString(s);
     }
 
 }

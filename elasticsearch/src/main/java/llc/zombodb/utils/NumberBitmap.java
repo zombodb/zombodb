@@ -1,18 +1,22 @@
 package llc.zombodb.utils;
 
+import java.io.DataInput;
+import java.io.DataInputStream;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
 import java.util.Objects;
 import java.util.PrimitiveIterator;
 
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.io.stream.Streamable;
 import org.roaringbitmap.IntIterator;
 import org.roaringbitmap.RoaringBitmap;
 import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
-public class IntOrLongBitmap implements java.io.Externalizable {
+public class NumberBitmap implements Streamable {
     private Roaring64NavigableMap negatives;
     private RoaringBitmap ints;
     private RoaringBitmap scaledints;
@@ -28,11 +32,11 @@ public class IntOrLongBitmap implements java.io.Externalizable {
         return new RoaringBitmap();
     }
 
-    public IntOrLongBitmap(ObjectInputStream ois) throws IOException, ClassNotFoundException {
-        readExternal(ois);
+    public NumberBitmap(StreamInput ois) throws IOException {
+        readFrom(ois);
     }
 
-    public IntOrLongBitmap() {
+    public NumberBitmap() {
         negatives = make64bitBitmap();
         ints = mak32bitBitmap();
         scaledints = mak32bitBitmap();
@@ -89,8 +93,8 @@ public class IntOrLongBitmap implements java.io.Externalizable {
         return size;
     }
 
-    PrimitiveIterator.OfLong[] iterators() {
-        return new PrimitiveIterator.OfLong[]{negatives_iterator(), ints_iterator(), scaledints_iterator(), longs_iterator()};
+    public PrimitiveIterator.OfLong iterator() {
+        return IteratorHelper.create(negatives_iterator(), ints_iterator(), scaledints_iterator(), longs_iterator());
     }
 
     @Override
@@ -103,7 +107,7 @@ public class IntOrLongBitmap implements java.io.Externalizable {
         if (obj == null || obj.getClass() != getClass())
             return false;
 
-        IntOrLongBitmap other = (IntOrLongBitmap) obj;
+        NumberBitmap other = (NumberBitmap) obj;
         return Objects.equals(this.negatives, other.negatives) &&
                 Objects.equals(this.ints, other.ints) &&
                 Objects.equals(this.scaledints, other.scaledints) &&
@@ -111,33 +115,35 @@ public class IntOrLongBitmap implements java.io.Externalizable {
     }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    public void writeTo(StreamOutput out) throws IOException {
+        DataOutput dataOutput = new DataOutputStream(out);
         negatives.runOptimize();
-        negatives.serialize(out);
+        negatives.serialize(dataOutput);
 
         ints.runOptimize();
-        ints.serialize(out);
+        ints.serialize(dataOutput);
 
         scaledints.runOptimize();
-        scaledints.serialize(out);
+        scaledints.serialize(dataOutput);
 
         longs.runOptimize();
-        longs.serialize(out);
+        longs.serialize(dataOutput);
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException {
+    public void readFrom(StreamInput in) throws IOException {
+        DataInput dataInput = new DataInputStream(in);
         negatives = make64bitBitmap();
-        negatives.deserialize(in);
+        negatives.deserialize(dataInput);
 
         ints = mak32bitBitmap();
-        ints.deserialize(in);
+        ints.deserialize(dataInput);
 
         scaledints = mak32bitBitmap();
-        scaledints.deserialize(in);
+        scaledints.deserialize(dataInput);
 
         longs = make64bitBitmap();
-        longs.deserialize(in);
+        longs.deserialize(dataInput);
     }
 
     private PrimitiveIterator.OfLong negatives_iterator() {
@@ -208,7 +214,7 @@ public class IntOrLongBitmap implements java.io.Externalizable {
         return negatives.serializedSizeInBytes() + ints.serializedSizeInBytes() + scaledints.serializedSizeInBytes() + longs.serializedSizeInBytes();
     }
 
-    public void merge(IntOrLongBitmap bitmap) {
+    public void merge(NumberBitmap bitmap) {
         negatives.or(bitmap.negatives);
         ints.or(bitmap.ints);
         scaledints.or(bitmap.scaledints);

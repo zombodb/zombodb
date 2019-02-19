@@ -30,9 +30,7 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestActions;
 
 import llc.zombodb.utils.CompactHashSet;
-import llc.zombodb.utils.IntOrLongBitmap;
-import llc.zombodb.utils.IteratorHelper;
-import llc.zombodb.utils.NumberArrayLookup;
+import llc.zombodb.utils.NumberBitmap;
 
 public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject {
     public enum DataType {
@@ -44,8 +42,8 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     private DataType dataType;
 
-    private NumberArrayLookup lookups;
-    private CompactHashSet<String> strings;
+    private NumberBitmap numbers;
+    private CompactHashSet strings;
 
     public FastTermsResponse() {
 
@@ -59,18 +57,18 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         super(shardCount, successfulShards, failedShards, shardFailures);
 
         this.dataType = dataType;
-        lookups = new NumberArrayLookup(new IntOrLongBitmap());
-        strings = new CompactHashSet<>();
+        numbers = new NumberBitmap();
+        strings = new CompactHashSet();
     }
 
     void addData(Object data) {
         switch (dataType) {
             case INT:
             case LONG:
-                lookups.merge((NumberArrayLookup) data);
+                numbers.merge((NumberBitmap) data);
                 break;
             case STRING:
-                strings.addAll((CompactHashSet<String>) data);
+                strings.addAll((CompactHashSet) data);
                 break;
         }
     }
@@ -79,8 +77,8 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return dataType;
     }
 
-    public NumberArrayLookup getNumberLookup() {
-        return lookups;
+    public NumberBitmap getNumbers() {
+        return numbers;
     }
 
     public long estimateByteSize() {
@@ -90,7 +88,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
             case INT:
             case LONG: {
-                return lookups.estimateByteSize();
+                return numbers.estimateByteSize();
             }
 
             case STRING: {
@@ -105,15 +103,15 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         }
     }
 
-    public PrimitiveIterator.OfLong getNumberLookupIterators() {
-        return IteratorHelper.create(lookups.iterators());
+    public PrimitiveIterator.OfLong getNumbersIterator() {
+        return numbers.iterator();
     }
 
     public int getDocCount() {
         switch (dataType) {
             case INT:
             case LONG:
-                return lookups.size();
+                return numbers.size();
 
             case STRING:
                 return strings.size();
@@ -123,7 +121,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         }
     }
 
-    public CompactHashSet<String> getStrings() {
+    public CompactHashSet getStrings() {
         return strings;
     }
 
@@ -139,15 +137,12 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         switch (dataType) {
             case INT:
             case LONG: {
-                lookups = NumberArrayLookup.fromStreamInput(in);
+                numbers = new NumberBitmap(in);
                 break;
             }
 
             case STRING: {
-                strings = new CompactHashSet<>();
-                int len = in.readVInt();
-                for (int i = 0; i < len; i++)
-                    strings.add(in.readString());
+                strings = new CompactHashSet(in);
                 break;
             }
         }
@@ -162,14 +157,12 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         switch (dataType) {
             case INT:
             case LONG: {
-                lookups.writeTo(out);
+                numbers.writeTo(out);
                 break;
             }
 
             case STRING: {
-                out.writeVInt(strings.size());
-                for (String s : strings)
-                    out.writeString(s);
+                strings.writeTo(out);
                 break;
             }
         }
@@ -190,7 +183,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     @Override
     public int hashCode() {
-        return Objects.hash(dataType, lookups, strings);
+        return Objects.hash(dataType, numbers, strings);
     }
 
     @Override
@@ -200,7 +193,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
         FastTermsResponse other = (FastTermsResponse) obj;
         return Objects.equals(dataType, other.dataType) &&
-                Objects.equals(lookups, other.lookups) &&
+                Objects.equals(numbers, other.numbers) &&
                 Objects.equals(strings, other.strings);
     }
 

@@ -32,7 +32,7 @@ import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.util.BytesRef;
 
 import llc.zombodb.fast_terms.FastTermsResponse;
-import llc.zombodb.utils.NumberArrayLookup;
+import llc.zombodb.utils.NumberBitmap;
 
 class CrossJoinQueryRewriteHelper {
 
@@ -108,9 +108,9 @@ class CrossJoinQueryRewriteHelper {
         //
         switch (fastTerms.getDataType()) {
             case INT:
-                return buildRangeOrSetQuery(leftFieldname, fastTerms.getNumberLookup(), new IntRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(leftFieldname, fastTerms.getNumbers(), new IntRangeAndSetQueryCreator());
             case LONG:
-                return buildRangeOrSetQuery(leftFieldname, fastTerms.getNumberLookup(), new LongRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(leftFieldname, fastTerms.getNumbers(), new LongRangeAndSetQueryCreator());
             case STRING: {
                 final String[] sortedStrings = fastTerms.getSortedStrings();
 
@@ -147,13 +147,12 @@ class CrossJoinQueryRewriteHelper {
         }
     }
 
-    private static Query buildRangeOrSetQuery(String field, NumberArrayLookup lookups, RangeAndSetQueryCreator queryCreator) {
+    private static Query buildRangeOrSetQuery(String field, NumberBitmap lookups, RangeAndSetQueryCreator queryCreator) {
         List<Query> clauses = new ArrayList<>();
 
-        for (PrimitiveIterator.OfLong itr : lookups.iterators()) {
-            if (itr.hasNext())
-                clauses.add(queryCreator.newSetQuery(field, itr));
-        }
+        PrimitiveIterator.OfLong itr = lookups.iterator();
+        if (itr.hasNext())
+            clauses.add(queryCreator.newSetQuery(field, itr));
 
         return clauses.isEmpty() ? new MatchNoDocsQuery() : buildQuery(clauses);
     }

@@ -30,17 +30,24 @@ package llc.zombodb.utils;
 // update CompactIdentityHashSet.java, UniqueSet.java and
 // SoftHashMapIndex.java accordingly.
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
+
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.io.stream.Streamable;
 
 /**
  * INTERNAL: Implements the Set interface more compactly than
  * java.util.HashSet by using a closed hashtable.
  */
 @SuppressWarnings("unchecked")
-public class CompactHashSet<E> extends java.util.AbstractSet<E> {
+public class CompactHashSet extends java.util.AbstractSet<String> implements Streamable {
 
     protected final static int INITIAL_SIZE = 3;
     protected final static double LOAD_FACTOR = 0.75;
@@ -48,14 +55,14 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
     /**
      * This object is used to represent null, should clients add that to the set.
      */
-    protected final static Object nullObject = new Object();
+    protected final static String nullObject = new String();
     /**
      * When an object is deleted this object is put into the hashtable
      * in its place, so that other objects with the same key
      * (collisions) further down the hashtable are not lost after we
      * delete an object in the collision chain.
      */
-    protected final static Object deletedObject = new Object();
+    protected final static String deletedObject = new String();
     protected int elements;
     /**
      * This is the number of empty (null) cells. It's not necessarily
@@ -63,8 +70,12 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
      * contain deletedObject.
      */
     protected int freecells;
-    protected E[] objects;
+    protected String[] objects;
     protected int modCount;
+
+    public CompactHashSet(StreamInput in) throws IOException{
+        readFrom(in);
+    }
 
     /**
      * Constructs a new, empty set.
@@ -79,7 +90,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
     public CompactHashSet(int size) {
         // NOTE: If array size is 0, we get a
         // "java.lang.ArithmeticException: / by zero" in add(Object).
-        objects = (E[]) new Object[(size==0 ? 1 : size)];
+        objects = new String[(size==0 ? 1 : size)];
         elements = 0;
         freecells = objects.length;
         modCount = 0;
@@ -91,7 +102,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
      *
      * @param c the collection whose elements are to be placed into this set.
      */
-    public CompactHashSet(Collection<E> c) {
+    public CompactHashSet(Collection<String> c) {
         this(c.size());
         addAll(c);
     }
@@ -106,8 +117,8 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
      * @see ConcurrentModificationException
      */
     @Override
-    public Iterator<E> iterator() {
-        return new CompactHashIterator<E>();
+    public Iterator<String> iterator() {
+        return new CompactHashIterator();
     }
 
     /**
@@ -163,7 +174,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
      * element.
      */
     @Override
-    public boolean add(Object o) {
+    public boolean add(String o) {
         if (o == null) o = nullObject;
 
         int hash = o.hashCode();
@@ -203,7 +214,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
             // If (! o instanceof E) : This will cause a class cast exception
             // If (o instanceof E) : This will work fine
 
-            objects[index] = (E) o;
+            objects[index] = o;
 
             // do we need to rehash?
             if (1 - (freecells / (double) objects.length) > LOAD_FACTOR)
@@ -240,7 +251,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
             // we found the object
 
             // same problem here as with add
-            objects[index] = (E) deletedObject;
+            objects[index] = deletedObject;
             modCount++;
             elements--;
             return true;
@@ -284,7 +295,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
         if (a.length < size)
             a = (T[])java.lang.reflect.Array.newInstance(
                     a.getClass().getComponentType(), size);
-        E[] objects = this.objects;
+        String[] objects = this.objects;
         int pos = 0;
         for (int i = 0; i < objects.length; i++)
             if (objects[i] != null && objects[i] != deletedObject) {
@@ -335,10 +346,10 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
     protected void rehash(int newCapacity) {
         int oldCapacity = objects.length;
         @SuppressWarnings("unchecked")
-        E[] newObjects = (E[]) new Object[newCapacity];
+        String[] newObjects = new String[newCapacity];
 
         for (int ix = 0; ix < oldCapacity; ix++) {
-            Object o = objects[ix];
+            String o = objects[ix];
             if (o == null || o == deletedObject)
                 continue;
 
@@ -355,16 +366,66 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
                     offset = 2;
             }
 
-            newObjects[index] = (E) o;
+            newObjects[index] = o;
         }
 
         objects = newObjects;
         freecells = objects.length - elements;
     }
 
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        List<Integer> deletedIndexes = new ArrayList<>();
+        List<Integer> nullIndexes = new ArrayList<>();
+
+        out.writeVInt(elements);
+        out.writeVInt(freecells);
+        out.writeVInt(modCount);
+
+        out.writeVInt(objects.length);
+        for (int i=0; i<objects.length; i++) {
+            String s = objects[i];
+
+            if (s == nullObject)
+                nullIndexes.add(i);
+            else if (s == deletedObject)
+                deletedIndexes.add(i);
+
+            out.writeOptionalString(s);
+        }
+
+        out.writeVInt(nullIndexes.size());
+        for (int i: nullIndexes)
+            out.writeVInt(i);
+
+        out.writeVInt(deletedIndexes.size());
+        for (int i: deletedIndexes)
+            out.writeVInt(i);
+    }
+
+    @Override
+    public void readFrom(StreamInput in) throws IOException {
+        elements = in.readVInt();
+        freecells = in.readVInt();
+        modCount = in.readVInt();
+
+        objects = new String[in.readVInt()];
+        for (int i=0; i<objects.length; i++) {
+            objects[i] = in.readOptionalString();
+        }
+
+        int nullCnt = in.readVInt();
+        for (int i=0; i<nullCnt; i++)
+            objects[in.readVInt()] = nullObject;
+
+        int deletedCnt = in.readVInt();
+        for (int i=0; i<deletedCnt; i++)
+            objects[in.readVInt()] = deletedObject;
+    }
+
     // ===== ITERATOR IMPLEMENTATON =========================================
 
-    private class CompactHashIterator<T> implements Iterator<T> {
+    private class CompactHashIterator implements Iterator<String> {
         private int index;
         private int lastReturned = -1;
 
@@ -391,7 +452,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
 
         @SuppressWarnings("empty-statement")
         @Override
-        public T next() {
+        public String next() {
             if (modCount != expectedModCount)
                 throw new ConcurrentModificationException();
             int length = objects.length;
@@ -408,7 +469,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
             if (objects[lastReturned] == nullObject)
                 return null;
             else
-                return (T) objects[lastReturned];
+                return objects[lastReturned];
         }
 
         @Override
@@ -419,7 +480,7 @@ public class CompactHashSet<E> extends java.util.AbstractSet<E> {
                 throw new IllegalStateException();
             // delete object
             if (objects[lastReturned] != null && objects[lastReturned] != deletedObject) {
-                objects[lastReturned] = (E) deletedObject;
+                objects[lastReturned] = deletedObject;
                 elements--;
                 modCount++;
                 expectedModCount = modCount; // this is expected; we made the change

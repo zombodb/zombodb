@@ -15,16 +15,20 @@
  */
 package llc.zombodb.cross_join.collectors;
 
-import com.carrotsearch.hppc.ObjectArrayList;
+import java.io.IOException;
 
-import llc.zombodb.utils.CompactHashSet;
-import llc.zombodb.utils.NumberArrayLookup;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
-import java.io.IOException;
+import llc.zombodb.utils.CompactHashSet;
+import llc.zombodb.utils.NumberBitmap;
 
 public abstract class CrossJoinCollector {
 
@@ -38,11 +42,11 @@ public abstract class CrossJoinCollector {
     private SortedSetDocValues sortedSet;
     private SortedDocValues sortedDocValues;
 
-    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, NumberArrayLookup lookup) throws IOException {
-        return new NumberCollector(context, fieldname, lookup);
+    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, NumberBitmap bitmap) throws IOException {
+        return new NumberCollector(context, fieldname, bitmap);
     }
 
-    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, CompactHashSet<String> strings) throws IOException {
+    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, CompactHashSet strings) throws IOException {
         return new StringCollector(context, fieldname, strings);
     }
 
