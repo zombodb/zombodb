@@ -45,6 +45,8 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
 
     public ShardFastTermsResponse(ShardId shardId, FastTermsResponse.DataType dataType, FastTermsCollector collector) {
         super(shardId);
+        assert dataType != null;
+
         this.dataType = dataType;
         this.dataCount = collector.getDataCount();
         switch (dataType) {

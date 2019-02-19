@@ -151,7 +151,12 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
         if (fieldType == null)
             throw new RuntimeException(context.index().getName() + " does not contain '" + leftFieldname + "'");
-        return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, canOptimizeJoins, alwaysJoinWithDocValues, fieldType.typeName(), context.getShardId(), query, context.getClient(), fastTerms);
+
+        if (fastTerms != null) {
+            return new FastTermsQuery(leftFieldname, type, fieldType.typeName(), fastTerms, alwaysJoinWithDocValues);
+        } else {
+            return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, canOptimizeJoins, alwaysJoinWithDocValues, fieldType.typeName(), context.getShardId(), query, context.getClient());
+        }
     }
 
     @Override
@@ -162,12 +167,13 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
                 Objects.equals(rightFieldname, other.rightFieldname) &&
                 Objects.equals(query, other.query) &&
                 Objects.equals(canOptimizeJoins, other.canOptimizeJoins) &&
-                Objects.equals(alwaysJoinWithDocValues, other.alwaysJoinWithDocValues);
+                Objects.equals(alwaysJoinWithDocValues, other.alwaysJoinWithDocValues) &&
+                Objects.equals(fastTerms, other.fastTerms);
     }
 
     @Override
     protected int doHashCode() {
-        return Objects.hash(index, type, leftFieldname, rightFieldname, query, canOptimizeJoins, alwaysJoinWithDocValues);
+        return Objects.hash(index, type, leftFieldname, rightFieldname, query, canOptimizeJoins, alwaysJoinWithDocValues, fastTerms);
     }
 
     @Override

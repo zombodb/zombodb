@@ -84,4 +84,8 @@ public class NumberArrayLookup implements Streamable {
     public long estimateByteSize() {
         return bitmap.estimateByteSize();
     }
+
+    public void merge(NumberArrayLookup data) {
+        bitmap.merge(data.bitmap);
+    }
 }

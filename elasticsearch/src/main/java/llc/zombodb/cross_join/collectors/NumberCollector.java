@@ -22,19 +22,15 @@ import java.io.IOException;
 
 class NumberCollector extends CrossJoinCollector {
 
-    private final NumberArrayLookup[] lookups;
+    private final NumberArrayLookup lookup;
 
-    NumberCollector(LeafReaderContext context, String fieldname, NumberArrayLookup[] lookups) throws IOException {
+    NumberCollector(LeafReaderContext context, String fieldname, NumberArrayLookup lookup) throws IOException {
         super(context, fieldname);
-        this.lookups = lookups;
+        this.lookup = lookup;
     }
 
     @Override
     public boolean accept(long value) {
-        for (NumberArrayLookup lookup : lookups) {
-            if (lookup.get(value))
-                return true;
-        }
-        return false;
+        return lookup.get(value);
     }
 }

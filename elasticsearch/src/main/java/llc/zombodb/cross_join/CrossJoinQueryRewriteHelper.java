@@ -96,66 +96,63 @@ class CrossJoinQueryRewriteHelper {
     }
 
 
-    static Query rewriteQuery(CrossJoinQuery crossJoin, FastTermsResponse fastTerms) {
+    static Query rewriteQuery(String leftFieldname, FastTermsResponse fastTerms) {
 
         if (fastTerms.getDocCount() == 0)
             return new MatchNoDocsQuery();
         else if (fastTerms.getDocCount() > 50_000)
-            return crossJoin;   // 50k points is about the break-even point in terms of performance v/s just scanning all DocValues
+            return null;   // 50k points is about the break-even point in terms of performance v/s just scanning all DocValues
 
         //
         // rewrite the provided CrossJoinQuery into a series of point and/or range queries
         //
         switch (fastTerms.getDataType()) {
             case INT:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), fastTerms.getNumberLookup(), new IntRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(leftFieldname, fastTerms.getNumberLookup(), new IntRangeAndSetQueryCreator());
             case LONG:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), fastTerms.getNumberLookup(), new LongRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(leftFieldname, fastTerms.getNumberLookup(), new LongRangeAndSetQueryCreator());
             case STRING: {
-                BooleanQuery.Builder builder = new BooleanQuery.Builder();
-                for (int shardId = 0; shardId < fastTerms.getNumShards(); shardId++) {
-                    final String[] sortedStrings = fastTerms.getSortedStrings();
-                    if (sortedStrings.length > 0) {
-                        builder.add(new TermInSetQuery(crossJoin.getLeftFieldname(), new AbstractCollection<BytesRef>() {
+                final String[] sortedStrings = fastTerms.getSortedStrings();
+
+                if (sortedStrings.length == 0)
+                    return new MatchNoDocsQuery();
+
+                return new TermInSetQuery(leftFieldname, new AbstractCollection<BytesRef>() {
+                    @Override
+                    public Iterator<BytesRef> iterator() {
+                        return new Iterator<BytesRef>() {
+                            int idx = 0;
+
                             @Override
-                            public Iterator<BytesRef> iterator() {
-                                return new Iterator<BytesRef>() {
-                                    int idx = 0;
-
-                                    @Override
-                                    public boolean hasNext() {
-                                        return idx < sortedStrings.length;
-                                    }
-
-                                    @Override
-                                    public BytesRef next() {
-                                        return new BytesRef(String.valueOf(sortedStrings[idx++]));
-                                    }
-                                };
+                            public boolean hasNext() {
+                                return idx < sortedStrings.length;
                             }
 
                             @Override
-                            public int size() {
-                                return sortedStrings.length;
+                            public BytesRef next() {
+                                return new BytesRef(String.valueOf(sortedStrings[idx++]));
                             }
-                        }), BooleanClause.Occur.SHOULD);
+                        };
                     }
-                }
-                return builder.build();
+
+                    @Override
+                    public int size() {
+                        return sortedStrings.length;
+                    }
+                });
             }
+
             default:
                 throw new RuntimeException("Unrecognized data type: " + fastTerms.getDataType());
         }
     }
 
-    private static Query buildRangeOrSetQuery(String field, NumberArrayLookup[] lookups, RangeAndSetQueryCreator queryCreator) {
+    private static Query buildRangeOrSetQuery(String field, NumberArrayLookup lookups, RangeAndSetQueryCreator queryCreator) {
         List<Query> clauses = new ArrayList<>();
 
-        for (NumberArrayLookup nal : lookups) {
-            for (PrimitiveIterator.OfLong itr : nal.iterators()) {
-                if (itr.hasNext())
-                    clauses.add(queryCreator.newSetQuery(field, itr));
-            }
+        for (PrimitiveIterator.OfLong itr : lookups.iterators()) {
+            if (itr.hasNext())
+                clauses.add(queryCreator.newSetQuery(field, itr));
         }
 
         return clauses.isEmpty() ? new MatchNoDocsQuery() : buildQuery(clauses);

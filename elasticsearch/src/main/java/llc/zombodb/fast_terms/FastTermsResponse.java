@@ -16,11 +16,9 @@
 package llc.zombodb.fast_terms;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.PrimitiveIterator;
-import java.util.Set;
 
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
@@ -32,6 +30,7 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestActions;
 
 import llc.zombodb.utils.CompactHashSet;
+import llc.zombodb.utils.IntOrLongBitmap;
 import llc.zombodb.utils.IteratorHelper;
 import llc.zombodb.utils.NumberArrayLookup;
 
@@ -43,12 +42,10 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         STRING
     }
 
-    private String index;
-    private DataType dataType = DataType.NONE;
-    private int numShards;
+    private DataType dataType;
 
-    private NumberArrayLookup[] lookups = new NumberArrayLookup[0];
-    private CompactHashSet<String> strings = new CompactHashSet<>();
+    private NumberArrayLookup lookups;
+    private CompactHashSet<String> strings;
 
     public FastTermsResponse() {
 
@@ -58,30 +55,19 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         readFrom(in);
     }
 
-    FastTermsResponse(String index, int shardCount, int successfulShards, int failedShards, List<ShardOperationFailedException> shardFailures, DataType dataType) {
+    FastTermsResponse(int shardCount, int successfulShards, int failedShards, List<ShardOperationFailedException> shardFailures, DataType dataType) {
         super(shardCount, successfulShards, failedShards, shardFailures);
-        assert dataType != null;
 
-        this.index = index;
         this.dataType = dataType;
-        this.numShards = shardCount;
-
-        switch (dataType) {
-            case INT:
-            case LONG:
-                lookups = new NumberArrayLookup[shardCount];
-                break;
-            case STRING:
-                strings = new CompactHashSet<>();
-                break;
-        }
+        lookups = new NumberArrayLookup(new IntOrLongBitmap());
+        strings = new CompactHashSet<>();
     }
 
-    void addData(int shardId, Object data) {
+    void addData(Object data) {
         switch (dataType) {
             case INT:
             case LONG:
-                lookups[shardId] = (NumberArrayLookup) data;
+                lookups.merge((NumberArrayLookup) data);
                 break;
             case STRING:
                 strings.addAll((CompactHashSet<String>) data);
@@ -93,62 +79,44 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return dataType;
     }
 
-    public int getNumShards() {
-        return numShards;
-    }
-
-    public NumberArrayLookup[] getNumberLookup() {
+    public NumberArrayLookup getNumberLookup() {
         return lookups;
     }
 
     public long estimateByteSize() {
         switch (dataType) {
+            case NONE:
+                return 0;
+
             case INT:
             case LONG: {
-                long size = 0;
-                for (NumberArrayLookup nal : lookups)
-                    size += nal.estimateByteSize();
-                return size;
+                return lookups.estimateByteSize();
             }
 
             case STRING: {
-                long size = 0;
+                long size = strings.size()*2;
                 for (String s : strings)
-                    size += s.length();
+                    size += s.length()*2;
                 return size;
             }
-
-            case NONE:
-                return 0;
 
             default:
                 throw new RuntimeException("Unexpected data type: " + dataType);
         }
     }
 
-    public PrimitiveIterator.OfLong[] getNumberLookupIterators() {
-        PrimitiveIterator.OfLong[] iterators = new PrimitiveIterator.OfLong[lookups.length];
-        for (int i = 0; i < lookups.length; i++)
-            iterators[i] = IteratorHelper.create(lookups[i].iterators());
-        return iterators;
+    public PrimitiveIterator.OfLong getNumberLookupIterators() {
+        return IteratorHelper.create(lookups.iterators());
     }
 
     public int getDocCount() {
-        if (dataType == DataType.NONE)
-            return 0;
-
         switch (dataType) {
             case INT:
-            case LONG: {
-                int total = 0;
-                for (NumberArrayLookup nal : lookups)
-                    total += nal.size();
-                return total;
-            }
+            case LONG:
+                return lookups.size();
 
-            case STRING: {
+            case STRING:
                 return strings.size();
-            }
 
             default:
                 throw new RuntimeException("Unexpected data type: " + dataType);
@@ -167,15 +135,11 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
 
-        index = in.readString();
-        numShards = in.readVInt();
         dataType = in.readEnum(DataType.class);
         switch (dataType) {
             case INT:
             case LONG: {
-                lookups = new NumberArrayLookup[numShards];
-                for (int i = 0; i < numShards; i++)
-                    lookups[i] = NumberArrayLookup.fromStreamInput(in);
+                lookups = NumberArrayLookup.fromStreamInput(in);
                 break;
             }
 
@@ -193,16 +157,12 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
 
-        out.writeString(index);
-        out.writeVInt(numShards);
         out.writeEnum(dataType);
 
         switch (dataType) {
             case INT:
             case LONG: {
-                for (int i = 0; i < numShards; i++) {
-                    lookups[i].writeTo(out);
-                }
+                lookups.writeTo(out);
                 break;
             }
 
@@ -230,7 +190,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     @Override
     public int hashCode() {
-        return Objects.hash(index, dataType, numShards, Arrays.deepHashCode(lookups), strings);
+        return Objects.hash(dataType, lookups, strings);
     }
 
     @Override
@@ -239,10 +199,8 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
             return false;
 
         FastTermsResponse other = (FastTermsResponse) obj;
-        return Objects.equals(index, other.index) &&
-                Objects.equals(dataType, other.dataType) &&
-                Objects.equals(numShards, other.numShards) &&
-                Objects.deepEquals(lookups, other.lookups) &&
+        return Objects.equals(dataType, other.dataType) &&
+                Objects.equals(lookups, other.lookups) &&
                 Objects.equals(strings, other.strings);
     }
 

@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.PrimitiveIterator;
 
@@ -15,6 +13,7 @@ import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 public class IntOrLongBitmap implements java.io.Externalizable {
+    private Roaring64NavigableMap negatives;
     private RoaringBitmap ints;
     private RoaringBitmap scaledints;
     private Roaring64NavigableMap longs;
@@ -34,6 +33,7 @@ public class IntOrLongBitmap implements java.io.Externalizable {
     }
 
     public IntOrLongBitmap() {
+        negatives = make64bitBitmap();
         ints = mak32bitBitmap();
         scaledints = mak32bitBitmap();
         longs = make64bitBitmap();
@@ -43,7 +43,7 @@ public class IntOrLongBitmap implements java.io.Externalizable {
 
         if (value < 0) {
             // negative numbers get stored as longs
-            longs.addLong(value);
+            negatives.addLong(value);
         } else if (value < Integer.MAX_VALUE) {
             // positive ints get stored as ints
             ints.add((int) value);
@@ -62,7 +62,7 @@ public class IntOrLongBitmap implements java.io.Externalizable {
 
     public boolean contains(long value) {
         if (value < 0) {
-            return longs.contains(value);
+            return negatives.contains(value);
         } else {
             if (value < Integer.MAX_VALUE) {
                 return ints.contains((int) value);
@@ -81,6 +81,7 @@ public class IntOrLongBitmap implements java.io.Externalizable {
     public int size() {
         int size = 0;
 
+        size += negatives.getIntCardinality();
         size += ints.getCardinality();
         size += scaledints.getCardinality();
         size += longs.getIntCardinality();
@@ -89,13 +90,12 @@ public class IntOrLongBitmap implements java.io.Externalizable {
     }
 
     PrimitiveIterator.OfLong[] iterators() {
-        List<PrimitiveIterator.OfLong> iterators = Arrays.asList(ints_iterator(), scaledints_iterator(), longs_iterator());
-        return iterators.toArray(new PrimitiveIterator.OfLong[0]);
+        return new PrimitiveIterator.OfLong[]{negatives_iterator(), ints_iterator(), scaledints_iterator(), longs_iterator()};
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(ints, scaledints, longs);
+        return Objects.hash(negatives, ints, scaledints, longs);
     }
 
     @Override
@@ -104,13 +104,17 @@ public class IntOrLongBitmap implements java.io.Externalizable {
             return false;
 
         IntOrLongBitmap other = (IntOrLongBitmap) obj;
-        return Objects.equals(this.ints, other.ints) &&
+        return Objects.equals(this.negatives, other.negatives) &&
+                Objects.equals(this.ints, other.ints) &&
                 Objects.equals(this.scaledints, other.scaledints) &&
                 Objects.equals(this.longs, other.longs);
     }
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
+        negatives.runOptimize();
+        negatives.serialize(out);
+
         ints.runOptimize();
         ints.serialize(out);
 
@@ -123,6 +127,9 @@ public class IntOrLongBitmap implements java.io.Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException {
+        negatives = make64bitBitmap();
+        negatives.deserialize(in);
+
         ints = mak32bitBitmap();
         ints.deserialize(in);
 
@@ -131,6 +138,22 @@ public class IntOrLongBitmap implements java.io.Externalizable {
 
         longs = make64bitBitmap();
         longs.deserialize(in);
+    }
+
+    private PrimitiveIterator.OfLong negatives_iterator() {
+        return new PrimitiveIterator.OfLong() {
+            final LongIterator itr = negatives.getLongIterator();
+
+            @Override
+            public boolean hasNext() {
+                return itr.hasNext();
+            }
+
+            @Override
+            public long nextLong() {
+                return itr.next();
+            }
+        };
     }
 
     private PrimitiveIterator.OfLong ints_iterator() {
@@ -182,6 +205,13 @@ public class IntOrLongBitmap implements java.io.Externalizable {
     }
 
     public long estimateByteSize() {
-        return ints.serializedSizeInBytes() + scaledints.serializedSizeInBytes() + longs.serializedSizeInBytes();
+        return negatives.serializedSizeInBytes() + ints.serializedSizeInBytes() + scaledints.serializedSizeInBytes() + longs.serializedSizeInBytes();
+    }
+
+    public void merge(IntOrLongBitmap bitmap) {
+        negatives.or(bitmap.negatives);
+        ints.or(bitmap.ints);
+        scaledints.or(bitmap.scaledints);
+        longs.or(bitmap.longs);
     }
 }

@@ -38,8 +38,8 @@ public abstract class CrossJoinCollector {
     private SortedSetDocValues sortedSet;
     private SortedDocValues sortedDocValues;
 
-    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, NumberArrayLookup[] bitSets) throws IOException {
-        return new NumberCollector(context, fieldname, bitSets);
+    public static CrossJoinCollector create(LeafReaderContext context, String fieldname, NumberArrayLookup lookup) throws IOException {
+        return new NumberCollector(context, fieldname, lookup);
     }
 
     public static CrossJoinCollector create(LeafReaderContext context, String fieldname, CompactHashSet<String> strings) throws IOException {

@@ -315,7 +315,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         first_byte = offset;
 
         int idx = 0;
-        for (PrimitiveIterator.OfLong itr = IteratorHelper.create(response.getNumberLookupIterators()); itr.hasNext();) {
+        for (PrimitiveIterator.OfLong itr = response.getNumberLookupIterators(); itr.hasNext();) {
             long _zdb_id = itr.nextLong();
             int blockno = (int) (_zdb_id >> 32);
             char offno = (char) _zdb_id;

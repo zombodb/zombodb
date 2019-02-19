@@ -78,13 +78,13 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     link.getRightFieldname().equals(rightMetadata.getBlockRoutingField()) &&
                     leftMetadata.getNumberOfShards() == rightMetadata.getNumberOfShards();
 
-            FastTermsResponse fastTerms = new FastTermsRequestBuilder(client, FastTermsAction.INSTANCE)
+            FastTermsResponse fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(client)
                     .setIndices(link.getIndexName())
                     .setFieldname(link.getRightFieldname())
                     .setTypes("data")
                     .setQuery(applyVisibility(build(node.getQuery()))).get().throwShardFailure();
 
-            qb = new ConstantScoreQueryBuilder(new CrossJoinQueryBuilder()
+            qb = new CrossJoinQueryBuilder()
                     .index(link.getIndexName())
                     .type("data")
                     .leftFieldname(link.getLeftFieldname())
@@ -92,7 +92,7 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     .canOptimizeJoins(canOptimizeForJoins)
                     .alwaysJoinWithDocValues(metadataManager.getMetadataForMyIndex().alwaysJoinWithDocValues())
                     .fastTerms(fastTerms)
-                    .query(new MatchNoneQueryBuilder()));
+                    .query(new MatchNoneQueryBuilder());
         }
 
         if (node.getFilterQuery() != null) {
