@@ -33,6 +33,7 @@
 
 char *lookup_zdb_namespace(void);
 char *qualify_zdb_typename(char *typename);
+char *lookup_pipeline(MemoryContext cxt, Oid heapRelId, char **pipeline_name);
 char *lookup_analysis_thing(MemoryContext cxt, char *thing);
 char *lookup_field_mapping(MemoryContext cxt, Oid tableRelId, char *fieldname);
 bool type_is_domain(char *type_name, Oid *base_type);

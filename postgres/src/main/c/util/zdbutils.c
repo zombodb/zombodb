@@ -72,6 +72,34 @@ char *qualify_zdb_typename(char *typename) {
     return rc;
 }
 
+char *lookup_pipeline(MemoryContext cxt, Oid heapRelId, char **pipeline_name) {
+    static Oid args[] = {OIDOID};
+    Datum values[] = {ObjectIdGetDatum(heapRelId)};
+    char *rc;
+    StringInfo query;
+
+    SPI_connect();
+
+    query = makeStringInfo();
+    appendStringInfo(query, "SELECT definition, name FROM %s.zdb_pipelines WHERE table_name = $1", lookup_zdb_namespace());
+
+    if (SPI_execute_with_args(query->data, 1, args, values, 0, true, 1) != SPI_OK_SELECT)
+        elog(ERROR, "Problem looking up pipeline definition for %u", heapRelId);
+
+    if (SPI_processed == 0) {
+        SPI_finish();
+
+        *pipeline_name = NULL;
+        return NULL;
+    } else {
+        rc = MemoryContextStrdup(cxt, SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1));
+        *pipeline_name = MemoryContextStrdup(cxt, SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 2));
+    }
+    SPI_finish();
+
+    return rc;
+}
+
 char *lookup_analysis_thing(MemoryContext cxt, char *thing) {
     char       *definition = "";
     StringInfo query;

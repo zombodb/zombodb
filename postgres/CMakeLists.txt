@@ -28,7 +28,7 @@ set(SOURCE_FILES
     src/main/c/util/varintenc.h
     src/main/c/util/zdbutils.c
     src/main/c/util/zdbutils.h
-    src/main/c/zombodb.c )
+    src/main/c/zombodb.c)
 
 include_directories(src/main/c /usr/local/src/pg93/src/include /usr/local/src/pg93/src/backend)
 

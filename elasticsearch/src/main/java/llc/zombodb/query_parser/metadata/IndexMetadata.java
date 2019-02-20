@@ -47,6 +47,7 @@ public class IndexMetadata {
     private boolean alwaysResolveJoins = false;
     private String blockRoutingField;
     private boolean alwaysJoinWithDocValues;
+    private String defaultPipelineName;
 
     public IndexMetadata(ASTIndexLink link, MappingMetaData mmd, int numberOfShards) {
         this.link = link;
@@ -60,6 +61,9 @@ public class IndexMetadata {
         pkeyFieldName = meta != null ? (String) meta.get("primary_key") : null;
         alwaysResolveJoins = meta != null && (meta.containsKey("always_resolve_joins") && "true".equals(String.valueOf(meta.get("always_resolve_joins"))));
         blockRoutingField = meta != null ? (String) meta.get("block_routing_field") : null;
+        defaultPipelineName = meta != null ? (String) meta.get("default_pipeline") : null;
+        if ("(none)".equals(defaultPipelineName))
+            defaultPipelineName = null;
         alwaysJoinWithDocValues = meta != null && (meta.containsKey("always_join_with_docvalues") && "true".equals(String.valueOf(meta.get("always_join_with_docvalues"))));
         if ("null".equals(blockRoutingField))
             blockRoutingField = null;
@@ -75,6 +79,10 @@ public class IndexMetadata {
 
     public String getBlockRoutingField() {
         return blockRoutingField;
+    }
+
+    public String getDefaultPipelineName() {
+        return defaultPipelineName;
     }
 
     public int getNumberOfShards() {

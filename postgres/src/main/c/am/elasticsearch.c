@@ -300,6 +300,26 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
     StringInfo endpoint      = makeStringInfo();
     StringInfo indexSettings = makeStringInfo();
     StringInfo response;
+    char *pipeline_name;
+    char *pipeline_definition;
+
+
+    pipeline_definition = lookup_pipeline(CurrentMemoryContext, indexDescriptor->heapRelid, &pipeline_name);
+
+    if (pipeline_name != NULL && pipeline_definition != NULL) {
+        StringInfo postData = makeStringInfo();
+
+        /* delete the exisitng pipeline -- if it doesn't it yet, that's fine, ES won't error */
+        appendStringInfo(endpoint, "%s_ingest/pipeline/%s", indexDescriptor->url, pipeline_name);
+        rest_call("DELETE", endpoint->data, NULL, indexDescriptor->compressionLevel);
+
+        /* (re)create the pipeline */
+        appendStringInfo(postData, "%s", pipeline_definition);
+        rest_call("PUT", endpoint->data, postData, indexDescriptor->compressionLevel);
+
+        freeStringInfo(postData);
+        resetStringInfo(endpoint);
+    }
 
     appendStringInfo(indexSettings, "{"
             "   \"mappings\": {"
@@ -307,7 +327,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
             "          \"_source\": { \"enabled\": %s },"
             "          \"_routing\": { \"required\": true },"
             "          \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\", \"always_join_with_docvalues\": %s },"
+            "          \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\", \"always_join_with_docvalues\": %s, \"default_pipeline\": \"%s\" },"
             "          \"date_detection\": false,"
             "          \"properties\" : %s,"
             _DEFAULT_MAPPING_
@@ -332,6 +352,7 @@ void elasticsearch_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shard
 					 indexDescriptor->alwaysResolveJoins ? "true" : "false",
                      indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null",
 					 indexDescriptor->alwaysJoinWithDocValues ? "true" : "false",
+					 pipeline_name == NULL ? "(none)" : pipeline_name,
 					 fieldProperties, shards,
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_filters"),
 					 lookup_analysis_thing(CurrentMemoryContext, "zdb_char_filters"),
@@ -398,6 +419,9 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
     StringInfo response;
     char       *pkey      = lookup_primary_key(indexDescriptor->schemaName, indexDescriptor->tableName, false);
     Relation   indexRel;
+    char *pipeline_name;
+
+    lookup_pipeline(CurrentMemoryContext, indexDescriptor->heapRelid, &pipeline_name);
 
     properties = TextDatumGetCString(DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(mapping), PROPERTIES));
 
@@ -411,7 +435,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
             "   \"data\": {"
             "      \"_source\": { \"enabled\": %s },"
             "      \"_all\": { \"enabled\": true, \"analyzer\": \"phrase\" },"
-            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\", \"always_join_with_docvalues\": %s },"
+            "      \"_meta\": { \"primary_key\": \"%s\", \"always_resolve_joins\": %s, \"block_routing_field\": \"%s\", \"always_join_with_docvalues\": %s, \"default_pipeline\": \"%s\" },"
             "      \"date_detection\": false,"
             "      \"properties\" : %s"
             "    },"
@@ -422,6 +446,7 @@ void elasticsearch_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapp
                      indexDescriptor->alwaysResolveJoins ? "true" : "false",
                      indexDescriptor->blockRoutingField ? indexDescriptor->blockRoutingField : "null",
                      indexDescriptor->alwaysJoinWithDocValues ? "true" : "false",
+                     pipeline_name == NULL ? "(none)" : pipeline_name,
                      properties
     );
 

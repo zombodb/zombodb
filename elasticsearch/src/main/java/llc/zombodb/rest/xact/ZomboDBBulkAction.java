@@ -1,5 +1,6 @@
 package llc.zombodb.rest.xact;
 
+import llc.zombodb.query_parser.metadata.IndexMetadataManager;
 import llc.zombodb.rest.RoutingHelper;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.util.BytesRef;
@@ -63,10 +64,11 @@ public class ZomboDBBulkAction extends BaseRestHandler {
         String blockRoutingField = request.param("block_routing_field", null);
         if ("null".equals(blockRoutingField))
             blockRoutingField = null;
+        String pipeline = new IndexMetadataManager(client, defaultIndex).getMetadataForMyIndex().getDefaultPipelineName();
 
         bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
         bulkRequest.setRefreshPolicy(refresh ? WriteRequest.RefreshPolicy.IMMEDIATE : WriteRequest.RefreshPolicy.NONE);
-        bulkRequest.add(request.content(), defaultIndex, defaultType);
+        bulkRequest.add(request.content(), defaultIndex, defaultType, null, null, null, pipeline, null, true);
 
         List<DocWriteRequest> xmaxRequests = new ArrayList<>();
         List<DocWriteRequest> abortedRequests = new ArrayList<>();
