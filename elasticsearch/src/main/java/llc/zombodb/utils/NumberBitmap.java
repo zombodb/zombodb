@@ -39,7 +39,16 @@ public class NumberBitmap implements Streamable {
         return longs.contains(value);
     }
 
-    public int size() {
+    /**
+     * This method needs to be synchronized as the underlying
+     * <code>logs.getIntCardinality()</code> call mutates <code>long</code>,
+     * and it's possible within a single ES node that we'll call .size() concurrently
+     * on the same instance of this object.
+     *
+     * That said, one might think the same would be necessary for {@link #add(long)} above,
+     * but it isn't as we'd never call it on the same instance of this object.
+     */
+    public synchronized int size() {
         return longs.getIntCardinality();
     }
 
