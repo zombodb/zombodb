@@ -121,6 +121,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         int many = -1;
         long parseStart = 0, parseEnd = 0;
         double buildTime = -1, searchTime = -1, sortTime = 0;
+        int size = 0;
 
         try {
             parseStart = System.nanoTime();
@@ -191,12 +192,13 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             many = tids.many;
             buildTime = tids.ttl;
             sortTime = tids.sort;
+            size = tids.data.length;
 
             return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
 
         } finally {
             long totalEnd = System.nanoTime();
-            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s, sort=" + sortTime + ")");
+            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s, sort=" + sortTime + ", size=" + size + " bytes)");
         }
     }
 

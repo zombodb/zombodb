@@ -123,7 +123,11 @@ class CrossJoinQuery extends Query {
             CrossJoinQueryBuilder cjqb = stack.pop();
 
             if (cjqb.fastTerms == null) {
-                cjqb.fastTerms(getFastTerms(searcher, cjqb.index, cjqb.type, cjqb.rightFieldname, cjqb.query, false));
+                long start = System.currentTimeMillis();
+                FastTermsResponse fastTerms = getFastTerms(searcher, cjqb.index, cjqb.type, cjqb.rightFieldname, cjqb.query, false);
+                long end = System.currentTimeMillis();
+
+                cjqb.fastTerms(fastTerms, end-start);
 
                 if (cjqb.fastTerms.getFailedShards() > 0)
                     throw new RuntimeException("Shard failures while executing FastTermsAction", cjqb.fastTerms.getShardFailures()[0].getCause());

@@ -20,6 +20,7 @@ import org.apache.lucene.search.Query;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.ObjectParser;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.mapper.MappedFieldType;
@@ -45,6 +46,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
     protected boolean canOptimizeJoins;
     protected boolean alwaysJoinWithDocValues;
     protected FastTermsResponse fastTerms;
+    protected transient long fastTermsExecutionTime;
 
     public CrossJoinQueryBuilder() {
         super();
@@ -88,8 +90,9 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         return this;
     }
 
-    public CrossJoinQueryBuilder fastTerms(FastTermsResponse fastTerms) {
+    public CrossJoinQueryBuilder fastTerms(FastTermsResponse fastTerms, long fastTermsExecutionTimeInMs) {
         this.fastTerms = fastTerms;
+        this.fastTermsExecutionTime = fastTermsExecutionTimeInMs;
         return this;
     }
 
@@ -140,6 +143,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
             stats.put("matching_terms", fastTerms.getDocCount());
             stats.put("data_type", fastTerms.getDataType().name());
             stats.put("estimated_byte_size", fastTerms.estimateByteSize());
+            stats.put("execution_time_in_s", TimeValue.timeValueMillis(fastTermsExecutionTime).getSecondsFrac() + "s");
             builder.field("fast_terms", stats);
         }
         builder.endObject();
