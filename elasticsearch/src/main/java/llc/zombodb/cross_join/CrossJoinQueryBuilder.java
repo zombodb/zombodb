@@ -143,7 +143,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
             stats.put("matching_terms", fastTerms.getDocCount());
             stats.put("data_type", fastTerms.getDataType().name());
             stats.put("estimated_byte_size", fastTerms.estimateByteSize());
-            stats.put("execution_time_in_s", TimeValue.timeValueMillis(fastTermsExecutionTime).getSecondsFrac() + "s");
+            stats.put("execution_time", TimeValue.timeValueMillis(fastTermsExecutionTime).getSecondsFrac() + "s");
             builder.field("fast_terms", stats);
         }
         builder.endObject();
