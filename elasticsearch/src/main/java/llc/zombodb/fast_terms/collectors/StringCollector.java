@@ -57,11 +57,6 @@ public class StringCollector extends FastTermsCollector<CompactHashSet> {
     }
 
     @Override
-    public int getDataCount() {
-        return data.size();
-    }
-
-    @Override
     public void internal_collect(int doc) {
         collector.collect(doc);
     }

@@ -29,7 +29,6 @@ import llc.zombodb.utils.NumberBitmap;
 public class ShardFastTermsResponse extends BroadcastShardResponse {
 
     private FastTermsResponse.DataType dataType;
-    private int dataCount;
     private NumberBitmap bitset;
     private CompactHashSet strings;
 
@@ -46,7 +45,6 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
         assert dataType != null;
 
         this.dataType = dataType;
-        this.dataCount = collector.getDataCount();
         switch (dataType) {
             case INT:
             case LONG:
@@ -60,10 +58,6 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
 
     public FastTermsResponse.DataType getDataType() {
         return dataType;
-    }
-
-    public int getDataCount() {
-        return dataCount;
     }
 
     public <T> T getData() {
@@ -89,13 +83,11 @@ public class ShardFastTermsResponse extends BroadcastShardResponse {
                 case LONG:
                     if (in.readBoolean()) {
                         bitset = new NumberBitmap(in);
-                        dataCount = bitset.size();
                     }
                     break;
                 case STRING:
                     if (in.readBoolean()) {
                         strings = new CompactHashSet(in);
-                        dataCount = strings.size();
                     }
                     break;
             }

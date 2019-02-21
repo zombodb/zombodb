@@ -40,8 +40,6 @@ public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
 
     public abstract T getData();
 
-    public abstract int getDataCount();
-
     protected abstract void internal_collect(int doc);
 
     protected abstract void setDocValuesType(DocValuesType type);
