@@ -1,5 +1,3 @@
-language: java
-
 env:
   matrix:
 #    - ES=5.6.9 PG=10
@@ -8,23 +6,16 @@ env:
     - ES=6.2.4 PG=11
 
 sudo: required
-dist: trusty
+dist: xenial
 
 notifications:
   slack: zombodb:M95qGlYZ9x9ufL6L3oRxyGBm
 
 before_install:
-  - sudo apt-get purge -y elasticsearch
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
-  - sudo apt-get purge -y postgresql-9.1
-  - sudo apt-get purge -y postgresql-9.2
-  - sudo apt-get purge -y postgresql-9.3
-  - sudo apt-get purge -y postgresql-9.4
-  - sudo apt-get purge -y postgresql-9.5
-  - sudo apt-get purge -y postgresql-9.6
   - sudo apt-get autoremove -y
-  - sudo apt-get install -y postgresql-common postgresql-${PG} postgresql-server-dev-${PG}
+  - sudo apt-get install -y postgresql-${PG} postgresql-server-dev-${PG}
   - chmod -R a+rwx ~/
   - wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES}.tar.gz
   - tar xzf ./elasticsearch-${ES}.tar.gz
