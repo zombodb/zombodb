@@ -14,6 +14,7 @@ notifications:
 before_install:
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
+  - sudo apt-get purge postgresql-9.5
   - sudo apt-get autoremove -y
   - sudo apt-get install -y postgresql-${PG} postgresql-server-dev-${PG}
   - chmod -R a+rwx ~/
