@@ -1,7 +1,9 @@
+language: c
+
 env:
   matrix:
-#    - ES=5.6.9 PG=10
-#    - ES=6.2.4 PG=10
+    - ES=5.6.9 PG=10
+    - ES=6.2.4 PG=10
     - ES=5.6.9 PG=11
     - ES=6.2.4 PG=11
 
