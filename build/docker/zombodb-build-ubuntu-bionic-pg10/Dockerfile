@@ -21,8 +21,8 @@ RUN apt-get update -y -qq --fix-missing
 RUN apt-get install -y wget gnupg
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-RUN apt-get install -y libcurl4-openssl-dev
 RUN apt-get update -y --fix-missing
+RUN apt-get install -y libcurl4-openssl-dev
 RUN apt-get install -y postgresql-server-dev-10
 RUN apt-get install -y gcc make build-essential libz-dev zlib1g-dev strace
 

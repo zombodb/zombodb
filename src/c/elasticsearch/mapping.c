@@ -201,7 +201,7 @@ StringInfo generate_mapping(Relation heapRel, TupleDesc tupdesc) {
 	}
 
 	for (i = 0; i < tupdesc->natts; i++) {
-		Form_pg_attribute attr    = tupdesc->attrs[i];
+        Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
 		Oid               typeOid = get_base_type_oid(attr->atttypid);
 		TypeCacheEntry    *cacheEntry;
 

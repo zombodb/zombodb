@@ -24,6 +24,7 @@
 #include "nodes/pg_list.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
+#include "utils/jsonb.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
@@ -33,5 +34,14 @@
 #include <assert.h>
 
 #define ZDB_VERSION "10-1.0.3"
+
+#ifndef PG_GETARG_JSONB_P
+#define PG_GETARG_JSONB_P PG_GETARG_JSONB
+#endif
+
+#ifndef JsonbPGetDatum
+#define JsonbPGetDatum JsonbGetDatum
+#endif
+
 
 #endif /* __ZDB_ZDB__H__ */

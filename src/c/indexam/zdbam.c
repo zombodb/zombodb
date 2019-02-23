@@ -19,8 +19,7 @@
 #include "elasticsearch/querygen.h"
 #include "highlighting/highlighting.h"
 #include "scoring/scoring.h"
-#include "indexam/create_index.h"
-
+#include "indexam/define_index.h"
 #include "access/amapi.h"
 #include "access/htup_details.h"
 #include "access/reloptions.h"
@@ -150,6 +149,11 @@ static void apply_alter_statement(PlannedStmt *parsetree, char *url, uint32 shar
 static Relation open_relation_from_parsetree(PlannedStmt *parsetree, LOCKMODE lockmode, bool *is_index);
 static void get_immutable_index_options(PlannedStmt *parsetree, char **url, uint32 *shards, char **typeName, char **alias, char **uuid);
 
+#if (PG_VERSION_NUM < 110000)
+#define STRING_VALIDATOR_SIGNATURE char *
+#else
+#define STRING_VALIDATOR_SIGNATURE const char *
+#endif
 
 /*lint -esym 715,extra,source ignore unused param */
 static bool validate_default_elasticsearch_url(char **newval, void **extra, GucSource source) {
@@ -158,7 +162,7 @@ static bool validate_default_elasticsearch_url(char **newval, void **extra, GucS
 	return str == NULL || str[strlen(str) - 1] == '/';
 }
 
-static void validate_url(char *str) {
+static void validate_url(STRING_VALIDATOR_SIGNATURE str) {
 	/* valid only if it ends with a forward slash or it equals the string 'default' */
 	if (str != NULL && (str[strlen(str) - 1] == '/' || strcmp("default", str) == 0))
 		return;
@@ -167,22 +171,22 @@ static void validate_url(char *str) {
 }
 
 /*lint -esym 715,str ignore unused param */
-static void validate_type_name(char *str) {
+static void validate_type_name(STRING_VALIDATOR_SIGNATURE str) {
 	/* noop */
 }
 
 /*lint -esym 715,str ignore unused param */
-static void validate_refresh_interval(char *str) {
+static void validate_refresh_interval(STRING_VALIDATOR_SIGNATURE str) {
 	/* noop */
 }
 
 /*lint -esym 715,str ignore unused param */
-static void validate_alias(char *str) {
+static void validate_alias(STRING_VALIDATOR_SIGNATURE str) {
 	/* noop */
 }
 
 /*lint -esym 715,str ignore unused param */
-static void validate_uuid(char *str) {
+static void validate_uuid(STRING_VALIDATOR_SIGNATURE str) {
 	/* noop */
 }
 
@@ -798,9 +802,16 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 								stmt->indexParams = newParams;
 							}
 
-							if (stmt->concurrent)
+							if (stmt->concurrent) {
+#if (PG_VERSION_NUM < 110000)
 								PreventTransactionChain(context == PROCESS_UTILITY_TOPLEVEL,
 														"CREATE INDEX CONCURRENTLY");
+#else
+								PreventInTransactionBlock(context == PROCESS_UTILITY_TOPLEVEL,
+														  "CREATE INDEX CONCURRENTLY");
+
+#endif
+							}
 
 							/*
 							 * Look up the relation OID just once, right here at the
@@ -816,8 +827,11 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 							relid =
 									RangeVarGetRelidExtended(stmt->relation, lockmode,
 															 false, false,
-															 RangeVarCallbackOwnsRelation,
-															 NULL);
+															 RangeVarCallbackOwnsRelation
+#if (PG_VERSION_NUM < 110000)
+															 , NULL
+#endif
+															 );
 
 							/* Run parse analysis ... */
 							stmt = transformIndexStmt(relid, stmt, queryString);
@@ -828,6 +842,8 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 									zdbDefineIndex(relid,    /* OID of heap relation */
 												   stmt,
 												   InvalidOid, /* no predefined OID */
+												   InvalidOid, /* parent index id */
+												   InvalidOid, /* parent constraint id */
 												   false,    /* is_alter_table */
 												   true,    /* check_rights */
 												   true,    /* check_not_in_use */
@@ -1140,7 +1156,11 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	/*
 	 * Now we insert data into our index
 	 */
-	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, true, zdbbuildCallback, &buildstate);
+#if (PG_VERSION_NUM < 110000)
+	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, false, zdbbuildCallback, &buildstate);
+#else
+	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, false, zdbbuildCallback, &buildstate, NULL);
+#endif
 	ElasticsearchFinishBulkProcess(buildstate.esContext, true);
 
 	/* Finish up with elasticsearch index creation */
