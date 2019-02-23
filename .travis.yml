@@ -27,7 +27,7 @@ before_install:
 script:
   - elasticsearch-${ES}/bin/elasticsearch -d
   - sudo /etc/init.d/postgresql stop ${PG}
-  - sudo src/test/travis/hack-configs.sh
+  - sudo src/test/travis/hack-configs.sh ${PG}
   - sudo /etc/init.d/postgresql start ${PG}
   - sudo su - postgres -c "createuser --superuser travis"
   - make && sudo make install
