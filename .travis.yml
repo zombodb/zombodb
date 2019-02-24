@@ -1,4 +1,4 @@
-language: c
+language: ruby
 
 env:
   matrix:
