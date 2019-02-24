@@ -36,7 +36,7 @@ insert into a (pk_a, fk_a_to_map) values(30, 3);
 select * from a where zdb('a', ctid) ==> '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)' order by pk_a;
 
 set zombodb.ignore_visibility to on; /* to avoid transient xact data in query output */
-select zdb_dump_query('a', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)');
+select (zdb_dump_query('a', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)')::json)->'cross_join'->'query';
 
 drop table a cascade;
 drop table b cascade;

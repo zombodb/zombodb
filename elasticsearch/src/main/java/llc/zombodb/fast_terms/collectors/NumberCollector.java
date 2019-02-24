@@ -15,19 +15,18 @@
  */
 package llc.zombodb.fast_terms.collectors;
 
-import com.carrotsearch.hppc.LongArrayList;
 import org.apache.lucene.index.DocValuesType;
 
-public class NumberCollector extends FastTermsCollector<long[]> {
+import llc.zombodb.utils.NumberBitmap;
+
+public class NumberCollector extends FastTermsCollector<NumberBitmap> {
 
     private class NumericDocValuesCollector implements InternalCollector {
         public void collect(int doc) {
             if (numeric == null)
                 return;
 
-            long value = numeric.get(doc);
-            setMinMax(value);
-            data.add(value);
+            data.add(numeric.get(doc));
         }
     }
 
@@ -38,27 +37,20 @@ public class NumberCollector extends FastTermsCollector<long[]> {
 
             sortedNumeric.setDocument(doc);
             int cnt = sortedNumeric.count();
-            for (int i = 0; i < cnt; i++) {
-                long value = sortedNumeric.valueAt(i);
-                setMinMax(value);
-                data.add(value);
-            }
+            for (int i = 0; i < cnt; i++)
+                data.add(sortedNumeric.valueAt(i));
         }
     }
 
-    private final LongArrayList data = new LongArrayList();
+    private final NumberBitmap data = new NumberBitmap();
     private InternalCollector collector;
 
     public NumberCollector(String fieldname) {
         super(fieldname);
     }
 
-    public long[] getData() {
-        return data.buffer;
-    }
-
-    public int getDataCount() {
-        return data.size();
+    public NumberBitmap getData() {
+        return data;
     }
 
     @Override

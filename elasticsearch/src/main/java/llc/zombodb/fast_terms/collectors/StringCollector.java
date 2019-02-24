@@ -15,11 +15,12 @@
  */
 package llc.zombodb.fast_terms.collectors;
 
-import com.carrotsearch.hppc.ObjectArrayList;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.SortedSetDocValues;
 
-public class StringCollector extends FastTermsCollector<Object[]> {
+import llc.zombodb.utils.CompactHashSet;
+
+public class StringCollector extends FastTermsCollector<CompactHashSet> {
 
     private class SortedDocValuesCollector implements InternalCollector {
         @Override
@@ -44,20 +45,15 @@ public class StringCollector extends FastTermsCollector<Object[]> {
         }
     }
 
-    private final ObjectArrayList<String> data = new ObjectArrayList<>();
+    private final CompactHashSet data = new CompactHashSet();
     private InternalCollector collector;
 
     public StringCollector(String fieldname) {
         super(fieldname);
     }
 
-    public Object[] getData() {
-        return data.buffer;
-    }
-
-    @Override
-    public int getDataCount() {
-        return data.size();
+    public CompactHashSet getData() {
+        return data;
     }
 
     @Override

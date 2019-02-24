@@ -15,26 +15,23 @@
  */
 package llc.zombodb.cross_join.collectors;
 
-import llc.zombodb.utils.NumberArrayLookup;
+import java.io.IOException;
+
 import org.apache.lucene.index.LeafReaderContext;
 
-import java.io.IOException;
+import llc.zombodb.utils.NumberBitmap;
 
 class NumberCollector extends CrossJoinCollector {
 
-    private final NumberArrayLookup[] lookups;
+    private final NumberBitmap lookup;
 
-    NumberCollector(LeafReaderContext context, String fieldname, NumberArrayLookup[] lookups) throws IOException {
+    NumberCollector(LeafReaderContext context, String fieldname, NumberBitmap lookup) throws IOException {
         super(context, fieldname);
-        this.lookups = lookups;
+        this.lookup = lookup;
     }
 
     @Override
     public boolean accept(long value) {
-        for (NumberArrayLookup lookup : lookups) {
-            if (lookup.get(value))
-                return true;
-        }
-        return false;
+        return lookup.contains(value);
     }
 }

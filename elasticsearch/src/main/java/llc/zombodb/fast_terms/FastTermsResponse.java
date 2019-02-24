@@ -15,9 +15,11 @@
  */
 package llc.zombodb.fast_terms;
 
-import com.carrotsearch.hppc.ObjectArrayList;
-import llc.zombodb.utils.NumberArrayLookup;
-import llc.zombodb.utils.StringArrayMergeSortIterator;
+import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
+import java.util.PrimitiveIterator;
+
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -27,8 +29,8 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestActions;
 
-import java.io.IOException;
-import java.util.*;
+import llc.zombodb.utils.CompactHashSet;
+import llc.zombodb.utils.NumberBitmap;
 
 public class FastTermsResponse extends BroadcastResponse implements StatusToXContentObject {
     public enum DataType {
@@ -38,13 +40,10 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         STRING
     }
 
-    private String index;
-    private DataType dataType = DataType.NONE;
-    private int numShards;
+    private DataType dataType;
 
-    private NumberArrayLookup[] lookups = new NumberArrayLookup[0];
-    private Object[][] strings = new Object[0][];
-    private int[] numStrings = new int[0];
+    private NumberBitmap numbers;
+    private CompactHashSet strings;
 
     public FastTermsResponse() {
 
@@ -54,35 +53,22 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         readFrom(in);
     }
 
-    FastTermsResponse(String index, int shardCount, int successfulShards, int failedShards, List<ShardOperationFailedException> shardFailures, DataType dataType) {
+    FastTermsResponse(int shardCount, int successfulShards, int failedShards, List<ShardOperationFailedException> shardFailures, DataType dataType) {
         super(shardCount, successfulShards, failedShards, shardFailures);
-        assert dataType != null;
 
-        this.index = index;
         this.dataType = dataType;
-        this.numShards = shardCount;
-
-        switch (dataType) {
-            case INT:
-            case LONG:
-                lookups = new NumberArrayLookup[shardCount];
-                break;
-            case STRING:
-                strings = new Object[shardCount][];
-                numStrings = new int[shardCount];
-                break;
-        }
+        numbers = new NumberBitmap();
+        strings = new CompactHashSet();
     }
 
-    void addData(int shardId, Object data, int count) {
+    void addData(Object data) {
         switch (dataType) {
             case INT:
             case LONG:
-                lookups[shardId] = (NumberArrayLookup) data;
+                numbers.merge((NumberBitmap) data);
                 break;
             case STRING:
-                strings[shardId] = (Object[]) data;
-                numStrings[shardId] = count;
+                strings.addAll((CompactHashSet) data);
                 break;
         }
     }
@@ -91,46 +77,25 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         return dataType;
     }
 
-    public int getNumShards() {
-        return numShards;
+    public NumberBitmap getNumbers() {
+        return numbers;
     }
 
-    public NumberArrayLookup[] getNumberLookup() {
-        return lookups;
-    }
-
-    public Collection<long[]> getRanges() {
-        List<long[]> rc = new ArrayList<>();
-        for (NumberArrayLookup nal : lookups) {
-            long[] ranges = nal.getRanges();
-            if (ranges != null) {
-                rc.add(ranges);
-            }
-        }
-
-        return rc;
-    }
-
-    public int getPointCount() {
-        if (dataType == DataType.NONE)
-            return 0;
-
+    public long estimateByteSize() {
         switch (dataType) {
+            case NONE:
+                return 0;
+
             case INT:
             case LONG: {
-                int total = 0;
-                for (NumberArrayLookup nal : lookups) {
-                    int len = nal.getCountOfBits();
-                    total += len > 0 ? len : nal.getCountOfLongs();
-                }
-                return total;
+                return numbers.estimateByteSize();
             }
 
             case STRING: {
-                int total = 0;
-                for (int cnt : numStrings)
-                    total += cnt;
-                return total;
+                long size = strings.size()*2;
+                for (String s : strings)
+                    size += s.length()*2;
+                return size;
             }
 
             default:
@@ -138,77 +103,47 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
         }
     }
 
-    public int getTotalDataCount() {
-        if (dataType == DataType.NONE)
-            return 0;
+    public PrimitiveIterator.OfLong getNumbersIterator() {
+        return numbers.iterator();
+    }
 
+    public int getDocCount() {
         switch (dataType) {
             case INT:
-            case LONG: {
-                int total = 0;
-                for (NumberArrayLookup nal : lookups) {
-                    total +=  nal.getValueCount();
-                }
-                return total;
-            }
+            case LONG:
+                return numbers.size();
 
-            case STRING: {
-                int total = 0;
-                for (int cnt : numStrings)
-                    total += cnt;
-                return total;
-            }
+            case STRING:
+                return strings.size();
 
             default:
                 throw new RuntimeException("Unexpected data type: " + dataType);
         }
     }
 
-
-    public ObjectArrayList<String> getStringArray() {
-        StringArrayMergeSortIterator sorter = new StringArrayMergeSortIterator(strings, numStrings);
-        ObjectArrayList<String> stringArray = new ObjectArrayList<>(sorter.getTotal());
-        while (sorter.hasNext())
-            stringArray.add(sorter.next());
-        return stringArray;
+    public CompactHashSet getStrings() {
+        return strings;
     }
 
-    public Object[] getStrings(int shardId) {
-        return strings[shardId];
-    }
-
-    public int getStringCount(int shardId) {
-        return numStrings[shardId];
+    public String[] getSortedStrings() {
+        return strings.stream().sorted().toArray(String[]::new);
     }
 
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
 
-        index = in.readString();
-        numShards = in.readVInt();
         dataType = in.readEnum(DataType.class);
         switch (dataType) {
             case INT:
-            case LONG:
-                lookups = new NumberArrayLookup[numShards];
+            case LONG: {
+                numbers = new NumberBitmap(in);
                 break;
-            case STRING:
-                strings = new Object[numShards][];
-                numStrings = new int[numShards];
-                break;
-        }
+            }
 
-        for (int shardId=0; shardId<numShards; shardId++) {
-            switch (dataType) {
-                case INT:
-                case LONG:
-                    lookups[shardId] = NumberArrayLookup.fromStreamInput(in);
-                    break;
-                case STRING:
-                    strings[shardId] = in.readStringArray();
-                    numStrings[shardId] = strings[shardId].length;
-                    break;
+            case STRING: {
+                strings = new CompactHashSet(in);
+                break;
             }
         }
     }
@@ -217,20 +152,18 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
 
-        out.writeString(index);
-        out.writeVInt(numShards);
         out.writeEnum(dataType);
-        for (int shardId=0; shardId<numShards; shardId++) {
-            switch (dataType) {
-                case INT:
-                case LONG:
-                    lookups[shardId].writeTo(out);
-                    break;
-                case STRING:
-                    out.writeVInt(numStrings[shardId]);
-                    for (int i = 0; i< numStrings[shardId]; i++)
-                        out.writeString(String.valueOf(strings[shardId][i]));
-                    break;
+
+        switch (dataType) {
+            case INT:
+            case LONG: {
+                numbers.writeTo(out);
+                break;
+            }
+
+            case STRING: {
+                strings.writeTo(out);
+                break;
             }
         }
     }
@@ -250,9 +183,7 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
 
     @Override
     public int hashCode() {
-        int hash = Objects.hash(index, dataType, numShards, Arrays.deepHashCode(lookups));
-        hash = 31 * hash + Arrays.hashCode(numStrings);
-        return hash;
+        return Objects.hash(dataType, numbers, strings);
     }
 
     @Override
@@ -261,12 +192,23 @@ public class FastTermsResponse extends BroadcastResponse implements StatusToXCon
             return false;
 
         FastTermsResponse other = (FastTermsResponse) obj;
-        return Objects.equals(index, other.index) &&
-                Objects.equals(dataType, other.dataType) &&
-                Objects.equals(numShards, other.numShards) &&
-                Objects.deepEquals(lookups, other.lookups) &&
-                Objects.deepEquals(strings, other.strings) &&
-                Objects.deepEquals(numStrings, other.numStrings);
+        return Objects.equals(dataType, other.dataType) &&
+                Objects.equals(numbers, other.numbers) &&
+                Objects.equals(strings, other.strings);
+    }
+
+    public FastTermsResponse throwShardFailure() {
+        if (getFailedShards() > 0) {
+            // if there was at least one failure, report and re-throw the first
+            // Note that even after we walk down to the original cause, the stacktrace is already lost.
+            Throwable cause = getShardFailures()[0].getCause();
+            while (cause.getCause() != null) {
+                cause = cause.getCause();
+            }
+            throw new RuntimeException(cause);
+        }
+
+        return this;
     }
 
 }

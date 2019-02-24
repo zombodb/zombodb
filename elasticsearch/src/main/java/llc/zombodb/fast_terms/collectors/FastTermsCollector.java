@@ -33,7 +33,6 @@ public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
     NumericDocValues numeric;
     SortedSetDocValues sortedSet;
     SortedDocValues sorted;
-    private long min = Long.MAX_VALUE, max = Long.MIN_VALUE;
 
     FastTermsCollector(String fieldname) {
         this.fieldname = fieldname;
@@ -41,19 +40,9 @@ public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
 
     public abstract T getData();
 
-    public abstract int getDataCount();
-
     protected abstract void internal_collect(int doc);
 
     protected abstract void setDocValuesType(DocValuesType type);
-
-    public long getMin() {
-        return min;
-    }
-
-    public long getMax() {
-        return max;
-    }
 
     @Override
     public final void collect(int doc) throws IOException {
@@ -91,13 +80,5 @@ public abstract class FastTermsCollector<T> extends ZomboDBTermsCollector {
 
         setDocValuesType(type = DocValuesType.NONE);
     }
-
-    void setMinMax(long value) {
-        if (value < min)
-            min = value;
-        if (value > max)
-            max = value;
-    }
-
 
 }

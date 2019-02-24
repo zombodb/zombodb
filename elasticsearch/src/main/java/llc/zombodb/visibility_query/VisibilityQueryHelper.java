@@ -75,28 +75,16 @@ final class VisibilityQueryHelper {
             }
         }
 
-        if (dirtyBlocks != null) {
-            searcher.search(new ConstantScoreQuery(new TermQuery(new Term("_type", "xmax"))),
-                    new Collector() {
-                        @Override
-                        public void collect(int doc) throws IOException {
-                            HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), false, in);
-                            tuples.put(ctid, ctid);
-                            dirtyBlocks.add(ctid.blockno);
-                        }
+        searcher.search(new ConstantScoreQuery(new TermQuery(new Term("_type", "xmax"))),
+                new Collector() {
+                    @Override
+                    public void collect(int doc) throws IOException {
+                        HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), false, in);
+                        tuples.put(ctid, ctid);
+                        dirtyBlocks.add(ctid.blockno);
                     }
-            );
-        } else {
-            searcher.search(new ConstantScoreQuery(new TermQuery(new Term("_type", "xmax"))),
-                    new Collector() {
-                        @Override
-                        public void collect(int doc) throws IOException {
-                            HeapTuple ctid = new HeapTuple(_zdb_encoded_tuple.get(doc), false, in);
-                            tuples.put(ctid, ctid);
-                        }
-                    }
-            );
-        }
+                }
+        );
     }
 
     static Map<Integer, FixedBitSet> determineVisibility(final long myXid, final long myXmin, final long myXmax, final int myCommand, final Set<Long> activeXids, IndexSearcher searcher) throws IOException {

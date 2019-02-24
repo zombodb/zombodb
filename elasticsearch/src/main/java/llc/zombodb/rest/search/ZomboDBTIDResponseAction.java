@@ -16,16 +16,17 @@
  */
 package llc.zombodb.rest.search;
 
-import llc.zombodb.fast_terms.FastTermsAction;
-import llc.zombodb.fast_terms.FastTermsResponse;
-import llc.zombodb.query_parser.ASTLimit;
-import llc.zombodb.query_parser.rewriters.QueryRewriter;
-import llc.zombodb.query_parser.utils.Utils;
-import llc.zombodb.rest.QueryAndIndexPair;
-import llc.zombodb.utils.LongIterator;
-import llc.zombodb.utils.NumberArrayLookupMergeSortIterator;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.PrimitiveIterator;
+
 import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.search.*;
+import org.elasticsearch.action.search.SearchAction;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchScrollAction;
+import org.elasticsearch.action.search.SearchScrollRequestBuilder;
+import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
@@ -34,12 +35,20 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.rest.*;
+import org.elasticsearch.rest.BaseRestHandler;
+import org.elasticsearch.rest.BytesRestResponse;
+import org.elasticsearch.rest.RestController;
+import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 
-import java.io.IOException;
-import java.util.Collections;
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.FastTermsResponse;
+import llc.zombodb.query_parser.ASTLimit;
+import llc.zombodb.query_parser.rewriters.QueryRewriter;
+import llc.zombodb.query_parser.utils.Utils;
+import llc.zombodb.rest.QueryAndIndexPair;
 
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -112,6 +121,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         int many = -1;
         long parseStart = 0, parseEnd = 0;
         double buildTime = -1, searchTime = -1, sortTime = 0;
+        int size = 0;
 
         try {
             parseStart = System.nanoTime();
@@ -182,12 +192,13 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             many = tids.many;
             buildTime = tids.ttl;
             sortTime = tids.sort;
+            size = tids.data.length;
 
             return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "application/data", tids.data));
 
         } finally {
             long totalEnd = System.nanoTime();
-            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s, sort=" + sortTime + ")");
+            logger.info("Found " + many + " rows (ttl=" + ((totalEnd - totalStart) / 1000D / 1000D / 1000D) + "s, search=" + searchTime + "s, parse=" + ((parseEnd - parseStart) / 1000D / 1000D / 1000D) + "s, build=" + buildTime + "s, sort=" + sortTime + ", size=" + size + " bytes)");
         }
     }
 
@@ -301,7 +312,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
     }
 
     private BinaryTIDResponse buildBinaryResponse(FastTermsResponse response) {
-        int many = response.getTotalDataCount();
+        int many = response.getDocCount();
 
         long start = System.currentTimeMillis();
         byte[] bytes = new byte[
@@ -315,8 +326,8 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         first_byte = offset;
 
         int idx = 0;
-        for (LongIterator itr = new NumberArrayLookupMergeSortIterator(response.getNumberLookup()); itr.hasNext();) {
-            long _zdb_id = itr.next();
+        for (PrimitiveIterator.OfLong itr = response.getNumbersIterator(); itr.hasNext();) {
+            long _zdb_id = itr.nextLong();
             int blockno = (int) (_zdb_id >> 32);
             char offno = (char) _zdb_id;
 
@@ -328,6 +339,9 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
             idx++;
         }
         long end = System.currentTimeMillis();
+
+        if (many > 0 && idx == 0)
+            throw new RuntimeException("Underflow building binary response");
 
         return new BinaryTIDResponse(bytes, many, (end - start) / 1000D, -1.0D);
     }

@@ -15,40 +15,34 @@
  */
 package llc.zombodb.cross_join;
 
-import llc.zombodb.fast_terms.FastTermsResponse;
-import llc.zombodb.utils.LongIterator;
-import llc.zombodb.utils.NumberArrayLookupMergeSortIterator;
-import llc.zombodb.utils.PushbackIterator;
+import java.util.AbstractCollection;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.PrimitiveIterator;
+
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.PointInSetQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.util.BytesRef;
 
-import java.util.*;
+import llc.zombodb.fast_terms.FastTermsResponse;
+import llc.zombodb.utils.NumberBitmap;
 
 class CrossJoinQueryRewriteHelper {
-    static class Range {
-        private long start, end;
-
-        public Range(long start, long end) {
-            this.start = start;
-            this.end = end;
-        }
-    }
 
     interface RangeAndSetQueryCreator {
-        Query newRangeQuery(String field, long low, long high);
-        Query newSetQuery(String field, LongIterator itr);
+        Query newSetQuery(String field, PrimitiveIterator.OfLong itr);
     }
 
     static class LongRangeAndSetQueryCreator implements RangeAndSetQueryCreator {
         @Override
-        public Query newRangeQuery(String field, long low, long high) {
-            return LongPoint.newRangeQuery(field, low, high);
-        }
-
-        @Override
-        public Query newSetQuery(String field, LongIterator itr) {
+        public Query newSetQuery(String field, PrimitiveIterator.OfLong itr) {
             final BytesRef encoded = new BytesRef(new byte[Long.BYTES]);
 
             return new PointInSetQuery(field, 1, Long.BYTES,
@@ -59,7 +53,7 @@ class CrossJoinQueryRewriteHelper {
                             if (!itr.hasNext()) {
                                 return null;
                             } else {
-                                LongPoint.encodeDimension(itr.next(), encoded.bytes, 0);
+                                LongPoint.encodeDimension(itr.nextLong(), encoded.bytes, 0);
                                 return encoded;
                             }
                         }
@@ -74,13 +68,9 @@ class CrossJoinQueryRewriteHelper {
     }
 
     static class IntRangeAndSetQueryCreator implements RangeAndSetQueryCreator {
-        @Override
-        public Query newRangeQuery(String field, long low, long high) {
-            return IntPoint.newRangeQuery(field, (int) low, (int) high);
-        }
 
         @Override
-        public Query newSetQuery(String field, LongIterator itr) {
+        public Query newSetQuery(String field, PrimitiveIterator.OfLong itr) {
             final BytesRef encoded = new BytesRef(new byte[Integer.BYTES]);
 
             return new PointInSetQuery(field, 1, Integer.BYTES,
@@ -91,7 +81,7 @@ class CrossJoinQueryRewriteHelper {
                             if (!itr.hasNext()) {
                                 return null;
                             } else {
-                                IntPoint.encodeDimension((int) itr.next(), encoded.bytes, 0);
+                                IntPoint.encodeDimension((int) itr.nextLong(), encoded.bytes, 0);
                                 return encoded;
                             }
                         }
@@ -106,102 +96,65 @@ class CrossJoinQueryRewriteHelper {
     }
 
 
-    static Query rewriteQuery(CrossJoinQuery crossJoin, FastTermsResponse fastTerms) {
+    static Query rewriteQuery(String leftFieldname, FastTermsResponse fastTerms) {
 
-        if (fastTerms.getTotalDataCount() == 0)
+        if (fastTerms.getDocCount() == 0)
             return new MatchNoDocsQuery();
-        else if (fastTerms.getPointCount() > 50_000)
-            return crossJoin;   // 50k points is about the break-even point in terms of performance v/s just scanning all DocValues
+        else if (fastTerms.getDocCount() > 50_000)
+            return null;   // 50k points is about the break-even point in terms of performance v/s just scanning all DocValues
 
         //
         // rewrite the provided CrossJoinQuery into a series of point and/or range queries
         //
         switch (fastTerms.getDataType()) {
             case INT:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), fastTerms.getRanges(), new IntRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(leftFieldname, fastTerms.getNumbers(), new IntRangeAndSetQueryCreator());
             case LONG:
-                return buildRangeOrSetQuery(crossJoin.getLeftFieldname(), new NumberArrayLookupMergeSortIterator(fastTerms.getNumberLookup()), fastTerms.getRanges(), new LongRangeAndSetQueryCreator());
+                return buildRangeOrSetQuery(leftFieldname, fastTerms.getNumbers(), new LongRangeAndSetQueryCreator());
             case STRING: {
-                BooleanQuery.Builder builder = new BooleanQuery.Builder();
-                for (int shardId = 0; shardId < fastTerms.getNumShards(); shardId++) {
-                    int count = fastTerms.getStringCount(shardId);
-                    if (count > 0) {
-                        final Object[] strings = fastTerms.getStrings(shardId);
-                        builder.add(new TermInSetQuery(crossJoin.getLeftFieldname(), new AbstractCollection<BytesRef>() {
+                final String[] sortedStrings = fastTerms.getSortedStrings();
+
+                if (sortedStrings.length == 0)
+                    return new MatchNoDocsQuery();
+
+                return new TermInSetQuery(leftFieldname, new AbstractCollection<BytesRef>() {
+                    @Override
+                    public Iterator<BytesRef> iterator() {
+                        return new Iterator<BytesRef>() {
+                            int idx = 0;
+
                             @Override
-                            public Iterator<BytesRef> iterator() {
-                                return new Iterator<BytesRef>() {
-                                    int idx = 0;
-
-                                    @Override
-                                    public boolean hasNext() {
-                                        return idx < count;
-                                    }
-
-                                    @Override
-                                    public BytesRef next() {
-                                        return new BytesRef(String.valueOf(strings[idx++]));
-                                    }
-                                };
+                            public boolean hasNext() {
+                                return idx < sortedStrings.length;
                             }
 
                             @Override
-                            public int size() {
-                                return count;
+                            public BytesRef next() {
+                                return new BytesRef(String.valueOf(sortedStrings[idx++]));
                             }
-                        }), BooleanClause.Occur.SHOULD);
+                        };
                     }
-                }
-                return builder.build();
+
+                    @Override
+                    public int size() {
+                        return sortedStrings.length;
+                    }
+                });
             }
+
             default:
                 throw new RuntimeException("Unrecognized data type: " + fastTerms.getDataType());
         }
     }
 
-    private static Query buildRangeOrSetQuery(String field, NumberArrayLookupMergeSortIterator itr, Collection<long[]> ranges, RangeAndSetQueryCreator queryCreator) {
-        List<Range> rangeList = new ArrayList<>();
-
-        for (long[] range : ranges) {
-            for (int i = 0; i < range.length; i += 2) {
-                if (i+1 == range.length)
-                    rangeList.add(new Range(range[i], range[i]));
-                else
-                    rangeList.add(new Range(range[i], range[i + 1]));
-            }
-        }
-
-        // sort lowest to highest and merge together adjacent ranges
-        rangeList.sort((o1, o2) -> Long.compare(o1.end, o2.start));
-
-        for (PushbackIterator<Range> i = new PushbackIterator<>(rangeList.iterator()); i.hasNext(); ) {
-            Range a = i.next();
-            if (!i.hasNext())
-                break;
-            Range b = i.next();
-
-            if (a.end + 1 == b.start) {
-                // these two ranges can be merged
-                a.end = b.end;
-
-                // and we don't need 'b' anymore
-                i.remove();
-
-                // but we want to see if 'a' can merge with the next range
-                i.push(a);
-            }
-        }
-
+    private static Query buildRangeOrSetQuery(String field, NumberBitmap lookups, RangeAndSetQueryCreator queryCreator) {
         List<Query> clauses = new ArrayList<>();
-        for (Range range : rangeList) {
-            clauses.add(queryCreator.newRangeQuery(field, range.start, range.end));
-        }
 
-        if (itr.hasNext()) {
+        PrimitiveIterator.OfLong itr = lookups.iterator();
+        if (itr.hasNext())
             clauses.add(queryCreator.newSetQuery(field, itr));
-        }
 
-        return buildQuery(clauses);
+        return clauses.isEmpty() ? new MatchNoDocsQuery() : buildQuery(clauses);
     }
 
     private static Query buildQuery(List<Query> clauses) {
@@ -212,7 +165,7 @@ class CrossJoinQueryRewriteHelper {
             BooleanQuery.Builder builder = top = new BooleanQuery.Builder();
             int cnt = 0;
             for (Query q : clauses) {
-                if (cnt++ >= BooleanQuery.getMaxClauseCount()-1) {
+                if (cnt++ >= BooleanQuery.getMaxClauseCount() - 1) {
                     BooleanQuery.Builder tmp = new BooleanQuery.Builder();
                     tmp.add(builder.build(), BooleanClause.Occur.SHOULD);
                     builder = tmp;

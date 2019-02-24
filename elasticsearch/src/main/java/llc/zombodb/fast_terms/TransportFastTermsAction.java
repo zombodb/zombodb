@@ -111,10 +111,6 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
                 successfulShards++;
                 ShardFastTermsResponse resp = (ShardFastTermsResponse) shardResponse;
 
-                if (resp.getDataCount() == 0) {
-                    continue;   // this one is empty and we don't need it
-                }
-
                 if (dataType == FastTermsResponse.DataType.NONE)
                     dataType = resp.getDataType();
                 else if (dataType != resp.getDataType())
@@ -124,10 +120,9 @@ public class TransportFastTermsAction extends TransportBroadcastAction<FastTerms
             }
         }
 
-        FastTermsResponse response = new FastTermsResponse(request.indices()[0], successful.size(), successfulShards, failedShards, shardFailures, dataType);
-        for (int i = 0; i < successful.size(); i++) {
-            ShardFastTermsResponse shardResponse = successful.get(i);
-            response.addData(i, shardResponse.getData(), shardResponse.getDataCount());
+        FastTermsResponse response = new FastTermsResponse(successful.size(), successfulShards, failedShards, shardFailures, dataType);
+        for (ShardFastTermsResponse shardResponse : successful) {
+            response.addData(shardResponse.getData());
         }
         return response;
     }

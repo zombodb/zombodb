@@ -16,14 +16,20 @@
 package llc.zombodb.query_parser.rewriters;
 
 import llc.zombodb.cross_join.CrossJoinQueryBuilder;
+import llc.zombodb.fast_terms.FastTermsAction;
+import llc.zombodb.fast_terms.FastTermsRequest;
+import llc.zombodb.fast_terms.FastTermsRequestBuilder;
+import llc.zombodb.fast_terms.FastTermsResponse;
 import llc.zombodb.query_parser.ASTExpansion;
 import llc.zombodb.query_parser.ASTIndexLink;
 import llc.zombodb.query_parser.QueryParserNode;
 import llc.zombodb.query_parser.metadata.IndexMetadata;
+
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
+import org.elasticsearch.index.query.MatchNoneQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
@@ -59,7 +65,8 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                 if ((parentLink = parentNode.getIndexLink()) != null)
                     break;
                 parentNode = (QueryParserNode) parentNode.jjtGetParent();
-            };
+            }
+            ;
 
             if (parentLink == null)
                 parentLink = myIndex;
@@ -71,14 +78,23 @@ class ZomboDBQueryRewriter extends QueryRewriter {
                     link.getRightFieldname().equals(rightMetadata.getBlockRoutingField()) &&
                     leftMetadata.getNumberOfShards() == rightMetadata.getNumberOfShards();
 
-            qb = new ConstantScoreQueryBuilder(new CrossJoinQueryBuilder()
+            long start = System.currentTimeMillis();
+            FastTermsResponse fastTerms = FastTermsAction.INSTANCE.newRequestBuilder(client)
+                    .setIndices(link.getIndexName())
+                    .setFieldname(link.getRightFieldname())
+                    .setTypes("data")
+                    .setQuery(applyVisibility(build(node.getQuery()))).get().throwShardFailure();
+            long end = System.currentTimeMillis();
+
+            qb = new CrossJoinQueryBuilder()
                     .index(link.getIndexName())
                     .type("data")
                     .leftFieldname(link.getLeftFieldname())
                     .rightFieldname(link.getRightFieldname())
                     .canOptimizeJoins(canOptimizeForJoins)
                     .alwaysJoinWithDocValues(metadataManager.getMetadataForMyIndex().alwaysJoinWithDocValues())
-                    .query(applyVisibility(build(node.getQuery()))));
+                    .fastTerms(fastTerms, end-start)
+                    .query(new MatchNoneQueryBuilder());
         }
 
         if (node.getFilterQuery() != null) {

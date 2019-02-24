@@ -20,6 +20,7 @@ import org.apache.lucene.search.Query;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.ObjectParser;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.mapper.MappedFieldType;
@@ -29,6 +30,8 @@ import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryShardContext;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -43,6 +46,7 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
     protected boolean canOptimizeJoins;
     protected boolean alwaysJoinWithDocValues;
     protected FastTermsResponse fastTerms;
+    protected transient long fastTermsExecutionTime;
 
     public CrossJoinQueryBuilder() {
         super();
@@ -86,8 +90,9 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         return this;
     }
 
-    protected CrossJoinQueryBuilder fastTerms(FastTermsResponse fastTerms) {
+    public CrossJoinQueryBuilder fastTerms(FastTermsResponse fastTerms, long fastTermsExecutionTimeInMs) {
         this.fastTerms = fastTerms;
+        this.fastTermsExecutionTime = fastTermsExecutionTimeInMs;
         return this;
     }
 
@@ -133,6 +138,14 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
         builder.field("can_optimize_joins", canOptimizeJoins);
         builder.field("always_join_with_docvalues", alwaysJoinWithDocValues);
         builder.field("query", query);
+        if (fastTerms != null) {
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("matching_terms", fastTerms.getDocCount());
+            stats.put("data_type", fastTerms.getDataType().name());
+            stats.put("estimated_byte_size", fastTerms.estimateByteSize());
+            stats.put("execution_time", TimeValue.timeValueMillis(fastTermsExecutionTime).getSecondsFrac() + "s");
+            builder.field("fast_terms", stats);
+        }
         builder.endObject();
     }
 
@@ -142,7 +155,12 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
 
         if (fieldType == null)
             throw new RuntimeException(context.index().getName() + " does not contain '" + leftFieldname + "'");
-        return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, canOptimizeJoins, alwaysJoinWithDocValues, fieldType.typeName(), context.getShardId(), query, context.getClient(), fastTerms);
+
+        if (fastTerms != null) {
+            return new FastTermsQuery(leftFieldname, type, fieldType.typeName(), fastTerms, alwaysJoinWithDocValues);
+        } else {
+            return new CrossJoinQuery(index, type, leftFieldname, rightFieldname, canOptimizeJoins, alwaysJoinWithDocValues, fieldType.typeName(), context.getShardId(), query, context.getClient());
+        }
     }
 
     @Override
@@ -153,12 +171,13 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
                 Objects.equals(rightFieldname, other.rightFieldname) &&
                 Objects.equals(query, other.query) &&
                 Objects.equals(canOptimizeJoins, other.canOptimizeJoins) &&
-                Objects.equals(alwaysJoinWithDocValues, other.alwaysJoinWithDocValues);
+                Objects.equals(alwaysJoinWithDocValues, other.alwaysJoinWithDocValues) &&
+                Objects.equals(fastTerms, other.fastTerms);
     }
 
     @Override
     protected int doHashCode() {
-        return Objects.hash(index, type, leftFieldname, rightFieldname, query, canOptimizeJoins, alwaysJoinWithDocValues);
+        return Objects.hash(index, type, leftFieldname, rightFieldname, query, canOptimizeJoins, alwaysJoinWithDocValues, fastTerms);
     }
 
     @Override
