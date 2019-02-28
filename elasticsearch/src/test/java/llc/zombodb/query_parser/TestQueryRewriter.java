@@ -4546,6 +4546,18 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+
+    @Test
+    public void testStopWordRemoval_allField_issue349() throws Exception {
+        assertAST("english_field:(now is the time)",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Array (fieldname=english_field, operator=CONTAINS, index=db.schema.table.index) (AND)\n" +
+                        "         Word (fieldname=english_field, operator=CONTAINS, value=now, index=db.schema.table.index)\n" +
+                        "         Word (fieldname=english_field, operator=CONTAINS, value=time, index=db.schema.table.index)");
+    }
+
     @Test
     public void testStopWordRemoval_allField() throws Exception {
         assertAST("(now is the time) OR english_field:(now is the time)",
@@ -5204,6 +5216,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  }\n" +
                         "}"
         );
+    }
+
+    @Test
+    public void testComplexTokenPulloutWithAND_issue349() throws Exception {
+        assertAST("english_field:darling",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Word (fieldname=english_field, operator=CONTAINS, value=darl, index=db.schema.table.index)");
     }
 
     @Test
@@ -6029,5 +6050,51 @@ public class TestQueryRewriter extends ZomboDBTestCase {
         );
     }
 
+    @Test
+    public void testIssue349_Prefix() throws Exception {
+        assertAST("issue349_field:j*",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Prefix (fieldname=issue349_field, operator=CONTAINS, value=j, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue349_Wildcard() throws Exception {
+        assertAST("issue349_field:*j*",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Wildcard (fieldname=issue349_field, operator=CONTAINS, value=*j*, index=db.schema.table.index)"
+        );
+    }
+
+    @Test
+    public void testIssue349_Single() throws Exception {
+        assertAST("issue349_field:j",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id"
+        );
+
+        assertJson("issue349_field:j",
+                "{\n" +
+                        "  \"match_none\" : {\n" +
+                        "    \"boost\" : 1.0\n" +
+                        "  }\n" +
+                        "}"
+        );
+    }
+
+    @Test
+    public void testIssue349_Fuzzy() throws Exception {
+        assertAST("issue349_field:jeffery~2",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Fuzzy (fieldname=issue349_field, operator=CONTAINS, value=jeffery, fuzz=2, index=db.schema.table.index)"
+        );
+    }
 }
 

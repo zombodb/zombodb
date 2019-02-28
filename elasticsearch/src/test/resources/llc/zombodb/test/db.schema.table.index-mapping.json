@@ -122,6 +122,16 @@
             }
           }
         },
+        "issue349_field": {
+          "store": false,
+          "type": "string",
+          "index_options": "positions",
+          "include_in_all": "true",
+          "analyzer": "issue349_analyzer",
+          "fielddata": {
+            "format": "disabled"
+          }
+        },
         "unanalyzed_field": {
           "type": "string",
           "index": "not_analyzed"
@@ -211,6 +221,11 @@
           "max_shingle_size": 2,
           "output_unigrams": false,
           "token_separator": "$"
+        },
+        "issue349_ngram_filter": {
+          "type": "edgeNGram",
+          "min_gram": 3,
+          "max_gram": 8
         }
       },
       "analyzer": {
@@ -255,6 +270,11 @@
             "lowercase",
             "shingle_filter_search"
           ]
+        },
+        "issue349_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding","issue349_ngram_filter"]
         }
       }
     }

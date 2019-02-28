@@ -211,6 +211,9 @@ public abstract class QueryRewriter {
         QueryBuilder qb = build(tree);
         queryRewritten = true;
 
+        if (qb == null)
+            qb = new MatchNoneQueryBuilder();
+
         return needVisibilityOnTopLevel ? applyVisibility(qb) : qb;
     }
 
