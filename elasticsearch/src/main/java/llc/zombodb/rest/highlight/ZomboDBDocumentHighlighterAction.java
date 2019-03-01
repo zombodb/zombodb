@@ -47,16 +47,20 @@ public class ZomboDBDocumentHighlighterAction extends BaseRestHandler {
         String queryString;
         String primaryKeyFieldname;
         String fieldLists;
+        String options;
         List<Map<String, Object>> documents;
 
         input = Utils.jsonToObject(request.content().streamInput(), Map.class);
         queryString = input.get("query").toString();
         fieldLists = input.containsKey("field_lists") ? input.get("field_lists").toString() : null;
         primaryKeyFieldname = input.get("primary_key").toString();
+        options = input.containsKey("options") ? input.get("options").toString() : null;
         documents = (List<Map<String, Object>>) input.get("documents");
 
         if (fieldLists != null)
             queryString = "#field_lists(" + fieldLists + ") " + queryString;
+        if (options != null)
+            queryString = "#options(" + options + ") " + queryString;
 
         List<AnalyzedField.Token> tokens = new ArrayList<>();
 

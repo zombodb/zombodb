@@ -923,6 +923,8 @@ char *elasticsearch_highlight(ZDBIndexDescriptor *indexDescriptor, char *user_qu
     appendStringInfo(request, "{\"query\":%s, \"primary_key\": \"%s\", \"documents\":%s", user_query, pkey, documentJson);
     if (indexDescriptor->fieldLists)
         appendStringInfo(request, ", \"field_lists\":\"%s\"", indexDescriptor->fieldLists);
+    if (indexDescriptor->options)
+        appendStringInfo(request, ", \"options\":\"%s\"", indexDescriptor->options);
     appendStringInfoChar(request, '}');
 
     appendStringInfo(endpoint, "%s%s/_zdbhighlighter", indexDescriptor->url, indexDescriptor->alias != NULL ? indexDescriptor->alias : indexDescriptor->fullyQualifiedName);
