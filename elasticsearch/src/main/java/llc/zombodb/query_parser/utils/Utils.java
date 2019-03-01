@@ -458,14 +458,24 @@ public class Utils {
         }
 
 
+        List<String> simpleTokens = simpleTokenize(node.getEscapedValue());
         QueryParserNode rc;
         if (!hasWildcards) {
-            if (initialAnalyze.size() <= 1) {
-                if (node instanceof ASTPrefix) {
+
+            if (initialAnalyze.size() <= 1 || simpleTokens.size() == 1) {
+                if (node instanceof ASTPrefix || node instanceof ASTWildcard) {
                     rc = node;
+                } else if (initialAnalyze.size() > 1) {
+                    rc = new ASTPhrase(QueryParserTreeConstants.JJTPHRASE);
+                    newToken = node.getEscapedValue();
                 } else {
                     rc = new ASTWord(QueryParserTreeConstants.JJTWORD);
                 }
+
+                if (initialAnalyze.size() > 1 && simpleTokens.size() == 1)
+                    newToken = node.getEscapedValue();
+                else if (newToken.length() == 0 && initialAnalyze.size() == 1 && simpleTokens.size() == 1)
+                    newToken = initialAnalyze.get(0);
             } else {
                 rc = new ASTPhrase(QueryParserTreeConstants.JJTPHRASE);
 
@@ -483,6 +493,8 @@ public class Utils {
             rc.setDistance(node.getDistance());
             rc.setBoost(node.getBoost());
         } else {
+            if (initialAnalyze.size() > 1 && simpleTokens.size() == 1 && !isComplexTerm(node.getEscapedValue()))
+                newToken = node.getEscapedValue();
             if (node instanceof ASTFuzzy)
                 newToken += "~" + (node.isOrdered() ? "" : "!") + node.getFuzzyness();
 
