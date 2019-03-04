@@ -24,54 +24,18 @@
 #include "access/amapi.h"
 #include "access/htup_details.h"
 #include "access/reloptions.h"
-#include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
-#include "access/twophase.h"
 #include "access/xact.h"
-#include "access/xact.h"
-#include "access/xlog.h"
-#include "catalog/catalog.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_trigger.h"
 #include "catalog/toasting.h"
-#include "commands/alter.h"
-#include "commands/async.h"
-#include "commands/cluster.h"
-#include "commands/collationcmds.h"
-#include "commands/comment.h"
-#include "commands/conversioncmds.h"
-#include "commands/copy.h"
-#include "commands/createas.h"
-#include "commands/dbcommands.h"
-#include "commands/defrem.h"
-#include "commands/discard.h"
 #include "commands/event_trigger.h"
-#include "commands/explain.h"
-#include "commands/extension.h"
-#include "commands/lockcmds.h"
-#include "commands/matview.h"
-#include "commands/policy.h"
-#include "commands/portalcmds.h"
-#include "commands/prepare.h"
-#include "commands/proclang.h"
-#include "commands/publicationcmds.h"
-#include "commands/schemacmds.h"
-#include "commands/seclabel.h"
-#include "commands/sequence.h"
-#include "commands/subscriptioncmds.h"
 #include "commands/tablecmds.h"
-#include "commands/tablecmds.h"
-#include "commands/tablespace.h"
 #include "commands/trigger.h"
-#include "commands/typecmds.h"
-#include "commands/user.h"
-#include "commands/vacuum.h"
-#include "commands/view.h"
 #include "executor/spi.h"
-#include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/cost.h"
@@ -79,20 +43,11 @@
 #include "parser/parse_func.h"
 #include "parser/parse_oper.h"
 #include "parser/parse_utilcmd.h"
-#include "postmaster/bgwriter.h"
-#include "rewrite/rewriteDefine.h"
-#include "rewrite/rewriteRemove.h"
 #include "storage/bufmgr.h"
-#include "storage/fd.h"
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
-#include "tcop/pquery.h"
 #include "tcop/utility.h"
-#include "tcop/utility.h"
-#include "utils/acl.h"
-#include "utils/guc.h"
 #include "utils/lsyscache.h"
-#include "utils/syscache.h"
 
 static const struct config_enum_entry zdb_log_level_options[] = {
 		{"debug",   DEBUG2,  true},
@@ -191,6 +146,7 @@ PG_FUNCTION_INFO_V1(zdb_amhandler);
 
 static List                     *insert_contexts        = NULL;
 static List                     *to_drop                = NULL;
+static List                     *created_indices_urls   = NULL;
 static List                     *aborted_xids           = NULL;
 static ExecutorStart_hook_type  prev_ExecutorStartHook  = NULL;
 static ExecutorEnd_hook_type    prev_ExecutorEndHook    = NULL;
@@ -303,11 +259,12 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 		case XACT_EVENT_COMMIT:
 		case XACT_EVENT_PARALLEL_COMMIT:
 		case XACT_EVENT_PREPARE:
-			executor_depth    = 0;
-			insert_contexts   = NULL;
-			to_drop           = NULL;
-			aborted_xids      = NULL;
-			currentQueryStack = NULL;
+            executor_depth       = 0;
+            insert_contexts      = NULL;
+            to_drop              = NULL;
+            created_indices_urls = NULL;
+            aborted_xids         = NULL;
+            currentQueryStack    = NULL;
 			break;
 		default:
 			break;
@@ -635,6 +592,29 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 	PG_TRY();
 			{
 				switch (nodeTag(parsetree->utilityStmt)) {
+
+					case T_TransactionStmt: {
+						TransactionStmt *stmt = (TransactionStmt *) parsetree->utilityStmt;
+
+						switch (stmt->kind) {
+							case TRANS_STMT_ROLLBACK: {
+                                ListCell *lc;
+
+                                foreach (lc, created_indices_urls) {
+                                    char *url = lfirst(lc);
+
+                                    ElasticsearchDeleteIndexDirect(url);
+                                }
+                            } break;
+
+						    default:
+						        break;
+						}
+
+                        run_process_utility_hook(parsetree, queryString, context, params, queryEnv, dest, completionTag);
+					}
+						break;
+
 					case T_AlterTableStmt: {
 						char   *url;
 						uint32 shards;
@@ -1079,6 +1059,7 @@ bool zdbamvalidate(Oid opclassoid) {
 
 /*lint -e533 */
 static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, IndexInfo *indexInfo) {
+    MemoryContext     oldContext;
 	IndexBuildResult  *result    = palloc0(sizeof(IndexBuildResult));
 	ZDBBuildStateData buildstate;
 	double            reltuples;
@@ -1130,6 +1111,10 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	indexName = ElasticsearchCreateIndex(heapRelation, indexRelation, tupdesc, aliasName);
 	set_index_option(indexRelation, "uuid", indexName);
 	ReleaseTupleDesc(tupdesc);
+
+	oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    created_indices_urls = lappend(created_indices_urls, psprintf("%s%s", ZDBIndexOptionsGetUrl(indexRelation), indexName));
+    MemoryContextSwitchTo(oldContext);
 
 	buildstate.indtuples     = 0;
 	buildstate.memoryContext = AllocSetContextCreate(CurrentMemoryContext, "zdbBuildCallback",
