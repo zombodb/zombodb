@@ -67,7 +67,7 @@ COMMIT;
 
 --
 -- we're testing to make sure the same results are returned in the same order
--- before and after a VACUUM FULL
+-- before and after a VACUUM
 --
 SELECT id, name, categories, row_number() over (ORDER BY zombodb_score DESC)
 FROM (
@@ -81,7 +81,7 @@ FROM (
        ORDER BY "zombodb_score" DESC, "restaurants_restaurant"."id" ASC
      ) x;
 
-VACUUM FULL restaurants_restaurant;
+VACUUM restaurants_restaurant;
 
 SELECT id, name, categories, row_number() over (ORDER BY zombodb_score DESC)
 FROM (

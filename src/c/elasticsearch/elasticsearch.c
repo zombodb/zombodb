@@ -664,7 +664,7 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_c
 		/* we did more than 1 request, so force a full refresh across the entire index */
 		resetStringInfo(request);
 		appendStringInfo(request, "%s%s/_refresh", context->url, context->esIndexName);
-		rest_call("GET", request, NULL, context->compressionLevel);
+		rest_call("POST", request, NULL, context->compressionLevel);
 	}
 
 	freeStringInfo(request);
@@ -778,10 +778,9 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	}
 
 	appendStringInfo(request,
-					 "%s%s/%s/_search?search_type=%s&_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
+					 "%s%s/%s/_search?_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
 					 ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel),
 					 ZDBIndexOptionsGetTypeName(indexRel),
-                     needScore ? "dfs_query_then_fetch" : "query_then_fetch",
 					 limit == 0 ? MAX_DOCS_PER_REQUEST : Min(MAX_DOCS_PER_REQUEST, limit + offset),
 					 ES_SEARCH_RESPONSE_FILTER,
 					 highlights ? "type" : use_id ? "_id" : "_none_",
@@ -987,6 +986,23 @@ void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *x
 		freeStringInfo(request);
 		freeStringInfo(postData);
 	}
+}
+
+void ElasticSearchForceMerge(Relation indexRel) {
+	StringInfo request  = makeStringInfo();
+	StringInfo response;
+
+	appendStringInfo(request, "%s%s/_forcemerge?only_expunge_deletes=true&flush=false", ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel));
+	response = rest_call("POST", request, NULL, ZDBIndexOptionsGetCompressionLevel(indexRel));
+
+	freeStringInfo(response);
+
+	resetStringInfo(request);
+	appendStringInfo(request, "%s%s/_refresh", ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel));
+	response = rest_call("POST", request, NULL, ZDBIndexOptionsGetCompressionLevel(indexRel));
+
+	freeStringInfo(response);
+	freeStringInfo(request);
 }
 
 char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query) {

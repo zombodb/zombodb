@@ -52,7 +52,7 @@ VALUES ('096393d7-8139-442d-9582-be9f396ef407'::uuid, 'http://example.org?coteso
 COMMIT;
 --
 -- we're testing to make sure the same results are returned in the same order
--- before and after a VACUUM FULL
+-- before and after a VACUUM
 --
 SELECT id, name, categories, row_number() over (ORDER BY zombodb_score DESC)
 FROM (
@@ -67,11 +67,11 @@ FROM (
      ) x;
                   id                  |      name       |        categories        | row_number 
 --------------------------------------+-----------------+--------------------------+------------
- 18c9b26b-9885-4725-b00e-9dddd7ba8d8f | TJ Asian Bistro | {Sushi,Asian,Japanese}   |          1
- 096393d7-8139-442d-9582-be9f396ef407 | Côté Soleil     | {French,Coffee,European} |          2
+ 096393d7-8139-442d-9582-be9f396ef407 | Côté Soleil     | {French,Coffee,European} |          1
+ 18c9b26b-9885-4725-b00e-9dddd7ba8d8f | TJ Asian Bistro | {Sushi,Asian,Japanese}   |          2
 (2 rows)
 
-VACUUM FULL restaurants_restaurant;
+VACUUM restaurants_restaurant;
 SELECT id, name, categories, row_number() over (ORDER BY zombodb_score DESC)
 FROM (
        SELECT "restaurants_restaurant"."id",
