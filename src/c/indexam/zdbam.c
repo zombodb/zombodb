@@ -1514,6 +1514,8 @@ static IndexBulkDeleteResult *amvacuumcleanup(IndexVacuumInfo *info, IndexBulkDe
 		stats = zdb_vacuum_internal(info, stats, true);
 	}
 
+	ElasticSearchForceMerge(info->index);
+
 	return stats;
 }
 

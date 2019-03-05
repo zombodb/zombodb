@@ -664,7 +664,7 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_c
 		/* we did more than 1 request, so force a full refresh across the entire index */
 		resetStringInfo(request);
 		appendStringInfo(request, "%s%s/_refresh", context->url, context->esIndexName);
-		rest_call("GET", request, NULL, context->compressionLevel);
+		rest_call("POST", request, NULL, context->compressionLevel);
 	}
 
 	freeStringInfo(request);
@@ -986,6 +986,23 @@ void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *x
 		freeStringInfo(request);
 		freeStringInfo(postData);
 	}
+}
+
+void ElasticSearchForceMerge(Relation indexRel) {
+	StringInfo request  = makeStringInfo();
+	StringInfo response;
+
+	appendStringInfo(request, "%s%s/_forcemerge?only_expunge_deletes=true&flush=false", ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel));
+	response = rest_call("POST", request, NULL, ZDBIndexOptionsGetCompressionLevel(indexRel));
+
+	freeStringInfo(response);
+
+	resetStringInfo(request);
+	appendStringInfo(request, "%s%s/_refresh", ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel));
+	response = rest_call("POST", request, NULL, ZDBIndexOptionsGetCompressionLevel(indexRel));
+
+	freeStringInfo(response);
+	freeStringInfo(request);
 }
 
 char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query) {

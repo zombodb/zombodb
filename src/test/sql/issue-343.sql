@@ -1,0 +1,99 @@
+CREATE TABLE "restaurants_restaurant"
+(
+  "id"         uuid         NOT NULL PRIMARY KEY,
+  "url"        varchar(200) NOT NULL,
+  "name"       text         NOT NULL,
+  "street"     text         NOT NULL,
+  "zip_code"   text         NOT NULL,
+  "city"       text         NOT NULL,
+  "state"      text         NOT NULL,
+  "phone"      text         NOT NULL,
+  "email"      varchar(254) NOT NULL,
+  "website"    varchar(200) NOT NULL,
+  "categories" text[]       NOT NULL
+);
+CREATE TYPE "restaurants_name_f38813_zombodb_row_type" AS (name text, street text, zip_code text, city text, state text, phone text, email varchar(254), website varchar(200), categories text[]);
+CREATE INDEX "restaurants_name_f38813_zombodb" ON "restaurants_restaurant" USING zombodb ((ROW ("name", "street", "zip_code", "city", "state", "phone", "email", "website", "categories")::"restaurants_name_f38813_zombodb_row_type"));
+
+BEGIN;
+
+SAVEPOINT "s4611794368_x1";
+
+INSERT INTO "restaurants_restaurant" ("id", "url", "name", "street", "zip_code", "city", "state", "phone", "email",
+                                      "website", "categories")
+VALUES ('9e5b6ec0-a0be-42c1-84ff-6a8cda415a20'::uuid, 'http://example.org?thealcove', 'The Alcove', '41-11 49th St',
+        '11104', 'New York City', 'NY', '+1 347-813-4159', 'alcove@example.org',
+        'https://www.facebook.com/thealcoveny/', ARRAY ['Gastropub','Tapas','Bar']);
+
+INSERT INTO "restaurants_restaurant" ("id", "url", "name", "street", "zip_code", "city", "state", "phone", "email",
+                                      "website", "categories")
+VALUES ('5e70a4d3-e66f-4a2d-b62f-c0a0ae880a39'::uuid, 'http://example.org?tjasianbistro', 'TJ Asian Bistro',
+        '50-19 Skillman Ave', '11377', 'New York City', 'NY', '+1 718-205-2088', 'tjasianbistro@example.org',
+        'http://www.tjsushi.com/', ARRAY ['Sushi','Asian','Japanese']);
+
+INSERT INTO "restaurants_restaurant" ("id", "url", "name", "street", "zip_code", "city", "state", "phone", "email",
+                                      "website", "categories")
+VALUES ('5226f736-f097-4169-abf6-17a07bcc4fed'::uuid, 'http://example.org?cotesoleil', 'Côté Soleil',
+        '50-12 Skillman Ave', '11377', 'New York City', 'NY', '+1 347-612-4333', 'cotesoleilnyc@example.org',
+        'https://cotesoleilnyc.com/', ARRAY ['French','Coffee','European']);
+
+ROLLBACK TO SAVEPOINT "s4611794368_x1";
+
+RELEASE SAVEPOINT "s4611794368_x1";
+
+SAVEPOINT "s4611794368_x2";
+
+INSERT INTO "restaurants_restaurant" ("id", "url", "name", "street", "zip_code", "city", "state", "phone", "email",
+                                      "website", "categories")
+VALUES ('3728652a-ef58-4936-a7a0-8ed23c12ba06'::uuid, 'http://example.org?thealcove', 'The Alcove', '41-11 49th St',
+        '11104', 'New York City', 'NY', '+1 347-813-4159', 'alcove@example.org',
+        'https://www.facebook.com/thealcoveny/', ARRAY ['Gastropub','Tapas','Bar']);
+
+INSERT INTO "restaurants_restaurant" ("id", "url", "name", "street", "zip_code", "city", "state", "phone", "email",
+                                      "website", "categories")
+VALUES ('18c9b26b-9885-4725-b00e-9dddd7ba8d8f'::uuid, 'http://example.org?tjasianbistro', 'TJ Asian Bistro',
+        '50-19 Skillman Ave', '11377', 'New York City', 'NY', '+1 718-205-2088', 'tjasianbistro@example.org',
+        'http://www.tjsushi.com/', ARRAY ['Sushi','Asian','Japanese']);
+
+INSERT INTO "restaurants_restaurant" ("id", "url", "name", "street", "zip_code", "city", "state", "phone", "email",
+                                      "website", "categories")
+VALUES ('096393d7-8139-442d-9582-be9f396ef407'::uuid, 'http://example.org?cotesoleil', 'Côté Soleil',
+        '50-12 Skillman Ave', '11377', 'New York City', 'NY', '+1 347-612-4333', 'cotesoleilnyc@example.org',
+        'https://cotesoleilnyc.com/', ARRAY ['French','Coffee','European']);
+
+COMMIT;
+
+
+
+--
+-- we're testing to make sure the same results are returned in the same order
+-- before and after a VACUUM
+--
+SELECT id, name, categories, row_number() over (ORDER BY zombodb_score DESC)
+FROM (
+       SELECT "restaurants_restaurant"."id",
+              "restaurants_restaurant"."name",
+              "restaurants_restaurant"."categories",
+              (zdb.score("restaurants_restaurant"."ctid")) AS "zombodb_score"
+       FROM "restaurants_restaurant"
+       WHERE ("restaurants_restaurant" ==>
+              '{"bool":{"minimum_should_match":1,"should":[{"match":{"categories":"sushi"}},{"match":{"categories":"asian"}},{"match":{"categories":"japanese"}},{"match":{"categories":"french"}}]}}')
+       ORDER BY "zombodb_score" DESC, "restaurants_restaurant"."id" ASC
+     ) x;
+
+VACUUM restaurants_restaurant;
+
+SELECT id, name, categories, row_number() over (ORDER BY zombodb_score DESC)
+FROM (
+       SELECT "restaurants_restaurant"."id",
+              "restaurants_restaurant"."name",
+              "restaurants_restaurant"."categories",
+              (zdb.score("restaurants_restaurant"."ctid")) AS "zombodb_score"
+       FROM "restaurants_restaurant"
+       WHERE ("restaurants_restaurant" ==>
+              '{"bool":{"minimum_should_match":1,"should":[{"match":{"categories":"sushi"}},{"match":{"categories":"asian"}},{"match":{"categories":"japanese"}},{"match":{"categories":"french"}}]}}')
+       ORDER BY "zombodb_score" DESC, "restaurants_restaurant"."id" ASC
+     ) x;
+
+DROP TABLE restaurants_restaurant;
+DROP TYPE restaurants_name_f38813_zombodb_row_type;
