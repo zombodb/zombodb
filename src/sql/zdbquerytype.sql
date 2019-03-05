@@ -30,10 +30,10 @@ CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMP
 --
 -- query functions
 --
-CREATE OR REPLACE FUNCTION query(index regclass, query zdbquery) RETURNS SETOF tid IMMUTABLE STRICT ROWS 2500 LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_query_srf';
-CREATE OR REPLACE FUNCTION query_raw(index regclass, query zdbquery) RETURNS SETOF tid SET zdb.ignore_visibility = true IMMUTABLE STRICT ROWS 2500 LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_query_srf';
-CREATE OR REPLACE FUNCTION query_tids(index regclass, query zdbquery) RETURNS tid[] IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_query_tids';
-CREATE OR REPLACE FUNCTION profile_query(index regclass, query zdbquery) RETURNS json IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_profile_query';
+CREATE OR REPLACE FUNCTION query(index regclass, query zdbquery) RETURNS SETOF tid STABLE STRICT ROWS 2500 LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_query_srf';
+CREATE OR REPLACE FUNCTION query_raw(index regclass, query zdbquery) RETURNS SETOF tid SET zdb.ignore_visibility = true STABLE STRICT ROWS 2500 LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_query_srf';
+CREATE OR REPLACE FUNCTION query_tids(index regclass, query zdbquery) RETURNS tid[] STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_query_tids';
+CREATE OR REPLACE FUNCTION profile_query(index regclass, query zdbquery) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_profile_query';
 
-CREATE OR REPLACE FUNCTION zdb.set_query_property(property text, value text, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_set_query_property';
+CREATE OR REPLACE FUNCTION zdb.set_query_property(property text, value text, query zdbquery) RETURNS zdbquery PARALLEL SAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_set_query_property';
 
