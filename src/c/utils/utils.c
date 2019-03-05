@@ -91,7 +91,8 @@ bool tuple_desc_contains_json(TupleDesc tupdesc) {
 	int i;
 
 	for (i = 0; i < tupdesc->natts; i++) {
-		if (tupdesc->attrs[i]->atttypid == JSONOID) {
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
+		if (attr->atttypid == JSONOID) {
 			return true;
 		}
 	}
@@ -350,7 +351,11 @@ Oid create_trigger(char *zombodbNamespace, char *schemaname, char *relname, Oid 
 	tgstmt->initdeferred = false;
 	tgstmt->constrrel    = NULL;
 
+#if (PG_VERSION_NUM < 110000)
 	triggerOid = CreateTrigger(tgstmt, NULL, relid, InvalidOid, InvalidOid, InvalidOid, true /* tgisinternal */);
+#else
+	triggerOid = CreateTrigger(tgstmt, NULL, relid, InvalidOid, InvalidOid, InvalidOid, InvalidOid, InvalidOid, NULL, true /* tgisinternal */, false);
+#endif
 
 	/* Make the new trigger visible within this session */
 	CommandCounterIncrement();
@@ -385,7 +390,11 @@ TupleDesc extract_tuple_desc_from_index_expressions(IndexInfo *indexInfo) {
 	TupleDesc tupdesc = NULL;
 	Node *expression;
 
+#if (PG_VERSION_NUM < 110000)
 	if (indexInfo->ii_KeyAttrNumbers[0] != SelfItemPointerAttributeNumber) {
+#else
+	if (indexInfo->ii_IndexAttrNumbers[0] != SelfItemPointerAttributeNumber) {
+#endif
 		return NULL;
 	} else if (list_length(indexInfo->ii_Expressions) != 1) {
 		return NULL;

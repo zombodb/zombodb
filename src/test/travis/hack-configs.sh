@@ -1,7 +1,8 @@
 #! /bin/bash
 
+PG=$1
 
-cat << DONE >> /etc/postgresql/10/main/postgresql.conf
+cat << DONE >> /etc/postgresql/${PG}/main/postgresql.conf
 client_min_messages=warning
 autovacuum=off
 fsync=off

@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-FROM ubuntu:trusty
+FROM debian:stretch
 
 LABEL maintainer="ZomboDB, LLC (zombodb@gmail.com)"
 
 RUN apt-get update -y -qq --fix-missing
-RUN apt-get install -y wget
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+RUN apt-get install -y wget gnupg
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN apt-get update -y --fix-missing
 RUN apt-get install -y libcurl4-openssl-dev

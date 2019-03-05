@@ -1,37 +1,37 @@
-language: java
+language: ruby
 
 env:
   matrix:
-    - ES=5.6.9
-    - ES=6.2.4
+    - ES=5.6.9 PG=10
+    - ES=6.2.4 PG=10
+    - ES=5.6.9 PG=11
+    - ES=6.2.4 PG=11
 
 sudo: required
-dist: trusty
+dist: xenial
 
 notifications:
   slack: zombodb:M95qGlYZ9x9ufL6L3oRxyGBm
 
 before_install:
-  - sudo apt-get purge -y elasticsearch
   - sudo apt-get update -y -qq
   - sudo apt-get install -y wget
-  - sudo apt-get purge -y postgresql-9.1
-  - sudo apt-get purge -y postgresql-9.2
-  - sudo apt-get purge -y postgresql-9.3
-  - sudo apt-get purge -y postgresql-9.4
-  - sudo apt-get purge -y postgresql-9.5
-  - sudo apt-get purge -y postgresql-9.6
+  - sudo apt-get purge postgresql-9.4
+  - sudo apt-get purge postgresql-9.5
+  - sudo apt-get purge postgresql-9.6
+  - sudo apt-get purge postgresql-10
+  - sudo rm -rf /var/lib/postgresql/10/main /etc/postgresql/10/main
   - sudo apt-get autoremove -y
-  - sudo apt-get install -y postgresql-10 postgresql-server-dev-10
+  - sudo apt-get install -y postgresql-${PG} postgresql-server-dev-${PG}
   - chmod -R a+rwx ~/
   - wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES}.tar.gz
   - tar xzf ./elasticsearch-${ES}.tar.gz
 
 script:
   - elasticsearch-${ES}/bin/elasticsearch -d
-  - sudo /etc/init.d/postgresql stop 10
-  - sudo src/test/travis/hack-configs.sh
-  - sudo /etc/init.d/postgresql start 10
+  - sudo /etc/init.d/postgresql stop ${PG}
+  - sudo src/test/travis/hack-configs.sh ${PG}
+  - sudo /etc/init.d/postgresql start ${PG}
   - sudo su - postgres -c "createuser --superuser travis"
   - make && sudo make install
   - sleep 10

@@ -133,10 +133,10 @@ Datum zdbquery_from_text(PG_FUNCTION_ARGS) {
 }
 
 Datum zdbquery_from_jsonb(PG_FUNCTION_ARGS) {
-	Jsonb *json = PG_GETARG_JSONB(0);
+	Jsonb *json = PG_GETARG_JSONB_P(0);
 	Datum json_as_text;
 
-	json_as_text = CStringGetTextDatum(DatumGetCString(DirectFunctionCall1(jsonb_out, JsonbGetDatum(json))));
+	json_as_text = CStringGetTextDatum(DatumGetCString(DirectFunctionCall1(jsonb_out, JsonbPGetDatum(json))));
 
 	return DirectFunctionCall1(zdbquery_from_text, json_as_text);
 }
