@@ -10,4 +10,3 @@ ALTER FUNCTION query(index regclass, query zdbquery) STABLE;
 ALTER FUNCTION query_raw(index regclass, query zdbquery) STABLE;
 ALTER FUNCTION query_tids(index regclass, query zdbquery) STABLE;
 ALTER FUNCTION profile_query(index regclass, query zdbquery) STABLE;
-ALTER FUNCTION zdb.set_query_property(property text, value text, query zdbquery) STABLE;

@@ -35,5 +35,5 @@ CREATE OR REPLACE FUNCTION query_raw(index regclass, query zdbquery) RETURNS SET
 CREATE OR REPLACE FUNCTION query_tids(index regclass, query zdbquery) RETURNS tid[] STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_query_tids';
 CREATE OR REPLACE FUNCTION profile_query(index regclass, query zdbquery) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_profile_query';
 
-CREATE OR REPLACE FUNCTION zdb.set_query_property(property text, value text, query zdbquery) RETURNS zdbquery PARALLEL SAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_set_query_property';
+CREATE OR REPLACE FUNCTION zdb.set_query_property(property text, value text, query zdbquery) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_set_query_property';
 
