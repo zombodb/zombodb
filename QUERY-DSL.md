@@ -1234,3 +1234,28 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-wildcard-query.html
 
 Matches documents that have fields matching a wildcard expression (not analyzed). Supported wildcards are *, which matches any character sequence (including the empty one), and ?, which matches any single character. Note that this query can be slow, as it needs to iterate over many terms. In order to prevent extremely slow wildcard queries, a wildcard term should not start with one of the wildcards * or ?.
+
+## Postgis Support
+
+ZomboDB provides basic support for Postgis.  It automatically maps columns of type `geometry` and `geography` to
+Elasticsearch's `geo_shape` type.
+
+Additionally, it exposes one function for doing a `geo_shape` query.
+
+---
+
+#### `dsl.geo_shape()`
+
+```sql
+FUNCTION dsl.geo_shape(
+    field text,
+    geojson_shape json,
+    relation dsl.es_geo_shape_relation
+) RETURNS zdbquery
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-shape-query.html
+
+The geo_shape query uses the same grid square representation as the geo_shape mapping to find documents that have a shape that intersects with the query shape. It will also use the same PrefixTree configuration as defined for the field mapping.
+
+The query supports one way of defining the query shape:  by providing a whole shape definition.

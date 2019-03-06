@@ -3,6 +3,7 @@ src/sql/support-functions.sql
 src/sql/zdbquerytype.sql
 src/sql/am-api.sql
 src/sql/query-dsl.sql
+src/sql/postgis-support.sql
 src/sql/tablesamplers.sql
 src/sql/join-support.sql
 src/sql/score-support.sql
