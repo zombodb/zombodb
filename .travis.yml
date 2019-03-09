@@ -26,6 +26,10 @@ before_install:
   - chmod -R a+rwx ~/
   - wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES}.tar.gz
   - tar xzf ./elasticsearch-${ES}.tar.gz
+  - sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt xenial-pgdg main" >> /etc/apt/sources.list'
+  - wget --quiet -O - http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc | sudo apt-key add -
+  - sudo apt update -y -qq
+  - sudo apt install -y postgresql-${PG}-postgis-2.5
 
 script:
   - elasticsearch-${ES}/bin/elasticsearch -d
