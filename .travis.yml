@@ -2,10 +2,10 @@ language: ruby
 
 env:
   matrix:
-    - ES=5.6.9 PG=10
-    - ES=6.2.4 PG=10
+#    - ES=5.6.9 PG=10
+#    - ES=6.2.4 PG=10
     - ES=5.6.9 PG=11
-    - ES=6.2.4 PG=11
+#    - ES=6.2.4 PG=11
 
 sudo: required
 dist: xenial
@@ -33,19 +33,22 @@ before_install:
   - sudo apt install -y postgresql-${PG}-postgis-2.5
 
 script:
-  - elasticsearch-${ES}/bin/elasticsearch -d
-  - sudo /etc/init.d/postgresql stop ${PG}
-  - sudo src/test/travis/hack-configs.sh ${PG}
-  - sudo /etc/init.d/postgresql start ${PG}
-  - sudo su - postgres -c "createuser --superuser travis"
-  - make && sudo make install
-  - sleep 10
-  - curl localhost:9200/
-  - make installcheck-setup installcheck
+  - ls -la /usr/share/postgresql/
+  - find //usr/share/postgresql/ -type f -name "postgis.control"
 
-after_failure:
-  - sudo cat regression.diffs
-  - sudo cat /var/log/postgresql/*.log
-  - sudo cat elasticsearch-5.6.4/logs/*.log | grep -v "deprecated"
-  - df -h
-  - free
+#  - elasticsearch-${ES}/bin/elasticsearch -d
+#  - sudo /etc/init.d/postgresql stop ${PG}
+#  - sudo src/test/travis/hack-configs.sh ${PG}
+#  - sudo /etc/init.d/postgresql start ${PG}
+#  - sudo su - postgres -c "createuser --superuser travis"
+#  - make && sudo make install
+#  - sleep 10
+#  - curl localhost:9200/
+#  - make installcheck-setup installcheck
+
+#after_failure:
+#  - sudo cat regression.diffs
+#  - sudo cat /var/log/postgresql/*.log
+#  - sudo cat elasticsearch-5.6.4/logs/*.log | grep -v "deprecated"
+#  - df -h
+#  - free
