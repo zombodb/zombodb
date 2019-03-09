@@ -20,7 +20,8 @@ before_install:
   - sudo apt-get purge postgresql-9.5
   - sudo apt-get purge postgresql-9.6
   - sudo apt-get purge postgresql-10
-  - sudo rm -rf /var/lib/postgresql/10/main /etc/postgresql/10/main
+  - sudo rm -rf /var/lib/postgresql/* /etc/postgresql/*
+  - sudo rm -rf /usr/share/postgresql/*
   - sudo apt-get autoremove -y
   - sudo apt-get install -y postgresql-${PG} postgresql-server-dev-${PG}
   - chmod -R a+rwx ~/
@@ -34,7 +35,8 @@ before_install:
 
 script:
   - ls -la /usr/share/postgresql/
-  - find //usr/share/postgresql/ -type f -name "postgis.control"
+  - find /usr/share/postgresql/ -type f -name "postgis.control"
+  - find / -type f -name "postgis.control"
 
 #  - elasticsearch-${ES}/bin/elasticsearch -d
 #  - sudo /etc/init.d/postgresql stop ${PG}
