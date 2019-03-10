@@ -46,6 +46,6 @@ script:
 after_failure:
   - sudo cat regression.diffs
   - sudo cat /var/log/postgresql/*.log
-  - sudo cat elasticsearch-5.6.4/logs/*.log | grep -v "deprecated"
+  - sudo cat elasticsearch-${ES}/logs/*.log | grep -v "deprecated"
   - df -h
   - free
