@@ -14,6 +14,8 @@ notifications:
   slack: zombodb:M95qGlYZ9x9ufL6L3oRxyGBm
 
 before_install:
+  - sudo apt-get -y remove postgresql*
+  - sudo apt-get -y purge postgresql*
   - sudo apt-get update -y -qq --fix-missing
   - sudo apt-get install -y wget
   - sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt xenial-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
