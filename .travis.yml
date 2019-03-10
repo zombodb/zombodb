@@ -27,6 +27,7 @@ before_install:
   - sudo apt-get install -y postgresql-${PG}
   - sudo apt-get update -y -qq --fix-missing
   - sudo apt-get install -y postgresql-${PG}-postgis-2.5
+  - sudo apt-get install -y postgresql-${PG}-postgis-2.5-scripts
 
 
 
