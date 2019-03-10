@@ -14,8 +14,8 @@ notifications:
   slack: zombodb:M95qGlYZ9x9ufL6L3oRxyGBm
 
 before_install:
-  - sudo apt-get -y remove postgresql*
-  - sudo apt-get -y purge postgresql*
+  - sudo apt-get -y remove postgresql* elasticsearch*
+  - sudo apt-get -y purge postgresql* elasticsearch*
   - sudo apt-get update -y -qq --fix-missing
   - sudo apt-get install -y wget
   - sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt xenial-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
@@ -28,31 +28,24 @@ before_install:
   - sudo apt-get update -y -qq --fix-missing
   - sudo apt-get install -y postgresql-${PG}-postgis-2.5
   - sudo apt-get install -y postgresql-${PG}-postgis-2.5-scripts
-
-
-
-#  - chmod -R a+rwx ~/
-#  - wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES}.tar.gz
-#  - tar xzf ./elasticsearch-${ES}.tar.gz
+  - chmod -R a+rwx ~/
+  - wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES}.tar.gz
+  - tar xzf ./elasticsearch-${ES}.tar.gz
 
 script:
-  - ls -la /usr/share/postgresql/
-  - find /usr/share/postgresql/ -name "postgis.control"
-  - find / -name "postgis.control"
+  - elasticsearch-${ES}/bin/elasticsearch -d
+  - sudo /etc/init.d/postgresql stop ${PG}
+  - sudo src/test/travis/hack-configs.sh ${PG}
+  - sudo /etc/init.d/postgresql start ${PG}
+  - sudo su - postgres -c "createuser --superuser travis"
+  - make && sudo make install
+  - sleep 10
+  - curl localhost:9200/
+  - make installcheck-setup installcheck
 
-#  - elasticsearch-${ES}/bin/elasticsearch -d
-#  - sudo /etc/init.d/postgresql stop ${PG}
-#  - sudo src/test/travis/hack-configs.sh ${PG}
-#  - sudo /etc/init.d/postgresql start ${PG}
-#  - sudo su - postgres -c "createuser --superuser travis"
-#  - make && sudo make install
-#  - sleep 10
-#  - curl localhost:9200/
-#  - make installcheck-setup installcheck
-
-#after_failure:
-#  - sudo cat regression.diffs
-#  - sudo cat /var/log/postgresql/*.log
-#  - sudo cat elasticsearch-5.6.4/logs/*.log | grep -v "deprecated"
-#  - df -h
-#  - free
+after_failure:
+  - sudo cat regression.diffs
+  - sudo cat /var/log/postgresql/*.log
+  - sudo cat elasticsearch-5.6.4/logs/*.log | grep -v "deprecated"
+  - df -h
+  - free
