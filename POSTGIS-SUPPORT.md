@@ -1,5 +1,5 @@
 # PostGIS Support in ZomboDB
-As of version **10-1.0.5** of ZomboDB, the `postgis` datatypes of geometry and geography are supported in ZomboDB 
+As of version **10-1.0.5** of ZomboDB, the `postgis` datatypes of `geometry` and `geography` are supported.
 
 ##### PostGIS Requirement
 PostGIS must already be installed prior to enabling PostGIS support in ZomboDB, but can also be installed after ZomboDB as noted below.
