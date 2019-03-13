@@ -99,7 +99,7 @@ With the above definition, you'd be able to find all the books checked out by a 
 ```sql
 SELECT * 
   FROM book 
- WHERE zdb('book', book.ctid) ==> 'author:shakespeare and user.full_name:"John Doe"'
+ WHERE zdb('book', book.ctid) ==> 'author:shakespeare and users.full_name:"John Doe"'
 ```
 
 The relationships need not be relative to the `book` table, as shown by the `users:(checkout_history.user_id=<users.idxusers>id)` link.  ZomboDB understands that in order to get to the `users` index, it first has to go through `checkout_history`, and it knows that `checkout_history` links to `book` via the `checkout_history:(id=<checkout_history.idxcheckout_history>book_id)` link.
