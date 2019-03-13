@@ -6096,5 +6096,15 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "      Fuzzy (fieldname=issue349_field, operator=CONTAINS, value=jeffery, fuzz=2, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testIssue349_SingleInSubselect() throws Exception {
+        assertJson("#subselect<id=<this.index>id>(issue349_field:a)",
+                "{\n" +
+                        "  \"match_none\" : {\n" +
+                        "    \"boost\" : 1.0\n" +
+                        "  }\n" +
+                        "}");
+    }
 }
 

@@ -558,7 +558,7 @@ public abstract class QueryRewriter {
 
     public QueryBuilder build(QueryParserNode node) {
         if (node == null)
-            return null;
+            return new MatchNoneQueryBuilder();
         else if (node instanceof ASTAnd)
             return build((ASTAnd) node);
         else if (node instanceof ASTWith)
