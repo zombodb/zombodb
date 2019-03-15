@@ -43,7 +43,7 @@ SELECT zdb.count('idxevents', match_all());
 ALTER TABLE events SET (autovacuum_enabled = true);
 -- after a vacuum we should have no aborted xids
 VACUUM events;
-SELECT jsonb_array_length((zdb.request('idxevents', 'doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
+SELECT jsonb_array_length((zdb.request('idxevents', '_doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
  jsonb_array_length 
 --------------------
                   0

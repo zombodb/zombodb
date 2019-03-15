@@ -25,6 +25,6 @@ CREATE OR REPLACE VIEW index_stats AS
     pg_total_relation_size(table_name)                                                      AS pg_size_bytes,
     stats -> '_shards' -> 'total'                                                           AS shards,
     settings -> index_name -> 'settings' -> 'index' ->> 'number_of_replicas'                AS replicas,
-    (zdb.request(indexrelid, 'doc/_count', 'GET') :: JSON) -> 'count'                      AS doc_count,
-    coalesce(json_array_length((zdb.request(indexrelid, 'doc/zdb_aborted_xids', 'GET') :: JSON) -> '_source'->'zdb_aborted_xids'), 0) AS aborted_xids
+    (zdb.request(indexrelid, '_doc/_count', 'GET') :: JSON) -> 'count'                      AS doc_count,
+    coalesce(json_array_length((zdb.request(indexrelid, '_doc/zdb_aborted_xids', 'GET') :: JSON) -> '_source'->'zdb_aborted_xids'), 0) AS aborted_xids
   FROM stats;

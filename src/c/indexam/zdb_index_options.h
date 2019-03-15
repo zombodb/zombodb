@@ -65,7 +65,7 @@ static inline char *ZDBIndexOptionsGetUrl(Relation rel) {
 
 #define ZDBIndexOptionsGetTypeName(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) (relation)->rd_options)->typeNameValueOffset > 0 ? \
-      (char *) ((ZDBIndexOptions *) (relation)->rd_options) + ((ZDBIndexOptions *) (relation)->rd_options)->typeNameValueOffset : ("doc"))
+      (char *) ((ZDBIndexOptions *) (relation)->rd_options) + ((ZDBIndexOptions *) (relation)->rd_options)->typeNameValueOffset : ("_doc"))
 
 #define ZDBIndexOptionsGetRefreshInterval(relation) \
     ((relation)->rd_options && ((ZDBIndexOptions *) (relation)->rd_options)->refreshIntervalOffset > 0 ? \

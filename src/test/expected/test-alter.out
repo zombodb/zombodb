@@ -19,7 +19,7 @@ ERROR:  The 'type_name' index properly can only be set during CREATE INDEX
 ALTER INDEX idxevents SET (uuid = 'foo');
 ERROR:  The 'uuid' index property cannot be changed
 ALTER TABLE events ADD COLUMN foo2 text;
-SELECT (zdb.index_mapping('idxevents')->'mappings'->'doc'->'properties'->'foo2')::jsonb;
+SELECT (zdb.index_mapping('idxevents')->'mappings'->'properties'->'foo2')::jsonb;
                                           jsonb                                          
 -----------------------------------------------------------------------------------------
  {"type": "text", "copy_to": ["zdb_all"], "analyzer": "zdb_standard", "fielddata": true}

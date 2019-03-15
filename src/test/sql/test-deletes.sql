@@ -25,7 +25,7 @@ SELECT zdb.count('idxevents', match_all());
 VACUUM events;
 
 -- shouldn't have any aborted xids now
-SELECT (zdb.request('idxevents', 'doc/zdb.aborted_xids?pretty')::jsonb)->'_source'->'zdb.aborted_xids';
+SELECT (zdb.request('idxevents', '_doc/zdb.aborted_xids?pretty')::jsonb)->'_source'->'zdb.aborted_xids';
 
 -- MVCC count should match raw count
 --   NB:  zdb.raw_count() always returns 1 more doc than we expect because of the 'zdb.aborted_xids' doc

@@ -985,8 +985,8 @@ void zdb_aminit(void) {
 	RELOPT_KIND_ZDB = add_reloption_kind();
 	add_string_reloption(RELOPT_KIND_ZDB, "url", "Server URL and port", "default", validate_url);
 	add_string_reloption(RELOPT_KIND_ZDB, "type_name",
-						 "What Elasticsearch index type name should ZDB use?  Default is 'doc'",
-						 "doc", validate_type_name);
+						 "What Elasticsearch index type name should ZDB use?  Default is '_doc'",
+						 "_doc", validate_type_name);
 	add_string_reloption(RELOPT_KIND_ZDB, "refresh_interval",
 						 "Frequency in which Elasticsearch indexes are refreshed.  Related to ES' index.refresh_interval setting",
 						 "-1", validate_refresh_interval);

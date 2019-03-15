@@ -142,7 +142,7 @@ char *ElasticsearchCreateIndex(Relation heapRel, Relation indexRel, TupleDesc tu
 							   "      }"
 							   "   },"
 							   "   \"mappings\": {"
-							   "      \"%s\": { "
+//							   "      \"%s\": { "
 							   "         \"_source\": { \"enabled\": true },"
 							   "         \"dynamic_templates\": ["
 							   "              {"
@@ -167,9 +167,9 @@ char *ElasticsearchCreateIndex(Relation heapRel, Relation indexRel, TupleDesc tu
 							   "                  }"
 							   "              }"
 							   "         ],"
-							   "         \"_all\": {\"enabled\":false},"
+//							   "         \"_all\": {\"enabled\":false},"
 							   "         \"properties\": { %s}"
-							   "      }"
+//							   "      }"
 							   "   },"
 							   "   \"aliases\": {"
 							   "      \"%s\": {}"
@@ -181,7 +181,7 @@ char *ElasticsearchCreateIndex(Relation heapRel, Relation indexRel, TupleDesc tu
 					 lookup_analysis_thing(CurrentMemoryContext, "tokenizers"),
 					 lookup_analysis_thing(CurrentMemoryContext, "analyzers"),
 					 lookup_analysis_thing(CurrentMemoryContext, "normalizers"),
-					 ZDBIndexOptionsGetTypeName(indexRel),
+//					 ZDBIndexOptionsGetTypeName(indexRel),
 					 mapping->data,
 					 aliasName);
 
@@ -293,7 +293,7 @@ void ElasticsearchPutMapping(Relation heapRel, Relation indexRel, TupleDesc tupd
 							   "}",
 					 mapping->data);
 
-	appendStringInfo(request, "%s%s/_mapping/doc", ZDBIndexOptionsGetUrl(indexRel),
+	appendStringInfo(request, "%s%s/_mapping", ZDBIndexOptionsGetUrl(indexRel),
 					 ZDBIndexOptionsGetIndexName(indexRel));
 	response = rest_call("PUT", request, settings, ZDBIndexOptionsGetCompressionLevel(indexRel));
 
@@ -352,7 +352,7 @@ static inline void mark_transaction_in_progress(ElasticsearchBulkContext *contex
 	uint64 xid = convert_xid(curr_xid);
 
 	appendStringInfo(context->current->buff,
-					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"_retry_on_conflict\":128}}\n");
+					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"retry_on_conflict\":128}}\n");
 	appendStringInfo(context->current->buff,
 					 "{\"upsert\":{\"zdb_aborted_xids\":[%lu]},"
 					 "\"script\":{\"source\":\"ctx._source.zdb_aborted_xids.add(params.XID);\",\"lang\":\"painless\",\"params\":{\"XID\":%lu}}}\n",
@@ -492,10 +492,10 @@ void ElasticsearchBulkUpdateTuple(ElasticsearchBulkContext *context, ItemPointer
 	bulk_prologue(context, false);
 
 	if (ctid != NULL) {
-		appendStringInfo(context->current->buff, "{\"update\":{\"_id\":\"%lu\",\"_retry_on_conflict\":1}}\n",
+		appendStringInfo(context->current->buff, "{\"update\":{\"_id\":\"%lu\",\"retry_on_conflict\":1}}\n",
 						 ItemPointerToUint64(ctid));
 	} else {
-		appendStringInfo(context->current->buff, "{\"update\":{\"_id\":\"%s\",\"_retry_on_conflict\":1}}\n", llapi_id);
+		appendStringInfo(context->current->buff, "{\"update\":{\"_id\":\"%s\",\"retry_on_conflict\":1}}\n", llapi_id);
 	}
 	appendStringInfo(context->current->buff,
 					 "{\"script\":{\"source\":\""
@@ -510,7 +510,7 @@ void ElasticsearchBulkUpdateTuple(ElasticsearchBulkContext *context, ItemPointer
 void ElasticsearchBulkVacuumXmax(ElasticsearchBulkContext *context, char *_id, uint64 expected_xmax) {
 	bulk_prologue(context, false);
 
-	appendStringInfo(context->current->buff, "{\"update\":{\"_id\":\"%s\",\"_retry_on_conflict\":0}}\n", _id);
+	appendStringInfo(context->current->buff, "{\"update\":{\"_id\":\"%s\",\"retry_on_conflict\":0}}\n", _id);
 	appendStringInfo(context->current->buff,
 					 "{\"script\":{\"source\":\""
 					 "if (ctx._source.zdb_xmax != params.EXPECTED_XMAX) {"
@@ -568,7 +568,7 @@ static void mark_transaction_committed(ElasticsearchBulkContext *context, Transa
 	uint64 xid = convert_xid(which_xid);
 
 	appendStringInfo(context->current->buff,
-					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"_retry_on_conflict\":128}}\n");
+					 "{\"update\":{\"_id\":\"zdb_aborted_xids\",\"retry_on_conflict\":128}}\n");
 	appendStringInfo(context->current->buff, ""
 											 "{"
 											 "\"script\":{"
@@ -726,7 +726,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	bool                       needScore;
 	uint64                     offset;
 	double                     min_score;
-	void                       *jsonResponse, *hitsObject;
+	void                       *jsonResponse, *hitsObject, *totalObject;
 	char                       *error;
 	int                        i;
 
@@ -800,6 +800,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 						errmsg("%s", response->data)));
 
 	hitsObject = get_json_object_object(jsonResponse, "hits", false);
+    totalObject = get_json_object_object(hitsObject, "total", false);
 
 	context->url              = ZDBIndexOptionsGetUrl(indexRel);
 	context->compressionLevel = ZDBIndexOptionsGetCompressionLevel(indexRel);
@@ -809,9 +810,10 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	context->hasHighlights = highlights != NULL;
 	context->cnt           = 0;
 	context->currpos       = 0;
-	context->total         =
-			limit > 0 ? Min(limit, get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(
-					hitsObject, "total", false);
+    context->total =
+            limit > 0 ?
+            Min(limit, get_json_object_uint64(totalObject, "value", false)) :
+            get_json_object_uint64(totalObject, "value", false);
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;
 
@@ -947,8 +949,21 @@ start_over:
 }
 
 void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext) {
+    StringInfo request = makeStringInfo();
+    StringInfo postData = makeStringInfo();
+    StringInfo response;
+
+    appendStringInfo(request, "%s_search/scroll", scrollContext->url);
+    appendStringInfo(postData, "{\"scroll_id\":\"%s\"}", scrollContext->scrollId);
+
+    response = rest_call("DELETE", request, postData, scrollContext->compressionLevel);
+
+
 	MemoryContextDelete(scrollContext->jsonMemoryContext);
 	pfree(scrollContext);
+	freeStringInfo(request);
+	freeStringInfo(postData);
+	freeStringInfo(response);
 }
 
 void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *xids) {
