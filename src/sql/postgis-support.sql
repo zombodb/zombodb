@@ -17,19 +17,17 @@ BEGIN
           $$;',
       geojson_namespace, geojson_namespace, geojson_namespace, geojson_namespace);
 
-    -- casts
-    EXECUTE format('CREATE CAST (%I.geometry AS json) WITH FUNCTION zdb.geometry_to_json;', geojson_namespace);
-    EXECUTE format('CREATE CAST (%I.geography AS json) WITH FUNCTION zdb.geography_to_json;', geojson_namespace);
-
     -- zdb type mappings
     EXECUTE format($$ SELECT zdb.define_type_mapping('%I.geometry'::regtype,  '{"type":"geo_shape"}'); $$, geojson_namespace);
     EXECUTE format($$ SELECT zdb.define_type_mapping('%I.geography'::regtype, '{"type":"geo_shape"}'); $$, geojson_namespace);
 
+    -- zdb type conversions
+    EXECUTE format($$ SELECT zdb.define_type_conversion('%I.geometry'::regtype, 'zdb.geometry_to_json'::regproc); $$, geojson_namespace);
+    EXECUTE format($$ SELECT zdb.define_type_conversion('%I.geography'::regtype, 'zdb.geography_to_json'::regproc); $$, geojson_namespace);
+
     IF during_create_extension = false THEN
       EXECUTE 'ALTER EXTENSION zombodb ADD FUNCTION zdb.geometry_to_json';
       EXECUTE 'ALTER EXTENSION zombodb ADD FUNCTION zdb.geography_to_json';
-      EXECUTE format('ALTER EXTENSION zombodb ADD CAST (%I.geometry AS json)', geojson_namespace);
-      EXECUTE format('ALTER EXTENSION zombodb ADD CAST (%I.geography AS json)', geojson_namespace);
     END IF;
 
   END IF;
@@ -46,22 +44,4 @@ DO LANGUAGE plpgsql $$
       PERFORM zdb.enable_postgis_support(true);
     END IF;
   END;
-$$;
-
-
-
-/*
-"geo_shape": {
-    "location": {
-        "shape": {
-            "type": "envelope",
-            "coordinates" : [[13.0, 53.0], [14.0, 52.0]]
-        },
-        "relation": "within"
-    }
-}
-*/
-CREATE TYPE dsl.es_geo_shape_relation AS ENUM ('INTERSECTS', 'DISJOINT', 'WITHIN', 'CONTAINS');
-CREATE OR REPLACE FUNCTION dsl.geo_shape(field text, geojson_shape json, relation dsl.es_geo_shape_relation) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
-  SELECT json_build_object('geo_shape', json_build_object(field, json_build_object('shape', geojson_shape, 'relation', relation)))::zdbquery;
 $$;

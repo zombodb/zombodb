@@ -335,6 +335,15 @@ ElasticsearchBulkContext *ElasticsearchStartBulkProcess(Relation indexRel, char 
 	context->waitForActiveShards = false;
 
 	if (tupdesc != NULL) {
+	    /*
+	     * hold onto a copy of the tuple descriptor for the index definition
+	     * along with an array of json conversion functions.
+	     *
+	     * These are used per-row, when we convert them to json for indexing
+	     */
+		context->tupdesc         = CreateTupleDescCopy(tupdesc);
+		context->jsonConversions = build_json_conversions(tupdesc);
+
 		/*
 		 * look for fields of type ::json in the tuple and note the existence
 		 *
@@ -428,15 +437,15 @@ static inline void bulk_epilogue(ElasticsearchBulkContext *context) {
 	context->ntotal++;
 }
 
-void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerData *ctid, text *json, CommandId cmin, CommandId cmax, uint64 xmin, uint64 xmax) {
-	text *possible_copy;
+void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerData *ctid, StringInfo json,
+								CommandId cmin, CommandId cmax, uint64 xmin, uint64 xmax) {
 	int  len;
 	char *as_string;
 
 	bulk_prologue(context, false);
 
-	/* convert the input json text into a c-string */
-	as_string = text_to_cstring_maybe_no_copy(json, &len, &possible_copy);
+	as_string = json->data;
+	len       = json->len;
 
 	/*
 	 * ES' _bulk endpoint requires that the document json be on a single line.
@@ -479,10 +488,6 @@ void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerDa
 		appendStringInfo(context->current->buff, ",\"zdb_xmax\":%lu", xmax);
 
 	appendStringInfo(context->current->buff, "}\n");
-
-	if (possible_copy != json)
-		pfree(possible_copy);
-	pfree(json);
 
 	context->nindex++;
 	bulk_epilogue(context);

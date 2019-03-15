@@ -282,6 +282,11 @@ INSERT INTO type_mappings(type_name, definition, is_default) VALUES (
     "search_analyzer": "fulltext_with_shingles_search"
   }', true);
 
+INSERT INTO type_mappings(type_name, definition, is_default) VALUES (
+  'point', '{
+    "type": "geo_point"
+  }', true);
+
 CREATE DOMAIN arabic AS text;
 CREATE DOMAIN armenian AS text;
 CREATE DOMAIN basque AS text;

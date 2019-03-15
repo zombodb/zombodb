@@ -19,6 +19,7 @@
 
 #include "zombodb.h"
 #include "json/json_support.h"
+#include "json/type_conversion.h"
 #include "rest/curl_support.h"
 #include "utils/jsonb.h"
 
@@ -36,6 +37,8 @@ typedef struct ElasticsearchBulkContext {
 	bool           waitForActiveShards;
 	bool           containsJson;
 	bool           containsJsonIsSet;
+	TupleDesc      tupdesc;
+	JsonConversion **jsonConversions;
 	bool           shouldRefresh;
 	bool           ignoreVersionConflicts;
 	MultiRestState *rest;
@@ -87,7 +90,8 @@ void ElasticsearchUpdateSettings(Relation indexRel, char *oldAlias, char *newAli
 void ElasticsearchPutMapping(Relation heapRel, Relation indexRel, TupleDesc tupdesc);
 
 ElasticsearchBulkContext *ElasticsearchStartBulkProcess(Relation indexRel, char *indexName, TupleDesc tupdesc, bool ignore_version_conflicts);
-void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerData *ctid, text *json, CommandId cmin, CommandId cmax, uint64 xmin, uint64 xmax);
+void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerData *ctid, StringInfo json,
+								CommandId cmin, CommandId cmax, uint64 xmin, uint64 xmax);
 void ElasticsearchBulkUpdateTuple(ElasticsearchBulkContext *context, ItemPointer ctid, char *llapi_id, CommandId cmax, uint64 xmax);
 void ElasticsearchBulkVacuumXmax(ElasticsearchBulkContext *context, char *_id, uint64 expected_xmax);
 void ElasticsearchBulkDeleteRowByXmin(ElasticsearchBulkContext *context, char *_id, uint64 xmin);

@@ -2,6 +2,7 @@ src/sql/bootstrap.sql
 src/sql/support-functions.sql
 src/sql/zdbquerytype.sql
 src/sql/am-api.sql
+src/sql/json-conversion-support.sql
 src/sql/query-dsl.sql
 src/sql/tablesamplers.sql
 src/sql/join-support.sql
