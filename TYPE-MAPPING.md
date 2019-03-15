@@ -30,8 +30,8 @@ Postgres Type | Elasticsearch JSON Mapping Definition
  `point`                       | `{"type": "geo_point"}`
  `zdb.fulltext`                | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard"}`
  `zdb.fulltext_with_shingles`  | `{"type": "text", "copy_to": "zdb_all", "analyzer": "fulltext_with_shingles", "search_analyzer": "fulltext_with_shingles_search"}`
- `geography` (from postgis)    | `{"type": "geo_shape"}
- `geometry` (from postgis)     | `{"type": "geo_shape"}
+ `geography` (from postgis)    | `{"type": "geo_shape"}`
+ `geometry` (from postgis)     | `{"type": "geo_shape"}`
 Some things to note from the above:
 
 - Columns of type `character varying (varchar)` are **not** analyzed by Elasticsearch.  They're indexed as whole values, but are converted to lowercase
