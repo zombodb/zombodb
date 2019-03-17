@@ -947,7 +947,19 @@ start_over:
 }
 
 void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext) {
-	MemoryContextDelete(scrollContext->jsonMemoryContext);
+    StringInfo request = makeStringInfo();
+    StringInfo postData = makeStringInfo();
+    StringInfo response;
+
+    appendStringInfo(request, "%s_search/scroll", scrollContext->url);
+    appendStringInfo(postData, "{\"scroll_id\":\"%s\"}", scrollContext->scrollId);
+
+    response = rest_call("DELETE", request, postData, scrollContext->compressionLevel);
+
+    freeStringInfo(response);
+    freeStringInfo(postData);
+    freeStringInfo(request);
+    MemoryContextDelete(scrollContext->jsonMemoryContext);
 	pfree(scrollContext);
 }
 
