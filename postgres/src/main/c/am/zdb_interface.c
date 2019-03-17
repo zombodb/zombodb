@@ -61,6 +61,7 @@ static void wrapper_createNewIndex(ZDBIndexDescriptor *indexDescriptor, int shar
 static void wrapper_finalizeNewIndex(ZDBIndexDescriptor *indexDescriptor);
 static void wrapper_updateMapping(ZDBIndexDescriptor *indexDescriptor, char *mapping);
 static char *wrapper_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
+static char *wrapper_dumpQueryTree(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 static char *wrapper_profileQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery);
 
 static void wrapper_dropIndex(ZDBIndexDescriptor *indexDescriptor);
@@ -295,6 +296,7 @@ ZDBIndexDescriptor *zdb_alloc_index_descriptor(Relation indexRel) {
     desc->implementation->finalizeNewIndex        = wrapper_finalizeNewIndex;
     desc->implementation->updateMapping           = wrapper_updateMapping;
     desc->implementation->dumpQuery               = wrapper_dumpQuery;
+    desc->implementation->dumpQueryTree           = wrapper_dumpQueryTree;
     desc->implementation->profileQuery            = wrapper_profileQuery;
     desc->implementation->dropIndex               = wrapper_dropIndex;
     desc->implementation->actualIndexRecordCount  = wrapper_actualIndexRecordCount;
@@ -415,6 +417,16 @@ static char *wrapper_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQu
     char          *jsonQuery;
 
     jsonQuery = elasticsearch_dumpQuery(indexDescriptor, userQuery);
+
+    MemoryContextSwitchTo(oldContext);
+    return jsonQuery;
+}
+
+static char *wrapper_dumpQueryTree(ZDBIndexDescriptor *indexDescriptor, char *userQuery) {
+    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    char          *jsonQuery;
+
+    jsonQuery = elasticsearch_dumpQueryTree(indexDescriptor, userQuery);
 
     MemoryContextSwitchTo(oldContext);
     return jsonQuery;

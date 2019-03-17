@@ -387,6 +387,40 @@ thai
 > (1 row)
 > ```
 
+#### `FUNCTION zdb_dump_query_tree(table_name regclass, query text) RETURNS text`
+
+> `table_name`:  The name of a table with a ZomboDB index  
+> `query`: a full text query
+>
+> returns the Abstract Syntax Tree that ZonboDB generates for a query.  This can be useful for debugging complex queries
+> to understand how ZomboDB structures the query.
+>
+> Exampe:
+> ```sql
+>select zdb_dump_query_tree('documents', 'NOT (other_data.other_name = Bob)');
+>                                       zdb_dump_query_tree                                       
+> -------------------------------------------------------------------------------------------------
+> QueryTree                                                                                      +
+>    Options                                                                                     +
+>       other_data:(fk_doc_to_other=<other.public.other.idxother>pk_other)                       +
+>          LeftField (value=fk_doc_to_other)                                                     +
+>          IndexName (value=other.public.other.idxother)                                         +
+>          RightField (value=pk_other)                                                           +
+>    Visibility                                                                                  +
+>       Number (value=0)                                                                         +
+>       Number (value=67602)                                                                     +
+>       Number (value=67602)                                                                     +
+>       Number (value=0)                                                                         +
+>    Not                                                                                         +
+>       Expansion                                                                                +
+>          other_data:(fk_doc_to_other=<other.public.other.idxother>pk_other)                    +
+>             LeftField (value=fk_doc_to_other)                                                  +
+>             IndexName (value=other.public.other.idxother)                                      +
+>             RightField (value=pk_other)                                                        +
+>          Word (fieldname=other_name, operator=EQ, value=bob, index=other.public.other.idxother)+
+> 
+>(1 row)
+> ```
 
 #### `FUNCTION zdb_profile_query(table_name regclass, query text) RETURNS text`
 

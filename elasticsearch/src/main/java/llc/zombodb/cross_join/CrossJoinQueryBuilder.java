@@ -15,7 +15,14 @@
  */
 package llc.zombodb.cross_join;
 
-import llc.zombodb.fast_terms.FastTermsResponse;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
 import org.apache.lucene.search.Query;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -29,11 +36,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryShardContext;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import llc.zombodb.fast_terms.FastTermsResponse;
 
 public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBuilder> {
     public static final String NAME = "cross_join";
@@ -144,6 +147,22 @@ public class CrossJoinQueryBuilder extends AbstractQueryBuilder<CrossJoinQueryBu
             stats.put("data_type", fastTerms.getDataType().name());
             stats.put("estimated_byte_size", fastTerms.estimateByteSize());
             stats.put("execution_time", TimeValue.timeValueMillis(fastTermsExecutionTime).getSecondsFrac() + "s");
+            switch (fastTerms.getDataType()) {
+                case INT:
+                case LONG:
+                    try {
+                        stats.put("values", fastTerms.getNumbers().toArray());
+                    } catch (IllegalStateException ise) {
+                        stats.put("values", fastTerms.getNumbers().toString());
+                    }
+                    break;
+                case STRING:
+                    List<String> values = Arrays.asList(fastTerms.getSortedStrings());
+                    stats.put("values", values.subList(0, Math.min(5000, values.size())));
+                    break;
+                case NONE:
+                    break;
+            }
             builder.field("fast_terms", stats);
         }
         builder.endObject();

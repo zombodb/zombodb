@@ -55,7 +55,7 @@ public class ZomboDBCountAction extends BaseRestHandler {
             BytesRestResponse response;
             QueryAndIndexPair query;
 
-            query = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, false, false);
+            query = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, false, false, false);
             if (query.hasLimit() && isSelectivityQuery) {
                 count = query.getLimit().getLimit();
             } else {

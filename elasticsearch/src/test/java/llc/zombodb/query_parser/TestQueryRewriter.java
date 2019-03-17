@@ -6106,5 +6106,27 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "  }\n" +
                         "}");
     }
+
+    @Test
+    public void testIssue354_DontPushDownNotIntoExpansion() throws Exception {
+        assertAST("NOT (field:value)",
+                "QueryTree\n" +
+                        "   Not\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         Word (fieldname=field, operator=CONTAINS, value=value, index=db.schema.table.index)"
+        );
+
+        assertAST("NOT (field:value AND field2:value AND field3:value)",
+                "QueryTree\n" +
+                        "   Not\n" +
+                        "      Expansion\n" +
+                        "         id=<db.schema.table.index>id\n" +
+                        "         And\n" +
+                        "            Word (fieldname=field, operator=CONTAINS, value=value, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=field2, operator=CONTAINS, value=value, index=db.schema.table.index)\n" +
+                        "            Word (fieldname=field3, operator=CONTAINS, value=value, index=db.schema.table.index)"
+        );
+    }
 }
 

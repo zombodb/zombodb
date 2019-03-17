@@ -472,6 +472,25 @@ char *elasticsearch_dumpQuery(ZDBIndexDescriptor *indexDescriptor, char *userQue
     return response->data;
 }
 
+char *elasticsearch_dumpQueryTree(ZDBIndexDescriptor *indexDescriptor, char *userQuery) {
+    StringInfo query;
+    StringInfo endpoint           = makeStringInfo();
+    StringInfo response;
+    bool       useInvisibilityMap = strstr(userQuery, "#subselect") != NULL || strstr(userQuery, "#limit") != NULL || strstr(userQuery, "#options") != NULL || strstr(userQuery, "#expand") != NULL || indexDescriptor->options != NULL;
+
+    appendStringInfo(endpoint, "%s%s/_zdbquery?tree=true", indexDescriptor->url, indexDescriptor->fullyQualifiedName);
+    if (indexDescriptor->searchPreference != NULL)
+        appendStringInfo(endpoint, "&preference=%s", indexDescriptor->searchPreference);
+
+    query    = buildQuery(indexDescriptor, &userQuery, 1, useInvisibilityMap);
+    response = rest_call("POST", endpoint->data, query, indexDescriptor->compressionLevel);
+
+    freeStringInfo(query);
+    freeStringInfo(endpoint);
+
+    return response->data;
+}
+
 char *elasticsearch_profileQuery(ZDBIndexDescriptor *indexDescriptor, char *userQuery) {
     StringInfo query;
     StringInfo endpoint           = makeStringInfo();

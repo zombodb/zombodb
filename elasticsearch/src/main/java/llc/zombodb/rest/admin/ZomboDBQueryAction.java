@@ -47,9 +47,10 @@ public class ZomboDBQueryAction extends BaseRestHandler {
         String index = request.param("index");
         String preference = request.param("preference");
         boolean profile = request.paramAsBoolean("profile", false);
+        boolean tree = request.paramAsBoolean("tree", false);
 
         try {
-            QueryAndIndexPair queryAndIndex = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, true, true, false);
+            QueryAndIndexPair queryAndIndex = ZomboDBTIDResponseAction.buildJsonQueryFromRequestContent(client, request, false, true, false, tree);
 
             if (profile) {
                 return channel -> SearchAction.INSTANCE.newRequestBuilder(client)
@@ -59,6 +60,8 @@ public class ZomboDBQueryAction extends BaseRestHandler {
                         .setSize(0)
                         .setPreference(preference)
                         .setQuery(queryAndIndex.getQueryBuilder()).execute(new RestStatusToXContentListener<>(channel));
+            } else if (tree) {
+                return channel -> channel.sendResponse(new BytesRestResponse(RestStatus.OK, "text/plain", queryAndIndex.getDump()));
             } else {
                 XContentBuilder builder = XContentBuilder.builder(JsonXContent.jsonXContent).prettyPrint();
                 queryAndIndex.getQueryBuilder().toXContent(builder, null);

@@ -125,7 +125,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
 
         try {
             parseStart = System.nanoTime();
-            query = buildJsonQueryFromRequestContent(client, request, false, false, wantScores);
+            query = buildJsonQueryFromRequestContent(client, request, false, false, wantScores, false);
             parseEnd = System.nanoTime();
 
             if (!wantScores && !query.hasLimit()) {
@@ -202,7 +202,7 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
         }
     }
 
-    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel, boolean wantScores) {
+    public static QueryAndIndexPair buildJsonQueryFromRequestContent(Client client, RestRequest request, boolean canDoSingleIndex, boolean needVisibilityOnTopLevel, boolean wantScores, boolean wantDump) {
         String queryString = request.content().utf8ToString();
         String indexName = request.param("index");
 
@@ -212,9 +212,9 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 // TODO:  should we use 'preference' in FastTerms and/or CrossJoin somehow?
                 String preference = request.param("preference");
                 QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel, wantScores);
-                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit(), qr.wantScores());
+                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit(), qr.wantScores(), wantDump ? qr.dumpAsString() : null);
             } else {
-                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null, wantScores);
+                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null, wantScores, null);
             }
         } catch (Exception e) {
             throw new RuntimeException(queryString, e);

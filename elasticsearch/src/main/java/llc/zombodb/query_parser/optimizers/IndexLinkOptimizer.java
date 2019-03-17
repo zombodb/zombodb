@@ -107,6 +107,14 @@ public class IndexLinkOptimizer {
         if (root == null)
             return;
 
+        // push children of ASTNot nodes down so that the
+        // ASTNot stays above the expansion we're going to generate
+        if (root instanceof ASTNot) {
+            for (QueryParserNode child : root)
+                injectASTExpansionNodes(child);
+            return;
+        }
+
         while (root instanceof ASTExpansion) {
             if (((ASTExpansion) root).isSubselect())
                 return;

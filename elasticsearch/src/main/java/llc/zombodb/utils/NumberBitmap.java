@@ -118,4 +118,13 @@ public class NumberBitmap implements Streamable {
     public void merge(NumberBitmap bitmap) {
         longs.or(bitmap.longs);
     }
+
+    @Override
+    public String toString() {
+        return longs.toString();
+    }
+
+    public long[] toArray() {
+        return longs.toArray();
+    }
 }

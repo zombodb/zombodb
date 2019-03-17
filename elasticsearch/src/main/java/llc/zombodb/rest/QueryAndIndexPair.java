@@ -24,13 +24,15 @@ public class QueryAndIndexPair {
     private final String indexName;
     private final ASTLimit limit;
     private final boolean wantScores;
+    private final String dump;
 
-    public QueryAndIndexPair(QueryBuilder query, QueryBuilder visibilityFilter, String indexName, ASTLimit limit, boolean wantScores) {
+    public QueryAndIndexPair(QueryBuilder query, QueryBuilder visibilityFilter, String indexName, ASTLimit limit, boolean wantScores, String dump) {
         this.query = query;
         this.visibilityFilter = visibilityFilter;
         this.indexName = indexName;
         this.limit = limit;
         this.wantScores = wantScores;
+        this.dump = dump;
     }
 
     public QueryBuilder getQueryBuilder() {
@@ -55,5 +57,9 @@ public class QueryAndIndexPair {
 
     public boolean wantScores() {
         return wantScores;
+    }
+
+    public String getDump() {
+        return dump;
     }
 }
