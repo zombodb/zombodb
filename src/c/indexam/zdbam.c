@@ -31,6 +31,7 @@
 #include "catalog/pg_collation.h"
 #include "catalog/pg_trigger.h"
 #include "catalog/toasting.h"
+#include "commands/dbcommands.h"
 #include "commands/event_trigger.h"
 #include "commands/tablecmds.h"
 #include "commands/trigger.h"
@@ -640,6 +641,38 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 
 						foreach(lc, drop->objects) {
 							switch (drop->removeType) {
+								case OBJECT_EXTENSION: {
+									ObjectAddress address;
+									Node          *object = lfirst(lc);
+									Relation      rel     = NULL;
+									List          *names  = NULL, *args = NULL;
+									char          *tmp;
+
+									/* Get an ObjectAddress for the object. */
+									address = get_object_address(drop->removeType, object, &rel, AccessExclusiveLock,
+																 drop->missing_ok);
+
+									if (address.objectId == InvalidOid) {
+										/* the object doesn't exist, so there's nothing we need to do */
+										break;
+									}
+
+									tmp = getObjectIdentityParts(&address, &names, &args);
+									pfree(tmp);
+
+                                    if (names != NIL) {
+                                        char *extname = (char *) lfirst(list_head(names));
+                                        if (strcmp("zombodb", extname) == 0) {
+                                        	/* reset 'session_preload_libraries' that we set when zombodb was created */
+                                            SPI_connect();
+                                            SPI_exec(psprintf("ALTER DATABASE %s RESET session_preload_libraries",
+                                                              get_database_name(MyDatabaseId)), 1);
+                                            SPI_finish();
+                                        }
+                                    }
+
+								} break;
+
 								case OBJECT_TABLE:
 								case OBJECT_MATVIEW:
 								case OBJECT_INDEX:
