@@ -44,4 +44,13 @@
 #endif
 
 
+#ifndef PG_GETARG_JSONB_P
+#define PG_GETARG_JSONB_P PG_GETARG_JSONB
+#endif
+
+#ifndef JsonbPGetDatum
+#define JsonbPGetDatum JsonbGetDatum
+#endif
+
+
 #endif /* __ZDB_ZDB__H__ */
