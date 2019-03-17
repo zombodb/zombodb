@@ -778,9 +778,10 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	}
 
 	appendStringInfo(request,
-					 "%s%s/%s/_search?_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
+					 "%s%s/%s/_search?search_type=%s&_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
 					 ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel),
 					 ZDBIndexOptionsGetTypeName(indexRel),
+					 needScore ? "dfs_query_then_fetch" : "query_then_fetch",
 					 limit == 0 ? MAX_DOCS_PER_REQUEST : Min(MAX_DOCS_PER_REQUEST, limit + offset),
 					 ES_SEARCH_RESPONSE_FILTER,
 					 highlights ? "type" : use_id ? "_id" : "_none_",

@@ -67,8 +67,8 @@ FROM (
      ) x;
                   id                  |      name       |        categories        | row_number 
 --------------------------------------+-----------------+--------------------------+------------
- 096393d7-8139-442d-9582-be9f396ef407 | Côté Soleil     | {French,Coffee,European} |          1
- 18c9b26b-9885-4725-b00e-9dddd7ba8d8f | TJ Asian Bistro | {Sushi,Asian,Japanese}   |          2
+ 18c9b26b-9885-4725-b00e-9dddd7ba8d8f | TJ Asian Bistro | {Sushi,Asian,Japanese}   |          1
+ 096393d7-8139-442d-9582-be9f396ef407 | Côté Soleil     | {French,Coffee,European} |          2
 (2 rows)
 
 VACUUM restaurants_restaurant;
