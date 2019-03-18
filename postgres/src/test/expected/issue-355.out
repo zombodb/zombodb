@@ -4,11 +4,10 @@ CREATE TABLE issue355 (
    label phrase,
    description fulltext
 );
-ERROR:  relation "issue355" already exists
-CREATE INDEX idxtest ON issue355 USING zombodb(zdb('issue355', ctid), zdb(issue355)) WITH (field_lists='name=[name, label, description]', url='localhost:9200/');
-ERROR:  relation "idxtest" already exists
-SELECT * FROM zdb_tally('test', 'name', '^.*', '', 10, 'count');
+CREATE INDEX idxissue355 ON issue355 USING zombodb(zdb('issue355', ctid), zdb(issue355)) WITH (field_lists='name=[name, label, description]', url='localhost:9200/');
+SELECT * FROM zdb_tally('issue355', 'name', '^.*', '', 10, 'count');
  term | count 
 ------+-------
 (0 rows)
 
+DROP TABLE issue355;
