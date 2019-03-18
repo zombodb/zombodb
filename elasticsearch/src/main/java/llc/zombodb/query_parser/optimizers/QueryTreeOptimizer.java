@@ -75,7 +75,7 @@ public class QueryTreeOptimizer {
             return;
 
         for (QueryParserNode child : root) {
-            if (child instanceof ASTFieldLists)
+            if (child instanceof ASTFieldLists || child instanceof ASTAggregate || child instanceof ASTSuggest)
                 continue;
 
             String fieldname = child.getFieldname();
