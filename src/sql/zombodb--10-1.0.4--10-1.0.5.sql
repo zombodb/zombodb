@@ -1,8 +1,8 @@
 --
 -- mapping.sql
 --
-INSERT INTO type_mappings(type_name, definition, is_default)
-VALUES ('point', '{
+INSERT INTO type_mappings(type_name, definition, is_default) VALUES (
+'point', '{
     "type": "geo_point"
 }', true);
 
@@ -21,38 +21,29 @@ CREATE TABLE zdb.type_conversions
 
 SELECT pg_catalog.pg_extension_config_dump('type_conversions', 'WHERE NOT is_default');
 
-CREATE OR REPLACE FUNCTION zdb.define_type_conversion(typeoid regtype, funcoid regproc) RETURNS void
-  VOLATILE STRICT LANGUAGE sql AS
+CREATE OR REPLACE FUNCTION zdb.define_type_conversion(typeoid regtype, funcoid regproc) RETURNS void VOLATILE STRICT LANGUAGE sql AS
 $$
-DELETE
-FROM zdb.type_conversions
-WHERE typeoid = $1;
-INSERT INTO zdb.type_conversions(typeoid, funcoid)
-VALUES ($1, $2);
+  DELETE FROM zdb.type_conversions WHERE typeoid = $1; INSERT INTO zdb.type_conversions(typeoid, funcoid) VALUES ($1, $2);
 $$;
 
+GRANT ALL ON zdb.type_conversions TO PUBLIC;
 
 --
 -- custom type conversions for some built-in postgres types
 --
 
-CREATE OR REPLACE FUNCTION zdb.point_to_json(point) RETURNS json
-  PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS
+CREATE OR REPLACE FUNCTION zdb.point_to_json(point) RETURNS json PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS
 $$
-SELECT to_json(ARRAY [$1 [ 0], $1 [ 1]]);
+  SELECT to_json(ARRAY [$1 [ 0], $1 [ 1]]);
 $$;
 
-CREATE OR REPLACE FUNCTION zdb.point_array_to_json(point[]) RETURNS json
-  PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS
+CREATE OR REPLACE FUNCTION zdb.point_array_to_json(point[]) RETURNS json PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS
 $$
-SELECT json_agg(zdb.point_to_json(points))
-FROM unnest($1) AS points;
+  SELECT json_agg(zdb.point_to_json(points)) FROM unnest($1) AS points;
 $$;
 
-INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default)
-VALUES ('point'::regtype, 'zdb.point_to_json'::regproc, true);
-INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default)
-VALUES ('point[]'::regtype, 'zdb.point_array_to_json'::regproc, true);
+INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default) VALUES ('point'::regtype, 'zdb.point_to_json'::regproc, true);
+INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default) VALUES ('point[]'::regtype, 'zdb.point_array_to_json'::regproc, true);
 
 
 
@@ -106,7 +97,7 @@ DO LANGUAGE plpgsql $$
       PERFORM zdb.enable_postgis_support(true);
     END IF;
   END;
-  $$;
+$$;
 
 
 

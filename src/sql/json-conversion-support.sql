@@ -11,6 +11,8 @@ CREATE OR REPLACE FUNCTION zdb.define_type_conversion(typeoid regtype, funcoid r
   INSERT INTO zdb.type_conversions(typeoid, funcoid) VALUES ($1, $2);
 $$;
 
+GRANT ALL ON zdb.type_conversions TO PUBLIC;
+
 
 --
 -- custom type conversions for some built-in postgres types
