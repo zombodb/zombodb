@@ -27,14 +27,17 @@ Postgres Type | Elasticsearch JSON Mapping Definition
  `json`                        | `{"type": "nested", "include_in_parent": true}`
  `jsonb`                       | `{"type": "nested", "include_in_parent": true}`
  `inet`                        | `{"type": "ip", "copy_to": "zdb_all"}`
+ `point`                       | `{"type": "geo_point"}`
  `zdb.fulltext`                | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard"}`
  `zdb.fulltext_with_shingles`  | `{"type": "text", "copy_to": "zdb_all", "analyzer": "fulltext_with_shingles", "search_analyzer": "fulltext_with_shingles_search"}`
-
+ `geography` (from postgis)    | `{"type": "geo_shape"}`
+ `geometry` (from postgis)     | `{"type": "geo_shape"}`
 Some things to note from the above:
 
 - Columns of type `character varying (varchar)` are **not** analyzed by Elasticsearch.  They're indexed as whole values, but are converted to lowercase
 - Columns of type `text` **are** analyzed by Elasticsearch using its `standard` analyzer, and the individual terms are converted to lowercase
-- Columns of type `json/jsonb` are mapped to Elasticsearch's `nested` object with a dynamic template that treats "string" properties as if they're of type `character varying` (ie, unanalyzed exact, lowercased values), and treats "date" properties as if they're dates, accepting a wide range of date formats.
+- Columns of type `json/jsonb` are mapped to Elasticsearch's `nested` object with a dynamic template that treats "string" properties as if they're of type `character varying` (ie, unanalyzed exact, lowercased values), and treats "date" properties as if they're dates, accepting a wide range of date formats
+- Columns of type `geometry` and `geography` are automatically converted to GeoJson at index time and translated to CRS `4326`
 
 In all cases above, arrays of Postgres types are fully supported.
 
@@ -286,3 +289,63 @@ SELECT * FROM zdb.analyze_custom(
 In short, ZomboDB disables Elasticsearch's `_all` field and instead configures its own field named `zdb_all`.  By default, all non-numeric field types are added to the `zdb_all` field.
 
 ZomboDB does this to maintain compatability between Elasticsearch 5 and Elasticsearch 6, where [ES 6 deprecates the `_all` field](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-all-field.html).
+
+# Custom JSON Conversion
+
+In general ZomboDB uses the equivalent of Postgres' `to_json()` function to convert individual columns to JSON when indexing.  
+However, ZomboDB does provide the ability to provide custom json conversion functions for any data type, and it installs
+custom conversion functions for Postgres' `point` type along with PostGIS' `geometry` and `geography` types.
+
+```sql
+FUNCTION zdb.define_type_conversion(
+  typeoid regtype, 
+  funcoid regproc) 
+RETURNS void
+```
+
+If you have a custom datatype that you need to convert to json, you need to make a conversion function that takes a
+single argument that is the type you wish to convert and returns json.  Then you'll call this function to associate
+your type with your conversion function.
+
+You'll also need to define a custom type mapping using `zdb.define_type_mapping()` (see above).
+
+An example might be:
+
+```sql
+CREATE TYPE example AS (
+  title varchar(255),
+  description text
+);
+
+-- custom json conversion function
+CREATE OR REPLACE FUNCTION example_type_to_json(example) RETURNS json IMMUTABLE STRICT LANGUAGE sql AS $$
+  SELECT json_build_object('title', $1.title, 'description', $1.description);
+$$;
+
+-- associate the type with the custom json conversion function
+SELECT zdb.define_type_conversion('example'::regtype, 'example_type_to_json'::regproc);
+
+-- define a type mapping for 'example'
+SELECT zdb.define_type_mapping('example'::regtype, '{"type":"nested"}');
+```
+
+Now you can create a table using that type and create a ZomboDB index on it:
+
+```sql
+CREATE TABLE test (
+  id serial8 NOT NULL PRIMARY KEY,
+  data example
+);
+
+CREATE INDEX idxtest ON test USING zombodb ((test.*));
+
+INSERT INTO test (data) VALUES (('this is the title', 'this is the description'));
+
+SELECT * FROM test WHERE test ==> dsl.nested('data', dsl.term('data.title', 'this is the title'));
+ id |                      data                       
+----+-------------------------------------------------
+  1 | ("this is the title","this is the description")
+(1 row)
+
+```
+

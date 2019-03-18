@@ -347,3 +347,17 @@ CREATE OR REPLACE FUNCTION dsl.query_string(
                                 minimum_should_match, lenient, time_zone, quote_field_suffix,
                                 auto_generate_synonyms_phrase_query, all_fields)::dsl.esqdsl_query_string))::zdbquery;
 $$;
+
+CREATE TYPE dsl.es_geo_shape_relation AS ENUM ('INTERSECTS', 'DISJOINT', 'WITHIN', 'CONTAINS');
+CREATE OR REPLACE FUNCTION dsl.geo_shape(field text, geojson_shape json, relation dsl.es_geo_shape_relation) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+  SELECT json_build_object('geo_shape', json_build_object(field, json_build_object('shape', geojson_shape, 'relation', relation)))::zdbquery;
+$$;
+
+CREATE TYPE dsl.es_geo_bounding_box_type AS ENUM ('indexed', 'memory');
+CREATE OR REPLACE FUNCTION dsl.geo_bounding_box(field text, box box, type dsl.es_geo_bounding_box_type DEFAULT 'memory') RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+  SELECT json_build_object('geo_bounding_box', json_build_object('type', type, field, json_build_object('left', (box[0])[0], 'top', (box[0])[1], 'right', (box[1])[0], 'bottom', (box[1])[1])))::zdbquery;
+$$;
+
+CREATE OR REPLACE FUNCTION dsl.geo_polygon(field text, VARIADIC points point[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+  SELECT json_build_object('geo_polygon', json_build_object(field, json_build_object('points', zdb.point_array_to_json(points))))::zdbquery;
+$$;

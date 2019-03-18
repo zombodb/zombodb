@@ -204,6 +204,7 @@ StringInfo generate_mapping(Relation heapRel, TupleDesc tupdesc) {
         Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
 		Oid               typeOid = get_base_type_oid(attr->atttypid);
 		TypeCacheEntry    *cacheEntry;
+		char *typename;
 
 		/* skip dropped attributes */
 		if (attr->attisdropped)
@@ -221,6 +222,8 @@ StringInfo generate_mapping(Relation heapRel, TupleDesc tupdesc) {
 		/* figure out what to do based on heuristics regarding DOMAINs that map to analyzer names */
 		appendStringInfo(mapping, ", \"%s\": {", NameStr(attr->attname));
 		cacheEntry = lookup_type_cache(attr->atttypid, 0);
+
+		typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(attr->atttypid)));
 		if (cacheEntry->typtype == 'd') {
 			/*
 			 * it's a domain type, so we set it to a type of text or keyword
@@ -229,7 +232,6 @@ StringInfo generate_mapping(Relation heapRel, TupleDesc tupdesc) {
 			 * we also assign an analyzer (for text) or normalizer (for keyword) that is the same name as the domain
 			 * type itself
 			 */
-			char *typename = DatumGetCString(DirectFunctionCall1(regtypeout, Int32GetDatum(attr->atttypid)));
 			Oid  base_type = InvalidOid;
 
 			type_is_domain(typename, &base_type);
@@ -263,6 +265,7 @@ StringInfo generate_mapping(Relation heapRel, TupleDesc tupdesc) {
 			}
 		} else {
 			/* it's a type that we don't have built-in knowledge on how to map, so treat it as a 'keyword' */
+			elog(NOTICE, "[zombodb] unrecognized data type '%s', mapping to 'keyword'", typename);
 			appendStringInfo(mapping, "\"type\":\"keyword\","
 									  "\"ignore_above\": 10922,"
 									  "\"normalizer\":\"lowercase\"");

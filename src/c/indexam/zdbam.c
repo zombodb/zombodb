@@ -908,6 +908,17 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 		context = lfirst(lc);
 		if (context->indexRelid == RelationGetRelid(indexRelation)) {
 
+		    /*
+		     * If we don't have a tupledesc set in the context, do
+		     * that now by copying the one for this row.
+		     */
+		    if (!isnull && context->esContext->tupdesc == NULL) {
+                tupdesc = lookup_composite_tupdesc(row);
+                context->esContext->tupdesc         = CreateTupleDescCopy(tupdesc);
+                context->esContext->jsonConversions = build_json_conversions(context->esContext->tupdesc);
+                ReleaseTupleDesc(tupdesc);
+		    }
+
 			/*
 			 * we need to check to see if the TupleDesc that describes
 			 * what we're indexing contains a column of type ::json
@@ -1291,19 +1302,20 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 }
 
 static void index_record(ElasticsearchBulkContext *esContext, MemoryContext scratchContext, ItemPointer ctid, Datum record, HeapTuple htup) {
-	MemoryContext oldContext;
-	text          *json;
-	CommandId     cmin;
-	CommandId     cmax;
-	uint64        xmin;
-	uint64        xmax;
+	MemoryContext  oldContext;
+	StringInfoData json;
+	CommandId      cmin;
+	CommandId      cmax;
+	uint64         xmin;
+	uint64         xmax;
 
 	/*
 	 * create the json form of the input record in the specified MemoryContext
 	 * and then switch back to whatever the current context is
 	 */
 	oldContext = MemoryContextSwitchTo(scratchContext);
-	json       = DatumGetTextP(DirectFunctionCall1(row_to_json, record));
+	initStringInfo(&json);
+	zdb_row_to_json(&json, record, esContext->tupdesc, esContext->jsonConversions);
 	MemoryContextSwitchTo(oldContext);
 
 	if (htup == NULL) {
@@ -1323,7 +1335,7 @@ static void index_record(ElasticsearchBulkContext *esContext, MemoryContext scra
 	}
 
 	/* add the row to Elasticsearch */
-	ElasticsearchBulkInsertRow(esContext, ctid, json, cmin, cmax, xmin, xmax);
+	ElasticsearchBulkInsertRow(esContext, ctid, &json, cmin, cmax, xmin, xmax);
 
 	/*
 	 * and now that we've used the json value, free the MemoryContext in which it was allocated.

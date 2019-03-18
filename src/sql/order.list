@@ -2,6 +2,7 @@ src/sql/bootstrap.sql
 src/sql/support-functions.sql
 src/sql/zdbquerytype.sql
 src/sql/am-api.sql
+src/sql/json-conversion-support.sql
 src/sql/query-dsl.sql
 src/sql/tablesamplers.sql
 src/sql/join-support.sql
@@ -14,3 +15,4 @@ src/sql/cat-api.sql
 src/sql/mapping.sql
 src/sql/llapi.sql
 src/sql/support-views.sql
+src/sql/postgis-support.sql
