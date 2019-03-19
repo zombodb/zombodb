@@ -34,6 +34,7 @@
 
 #define ES_BULK_RESPONSE_FILTER "errors,items.*.error"
 #define ES_SEARCH_RESPONSE_FILTER "_scroll_id,_shards.failed,hits.total,hits.hits.fields.*,hits.hits._id,hits.hits._score,hits.hits.highlight.*"
+#define ES_SEARCH_RESPONSE_FILTER_NO_SCORE "_scroll_id,_shards.failed,hits.total,hits.hits.fields.*,hits.hits._id,hits.hits.highlight.*"
 
 #define validate_alias(indexRel) \
     do { \
@@ -41,6 +42,7 @@
             elog(ERROR, "index '%s' doesn't have an alias", RelationGetRelationName((indexRel))); \
     } while(0)
 
+extern bool zdb_ignore_visibility_guc;
 
 static PostDataEntry *checkout_batch_pool(ElasticsearchBulkContext *context) {
 	int i;
@@ -788,7 +790,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 					 ZDBIndexOptionsGetTypeName(indexRel),
 					 needScore ? "dfs_query_then_fetch" : "query_then_fetch",
 					 limit == 0 ? MAX_DOCS_PER_REQUEST : Min(MAX_DOCS_PER_REQUEST, limit + offset),
-					 ES_SEARCH_RESPONSE_FILTER,
+					 needScore ? ES_SEARCH_RESPONSE_FILTER : ES_SEARCH_RESPONSE_FILTER_NO_SCORE,
 					 highlights ? "type" : use_id ? "_id" : "_none_",
 					 docvalueFields->data);
 
@@ -820,6 +822,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 					hitsObject, "total", false);
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;
+	context->needScore     = needScore;
 
 	if (offset < context->total) {
 		context->hits  = get_json_object_array(hitsObject, "hits", false);
@@ -873,7 +876,9 @@ start_over:
 		char       *error;
 
 		appendStringInfo(postData, "{\"scroll\":\"10m\",\"scroll_id\":\"%s\"}", context->scrollId);
-		appendStringInfo(request, "%s_search/scroll?filter_path=%s", context->url, ES_SEARCH_RESPONSE_FILTER);
+		appendStringInfo(request, "%s_search/scroll?filter_path=%s", context->url,
+		        context->needScore ? ES_SEARCH_RESPONSE_FILTER : ES_SEARCH_RESPONSE_FILTER_NO_SCORE
+        );
 		response = rest_call("POST", request, postData, context->compressionLevel);
 
 		/* make sure we don't leak the hits json from the previous request */
@@ -888,11 +893,25 @@ start_over:
 							errmsg("%s", response->data)));
 
 		hitsObject = get_json_object_object(jsonResponse, "hits", false);
-
 		context->scrollId = get_json_object_string(jsonResponse, "_scroll_id", false);
 		context->currpos  = 0;
-		context->hits     = get_json_object_array(hitsObject, "hits", false);
-		context->nhits    = context->hits == NULL ? 0 : get_json_array_length(context->hits);
+		context->hits     = get_json_object_array(hitsObject, "hits", true);
+		if (context->hits == NULL) {
+            if (zdb_ignore_visibility_guc) {
+                /*
+                 * we asked to ignore visibility so we have to assume that since ES
+                 * thinks we have no more hits that we're actually done
+                 */
+                return false;
+            } else if (zdb_ignore_visibility_guc == false) {
+                /* we were expecting more hits but ES didn't give us any */
+                ereport(ERROR,
+                        (errcode(ERRCODE_INTERNAL_ERROR),
+                                errmsg("results underflow.  Expecting more hits but didn't get any")));
+            }
+        }
+
+        context->nhits    = context->hits == NULL ? 0 : get_json_array_length(context->hits);
 
 		freeStringInfo(request);
 		freeStringInfo(response);

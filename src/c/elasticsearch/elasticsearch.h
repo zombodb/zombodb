@@ -63,6 +63,7 @@ typedef struct ElasticsearchScrollContext {
 	bool          usingId;    /* is this scroll using _id instead of zdb_id? */
 	const char    *scrollId;
 	bool          hasHighlights;
+	bool          needScore;
 	uint64        total;      /* total number of hits across all scroll context's */
 	uint64        cnt;        /* how many have we examined so far? */
 	int           nhits;      /* total number of hits in this scroll context */
