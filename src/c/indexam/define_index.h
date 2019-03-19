@@ -7,6 +7,7 @@
 
 #include "postgres.h"
 #include "catalog/objectaddress.h"
+#include "zombodb.h"
 
 ObjectAddress
 zdbDefineIndex(Oid relationId,

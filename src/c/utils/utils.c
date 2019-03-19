@@ -351,9 +351,9 @@ Oid create_trigger(char *zombodbNamespace, char *schemaname, char *relname, Oid 
 	tgstmt->initdeferred = false;
 	tgstmt->constrrel    = NULL;
 
-#if (PG_VERSION_NUM < 110000)
+#if (IS_PG_10)
 	triggerOid = CreateTrigger(tgstmt, NULL, relid, InvalidOid, InvalidOid, InvalidOid, true /* tgisinternal */);
-#else
+#elif (IS_PG_11)
 	triggerOid = CreateTrigger(tgstmt, NULL, relid, InvalidOid, InvalidOid, InvalidOid, InvalidOid, InvalidOid, NULL, true /* tgisinternal */, false);
 #endif
 
@@ -390,9 +390,9 @@ TupleDesc extract_tuple_desc_from_index_expressions(IndexInfo *indexInfo) {
 	TupleDesc tupdesc = NULL;
 	Node *expression;
 
-#if (PG_VERSION_NUM < 110000)
+#if (IS_PG_10)
 	if (indexInfo->ii_KeyAttrNumbers[0] != SelfItemPointerAttributeNumber) {
-#else
+#elif (IS_PG_11)
 	if (indexInfo->ii_IndexAttrNumbers[0] != SelfItemPointerAttributeNumber) {
 #endif
 		return NULL;

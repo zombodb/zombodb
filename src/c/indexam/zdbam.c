@@ -105,9 +105,9 @@ static void apply_alter_statement(PlannedStmt *parsetree, char *url, uint32 shar
 static Relation open_relation_from_parsetree(PlannedStmt *parsetree, LOCKMODE lockmode, bool *is_index);
 static void get_immutable_index_options(PlannedStmt *parsetree, char **url, uint32 *shards, char **typeName, char **alias, char **uuid);
 
-#if (PG_VERSION_NUM < 110000)
+#if (IS_PG_10)
 #define STRING_VALIDATOR_SIGNATURE char *
-#else
+#elif (IS_PG_11)
 #define STRING_VALIDATOR_SIGNATURE const char *
 #endif
 
@@ -816,10 +816,10 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 							}
 
 							if (stmt->concurrent) {
-#if (PG_VERSION_NUM < 110000)
+#if (IS_PG_10)
 								PreventTransactionChain(context == PROCESS_UTILITY_TOPLEVEL,
 														"CREATE INDEX CONCURRENTLY");
-#else
+#elif (IS_PG_11)
 								PreventInTransactionBlock(context == PROCESS_UTILITY_TOPLEVEL,
 														  "CREATE INDEX CONCURRENTLY");
 
@@ -841,7 +841,7 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 									RangeVarGetRelidExtended(stmt->relation, lockmode,
 															 false, false,
 															 RangeVarCallbackOwnsRelation
-#if (PG_VERSION_NUM < 110000)
+#if (IS_PG_10)
 															 , NULL
 #endif
 															 );
@@ -1185,9 +1185,9 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	/*
 	 * Now we insert data into our index
 	 */
-#if (PG_VERSION_NUM < 110000)
+#if (IS_PG_10)
 	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, false, zdbbuildCallback, &buildstate);
-#else
+#elif (IS_PG_11)
 	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, false, zdbbuildCallback, &buildstate, NULL);
 #endif
 	ElasticsearchFinishBulkProcess(buildstate.esContext, true);

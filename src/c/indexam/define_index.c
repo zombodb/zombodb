@@ -16,7 +16,7 @@
 
 #include "define_index.h"
 
-#if (PG_VERSION_NUM < 110000)
+#if (IS_PG_10)
 ObjectAddress
 pgDefineIndex(Oid relationId,
             IndexStmt *stmt,
@@ -27,7 +27,7 @@ pgDefineIndex(Oid relationId,
             bool skip_build,
             bool quiet);
 #include "indexam/indexcmds_pg10.c.inc"
-#else
+#elif (IS_PG_11)
 ObjectAddress
 pgDefineIndex(Oid relationId,
               IndexStmt *stmt,
@@ -56,12 +56,12 @@ zdbDefineIndex(Oid relationId,
                bool quiet)
 {
 
-#if (PG_VERSION_NUM < 110000)
+#if (IS_PG_10)
     return pgDefineIndex(relationId, stmt, indexRelationId, is_alter_table, check_rights, check_not_in_use, skip_build, quiet);
     /* appease compiler */
     (void) parentIndexId;
     (void) parentConstraintId;
-#else
+#elif (IS_PG_11)
     return pgDefineIndex(relationId, stmt, indexRelationId, parentIndexId, parentConstraintId, is_alter_table,
             check_rights, check_not_in_use, skip_build, quiet);
 #endif
