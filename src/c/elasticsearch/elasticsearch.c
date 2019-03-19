@@ -755,7 +755,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	if (sortJson != NULL) {
 		appendStringInfo(postData, "\"sort\":%s,", sortJson);
 	} else {
-		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "_doc",
+		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "zdb_ctid",
 						 needScore ? "desc" : "asc");
 	}
 	appendStringInfo(postData, "\"query\":%s", queryDSL);
