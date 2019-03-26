@@ -29,6 +29,17 @@ $$;
 GRANT ALL ON zdb.type_conversions TO PUBLIC;
 
 --
+-- mapping.sql changes
+--
+ALTER TABLE zdb.type_mappings ADD COLUMN funcid regproc DEFAULT null;
+ALTER TABLE zdb.type_mappings ALTER COLUMN definition DROP NOT NULL;
+CREATE OR REPLACE FUNCTION define_type_mapping(type_name regtype, funcid regproc) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
+  DELETE FROM zdb.type_mappings WHERE type_name = $1;
+  INSERT INTO zdb.type_mappings(type_name, funcid) VALUES ($1, $2);
+$$;
+
+
+--
 -- custom type conversions for some built-in postgres types
 --
 
@@ -66,18 +77,30 @@ BEGIN
     RAISE WARNING '[zombodb] Installing support for PostGIS';
 
     -- casting functions
-    EXECUTE format('create or replace function zdb.geometry_to_json(%I.geometry) returns json parallel safe immutable strict language sql as $$
-          select %I.st_asgeojson(%I.st_transform($1, 4326))::json;
+    EXECUTE format('create or replace function zdb.geometry_to_json(%I.geometry, typmod integer DEFAULT -1) returns json parallel safe immutable strict language sql as $$
+          SELECT CASE WHEN %I.postgis_typmod_type($2) = ''Point'' THEN
+                    zdb.point_to_json(%I.st_transform($1, 4326)::point)::json
+                 ELSE
+                    %I.st_asgeojson(%I.st_transform($1, 4326))::json
+                 END
           $$;',
-                   geojson_namespace, geojson_namespace, geojson_namespace);
-    EXECUTE format('create or replace function zdb.geography_to_json(%I.geography) returns json parallel safe immutable strict language sql as $$
-          select %I.st_asgeojson(%I.st_transform($1::%I.geometry, 4326))::json;
+                   geojson_namespace, geojson_namespace, geojson_namespace, geojson_namespace, geojson_namespace);
+    EXECUTE format('create or replace function zdb.geography_to_json(%I.geography, typmod integer DEFAULT -1) returns json parallel safe immutable strict language sql as $$
+          select zdb.geometry_to_json($1::%I.geometry, $2);
           $$;',
-                   geojson_namespace, geojson_namespace, geojson_namespace, geojson_namespace);
+                   geojson_namespace, geojson_namespace);
+
+    EXECUTE format('create or replace function zdb.postgis_type_mapping_func(datatype regtype, typmod integer) returns jsonb parallel safe immutable strict language sql as $$
+          SELECT CASE WHEN %I.postgis_typmod_type($2) = ''Point'' THEN
+                    ''{"type":"geo_point"}''::jsonb
+                 ELSE
+                    ''{"type":"geo_shape"}''::jsonb
+                 END
+          $$;', geojson_namespace);
 
     -- zdb type mappings
-    EXECUTE format($$ SELECT zdb.define_type_mapping('%I.geometry'::regtype,  '{"type":"geo_shape"}'); $$, geojson_namespace);
-    EXECUTE format($$ SELECT zdb.define_type_mapping('%I.geography'::regtype, '{"type":"geo_shape"}'); $$, geojson_namespace);
+    EXECUTE format($$ SELECT zdb.define_type_mapping('%I.geometry'::regtype,  'zdb.postgis_type_mapping_func'::regproc); $$, geojson_namespace);
+    EXECUTE format($$ SELECT zdb.define_type_mapping('%I.geography'::regtype, 'zdb.postgis_type_mapping_func'::regproc); $$, geojson_namespace);
 
     -- zdb type conversions
     EXECUTE format($$ SELECT zdb.define_type_conversion('%I.geometry'::regtype, 'zdb.geometry_to_json'::regproc); $$, geojson_namespace);

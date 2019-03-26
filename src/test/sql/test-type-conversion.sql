@@ -12,7 +12,7 @@ $$;
 SELECT zdb.define_type_conversion('example'::regtype, 'example_type_to_json'::regproc);
 
 -- define a type mapping for 'example'
-SELECT zdb.define_type_mapping('example'::regtype, '{"type":"nested"}');
+SELECT zdb.define_type_mapping('example'::regtype, '{"type":"nested"}'::json);
 
 CREATE TABLE test (
   id serial8 NOT NULL PRIMARY KEY,

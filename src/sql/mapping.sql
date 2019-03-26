@@ -40,8 +40,9 @@ CREATE TABLE mappings (
 
 CREATE TABLE type_mappings (
     type_name regtype NOT NULL PRIMARY KEY,
-    definition jsonb NOT NULL,
-    is_default boolean DEFAULT false NOT NULL
+    definition jsonb DEFAULT NULL,
+    is_default boolean DEFAULT false NOT NULL,
+    funcid regproc DEFAULT null
 );
 
 CREATE TABLE tokenizers (
@@ -90,6 +91,11 @@ $$;
 CREATE OR REPLACE FUNCTION define_type_mapping(type_name regtype, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
   DELETE FROM zdb.type_mappings WHERE type_name = $1;
   INSERT INTO zdb.type_mappings(type_name, definition) VALUES ($1, $2);
+$$;
+
+CREATE OR REPLACE FUNCTION define_type_mapping(type_name regtype, funcid regproc) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
+  DELETE FROM zdb.type_mappings WHERE type_name = $1;
+  INSERT INTO zdb.type_mappings(type_name, funcid) VALUES ($1, $2);
 $$;
 
 CREATE OR REPLACE FUNCTION define_tokenizer(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$

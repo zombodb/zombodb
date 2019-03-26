@@ -14,3 +14,4 @@ If ZomboDB was able to detect the PostGIS extension, the above will return `true
 - Queries using ZDB's `dsl.geo_shape()` function need to be in CRS `4326`
 - The `CONTAINS` shape relationship has been removed from Elasticsearch 6.6
 - Postgres' `point` type is automatically mapped to the Elasticsearch `geo_point` type and can be queried with `dsl.geo_bounding_box()` and `dsl.geo_polygon()` queries
+- Columns defined as `geometry(Point, x)` or `geography(Point, x)` are automatically mapped to the Elasticsearch `geo_point` type and can be queried with `dsl.geo_bounding_box()` and `dsl.geo_polygon()` queries

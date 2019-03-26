@@ -14,7 +14,7 @@ SELECT zdb.define_type_conversion('example'::regtype, 'example_type_to_json'::re
 (1 row)
 
 -- define a type mapping for 'example'
-SELECT zdb.define_type_mapping('example'::regtype, '{"type":"nested"}');
+SELECT zdb.define_type_mapping('example'::regtype, '{"type":"nested"}'::json);
  define_type_mapping 
 ---------------------
  

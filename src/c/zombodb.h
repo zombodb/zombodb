@@ -52,6 +52,10 @@
 #define JsonbPGetDatum JsonbGetDatum
 #endif
 
+#ifndef DatumGetJsonbP
+#define DatumGetJsonbP(d)	((Jsonb *) PG_DETOAST_DATUM(d))
+#endif
+
 #define IS_PG_10 (PG_VERSION_NUM >= 100000 && PG_VERSION_NUM < 110000)
 #define IS_PG_11 (PG_VERSION_NUM >= 110000 && PG_VERSION_NUM < 120000)
 

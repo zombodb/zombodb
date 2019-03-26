@@ -128,7 +128,7 @@ void zdb_row_to_json(StringInfo json, Datum row, TupleDesc tupdesc, JsonConversi
                                  &tcategory, &outfuncoid);
             datum_to_json(val, isnull, json, tcategory, outfuncoid, false);
         } else {
-            Datum conv = OidFunctionCall1(conversions[i]->funcoid, val);
+            Datum conv = OidFunctionCall2(conversions[i]->funcoid, val, Int32GetDatum(att->atttypmod));
             appendStringInfoString(json, TextDatumGetCString(conv));
         }
     }

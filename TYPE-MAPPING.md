@@ -10,35 +10,36 @@ These are the default mappings:
 
 Postgres Type | Elasticsearch JSON Mapping Definition                                                            
 --- | ---
- `bytea`                       | `{"type": "binary"}`
- `boolean`                     | `{"type": "boolean"}`
- `smallint`                    | `{"type": "short"}`
- `integer`                     | `{"type": "integer"}`
- `bigint`                      | `{"type": "long"}`
- `real`                        | `{"type": "float"}`
- `double precision`            | `{"type": "double"}`
- `character varying`           | `{"type": "keyword", "copy_to": "zdb_all", "normalizer": "lowercase", "ignore_above": 10922}`
- `text`                        | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard", "fielddata": true}`
- `time without time zone`      | `{"type": "date", "format": "HH:mm:ss.SSSSSS", "copy_to": "zdb_all"}`
- `time with time zone`         | `{"type": "date", "format": "HH:mm:ss.SSSSSSZZ", "copy_to": "zdb_all"}`
- `date`                        | `{"type": "date", "copy_to": "zdb_all"}`
- `timestamp without time zone` | `{"type": "date", "copy_to": "zdb_all"}`
- `timestamp with time zone`    | `{"type": "date", "copy_to": "zdb_all"}`
- `json`                        | `{"type": "nested", "include_in_parent": true}`
- `jsonb`                       | `{"type": "nested", "include_in_parent": true}`
- `inet`                        | `{"type": "ip", "copy_to": "zdb_all"}`
- `point`                       | `{"type": "geo_point"}`
- `zdb.fulltext`                | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard"}`
- `zdb.fulltext_with_shingles`  | `{"type": "text", "copy_to": "zdb_all", "analyzer": "fulltext_with_shingles", "search_analyzer": "fulltext_with_shingles_search"}`
- `geography` (from postgis)    | `{"type": "geo_shape"}`
- `geometry` (from postgis)     | `{"type": "geo_shape"}`
+ `bytea`                                 | `{"type": "binary"}`
+ `boolean`                               | `{"type": "boolean"}`
+ `smallint`                              | `{"type": "short"}`
+ `integer`                               | `{"type": "integer"}`
+ `bigint`                                | `{"type": "long"}`
+ `real`                                  | `{"type": "float"}`
+ `double precision`                      | `{"type": "double"}`
+ `character varying`                     | `{"type": "keyword", "copy_to": "zdb_all", "normalizer": "lowercase", "ignore_above": 10922}`
+ `text`                                  | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard", "fielddata": true}`
+ `time without time zone`                | `{"type": "date", "format": "HH:mm:ss.SSSSSS", "copy_to": "zdb_all"}`
+ `time with time zone`                   | `{"type": "date", "format": "HH:mm:ss.SSSSSSZZ", "copy_to": "zdb_all"}`
+ `date`                                  | `{"type": "date", "copy_to": "zdb_all"}`
+ `timestamp without time zone`           | `{"type": "date", "copy_to": "zdb_all"}`
+ `timestamp with time zone`              | `{"type": "date", "copy_to": "zdb_all"}`
+ `json`                                  | `{"type": "nested", "include_in_parent": true}`
+ `jsonb`                                 | `{"type": "nested", "include_in_parent": true}`
+ `inet`                                  | `{"type": "ip", "copy_to": "zdb_all"}`
+ `point`                                 | `{"type": "geo_point"}`
+ `zdb.fulltext`                          | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard"}`
+ `zdb.fulltext_with_shingles`            | `{"type": "text", "copy_to": "zdb_all", "analyzer": "fulltext_with_shingles", "search_analyzer": "fulltext_with_shingles_search"}`
+ `geography` (from postgis)              | `{"type": "geo_shape"}`
+ `geometry` (from postgis)               | `{"type": "geo_shape"}`
+ `geography(Point, x)` (from postgis)    | `{"type": "geo_point"}`
+ `geometry(Point, x)` (from postgis)     | `{"type": "geo_point"}`
 Some things to note from the above:
 
 - Columns of type `character varying (varchar)` are **not** analyzed by Elasticsearch.  They're indexed as whole values, but are converted to lowercase
 - Columns of type `text` **are** analyzed by Elasticsearch using its `standard` analyzer, and the individual terms are converted to lowercase
 - Columns of type `json/jsonb` are mapped to Elasticsearch's `nested` object with a dynamic template that treats "string" properties as if they're of type `character varying` (ie, unanalyzed exact, lowercased values), and treats "date" properties as if they're dates, accepting a wide range of date formats
 - Columns of type `geometry` and `geography` are automatically converted to GeoJson at index time and translated to CRS `4326`
-
 In all cases above, arrays of Postgres types are fully supported.
 
 ## ZomboDB's Custom DOMAIN types
@@ -121,6 +122,19 @@ FUNCTION zdb.define_type_mapping(type_name regtype, definition json)
 ```
 
 If you need to define a type mapping for a Postgres datatype that isn't included in ZomboDB's defaults (`citext`, for example), this is the function to use.
+
+```sql
+FUNCTION zdb.define_type_mapping(type_name regtype, funcid regproc)
+```
+
+If you need to define a type mapping for a Postgres datatype that isn't included in ZomboDB's defaults and if doing so
+requires looking at the `typmod` value as it's defined for the column being indexed, use this function.
+
+The first argument is the type name (as a `regtype`) and the second argument is the `regproc` oid of the function ZDB
+should call to generate the mapping.
+
+That function should take two arguments, the first being of type `regtype` and the second being an integer that is the
+`typmod` value.
 
 ## Field-Specific Mapping Functions
 
