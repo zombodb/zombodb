@@ -304,6 +304,5 @@ StringInfo generate_mapping(Relation heapRel, TupleDesc tupdesc) {
 		appendStringInfo(mapping, "}");
 	}
 
-	elog(NOTICE, "%s", mapping->data);
 	return mapping;
 }
