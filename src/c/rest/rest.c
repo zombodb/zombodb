@@ -168,7 +168,6 @@ void rest_multi_call(MultiRestState *state, char *method, StringInfo url, PostDa
 			curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
 			curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 			curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
-			curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 			curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
 			curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorbuff);
 
@@ -199,7 +198,6 @@ void rest_multi_call(MultiRestState *state, char *method, StringInfo url, PostDa
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, state->headers[i]);
 			curl_easy_setopt(curl, CURLOPT_POST,
 							 strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
-			curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
 			curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
 
 			curl_multi_add_handle(state->multi_handle, curl);
