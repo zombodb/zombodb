@@ -199,7 +199,6 @@ void rest_multi_call(MultiRestState *state, char *method, StringInfo url, PostDa
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, state->headers[i]);
 			curl_easy_setopt(curl, CURLOPT_POST,
 							 strcmp(method, "GET") != 0 && postData && postData->buff->data ? 1 : 0);
-			curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
 			curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
 
 			curl_multi_add_handle(state->multi_handle, curl);
