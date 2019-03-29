@@ -818,7 +818,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	context->cnt           = 0;
 	context->currpos       = 0;
 	context->total         =
-			limit > 0 ? Min(limit, get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(
+			limit > 0 ? Min(limit + offset, get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(
 					hitsObject, "total", false);
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;

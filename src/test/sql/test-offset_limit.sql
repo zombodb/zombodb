@@ -1,0 +1,1 @@
+SELECT id FROM events WHERE events ==> dsl.sort('id', 'asc', dsl.offset(10, dsl.limit(10, dsl.match_all())));
