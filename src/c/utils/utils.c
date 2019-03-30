@@ -70,21 +70,18 @@ Oid get_base_type_oid(Oid typeOid) {
 }
 
 /*
- * Given a composite Datum, return its TupleDescriptor
- * which will need to be released by the caller
+ * Given a ZomboDB index Relation, determine the TupleDescriptor
+ * we need to use
  */
-TupleDesc lookup_composite_tupdesc(Datum composite) {
-	HeapTupleHeader td;
-	Oid             tupType;
-	int32           tupTypmod;
+TupleDesc lookup_index_tupdesc(Relation indexRelation) {
+    TupleDesc tupdesc = RelationGetDescr(indexRelation);
+    Form_pg_attribute attr;
 
-	td = DatumGetHeapTupleHeader(composite);
+    if (tupdesc->natts != 2)
+        elog(ERROR, "TupleDesc for index '%s' has incorrect number of attributes", RelationGetRelationName(indexRelation));
 
-	/* Extract rowtype info and find a tupdesc */
-	tupType   = HeapTupleHeaderGetTypeId(td);
-	tupTypmod = HeapTupleHeaderGetTypMod(td);
-
-	return lookup_rowtype_tupdesc(tupType, tupTypmod);
+    attr = TupleDescAttr(tupdesc, 1);
+	return lookup_rowtype_tupdesc(attr->atttypid, attr->atttypmod);
 }
 
 bool tuple_desc_contains_json(TupleDesc tupdesc) {
@@ -98,15 +95,6 @@ bool tuple_desc_contains_json(TupleDesc tupdesc) {
 	}
 
 	return false;
-}
-
-bool datum_contains_json(Datum composite) {
-	TupleDesc tupdesc = lookup_composite_tupdesc(composite);
-	bool      rc;
-
-	rc = tuple_desc_contains_json(tupdesc);
-	ReleaseTupleDesc(tupdesc);
-	return rc;
 }
 
 /*

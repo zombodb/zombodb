@@ -898,10 +898,10 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 	}
 }
 
-ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row, bool isnull) {
+ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation) {
 	ListCell              *lc;
 	ZDBIndexChangeContext *context;
-	TupleDesc             tupdesc = NULL;
+	TupleDesc             tupdesc;
 
 	/* see if we already have an IndexChangeContext for this index */
 	foreach (lc, insert_contexts) {
@@ -912,8 +912,8 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 		     * If we don't have a tupledesc set in the context, do
 		     * that now by copying the one for this row.
 		     */
-		    if (!isnull && context->esContext->tupdesc == NULL) {
-                tupdesc = lookup_composite_tupdesc(row);
+		    if (context->esContext->tupdesc == NULL) {
+                tupdesc = lookup_index_tupdesc(indexRelation);
                 context->esContext->tupdesc         = CreateTupleDescCopy(tupdesc);
                 context->esContext->jsonConversions = build_json_conversions(context->esContext->tupdesc);
                 ReleaseTupleDesc(tupdesc);
@@ -928,8 +928,8 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 			 * triggers, and then got here again via an INSERT (or UPDATE) when
 			 * we actually know the Datum being indexed
 			 */
-			if (!isnull && !context->esContext->containsJsonIsSet) {
-				context->esContext->containsJson      = datum_contains_json(row);
+			if (!context->esContext->containsJsonIsSet) {
+				context->esContext->containsJson      = tuple_desc_contains_json(context->esContext->tupdesc);
 				context->esContext->containsJsonIsSet = true;
 			}
 
@@ -941,8 +941,7 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 	 * we don't so lets create one and return it
 	 */
 
-	if (!isnull)
-		tupdesc = lookup_composite_tupdesc(row);
+    tupdesc = lookup_index_tupdesc(indexRelation);
 
 	context = palloc(sizeof(ZDBIndexChangeContext));
 	context->indexRelid = RelationGetRelid(indexRelation);
@@ -953,8 +952,7 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 
 	insert_contexts = lappend(insert_contexts, context);
 
-	if (tupdesc != NULL)
-		ReleaseTupleDesc(tupdesc);
+    ReleaseTupleDesc(tupdesc);
 
 	return context;
 }
@@ -1293,7 +1291,7 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 	 */
 	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
-	insertContext = checkout_insert_context(indexRelation, values[1], isnull[1]);
+	insertContext = checkout_insert_context(indexRelation);
 
 	index_record(insertContext->esContext, insertContext->scratch, heap_tid, values[1], NULL);
 	MemoryContextSwitchTo(oldContext);
@@ -1876,7 +1874,7 @@ static void handle_trigger(Oid indexRelId, ItemPointer targetCtid) {
 	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	indexRel   = RelationIdGetRelation(indexRelId);
 
-	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
+	context = checkout_insert_context(indexRel);
 
 	ElasticsearchBulkUpdateTuple(context->esContext, targetCtid, NULL, GetCurrentCommandId(true),
 								 convert_xid(GetCurrentTransactionId()));

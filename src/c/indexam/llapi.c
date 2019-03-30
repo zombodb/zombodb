@@ -41,7 +41,7 @@ Datum llapi_direct_insert(PG_FUNCTION_ARGS) {
 
 	initStringInfo(&json);
 	appendStringInfoString(&json, TextDatumGetCString(jsonArg));
-	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
+	context = checkout_insert_context(indexRel);
 	ElasticsearchBulkInsertRow(context->esContext, NULL, &json, GetCurrentCommandId(true), InvalidCommandId,
 							   convert_xid(GetCurrentTransactionId()), InvalidTransactionId);
 
@@ -66,7 +66,7 @@ Datum llapi_direct_delete(PG_FUNCTION_ARGS) {
 						errmsg("To use ZomboDB's low-level API you must set llapi=true on the index")));
 	}
 
-	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
+	context = checkout_insert_context(indexRel);
 	ElasticsearchBulkUpdateTuple(context->esContext, NULL, id, GetCurrentCommandId(true),
 								 convert_xid(GetCurrentTransactionId()));
 
