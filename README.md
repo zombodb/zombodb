@@ -46,6 +46,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
     - `json/jsonb` automatically mapped as dynamic nested objects
     - Supports full set of [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
  - Hot-Standby compatible
+ - Support for indexing [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
 
 
 ## Current Limitations
@@ -61,7 +62,7 @@ These limitations may be addressed in future versions of ZomboDB.
  
  Product       | Version 
 ---           | ---      
-Postgres      | 10.x
+Postgres      | 10.x, 11.x
 Elasticsearch | 5.6.x, 6.x
 libcurl       | >=7.28.0
 
@@ -135,7 +136,7 @@ SELECT *
 
 ## Older Versions
 
-This version of ZomboDB only supports Postgres 10 and doesn't require an Elasticsearch plugin.  
+This version of ZomboDB supports Postgres 10 and 11 and doesn't require an Elasticsearch plugin.  
 
 Previous versions that support Postgres <=9.5, and require an Elasticsearch plugin, are still available, from these branches:
 

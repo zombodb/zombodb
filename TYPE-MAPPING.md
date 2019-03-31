@@ -36,6 +36,7 @@ Postgres Type | Elasticsearch JSON Mapping Definition
  `geometry(Point, x)` (from postgis)     | `{"type": "geo_point"}`
 Some things to note from the above:
 
+- Columns of type `bytea` are automatically encoded as `base64` for proper storage by Elasticsearch
 - Columns of type `character varying (varchar)` are **not** analyzed by Elasticsearch.  They're indexed as whole values, but are converted to lowercase
 - Columns of type `text` **are** analyzed by Elasticsearch using its `standard` analyzer, and the individual terms are converted to lowercase
 - Columns of type `json/jsonb` are mapped to Elasticsearch's `nested` object with a dynamic template that treats "string" properties as if they're of type `character varying` (ie, unanalyzed exact, lowercased values), and treats "date" properties as if they're dates, accepting a wide range of date formats

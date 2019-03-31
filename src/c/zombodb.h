@@ -33,7 +33,7 @@
 #include "utils/utils.h"
 #include <assert.h>
 
-#define ZDB_VERSION "10-1.0.5"
+#define ZDB_VERSION "4.0"
 
 #ifndef PG_GETARG_JSONB_P
 #define PG_GETARG_JSONB_P PG_GETARG_JSONB

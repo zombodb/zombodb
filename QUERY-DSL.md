@@ -1238,9 +1238,9 @@ Matches documents that have fields matching a wildcard expression (not analyzed)
 ## Postgis Support
 
 ZomboDB provides basic support for Postgis.  It automatically maps columns of type `geometry` and `geography` to
-Elasticsearch's `geo_shape` type.
+Elasticsearch's `geo_shape` type, and `geometry(Point, 2276)` is instead indexed as an Elasticsearch `geo_point`.
 
-Additionally, it exposes one function for doing a `geo_shape` query.
+Additionally, it exposes a few functions for querying `geo_shape`s and polygons and bounding boxes.
 
 ---
 
@@ -1259,3 +1259,34 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-sh
 The geo_shape query uses the same grid square representation as the geo_shape mapping to find documents that have a shape that intersects with the query shape. It will also use the same PrefixTree configuration as defined for the field mapping.
 
 The query supports one way of defining the query shape:  by providing a whole shape definition.
+
+---
+
+####`dsl.geo_polygon()`
+
+```sql
+FUNCTION dsl.geo_polygon(
+    field text, 
+    VARIADIC points point[]
+) RETURNS zdbquery
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-polygon-query.html
+
+Given an array of Postgres `point` objects, generates an Elasticsearch `geo_polygon()` query
+
+---
+
+####`dsl.geo_bounding_box()`
+
+```sql
+FUNCTION dsl.geo_bounding_box(
+    field text, 
+    box box, 
+    type dsl.es_geo_bounding_box_type DEFAULT 'memory'  -- one of 'memory' or 'indexed'
+)
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-bounding-box-query.html
+
+Given a Postgres `box` object, generates an Elasticsearch `geo_bounding_box()` query
