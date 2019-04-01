@@ -43,7 +43,7 @@ CREATE INDEX sample_data_4326_zombodb
 The most common ways of searching across spatialized data would be through polygons and bounding boxes whether they be drawn by the user or calculated from the extent of a map on the screen. To do this we will use the Geo Polygon and Bounding Box queries as shown below
 
 #### Geo Polygon Query
-The function used for this type of query is `dsl.geo_polygon`. It accepts arguments of `field` as a text value such as `point_to_query` and a VARIADIC of type `point`. A `point` is a string containing a comma separated `'lon, lat'` value. The query below would return all records whose geo_point field of PostGIS type `POINT` fell within the bounds of the polygon coordinates enumerated after it. As this is variadic and a polygon, it must contain at least three points and its ending latitude and longitude must be the same as its starting latitude and longitude.
+The function used for this type of query is `dsl.geo_polygon`. It accepts arguments of `field` as a text value such as `point_to_query` and a VARIADIC of type `point`. A `point` is a string containing a comma separated `'lon, lat'` values. The query below would return all records whose geo_point field of PostGIS type `POINT` fell within the bounds of the polygon coordinates enumerated after it. As this is variadic and a polygon, it must contain at least three points and its ending latitude and longitude must be the same as its starting latitude and longitude.
 
 ```sql
 SELECT * 
