@@ -73,5 +73,5 @@ WHERE sample_data_4326 ==>
 ```
 
 ## Notes
-- Queries using ZDB's `dsl.geo_shape()` function need to be in CRS `4326`
+- All queries using ZDB's spatialized index data need to be in CRS `WGS84 - EPSG:4326`
 - The `CONTAINS` shape relationship has been removed from Elasticsearch 6.6
