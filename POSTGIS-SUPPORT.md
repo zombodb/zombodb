@@ -24,7 +24,47 @@ CREATE INDEX sample_data_2278_zombodb
         WITH (alias=sample_data_2278);
 ```
 
+and
 
+```sql
+CREATE INDEX sample_data_4326_zombodb
+          ON sample_data_4326
+       USING zombodb ((sample_data_4326.*))
+        WITH (alias=sample_data_4326);
+```
+
+## Querying the Sample Data
+The most common ways of searching across spatialized data would be through polygons and bounding boxes whether they be drawn by the user or calculated from the extent of a map on the screen. To do this we will use the Geo Polygon and Bounding Box queries as shown below
+
+#### Geo Polygon Query
+The function used for this type of query is `dsl.geo_polygon`. It accepts arguments of `field` as a text value such as `point_to_query` and a VARIADIC of type `point`. A `point` is a string containing a comma separated `'lon, lat'` value. The query below would return all records whose geo_point field of PostGIS type `POINT` fell within the bounds of the polygon coordinates enumerated after it. As this is variadic and a polygon, it must contain at least three points and its ending latitude and longitude must be the same as its starting latitude and longitude.
+
+```sql
+SELECT * 
+FROM sample_data_4326
+WHERE sample_data_4326 ==> 
+      dsl.geo_polygon('geo_point', 
+      '-95.3757924220804,29.7530206054157', 
+      '-95.3761162225586,29.753216394294', 
+      '-95.3763406015772,29.7529338505327', 
+      '-95.3766643966309,29.7531296379236', 
+      '-95.3762156463589,29.7536947317361', 
+      '-95.3758918431387,29.7534989430962', 
+      '-95.3755680421945,29.7533031536912', 
+      '-95.3757026673686,29.7531336250561', 
+      '-95.3757924220804,29.7530206054157');
+```
+
+#### Bounding Box Query
+The function used for this type of query is `dsl.geo_bounding_box`. It accepts arguments of `field` as a text value such as `point_to_query` and a string `box`. The `box` string is comprised of 4 comma separated values representing `'min lon, min lat, max lon, max lat'`. The query below would return all records whose geo_point field of PostGIS type `POINT` fell within the bounds of the box defined by the four corrdinates.
+
+```sql
+SELECT *
+FROM sample_data_4326
+WHERE sample_data_4326 ==>
+      dsl.geo_bounding_box('geo_point',
+        '-95.3757924220804,29.7530206054157,-94.3757924220804,30.7530206054157');
+```
 
 ## Notes
 - Queries using ZDB's `dsl.geo_shape()` function need to be in CRS `4326`
