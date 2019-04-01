@@ -18,7 +18,7 @@ There are two sample sets.
 
 [Sample dataset 1](https://github.com/zombodb/zombodb/files/2948109/sample_data_2278.zip) is loaded in the [NAD83 / Texas South Central (ftUS)](https://epsg.io/2278) CRS. 
 
-[Sample dataset 2]((https://github.com/zombodb/zombodb/files/3027737/sample_data_4326.zip)) is loaded in the [WGS84 - World Geodetic System 1984](https://epsg.io/4326) CRS. 
+[Sample dataset 2](https://github.com/zombodb/zombodb/files/3027737/sample_data_4326.zip) is loaded in the [WGS84 - World Geodetic System 1984](https://epsg.io/4326) CRS. 
 
 Both are a PG Dump from PostgreSQL 10.6 and PostGIS 2.4.
 
