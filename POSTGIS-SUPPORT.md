@@ -40,7 +40,7 @@ CREATE INDEX sample_data_4326_zombodb
 ```
 
 ## Querying the Sample Data
-The most common ways of searching across spatialized data would be through polygons and bounding boxes whether they be drawn by the user or calculated from the extent of a map on the screen. To do this we will use the Geo Polygon and Bounding Box queries as shown below
+The most common ways of searching across spatialized data would be searching through points using polygons and bounding boxes whether they be drawn by the user or calculated from the extent of a map on the screen. To do this we will use the Geo Polygon and Bounding Box queries as shown below.
 
 #### Geo Polygon Query
 The function used for this type of query is `dsl.geo_polygon`. It accepts arguments of `field` as a text value such as `point_to_query` and a VARIADIC of type `point`. A `point` is a string containing a comma separated `'lon, lat'` values. The query below would return all records whose geo_point field of PostGIS type `POINT` fell within the bounds of the polygon coordinates enumerated after it. As this is variadic and a polygon, it must contain at least three points and its ending latitude and longitude must be the same as its starting latitude and longitude.
@@ -70,6 +70,34 @@ FROM sample_data_4326
 WHERE sample_data_4326 ==>
       dsl.geo_bounding_box('geo_point',
         '-95.3757924220804,29.7530206054157,-94.3757924220804,30.7530206054157');
+```
+
+#### GeoShape Queries
+Searching for points as noted above is a fairly straight-forward endeavor as you are merely searching for points inside a shape. To search for shapes such as polygons, linestrings in relation to shapes given by queries, ElasticSearch uses its GeoShape query. GeoShape queries support 4 spatial relation operators:
+
+* INTERSECTS - (default) Return all documents whose geo_shape field intersects the query geometry.
+* DISJOINT - Return all documents whose geo_shape field has nothing in common with the query geometry.
+* WITHIN - Return all documents whose geo_shape field is within the query geometry.
+* CONTAINS - Return all documents whose geo_shape field contains the query geometry.
+
+In addition to the spatial relation operator, you will also supply a shape.
+
+The two queries below show an envelope which is essentially a bounding box. However, our query will search for the column geom which is a POLYGON inside of our indexed table.
+
+The first query will find all geom polygons that intersect with the envelope.
+```sql
+SELECT *
+FROM sample_data_4326
+WHERE sample_data_4326 ==>
+      dsl.geo_shape('geom', '{"type":"envelope","coordinates":[[-95.3757924220804,29.7530206054157],[-95.3761162225586,29.753216394294]]}','INTERSECTS');
+```
+
+The second query will find all geom polygons that have no relation to the envelope int hat they are not intersecting, contained or within the envelope defined.
+```sql
+SELECT *
+FROM sample_data_4326
+WHERE sample_data_4326 ==>
+      dsl.geo_shape('geom', '{"type":"envelope","coordinates":[[-95.3757924220804,29.7530206054157],[-95.3761162225586,29.753216394294]]}','DISJOINT');
 ```
 
 ## Notes
