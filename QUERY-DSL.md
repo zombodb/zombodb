@@ -578,6 +578,30 @@ A query that wraps another query and simply returns a constant score equal to th
  
 ---
 
+#### `dsl.datetime_range()`
+
+```sql
+FUNCTION dsl.datetime_range (
+	field text,
+	lt timestamp with time zone DEFAULT NULL,
+	gt timestamp with time zone DEFAULT NULL,
+	lte timestamp with time zone DEFAULT NULL,
+	gte timestamp with time zone DEFAULT NULL,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
+
+Matches documents with fields that have terms within a certain range.  This form is for timestamp values.
+
+ZomboDB will automatically convert the specified time to `UTC` (to be compatible with Elasticsearch) however, if
+you don't specify the time zone the timestamp represents then Postgres will first assume it belongs to whatever
+time zone the server is running in (via the `TimeZone` GUC).  Read here for more about how Postgres handles time zones:
+https://www.postgresql.org/docs/11/datatype-datetime.html#DATATYPE-TIMEZONES
+
+---
+
 #### `dsl.dis_max()`
 
 ```sql

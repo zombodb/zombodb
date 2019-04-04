@@ -1,0 +1,1 @@
+SELECT count(*) FROM events WHERE events ==> dsl.datetime_range(field=>'created_at', gte=>'2016-12-01 utc');
