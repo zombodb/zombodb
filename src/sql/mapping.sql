@@ -349,7 +349,7 @@ VALUES ('emoji_stop', '{
 INSERT INTO tokenizers(name, definition)
 VALUES ('emoji', '{
   "type": "pattern",
-  "pattern": "([\\ud83c\\udf00-\\ud83d\\ude4f]|[\\ud83d\\ude80-\\ud83d\\udeff])"
+  "pattern": "([\\ud83c\\udf00-\\ud83d\\ude4f]|[\\ud83d\\ude80-\\ud83d\\udeff])",
   "group": 1
 }');
 
