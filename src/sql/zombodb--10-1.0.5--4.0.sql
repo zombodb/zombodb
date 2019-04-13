@@ -20,3 +20,33 @@ $$;
 CREATE OR REPLACE FUNCTION dsl.geo_polygon(field text, VARIADIC points point[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('geo_polygon', json_build_object(field, json_build_object('points', zdb.point_array_to_json(points)))))::zdbquery;
 $$;
+
+
+--
+-- emoji analyzer support
+--
+
+INSERT INTO filters (name, definition, is_default)
+VALUES ('emoji_stop', '{
+  "type": "stop",
+  "stopwords": [
+    "-",
+    "\uFE0F",
+    "\uFFFd"
+  ]
+}', true);
+
+INSERT INTO tokenizers(name, definition)
+VALUES ('emoji', '{
+  "type": "pattern",
+  "pattern": "([\\ud83c\\udf00-\\ud83d\\ude4f]|[\\ud83d\\ude80-\\ud83d\\udeff])"
+  "group": 1
+}');
+
+INSERT INTO analyzers(name, definition, is_default)
+VALUES ('emoji', '{
+  "tokenizer": "emoji",
+  "filter": [
+    "emoji_stop"
+  ]
+}', true);

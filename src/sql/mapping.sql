@@ -332,6 +332,40 @@ CREATE DOMAIN turkish AS text;
 CREATE DOMAIN thai AS text;
 CREATE DOMAIN whitespace AS text;
 
+--
+-- emoji analyzer support
+--
+
+INSERT INTO filters (name, definition, is_default)
+VALUES ('emoji_stop', '{
+  "type": "stop",
+  "stopwords": [
+    "-",
+    "\uFE0F",
+    "\uFFFd"
+  ]
+}', true);
+
+INSERT INTO tokenizers(name, definition)
+VALUES ('emoji', '{
+  "type": "pattern",
+  "pattern": "([\\ud83c\\udf00-\\ud83d\\ude4f]|[\\ud83d\\ude80-\\ud83d\\udeff])"
+  "group": 1
+}');
+
+INSERT INTO analyzers(name, definition, is_default)
+VALUES ('emoji', '{
+  "tokenizer": "emoji",
+  "filter": [
+    "emoji_stop"
+  ]
+}', true);
+
+
+--
+-- permissions to do all the things to the tables defined here
+---
+
 GRANT ALL ON analyzers TO PUBLIC;
 GRANT ALL ON char_filters TO PUBLIC;
 GRANT ALL ON filters TO PUBLIC;
