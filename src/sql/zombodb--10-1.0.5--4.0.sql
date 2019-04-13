@@ -26,16 +26,6 @@ $$;
 -- emoji analyzer support
 --
 
-INSERT INTO filters (name, definition, is_default)
-VALUES ('emoji_stop', '{
-  "type": "stop",
-  "stopwords": [
-    "-",
-    "\uFE0F",
-    "\uFFFd"
-  ]
-}', true);
-
 INSERT INTO tokenizers(name, definition)
 VALUES ('emoji', '{
   "type": "pattern",
@@ -45,8 +35,5 @@ VALUES ('emoji', '{
 
 INSERT INTO analyzers(name, definition, is_default)
 VALUES ('emoji', '{
-  "tokenizer": "emoji",
-  "filter": [
-    "emoji_stop"
-  ]
+  "tokenizer": "emoji"
 }', true);
