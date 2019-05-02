@@ -100,6 +100,31 @@ WHERE sample_data_4326 ==>
       dsl.geo_shape('geom', '{"type":"envelope","coordinates":[[-95.3757924220804,29.7530206054157],[-95.3761162225586,29.753216394294]]}','DISJOINT');
 ```
 
+#### GeoShape with ST_AsGeoJSON()
+You can combine ZomboDB query params with PostGIS functions. For example, from the `sample_data_4326` I can take the following GeoJSON value:
+
+```json
+{"type":"MultiPolygon","coordinates":[[[[-95.3757924220804,29.7530206054157],[-95.3761162225586,29.753216394294],[-95.3763406015772,29.7529338505327],[-95.3766643966309,29.7531296379236],[-95.3762156463589,29.7536947317361],[-95.3758918431387,29.7534989430962],[-95.3755680421945,29.7533031536912],[-95.3757026673686,29.7531336250561],[-95.3757924220804,29.7530206054157]]]]}
+```
+
+With this value, I can create a query like the two in the **GeoShape Queries** section looking for geom points that intersect with this shape. However, this value was derived from the following query:
+
+```sql
+SELECT st_asgeojson((SELECT geom FROM postgis.sample_data_4326 WHERE "HCAD_NUM" = '1292500000054'))::json;
+```
+
+I can run the same query using ST_AsGeoJSON() and shorten the query considerably like so:
+
+```sql
+SELECT postgis.hcad_real_acct.*
+FROM sample_data_4326
+LEFT JOIN hcad_real_acct ON sample_data_4326."HCAD_NUM" = realescout.hcad_real_acct.account
+WHERE sample_data_4326 ==>
+      dsl.geo_shape('geom', st_asgeojson((SELECT geom FROM realescout.sample_data_4326 WHERE "HCAD_NUM" = '1292500000054'))::json,'INTERSECTS');
+```
+
+Above, we select the `geom` field encompassing it in the ST_AsGeoJSON() function and cast it as JSON to pass to the `dsl.geo_shape` query. This is nice for when you have predefined shapes in the database. For example, if I had an additional table called `zip_codes` with the geometry for all of the zip codes in the dataset stored there, I could do aggregation or selections of items in that zip code based on the shape.
+
 ## Notes
 - All queries using ZDB's spatialized index data need to be in CRS `WGS84 - EPSG:4326`
 - The `CONTAINS` shape relationship has been removed from Elasticsearch 6.6
