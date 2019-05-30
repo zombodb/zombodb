@@ -19,7 +19,7 @@ $ rpm -Uvh zombodb_centos_7_pg10-1.0.0_x86_64.rpm
 
 ### Installation on Ubuntu/Debian
 
-Download the proper `.deb` package for your Ubuntu/RHEL distro from https://www.zombodb.com/releases, and simply run:
+Download the proper `.deb` package for your Ubuntu/Debian distro from https://www.zombodb.com/releases, and simply run:
 
 ```shel
 $ dpkg -i zombodb_ubuntu_xenial_pg10-1.0.0_amd64.deb
