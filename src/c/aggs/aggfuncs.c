@@ -18,6 +18,7 @@
 
 #include "elasticsearch/elasticsearch.h"
 
+PG_FUNCTION_INFO_V1(zdb_is_nested_field);
 PG_FUNCTION_INFO_V1(zdb_count);
 PG_FUNCTION_INFO_V1(zdb_arbitrary_agg);
 PG_FUNCTION_INFO_V1(zdb_internal_terms);
@@ -46,6 +47,19 @@ PG_FUNCTION_INFO_V1(zdb_internal_significant_text);
 PG_FUNCTION_INFO_V1(zdb_internal_adjacency_matrix);
 PG_FUNCTION_INFO_V1(zdb_internal_matrix_stats);
 PG_FUNCTION_INFO_V1(zdb_internal_top_hits);
+
+Datum zdb_is_nested_field(PG_FUNCTION_ARGS) {
+    Oid          indexRelOid = PG_GETARG_OID(0);
+    char         *field      = GET_STR(PG_GETARG_TEXT_P(1));
+    Relation     indexRel;
+    bool         rc;
+
+    indexRel = RelationIdGetRelation(indexRelOid);
+    rc = ElasticsearchIsNestedField(indexRel, (const char *) field, NULL);
+    RelationClose(indexRel);
+
+    PG_RETURN_BOOL(rc);
+}
 
 Datum zdb_count(PG_FUNCTION_ARGS) {
 	Oid          indexRelOid = PG_GETARG_OID(0);

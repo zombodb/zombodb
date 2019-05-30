@@ -1,6 +1,16 @@
 --
 -- aggregate support functions
 --
+CREATE OR REPLACE FUNCTION is_nested_field(index regclass, field text) RETURNS bool PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_is_nested_field';
+
+CREATE OR REPLACE FUNCTION zdb.extract_the_agg_data(index regclass, field text, response jsonb) RETURNS jsonb PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
+    SELECT
+        CASE WHEN zdb.is_nested_field(index, field) THEN
+            response->'aggregations'->'nested_agg'->'the_agg'
+        ELSE
+            response->'aggregations'->'the_agg'
+        END;
+$$;
 CREATE OR REPLACE FUNCTION count(index regclass, query zdbquery) RETURNS bigint PARALLEL SAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_count';
 CREATE OR REPLACE FUNCTION raw_count(index regclass, query zdbquery) RETURNS bigint SET zdb.ignore_visibility = true PARALLEL SAFE STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_count';
 CREATE OR REPLACE FUNCTION arbitrary_agg(index regclass, query zdbquery, agg_json json) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_arbitrary_agg';
@@ -11,12 +21,16 @@ CREATE OR REPLACE FUNCTION terms(index regclass, field text, query zdbquery, siz
 DECLARE
     response jsonb := zdb.internal_terms(index, field, query, order_by::text, size_limit)::jsonb;
 BEGIN
-    RETURN QUERY SELECT entry->>'key', (entry->>'doc_count')::bigint FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+    RETURN QUERY SELECT entry->>'key', (entry->>'doc_count')::bigint FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 CREATE OR REPLACE FUNCTION internal_terms_array(index regclass, field text, query zdbquery, order_by text, size_limit bigint) RETURNS text[] STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_internal_terms_array';
 CREATE OR REPLACE FUNCTION terms_array(index regclass, field text, query zdbquery, size_limit bigint DEFAULT 0, order_by terms_order DEFAULT 'count') RETURNS text[] LANGUAGE sql AS $$
     SELECT zdb.internal_terms_array(index, field, query, order_by::text, size_limit);
+$$;
+CREATE OR REPLACE FUNCTION zdb.two_terms_array(index regclass, field1 text, field2 text, query zdbquery, size_limit bigint DEFAULT 0, order_by zdb.terms_order DEFAULT 'count') RETURNS text[] STABLE STRICT LANGUAGE sql AS $$
+    SELECT coalesce(zdb.internal_terms_array(index, field1, query, order_by::text, size_limit), ARRAY[]::text[]) ||
+           coalesce(zdb.internal_terms_array(index, field2, query, order_by::text, size_limit), ARRAY[]::text[])
 $$;
 
 CREATE OR REPLACE FUNCTION internal_terms_two_level(index regclass, first_field text, second_field text, query zdbquery, order_by text, size bigint) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_internal_terms_two_level';
@@ -28,7 +42,7 @@ BEGIN
                 SELECT entry->>'key',
                        jsonb_array_elements(entry->'sub_agg'->'buckets')->>'key',
                        (jsonb_array_elements(entry->'sub_agg'->'buckets')->>'doc_count')::bigint
-                  FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                  FROM jsonb_array_elements(zdb.extract_the_agg_data(index, first_field, response)->'buckets') entry;
 END;
 $$;
 
@@ -37,7 +51,7 @@ CREATE OR REPLACE FUNCTION avg(index regclass, field text, query zdbquery) RETUR
 DECLARE
     response jsonb := zdb.internal_avg(index, field, query)::jsonb;
 BEGIN
-    RETURN (response->'aggregations'->'the_agg'->>'value')::numeric;
+    RETURN (zdb.extract_the_agg_data(index, field, response)->>'value')::numeric;
 END;
 $$;
 
@@ -46,7 +60,7 @@ CREATE OR REPLACE FUNCTION min(index regclass, field text, query zdbquery) RETUR
 DECLARE
     response jsonb := zdb.internal_min(index, field, query)::jsonb;
 BEGIN
-    RETURN (response->'aggregations'->'the_agg'->>'value')::numeric;
+    RETURN (zdb.extract_the_agg_data(index, field, response)->>'value')::numeric;
 END;
 $$;
 
@@ -55,7 +69,7 @@ CREATE OR REPLACE FUNCTION max(index regclass, field text, query zdbquery) RETUR
 DECLARE
     response jsonb := zdb.internal_max(index, field, query)::jsonb;
 BEGIN
-    RETURN (response->'aggregations'->'the_agg'->>'value')::numeric;
+    RETURN (zdb.extract_the_agg_data(index, field, response)->>'value')::numeric;
 END;
 $$;
 
@@ -64,7 +78,7 @@ CREATE OR REPLACE FUNCTION cardinality(index regclass, field text, query zdbquer
 DECLARE
     response jsonb := zdb.internal_cardinality(index, field, query)::jsonb;
 BEGIN
-    RETURN (response->'aggregations'->'the_agg'->>'value')::numeric;
+    RETURN (zdb.extract_the_agg_data(index, field, response)->>'value')::numeric;
 END;
 $$;
 
@@ -73,7 +87,7 @@ CREATE OR REPLACE FUNCTION sum(index regclass, field text, query zdbquery) RETUR
 DECLARE
     response jsonb := zdb.internal_sum(index, field, query)::jsonb;
 BEGIN
-    RETURN (response->'aggregations'->'the_agg'->>'value')::numeric;
+    RETURN (zdb.extract_the_agg_data(index, field, response)->>'value')::numeric;
 END;
 $$;
 
@@ -82,7 +96,7 @@ CREATE OR REPLACE FUNCTION value_count(index regclass, field text, query zdbquer
 DECLARE
     response jsonb := zdb.internal_value_count(index, field, query)::jsonb;
 BEGIN
-    RETURN (response->'aggregations'->'the_agg'->>'value')::numeric;
+    RETURN (zdb.extract_the_agg_data(index, field, response)->>'value')::numeric;
 END;
 $$;
 
@@ -92,8 +106,8 @@ DECLARE
     response jsonb := zdb.internal_percentiles(index, field, query, percents)::jsonb;
 BEGIN
     RETURN QUERY select key::numeric, jsonb_object_field_text(json, key)::numeric
-                   from (select key, response->'aggregations'->'the_agg'->'values' as json
-                           from jsonb_object_keys(response->'aggregations'->'the_agg'->'values') key
+                   from (select key, zdb.extract_the_agg_data(index, field, response)->'values' as json
+                           from jsonb_object_keys(zdb.extract_the_agg_data(index, field, response)->'values') key
                         ) x;
 END;
 $$;
@@ -104,8 +118,8 @@ DECLARE
     response jsonb := zdb.internal_percentile_ranks(index, field, query, "values")::jsonb;
 BEGIN
     RETURN QUERY select key::numeric, jsonb_object_field_text(json, key)::numeric
-                   from (select key, response->'aggregations'->'the_agg'->'values' as json
-                           from jsonb_object_keys(response->'aggregations'->'the_agg'->'values') key
+                   from (select key, zdb.extract_the_agg_data(index, field, response)->'values' as json
+                           from jsonb_object_keys(zdb.extract_the_agg_data(index, field, response)->'values') key
                         ) x;
 END;
 $$;
@@ -117,11 +131,11 @@ DECLARE
 BEGIN
     RETURN QUERY
         SELECT
-            (response->'aggregations'->'the_agg'->>'count')::bigint,
-            (response->'aggregations'->'the_agg'->>'min')::numeric,
-            (response->'aggregations'->'the_agg'->>'max')::numeric,
-            (response->'aggregations'->'the_agg'->>'avg')::numeric,
-            (response->'aggregations'->'the_agg'->>'sum')::numeric;
+            (zdb.extract_the_agg_data(index, field, response)->>'count')::bigint,
+            (zdb.extract_the_agg_data(index, field, response)->>'min')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'max')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'avg')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'sum')::numeric;
 END;
 $$;
 
@@ -132,16 +146,16 @@ DECLARE
 BEGIN
     RETURN QUERY
         SELECT
-            (response->'aggregations'->'the_agg'->>'count')::bigint,
-            (response->'aggregations'->'the_agg'->>'min')::numeric,
-            (response->'aggregations'->'the_agg'->>'max')::numeric,
-            (response->'aggregations'->'the_agg'->>'avg')::numeric,
-            (response->'aggregations'->'the_agg'->>'sum')::numeric,
-            (response->'aggregations'->'the_agg'->>'sum_of_squares')::numeric,
-            (response->'aggregations'->'the_agg'->>'variance')::numeric,
-            (response->'aggregations'->'the_agg'->>'std_deviation')::numeric,
-            (response->'aggregations'->'the_agg'->'std_deviation_bounds'->>'upper')::numeric,
-            (response->'aggregations'->'the_agg'->'std_deviation_bounds'->>'lower')::numeric;
+            (zdb.extract_the_agg_data(index, field, response)->>'count')::bigint,
+            (zdb.extract_the_agg_data(index, field, response)->>'min')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'max')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'avg')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'sum')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'sum_of_squares')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'variance')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->>'std_deviation')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->'std_deviation_bounds'->>'upper')::numeric,
+            (zdb.extract_the_agg_data(index, field, response)->'std_deviation_bounds'->>'lower')::numeric;
 END;
 $$;
 
@@ -150,10 +164,10 @@ CREATE OR REPLACE FUNCTION significant_terms(index regclass, field text, query z
 DECLARE
     response jsonb := zdb.internal_significant_terms(index, field, query)::jsonb;
 BEGIN
-    RETURN QUERY SELECT NULL::text, (response->'aggregations'->'the_agg'->>'doc_count')::bigint, NULL::numeric, (response->'aggregations'->'the_agg'->>'bg_count')::bigint
+    RETURN QUERY SELECT NULL::text, (zdb.extract_the_agg_data(index, field, response)->>'doc_count')::bigint, NULL::numeric, (zdb.extract_the_agg_data(index, field, response)->>'bg_count')::bigint
                         UNION ALL
                 SELECT entry->>'key', (entry->>'doc_count')::bigint, (entry->>'score')::numeric, (entry->>'bg_count')::bigint
-                  FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                  FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 
@@ -164,8 +178,8 @@ DECLARE
 BEGIN
     RETURN QUERY
                 SELECT NULL::text, NULL::text, NULL::bigint, NULL::numeric, NULL::bigint,
-                       (response->'aggregations'->'the_agg'->>'doc_count_error_upper_bound')::bigint,
-                       (response->'aggregations'->'the_agg'->>'sum_other_doc_count')::bigint
+                       (zdb.extract_the_agg_data(index, first_field, response)->>'doc_count_error_upper_bound')::bigint,
+                       (zdb.extract_the_agg_data(index, first_field, response)->>'sum_other_doc_count')::bigint
                           UNION ALL
                 SELECT entry->>'key',
                        jsonb_array_elements(entry->'sub_agg'->'buckets')->>'key',
@@ -173,7 +187,7 @@ BEGIN
                        (jsonb_array_elements(entry->'sub_agg'->'buckets')->>'score')::numeric,
                        (jsonb_array_elements(entry->'sub_agg'->'buckets')->>'bg_count')::bigint,
                        NULL::bigint, NULL::bigint
-                  FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                  FROM jsonb_array_elements(zdb.extract_the_agg_data(index, first_field, response)->'buckets') entry;
 END;
 $$;
 
@@ -186,7 +200,7 @@ BEGIN
                         (entry->>'from')::numeric,
                         (entry->>'to')::numeric,
                         (entry->>'doc_count')::bigint
-                   FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                   FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 
@@ -201,7 +215,7 @@ BEGIN
                         (entry->>'to')::numeric,
                         (entry->>'to_as_string')::timestamp with time zone,
                         (entry->>'doc_count')::bigint
-                   FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                   FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 
@@ -212,7 +226,7 @@ DECLARE
 BEGIN
     RETURN QUERY SELECT (entry->>'key')::numeric,
                         (entry->>'doc_count')::bigint
-                   FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                   FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 
@@ -224,7 +238,7 @@ BEGIN
     RETURN QUERY SELECT (entry->>'key')::numeric,
                         entry->>'key_as_string',
                         (entry->>'doc_count')::bigint
-                   FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                   FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 
@@ -233,7 +247,7 @@ CREATE OR REPLACE FUNCTION missing(index regclass, field text, query zdbquery) R
 DECLARE
     response jsonb := zdb.internal_missing(index, field, query)::jsonb;
 BEGIN
-    RETURN (response->'aggregations'->'the_agg'->>'doc_count')::numeric;
+    RETURN (zdb.extract_the_agg_data(index, field, response)->>'doc_count')::numeric;
 END;
 $$;
 
@@ -257,7 +271,7 @@ BEGIN
                         (entry->>'from')::inet,
                         (entry->>'to')::inet,
                         (entry->>'doc_count')::bigint
-                   FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                   FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 
@@ -266,10 +280,10 @@ CREATE OR REPLACE FUNCTION significant_text(index regclass, field text, query zd
 DECLARE
     response jsonb := zdb.internal_significant_text(index, field, query, sample_size, filter_duplicate_text)::jsonb;
 BEGIN
-    RETURN QUERY SELECT NULL::text, (response->'aggregations'->'the_agg'->>'doc_count')::bigint, NULL::numeric, (response->'aggregations'->'the_agg'->>'bg_count')::bigint
+    RETURN QUERY SELECT NULL::text, (zdb.extract_the_agg_data(index, field, response)->>'doc_count')::bigint, NULL::numeric, (zdb.extract_the_agg_data(index, field, response)->>'bg_count')::bigint
                         UNION ALL
                 SELECT entry->>'key', (entry->>'doc_count')::bigint, (entry->>'score')::numeric, (entry->>'bg_count')::bigint
-                  FROM jsonb_array_elements(response->'aggregations'->'the_agg'->'buckets') entry;
+                  FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 

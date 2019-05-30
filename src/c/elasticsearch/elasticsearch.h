@@ -112,6 +112,8 @@ void ElasticSearchForceMerge(Relation indexRel);
 
 char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query);
 
+bool ElasticsearchIsNestedField(Relation indexRel, const char *field, char **base);
+
 uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query);
 char *ElasticsearchArbitraryAgg(Relation indexRel, ZDBQueryType *query, char *agg);
 char *ElasticsearchTerms(Relation indexRel, char *field, ZDBQueryType *query, char *order, uint64 size);
