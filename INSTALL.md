@@ -2,7 +2,7 @@
 
 ZomboDB consists of two pieces.  One is a Postgres Extension (written in C and SQL/PLPGSQL), and the other is an Elasticsearch plugin (written in Java).
 
-Currently ZomboDB supports Postgres `v9.3`, `v9.4`, or `v9.5` (on x86_64 Linux) and Elasticsearch `v5.6.4`.
+Currently ZomboDB supports Postgres `v9.3`, `v9.4`, or `v9.5` (on x86_64 Linux) and Elasticsearch `v5.6.16`.
 
 
 ## Postgres Extension

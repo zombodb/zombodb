@@ -1,6 +1,6 @@
 #! /bin/bash
 
-cat << DONE >> ~/elasticsearch-5.6.4/config/elasticsearch.yml
+cat << DONE >> ~/elasticsearch-5.6.16/config/elasticsearch.yml
 http.max_content_length: 1024mb
 index.query.bool.max_clause_count: 1000000
 DONE

@@ -22,6 +22,12 @@
             <outputDirectory>/</outputDirectory>
             <useProjectArtifact>true</useProjectArtifact>
             <useTransitiveFiltering>true</useTransitiveFiltering>
+            <excludes>
+                <exclude>org.elasticsearch:jna</exclude>
+                <exclude>com.vividsolutions:jts</exclude>
+                <exclude>org.locationtech.spatial4j:spatial4j</exclude>
+                <exclude>log4j:log4j</exclude>
+            </excludes>
         </dependencySet>
     </dependencySets>
 </assembly>

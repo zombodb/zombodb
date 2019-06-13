@@ -7,7 +7,7 @@
     <parent>
         <groupId>llc.elasticsearch</groupId>
         <artifactId>zombodb-parent</artifactId>
-        <version>5.6.4-1.0.17</version>
+        <version>5.6.16-1.0.18</version>
     </parent>
 
     <artifactId>zombodb-plugin</artifactId>
@@ -63,13 +63,13 @@
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch</artifactId>
-            <version>5.6.4</version>
+            <version>5.6.16</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.elasticsearch.client</groupId>
             <artifactId>transport</artifactId>
-            <version>5.6.4</version>
+            <version>5.6.16</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

@@ -1,18 +1,18 @@
 # [![ZomboDB](logo.png)](http://www.zombodb.com/) [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.org/zombodb/zombodb/branches)
 
-(This branch is for Elasticsearch 5.6.4)
+(This branch is for Elasticsearch 5.6.16)
 
 ## Upgrading from ES 1.7 or ES 2.4?
 
-In short, ZomboDB doesn't provide a migration process from ES 1.7/2.4 to ES 5.6.4.  You'll need to drop all of your `USING zombodb` indexes, manually delete all the indexes from your ES cluster, upgrade your ES cluster to 5.6.4, upgrade the ZomboDB Postgres extension to v5.6.4-x.x.x and then re-create all your `USING zombodb` indexes.
+In short, ZomboDB doesn't provide a migration process from ES 1.7/2.4 to ES 5.6.16.  You'll need to drop all of your `USING zombodb` indexes, manually delete all the indexes from your ES cluster, upgrade your ES cluster to 5.6.16, upgrade the ZomboDB Postgres extension to v5.6.16-x.x.x and then re-create all your `USING zombodb` indexes.
 
 If you require assistance with this process, please don't hesitate to [contact ZomboDB, LLC](https://www.zombodb.com/services/).
 
-## What's Different with ES 5.6.4+ Support?
+## What's Different with ES 5.6.16+ Support?
 
 In general, everything is significantly faster.  
 
-Elasticsearch 5.6.4 is generally faster for indexing and searching, and its API has improved such that ZomboDB is able to implement certain optimizations that make everything faster.
+Elasticsearch 5.6.16 is generally faster for indexing and searching, and its API has improved such that ZomboDB is able to implement certain optimizations that make everything faster.
 
 All SQL-level syntax is backwards-compatible along with ZomboDB's query language syntax.
 
@@ -40,7 +40,7 @@ Elasticsearch-calculated aggregations are also provided through custom functions
    - [Index Management](INDEX-MANAGEMENT.md), [Index Options](INDEX-OPTIONS.md), and [Type Mapping](TYPE-MAPPING.md)
    - [Query Syntax](SYNTAX.md)  
    - [SQL-level API](SQL-API.md)  
-   - [v5.6.4-1.0.0 Release Notes](https://github.com/zombodb/zombodb/releases/tag/v5.6.4-1.0.0_beta1)
+   - [v5.6.16-1.0.0 Release Notes](https://github.com/zombodb/zombodb/releases/tag/v5.6.16-1.0.0_beta1)
 
 ## Features
 
@@ -99,7 +99,7 @@ For the Postgres extension binaries, you'll need to use the one that's for your 
 Product       | Version 
 ---           | ---      
 Postgres      | 9.3, 9.4, 9.5
-Elasticsearch | 5.6.4
+Elasticsearch | 5.6.16
 
 For information about how to develop/build ZomboDB, see the [Development Guide](DEVELOPER.md).
 
