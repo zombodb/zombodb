@@ -2,7 +2,7 @@ language: ruby
 
 env:
   global:
-    - CODECOV_TOKEN="c5553385-8c12-4776-9366-f035a975026e"
+    - CODECOV_TOKEN="01a7018f-83d3-4951-8fb1-3d77cf646466"
 
   matrix:
     - ES=5.6.9 PG=10
