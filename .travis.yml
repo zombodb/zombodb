@@ -42,11 +42,12 @@ script:
   - sudo /etc/init.d/postgresql start ${PG}
   - sudo su - postgres -c "createuser --superuser travis"
   - PG_CPPFLAGS="-coverage -O0" SHLIB_LINK="-fprofile-arcs -ftest-coverage" make && sudo make install
+  - strings /usr/lib/postgresql/10/lib/ | grep gcda
+  - exit 0
   - sleep 10
   - curl localhost:9200/
   - make installcheck-setup installcheck
   - gcov $(find ./ -name "*.c")
-  - find /usr/lib/postgresql/10/lib/
 
 after_failure:
   - sudo cat regression.diffs
