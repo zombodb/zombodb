@@ -180,7 +180,11 @@ void finish_inserts(bool is_commit) {
 		ListCell              *lc2;
 
 		foreach(lc2, aborted_xids) {
-			(void) list_delete_int(context->esContext->usedXids, lfirst_int(lc2));
+		    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+
+            context->esContext->usedXids =  list_delete_int(context->esContext->usedXids, lfirst_int(lc2));
+
+			MemoryContextSwitchTo(oldContext);
 		}
 
 		ElasticsearchFinishBulkProcess(context->esContext, is_commit);
