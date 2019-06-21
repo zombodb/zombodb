@@ -8,6 +8,9 @@
 *.so
 *.a
 *.swp
+*.gcov
+*.gcda
+*.gcno
 .DS_store
 foo.*
 src/sql/zombodb--4.0.sql
