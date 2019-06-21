@@ -1,8 +1,8 @@
 language: ruby
 
 env:
-  - CODECOV_TOKEN="c5553385-8c12-4776-9366-f035a975026e"
   matrix:
+    - CODECOV_TOKEN="c5553385-8c12-4776-9366-f035a975026e"
     - ES=5.6.9 PG=10
     - ES=6.2.4 PG=10
     - ES=5.6.9 PG=11
