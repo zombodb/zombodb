@@ -45,6 +45,7 @@ script:
   - sleep 10
   - curl localhost:9200/
   - make installcheck-setup installcheck
+  - gcov $(find ./ -name "*.c")
 
 after_failure:
   - sudo cat regression.diffs
