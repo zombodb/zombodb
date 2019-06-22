@@ -45,7 +45,8 @@ script:
   - sleep 10
   - curl localhost:9200/
   - make installcheck-setup installcheck
-  - pwd && exit
+  - sudo /etc/init.d/postgresql stop ${PG}
+  - find ./ -name "*.gcda"
 
 after_failure:
   - sudo cat regression.diffs
