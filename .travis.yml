@@ -46,7 +46,7 @@ script:
   - curl localhost:9200/
   - make installcheck-setup installcheck
   - sudo /etc/init.d/postgresql stop ${PG}
-  - find ./ -name "*.gcda"
+  - ls -la $(find ./ -name "*.gcda")
   - gcov $(find ./ -name "*.c")
 
 after_failure:
