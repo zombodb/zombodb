@@ -47,6 +47,9 @@ script:
   - make installcheck-setup installcheck
   - sudo /etc/init.d/postgresql stop ${PG}
   - ls -la $(find ./ -name "*.gcda")
+  - gcov -version
+  - gcov --version
+  - gcc --version
   - gcov $(find ./ -name "*.c")
 
 after_failure:
