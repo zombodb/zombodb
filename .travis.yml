@@ -47,7 +47,7 @@ script:
   - make installcheck-setup installcheck
   - sudo /etc/init.d/postgresql stop ${PG}
   - find ./ -name "*.gcda"
-  - gconv $(find ./ -name "*.c")
+  - gcov $(find ./ -name "*.c")
 
 after_failure:
   - sudo cat regression.diffs
