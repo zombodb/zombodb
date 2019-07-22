@@ -33,7 +33,7 @@ void json_support_init(void) {
 }
 
 /*lint -esym 715,user_data */
-static void *json_alloc(void *user_data, size_t size) {
+void *json_alloc(void *user_data, size_t size) {
 	return palloc(size);
 }
 

@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION is_nested_field(index regclass, field text) RETURNS b
 CREATE OR REPLACE FUNCTION zdb.extract_the_agg_data(index regclass, field text, response jsonb) RETURNS jsonb PARALLEL SAFE IMMUTABLE STRICT LANGUAGE sql AS $$
     SELECT
         CASE WHEN zdb.is_nested_field(index, field) THEN
-            response->'aggregations'->'nested_agg'->'the_agg'
+            response->'aggregations'->'nested_agg'->'the_agg'->'filtered_agg'
         ELSE
             response->'aggregations'->'the_agg'
         END;
@@ -159,15 +159,13 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION internal_significant_terms(index regclass, field text, query zdbquery) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_internal_significant_terms';
-CREATE OR REPLACE FUNCTION significant_terms(index regclass, field text, query zdbquery) RETURNS TABLE (term text, doc_count bigint, score numeric, bg_count bigint) LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION zdb.internal_significant_terms(index regclass, field text, query zdbquery, include text, size int, min_doc_count int) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_internal_significant_terms';
+CREATE OR REPLACE FUNCTION zdb.significant_terms(index regclass, field text, query zdbquery, include text DEFAULT '^.*', size int DEFAULT 10, min_doc_count int DEFAULT 3) RETURNS TABLE (term text, doc_count bigint, score numeric, bg_count bigint) LANGUAGE plpgsql AS $$
 DECLARE
-    response jsonb := zdb.internal_significant_terms(index, field, query)::jsonb;
+    response jsonb := zdb.internal_significant_terms(index, field, query, include, size, min_doc_count)::jsonb;
 BEGIN
-    RETURN QUERY SELECT NULL::text, (zdb.extract_the_agg_data(index, field, response)->>'doc_count')::bigint, NULL::numeric, (zdb.extract_the_agg_data(index, field, response)->>'bg_count')::bigint
-                        UNION ALL
-                SELECT entry->>'key', (entry->>'doc_count')::bigint, (entry->>'score')::numeric, (entry->>'bg_count')::bigint
-                  FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
+    RETURN QUERY SELECT entry->>'key', (entry->>'doc_count')::bigint, (entry->>'score')::numeric, (entry->>'bg_count')::bigint
+                 FROM jsonb_array_elements(zdb.extract_the_agg_data(index, field, response)->'buckets') entry;
 END;
 $$;
 
@@ -219,10 +217,10 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION internal_histogram(index regclass, field text, query zdbquery, "interval" float8) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_internal_histogram';
-CREATE OR REPLACE FUNCTION histogram(index regclass, field text, query zdbquery, "interval" float8) RETURNS TABLE (key numeric, doc_count bigint) LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION zdb.internal_histogram(index regclass, field text, query zdbquery, "interval" float8, min_doc_count int) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_internal_histogram';
+CREATE OR REPLACE FUNCTION zdb.histogram(index regclass, field text, query zdbquery, "interval" float8, min_doc_count int DEFAULT 0) RETURNS TABLE (key numeric, doc_count bigint) LANGUAGE plpgsql AS $$
 DECLARE
-    response jsonb := zdb.internal_histogram(index, field, query, "interval")::jsonb;
+    response jsonb := zdb.internal_histogram(index, field, query, "interval", min_doc_count)::jsonb;
 BEGIN
     RETURN QUERY SELECT (entry->>'key')::numeric,
                         (entry->>'doc_count')::bigint

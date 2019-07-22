@@ -18,6 +18,7 @@
 #include "elasticsearch/mapping.h"
 #include "elasticsearch/querygen.h"
 #include "highlighting/highlighting.h"
+#include "json/json.h"
 #include "rest/rest.h"
 #include "indexam/zdbam.h"
 
@@ -1149,6 +1150,137 @@ bool ElasticsearchIsNestedField(Relation indexRel, const char *field, char **bas
     return rc;
 }
 
+static bool keep_node(struct json_value_s *node) {
+    switch (node->type) {
+        case json_type_object: {
+            struct json_object_s *object = (struct json_object_s *) node->payload;
+            struct json_object_element_s *element = object->start;
+            const char *name = element->name->string;
+
+            elog(NOTICE, "should keep %s?", name);
+            return
+                    strcmp("bool", name) == 0 ||
+                    strcmp("should", name) == 0 ||
+                    strcmp("must", name) == 0 ||
+                    strcmp("must_not", name) == 0 ||
+                    strcmp("filter", name) == 0 ||
+                    strcmp("nested", name) == 0;
+        } break;
+
+        default:
+            return false;
+    }
+}
+static void walk_query(struct json_value_s *node) {
+
+    if (node == NULL)
+        return;
+
+    switch (node->type) {
+        case json_type_object: {
+            struct json_object_s         *object  = (struct json_object_s *) node->payload;
+            struct json_object_element_s *prev    = NULL;
+            struct json_object_element_s *element = object->start;
+
+            while (element != NULL) {
+                const char *name = element->name->string;
+
+                elog(NOTICE, "looking at %s", name);
+                if (strcmp("bool", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("must", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("must_not", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("should", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("filter", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("nested", name) == 0) {
+                    struct json_value_s          *nested_node           = element->value;
+                    struct json_object_s         *nested_object         = (struct json_object_s *) nested_node->payload;
+                    struct json_object_element_s *nested_object_element = nested_object->start;
+
+                    while (nested_object_element != NULL) {
+
+                        if (strcmp("query", nested_object_element->name->string) == 0) {
+                            struct json_value_s *query_node = nested_object_element->value;
+
+                            // pull up the query sub-node to replace this node with it
+                            if (prev == NULL)
+                                node->payload = query_node->payload;
+                            else
+                                prev->next->value = query_node;
+
+                            break;
+                        }
+
+                        nested_object_element = nested_object_element->next;
+                    }
+
+                } else {
+                    // remove this node
+                    if (prev == NULL)
+                        object->start = element->next;
+                    else
+                        prev->next = element->next;
+                }
+
+                prev = element;
+                element = element->next;
+            }
+
+        } break;
+
+        case json_type_array: {
+            struct json_array_s *array = (struct json_array_s *) node->payload;
+            struct json_array_element_s *prev = NULL;
+            struct json_array_element_s *element = array->start;
+
+            while (element != NULL) {
+                if (keep_node(element->value)) {
+                    walk_query(element->value);
+                    prev = element;
+                } else {
+                    if (prev == NULL)
+                        array->start = element->next;
+                    else
+                        prev->next = element->next;
+                }
+
+                element = element->next;
+            }
+        } break;
+
+        case json_type_string:
+        case json_type_number:
+        case json_type_true:
+        case json_type_false:
+        case json_type_null:
+            /* nothing we need to do for these */
+            break;
+
+        default:
+            elog(ERROR, "Unknown json value type: %lu", node->type);
+
+    }
+}
+
+static char *generate_nested_agg_filter(ZDBQueryType *query) {
+    char *querystr = zdbquery_get_query(query);
+    size_t outlen;
+    struct json_parse_result_s result;
+    struct json_value_s *root = json_parse_ex(querystr, strlen(querystr), 0, json_alloc, NULL, &result);
+
+    if (result.error)
+        elog(ERROR, "generate_nested_agg_filter json parsing error: %lu", result.error);
+
+    walk_query(root);
+
+    elog(NOTICE, "%s", json_write_minified(root, &outlen));
+    return json_write_minified(root, &outlen);
+}
+
 static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, char *field, bool arbitrary) {
 	StringInfo request  = makeStringInfo();
 	StringInfo postData = makeStringInfo();
@@ -1167,8 +1299,13 @@ static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, c
 	} else {
         char *base;
 	    if (ElasticsearchIsNestedField(indexRel, field, &base)) {
+            char *filter;
+
 	        if (base == NULL)
 	            elog(ERROR, "'%s' isn't actually nested: ", base);
+
+	        filter = generate_nested_agg_filter(query);
+	        agg = psprintf("{\"filter\":%s, \"aggs\":{\"filtered_agg\":%s}}", filter, agg);
 
             appendStringInfo(postData, "\"aggs\":{\"nested_agg\":{\"nested\":{\"path\":\"%s\"}, \"aggs\":{\"the_agg\":%s}}}", base, agg);
 	    } else {
@@ -1177,11 +1314,9 @@ static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, c
 	}
 	appendStringInfoCharMacro(postData, '}');
 
-elog(LOG, "REQUEST: %s", postData->data);
 	appendStringInfo(request, "%s%s/_search?size=0", ZDBIndexOptionsGetUrl(indexRel),
 					 ZDBIndexOptionsGetAlias(indexRel));
 	response = rest_call("POST", request, postData, ZDBIndexOptionsGetCompressionLevel(indexRel));
-elog(LOG, "RESPONSE: %s", response->data);
 
 	freeStringInfo(postData);
 	freeStringInfo(request);
@@ -1220,7 +1355,7 @@ char *ElasticsearchTerms(Relation indexRel, char *field, ZDBQueryType *query, ch
 		size = INT32_MAX;
 
 	response = makeAggRequest(indexRel, query,
-							  psprintf("{\"terms\":{\"field\":\"%s\",\"size\":%lu%s}}", field, size, orderClause),
+							  psprintf("{\"terms\":{\"field\":\"%s\",\"shard_size\":%d,\"size\":%lu%s}}", field, INT_MAX, size, orderClause),
 							  field,
 							  false);
 
@@ -1342,8 +1477,8 @@ char *ElasticsearchExtendedStats(Relation indexRel, char *field, ZDBQueryType *q
 													sigma > 0 ? psprintf(",\"sigma\":%d", sigma) : ""), field, false);
 }
 
-char *ElasticsearchSignificantTerms(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"significant_terms\":{\"field\":\"%s\"}}", field), field, false);
+char *ElasticsearchSignificantTerms(Relation indexRel, char *field, ZDBQueryType *query, char *include, int size, int min_doc_count) {
+	return makeAggRequest(indexRel, query, psprintf("{\"significant_terms\":{\"field\":\"%s\", \"include\":\"%s\", \"size\":%d, \"min_doc_count\":%d}}", field, include, size, min_doc_count), field, false);
 }
 
 char *ElasticsearchSignificantTermsTwoLevel(Relation indexRel, char *firstField, char *secondField, ZDBQueryType *query, uint64 size) {
@@ -1369,9 +1504,13 @@ char *ElasticsearchDateRange(Relation indexRel, char *field, ZDBQueryType *query
 						  field, false);
 }
 
-char *ElasticsearchHistogram(Relation indexRel, char *field, ZDBQueryType *query, float8 interval) {
-	return makeAggRequest(indexRel, query,
-						  psprintf("{\"histogram\":{\"field\":\"%s\",\"interval\":%f}}", field, interval), field, false);
+char *ElasticsearchHistogram(Relation indexRel, char *field, ZDBQueryType *query, float8 interval, int min_doc_count) {
+    if (min_doc_count > 0)
+        return makeAggRequest(indexRel, query,
+                              psprintf("{\"histogram\":{\"field\":\"%s\",\"interval\":%f,\"min_doc_count\":%d}}", field, interval, min_doc_count), field, false);
+    else
+        return makeAggRequest(indexRel, query,
+                              psprintf("{\"histogram\":{\"field\":\"%s\",\"interval\":%f}}", field, interval), field, false);
 }
 
 char *ElasticsearchDateHistogram(Relation indexRel, char *field, ZDBQueryType *query, char *interval, char *format) {

@@ -129,11 +129,11 @@ char *ElasticsearchPercentiles(Relation indexRel, char *field, ZDBQueryType *que
 char *ElasticsearchPercentileRanks(Relation indexRel, char *field, ZDBQueryType *query, char *values);
 char *ElasticsearchStats(Relation indexRel, char *field, ZDBQueryType *query);
 char *ElasticsearchExtendedStats(Relation indexRel, char *field, ZDBQueryType *query, int sigma);
-char *ElasticsearchSignificantTerms(Relation indexRel, char *field, ZDBQueryType *query);
+char *ElasticsearchSignificantTerms(Relation indexRel, char *field, ZDBQueryType *query, char *include, int size, int min_doc_count);
 char *ElasticsearchSignificantTermsTwoLevel(Relation indexRel, char *firstField, char *secondField, ZDBQueryType *query, uint64 size);
 char *ElasticsearchRange(Relation indexRel, char *field, ZDBQueryType *query, char *ranges);
 char *ElasticsearchDateRange(Relation indexRel, char *field, ZDBQueryType *query, char *ranges);
-char *ElasticsearchHistogram(Relation indexRel, char *field, ZDBQueryType *query, float8 interval);
+char *ElasticsearchHistogram(Relation indexRel, char *field, ZDBQueryType *query, float8 interval, int min_doc_count);
 char *ElasticsearchDateHistogram(Relation indexRel, char *field, ZDBQueryType *query, char *interval, char *format);
 char *ElasticsearchMissing(Relation indexRel, char *field, ZDBQueryType *query);
 char *ElasticsearchFilters(Relation indexRel, char **labels, ZDBQueryType **filters, int nfilters);

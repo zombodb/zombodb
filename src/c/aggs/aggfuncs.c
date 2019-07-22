@@ -284,15 +284,18 @@ Datum zdb_internal_extended_stats(PG_FUNCTION_ARGS) {
 }
 
 Datum zdb_internal_significant_terms(PG_FUNCTION_ARGS) {
-	Oid          indexRelOid = PG_GETARG_OID(0);
-	char         *field      = GET_STR(PG_GETARG_TEXT_P(1));
-	ZDBQueryType *query      = (ZDBQueryType *) PG_GETARG_VARLENA_P(2);
-	Relation     indexRel;
-	char         *response;
+    Oid          indexRelOid   = PG_GETARG_OID(0);
+    char         *field        = GET_STR(PG_GETARG_TEXT_P(1));
+    ZDBQueryType *query        = (ZDBQueryType *) PG_GETARG_VARLENA_P(2);
+    char         *include      = GET_STR(PG_GETARG_TEXT_P(3));
+    int          size          = PG_GETARG_INT32(4);
+    int          min_doc_count = PG_GETARG_INT32(5);
+    Relation     indexRel;
+    char         *response;
 
-	indexRel = zdb_open_index(indexRelOid, AccessShareLock);
-	response = ElasticsearchSignificantTerms(indexRel, field, query);
-	relation_close(indexRel, AccessShareLock);
+    indexRel = zdb_open_index(indexRelOid, AccessShareLock);
+    response = ElasticsearchSignificantTerms(indexRel, field, query, include, size, min_doc_count);
+    relation_close(indexRel, AccessShareLock);
 
 	PG_RETURN_TEXT_P(cstring_to_text(response));
 }
@@ -344,15 +347,16 @@ Datum zdb_internal_date_range(PG_FUNCTION_ARGS) {
 }
 
 Datum zdb_internal_histogram(PG_FUNCTION_ARGS) {
-	Oid          indexRelOid = PG_GETARG_OID(0);
-	char         *field      = GET_STR(PG_GETARG_TEXT_P(1));
-	ZDBQueryType *query      = (ZDBQueryType *) PG_GETARG_VARLENA_P(2);
-	float8       interval    = PG_GETARG_FLOAT8(3);
-	Relation     indexRel;
-	char         *response;
+    Oid          indexRelOid   = PG_GETARG_OID(0);
+    char         *field        = GET_STR(PG_GETARG_TEXT_P(1));
+    ZDBQueryType *query        = (ZDBQueryType *) PG_GETARG_VARLENA_P(2);
+    float8       interval      = PG_GETARG_FLOAT8(3);
+    int          min_doc_count = PG_GETARG_INT32(4);
+    Relation     indexRel;
+    char         *response;
 
 	indexRel = zdb_open_index(indexRelOid, AccessShareLock);
-	response = ElasticsearchHistogram(indexRel, field, query, interval);
+	response = ElasticsearchHistogram(indexRel, field, query, interval, min_doc_count);
 	relation_close(indexRel, AccessShareLock);
 
 	PG_RETURN_TEXT_P(cstring_to_text(response));
