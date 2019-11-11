@@ -160,7 +160,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION zdb.internal_significant_terms(index regclass, field text, query zdbquery, include text, size int, min_doc_count int) RETURNS json STABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_internal_significant_terms';
-CREATE OR REPLACE FUNCTION zdb.significant_terms(index regclass, field text, query zdbquery, include text DEFAULT '^.*', size int DEFAULT 10, min_doc_count int DEFAULT 3) RETURNS TABLE (term text, doc_count bigint, score numeric, bg_count bigint) LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION zdb.significant_terms(index regclass, field text, query zdbquery, include text DEFAULT '.*', size int DEFAULT 10, min_doc_count int DEFAULT 3) RETURNS TABLE (term text, doc_count bigint, score numeric, bg_count bigint) LANGUAGE plpgsql AS $$
 DECLARE
     response jsonb := zdb.internal_significant_terms(index, field, query, include, size, min_doc_count)::jsonb;
 BEGIN
