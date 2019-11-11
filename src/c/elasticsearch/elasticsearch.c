@@ -1157,7 +1157,6 @@ static bool keep_node(struct json_value_s *node) {
             struct json_object_element_s *element = object->start;
             const char *name = element->name->string;
 
-            elog(NOTICE, "should keep %s?", name);
             return
                     strcmp("bool", name) == 0 ||
                     strcmp("should", name) == 0 ||
@@ -1185,7 +1184,6 @@ static void walk_query(struct json_value_s *node) {
             while (element != NULL) {
                 const char *name = element->name->string;
 
-                elog(NOTICE, "looking at %s", name);
                 if (strcmp("bool", name) == 0) {
                     walk_query(element->value);
                 } else if (strcmp("must", name) == 0) {
@@ -1277,7 +1275,6 @@ static char *generate_nested_agg_filter(ZDBQueryType *query) {
 
     walk_query(root);
 
-    elog(NOTICE, "%s", json_write_minified(root, &outlen));
     return json_write_minified(root, &outlen);
 }
 
