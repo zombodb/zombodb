@@ -258,7 +258,7 @@ public class AnalyzedField {
         void keep(ASTProximity proximity) {
             List<ProximityGroup> scratch = new ArrayList<>();
             keep(proximity, scratch);
-            int cnt = proximity.getChildrenOfType(ASTWord.class).size() / 2 + 1;
+            int cnt = countProximityTokens(proximity, 0);
             for (ProximityGroup pair : scratch) {
                 for (Token token : pair.tokens) {
                     if (token.shouldKeep() || pair.tokens.size() >= cnt)
@@ -269,6 +269,16 @@ public class AnalyzedField {
                     }
                 }
             }
+        }
+
+        private int countProximityTokens(ASTProximity root, int cnt) {
+            for (QueryParserNode child : root) {
+                if (child instanceof ASTProximity)
+                    cnt = countProximityTokens((ASTProximity) child, cnt);
+                else
+                    cnt++;
+            }
+            return cnt;
         }
 
         void keep(ASTProximity proximity, List<ProximityGroup> scratch) {

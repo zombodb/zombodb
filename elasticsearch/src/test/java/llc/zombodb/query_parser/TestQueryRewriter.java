@@ -4265,6 +4265,196 @@ public class TestQueryRewriter extends ZomboDBTestCase {
     }
 
     @Test
+    public void testProximityHighlighting_Issue393() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+        DocumentHighlighter highlighter;
+        List<AnalyzedField.Token> highlights;
+
+        data.put("phrase_field", "blah time blah blah the blah blah blah blah blah now is the actual time.  blah blah blah blah now 1 2 3 the 1 2 3 time");
+        highlighter = new DocumentHighlighter(client(),
+                DEFAULT_INDEX_NAME,
+                "id",
+                data,
+                "phrase_field:(now w/2 the w/2 time)");
+        highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
+
+        assertEquals("[{\"term\":\"now\",\"startOffset\":49,\"endOffset\":52,\"position\":11,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"the\",\"startOffset\":56,\"endOffset\":59,\"position\":13,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"time\",\"startOffset\":67,\"endOffset\":71,\"position\":15,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false}]",
+                Utils.objectToJson(highlights));
+    }
+
+    @Test
+    public void testProximityHighlighting_Issue393_2() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+        DocumentHighlighter highlighter;
+        List<AnalyzedField.Token> highlights;
+
+        data.put("phrase_field", "    Enron                                                                                                                                              \n" +
+                "                                                                                                                                                      \n" +
+                " P.O.Box 1188                                                                                                                                         \n" +
+                "   Houston, TX 77251-1188                                                                                                                             \n" +
+                "                                                                                                                                                      \n" +
+                "  Mark Palmer                                                                                                                                         \n" +
+                "  713-853-4738                                                                                                                                        \n" +
+                "                                                                                                                                                      \n" +
+                " ENRON REPORTS RECURRING THIRD QUARTER EARNINGS OF $0.43 PER                                                                                          \n" +
+                " DILUTED SHARE; REPORTS NON-RECURRING CHARGES OF $1.01 BILLION                                                                                        \n" +
+                " AFTER-TAX; REAFFIRMS RECURRING EARNINGS ESTIMATES OF $1.80 FOR                                                                                       \n" +
+                " 2001 AND $2.15 FOR 2002; AND EXPANDS FINANCIAL REPORTING                                                                                             \n" +
+                "                                                                                                                                                      \n" +
+                " FOR IMMEDIATE RELEASE:  Tuesday, Oct. 16, 2001                                                                                                       \n" +
+                "                                                                                                                                                      \n" +
+                " HOUSTON - Enron Corp. (NYSE - ENE) announced today recurring earnings per                                                                            \n" +
+                " diluted share of $0.43 for the third quarter of 2001, compared to $0.34 a year ago.  Total                                                           \n" +
+                " recurring net income increased to $393 million, versus $292 million a year ago.                                                                      \n" +
+                " \"Our 26 percent increase in recurring earnings per diluted share shows the very strong                                                               \n" +
+                " results of our core wholesale and retail energy businesses and our natural gas pipelines,\" said                                                      \n" +
+                " Kenneth L. Lay, Enron chairman and CEO.  \"The continued excellent prospects in these                                                                 \n" +
+                " businesses and Enron's leading market position make us very confident in our strong earnings                                                         \n" +
+                " outlook.\"                                                                                                                                            \n" +
+                " Non-recurring charges totaling $1.01 billion after-tax, or $(1.11) loss per diluted share,                                                           \n" +
+                " were recognized for the third quarter of 2001.  The total net loss for the quarter, including non-                                                   \n" +
+                " recurring items, was $(618) million, or $(0.84) per diluted share.                                                                                   \n" +
+                " \"After a thorough review of our businesses, we have decided to take these charges to                                                                 \n" +
+                " clear away issues that have clouded the performance and earnings potential of our core energy                                                        \n" +
+                " businesses,\" said Lay.                                                                                                                               \n" +
+                " Enron also reaffirmed today it is on track to continue strong earnings growth and achieve                                                            \n" +
+                " its previously stated targets of recurring earnings per diluted share of  $0.45 for the fourth                                                       \n" +
+                " quarter 2001, $1.80 for 2001 and $2.15 for 2002.                                                                                                     \n" +
+                "                                                                                                                                                      \n" +
+                " PERFORMANCE SUMMARY                                                                                                                                  \n" +
+                " Enron has recently expanded the reporting of its financial results by both providing                                                                 \n" +
+                " additional segments and expanding financial and operating information in the attached tables.                                                        \n" +
+                " Enron's business segments are as follows:                                                                                                            \n" +
+                " ?  Wholesale Services                                                                                                                                \n" +
+                " o Americas                                                                                                                                           \n" +
+                " o Europe and Other Commodity Markets                                                                                                                 \n" +
+                " ?  Retail Services                                                                                                                                   \n" +
+                " ?  Transportation and Distribution                                                                                                                   \n" +
+                " o Natural Gas Pipelines                                                                                                                              \n" +
+                " o Portland General                                                                                                                                   \n" +
+                " o Global Assets                                                                                                                                      \n" +
+                " ?  Broadband Services                                                                                                                                \n" +
+                " ?  Corporate and Other                                                                                                                               \n" +
+                "                                                                                                                                                      \n" +
+                " Wholesale Services:  Total income before interest, minority interests and taxes (IBIT)                                                               \n" +
+                " increased 28 percent to $754 million in the third quarter of 2001, compared to $589 million in                                                       \n" +
+                " the third quarter of last year.  Total wholesale physical volumes increased 65 percent to 88.2                                                       \n" +
+                " trillion British thermal units equivalent per day (Tbtue/d) in the recent quarter.                                                                   \n" +
+                " Americas  - This segment consists of Enron's gas and power market-making operations                                                                  \n" +
+                " and merchant energy activities in North and South America.  IBIT from this segment grew 31                                                           \n" +
+                " percent to $701 million in the recent quarter from $536 million a year ago, driven by strong                                                         \n" +
+                " results from the North America natural gas and power businesses.  Natural gas volumes                                                                \n" +
+                " increased 6 percent to 26.7 Tbtu/d, and power volumes increased 77 percent to 290 million                                                            \n" +
+                " megawatt-hours (MWh).                                                                                                                                \n" +
+                " Europe and Other Commodity Markets - This segment includes Enron's European gas                                                                      \n" +
+                " and power operations and Enron's other commodity businesses, such as metals, coal, crude and                                                         \n" +
+                " liquids, weather, forest products and steel.  For the third quarter of 2001, IBIT for the segment                                                    \n" +
+                " remained unchanged at $53 million as compared to last year.  Although physical volumes                                                               \n" +
+                " increased for each commodity in the segment, the low level of volatility in the gas and power                                                        \n" +
+                " markets caused profitability to remain flat.                                                                                                         \n" +
+                "                                                                                                                                                      \n" +
+                " Retail Services:  Enron's Retail Services product offerings include pricing and delivery                                                             \n" +
+                " of natural gas and power, as well as demand side management services to minimize energy costs                                                        \n" +
+                " for business consumers in North America and Europe.  In the third quarter of 2001, Retail                                                            \n" +
+                " Services generated IBIT of $71 million, compared to $27 million a year ago.  Retail Services                                                         \n" +
+                " continues to successfully penetrate markets with standard, scalable products to reduce                                                               \n" +
+                " consumers' total energy costs.  Enron recently added new business with large consumers,                                                              \n" +
+                " including Wal-Mart, Northrop Grumman, the City of Chicago, Equity Office Properties and                                                              \n" +
+                " Wendy's in the U.S. and Sainsbury and Guinness Brewery in the U.K.  To date in 2001, Enron                                                           \n" +
+                " has completed over 50 transactions with large consumers.  Enron is also successfully extending                                                       \n" +
+                " its retail energy products to small business customers, completing over 95,000 transactions in the                                                   \n" +
+                " first nine months of this year.                                                                                                                      \n" +
+                " Transportation and Distribution:  The Transportation and Distribution group includes                                                                 \n" +
+                " Natural Gas Pipelines, Portland General and Global Assets.                                                                                           \n" +
+                " Natural Gas Pipelines - This segment provided $85 million of IBIT in the current                                                                     \n" +
+                " quarter, up slightly from the same quarter last year.  Pipeline expansions are underway in high                                                      \n" +
+                " growth areas and include a 428 million cubic feet per day (MMcf/d) expansion by Florida Gas                                                          \n" +
+                " Transmission and a 150 MMcf/d expansion by Transwestern.                                                                                             \n" +
+                " Portland General - Portland General Electric, an electric utility in the northwestern U.S.,                                                          \n" +
+                " reported an IBIT loss of $(17) million compared to IBIT of $74 million in the same quarter a                                                         \n" +
+                " year ago.  Portland General entered into power contracts in prior periods to ensure adequate                                                         \n" +
+                " supply for the recent quarter at prices that were significantly higher than actual settled prices                                                    \n" +
+                " during the third quarter of 2001.  Although the rate mechanism in place anticipated and                                                              \n" +
+                " substantially mitigated the effect of the higher purchased power costs, only the amount in excess                                                    \n" +
+                " of a defined baseline was recoverable from ratepayers.  Increased power cost recovery was                                                            \n" +
+                " incorporated into Portland General's new fifteen-month rate structure, which became effective                                                        \n" +
+                " October 1, 2001 and included an average 40 percent rate increase.                                                                                    \n" +
+                " Last week, Enron announced a definitive agreement to sell Portland General to Northwest                                                              \n" +
+                " Natural Gas for approximately $1.9 billion and the assumption of approximately $1.1 billion in                                                       \n" +
+                " Portland General debt.  The proposed transaction, which is subject to customary regulatory                                                           \n" +
+                " approvals, is expected to close by late 2002.                                                                                                        \n" +
+                "                                                                                                                                                      \n" +
+                " Global Assets - The Global Assets segment includes assets not part of Enron's wholesale                                                              \n" +
+                " or retail energy operations.  Major assets included in this segment are Elektro, an electric utility                                                 \n" +
+                " in Brazil; Dabhol, a power plant in India; TGS, a natural gas pipeline in Argentina; Azurix; and                                                     \n" +
+                " the Enron Wind operations.  For the third quarter of 2001, IBIT for the segment remained                                                             \n" +
+                " unchanged at $19 million as compared to last year.                                                                                                   \n" +
+                " Broadband Services:  Enron makes markets for bandwidth, IP and storage products and                                                                  \n" +
+                " bundles such products for comprehensive network management services.  IBIT losses were $(80)                                                         \n" +
+                " million in the current quarter compared to a $(20) million loss in the third quarter of last year.                                                   \n" +
+                " This quarter's results include significantly lower investment-related income and lower operating                                                     \n" +
+                " costs.                                                                                                                                               \n" +
+                " Corporate and Other:  Corporate and Other reported an IBIT loss of $(59) million for                                                                 \n" +
+                " the quarter compared to $(106) million loss a year ago.  Corporate and Other represents the                                                          \n" +
+                " unallocated portion of expenses related to general corporate functions.                                                                              \n" +
+                "                                                                                                                                                      \n" +
+                " NON-RECURRING ITEMS                                                                                                                                  \n" +
+                " Enron's results in the third quarter of 2001 include after-tax non-recurring charges of                                                              \n" +
+                " $1.01 billion, or $(1.11) per diluted share, consisting of:                                                                                          \n" +
+                " ?  $287 million related to asset impairments recorded by Azurix Corp.  These                                                                         \n" +
+                " impairments primarily reflect Azurix's planned disposition of its North American                                                                     \n" +
+                " and certain South American service-related businesses;                                                                                               \n" +
+                " ?  $180 million associated with the restructuring of Broadband Services, including                                                                   \n" +
+                " severance costs, loss on the sale of inventory and an impairment to reflect the                                                                      \n" +
+                " reduced value of Enron's content services business; and                                                                                              \n" +
+                " ?  $544 million related to losses associated with certain investments, principally                                                                   \n" +
+                " Enron's interest in The New Power Company, broadband and technology                                                                                  \n" +
+                " investments, and early termination during the third quarter of certain structured                                                                    \n" +
+                " finance arrangements with a previously disclosed entity.                                                                                             \n" +
+                "                                                                                                                                                      \n" +
+                "                                                                                                                                                      \n" +
+                " OTHER INFORMATION                                                                                                                                    \n" +
+                " A conference call with Enron management regarding third quarter results will be                                                                      \n" +
+                " conducted live today at 10:00 a.m. EDT and may be accessed through the Investor Relations                                                            \n" +
+                " page at www.enron.com                                                                                                                                \n" +
+                " .                                                                                                                                                    \n" +
+                " Enron is one of the world's leading energy, commodities and service companies.  The                                                                  \n" +
+                " company makes markets in electricity and natural gas, delivers energy and other physical                                                             \n" +
+                " commodities, and provides financial and risk management services to customers around the                                                             \n" +
+                " world.  The stock is traded under the ticker symbol \"ENE.\"                                                                                           \n" +
+                " ______________________________________________________________________________                                                                       \n" +
+                " Please see attached tables for additional financial information.                                                                                     \n" +
+                "                                                                                                                                                      \n" +
+                " This press release includes forward-looking statements within the meaning of Section 27A of the Securities Act of 1933 and Section                   \n" +
+                " 21E of the Securities Exchange Act of 1934.  The Private Securities Litigation Reform Act of 1995 provides a safe harbor for forward-looking         \n" +
+                " statements made by Enron or on its behalf.  These forward-looking statements are not historical facts, but reflect Enron's curr ent expectations,    \n" +
+                " estimates and projections.  All statements contained in the press release which address future operating performance, events or developments that    \n" +
+                " are expected to occur in the future (including statements relating to earnings expectations, sales of assets, or statements expressing general       \n" +
+                " optimism about future operating results) are forward-looking statements.  Although Enron believes that its expectations are bas ed on reasonable     \n" +
+                " assumptions, it can give no assurance that its goals will be achieved.  Important factors that could cause actual results to di ffer materially from \n" +
+                " those in the forward-looking statements herein include success in marketing natural gas and power to wholesale customers; the ability to             \n" +
+                " penetrate new retail natural gas and electricity markets, including the energy outsource market, in the United States and Europe; the timing, extent \n" +
+                " and market effects of deregulation of energy markets in the United States and in foreign jurisdictions; development of Enron's broadband             \n" +
+                " network and customer demand for intermediation and content services; political developments in foreign countries; receipt of re gulatory             \n" +
+                " approvals and satisfaction of customary closing conditions to the sale of Portland General; and conditions of the capital markets and equity         \n" +
+                " markets during the periods covered by the forward-looking statements.                                                                                \n");
+        highlighter = new DocumentHighlighter(client(),
+                DEFAULT_INDEX_NAME,
+                "id",
+                data,
+                "phrase_field:(Energy w/3 Enron w/3 Lay)");
+        highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
+
+        assertEquals("[{\"term\":\"energy\",\"startOffset\":4166,\"endOffset\":4172,\"position\":223,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"lay\",\"startOffset\":4248,\"endOffset\":4251,\"position\":226,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"enron\",\"startOffset\":4381,\"endOffset\":4386,\"position\":227,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false}]",
+                Utils.objectToJson(highlights));
+    }
+
+
+    @Test
     public void testIssue75_Connectors() throws Exception {
         assertAST("#bool(#must() #should() #must_not())",
                 "QueryTree\n" +
