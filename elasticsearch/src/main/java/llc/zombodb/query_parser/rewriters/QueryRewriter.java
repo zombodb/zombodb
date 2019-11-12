@@ -100,7 +100,7 @@ public abstract class QueryRewriter {
         public String to;
     }
 
-    static class QueryRewriteException extends RuntimeException {
+    public static class QueryRewriteException extends RuntimeException {
         QueryRewriteException(String message) {
             super(message);
         }
@@ -197,6 +197,10 @@ public abstract class QueryRewriter {
 
     public Map<String, ?> describedNestedObject(String fieldname) {
         return metadataManager.describedNestedObject(fieldname);
+    }
+
+    public String getSearchType() {
+        return tree.getSearchType();
     }
 
     public ASTLimit getLimit() {

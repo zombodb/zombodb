@@ -6318,5 +6318,21 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                         "            Word (fieldname=field3, operator=CONTAINS, value=value, index=db.schema.table.index)"
         );
     }
+
+    @Test
+    public void testIssue392() throws Exception {
+        QueryRewriter qr = qr("#search_type(query_then_fetch) foo");
+        assertEquals("query_then_fetch", qr.getSearchType());
+
+        qr = qr("#search_type(dfs_query_then_fetch) foo");
+        assertEquals("dfs_query_then_fetch", qr.getSearchType());
+
+        try {
+            qr("#search_type(invlid_search_type) foo");
+            fail("Parsed an invalid search type");
+        } catch (QueryRewriter.QueryRewriteException qre) {
+
+        }
+    }
 }
 

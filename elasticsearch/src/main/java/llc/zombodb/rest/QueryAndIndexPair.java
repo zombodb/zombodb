@@ -22,14 +22,16 @@ public class QueryAndIndexPair {
     private final QueryBuilder query;
     private final QueryBuilder visibilityFilter;
     private final String indexName;
+    private final String searchType;
     private final ASTLimit limit;
     private final boolean wantScores;
     private final String dump;
 
-    public QueryAndIndexPair(QueryBuilder query, QueryBuilder visibilityFilter, String indexName, ASTLimit limit, boolean wantScores, String dump) {
+    public QueryAndIndexPair(QueryBuilder query, QueryBuilder visibilityFilter, String indexName, String searchType, ASTLimit limit, boolean wantScores, String dump) {
         this.query = query;
         this.visibilityFilter = visibilityFilter;
         this.indexName = indexName;
+        this.searchType = searchType;
         this.limit = limit;
         this.wantScores = wantScores;
         this.dump = dump;
@@ -49,6 +51,10 @@ public class QueryAndIndexPair {
 
     public boolean hasLimit() {
         return limit != null;
+    }
+
+    public String getSearchType() {
+        return searchType;
     }
 
     public ASTLimit getLimit() {

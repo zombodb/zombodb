@@ -39,6 +39,7 @@ public class QueryTreeOptimizer {
         pullOutNodesOfType(tree, ASTSuggest.class, true);
         pullOutNodesOfType(tree, ASTOptions.class, true);
         pullOutNodesOfType(tree, ASTFieldLists.class, true);
+        pullOutNodesOfType(tree, ASTSearchType.class, true);
 
         reduce(tree);
         validateAndFixProximityChainFieldnames(tree);

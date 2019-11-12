@@ -169,6 +169,7 @@ PARSER_END(QueryParser)
   | <EXTENDED_STATS: "#extended_stats" >
   | <SUGGEST: "#suggest" >
   | <OPTIONS: "#options" >
+  | <SEARCH_TYPE: "#search_type" >
   | <LIMIT: "#limit" >
   | <FIELDLISTS: "#field_lists" >
   | <EXPAND: "#expand" >
@@ -328,6 +329,25 @@ void Options() : {}
     ) #Options
 }
 
+void SearchType() : {}
+{
+    (
+        "#search_type" "(" SearchTypeOption() ")"
+    ) #SearchType
+}
+
+void SearchTypeOption() #SearchTypeOption :
+{
+    Token t;
+}
+{
+    t = <IDENTIFIER> {
+        if (t.image.equalsIgnoreCase("query_then_fetch") || t.image.equalsIgnoreCase("dfs_query_then_fetch"))
+            jjtThis.value = t.image.toLowerCase();
+        else
+            throw new ParseException ("Invalid search_type");
+    }
+}
 void Limit() : {}
 {
     (
@@ -490,7 +510,7 @@ void UnaryExpression() :
           n = Not()
         | LOOKAHEAD(3) (fao = OptionalFieldname()) "(" {fieldnameStack.push(fao);} Expression() {fieldnameStack.pop();} ")"
         | ("(" ")") // just ignore empty parens, ie:  ()
-        | Limit() | Options() | LOOKAHEAD(3) Aggregations() | FieldLists() | Visibility()
+        | Limit() | Options() | SearchType() | LOOKAHEAD(3) Aggregations() | FieldLists() | Visibility()
         | n = Expansion()
         | n = Subselect()
         | n = JsonQuery()

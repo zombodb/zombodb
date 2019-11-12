@@ -160,6 +160,9 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 builder.addDocValueField("_zdb_id");    // this is the only field we need
                 builder.addStoredField("_none_");       // don't get any _underscore fields like _id
 
+                if (query.getSearchType() != null)
+                    builder.setSearchType(query.getSearchType());
+
                 if (wantScores)
                     builder.setQuery(query.getQueryBuilder());
                 else
@@ -212,9 +215,9 @@ public class ZomboDBTIDResponseAction extends BaseRestHandler {
                 // TODO:  should we use 'preference' in FastTerms and/or CrossJoin somehow?
                 String preference = request.param("preference");
                 QueryRewriter qr = QueryRewriter.Factory.create(request, client, indexName, queryString, canDoSingleIndex, needVisibilityOnTopLevel, wantScores);
-                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getLimit(), qr.wantScores(), wantDump ? qr.dumpAsString() : null);
+                return new QueryAndIndexPair(qr.rewriteQuery(), qr.getVisibilityFilter(), qr.getSearchIndexName(), qr.getSearchType(), qr.getLimit(), qr.wantScores(), wantDump ? qr.dumpAsString() : null);
             } else {
-                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null, wantScores, null);
+                return new QueryAndIndexPair(matchAllQuery(), matchAllQuery(), indexName, null, null, wantScores, null);
             }
         } catch (Exception e) {
             throw new RuntimeException(queryString, e);

@@ -485,3 +485,24 @@ ORDER BY zdb_score('table', ctid) DESC;
 Note that we had to order the result using the `zdb_score()` function (which is documented in [SQL-API.md](SQL-API.md)).
 
 The ability to specify multiple sort fields is supported and can be used to provide deterministic result ordering so that `#limit()` can be used to do pagination, akin to how one might do the same using Postgres OFFSET/LIMIT clauses.
+
+## Changing the Elasticsearch `search_type` per-Query
+
+It's possible to select which [Elasticsearch `search_type`](https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-search-type.html)
+to use on a per-query basis.  Changing the search_type to `dfs_query_then_fetch` can provide more consistent scoring 
+with multi-shard indices.  
+
+Use the `#search_type(query_then_fetch | dfs_query_then_fetch)` directive in a query to specify this.
+
+If unspecified, the default of `query_then_fetch` is used.
+
+A complete example is:
+
+```sql
+SELECT *, zdb_score(table, ctid)
+  FROM table
+  WHERE zdb('table', ctid) ==> '#search_type(dfs_query_then_fetch) beer,wine,cheese'
+ORDER BY zdb_score('table', ctid) DESC;
+```
+
+Changing from the default to `dfs_query_then_fetch` is really only useful when you're also using the `zdb_score(table, ctid)` function in your query

@@ -23,6 +23,14 @@ public class ASTQueryTree extends QueryParserNode {
         return null;
     }
 
+    public String getSearchType() {
+        ASTSearchType type = (ASTSearchType) getChild(ASTSearchType.class);
+        if (type != null)
+            return String.valueOf(type.getChild(0).getValue());
+
+        return null;
+    }
+
     public ASTLimit getLimit() {
         return (ASTLimit) getChild(ASTLimit.class);
     }
