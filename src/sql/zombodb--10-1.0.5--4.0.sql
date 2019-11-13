@@ -44,6 +44,7 @@ VALUES ('emoji', '{
 --
 -- nested aggregate changes
 ---
+CREATE OR REPLACE FUNCTION is_nested_field(index regclass, field text) RETURNS bool PARALLEL SAFE IMMUTABLE STRICT LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_is_nested_field';
 
 CREATE OR REPLACE FUNCTION zdb.extract_the_agg_data(index regclass, field text, response jsonb) RETURNS jsonb
     PARALLEL SAFE IMMUTABLE STRICT
