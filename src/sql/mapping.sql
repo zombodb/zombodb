@@ -47,7 +47,8 @@ CREATE TABLE type_mappings (
 
 CREATE TABLE tokenizers (
   name text NOT NULL PRIMARY KEY,
-  definition jsonb NOT NULL
+  definition jsonb NOT NULL,
+  is_default boolean DEFAULT false NOT NULL
 );
 
 SELECT pg_catalog.pg_extension_config_dump('filters', 'WHERE NOT is_default');
@@ -55,7 +56,7 @@ SELECT pg_catalog.pg_extension_config_dump('char_filters', 'WHERE NOT is_default
 SELECT pg_catalog.pg_extension_config_dump('analyzers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('normalizers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('mappings', '');
-SELECT pg_catalog.pg_extension_config_dump('tokenizers', '');
+SELECT pg_catalog.pg_extension_config_dump('tokenizers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('type_mappings', 'WHERE NOT is_default');
 
 CREATE OR REPLACE FUNCTION define_filter(name text, definition json) RETURNS void LANGUAGE sql VOLATILE STRICT AS $$
@@ -336,12 +337,12 @@ CREATE DOMAIN whitespace AS text;
 -- emoji analyzer support
 --
 
-INSERT INTO tokenizers(name, definition)
+INSERT INTO tokenizers(name, definition, is_default)
 VALUES ('emoji', '{
   "type": "pattern",
   "pattern": "([\\ud83c\\udf00-\\ud83d\\ude4f]|[\\ud83d\\ude80-\\ud83d\\udeff])",
   "group": 1
-}');
+}', true);
 
 INSERT INTO analyzers(name, definition, is_default)
 VALUES ('emoji', '{

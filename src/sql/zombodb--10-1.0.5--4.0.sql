@@ -25,13 +25,15 @@ $$;
 --
 -- emoji analyzer support
 --
+ALTER TABLE tokenizers ADD COLUMN is_default boolean DEFAULT false;
+SELECT pg_catalog.pg_extension_config_dump('tokenizers', 'WHERE NOT is_default');
 
-INSERT INTO tokenizers(name, definition)
+INSERT INTO tokenizers(name, definition, is_default)
 VALUES ('emoji', '{
   "type": "pattern",
   "pattern": "([\\ud83c\\udf00-\\ud83d\\ude4f]|[\\ud83d\\ude80-\\ud83d\\udeff])",
   "group": 1
-}');
+}', true);
 
 INSERT INTO analyzers(name, definition, is_default)
 VALUES ('emoji', '{
