@@ -15,7 +15,8 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
 
 ## Quick Links
 
- - [Installation Instructions](INSTALL.md)
+ - [Installation from Binaries](BINARY-INSTALLATION.md) ([sponsors only](https://github.com/sponsors/eeeebbbbrrrr))
+ - [Installation from Source](SOURCE-INSTALLATION.md) (everyone)
  - [Getting Started Tutorial](TUTORIAL.md)
  - [Important Things to Know](THINGS-TO-KNOW.md)
  - [Creating Indexes](CREATE-INDEX.md)
@@ -46,7 +47,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
     - `json/jsonb` automatically mapped as dynamic nested objects
     - Supports full set of [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
  - Hot-Standby compatible
- - Support for indexing [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
+ - Support for indexing & searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
 
 
 ## Current Limitations
@@ -67,17 +68,15 @@ Elasticsearch | 5.6.x, 6.x
 libcurl       | >=7.28.0
 
 
-## Downloading
+## Sponsorship and Downloads
 
-Please visit [https://www.zombodb.com/releases/](https://www.zombodb.com/releases/) to download.
+Please see https://github.com/sponsors/eeeebbbbrrrr for sponsorship details.  Your sponsorship at any tier is greatly 
+appreciated and helps keep ZomboDB moving forward.
 
-If you want to integrate with a CI/CD system you can intuit the pattern for versions from the Postgres extension download links, but it'll be something like:
+Note that ZomboDB is only available in binary form for certain sponsor tiers.
 
-```
-https://www.zombodb.com/releases/VERSION/zombodb_trusty_pg10-VERSION_amd64.deb
-```
-
-Note:  you'll need to use the one that's for your Postgres + Linux distro combination -- the example above is for Postgres 10 on Ubuntu Trusty.
+When you become a sponsor at a tier that provides binary downloads, please request a download key from https://www.zombodb.com/services/.
+Please do the same if you sponsor a tier that provides access to ZomboDB's private Discord server.
 
 
 ## Quick Overview

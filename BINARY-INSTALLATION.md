@@ -1,6 +1,9 @@
 # ZomboDB Installation Instructions
 
-ZomboDB is a 100% native Postgres extension.  Additionally, ZomboDB is released as binary `.deb` and `.rpm` packages for popular Linux distributions.  As such, installation is fairly straightforward.
+ZomboDB is a 100% native Postgres extension.  Additionally, ZomboDB is available as binary `.deb` and `.rpm` packages to
+[sponsors](https://github.com/sponsors/eeeebbbbrrrr) for popular Linux distributions.  As such, installation is fairly straightforward.
+
+If you instead prefer to install ZomboDB from source, please read the [SOURCE-INSTALLATION.md] documentation.
 
 
 ## Prerequisites
@@ -11,7 +14,7 @@ ZomboDB is a 100% native Postgres extension.  Additionally, ZomboDB is released 
 
 ### Installation on CentOS/RHEL
 
-Download the proper `.rpm` package for your CentOS/RHEL distro from https://www.zombodb.com/releases, and simply run:
+Download the proper `.rpm` package for your CentOS/RHEL distro from https://www.zombodb.com/${your_download_key}/, and simply run:
 
 ```shell
 $ rpm -Uvh zombodb_centos_7_pg10-1.0.0_x86_64.rpm
@@ -19,7 +22,7 @@ $ rpm -Uvh zombodb_centos_7_pg10-1.0.0_x86_64.rpm
 
 ### Installation on Ubuntu/Debian
 
-Download the proper `.deb` package for your Ubuntu/Debian distro from https://www.zombodb.com/releases, and simply run:
+Download the proper `.deb` package for your Ubuntu/Debian distro from https://www.zombodb.com/${your_download_key}/, and simply run:
 
 ```shel
 $ dpkg -i zombodb_ubuntu_xenial_pg10-1.0.0_amd64.deb
@@ -27,15 +30,10 @@ $ dpkg -i zombodb_ubuntu_xenial_pg10-1.0.0_amd64.deb
 
 ### Installation on MacOS
 
-For MacOS, ZomboDB can only be installed from source.  Detailed compilation instructions are outside the scope of this document, but in general simply cloning the ZomboDB repository, switching to the `master` branch and running:
+Please see the [source installation documentation](SOURCE-INSTALLATION.md).
 
-```shell
-$ make clean install
-```
 
-should do the trick.  You'll need to make sure that Postgres' `pg_config` command-line utility is in your path and that you have the extension development headers (known as PGXS) installed as well.  
-
-## `postgresql.conf` settings to consider
+## `postgresql.conf` Settings to Consider
 
 ZomboDB defaults to zero Elasticsearch index replicas.  If you're installing for a production system you might consider setting `zdb.default_replicas` to a better value.
 
