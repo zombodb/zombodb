@@ -41,16 +41,10 @@ script:
   - sudo src/test/travis/hack-configs.sh ${PG}
   - sudo /etc/init.d/postgresql start ${PG}
   - sudo su - postgres -c "createuser --superuser travis"
-  - PG_CPPFLAGS="--coverage -O0" SHLIB_LINK="-fprofile-arcs -ftest-coverage" make && sudo make install
+  - make && sudo make install
   - sleep 10
   - curl localhost:9200/
   - make installcheck-setup installcheck
-  - sudo /etc/init.d/postgresql stop ${PG}
-  - ls -la $(find ./ -name "*.gcda")
-  - gcov -version
-  - gcov --version
-  - gcc --version
-  - gcov $(find ./ -name "*.c")
 
 after_failure:
   - sudo cat regression.diffs
