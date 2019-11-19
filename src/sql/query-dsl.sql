@@ -156,6 +156,16 @@ $$;
 CREATE OR REPLACE FUNCTION dsl.range(field text, lt numeric DEFAULT NULL, gt numeric DEFAULT NULL, lte numeric DEFAULT NULL, gte numeric DEFAULT NULL, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
     SELECT json_strip_nulls(json_build_object('range', json_build_object(field, ROW(lt, gt, lte, gte, boost)::dsl.esqdsl_range_text)))::zdbquery;
 $$;
+CREATE OR REPLACE FUNCTION dsl.datetime_range(field text, lt timestamp with time zone DEFAULT NULL, gt timestamp with time zone DEFAULT NULL, lte timestamp with time zone DEFAULT NULL, gte timestamp with time zone DEFAULT NULL, boost real DEFAULT NULL) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+    SELECT json_strip_nulls(json_build_object('range', json_build_object(field,
+            json_build_object(
+                'lt', lt at time zone 'utc',
+                'gt', gt at time zone 'utc',
+                'lte', lte at time zone 'utc',
+                'gte', gte at time zone 'utc'
+            )
+        )))::zdbquery;
+$$;
 
 
 CREATE TYPE dsl.esqdsl_exists AS (field name);
@@ -346,4 +356,18 @@ CREATE OR REPLACE FUNCTION dsl.query_string(
                                 auto_generate_phrase_queries, analyze_wildcard, max_determinized_states,
                                 minimum_should_match, lenient, time_zone, quote_field_suffix,
                                 auto_generate_synonyms_phrase_query, all_fields)::dsl.esqdsl_query_string))::zdbquery;
+$$;
+
+CREATE TYPE dsl.es_geo_shape_relation AS ENUM ('INTERSECTS', 'DISJOINT', 'WITHIN', 'CONTAINS');
+CREATE OR REPLACE FUNCTION dsl.geo_shape(field text, geojson_shape json, relation dsl.es_geo_shape_relation) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+  SELECT json_strip_nulls(json_build_object('geo_shape', json_build_object(field, json_build_object('shape', geojson_shape, 'relation', relation))))::zdbquery;
+$$;
+
+CREATE TYPE dsl.es_geo_bounding_box_type AS ENUM ('indexed', 'memory');
+CREATE OR REPLACE FUNCTION dsl.geo_bounding_box(field text, box box, type dsl.es_geo_bounding_box_type DEFAULT 'memory') RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+  SELECT json_strip_nulls(json_build_object('geo_bounding_box', json_build_object('type', type, field, json_build_object('left', (box[0])[0], 'top', (box[0])[1], 'right', (box[1])[0], 'bottom', (box[1])[1]))))::zdbquery;
+$$;
+
+CREATE OR REPLACE FUNCTION dsl.geo_polygon(field text, VARIADIC points point[]) RETURNS zdbquery PARALLEL SAFE IMMUTABLE LANGUAGE sql AS $$
+  SELECT json_strip_nulls(json_build_object('geo_polygon', json_build_object(field, json_build_object('points', zdb.point_array_to_json(points)))))::zdbquery;
 $$;

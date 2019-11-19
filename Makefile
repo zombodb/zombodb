@@ -56,6 +56,9 @@ installcheck-setup: src/test/sql/load-data.sql
 	createdb contrib_regression
 	TEST="setup create-tables load-data index-data" make installcheck
 
+checkboth:
+	./checkboth.sh	
+
 #
 # "make clean"
 #

@@ -24,6 +24,7 @@ typedef void *JsonObjectKeyIterator;
 typedef void *zdb_json_object;
 
 void json_support_init(void);
+void *json_alloc(void *user_data, size_t size);
 
 bool is_json(char *input);
 void *parse_json_object(StringInfo jsonString, MemoryContext memcxt);

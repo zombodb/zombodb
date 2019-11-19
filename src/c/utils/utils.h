@@ -47,9 +47,8 @@ static inline Oid *oids3(Oid a, Oid b, Oid c) {
 
 void freeStringInfo(StringInfo si);
 Oid get_base_type_oid(Oid typeOid);
-TupleDesc lookup_composite_tupdesc(Datum composite);
+TupleDesc lookup_index_tupdesc(Relation indexRelation);
 bool tuple_desc_contains_json(TupleDesc tupdesc);
-bool datum_contains_json(Datum composite);
 char *text_to_cstring_maybe_no_copy(const text *t, int *len, text **possible_copy);
 void replace_line_breaks(char *str, int len, char with_char);
 char *strip_json_ending(char *str, int len);

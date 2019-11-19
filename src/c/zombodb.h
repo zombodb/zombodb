@@ -24,6 +24,7 @@
 #include "nodes/pg_list.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
+#include "utils/jsonb.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
@@ -32,6 +33,30 @@
 #include "utils/utils.h"
 #include <assert.h>
 
-#define ZDB_VERSION "10-1.0.3"
+#define ZDB_VERSION "4.0"
+
+#ifndef PG_GETARG_JSONB_P
+#define PG_GETARG_JSONB_P PG_GETARG_JSONB
+#endif
+
+#ifndef JsonbPGetDatum
+#define JsonbPGetDatum JsonbGetDatum
+#endif
+
+
+#ifndef PG_GETARG_JSONB_P
+#define PG_GETARG_JSONB_P PG_GETARG_JSONB
+#endif
+
+#ifndef JsonbPGetDatum
+#define JsonbPGetDatum JsonbGetDatum
+#endif
+
+#ifndef DatumGetJsonbP
+#define DatumGetJsonbP(d)	((Jsonb *) PG_DETOAST_DATUM(d))
+#endif
+
+#define IS_PG_10 (PG_VERSION_NUM >= 100000 && PG_VERSION_NUM < 110000)
+#define IS_PG_11 (PG_VERSION_NUM >= 110000 && PG_VERSION_NUM < 120000)
 
 #endif /* __ZDB_ZDB__H__ */

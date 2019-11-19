@@ -123,10 +123,15 @@ char *convert_to_query_dsl(Relation indexRel, ZDBQueryType *query, bool apply_vi
 	char *rc;
 
 	unwrapped = convert_to_query_dsl_not_wrapped(zdbquery_get_query(query));
-	if (apply_visibility) {
-		rc = wrap_with_visibility_query(indexRel, unwrapped);
+    if (zdb_ignore_visibility_guc) {
+        /* session GUC says to apply no visibility whatsoever.  This is also important for VACUUM */
+        rc = unwrapped;
+    } else if (apply_visibility) {
+        /* caller wants visibility -- likely from an aggregate function as normal SELECTs don't want visibility */
+        rc = wrap_with_visibility_query(indexRel, unwrapped);
 	} else {
-		rc = unwrapped;
+		/* likely from a SELECT, so we need to make sure to filter out the _id:zdb_aborted_xids document */
+		rc = psprintf("{\"bool\":{\"must\":[%s],\"must_not\":[{\"term\":{\"_id\":\"zdb_aborted_xids\"}}]}}", unwrapped);
 	}
 
 	if (unwrapped != rc)
@@ -181,13 +186,9 @@ ZDBQueryType *scan_keys_to_query_dsl(ScanKey keys, int nkeys) {
 }
 
 static char *wrap_with_visibility_query(Relation indexRel, char *query) {
-	if (zdb_ignore_visibility_guc) {
-		return query;
-	} else {
-		ZDBQueryType *vis = (ZDBQueryType *) DatumGetPointer(
-				DirectFunctionCall1(zdb_internal_visibility_clause, ObjectIdGetDatum(RelationGetRelid(indexRel))));
+    ZDBQueryType *vis = (ZDBQueryType *) DatumGetPointer(
+            DirectFunctionCall1(zdb_internal_visibility_clause, ObjectIdGetDatum(RelationGetRelid(indexRel))));
 
-		/* wrap the input query with the visibility query */
-		return psprintf("{\"bool\":{\"must\":[%s],\"filter\":%s}}", query, zdbquery_get_query(vis));
-	}
+    /* wrap the input query with the visibility query */
+    return psprintf("{\"bool\":{\"must\":[%s],\"filter\":%s}}", query, zdbquery_get_query(vis));
 }

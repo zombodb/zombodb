@@ -18,6 +18,7 @@
 #include "elasticsearch/mapping.h"
 #include "elasticsearch/querygen.h"
 #include "highlighting/highlighting.h"
+#include "json/json.h"
 #include "rest/rest.h"
 #include "indexam/zdbam.h"
 
@@ -34,6 +35,7 @@
 
 #define ES_BULK_RESPONSE_FILTER "errors,items.*.error"
 #define ES_SEARCH_RESPONSE_FILTER "_scroll_id,_shards.failed,hits.total,hits.hits.fields.*,hits.hits._id,hits.hits._score,hits.hits.highlight.*"
+#define ES_SEARCH_RESPONSE_FILTER_NO_SCORE "_scroll_id,_shards.failed,hits.total,hits.hits.fields.*,hits.hits._id,hits.hits.highlight.*"
 
 #define validate_alias(indexRel) \
     do { \
@@ -41,6 +43,7 @@
             elog(ERROR, "index '%s' doesn't have an alias", RelationGetRelationName((indexRel))); \
     } while(0)
 
+extern bool zdb_ignore_visibility_guc;
 
 static PostDataEntry *checkout_batch_pool(ElasticsearchBulkContext *context) {
 	int i;
@@ -335,6 +338,15 @@ ElasticsearchBulkContext *ElasticsearchStartBulkProcess(Relation indexRel, char 
 	context->waitForActiveShards = false;
 
 	if (tupdesc != NULL) {
+	    /*
+	     * hold onto a copy of the tuple descriptor for the index definition
+	     * along with an array of json conversion functions.
+	     *
+	     * These are used per-row, when we convert them to json for indexing
+	     */
+		context->tupdesc         = CreateTupleDescCopy(tupdesc);
+		context->jsonConversions = build_json_conversions(tupdesc);
+
 		/*
 		 * look for fields of type ::json in the tuple and note the existence
 		 *
@@ -428,15 +440,15 @@ static inline void bulk_epilogue(ElasticsearchBulkContext *context) {
 	context->ntotal++;
 }
 
-void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerData *ctid, text *json, CommandId cmin, CommandId cmax, uint64 xmin, uint64 xmax) {
-	text *possible_copy;
+void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerData *ctid, StringInfo json,
+								CommandId cmin, CommandId cmax, uint64 xmin, uint64 xmax) {
 	int  len;
 	char *as_string;
 
 	bulk_prologue(context, false);
 
-	/* convert the input json text into a c-string */
-	as_string = text_to_cstring_maybe_no_copy(json, &len, &possible_copy);
+	as_string = json->data;
+	len       = json->len;
 
 	/*
 	 * ES' _bulk endpoint requires that the document json be on a single line.
@@ -479,10 +491,6 @@ void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerDa
 		appendStringInfo(context->current->buff, ",\"zdb_xmax\":%lu", xmax);
 
 	appendStringInfo(context->current->buff, "}\n");
-
-	if (possible_copy != json)
-		pfree(possible_copy);
-	pfree(json);
 
 	context->nindex++;
 	bulk_epilogue(context);
@@ -664,7 +672,7 @@ void ElasticsearchFinishBulkProcess(ElasticsearchBulkContext *context, bool is_c
 		/* we did more than 1 request, so force a full refresh across the entire index */
 		resetStringInfo(request);
 		appendStringInfo(request, "%s%s/_refresh", context->url, context->esIndexName);
-		rest_call("GET", request, NULL, context->compressionLevel);
+		rest_call("POST", request, NULL, context->compressionLevel);
 	}
 
 	freeStringInfo(request);
@@ -750,7 +758,7 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	if (sortJson != NULL) {
 		appendStringInfo(postData, "\"sort\":%s,", sortJson);
 	} else {
-		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "_doc",
+		appendStringInfo(postData, "\"sort\":[{\"%s\":\"%s\"}],", needScore ? "_score" : "zdb_ctid",
 						 needScore ? "desc" : "asc");
 	}
 	appendStringInfo(postData, "\"query\":%s", queryDSL);
@@ -778,14 +786,16 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	}
 
 	appendStringInfo(request,
-					 "%s%s/%s/_search?_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
+					 "%s%s/%s/_search?search_type=%s&_source=false&size=%lu&scroll=10m&filter_path=%s&stored_fields=%s&docvalue_fields=%s",
 					 ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel),
 					 ZDBIndexOptionsGetTypeName(indexRel),
+					 needScore ? "dfs_query_then_fetch" : "query_then_fetch",
 					 limit == 0 ? MAX_DOCS_PER_REQUEST : Min(MAX_DOCS_PER_REQUEST, limit + offset),
-					 ES_SEARCH_RESPONSE_FILTER,
+					 needScore ? ES_SEARCH_RESPONSE_FILTER : ES_SEARCH_RESPONSE_FILTER_NO_SCORE,
 					 highlights ? "type" : use_id ? "_id" : "_none_",
 					 docvalueFields->data);
 
+elog(LOG, "%s", postData->data);
 	response = rest_call("POST", request, postData, ZDBIndexOptionsGetCompressionLevel(indexRel));
 
 	/* create a memory context in which to allocate json data */
@@ -810,10 +820,11 @@ ElasticsearchScrollContext *ElasticsearchOpenScroll(Relation indexRel, ZDBQueryT
 	context->cnt           = 0;
 	context->currpos       = 0;
 	context->total         =
-			limit > 0 ? Min(limit, get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(
+			limit > 0 ? Min(limit + offset, get_json_object_uint64(hitsObject, "total", false)) : get_json_object_uint64(
 					hitsObject, "total", false);
 	context->extraFields   = extraFields;
 	context->nextraFields  = nextraFields;
+	context->needScore     = needScore;
 
 	if (offset < context->total) {
 		context->hits  = get_json_object_array(hitsObject, "hits", false);
@@ -867,7 +878,9 @@ start_over:
 		char       *error;
 
 		appendStringInfo(postData, "{\"scroll\":\"10m\",\"scroll_id\":\"%s\"}", context->scrollId);
-		appendStringInfo(request, "%s_search/scroll?filter_path=%s", context->url, ES_SEARCH_RESPONSE_FILTER);
+		appendStringInfo(request, "%s_search/scroll?filter_path=%s", context->url,
+		        context->needScore ? ES_SEARCH_RESPONSE_FILTER : ES_SEARCH_RESPONSE_FILTER_NO_SCORE
+        );
 		response = rest_call("POST", request, postData, context->compressionLevel);
 
 		/* make sure we don't leak the hits json from the previous request */
@@ -882,11 +895,25 @@ start_over:
 							errmsg("%s", response->data)));
 
 		hitsObject = get_json_object_object(jsonResponse, "hits", false);
-
 		context->scrollId = get_json_object_string(jsonResponse, "_scroll_id", false);
 		context->currpos  = 0;
-		context->hits     = get_json_object_array(hitsObject, "hits", false);
-		context->nhits    = context->hits == NULL ? 0 : get_json_array_length(context->hits);
+		context->hits     = get_json_object_array(hitsObject, "hits", true);
+		if (context->hits == NULL) {
+            if (zdb_ignore_visibility_guc) {
+                /*
+                 * we asked to ignore visibility so we have to assume that since ES
+                 * thinks we have no more hits that we're actually done
+                 */
+                return false;
+            } else if (zdb_ignore_visibility_guc == false) {
+                /* we were expecting more hits but ES didn't give us any */
+                ereport(ERROR,
+                        (errcode(ERRCODE_INTERNAL_ERROR),
+                                errmsg("results underflow.  Expecting more hits but didn't get any")));
+            }
+        }
+
+        context->nhits    = context->hits == NULL ? 0 : get_json_array_length(context->hits);
 
 		freeStringInfo(request);
 		freeStringInfo(response);
@@ -947,7 +974,19 @@ start_over:
 }
 
 void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext) {
-	MemoryContextDelete(scrollContext->jsonMemoryContext);
+    StringInfo request = makeStringInfo();
+    StringInfo postData = makeStringInfo();
+    StringInfo response;
+
+    appendStringInfo(request, "%s_search/scroll", scrollContext->url);
+    appendStringInfo(postData, "{\"scroll_id\":\"%s\"}", scrollContext->scrollId);
+
+    response = rest_call("DELETE", request, postData, scrollContext->compressionLevel);
+
+    freeStringInfo(response);
+    freeStringInfo(postData);
+    freeStringInfo(request);
+    MemoryContextDelete(scrollContext->jsonMemoryContext);
 	pfree(scrollContext);
 }
 
@@ -986,6 +1025,23 @@ void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *x
 		freeStringInfo(request);
 		freeStringInfo(postData);
 	}
+}
+
+void ElasticSearchForceMerge(Relation indexRel) {
+	StringInfo request  = makeStringInfo();
+	StringInfo response;
+
+	appendStringInfo(request, "%s%s/_forcemerge?only_expunge_deletes=true&flush=false", ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel));
+	response = rest_call("POST", request, NULL, ZDBIndexOptionsGetCompressionLevel(indexRel));
+
+	freeStringInfo(response);
+
+	resetStringInfo(request);
+	appendStringInfo(request, "%s%s/_refresh", ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel));
+	response = rest_call("POST", request, NULL, ZDBIndexOptionsGetCompressionLevel(indexRel));
+
+	freeStringInfo(response);
+	freeStringInfo(request);
 }
 
 char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query) {
@@ -1032,7 +1088,197 @@ uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query) {
 	return count;
 }
 
-static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, bool arbitrary) {
+bool ElasticsearchIsNestedField(Relation indexRel, const char *field, char **base) {
+    Relation  heapRel;
+    TupleDesc tupdesc;
+    char      *base_fieldname;
+    int       idx = -1;
+    int       i, len;
+    bool      rc  = false, found = false;
+
+    if (field == NULL)
+        return false;
+
+    base_fieldname = pstrdup(field);
+    len = strlen(base_fieldname);
+    if (base != NULL)
+        *base = NULL;
+    for (i=0; i<len; i++) {
+        if (base_fieldname[i] == '.') {
+            idx = i;
+            /*
+             * null-terminate the field_copy at the '.' so we can strcmp() it with the
+             * attributes in the table
+             */
+            base_fieldname[i] = '\0';
+
+            if (base)
+                *base = base_fieldname;
+            break;
+        }
+    }
+
+    /* no '.' in the fieldname means it can't be nested */
+    if (idx == -1)
+        return false;
+
+    heapRel = RelationIdGetRelation(indexRel->rd_index->indrelid);
+    tupdesc = RelationGetDescr(heapRel);
+
+    for (i = 0; i < tupdesc->natts; i++) {
+        Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
+
+        if (strcmp(base_fieldname, attr->attname.data) == 0) {
+            /* the table has an attribute named "base_fieldname" */
+            found = true;
+
+            /* but is it of type JSON? */
+            rc = attr->atttypid == JSONOID;
+            break;
+        }
+    }
+
+    RelationClose(heapRel);
+
+    /*
+     * if we didn't find the field in the backing table, we'll assume
+     * it *is* a nested field, because we don't actually know
+     */
+    if (!found)
+        return true;
+
+    return rc;
+}
+
+static bool keep_node(struct json_value_s *node) {
+    switch (node->type) {
+        case json_type_object: {
+            struct json_object_s *object = (struct json_object_s *) node->payload;
+            struct json_object_element_s *element = object->start;
+            const char *name = element->name->string;
+
+            return
+                    strcmp("bool", name) == 0 ||
+                    strcmp("should", name) == 0 ||
+                    strcmp("must", name) == 0 ||
+                    strcmp("must_not", name) == 0 ||
+                    strcmp("filter", name) == 0 ||
+                    strcmp("nested", name) == 0;
+        } break;
+
+        default:
+            return false;
+    }
+}
+static void walk_query(struct json_value_s *node) {
+
+    if (node == NULL)
+        return;
+
+    switch (node->type) {
+        case json_type_object: {
+            struct json_object_s         *object  = (struct json_object_s *) node->payload;
+            struct json_object_element_s *prev    = NULL;
+            struct json_object_element_s *element = object->start;
+
+            while (element != NULL) {
+                const char *name = element->name->string;
+
+                if (strcmp("bool", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("must", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("must_not", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("should", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("filter", name) == 0) {
+                    walk_query(element->value);
+                } else if (strcmp("nested", name) == 0) {
+                    struct json_value_s          *nested_node           = element->value;
+                    struct json_object_s         *nested_object         = (struct json_object_s *) nested_node->payload;
+                    struct json_object_element_s *nested_object_element = nested_object->start;
+
+                    while (nested_object_element != NULL) {
+
+                        if (strcmp("query", nested_object_element->name->string) == 0) {
+                            struct json_value_s *query_node = nested_object_element->value;
+
+                            // pull up the query sub-node to replace this node with it
+                            if (prev == NULL)
+                                node->payload = query_node->payload;
+                            else
+                                prev->next->value = query_node;
+
+                            break;
+                        }
+
+                        nested_object_element = nested_object_element->next;
+                    }
+
+                } else {
+                    // remove this node
+                    if (prev == NULL)
+                        object->start = element->next;
+                    else
+                        prev->next = element->next;
+                }
+
+                prev = element;
+                element = element->next;
+            }
+
+        } break;
+
+        case json_type_array: {
+            struct json_array_s *array = (struct json_array_s *) node->payload;
+            struct json_array_element_s *prev = NULL;
+            struct json_array_element_s *element = array->start;
+
+            while (element != NULL) {
+                if (keep_node(element->value)) {
+                    walk_query(element->value);
+                    prev = element;
+                } else {
+                    if (prev == NULL)
+                        array->start = element->next;
+                    else
+                        prev->next = element->next;
+                }
+
+                element = element->next;
+            }
+        } break;
+
+        case json_type_string:
+        case json_type_number:
+        case json_type_true:
+        case json_type_false:
+        case json_type_null:
+            /* nothing we need to do for these */
+            break;
+
+        default:
+            elog(ERROR, "Unknown json value type: %lu", node->type);
+
+    }
+}
+
+static char *generate_nested_agg_filter(ZDBQueryType *query) {
+    char *querystr = zdbquery_get_query(query);
+    size_t outlen;
+    struct json_parse_result_s result;
+    struct json_value_s *root = json_parse_ex(querystr, strlen(querystr), 0, json_alloc, NULL, &result);
+
+    if (result.error)
+        elog(ERROR, "generate_nested_agg_filter json parsing error: %lu", result.error);
+
+    walk_query(root);
+
+    return json_write_minified(root, &outlen);
+}
+
+static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, char *field, bool arbitrary) {
 	StringInfo request  = makeStringInfo();
 	StringInfo postData = makeStringInfo();
 	StringInfo response;
@@ -1048,7 +1294,20 @@ static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, b
 	if (arbitrary) {
 		appendStringInfo(postData, "\"aggs\":%s", agg);
 	} else {
-		appendStringInfo(postData, "\"aggs\":{\"the_agg\":%s}", agg);
+        char *base;
+	    if (ElasticsearchIsNestedField(indexRel, field, &base)) {
+            char *filter;
+
+	        if (base == NULL)
+	            elog(ERROR, "'%s' isn't actually nested: ", base);
+
+	        filter = generate_nested_agg_filter(query);
+	        agg = psprintf("{\"filter\":%s, \"aggs\":{\"filtered_agg\":%s}}", filter, agg);
+
+            appendStringInfo(postData, "\"aggs\":{\"nested_agg\":{\"nested\":{\"path\":\"%s\"}, \"aggs\":{\"the_agg\":%s}}}", base, agg);
+	    } else {
+            appendStringInfo(postData, "\"aggs\":{\"the_agg\":%s}", agg);
+        }
 	}
 	appendStringInfoCharMacro(postData, '}');
 
@@ -1064,7 +1323,7 @@ static char *makeAggRequest(Relation indexRel, ZDBQueryType *query, char *agg, b
 }
 
 char *ElasticsearchArbitraryAgg(Relation indexRel, ZDBQueryType *query, char *agg) {
-	return makeAggRequest(indexRel, query, agg, true);
+	return makeAggRequest(indexRel, query, agg, NULL, true);
 }
 
 static char *makeTermsOrderClause(char *order) {
@@ -1093,52 +1352,32 @@ char *ElasticsearchTerms(Relation indexRel, char *field, ZDBQueryType *query, ch
 		size = INT32_MAX;
 
 	response = makeAggRequest(indexRel, query,
-							  psprintf("{\"terms\":{\"field\":\"%s\",\"size\":%lu%s}}", field, size, orderClause),
+							  psprintf("{\"terms\":{\"field\":\"%s\",\"shard_size\":%d,\"size\":%lu%s}}", field, INT_MAX, size, orderClause),
+							  field,
 							  false);
 
 	pfree(orderClause);
 	return response;
 }
 
-static StringInfo terms_agg_only_keys(Relation indexRel, char *field, ZDBQueryType *query, char *order, uint64 size) {
-	char       *orderClause = makeTermsOrderClause(order);
-	StringInfo request      = makeStringInfo();
-	StringInfo postData     = makeStringInfo();
-	StringInfo response;
-
-	finish_inserts(false);
-
-	if (size == 0)
-		size = INT32_MAX;
-
-	appendStringInfoCharMacro(postData, '{');
-	if (query != NULL)
-		appendStringInfo(postData, "\"query\":%s,", convert_to_query_dsl(indexRel, query, true));
-
-	appendStringInfo(postData, "\"aggs\":{\"the_agg\":{\"terms\":{\"field\":\"%s\",\"size\":%lu%s}}}", field, size,
-					 orderClause);
-	appendStringInfoCharMacro(postData, '}');
-
-	appendStringInfo(request, "%s%s/_search?size=0&filter_path=aggregations.the_agg.buckets.key",
-					 ZDBIndexOptionsGetUrl(indexRel), ZDBIndexOptionsGetIndexName(indexRel));
-	response = rest_call("POST", request, postData, ZDBIndexOptionsGetCompressionLevel(indexRel));
-
-	freeStringInfo(postData);
-	freeStringInfo(request);
-
-	return response;
-}
-
 ArrayType *ElasticsearchTermsAsArray(Relation indexRel, char *field, ZDBQueryType *query, char *order, uint64 size) {
-	StringInfo      response = terms_agg_only_keys(indexRel, field, query, order, size);
-	ArrayBuildState *astate  = NULL;
-	void            *json, *aggregations, *the_agg, *buckets;
+    StringInfo      response = makeStringInfo();
+    ArrayBuildState *astate = NULL;
+    void            *json, *aggregations, *the_agg = NULL, *buckets;
 
+    appendStringInfo(response, "%s", ElasticsearchTerms(indexRel, field, query, order, size));
 	json         = parse_json_object(response, CurrentMemoryContext);
 	aggregations = get_json_object_object(json, "aggregations", true);
 
 	if (aggregations != NULL) {
-		the_agg = get_json_object_object(aggregations, "the_agg", true);
+	    if (ElasticsearchIsNestedField(indexRel, field, NULL)) {
+	        void *nested = get_json_object_object(aggregations, "nested_agg", true);
+
+	        if (nested != NULL)
+                the_agg = get_json_object_object(nested, "the_agg", true);
+        } else {
+            the_agg = get_json_object_object(aggregations, "the_agg", true);
+        }
 
 		if (the_agg != NULL) {
 			buckets = get_json_object_array(the_agg, "buckets", true);
@@ -1151,7 +1390,7 @@ ArrayType *ElasticsearchTermsAsArray(Relation indexRel, char *field, ZDBQueryTyp
 					void       *obj  = get_json_array_element_object(buckets, i, CurrentMemoryContext);
 					const char *term = get_json_object_string_force(obj, "key");
 
-					astate = accumArrayResult(astate, CStringGetDatum(term), false, CSTRINGOID,
+					astate = accumArrayResult(astate, CStringGetTextDatum(term), false, TEXTOID,
 											  CurrentMemoryContext);
 				}
 			}
@@ -1159,6 +1398,7 @@ ArrayType *ElasticsearchTermsAsArray(Relation indexRel, char *field, ZDBQueryTyp
 	}
 
 	pfree(json);
+	freeStringInfo(response);
 	if (astate != NULL)
 		return DatumGetArrayTypeP(makeArrayResult(astate, CurrentMemoryContext));
 	else
@@ -1182,7 +1422,7 @@ char *ElasticsearchTermsTwoLevel(Relation indexRel, char *firstField, char *seco
 			"      }"
 			"   }"
 			"}",
-			firstField, size, orderClause, secondField, INT32_MAX), false);
+			firstField, size, orderClause, secondField, INT32_MAX), firstField, false);
 
 	pfree(orderClause);
 	return response;
@@ -1190,52 +1430,52 @@ char *ElasticsearchTermsTwoLevel(Relation indexRel, char *firstField, char *seco
 
 
 char *ElasticsearchAvg(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"avg\":{\"field\":\"%s\"}}", field), false);
+	return makeAggRequest(indexRel, query, psprintf("{\"avg\":{\"field\":\"%s\"}}", field), field, false);
 }
 
 char *ElasticsearchMin(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"min\":{\"field\":\"%s\"}}", field), false);
+	return makeAggRequest(indexRel, query, psprintf("{\"min\":{\"field\":\"%s\"}}", field), field, false);
 }
 
 char *ElasticsearchMax(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"max\":{\"field\":\"%s\"}}", field), false);
+	return makeAggRequest(indexRel, query, psprintf("{\"max\":{\"field\":\"%s\"}}", field), field, false);
 }
 
 char *ElasticsearchCardinality(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"cardinality\":{\"field\":\"%s\"}}", field), false);
+	return makeAggRequest(indexRel, query, psprintf("{\"cardinality\":{\"field\":\"%s\"}}", field), field, false);
 }
 
 char *ElasticsearchSum(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"sum\":{\"field\":\"%s\"}}", field), false);
+	return makeAggRequest(indexRel, query, psprintf("{\"sum\":{\"field\":\"%s\"}}", field), field, false);
 }
 
 char *ElasticsearchValueCount(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"value_count\":{\"field\":\"%s\"}}", field), false);
+	return makeAggRequest(indexRel, query, psprintf("{\"value_count\":{\"field\":\"%s\"}}", field), field, false);
 }
 
 char *ElasticsearchPercentiles(Relation indexRel, char *field, ZDBQueryType *query, char *percents) {
 	return makeAggRequest(indexRel, query, psprintf("{\"percentiles\":{\"field\":\"%s\"%s}}", field,
 													strlen(percents) > 0 ? psprintf(",\"percents\":[%s]", percents)
-																		 : ""), false);
+																		 : ""), field, false);
 }
 
 char *ElasticsearchPercentileRanks(Relation indexRel, char *field, ZDBQueryType *query, char *values) {
 	return makeAggRequest(indexRel, query, psprintf("{\"percentiles\":{\"field\":\"%s\"%s}}", field,
 													strlen(values) > 0 ? psprintf(",\"values\":[%s]", values)
-																	   : ""), false);
+																	   : ""), field, false);
 }
 
 char *ElasticsearchStats(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"stats\":{\"field\":\"%s\"}}", field), false);
+	return makeAggRequest(indexRel, query, psprintf("{\"stats\":{\"field\":\"%s\"}}", field), field, false);
 }
 
 char *ElasticsearchExtendedStats(Relation indexRel, char *field, ZDBQueryType *query, int sigma) {
 	return makeAggRequest(indexRel, query, psprintf("{\"extended_stats\":{\"field\":\"%s\"%s}}", field,
-													sigma > 0 ? psprintf(",\"sigma\":%d", sigma) : ""), false);
+													sigma > 0 ? psprintf(",\"sigma\":%d", sigma) : ""), field, false);
 }
 
-char *ElasticsearchSignificantTerms(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"significant_terms\":{\"field\":\"%s\"}}", field), false);
+char *ElasticsearchSignificantTerms(Relation indexRel, char *field, ZDBQueryType *query, char *include, int size, int min_doc_count) {
+	return makeAggRequest(indexRel, query, psprintf("{\"significant_terms\":{\"field\":\"%s\", \"include\":\"%s\", \"size\":%d, \"min_doc_count\":%d}}", field, include, size, min_doc_count), field, false);
 }
 
 char *ElasticsearchSignificantTermsTwoLevel(Relation indexRel, char *firstField, char *secondField, ZDBQueryType *query, uint64 size) {
@@ -1248,32 +1488,36 @@ char *ElasticsearchSignificantTermsTwoLevel(Relation indexRel, char *firstField,
 			"      }"
 			"   }"
 			"}",
-			firstField, size > 0 ? psprintf(",\"size\":%lu", size) : "", secondField), false);
+			firstField, size > 0 ? psprintf(",\"size\":%lu", size) : "", secondField), firstField, false);
 }
 
 char *ElasticsearchRange(Relation indexRel, char *field, ZDBQueryType *query, char *ranges) {
 	return makeAggRequest(indexRel, query, psprintf("{\"range\":{\"field\":\"%s\",\"ranges\":%s}}", field, ranges),
-						  false);
+						  field, false);
 }
 
 char *ElasticsearchDateRange(Relation indexRel, char *field, ZDBQueryType *query, char *ranges) {
 	return makeAggRequest(indexRel, query, psprintf("{\"date_range\":{\"field\":\"%s\",\"ranges\":%s}}", field, ranges),
-						  0);
+						  field, false);
 }
 
-char *ElasticsearchHistogram(Relation indexRel, char *field, ZDBQueryType *query, float8 interval) {
-	return makeAggRequest(indexRel, query,
-						  psprintf("{\"histogram\":{\"field\":\"%s\",\"interval\":%f}}", field, interval), false);
+char *ElasticsearchHistogram(Relation indexRel, char *field, ZDBQueryType *query, float8 interval, int min_doc_count) {
+    if (min_doc_count > 0)
+        return makeAggRequest(indexRel, query,
+                              psprintf("{\"histogram\":{\"field\":\"%s\",\"interval\":%f,\"min_doc_count\":%d}}", field, interval, min_doc_count), field, false);
+    else
+        return makeAggRequest(indexRel, query,
+                              psprintf("{\"histogram\":{\"field\":\"%s\",\"interval\":%f}}", field, interval), field, false);
 }
 
 char *ElasticsearchDateHistogram(Relation indexRel, char *field, ZDBQueryType *query, char *interval, char *format) {
 	return makeAggRequest(indexRel, query,
 						  psprintf("{\"date_histogram\":{\"field\":\"%s\",\"interval\":\"%s\",\"format\":\"%s\"}}",
-								   field, interval, format), false);
+								   field, interval, format), field, false);
 }
 
 char *ElasticsearchMissing(Relation indexRel, char *field, ZDBQueryType *query) {
-	return makeAggRequest(indexRel, query, psprintf("{\"missing\":{\"field\":\"%s\"}}", field), false);
+	return makeAggRequest(indexRel, query, psprintf("{\"missing\":{\"field\":\"%s\"}}", field), field, false);
 }
 
 char *ElasticsearchFilters(Relation indexRel, char **labels, ZDBQueryType **filters, int nfilters) {
@@ -1287,12 +1531,12 @@ char *ElasticsearchFilters(Relation indexRel, char **labels, ZDBQueryType **filt
 	}
 	appendStringInfo(agg, "}}}");
 
-	return makeAggRequest(indexRel, NULL, agg->data, false);
+	return makeAggRequest(indexRel, NULL, agg->data, NULL, false);
 }
 
 char *ElasticsearchIPRange(Relation indexRel, char *field, ZDBQueryType *query, char *ranges) {
 	return makeAggRequest(indexRel, query, psprintf("{\"ip_range\":{\"field\":\"%s\",\"ranges\":%s}}", field, ranges),
-						  0);
+						  field, false);
 }
 
 char *ElasticsearchSignificantText(Relation indexRel, char *field, ZDBQueryType *query, int sample_size, bool filter_duplicate_text) {
@@ -1307,7 +1551,7 @@ char *ElasticsearchSignificantText(Relation indexRel, char *field, ZDBQueryType 
 			"      }"
 			"   }"
 			"}",
-			sample_size, field, filter_duplicate_text ? "true" : "false"), false);
+			sample_size, field, filter_duplicate_text ? "true" : "false"), field, false);
 }
 
 char *ElasticsearchAdjacencyMatrix(Relation indexRel, char **labels, ZDBQueryType **filters, int nfilters) {
@@ -1321,7 +1565,7 @@ char *ElasticsearchAdjacencyMatrix(Relation indexRel, char **labels, ZDBQueryTyp
 	}
 	appendStringInfo(agg, "}}}");
 
-	return makeAggRequest(indexRel, NULL, agg->data, false);
+	return makeAggRequest(indexRel, NULL, agg->data, NULL, false);
 }
 
 char *ElasticsearchMatrixStats(Relation indexRel, ZDBQueryType *query, char **fields, int nfields) {
@@ -1335,7 +1579,7 @@ char *ElasticsearchMatrixStats(Relation indexRel, ZDBQueryType *query, char **fi
 	}
 	appendStringInfo(agg, "]}}");
 
-	return makeAggRequest(indexRel, query, agg->data, false);
+	return makeAggRequest(indexRel, query, agg->data, NULL, false);
 }
 
 char *ElasticsearchTopHits(Relation indexRel, ZDBQueryType *query, char **fields, int nfields, uint32 size) {
@@ -1353,7 +1597,7 @@ char *ElasticsearchTopHits(Relation indexRel, ZDBQueryType *query, char **fields
 	appendStringInfoCharMacro(agg, ']');
 	appendStringInfo(agg, ",\"size\":%u}}", size);
 
-	return makeAggRequest(indexRel, query, agg->data, false);
+	return makeAggRequest(indexRel, query, agg->data, NULL, false);
 }
 
 char *ElasticsearchSampler(Relation indexRel, uint32 shard_size, ZDBQueryType *query) {
@@ -1366,7 +1610,7 @@ char *ElasticsearchSampler(Relation indexRel, uint32 shard_size, ZDBQueryType *q
 			"      }"
 			"   }"
 			"}",
-			Max(1, shard_size / ZDBIndexOptionsGetNumberOfShards(indexRel)), INT32_MAX), false);
+			Max(1, shard_size / ZDBIndexOptionsGetNumberOfShards(indexRel)), INT32_MAX), NULL, false);
 }
 
 char *ElasticsearchDiversifiedSampler(Relation indexRel, uint32 shard_size, char *field, ZDBQueryType *query) {
@@ -1379,11 +1623,11 @@ char *ElasticsearchDiversifiedSampler(Relation indexRel, uint32 shard_size, char
 			"      }"
 			"   }"
 			"}",
-			Max(1, shard_size / ZDBIndexOptionsGetNumberOfShards(indexRel)), field, INT32_MAX), false);
+			Max(1, shard_size / ZDBIndexOptionsGetNumberOfShards(indexRel)), field, INT32_MAX), field, false);
 }
 
 char *ElasticsearchQuerySampler(Relation indexRel, ZDBQueryType *query) {
 	return makeAggRequest(indexRel, query, psprintf("{\"terms\":{\"field\":\"zdb_ctid\",\"size\":%d}}", INT32_MAX),
-						  false);
+						  NULL, false);
 }
 

@@ -43,10 +43,14 @@ set(SOURCE_FILES
         src/c/utils/utils.h
         src/c/zombodb.c
         src/c/indexam/llapi.c
-        src/c/indexam/create_index.c
-        src/c/indexam/create_index.h)
+        src/c/indexam/define_index.c
+        src/c/indexam/define_index.h
+        src/c/json/type_conversion.c
+        src/c/json/type_conversion.h
+        src/c/json/json_pg11.c)
 
-include_directories(src/c /usr/local/src/pg10/src/include /usr/local/src/pg10/src/backend)
+#include_directories(src/c /usr/local/src/pg10/src/include /usr/local/src/pg10/src/backend)
+include_directories(src/c /usr/local/src/pg11/src/include /usr/local/src/pg11/src/backend)
 
 add_library(zombodb ${SOURCE_FILES})
 

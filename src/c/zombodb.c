@@ -42,8 +42,6 @@ void _PG_init(void) {
 
 	/* callbacks registered here should always be the first to run, so it's the last one we initialize */
 	zdb_aminit();
-
-	elog(LOG, "ZomboDB Loaded");
 }
 
 void _PG_fini(void) {

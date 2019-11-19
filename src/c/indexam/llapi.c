@@ -26,7 +26,8 @@ PG_FUNCTION_INFO_V1(llapi_direct_delete);
 Datum llapi_direct_insert(PG_FUNCTION_ARGS) {
 	MemoryContext         oldContext  = MemoryContextSwitchTo(TopTransactionContext);
 	Oid                   indexRelOid = PG_GETARG_OID(0);
-	text                  *json       = PG_GETARG_TEXT_P(1);
+	text                  *jsonArg    = PG_GETARG_TEXT_P(1);
+	StringInfoData        json;
 	Relation              indexRel;
 	ZDBIndexChangeContext *context;
 
@@ -38,8 +39,10 @@ Datum llapi_direct_insert(PG_FUNCTION_ARGS) {
 						errmsg("To use ZomboDB's low-level API you must set llapi=true on the index")));
 	}
 
-	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
-	ElasticsearchBulkInsertRow(context->esContext, NULL, json, GetCurrentCommandId(true), InvalidCommandId,
+	initStringInfo(&json);
+	appendStringInfoString(&json, TextDatumGetCString(jsonArg));
+	context = checkout_insert_context(indexRel);
+	ElasticsearchBulkInsertRow(context->esContext, NULL, &json, GetCurrentCommandId(true), InvalidCommandId,
 							   convert_xid(GetCurrentTransactionId()), InvalidTransactionId);
 
 	index_close(indexRel, AccessShareLock);
@@ -63,7 +66,7 @@ Datum llapi_direct_delete(PG_FUNCTION_ARGS) {
 						errmsg("To use ZomboDB's low-level API you must set llapi=true on the index")));
 	}
 
-	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
+	context = checkout_insert_context(indexRel);
 	ElasticsearchBulkUpdateTuple(context->esContext, NULL, id, GetCurrentCommandId(true),
 								 convert_xid(GetCurrentTransactionId()));
 

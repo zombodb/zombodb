@@ -19,6 +19,7 @@
 
 #include "zombodb.h"
 #include "json/json_support.h"
+#include "json/type_conversion.h"
 #include "rest/curl_support.h"
 #include "utils/jsonb.h"
 
@@ -36,6 +37,8 @@ typedef struct ElasticsearchBulkContext {
 	bool           waitForActiveShards;
 	bool           containsJson;
 	bool           containsJsonIsSet;
+	TupleDesc      tupdesc;
+	JsonConversion **jsonConversions;
 	bool           shouldRefresh;
 	bool           ignoreVersionConflicts;
 	MultiRestState *rest;
@@ -60,6 +63,7 @@ typedef struct ElasticsearchScrollContext {
 	bool          usingId;    /* is this scroll using _id instead of zdb_id? */
 	const char    *scrollId;
 	bool          hasHighlights;
+	bool          needScore;
 	uint64        total;      /* total number of hits across all scroll context's */
 	uint64        cnt;        /* how many have we examined so far? */
 	int           nhits;      /* total number of hits in this scroll context */
@@ -87,7 +91,8 @@ void ElasticsearchUpdateSettings(Relation indexRel, char *oldAlias, char *newAli
 void ElasticsearchPutMapping(Relation heapRel, Relation indexRel, TupleDesc tupdesc);
 
 ElasticsearchBulkContext *ElasticsearchStartBulkProcess(Relation indexRel, char *indexName, TupleDesc tupdesc, bool ignore_version_conflicts);
-void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerData *ctid, text *json, CommandId cmin, CommandId cmax, uint64 xmin, uint64 xmax);
+void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerData *ctid, StringInfo json,
+								CommandId cmin, CommandId cmax, uint64 xmin, uint64 xmax);
 void ElasticsearchBulkUpdateTuple(ElasticsearchBulkContext *context, ItemPointer ctid, char *llapi_id, CommandId cmax, uint64 xmax);
 void ElasticsearchBulkVacuumXmax(ElasticsearchBulkContext *context, char *_id, uint64 expected_xmax);
 void ElasticsearchBulkDeleteRowByXmin(ElasticsearchBulkContext *context, char *_id, uint64 xmin);
@@ -103,8 +108,11 @@ bool ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext);
 
 void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *xids);
+void ElasticSearchForceMerge(Relation indexRel);
 
 char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query);
+
+bool ElasticsearchIsNestedField(Relation indexRel, const char *field, char **base);
 
 uint64 ElasticsearchCount(Relation indexRel, ZDBQueryType *query);
 char *ElasticsearchArbitraryAgg(Relation indexRel, ZDBQueryType *query, char *agg);
@@ -121,11 +129,11 @@ char *ElasticsearchPercentiles(Relation indexRel, char *field, ZDBQueryType *que
 char *ElasticsearchPercentileRanks(Relation indexRel, char *field, ZDBQueryType *query, char *values);
 char *ElasticsearchStats(Relation indexRel, char *field, ZDBQueryType *query);
 char *ElasticsearchExtendedStats(Relation indexRel, char *field, ZDBQueryType *query, int sigma);
-char *ElasticsearchSignificantTerms(Relation indexRel, char *field, ZDBQueryType *query);
+char *ElasticsearchSignificantTerms(Relation indexRel, char *field, ZDBQueryType *query, char *include, int size, int min_doc_count);
 char *ElasticsearchSignificantTermsTwoLevel(Relation indexRel, char *firstField, char *secondField, ZDBQueryType *query, uint64 size);
 char *ElasticsearchRange(Relation indexRel, char *field, ZDBQueryType *query, char *ranges);
 char *ElasticsearchDateRange(Relation indexRel, char *field, ZDBQueryType *query, char *ranges);
-char *ElasticsearchHistogram(Relation indexRel, char *field, ZDBQueryType *query, float8 interval);
+char *ElasticsearchHistogram(Relation indexRel, char *field, ZDBQueryType *query, float8 interval, int min_doc_count);
 char *ElasticsearchDateHistogram(Relation indexRel, char *field, ZDBQueryType *query, char *interval, char *format);
 char *ElasticsearchMissing(Relation indexRel, char *field, ZDBQueryType *query);
 char *ElasticsearchFilters(Relation indexRel, char **labels, ZDBQueryType **filters, int nfilters);

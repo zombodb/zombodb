@@ -29,7 +29,7 @@ typedef struct ZDBIndexChangeContext {
 } ZDBIndexChangeContext;
 
 
-ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row, bool isnull);
+ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation);
 void finish_inserts(bool is_commit);
 Datum collect_used_xids(MemoryContext memoryContext);
 

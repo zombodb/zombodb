@@ -19,59 +19,23 @@
 #include "elasticsearch/querygen.h"
 #include "highlighting/highlighting.h"
 #include "scoring/scoring.h"
-#include "indexam/create_index.h"
-
+#include "indexam/define_index.h"
 #include "access/amapi.h"
 #include "access/htup_details.h"
 #include "access/reloptions.h"
-#include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
-#include "access/twophase.h"
 #include "access/xact.h"
-#include "access/xact.h"
-#include "access/xlog.h"
-#include "catalog/catalog.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_trigger.h"
 #include "catalog/toasting.h"
-#include "commands/alter.h"
-#include "commands/async.h"
-#include "commands/cluster.h"
-#include "commands/collationcmds.h"
-#include "commands/comment.h"
-#include "commands/conversioncmds.h"
-#include "commands/copy.h"
-#include "commands/createas.h"
 #include "commands/dbcommands.h"
-#include "commands/defrem.h"
-#include "commands/discard.h"
 #include "commands/event_trigger.h"
-#include "commands/explain.h"
-#include "commands/extension.h"
-#include "commands/lockcmds.h"
-#include "commands/matview.h"
-#include "commands/policy.h"
-#include "commands/portalcmds.h"
-#include "commands/prepare.h"
-#include "commands/proclang.h"
-#include "commands/publicationcmds.h"
-#include "commands/schemacmds.h"
-#include "commands/seclabel.h"
-#include "commands/sequence.h"
-#include "commands/subscriptioncmds.h"
 #include "commands/tablecmds.h"
-#include "commands/tablecmds.h"
-#include "commands/tablespace.h"
 #include "commands/trigger.h"
-#include "commands/typecmds.h"
-#include "commands/user.h"
-#include "commands/vacuum.h"
-#include "commands/view.h"
 #include "executor/spi.h"
-#include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/cost.h"
@@ -79,20 +43,11 @@
 #include "parser/parse_func.h"
 #include "parser/parse_oper.h"
 #include "parser/parse_utilcmd.h"
-#include "postmaster/bgwriter.h"
-#include "rewrite/rewriteDefine.h"
-#include "rewrite/rewriteRemove.h"
 #include "storage/bufmgr.h"
-#include "storage/fd.h"
 #include "storage/lmgr.h"
 #include "storage/procarray.h"
-#include "tcop/pquery.h"
 #include "tcop/utility.h"
-#include "tcop/utility.h"
-#include "utils/acl.h"
-#include "utils/guc.h"
 #include "utils/lsyscache.h"
-#include "utils/syscache.h"
 
 static const struct config_enum_entry zdb_log_level_options[] = {
 		{"debug",   DEBUG2,  true},
@@ -150,6 +105,11 @@ static void apply_alter_statement(PlannedStmt *parsetree, char *url, uint32 shar
 static Relation open_relation_from_parsetree(PlannedStmt *parsetree, LOCKMODE lockmode, bool *is_index);
 static void get_immutable_index_options(PlannedStmt *parsetree, char **url, uint32 *shards, char **typeName, char **alias, char **uuid);
 
+#if (IS_PG_10)
+#define STRING_VALIDATOR_SIGNATURE char *
+#elif (IS_PG_11)
+#define STRING_VALIDATOR_SIGNATURE const char *
+#endif
 
 /*lint -esym 715,extra,source ignore unused param */
 static bool validate_default_elasticsearch_url(char **newval, void **extra, GucSource source) {
@@ -158,7 +118,7 @@ static bool validate_default_elasticsearch_url(char **newval, void **extra, GucS
 	return str == NULL || str[strlen(str) - 1] == '/';
 }
 
-static void validate_url(char *str) {
+static void validate_url(STRING_VALIDATOR_SIGNATURE str) {
 	/* valid only if it ends with a forward slash or it equals the string 'default' */
 	if (str != NULL && (str[strlen(str) - 1] == '/' || strcmp("default", str) == 0))
 		return;
@@ -167,22 +127,22 @@ static void validate_url(char *str) {
 }
 
 /*lint -esym 715,str ignore unused param */
-static void validate_type_name(char *str) {
+static void validate_type_name(STRING_VALIDATOR_SIGNATURE str) {
 	/* noop */
 }
 
 /*lint -esym 715,str ignore unused param */
-static void validate_refresh_interval(char *str) {
+static void validate_refresh_interval(STRING_VALIDATOR_SIGNATURE str) {
 	/* noop */
 }
 
 /*lint -esym 715,str ignore unused param */
-static void validate_alias(char *str) {
+static void validate_alias(STRING_VALIDATOR_SIGNATURE str) {
 	/* noop */
 }
 
 /*lint -esym 715,str ignore unused param */
-static void validate_uuid(char *str) {
+static void validate_uuid(STRING_VALIDATOR_SIGNATURE str) {
 	/* noop */
 }
 
@@ -191,6 +151,7 @@ PG_FUNCTION_INFO_V1(zdb_amhandler);
 
 static List                     *insert_contexts        = NULL;
 static List                     *to_drop                = NULL;
+static List                     *created_indices_urls   = NULL;
 static List                     *aborted_xids           = NULL;
 static ExecutorStart_hook_type  prev_ExecutorStartHook  = NULL;
 static ExecutorEnd_hook_type    prev_ExecutorEndHook    = NULL;
@@ -219,7 +180,11 @@ void finish_inserts(bool is_commit) {
 		ListCell              *lc2;
 
 		foreach(lc2, aborted_xids) {
-			(void) list_delete_int(context->esContext->usedXids, lfirst_int(lc2));
+		    MemoryContext oldContext = MemoryContextSwitchTo(TopTransactionContext);
+
+            context->esContext->usedXids =  list_delete_int(context->esContext->usedXids, lfirst_int(lc2));
+
+			MemoryContextSwitchTo(oldContext);
 		}
 
 		ElasticsearchFinishBulkProcess(context->esContext, is_commit);
@@ -303,11 +268,12 @@ static void xact_commit_callback(XactEvent event, void *arg) {
 		case XACT_EVENT_COMMIT:
 		case XACT_EVENT_PARALLEL_COMMIT:
 		case XACT_EVENT_PREPARE:
-			executor_depth    = 0;
-			insert_contexts   = NULL;
-			to_drop           = NULL;
-			aborted_xids      = NULL;
-			currentQueryStack = NULL;
+            executor_depth       = 0;
+            insert_contexts      = NULL;
+            to_drop              = NULL;
+            created_indices_urls = NULL;
+            aborted_xids         = NULL;
+            currentQueryStack    = NULL;
 			break;
 		default:
 			break;
@@ -635,6 +601,29 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 	PG_TRY();
 			{
 				switch (nodeTag(parsetree->utilityStmt)) {
+
+					case T_TransactionStmt: {
+						TransactionStmt *stmt = (TransactionStmt *) parsetree->utilityStmt;
+
+						switch (stmt->kind) {
+							case TRANS_STMT_ROLLBACK: {
+                                ListCell *lc;
+
+                                foreach (lc, created_indices_urls) {
+                                    char *url = lfirst(lc);
+
+                                    ElasticsearchDeleteIndexDirect(url);
+                                }
+                            } break;
+
+						    default:
+						        break;
+						}
+
+                        run_process_utility_hook(parsetree, queryString, context, params, queryEnv, dest, completionTag);
+					}
+						break;
+
 					case T_AlterTableStmt: {
 						char   *url;
 						uint32 shards;
@@ -656,6 +645,38 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 
 						foreach(lc, drop->objects) {
 							switch (drop->removeType) {
+								case OBJECT_EXTENSION: {
+									ObjectAddress address;
+									Node          *object = lfirst(lc);
+									Relation      rel     = NULL;
+									List          *names  = NULL, *args = NULL;
+									char          *tmp;
+
+									/* Get an ObjectAddress for the object. */
+									address = get_object_address(drop->removeType, object, &rel, AccessExclusiveLock,
+																 drop->missing_ok);
+
+									if (address.objectId == InvalidOid) {
+										/* the object doesn't exist, so there's nothing we need to do */
+										break;
+									}
+
+									tmp = getObjectIdentityParts(&address, &names, &args);
+									pfree(tmp);
+
+                                    if (names != NIL) {
+                                        char *extname = (char *) lfirst(list_head(names));
+                                        if (strcmp("zombodb", extname) == 0) {
+                                        	/* reset 'session_preload_libraries' that we set when zombodb was created */
+                                            SPI_connect();
+                                            SPI_exec(psprintf("ALTER DATABASE %s RESET session_preload_libraries",
+                                                              get_database_name(MyDatabaseId)), 1);
+                                            SPI_finish();
+                                        }
+                                    }
+
+								} break;
+
 								case OBJECT_TABLE:
 								case OBJECT_MATVIEW:
 								case OBJECT_INDEX:
@@ -798,9 +819,16 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 								stmt->indexParams = newParams;
 							}
 
-							if (stmt->concurrent)
+							if (stmt->concurrent) {
+#if (IS_PG_10)
 								PreventTransactionChain(context == PROCESS_UTILITY_TOPLEVEL,
 														"CREATE INDEX CONCURRENTLY");
+#elif (IS_PG_11)
+								PreventInTransactionBlock(context == PROCESS_UTILITY_TOPLEVEL,
+														  "CREATE INDEX CONCURRENTLY");
+
+#endif
+							}
 
 							/*
 							 * Look up the relation OID just once, right here at the
@@ -816,8 +844,11 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 							relid =
 									RangeVarGetRelidExtended(stmt->relation, lockmode,
 															 false, false,
-															 RangeVarCallbackOwnsRelation,
-															 NULL);
+															 RangeVarCallbackOwnsRelation
+#if (IS_PG_10)
+															 , NULL
+#endif
+															 );
 
 							/* Run parse analysis ... */
 							stmt = transformIndexStmt(relid, stmt, queryString);
@@ -828,6 +859,8 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 									zdbDefineIndex(relid,    /* OID of heap relation */
 												   stmt,
 												   InvalidOid, /* no predefined OID */
+												   InvalidOid, /* parent index id */
+												   InvalidOid, /* parent constraint id */
 												   false,    /* is_alter_table */
 												   true,    /* check_rights */
 												   true,    /* check_not_in_use */
@@ -869,15 +902,26 @@ static void zdb_process_utility_hook(PlannedStmt *parsetree, const char *querySt
 	}
 }
 
-ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row, bool isnull) {
+ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation) {
 	ListCell              *lc;
 	ZDBIndexChangeContext *context;
-	TupleDesc             tupdesc = NULL;
+	TupleDesc             tupdesc;
 
 	/* see if we already have an IndexChangeContext for this index */
 	foreach (lc, insert_contexts) {
 		context = lfirst(lc);
 		if (context->indexRelid == RelationGetRelid(indexRelation)) {
+
+		    /*
+		     * If we don't have a tupledesc set in the context, do
+		     * that now by copying the one for this row.
+		     */
+		    if (context->esContext->tupdesc == NULL) {
+                tupdesc = lookup_index_tupdesc(indexRelation);
+                context->esContext->tupdesc         = CreateTupleDescCopy(tupdesc);
+                context->esContext->jsonConversions = build_json_conversions(context->esContext->tupdesc);
+                ReleaseTupleDesc(tupdesc);
+		    }
 
 			/*
 			 * we need to check to see if the TupleDesc that describes
@@ -888,8 +932,8 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 			 * triggers, and then got here again via an INSERT (or UPDATE) when
 			 * we actually know the Datum being indexed
 			 */
-			if (!isnull && !context->esContext->containsJsonIsSet) {
-				context->esContext->containsJson      = datum_contains_json(row);
+			if (!context->esContext->containsJsonIsSet) {
+				context->esContext->containsJson      = tuple_desc_contains_json(context->esContext->tupdesc);
 				context->esContext->containsJsonIsSet = true;
 			}
 
@@ -901,8 +945,7 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 	 * we don't so lets create one and return it
 	 */
 
-	if (!isnull)
-		tupdesc = lookup_composite_tupdesc(row);
+    tupdesc = lookup_index_tupdesc(indexRelation);
 
 	context = palloc(sizeof(ZDBIndexChangeContext));
 	context->indexRelid = RelationGetRelid(indexRelation);
@@ -913,8 +956,7 @@ ZDBIndexChangeContext *checkout_insert_context(Relation indexRelation, Datum row
 
 	insert_contexts = lappend(insert_contexts, context);
 
-	if (tupdesc != NULL)
-		ReleaseTupleDesc(tupdesc);
+    ReleaseTupleDesc(tupdesc);
 
 	return context;
 }
@@ -1079,6 +1121,7 @@ bool zdbamvalidate(Oid opclassoid) {
 
 /*lint -e533 */
 static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, IndexInfo *indexInfo) {
+    MemoryContext     oldContext;
 	IndexBuildResult  *result    = palloc0(sizeof(IndexBuildResult));
 	ZDBBuildStateData buildstate;
 	double            reltuples;
@@ -1131,6 +1174,10 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	set_index_option(indexRelation, "uuid", indexName);
 	ReleaseTupleDesc(tupdesc);
 
+	oldContext = MemoryContextSwitchTo(TopTransactionContext);
+    created_indices_urls = lappend(created_indices_urls, psprintf("%s%s", ZDBIndexOptionsGetUrl(indexRelation), indexName));
+    MemoryContextSwitchTo(oldContext);
+
 	buildstate.indtuples     = 0;
 	buildstate.memoryContext = AllocSetContextCreate(CurrentMemoryContext, "zdbBuildCallback",
 													 ALLOCSET_DEFAULT_MINSIZE,
@@ -1140,7 +1187,11 @@ static IndexBuildResult *ambuild(Relation heapRelation, Relation indexRelation, 
 	/*
 	 * Now we insert data into our index
 	 */
-	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, true, zdbbuildCallback, &buildstate);
+#if (IS_PG_10)
+	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, false, zdbbuildCallback, &buildstate);
+#elif (IS_PG_11)
+	reltuples = IndexBuildHeapScan(heapRelation, indexRelation, indexInfo, false, zdbbuildCallback, &buildstate, NULL);
+#endif
 	ElasticsearchFinishBulkProcess(buildstate.esContext, true);
 
 	/* Finish up with elasticsearch index creation */
@@ -1244,7 +1295,7 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 	 */
 	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 
-	insertContext = checkout_insert_context(indexRelation, values[1], isnull[1]);
+	insertContext = checkout_insert_context(indexRelation);
 
 	index_record(insertContext->esContext, insertContext->scratch, heap_tid, values[1], NULL);
 	MemoryContextSwitchTo(oldContext);
@@ -1253,19 +1304,20 @@ static bool aminsert(Relation indexRelation, Datum *values, bool *isnull, ItemPo
 }
 
 static void index_record(ElasticsearchBulkContext *esContext, MemoryContext scratchContext, ItemPointer ctid, Datum record, HeapTuple htup) {
-	MemoryContext oldContext;
-	text          *json;
-	CommandId     cmin;
-	CommandId     cmax;
-	uint64        xmin;
-	uint64        xmax;
+	MemoryContext  oldContext;
+	StringInfoData json;
+	CommandId      cmin;
+	CommandId      cmax;
+	uint64         xmin;
+	uint64         xmax;
 
 	/*
 	 * create the json form of the input record in the specified MemoryContext
 	 * and then switch back to whatever the current context is
 	 */
 	oldContext = MemoryContextSwitchTo(scratchContext);
-	json       = DatumGetTextP(DirectFunctionCall1(row_to_json, record));
+	initStringInfo(&json);
+	zdb_row_to_json(&json, record, esContext->tupdesc, esContext->jsonConversions);
 	MemoryContextSwitchTo(oldContext);
 
 	if (htup == NULL) {
@@ -1285,7 +1337,7 @@ static void index_record(ElasticsearchBulkContext *esContext, MemoryContext scra
 	}
 
 	/* add the row to Elasticsearch */
-	ElasticsearchBulkInsertRow(esContext, ctid, json, cmin, cmax, xmin, xmax);
+	ElasticsearchBulkInsertRow(esContext, ctid, &json, cmin, cmax, xmin, xmax);
 
 	/*
 	 * and now that we've used the json value, free the MemoryContext in which it was allocated.
@@ -1508,6 +1560,8 @@ static IndexBulkDeleteResult *amvacuumcleanup(IndexVacuumInfo *info, IndexBulkDe
 	if (stats == NULL) {
 		stats = zdb_vacuum_internal(info, stats, true);
 	}
+
+	ElasticSearchForceMerge(info->index);
 
 	return stats;
 }
@@ -1824,7 +1878,7 @@ static void handle_trigger(Oid indexRelId, ItemPointer targetCtid) {
 	oldContext = MemoryContextSwitchTo(TopTransactionContext);
 	indexRel   = RelationIdGetRelation(indexRelId);
 
-	context = checkout_insert_context(indexRel, PointerGetDatum(NULL), true);
+	context = checkout_insert_context(indexRel);
 
 	ElasticsearchBulkUpdateTuple(context->esContext, targetCtid, NULL, GetCurrentCommandId(true),
 								 convert_xid(GetCurrentTransactionId()));

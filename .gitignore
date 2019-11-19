@@ -8,9 +8,12 @@
 *.so
 *.a
 *.swp
+*.gcov
+*.gcda
+*.gcno
 .DS_store
 foo.*
-src/sql/zombodb--10-1.0.3.sql
+src/sql/zombodb--4.0.sql
 results/
 regression.*
 cmake-build-debug/

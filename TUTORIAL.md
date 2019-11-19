@@ -1,6 +1,6 @@
 # Getting Started
 
-Assuming you've followed the [Installation instructions](INSTALL.md), using ZomboDB is extremely simple.
+Assuming you've followed the [Installation instructions](BINARY-INSTALLATION.md), using ZomboDB is extremely simple.
 
 Since ZomboDB is an actual Postgres index type, creating and querying its indices is about as simple as any other SQL query you might execute in Postgres.
 

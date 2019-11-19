@@ -578,6 +578,30 @@ A query that wraps another query and simply returns a constant score equal to th
  
 ---
 
+#### `dsl.datetime_range()`
+
+```sql
+FUNCTION dsl.datetime_range (
+	field text,
+	lt timestamp with time zone DEFAULT NULL,
+	gt timestamp with time zone DEFAULT NULL,
+	lte timestamp with time zone DEFAULT NULL,
+	gte timestamp with time zone DEFAULT NULL,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
+
+Matches documents with fields that have terms within a certain range.  This form is for timestamp values.
+
+ZomboDB will automatically convert the specified time to `UTC` (to be compatible with Elasticsearch) however, if
+you don't specify the time zone the timestamp represents then Postgres will first assume it belongs to whatever
+time zone the server is running in (via the `TimeZone` GUC).  Read here for more about how Postgres handles time zones:
+https://www.postgresql.org/docs/11/datatype-datetime.html#DATATYPE-TIMEZONES
+
+---
+
 #### `dsl.dis_max()`
 
 ```sql
@@ -1234,3 +1258,59 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-wildcard-query.html
 
 Matches documents that have fields matching a wildcard expression (not analyzed). Supported wildcards are *, which matches any character sequence (including the empty one), and ?, which matches any single character. Note that this query can be slow, as it needs to iterate over many terms. In order to prevent extremely slow wildcard queries, a wildcard term should not start with one of the wildcards * or ?.
+
+## Postgis Support
+
+ZomboDB provides basic support for Postgis.  It automatically maps columns of type `geometry` and `geography` to
+Elasticsearch's `geo_shape` type, and `geometry(Point, 2276)` is instead indexed as an Elasticsearch `geo_point`.
+
+Additionally, it exposes a few functions for querying `geo_shape`s and polygons and bounding boxes.
+
+---
+
+#### `dsl.geo_shape()`
+
+```sql
+FUNCTION dsl.geo_shape(
+    field text,
+    geojson_shape json,
+    relation dsl.es_geo_shape_relation
+) RETURNS zdbquery
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-shape-query.html
+
+The geo_shape query uses the same grid square representation as the geo_shape mapping to find documents that have a shape that intersects with the query shape. It will also use the same PrefixTree configuration as defined for the field mapping.
+
+The query supports one way of defining the query shape:  by providing a whole shape definition.
+
+---
+
+####`dsl.geo_polygon()`
+
+```sql
+FUNCTION dsl.geo_polygon(
+    field text, 
+    VARIADIC points point[]
+) RETURNS zdbquery
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-polygon-query.html
+
+Given an array of Postgres `point` objects, generates an Elasticsearch `geo_polygon()` query
+
+---
+
+####`dsl.geo_bounding_box()`
+
+```sql
+FUNCTION dsl.geo_bounding_box(
+    field text, 
+    box box, 
+    type dsl.es_geo_bounding_box_type DEFAULT 'memory'  -- one of 'memory' or 'indexed'
+)
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-bounding-box-query.html
+
+Given a Postgres `box` object, generates an Elasticsearch `geo_bounding_box()` query

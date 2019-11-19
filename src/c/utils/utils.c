@@ -70,42 +70,31 @@ Oid get_base_type_oid(Oid typeOid) {
 }
 
 /*
- * Given a composite Datum, return its TupleDescriptor
- * which will need to be released by the caller
+ * Given a ZomboDB index Relation, determine the TupleDescriptor
+ * we need to use
  */
-TupleDesc lookup_composite_tupdesc(Datum composite) {
-	HeapTupleHeader td;
-	Oid             tupType;
-	int32           tupTypmod;
+TupleDesc lookup_index_tupdesc(Relation indexRelation) {
+    TupleDesc tupdesc = RelationGetDescr(indexRelation);
+    Form_pg_attribute attr;
 
-	td = DatumGetHeapTupleHeader(composite);
+    if (tupdesc->natts != 2)
+        elog(ERROR, "TupleDesc for index '%s' has incorrect number of attributes", RelationGetRelationName(indexRelation));
 
-	/* Extract rowtype info and find a tupdesc */
-	tupType   = HeapTupleHeaderGetTypeId(td);
-	tupTypmod = HeapTupleHeaderGetTypMod(td);
-
-	return lookup_rowtype_tupdesc(tupType, tupTypmod);
+    attr = TupleDescAttr(tupdesc, 1);
+	return lookup_rowtype_tupdesc(attr->atttypid, attr->atttypmod);
 }
 
 bool tuple_desc_contains_json(TupleDesc tupdesc) {
 	int i;
 
 	for (i = 0; i < tupdesc->natts; i++) {
-		if (tupdesc->attrs[i]->atttypid == JSONOID) {
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
+		if (attr->atttypid == JSONOID) {
 			return true;
 		}
 	}
 
 	return false;
-}
-
-bool datum_contains_json(Datum composite) {
-	TupleDesc tupdesc = lookup_composite_tupdesc(composite);
-	bool      rc;
-
-	rc = tuple_desc_contains_json(tupdesc);
-	ReleaseTupleDesc(tupdesc);
-	return rc;
 }
 
 /*
@@ -350,7 +339,11 @@ Oid create_trigger(char *zombodbNamespace, char *schemaname, char *relname, Oid 
 	tgstmt->initdeferred = false;
 	tgstmt->constrrel    = NULL;
 
+#if (IS_PG_10)
 	triggerOid = CreateTrigger(tgstmt, NULL, relid, InvalidOid, InvalidOid, InvalidOid, true /* tgisinternal */);
+#elif (IS_PG_11)
+	triggerOid = CreateTrigger(tgstmt, NULL, relid, InvalidOid, InvalidOid, InvalidOid, InvalidOid, InvalidOid, NULL, true /* tgisinternal */, false);
+#endif
 
 	/* Make the new trigger visible within this session */
 	CommandCounterIncrement();
@@ -385,7 +378,11 @@ TupleDesc extract_tuple_desc_from_index_expressions(IndexInfo *indexInfo) {
 	TupleDesc tupdesc = NULL;
 	Node *expression;
 
+#if (IS_PG_10)
 	if (indexInfo->ii_KeyAttrNumbers[0] != SelfItemPointerAttributeNumber) {
+#elif (IS_PG_11)
+	if (indexInfo->ii_IndexAttrNumbers[0] != SelfItemPointerAttributeNumber) {
+#endif
 		return NULL;
 	} else if (list_length(indexInfo->ii_Expressions) != 1) {
 		return NULL;
