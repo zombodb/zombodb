@@ -3,7 +3,7 @@ use std::os::raw::{c_char, c_void};
 
 use crate::memcxt::pfree;
 
-extern {
+extern "C" {
     fn makeStringInfo() -> PostgresStringInfo;
     fn enlargeStringInfo(str: PostgresStringInfo, needed: i32);
     fn resetStringInfo(str: PostgresStringInfo);
@@ -14,8 +14,7 @@ extern {
 
 #[repr(C)]
 #[derive(Debug)]
-pub struct PostgresStringInfoData
-{
+pub struct PostgresStringInfoData {
     data: *mut c_char,
     len: i32,
     maxlen: i32,
@@ -70,12 +69,12 @@ impl ReturnToPostgres for &[u8] {
 impl ToString for StringInfo {
     fn to_string(&self) -> String {
         unsafe {
-            CStr::from_bytes_with_nul_unchecked(
-                std::slice::from_raw_parts(
-                    (*self.sid).data as *const u8,
-                    (*self.sid).len as usize + 1        // + 1 to include the null byte
-                )
-            ).to_string_lossy().to_string()
+            CStr::from_bytes_with_nul_unchecked(std::slice::from_raw_parts(
+                (*self.sid).data as *const u8,
+                (*self.sid).len as usize + 1, // + 1 to include the null byte
+            ))
+            .to_string_lossy()
+            .to_string()
         }
     }
 }
@@ -94,12 +93,10 @@ impl StringInfo {
         if sid.is_null() {
             None
         } else {
-            Some(
-                StringInfo {
-                    sid,
-                    is_from_pg: true,
-                }
-            )
+            Some(StringInfo {
+                sid,
+                is_from_pg: true,
+            })
         }
     }
 
@@ -120,7 +117,13 @@ impl StringInfo {
 
     #[allow(dead_code)]
     pub fn push_bytes(&mut self, bytes: &[u8]) {
-        unsafe { appendBinaryStringInfo(self.sid, bytes.as_ptr() as *const c_char, bytes.len() as i32) }
+        unsafe {
+            appendBinaryStringInfo(
+                self.sid,
+                bytes.as_ptr() as *const c_char,
+                bytes.len() as i32,
+            )
+        }
     }
 
     #[allow(dead_code)]
@@ -155,7 +158,6 @@ impl From<Vec<u8>> for StringInfo {
         rc
     }
 }
-
 
 impl From<&[u8]> for StringInfo {
     fn from(v: &[u8]) -> Self {
