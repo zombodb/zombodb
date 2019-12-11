@@ -18,6 +18,7 @@
 #define __ZDB_REST_H__
 
 #include "curl_support.h"
+#include "rust/rust_exports.h"
 
 StringInfo rest_call(const char *method, StringInfo url, StringInfo postData, int compressionLevel);
 
