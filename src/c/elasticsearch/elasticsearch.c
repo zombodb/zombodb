@@ -191,7 +191,12 @@ char *ElasticsearchCreateIndex(Relation heapRel, Relation indexRel, TupleDesc tu
 	appendStringInfo(request, "%s%s", ZDBIndexOptionsGetUrl(indexRel), indexName);
 
 	/* first, delete the old index */
-	ElasticsearchDeleteIndex(indexRel);
+    {
+        StringInfo directUrl  = makeStringInfo();
+        appendStringInfo(directUrl, "%s%s", ZDBIndexOptionsGetUrl(indexRel), indexName);
+        ElasticsearchDeleteIndexDirect(directUrl->data);
+        freeStringInfo(directUrl);
+    }
 
 	/* secondly, create the new index */
 	response = rest_call("PUT", request, settings, ZDBIndexOptionsGetCompressionLevel(indexRel));
