@@ -13,7 +13,7 @@
 *.gcno
 .DS_store
 foo.*
-src/sql/zombodb--4.0.sql
+src/sql/zombodb--4.1.sql
 results/
 regression.*
 cmake-build-debug/

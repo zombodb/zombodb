@@ -19,11 +19,11 @@
 
 #include "curl_support.h"
 
-StringInfo rest_call(char *method, StringInfo url, StringInfo postData, int compressionLevel);
+StringInfo rest_call(const char *method, StringInfo url, StringInfo postData, int compressionLevel);
 
 MultiRestState *rest_multi_init(int nhandles, bool ignore_version_conflicts);
 int rest_multi_perform(MultiRestState *state);
-void rest_multi_call(MultiRestState *state, char *method, StringInfo url, PostDataEntry *postData, int compressionLevel);
+//void rest_multi_call(MultiRestState *state, char *method, StringInfo url, PostDataEntry *postData, int compressionLevel);
 void rest_multi_wait_for_all_done(MultiRestState *state);
 void rest_multi_partial_cleanup(MultiRestState *state, bool finalize, bool fast);
 

@@ -16,6 +16,7 @@
  */
 
 #include "rest.h"
+#include "rust/rust_exports.h"
 #include "zombodb.h"
 #include "json/json_support.h"
 
@@ -373,88 +374,109 @@ static bool contains_version_conflict_error(const MultiRestState *state, int i) 
 	return ignoreError;
 }
 
-StringInfo rest_call(char *method, StringInfo url, StringInfo postData, int compressionLevel) {
-	char              *compressed_data = NULL;
-	StringInfo        response         = makeStringInfo();
-	CURLcode          ret;
-	int64             response_code;
-	CURL              *curl            = GLOBAL_CURL_INSTANCE;
-	struct curl_slist *headers         = NULL;
+//StringInfo rest_call(const char *method, StringInfo url, StringInfo postData, int compressionLevel) {
+//    return zdbrust_rest_call(method, url, postData, compressionLevel);
+//
+//    StringInfo rc;
+//    StringInfo sid = makeStringInfo();
+//    appendStringInfo(sid, "Hi Jack!");
+//
+//    elog(LOG, "FROM PG: entered rest_call");
+//
+////    zdbrust_test_string(method, url, postData, (size_t) compressionLevel);
+//    rc = zdbrust_test_string("hi jack", sid, NULL, 42);
+//
+//    elog(LOG, "FROM PG: returning rest_call: %s", rc->data);
+//    return NULL;
 
-	headers = curl_slist_append(headers, "Content-Type: application/json");
 
-	/* these are all the curl options we want set every time we use it */
-	curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
-	curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION,
-					 (curl_progress_callback) curl_progress_func);   /* to go here so we can detect a ^C within postgres */
-	curl_easy_setopt(curl, CURLOPT_USERAGENT, "zdb");
-	curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
-	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
-	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
-	curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
-	curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-	curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
-	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, GLOBAL_CURL_ERRBUF);
+//    StringInfoData *result;
+//    elog(NOTICE, "method=%s, url=%s", method, url->data);
+//    result = zdbrust_rest_call(method, url, postData, compressionLevel);
+//    elog(NOTICE, "done");
 
-	curl_easy_setopt(curl, CURLOPT_URL, url->data);
-	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-	curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, compressionLevel > 0 ? "" : NULL);
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, zdb_curl_verbose_guc);
-
-	if (postData != NULL && compressionLevel > 0) {
-		uint64 len;
-
-		compressed_data = do_compression(postData, compressionLevel, &len);
-
-		headers = curl_slist_append(headers, "Content-Encoding: deflate");
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, len);
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, compressed_data);
-	} else {
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
-	}
-
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-	if (postData != NULL || strcmp("POST", method) == 0)
-		curl_easy_setopt(curl, CURLOPT_POST, 1);
-	else
-		curl_easy_setopt(curl, CURLOPT_POST, 0);
-
-	ret = curl_easy_perform(curl);
-
-	/* we might have detected an interrupt in the progress function, so check for sure */
-	CHECK_FOR_INTERRUPTS();
-
-	if (ret != CURLE_OK) {
-		/* curl messed up */
-		ereport(ERROR,
-				(errcode(ERRCODE_IO_ERROR),
-						errmsg("libcurl error-code: %s(%d); message: %s; req=-X%s %s ", curl_easy_strerror(ret), ret,
-							   GLOBAL_CURL_ERRBUF, method, url->data)));
-	}
-
-	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-	if (response_code < 200 || (response_code >= 300 && response_code != 404)) {
-		ereport(ERROR,
-				(errcode(ERRCODE_IO_ERROR),
-						errmsg("unexpected http response code from remote server.  code=%ld, response=%s",
-							   response_code, response->data)));
-	}
-
-	if (compressed_data != NULL)
-		pfree(compressed_data);
-
-	if (headers != NULL)
-		curl_slist_free_all(headers);
-
-	if (response_code != 404 && strstr(response->data, "{\"error\":") != NULL)
-		ereport(ERROR,
-				(errcode(ERRCODE_IO_ERROR),
-						errmsg("%s", response->data)));
-
-	return response;
-}
+//    return result;
+//	char              *compressed_data = NULL;
+//	StringInfo        response         = makeStringInfo();
+//	CURLcode          ret;
+//	int64             response_code;
+//	CURL              *curl            = GLOBAL_CURL_INSTANCE;
+//	struct curl_slist *headers         = NULL;
+//
+//	headers = curl_slist_append(headers, "Content-Type: application/json");
+//
+//	/* these are all the curl options we want set every time we use it */
+//	curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);      /* we want progress ... */
+//	curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION,
+//					 (curl_progress_callback) curl_progress_func);   /* to go here so we can detect a ^C within postgres */
+//	curl_easy_setopt(curl, CURLOPT_USERAGENT, "zdb");
+//	curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
+//	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_func);
+//	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
+//	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+//	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+//	curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+//	curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+//	curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+//	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, GLOBAL_CURL_ERRBUF);
+//
+//	curl_easy_setopt(curl, CURLOPT_URL, url->data);
+//	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
+//	curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+//	curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, compressionLevel > 0 ? "" : NULL);
+//	curl_easy_setopt(curl, CURLOPT_VERBOSE, zdb_curl_verbose_guc);
+//
+//	if (postData != NULL && compressionLevel > 0) {
+//		uint64 len;
+//
+//		compressed_data = do_compression(postData, compressionLevel, &len);
+//
+//		headers = curl_slist_append(headers, "Content-Encoding: deflate");
+//		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, len);
+//		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, compressed_data);
+//	} else {
+//		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData ? postData->len : 0);
+//		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData ? postData->data : NULL);
+//	}
+//
+//	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+//	if (postData != NULL || strcmp("POST", method) == 0)
+//		curl_easy_setopt(curl, CURLOPT_POST, 1);
+//	else
+//		curl_easy_setopt(curl, CURLOPT_POST, 0);
+//
+//	ret = curl_easy_perform(curl);
+//
+//	/* we might have detected an interrupt in the progress function, so check for sure */
+//	CHECK_FOR_INTERRUPTS();
+//
+//	if (ret != CURLE_OK) {
+//		/* curl messed up */
+//		ereport(ERROR,
+//				(errcode(ERRCODE_IO_ERROR),
+//						errmsg("libcurl error-code: %s(%d); message: %s; req=-X%s %s ", curl_easy_strerror(ret), ret,
+//							   GLOBAL_CURL_ERRBUF, method, url->data)));
+//	}
+//
+//	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+//	if (response_code < 200 || (response_code >= 300 && response_code != 404)) {
+//		ereport(ERROR,
+//				(errcode(ERRCODE_IO_ERROR),
+//						errmsg("unexpected http response code from remote server.  code=%ld, response=%s",
+//							   response_code, response->data)));
+//	}
+//
+//	if (compressed_data != NULL)
+//		pfree(compressed_data);
+//
+//	if (headers != NULL)
+//		curl_slist_free_all(headers);
+//
+//	if (response_code != 404 && strstr(response->data, "{\"error\":") != NULL)
+//		ereport(ERROR,
+//				(errcode(ERRCODE_IO_ERROR),
+//						errmsg("%s", response->data)));
+//
+//	return response;
+//}
 

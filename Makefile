@@ -27,15 +27,18 @@ PGFILEDESC = "ZomboDB"
 #
 # object files 
 #
-PG_CPPFLAGS += -Isrc/c/
-SHLIB_LINK += -lcurl -lz
-OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g)
+PG_CPPFLAGS += -Isrc/c/ -O0
+SHLIB_LINK += -lcurl -lz -L src/rust/target/debug -lzombodb_rust
+OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/debug/libzombodb_rust.dylib
 
 #
 # make targets
 #
 
 all: src/sql/$(EXTENSION)--$(EXTVERSION).sql
+
+src/rust/target/debug/libzombodb_rust.dylib: src/rust/Cargo.toml src/rust/Cargo.lock $(shell find src/rust/src/ -name '*.rs')
+	cd src/rust && cargo build
 
 src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list
 	cat `cat $<` > $@
@@ -63,13 +66,11 @@ checkboth:
 # "make clean"
 #
 
-EXTRA_CLEAN += src/sql/$(EXTENSION)--$(EXTVERSION).sql
+EXTRA_CLEAN += src/sql/$(EXTENSION)--$(EXTVERSION).sql src/rust/target
 
 #
 # build targets
 #
-
-all: src/sql/$(EXTENSION)--$(EXTVERSION).sql
 
 flint:
 	src/flint/runflint.sh > src/flint/flint.out
