@@ -7,7 +7,7 @@ use syn::export::ToTokens;
 use syn::{parse_macro_input, FnArg, ForeignItem, ForeignItemFn, Item, ItemForeignMod};
 
 #[proc_macro_attribute]
-pub fn elog_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn pg_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // get a usable token stream
     let ast = parse_macro_input!(item as syn::Item);
 

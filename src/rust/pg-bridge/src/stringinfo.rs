@@ -3,11 +3,11 @@
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
 
-use elog_guard::*;
+use pg_guard::*;
 
 use crate::memcxt::pfree;
 
-#[elog_guard]
+#[pg_guard]
 extern "C" {
     fn makeStringInfo() -> PostgresStringInfo;
     fn enlargeStringInfo(str: PostgresStringInfo, needed: i32);

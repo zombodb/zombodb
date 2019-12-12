@@ -6,5 +6,5 @@ edition = "2018"
 
 [dependencies]
 pg-bridge = { path = "../pg-bridge" }
-elog-guard = { path = "../pg-bridge/elog-guard" }
+pg-guard = { path = "../pg-bridge/pg-guard" }
 elog-wrapper = { path = "../pg-bridge/elog-wrapper" }

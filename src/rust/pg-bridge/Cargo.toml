@@ -5,5 +5,5 @@ authors = ["Eric B. Ridge <eebbrr@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-elog-guard = { path = "elog-guard/" }
+pg-guard = { path = "pg-guard/" }
 elog-wrapper = { path = "elog-wrapper" }
