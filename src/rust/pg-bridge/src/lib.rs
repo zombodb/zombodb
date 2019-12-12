@@ -33,7 +33,7 @@ fn rewrite_extern_block(block: ItemForeignMod) -> TokenStream {
 fn rewrite_foreign_item(item: ForeignItem) -> TokenStream {
     match item {
         ForeignItem::Fn(func) => rewrite_foreign_item_fn(func),
-        _ => panic!("#[longjmp_guard] tried to process an item that isn't a function: {:?}", item)
+        _ => panic!("#[longjmp_guard] can only be applied to extern blocks that only contain function declarations.  Offending line: {:?}", item)
     }
 }
 
@@ -73,7 +73,7 @@ fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
             }
 
             // TODO:  preamble for setjmp/longjmp
-            unsafe { #name #fn_call }
+            jmp_wrapper(||unsafe { #name #fn_call })
             // TODO:  prologue for setjmp/longjmp
         }
     };
