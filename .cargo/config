@@ -1,2 +1,0 @@
-[build] 
-rustflags = ["-Clink-args=-undefined dynamic_lookup"]

@@ -47,7 +47,7 @@ set(SOURCE_FILES
         src/c/indexam/define_index.h
         src/c/json/type_conversion.c
         src/c/json/type_conversion.h
-        src/c/json/json_pg11.c src/c/rust/helper-funcs.c src/c/rust/helper-funcs.h)
+        src/c/json/json_pg11.c src/c/rust/zdb-helper.c src/c/rust/zdb-helper.h)
 
 #include_directories(src/c /usr/local/src/pg10/src/include /usr/local/src/pg10/src/backend)
 include_directories(src/c /usr/local/src/pg11/src/include /usr/local/src/pg11/src/backend)

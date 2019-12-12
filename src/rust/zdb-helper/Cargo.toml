@@ -1,0 +1,13 @@
+[package]
+name = "zdb-helper"
+version = "0.1.0"
+authors = ["Eric B. Ridge <eebbrr@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "zdb_helper"
+crate-type = ["staticlib"]
+
+[dependencies]
+reqwest = "0.9.22"
+miniz_oxide = "0.3.5"

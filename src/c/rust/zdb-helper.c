@@ -13,11 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "postgres.h"
+#include "zdb-helper.h"
 
-#ifndef ZOMBODB_HELPER_FUNCS_H
-#define ZOMBODB_HELPER_FUNCS_H
-
-PGDLLEXPORT void zdb_log_proxy(int loglevel, const char *log_msg);
-
-#endif //ZOMBODB_HELPER_FUNCS_H
+void zdb_log_proxy(int loglevel, const char *log_msg) {
+    elog(loglevel, "%s", log_msg);
+}

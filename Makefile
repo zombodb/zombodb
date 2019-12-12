@@ -28,8 +28,9 @@ PGFILEDESC = "ZomboDB"
 # object files 
 #
 PG_CPPFLAGS += -Isrc/c/ -O0
-SHLIB_LINK += -lcurl -lz -L src/rust/target/debug -lzombodb_rust
-OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/debug/libzombodb_rust.dylib
+## TODO:  figure out link args for Linux too
+SHLIB_LINK += -lcurl -lz -L src/rust/target/debug -framework CoreFoundation -framework IOKit -framework Security -lzdb_helper
+OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/debug/libzdb_helper.a
 
 #
 # make targets
@@ -37,7 +38,7 @@ OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target
 
 all: src/sql/$(EXTENSION)--$(EXTVERSION).sql
 
-src/rust/target/debug/libzombodb_rust.dylib: src/rust/Cargo.toml src/rust/Cargo.lock $(shell find src/rust/src/ -name '*.rs')
+src/rust/target/debug/libzdb_helper.a: src/rust/Cargo.toml src/rust/Cargo.lock $(shell find src/rust/ -name '*.rs')
 	cd src/rust && cargo build
 
 src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list

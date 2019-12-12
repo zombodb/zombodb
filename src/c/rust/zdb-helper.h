@@ -13,5 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "postgres.h"
+#include "lib/stringinfo.h"
 
-extern void rest_multi_call(MultiRestState *state, char *method, StringInfo url, PostDataEntry *postData, int compressionLevel);
+#ifndef ZOMBODB_HELPER_FUNCS_H
+#define ZOMBODB_HELPER_FUNCS_H
+
+/* === Functions we export to RUST === */
+PGDLLEXPORT void zdb_log_proxy(int loglevel, const char *log_msg);
+
+/* === Functions we import from RUST === */
+extern StringInfo rest_call(const char *method, StringInfo url, StringInfo postData, int compressionLevel);
+
+#endif //ZOMBODB_HELPER_FUNCS_H

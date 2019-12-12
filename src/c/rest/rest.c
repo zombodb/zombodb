@@ -16,7 +16,6 @@
  */
 
 #include "rest.h"
-#include "rust/rust_exports.h"
 #include "zombodb.h"
 #include "json/json_support.h"
 
