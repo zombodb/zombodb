@@ -108,7 +108,7 @@ bool ElasticsearchGetNextItemPointer(ElasticsearchScrollContext *context, ItemPo
 void ElasticsearchCloseScroll(ElasticsearchScrollContext *scrollContext);
 
 void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *xids);
-void ElasticSearchForceMerge(Relation indexRel);
+void ElasticsearchForceMerge(Relation indexRel);
 
 char *ElasticsearchProfileQuery(Relation indexRel, ZDBQueryType *query);
 

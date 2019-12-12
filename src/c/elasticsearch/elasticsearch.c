@@ -1032,7 +1032,7 @@ void ElasticsearchRemoveAbortedTransactions(Relation indexRel, List/*uint64*/ *x
 	}
 }
 
-void ElasticSearchForceMerge(Relation indexRel) {
+void ElasticsearchForceMerge(Relation indexRel) {
 	StringInfo request  = makeStringInfo();
 	StringInfo response;
 
