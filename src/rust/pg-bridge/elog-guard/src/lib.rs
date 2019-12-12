@@ -72,7 +72,7 @@ fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
             }
 
             // TODO:  preamble for setjmp/longjmp
-            pg_bridge::jmp_wrapper(||unsafe { #name #fn_call })
+            elog_wrapper::jmp_wrapper(||unsafe { #name #fn_call })
             // TODO:  prologue for setjmp/longjmp
         }
     };
