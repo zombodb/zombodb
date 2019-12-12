@@ -468,8 +468,7 @@ void ElasticsearchBulkInsertRow(ElasticsearchBulkContext *context, ItemPointerDa
 	 * The first line is telling Elasticsearch that we intend to index a document.
 	 *
 	 * We don't specify _index or _type because they're already in our request URL,
-	 * and we don't specify an _id because we let Elasticsearch autogenerate one for us --
-	 * we'll never use the _id for ourselves, so we don't care what it is
+	 * and we specify the document id as the 64bit integer version of the tuple's "ctid"
 	 */
 	if (ctid != NULL) {
 		appendStringInfo(context->current->buff, "{\"index\":{\"_id\":\"%lu\"}}\n", ItemPointerToUint64(ctid));
