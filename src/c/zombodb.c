@@ -16,6 +16,7 @@
 #include "zombodb.h"
 #include "highlighting/highlighting.h"
 #include "rest/curl_support.h"
+#include "rust/zdb-helper.h"
 #include "scoring/scoring.h"
 
 #ifdef PG_MODULE_MAGIC
@@ -31,6 +32,8 @@ void _PG_init(void);
 void _PG_fini(void);
 
 void _PG_init(void) {
+    rust_init();
+
 	/* these initialization functions might register transaction callbacks that
 	 * run on transaction commit/abort.  If so, they're called by Postgres in a
 	 * LIFO order

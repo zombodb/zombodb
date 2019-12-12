@@ -1,8 +1,13 @@
+#![allow(dead_code)]
+
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
 
+use elog_guard::*;
+
 use crate::memcxt::pfree;
 
+#[elog_guard]
 extern "C" {
     fn makeStringInfo() -> PostgresStringInfo;
     fn enlargeStringInfo(str: PostgresStringInfo, needed: i32);
@@ -80,7 +85,6 @@ impl ToString for StringInfo {
 }
 
 impl StringInfo {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         StringInfo {
             sid: unsafe { makeStringInfo() },
@@ -88,7 +92,6 @@ impl StringInfo {
         }
     }
 
-    #[allow(dead_code)]
     pub fn from_pg(sid: PostgresStringInfo) -> Option<Self> {
         if sid.is_null() {
             None
@@ -100,22 +103,18 @@ impl StringInfo {
         }
     }
 
-    #[allow(dead_code)]
     pub fn len(&self) -> i32 {
         unsafe { &mut *self.sid }.len
     }
 
-    #[allow(dead_code)]
     pub fn push(&mut self, ch: char) {
         unsafe { appendStringInfoChar(self.sid, ch as c_char) }
     }
 
-    #[allow(dead_code)]
     pub fn push_str(&mut self, s: &str) {
         unsafe { appendBinaryStringInfo(self.sid, s.as_ptr() as *const c_char, s.len() as i32) }
     }
 
-    #[allow(dead_code)]
     pub fn push_bytes(&mut self, bytes: &[u8]) {
         unsafe {
             appendBinaryStringInfo(
@@ -126,12 +125,10 @@ impl StringInfo {
         }
     }
 
-    #[allow(dead_code)]
     pub fn reset(&mut self) {
         unsafe { resetStringInfo(self.sid) }
     }
 
-    #[allow(dead_code)]
     pub fn enlarge(&mut self, needed: i32) {
         unsafe { enlargeStringInfo(self.sid, needed) }
     }

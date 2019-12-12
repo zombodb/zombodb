@@ -24,5 +24,6 @@ PGDLLEXPORT void zdb_log_proxy(int loglevel, const char *log_msg);
 
 /* === Functions we import from RUST === */
 extern StringInfo rest_call(const char *method, StringInfo url, StringInfo postData, int compressionLevel);
+extern void rust_init();
 
 #endif //ZOMBODB_HELPER_FUNCS_H

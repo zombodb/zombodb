@@ -1,9 +1,9 @@
+#![allow(dead_code)]
 use std::ffi::c_void;
+use elog_guard::*;
 
+#[elog_guard]
 extern "C" {
-    #[allow(dead_code)]
     pub fn palloc(size: usize) -> *mut u8;
-
-    #[allow(dead_code)]
     pub fn pfree(data: *mut c_void);
 }

@@ -1,8 +1,12 @@
-mod log;
 mod memcxt;
-mod panic_guard;
 mod rest;
 mod stringinfo;
+
+#[no_mangle]
+pub extern "C" fn rust_init() {
+    println!("RUST_INIT()");
+    pg_bridge::register_panic_handler();
+}
 
 #[cfg(test)]
 mod tests {
