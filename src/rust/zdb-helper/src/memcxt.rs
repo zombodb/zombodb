@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use std::ffi::c_void;
 use elog_guard::*;
+use std::ffi::c_void;
 
 #[elog_guard]
 extern "C" {

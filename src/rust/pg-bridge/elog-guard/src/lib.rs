@@ -2,21 +2,18 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Item, ItemForeignMod, ForeignItem, ForeignItemFn, FnArg};
-use syn::export::ToTokens;
 use std::str::FromStr;
+use syn::export::ToTokens;
+use syn::{parse_macro_input, FnArg, ForeignItem, ForeignItemFn, Item, ItemForeignMod};
 
 #[proc_macro_attribute]
-pub fn elog_guard(
-    _attr: TokenStream,
-    item: TokenStream,
-) -> TokenStream {
+pub fn elog_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // get a usable token stream
     let ast = parse_macro_input!(item as syn::Item);
 
     match ast {
         Item::ForeignMod(block) => rewrite_extern_block(block),
-        _ => panic!("#[longjmp_guard] can only be applied to extern {{}} blocks")
+        _ => panic!("#[longjmp_guard] can only be applied to extern {{}} blocks"),
     }
 }
 
@@ -59,7 +56,9 @@ fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
                 fn_call.push_str(arg.as_str());
                 cnt = cnt + 1;
             }
-            _ => panic!("#[longjmp_guard] doesn't support external functions with 'self' as the argument"),
+            _ => panic!(
+                "#[longjmp_guard] doesn't support external functions with 'self' as the argument"
+            ),
         }
     }
     fn_call.push(')');
@@ -87,7 +86,9 @@ fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
     }
     let sig = sig.replace(";", "");
 
-    tokens.extend(TokenStream::from_str(format!("{} {}", sig, body.into_token_stream()).as_str()));
+    tokens.extend(TokenStream::from_str(
+        format!("{} {}", sig, body.into_token_stream()).as_str(),
+    ));
 
     tokens
 }

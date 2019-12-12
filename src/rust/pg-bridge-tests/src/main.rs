@@ -8,5 +8,5 @@ extern "C" {
 }
 
 fn main() {
-//    guarded_fn()
+    //    guarded_fn()
 }

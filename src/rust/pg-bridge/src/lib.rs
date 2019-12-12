@@ -23,7 +23,7 @@ extern "C" {
 #[repr(C)]
 struct ErrorContextCallback {
     previous: *mut ErrorContextCallback,
-    callback: extern fn(arg: *mut c_void),
+    callback: extern "C" fn(arg: *mut c_void),
     arg: *mut c_void,
 }
 
@@ -75,10 +75,7 @@ pub fn register_panic_handler() {
         if let Some(panic_context) = info.payload().downcast_ref::<JumpContext>() {
             // the panic came from a pg longjmp... so unwrap it and rethrow
             unsafe {
-                siglongjmp(
-                    PG_exception_stack,
-                    panic_context.jump_value,
-                );
+                siglongjmp(PG_exception_stack, panic_context.jump_value);
             }
         } else {
             // it's a normal Rust panic
@@ -101,4 +98,3 @@ pub fn register_panic_handler() {
         unreachable!("failed to properly handle a panic");
     }));
 }
-
