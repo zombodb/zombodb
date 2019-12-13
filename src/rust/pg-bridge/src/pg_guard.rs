@@ -57,7 +57,7 @@ where
             let jumped = sigsetjmp(wrapped_jmp_buff.as_mut_ptr(), 0);
             if jumped != 0 {
                 //
-                // caught a longjmp
+                // caught a longjmp (ie, an elog(ERROR))
                 //
 
                 compiler_fence(Ordering::SeqCst);
@@ -78,21 +78,29 @@ where
                 }
             }
 
+            //
+            // lie to Postgres about where an elog(ERROR) should jump to
+            //
             let mut local_sigjmp_buf = wrapped_jmp_buff.assume_init();
             PG_exception_stack = &mut local_sigjmp_buf;
 
             compiler_fence(Ordering::SeqCst);
             inc_depth(&WRAP_DEPTH);
 
+            //
             // execute the actual function we're wrapping
+            //
             let result = catch_unwind(|| f());
 
             compiler_fence(Ordering::SeqCst);
             dec_depth(&WRAP_DEPTH);
 
+            // check the result and propagate errors if necessary
             let result = handle_result(result, get_depth(&WRAP_DEPTH), PG_exception_stack);
 
+            //
             // restore Postgres exception stack pointer
+            //
             compiler_fence(Ordering::SeqCst);
             PG_exception_stack = prev_exception_stack;
 
@@ -100,6 +108,7 @@ where
         }
     });
 
+    // check the result and propagate errors if necessary, otherwise return the result
     handle_result(result, get_depth(&WRAP_DEPTH), unsafe {
         PG_exception_stack
     })
@@ -122,21 +131,27 @@ fn handle_result<R>(
 fn maybe_panic_or_elog(depth: usize, jmp_buff: *mut sigjmp_buf, e: Box<dyn Any + Send>) {
     match downcast_err(e.deref()) {
         Ok(message) => {
+            // it's a Rust panic!(), and we have the message as a &str
             if depth == 0 {
+                // we're not guarding a function, so simply raise it as a Postgres ERROR
                 elog(ERROR, message);
                 unreachable!("elog(ERROR, {:?}) failed", message);
             } else {
+                // we are currently guarding a function so propagate as another panic!()
                 panic!(format!("{}", message));
             }
         }
 
         Err(cxt) => {
+            // it's a Postgres elog(ERROR) raised either by a Postgres function or a Rust function
             if depth == 0 {
+                // we're not guarding a function, so jump back into where Postgres wants us to go
                 unsafe {
                     siglongjmp(jmp_buff, cxt.jump_value);
                 }
                 unreachable!("siglongjmp failed");
             } else {
+                // we are currently guarding a function so propagate as a panic!()
                 panic!(cxt);
             }
         }
