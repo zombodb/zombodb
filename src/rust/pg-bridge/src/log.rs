@@ -30,3 +30,89 @@ pub fn elog(level: i32, message: &str) {
         zdb_log_proxy(level, CString::new(message).unwrap().as_ptr());
     }
 }
+
+#[macro_export]
+macro_rules! notice {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::NOTICE, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::INFO, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! log {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::LOG, $($arg)*);
+    )
+}
+
+
+#[macro_export]
+macro_rules! debug1 {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::DEBUG1, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! debug2 {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::DEBUG2, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! debug3 {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::DEBUG3, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! debug4 {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::DEBUG4, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! debug5 {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::DEBUG5, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! warning {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::WARNING, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! error {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::ERROR, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! FATAL {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::FATAL, $($arg)*);
+    )
+}
+
+#[macro_export]
+macro_rules! PANIC {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::PANIC, $($arg)*);
+    )
+}
+
