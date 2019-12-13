@@ -6,11 +6,10 @@ edition = "2018"
 
 [lib]
 name = "zdb_helper"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "dylib"]
 
 [dependencies]
 reqwest = "0.9.22"
 miniz_oxide = "0.3.5"
 pg-bridge = { path = "../pg-bridge/" }
 pg-guard = { path = "../pg-bridge/pg-guard" }
-elog-wrapper = { path = "../pg-bridge/elog-wrapper" }

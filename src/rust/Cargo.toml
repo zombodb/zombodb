@@ -2,9 +2,9 @@
 members = [
     "zdb-helper",
     "pg-bridge",
-    "pg-bridge-tests",
+    "pg-bridge/pg-guard",
+    "pg-bridge/pg-guard-tests",
 ]
-
 
 [profile.dev]
 panic = "unwind"

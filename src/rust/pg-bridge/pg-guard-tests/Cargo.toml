@@ -1,8 +1,9 @@
 [package]
-name = "elog-wrapper"
+name = "pg-guard-tests"
 version = "0.1.0"
 authors = ["Eric B. Ridge <eebbrr@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-libc = "0.2.66"
+pg-guard = { path = "../pg-guard" }
+pg-bridge = { path = "../../pg-bridge" }

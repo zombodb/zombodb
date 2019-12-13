@@ -7,6 +7,12 @@ extern "C" {
     fn ex_fun2(a: i32, z: *const c_char);
 }
 
+#[pg_guard]
+pub fn foo(a: i32, b: Option<bool>) -> Result<String, Vec<bool>> {
+    println!("HERE");
+    Err(Vec::new())
+}
+
 fn main() {
     //    guarded_fn()
 }

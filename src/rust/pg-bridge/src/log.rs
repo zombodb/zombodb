@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use std::ffi::CString;
 use std::os::raw::c_char;
+use pg_guard::*;
+use crate as pg_bridge;
 
 pub static DEBUG5: i32 = 10;
 pub static DEBUG4: i32 = 11;
@@ -18,6 +20,7 @@ pub static PGERROR: i32 = 20;
 pub static FATAL: i32 = 21;
 pub static PANIC: i32 = 22;
 
+#[pg_guard]
 extern "C" {
     fn zdb_log_proxy(level: i32, message: *const c_char);
 }

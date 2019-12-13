@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 pg-guard = { path = "pg-guard/" }
-elog-wrapper = { path = "elog-wrapper" }
+libc = "0.2.66"

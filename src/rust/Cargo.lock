@@ -192,13 +192,6 @@ version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "elog-wrapper"
-version = "0.1.0"
-dependencies = [
- "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "encoding_rs"
 version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -647,16 +640,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "pg-bridge"
 version = "0.1.0"
 dependencies = [
- "elog-wrapper 0.1.0",
- "pg-guard 0.1.0",
-]
-
-[[package]]
-name = "pg-bridge-tests"
-version = "0.1.0"
-dependencies = [
- "elog-wrapper 0.1.0",
- "pg-bridge 0.1.0",
+ "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
  "pg-guard 0.1.0",
 ]
 
@@ -667,6 +651,14 @@ dependencies = [
  "proc-macro2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "pg-guard-tests"
+version = "0.1.0"
+dependencies = [
+ "pg-bridge 0.1.0",
+ "pg-guard 0.1.0",
 ]
 
 [[package]]
@@ -1353,7 +1345,6 @@ dependencies = [
 name = "zdb-helper"
 version = "0.1.0"
 dependencies = [
- "elog-wrapper 0.1.0",
  "miniz_oxide 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "pg-bridge 0.1.0",
  "pg-guard 0.1.0",

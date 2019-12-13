@@ -3,8 +3,9 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 use std::str::FromStr;
-use syn::export::ToTokens;
-use syn::{parse_macro_input, FnArg, ForeignItem, ForeignItemFn, Item, ItemForeignMod};
+use syn::export::{ToTokens};
+use syn::{parse_macro_input, FnArg, ForeignItem, ForeignItemFn, Item, ItemForeignMod, ItemFn, Pat, Signature, Visibility};
+use std::ops::Deref;
 
 #[proc_macro_attribute]
 pub fn pg_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -13,7 +14,8 @@ pub fn pg_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     match ast {
         Item::ForeignMod(block) => rewrite_extern_block(block),
-        _ => panic!("#[longjmp_guard] can only be applied to extern {{}} blocks"),
+        Item::Fn(func) => rewrite_item_fn(func),
+        _ => panic!("#[longjmp_guard] can only be applied to extern{ } blocks and top-level functions"),
     }
 }
 
@@ -34,36 +36,55 @@ fn rewrite_foreign_item(item: ForeignItem) -> TokenStream {
     }
 }
 
-fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
-    let name = func.sig.ident.clone();
-    let mut fn_call = String::new();
-
-    let mut cnt = 0;
-    fn_call.push('(');
-    for arg in func.sig.inputs.iter() {
+fn build_arg_list(sig: &Signature) -> proc_macro2::TokenStream {
+    let mut arg_list = proc_macro2::TokenStream::new();
+    for arg in &sig.inputs {
         match arg {
-            FnArg::Typed(arg) => {
-                if cnt > 0 {
-                    fn_call.push(',');
+            FnArg::Typed(ty) => {
+                match ty.pat.deref() {
+                    Pat::Ident(ident) => {
+                        let name = ident.ident.to_token_stream();
+                        arg_list.extend(quote! {
+                            #name,
+                        });
+                    }
+                    _ => {}
                 }
-
-                // TODO:  HOW THE FUCK DO I JUST GET THE argument name/Ident?  I CANNOT FIGURE THIS OUT
-                let mut arg = format!("{}", arg.into_token_stream());
-
-                // TODO:  SO INSTEAD WE FORCE THE token stream TO A String AND JUST BLINDLY TRUNCATE IT AT THE FIRST ':'
-                arg.truncate(arg.find(':').unwrap());
-
-                fn_call.push_str(arg.as_str());
-                cnt = cnt + 1;
             }
-            _ => panic!(
-                "#[longjmp_guard] doesn't support external functions with 'self' as the argument"
-            ),
+            FnArg::Receiver(_) => panic!("#[longjmp_guard] doesn't support external functions with 'self' as the argument"),
         }
     }
-    fn_call.push(')');
+    arg_list
+}
 
-    let fn_call = proc_macro2::TokenStream::from_str(fn_call.as_str()).unwrap();
+fn build_func_name(sig: &Signature) -> proc_macro2::TokenStream {
+    sig.ident.to_token_stream()
+}
+
+fn rewrite_item_fn(func: ItemFn) -> TokenStream {
+    let mut orig_func: ItemFn = func.clone();
+    let mut sig = func.sig;
+    let arg_list = build_arg_list(&sig);
+    let func_name = build_func_name(&sig);
+
+    orig_func.vis = Visibility::Inherited;
+    sig.abi = Some(syn::parse_str("extern \"C\"").unwrap());
+    let sig = sig.into_token_stream();
+    TokenStream::from_str((quote! {
+        #[no_mangle]
+        pub #sig {
+            #orig_func
+
+            use pg_bridge::pg_guard;
+            pg_bridge::pg_guard::guard(||unsafe { #func_name(#arg_list) })
+        }
+
+    }).to_string().as_str()).unwrap()
+}
+
+fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
+    let func_name = build_func_name(&func.sig);
+    let arg_list = build_arg_list(&func.sig);
 
     let body = quote! {
          {
@@ -71,9 +92,8 @@ fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
                 #func
             }
 
-            // TODO:  preamble for setjmp/longjmp
-            elog_wrapper::jmp_wrapper(||unsafe { #name #fn_call })
-            // TODO:  prologue for setjmp/longjmp
+            use pg_bridge::pg_guard;
+            pg_bridge::pg_guard::guard(||unsafe { #func_name(#arg_list) })
         }
     };
 
