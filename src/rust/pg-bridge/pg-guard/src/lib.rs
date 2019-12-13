@@ -75,21 +75,18 @@ fn rewrite_item_fn(func: ItemFn) -> TokenStream {
     orig_func.vis = Visibility::Inherited;
     sig.abi = Some(syn::parse_str("extern \"C\"").unwrap());
     let sig = sig.into_token_stream();
-    TokenStream::from_str(
-        (quote! {
+
+    TokenStream::from(
+        quote! {
             #[no_mangle]
             pub #sig {
                 #orig_func
 
-                use pg_bridge::pg_guard;
-                pg_bridge::pg_guard::guard(||unsafe { #func_name(#arg_list) })
+                use pg_bridge::guard;
+                pg_bridge::guard::guard(||unsafe { #func_name(#arg_list) })
             }
-
-        })
-        .to_string()
-        .as_str(),
+        }
     )
-    .unwrap()
 }
 
 fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
@@ -102,8 +99,8 @@ fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
                 #func
             }
 
-            use pg_bridge::pg_guard;
-            pg_bridge::pg_guard::guard(||unsafe { #func_name(#arg_list) })
+            use pg_bridge::guard;
+            pg_bridge::guard::guard(||unsafe { #func_name(#arg_list) })
         }
     };
 

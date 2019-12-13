@@ -8,7 +8,7 @@ extern "C" {
 }
 
 #[pg_guard]
-pub fn foo(a: i32, b: Option<bool>) -> Result<String, Vec<bool>> {
+pub fn foo(_a: i32, _b: Option<bool>) -> Result<String, Vec<bool>> {
     println!("HERE");
     Err(Vec::new())
 }

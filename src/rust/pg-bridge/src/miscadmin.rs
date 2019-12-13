@@ -3,7 +3,7 @@ macro_rules! check_for_interrupts {
     () => {
         unsafe {
             extern "C" {
-                pub static InterruptPending: bool;
+                static InterruptPending: bool;
             }
             if InterruptPending {
                 #[pg_guard]

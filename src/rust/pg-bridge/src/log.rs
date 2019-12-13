@@ -32,87 +32,86 @@ pub fn elog(level: i32, message: &str) {
 }
 
 #[macro_export]
-macro_rules! notice {
+macro_rules! debug5 {
     ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::NOTICE, $($arg)*);
-    )
-}
-
-#[macro_export]
-macro_rules! info {
-    ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::INFO, $($arg)*);
-    )
-}
-
-#[macro_export]
-macro_rules! log {
-    ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::LOG, $($arg)*);
-    )
-}
-
-
-#[macro_export]
-macro_rules! debug1 {
-    ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::DEBUG1, $($arg)*);
-    )
-}
-
-#[macro_export]
-macro_rules! debug2 {
-    ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::DEBUG2, $($arg)*);
-    )
-}
-
-#[macro_export]
-macro_rules! debug3 {
-    ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::DEBUG3, $($arg)*);
+        $crate::log::elog($crate::log::DEBUG5, format!($($arg)*).as_str());
     )
 }
 
 #[macro_export]
 macro_rules! debug4 {
     ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::DEBUG4, $($arg)*);
+        $crate::log::elog($crate::log::DEBUG4, format!($($arg)*).as_str());
     )
 }
 
 #[macro_export]
-macro_rules! debug5 {
+macro_rules! debug3 {
     ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::DEBUG5, $($arg)*);
+        $crate::log::elog($crate::log::DEBUG3, format!($($arg)*).as_str());
+    )
+}
+
+#[macro_export]
+macro_rules! debug2 {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::DEBUG2, format!($($arg)*).as_str());
+    )
+}
+
+#[macro_export]
+macro_rules! debug1 {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::DEBUG1, format!($($arg)*).as_str());
+    )
+}
+
+#[macro_export]
+macro_rules! log {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::LOG, format!($($arg)*).as_str());
+    )
+}
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::INFO, format!($($arg)*).as_str());
+    )
+}
+
+#[macro_export]
+macro_rules! notice {
+    ($($arg:tt)*) => (
+        $crate::log::elog($crate::log::NOTICE, format!($($arg)*).as_str());
     )
 }
 
 #[macro_export]
 macro_rules! warning {
     ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::WARNING, $($arg)*);
+        $crate::log::elog($crate::log::WARNING, format!($($arg)*).as_str());
     )
 }
 
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::ERROR, $($arg)*);
+        { $crate::log::elog($crate::log::ERROR, format!($($arg)*).as_str()); unreachable!("elog failed"); }
     )
 }
 
 #[macro_export]
 macro_rules! FATAL {
     ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::FATAL, $($arg)*);
+        { $crate::log::elog($crate::log::FATAL, format!($($arg)*).as_str()); unreachable!("elog failed"); }
     )
 }
 
 #[macro_export]
 macro_rules! PANIC {
     ($($arg:tt)*) => (
-        $crate::log::elog($crate::log::PANIC, $($arg)*);
+        { $crate::log::elog($crate::log::PANIC, format!($($arg)*).as_str()); unreachable!("elog failed"); }
     )
 }
 

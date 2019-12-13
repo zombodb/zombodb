@@ -1,4 +1,5 @@
 use pg_bridge::stringinfo::{PostgresStringInfo, ReturnToPostgres, StringInfo};
+use pg_bridge::error;
 use pg_guard::*;
 use std::ffi::CStr;
 use std::io::Read;
@@ -15,7 +16,6 @@ pub extern "C" fn rest_call(
 ) -> PostgresStringInfo {
     let method = unsafe { CStr::from_ptr(method).to_string_lossy().to_string() };
     let post_data = StringInfo::from_pg(post_data);
-
     let url = match StringInfo::from_pg(url) {
         Some(url) => {
             let mut url = url.to_string();
@@ -28,7 +28,7 @@ pub extern "C" fn rest_call(
             }
             url
         }
-        None => panic!("url is null"),
+        None => error!("url is null"),
     };
 
     let client = reqwest::ClientBuilder::new()
@@ -44,7 +44,7 @@ pub extern "C" fn rest_call(
                 "POST" => client.post(url.as_str()),
                 "PUT" => client.put(url.as_str()),
                 "DELETE" => client.delete(url.as_str()),
-                unknown => panic!("unrecognized HTTP method: {}", unknown),
+                unknown => error!("unrecognized HTTP method: {}", unknown),
             };
 
             let mut headers = reqwest::header::HeaderMap::new();
@@ -77,16 +77,16 @@ pub extern "C" fn rest_call(
                     let status = response.status().as_u16();
 
                     if status < 200 || (status >= 300 && status != 404) {
-                        panic!("unexpected http response code from remote server.  code={}, response={:?}", status, response);
+                        error!("unexpected http response code from remote server.  code={}, response={:?}", status, response);
                     }
 
                     let body = &mut String::new();
                     let _size = response.read_to_string(body).unwrap_or(0);
                     body.to_string().to_pg()
                 }
-                Err(e) => panic!(format!("{}", e)),
+                Err(e) => panic!("{}", e),
             }
         }
-        Err(e) => panic!(e),
+        Err(e) => panic!("{}", e),
     }
 }
