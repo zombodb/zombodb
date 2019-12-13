@@ -6,7 +6,7 @@ edition = "2018"
 
 [lib]
 name = "zdb_helper"
-crate-type = ["staticlib", "dylib"]
+crate-type = ["staticlib"]
 
 [dependencies]
 reqwest = "0.9.22"
