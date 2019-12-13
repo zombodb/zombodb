@@ -2,10 +2,13 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use std::str::FromStr;
-use syn::export::{ToTokens};
-use syn::{parse_macro_input, FnArg, ForeignItem, ForeignItemFn, Item, ItemForeignMod, ItemFn, Pat, Signature, Visibility};
 use std::ops::Deref;
+use std::str::FromStr;
+use syn::export::ToTokens;
+use syn::{
+    parse_macro_input, FnArg, ForeignItem, ForeignItemFn, Item, ItemFn, ItemForeignMod, Pat,
+    Signature, Visibility,
+};
 
 #[proc_macro_attribute]
 pub fn pg_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -15,7 +18,9 @@ pub fn pg_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
     match ast {
         Item::ForeignMod(block) => rewrite_extern_block(block),
         Item::Fn(func) => rewrite_item_fn(func),
-        _ => panic!("#[longjmp_guard] can only be applied to extern{ } blocks and top-level functions"),
+        _ => panic!(
+            "#[longjmp_guard] can only be applied to extern{ } blocks and top-level functions"
+        ),
     }
 }
 
@@ -40,18 +45,18 @@ fn build_arg_list(sig: &Signature) -> proc_macro2::TokenStream {
     let mut arg_list = proc_macro2::TokenStream::new();
     for arg in &sig.inputs {
         match arg {
-            FnArg::Typed(ty) => {
-                match ty.pat.deref() {
-                    Pat::Ident(ident) => {
-                        let name = ident.ident.to_token_stream();
-                        arg_list.extend(quote! {
-                            #name,
-                        });
-                    }
-                    _ => {}
+            FnArg::Typed(ty) => match ty.pat.deref() {
+                Pat::Ident(ident) => {
+                    let name = ident.ident.to_token_stream();
+                    arg_list.extend(quote! {
+                        #name,
+                    });
                 }
-            }
-            FnArg::Receiver(_) => panic!("#[longjmp_guard] doesn't support external functions with 'self' as the argument"),
+                _ => {}
+            },
+            FnArg::Receiver(_) => panic!(
+                "#[longjmp_guard] doesn't support external functions with 'self' as the argument"
+            ),
         }
     }
     arg_list
@@ -70,16 +75,21 @@ fn rewrite_item_fn(func: ItemFn) -> TokenStream {
     orig_func.vis = Visibility::Inherited;
     sig.abi = Some(syn::parse_str("extern \"C\"").unwrap());
     let sig = sig.into_token_stream();
-    TokenStream::from_str((quote! {
-        #[no_mangle]
-        pub #sig {
-            #orig_func
+    TokenStream::from_str(
+        (quote! {
+            #[no_mangle]
+            pub #sig {
+                #orig_func
 
-            use pg_bridge::pg_guard;
-            pg_bridge::pg_guard::guard(||unsafe { #func_name(#arg_list) })
-        }
+                use pg_bridge::pg_guard;
+                pg_bridge::pg_guard::guard(||unsafe { #func_name(#arg_list) })
+            }
 
-    }).to_string().as_str()).unwrap()
+        })
+        .to_string()
+        .as_str(),
+    )
+    .unwrap()
 }
 
 fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {

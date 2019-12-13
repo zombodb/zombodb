@@ -1,8 +1,8 @@
 #![allow(dead_code)]
+use crate as pg_bridge;
+use pg_guard::*;
 use std::ffi::CString;
 use std::os::raw::c_char;
-use pg_guard::*;
-use crate as pg_bridge;
 
 pub static DEBUG5: i32 = 10;
 pub static DEBUG4: i32 = 11;

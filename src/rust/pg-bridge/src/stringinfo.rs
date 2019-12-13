@@ -5,8 +5,8 @@ use std::os::raw::{c_char, c_void};
 
 use pg_guard::*;
 
-use crate::memcxt::pfree;
 use crate as pg_bridge;
+use crate::memcxt::pfree;
 
 #[pg_guard]
 extern "C" {

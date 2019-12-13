@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use crate::log::{elog, ERROR};
+use libc::sigset_t;
 use std::any::Any;
 use std::cell::Cell;
 use std::mem::MaybeUninit;
@@ -8,8 +10,6 @@ use std::os::raw::{c_int, c_void};
 use std::panic::catch_unwind;
 use std::sync::atomic::{compiler_fence, Ordering};
 use std::thread::LocalKey;
-use libc::sigset_t;
-use crate::log::{elog, ERROR};
 
 extern "C" {
     fn sigsetjmp(env: *mut sigjmp_buf, savesigs: c_int) -> c_int;
@@ -41,7 +41,10 @@ fn get_depth(depth: &'static LocalKey<Cell<usize>>) -> usize {
     depth.with(|depth| depth.get())
 }
 
-pub fn guard<R, F: FnOnce() -> R>(f: F) -> R where F: std::panic::UnwindSafe {
+pub fn guard<R, F: FnOnce() -> R>(f: F) -> R
+where
+    F: std::panic::UnwindSafe,
+{
     thread_local! { static WRAP_DEPTH: Cell<usize> = Cell::new(0) }
 
     let result = catch_unwind(|| {
@@ -97,10 +100,16 @@ pub fn guard<R, F: FnOnce() -> R>(f: F) -> R where F: std::panic::UnwindSafe {
         }
     });
 
-    handle_result(result, get_depth(&WRAP_DEPTH), unsafe { PG_exception_stack })
+    handle_result(result, get_depth(&WRAP_DEPTH), unsafe {
+        PG_exception_stack
+    })
 }
 
-fn handle_result<R>(result: Result<R, Box<dyn Any + Send>>, depth: usize, jmp_buff: *mut sigjmp_buf) -> R {
+fn handle_result<R>(
+    result: Result<R, Box<dyn Any + Send>>,
+    depth: usize,
+    jmp_buff: *mut sigjmp_buf,
+) -> R {
     match result {
         Ok(result) => result,
         Err(e) => {
@@ -123,7 +132,9 @@ fn maybe_panic_or_elog(depth: usize, jmp_buff: *mut sigjmp_buf, e: Box<dyn Any +
 
         Err(cxt) => {
             if depth == 0 {
-                unsafe { siglongjmp(jmp_buff, cxt.jump_value); }
+                unsafe {
+                    siglongjmp(jmp_buff, cxt.jump_value);
+                }
                 unreachable!("siglongjmp failed");
             } else {
                 panic!(cxt);

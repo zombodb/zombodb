@@ -1,8 +1,8 @@
 use pg_bridge::stringinfo::{PostgresStringInfo, ReturnToPostgres, StringInfo};
+use pg_guard::*;
 use std::ffi::CStr;
 use std::io::Read;
 use std::os::raw::c_char;
-use pg_guard::*;
 
 const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60 * 60);
 
