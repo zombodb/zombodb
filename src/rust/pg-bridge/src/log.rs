@@ -114,4 +114,3 @@ macro_rules! PANIC {
         { $crate::log::elog($crate::log::PANIC, format!($($arg)*).as_str()); unreachable!("elog failed"); }
     )
 }
-

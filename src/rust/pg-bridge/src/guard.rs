@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use crate::log::{elog, ERROR};
 use libc::sigset_t;
 use std::any::Any;
 use std::cell::Cell;
@@ -8,7 +9,6 @@ use std::os::raw::{c_int, c_void};
 use std::panic::catch_unwind;
 use std::sync::atomic::{compiler_fence, Ordering};
 use std::thread::LocalKey;
-use crate::log::{elog, ERROR};
 
 extern "C" {
     fn sigsetjmp(env: *mut sigjmp_buf, savesigs: c_int) -> c_int;
@@ -31,11 +31,9 @@ struct JumpContext {
 thread_local! { static PANIC_LOCATION: Cell<Option<String>> = Cell::new(None) }
 
 fn take_panic_location() -> String {
-    PANIC_LOCATION.with(|p| {
-        match p.take() {
-            Some(s) => s,
-            None => "<unknown>".to_string()
-        }
+    PANIC_LOCATION.with(|p| match p.take() {
+        Some(s) => s,
+        None => "<unknown>".to_string(),
     })
 }
 
@@ -48,8 +46,8 @@ pub fn register_panic_handler() {
                 Some(_) => p.replace(current),
                 None => p.replace(Some(match info.location() {
                     Some(location) => format!("{}", location),
-                    None => "<unknown>".to_string()
-                }))
+                    None => "<unknown>".to_string(),
+                })),
             };
         })
     }));
@@ -68,8 +66,8 @@ fn get_depth(depth: &'static LocalKey<Cell<usize>>) -> usize {
 }
 
 pub fn guard<R, F: FnOnce() -> R>(f: F) -> R
-    where
-        F: std::panic::UnwindSafe,
+where
+    F: std::panic::UnwindSafe,
 {
     thread_local! { static WRAP_DEPTH: Cell<usize> = Cell::new(0) }
 
@@ -108,7 +106,7 @@ pub fn guard<R, F: FnOnce() -> R>(f: F) -> R
 
             match result {
                 Ok(result) => result,
-                Err(e) => rethrow_error(e)
+                Err(e) => rethrow_error(e),
             }
         }
     });
@@ -132,13 +130,11 @@ pub fn guard<R, F: FnOnce() -> R>(f: F) -> R
                     //
                     // the error is a JumpContext, so we need to longjmp to that location
                     //
-                    Err(jump_context) => {
-                        unsafe {
-                            compiler_fence(Ordering::SeqCst);
-                            siglongjmp(PG_exception_stack, jump_context.jump_value);
-                            unreachable!("siglongjmp failed");
-                        }
-                    }
+                    Err(jump_context) => unsafe {
+                        compiler_fence(Ordering::SeqCst);
+                        siglongjmp(PG_exception_stack, jump_context.jump_value);
+                        unreachable!("siglongjmp failed");
+                    },
                 }
             } else {
                 // we're at least one level deep in nesting so rethrow the error

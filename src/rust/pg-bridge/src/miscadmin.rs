@@ -13,6 +13,5 @@ macro_rules! check_for_interrupts {
                 ProcessInterrupts();
             }
         }
-    }
+    };
 }
-

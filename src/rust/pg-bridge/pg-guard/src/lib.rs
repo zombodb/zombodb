@@ -76,17 +76,15 @@ fn rewrite_item_fn(func: ItemFn) -> TokenStream {
     sig.abi = Some(syn::parse_str("extern \"C\"").unwrap());
     let sig = sig.into_token_stream();
 
-    TokenStream::from(
-        quote! {
-            #[no_mangle]
-            pub #sig {
-                #orig_func
+    TokenStream::from(quote! {
+        #[no_mangle]
+        pub #sig {
+            #orig_func
 
-                use pg_bridge::guard;
-                pg_bridge::guard::guard(||unsafe { #func_name(#arg_list) })
-            }
+            use pg_bridge::guard;
+            pg_bridge::guard::guard(||unsafe { #func_name(#arg_list) })
         }
-    )
+    })
 }
 
 fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
