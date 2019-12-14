@@ -40,17 +40,17 @@ fn take_panic_location() -> String {
 pub fn register_panic_handler() {
     std::panic::set_hook(Box::new(|info| {
         PANIC_LOCATION.with(|p| {
-            let current = p.take();
-
-            match current {
-                Some(_) => p.replace(current),
-                None => p.replace(Some(match info.location() {
+            let newval = Some(match p.take() {
+                Some(s) => s,
+                None => match info.location() {
                     Some(location) => format!("{}", location),
                     None => "<unknown>".to_string(),
-                })),
-            };
-        })
-    }));
+                },
+            });
+
+            p.replace(newval)
+        });
+    }))
 }
 
 fn inc_depth(depth: &'static LocalKey<Cell<usize>>) {
