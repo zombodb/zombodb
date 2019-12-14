@@ -53,22 +53,19 @@ pub extern "C" fn rest_call(
                 reqwest::header::HeaderValue::from_static("application/json"),
             );
 
-            match post_data {
-                Some(post_data) => {
-                    if compression_level > 0 {
-                        headers.append(
-                            "Content-Encoding",
-                            reqwest::header::HeaderValue::from_static("deflate"),
-                        );
-                        builder = builder.body(miniz_oxide::deflate::compress_to_vec(
-                            post_data.to_string().as_bytes(),
-                            compression_level as u8,
-                        ))
-                    } else {
-                        builder = builder.body(post_data.to_string())
-                    }
+            if let Some(post_data) = post_data {
+                if compression_level > 0 {
+                    headers.append(
+                        "Content-Encoding",
+                        reqwest::header::HeaderValue::from_static("deflate"),
+                    );
+                    builder = builder.body(miniz_oxide::deflate::compress_to_vec(
+                        post_data.to_string().as_bytes(),
+                        compression_level as u8,
+                    ))
+                } else {
+                    builder = builder.body(post_data.to_string())
                 }
-                None => {}
             }
 
             builder = builder.headers(headers);

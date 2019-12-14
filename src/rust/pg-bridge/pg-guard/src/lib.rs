@@ -18,9 +18,9 @@ pub fn pg_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
     match ast {
         Item::ForeignMod(block) => rewrite_extern_block(block),
         Item::Fn(func) => rewrite_item_fn(func),
-        _ => panic!(
-            "#[longjmp_guard] can only be applied to extern{ } blocks and top-level functions"
-        ),
+        _ => {
+            panic!("#[pg_guard] can only be applied to extern \"C\" blocks and top-level functions")
+        }
     }
 }
 
@@ -37,28 +37,27 @@ fn rewrite_extern_block(block: ItemForeignMod) -> TokenStream {
 fn rewrite_foreign_item(item: ForeignItem) -> TokenStream {
     match item {
         ForeignItem::Fn(func) => rewrite_foreign_item_fn(func),
-        _ => panic!("#[longjmp_guard] can only be applied to extern blocks that only contain function declarations.  Offending line: {:?}", item)
+        _ => panic!("#[pg_guard] can only be applied to extern blocks that only contain function declarations.  Offending line: {:?}", item)
     }
 }
 
 fn build_arg_list(sig: &Signature) -> proc_macro2::TokenStream {
     let mut arg_list = proc_macro2::TokenStream::new();
+
     for arg in &sig.inputs {
         match arg {
-            FnArg::Typed(ty) => match ty.pat.deref() {
-                Pat::Ident(ident) => {
+            FnArg::Typed(ty) => {
+                if let Pat::Ident(ident) = ty.pat.deref() {
                     let name = ident.ident.to_token_stream();
-                    arg_list.extend(quote! {
-                        #name,
-                    });
+                    arg_list.extend(quote! { #name, });
                 }
-                _ => {}
-            },
-            FnArg::Receiver(_) => panic!(
-                "#[longjmp_guard] doesn't support external functions with 'self' as the argument"
-            ),
+            }
+            FnArg::Receiver(_) => {
+                panic!("#[pg_guard] doesn't support external functions with 'self' as the argument")
+            }
         }
     }
+
     arg_list
 }
 
@@ -77,13 +76,13 @@ fn rewrite_item_fn(func: ItemFn) -> TokenStream {
     let sig = sig.into_token_stream();
 
     TokenStream::from(quote! {
-        #[no_mangle]
-        pub #sig {
-            #orig_func
+    # [no_mangle]
+    pub # sig {
+    # orig_func
 
-            use pg_bridge::guard;
-            pg_bridge::guard::guard(||unsafe { #func_name(#arg_list) })
-        }
+    use pg_bridge::guard;
+    pg_bridge::guard::guard( | | unsafe { # func_name( # arg_list) })
+    }
     })
 }
 
@@ -92,14 +91,14 @@ fn rewrite_foreign_item_fn(func: ForeignItemFn) -> TokenStream {
     let arg_list = build_arg_list(&func.sig);
 
     let body = quote! {
-         {
-            extern "C" {
-                #func
-            }
+    {
+    extern "C" {
+    # func
+    }
 
-            use pg_bridge::guard;
-            pg_bridge::guard::guard(||unsafe { #func_name(#arg_list) })
-        }
+    use pg_bridge::guard;
+    pg_bridge::guard::guard( | | unsafe { # func_name( # arg_list) })
+    }
     };
 
     let mut tokens = TokenStream::new();

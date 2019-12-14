@@ -149,7 +149,7 @@ where
 ///
 fn rethrow_error(e: Box<dyn Any + Send>) -> ! {
     match downcast_err(e) {
-        Ok(message) => panic!(format!("{}", message)),
+        Ok(message) => panic!(message.to_string()),
         Err(jump_context) => panic!(jump_context),
     }
 }

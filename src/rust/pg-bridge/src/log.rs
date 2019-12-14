@@ -27,7 +27,10 @@ extern "C" {
 
 pub fn elog(level: i32, message: &str) {
     unsafe {
-        zdb_log_proxy(level, CString::new(message).unwrap().as_ptr());
+        match CString::new(message) {
+            Ok(s) => zdb_log_proxy(level, s.as_ptr()),
+            Err(_) => zdb_log_proxy(level, b"log message was null\0".as_ptr() as *const c_char),
+        }
     }
 }
 

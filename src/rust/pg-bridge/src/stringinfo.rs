@@ -108,6 +108,10 @@ impl StringInfo {
         unsafe { &mut *self.sid }.len
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn push(&mut self, ch: char) {
         unsafe { appendStringInfoChar(self.sid, ch as c_char) }
     }
@@ -132,6 +136,12 @@ impl StringInfo {
 
     pub fn enlarge(&mut self, needed: i32) {
         unsafe { enlargeStringInfo(self.sid, needed) }
+    }
+}
+
+impl Default for StringInfo {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -167,10 +177,7 @@ impl From<&[u8]> for StringInfo {
 
 impl Drop for StringInfo {
     fn drop(&mut self) {
-        if self.is_from_pg {
-            // don't let Rust try to free self.sid as it's owned by Postgres
-            std::mem::forget(self.sid)
-        } else {
+        if !self.is_from_pg {
             // instruct Rust to free self.sid.data, and self.sid
             // via Postgres' pfree()
             unsafe {
