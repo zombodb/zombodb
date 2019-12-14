@@ -128,7 +128,7 @@ where
                     // the error is a String, which means it was originally a Rust panic!(), so
                     // translate it into an elog(ERROR), including the code location that caused
                     // the panic!()
-                    Ok(message) => error!("caught Rust panic ({}) at {}", message, location),
+                    Ok(message) => error!("caught Rust panic at {}: {}", location, message),
 
                     // the error is a JumpContext, so we need to longjmp back into Postgres
                     Err(jump_context) => unsafe {
