@@ -25,12 +25,26 @@ DATA = $(wildcard src/sql/$(EXTENSION)--*--*.sql) src/sql/$(EXTENSION)--$(EXTVER
 PGFILEDESC = "ZomboDB"
 
 #
-# object files 
+# figure out the build target mode based on the TARGET envvar
 #
-PG_CPPFLAGS += -Isrc/c/ -O0
+ifeq ($(TARGET),release)
+	BUILD_TARGET = "release"
+	CARGO_TARGET = "--release"
+	OPT_LEVEL = 2
+else
+	BUILD_TARGET = "debug"
+	CARGO_TARGET =
+	OPT_LEVEL = 0
+endif
+
+#
+# object files
+#
+
+PG_CPPFLAGS += -Isrc/c/ -O$(OPT_LEVEL)
 ## TODO:  figure out link args for Linux too
-SHLIB_LINK += -lcurl -lz -L src/rust/target/debug -framework CoreFoundation -framework IOKit -framework Security
-OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/debug/libzdb_helper.a
+SHLIB_LINK += -lcurl -lz -L src/rust/target/$(BUILD_TARGET) -framework CoreFoundation -framework IOKit -framework Security
+OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/$(BUILD_TARGET)/libzdb_helper.a
 
 #
 # make targets
@@ -38,8 +52,8 @@ OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target
 
 all: src/sql/$(EXTENSION)--$(EXTVERSION).sql
 
-src/rust/target/debug/libzdb_helper.a: src/rust/.cargo/config $(shell find src/rust/ -name '*.toml') $(shell find src/rust/ -name '*.rs')
-	cd src/rust && cargo build
+src/rust/target/$(BUILD_TARGET)/libzdb_helper.a: src/rust/.cargo/config $(shell find src/rust/ -name '*.toml') $(shell find src/rust/ -name '*.rs')
+	cd src/rust && cargo build $(CARGO_TARGET)
 
 src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list
 	cat `cat $<` > $@
