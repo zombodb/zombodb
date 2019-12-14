@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::log::{elog, ERROR};
+use crate::error;
 use libc::sigset_t;
 use std::any::Any;
 use std::cell::Cell;
@@ -69,67 +69,68 @@ pub fn guard<R, F: FnOnce() -> R>(f: F) -> R
 where
     F: std::panic::UnwindSafe,
 {
-    thread_local! { static WRAP_DEPTH: Cell<usize> = Cell::new(0) }
+    thread_local! { static DEPTH: Cell<usize> = Cell::new(0) }
 
-    let result = catch_unwind(|| {
-        unsafe {
-            // remember where Postgres would like to jump to
+    let result = unsafe {
+        // remember where Postgres would like to jump to
+        let prev_exception_stack = PG_exception_stack;
+
+        //
+        // setup the longjmp context and run our wrapped function inside
+        // a catch_unwind() block
+        //
+        // we do this so that we can catch any panic!() that might occur
+        // in the wrapped function, including those we generate in response
+        // to an elog(ERROR) via longjmp
+        //
+        let result = catch_unwind(|| {
+            let mut jmp_buff = MaybeUninit::uninit();
+
+            // set a jump point so that should the wrapped function execute an
+            // elog(ERROR), it'll longjmp back here, instead of somewhere inside Postgres
             compiler_fence(Ordering::SeqCst);
-            let prev_exception_stack = PG_exception_stack;
+            let jump_value = sigsetjmp(jmp_buff.as_mut_ptr(), 0);
 
-            let result = catch_unwind(|| {
-                let mut jmp_buff = MaybeUninit::uninit();
-
-                compiler_fence(Ordering::SeqCst);
-                let jump_value = sigsetjmp(jmp_buff.as_mut_ptr(), 0);
-
-                compiler_fence(Ordering::SeqCst);
-                if jump_value != 0 {
-                    // caught an elog(ERROR), so convert it into a panic!()
-                    panic!(JumpContext { jump_value });
-                }
-
-                // lie to Postgres about where it should jump when it elog(ERROR)'s
-                compiler_fence(Ordering::SeqCst);
-                PG_exception_stack = jmp_buff.as_mut_ptr();
-                inc_depth(&WRAP_DEPTH);
-
-                // run our wrapped function
-                compiler_fence(Ordering::SeqCst);
-                f()
-            });
-
-            // restore Postgres' understanding of where it should longjmp
-            compiler_fence(Ordering::SeqCst);
-            dec_depth(&WRAP_DEPTH);
-            PG_exception_stack = prev_exception_stack;
-
-            match result {
-                Ok(result) => result,
-                Err(e) => rethrow_error(e),
+            if jump_value != 0 {
+                // caught an elog(ERROR), so convert it into a panic!()
+                panic!(JumpContext { jump_value });
             }
-        }
-    });
+
+            // lie to Postgres about where it should jump when it does an elog(ERROR)
+            PG_exception_stack = jmp_buff.as_mut_ptr();
+
+            // run our wrapped function and return its result
+            inc_depth(&DEPTH);
+            f()
+        });
+
+        // restore Postgres' understanding of where it should longjmp
+        dec_depth(&DEPTH);
+        PG_exception_stack = prev_exception_stack;
+
+        // return our result -- it could be Ok(), or it could be an Err()
+        result
+    };
 
     match result {
+        // the result is Ok(), so just return it
         Ok(result) => result,
+
+        // the result is an Err(), which means we caught a panic!() up above in catch_rewind()
+        // if we're at nesting depth zero then we'll report it to Postgres, otherwise we'll
+        // simply rethrow it
         Err(e) => {
-            if get_depth(&WRAP_DEPTH) == 0 {
+            if get_depth(&DEPTH) == 0 {
                 let location = take_panic_location();
 
                 // we're not wrapping a function
                 match downcast_err(e) {
-                    //
-                    // the error type is a String, so translate it into an elog(ERROR)
-                    //
-                    Ok(message) => {
-                        elog(ERROR, format!("{} at {}", message, location).as_str());
-                        unreachable!("elog(ERROR) failed");
-                    }
+                    // the error is a String, which means it was originally a Rust panic!(), so
+                    // translate it into an elog(ERROR), including the code location that caused
+                    // the panic!()
+                    Ok(message) => error!("{} at {}", message, location),
 
-                    //
-                    // the error is a JumpContext, so we need to longjmp to that location
-                    //
+                    // the error is a JumpContext, so we need to longjmp back into Postgres
                     Err(jump_context) => unsafe {
                         compiler_fence(Ordering::SeqCst);
                         siglongjmp(PG_exception_stack, jump_context.jump_value);
@@ -137,8 +138,8 @@ where
                     },
                 }
             } else {
-                // we're at least one level deep in nesting so rethrow the error
-                rethrow_error(e)
+                // we're at least one level deep in nesting so rethrow the panic!()
+                rethrow_panic(e)
             }
         }
     }
@@ -147,9 +148,9 @@ where
 ///
 /// rethrow whatever the `e` error is as a Rust `panic!()`
 ///
-fn rethrow_error(e: Box<dyn Any + Send>) -> ! {
+fn rethrow_panic(e: Box<dyn Any + Send>) -> ! {
     match downcast_err(e) {
-        Ok(message) => panic!(message.to_string()),
+        Ok(message) => panic!(message),
         Err(jump_context) => panic!(jump_context),
     }
 }
@@ -166,6 +167,7 @@ fn downcast_err(e: Box<dyn Any + Send>) -> Result<String, JumpContext> {
     } else if let Some(s) = e.downcast_ref::<String>() {
         Ok(s.to_string())
     } else {
+        // not a type we understand, so use a generic string
         Ok("Box<Any>".to_string())
     }
 }
