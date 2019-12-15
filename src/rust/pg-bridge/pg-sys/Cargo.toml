@@ -9,3 +9,10 @@ build = "build.rs"
 bindgen = "0.52.0"
 clang = "0.23.0"
 num_cpus = "1.11.1"
+
+[features]
+default = []
+pg10 = []
+pg11 = []
+pg12 = []
+pg-all = ["pg10", "pg11", "pg12"]
