@@ -6,6 +6,38 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[derive(Debug)]
+struct IgnoredMacros(HashSet<String>);
+
+impl IgnoredMacros {
+    fn default() -> Self {
+        // these cause duplicate definition problems on linux
+        // see: https://github.com/rust-lang/rust-bindgen/issues/687
+        IgnoredMacros(
+            vec![
+                "FP_INFINITE".into(),
+                "FP_NAN".into(),
+                "FP_NORMAL".into(),
+                "FP_SUBNORMAL".into(),
+                "FP_ZERO".into(),
+                "IPPORT_RESERVED".into(),
+            ]
+            .into_iter()
+            .collect(),
+        )
+    }
+}
+
+impl bindgen::callbacks::ParseCallbacks for IgnoredMacros {
+    fn will_parse_macro(&self, name: &str) -> MacroParsingBehavior {
+        if self.0.contains(name) {
+            bindgen::callbacks::MacroParsingBehavior::Ignore
+        } else {
+            bindgen::callbacks::MacroParsingBehavior::Default
+        }
+    }
+}
+
 fn main() -> Result<(), std::io::Error> {
     let pg_git_repo = "git://git.postgresql.org/git/postgresql.git";
     let pg_git_path = Path::new("pg_git/");
@@ -119,36 +151,4 @@ fn clean_and_configure_and_make(path: &Path) -> Result<(), std::io::Error> {
         .output()?;
 
     Ok(())
-}
-
-#[derive(Debug)]
-struct IgnoredMacros(HashSet<String>);
-
-impl IgnoredMacros {
-    fn default() -> Self {
-        // these cause duplicate definition problems on linux
-        // see: https://github.com/rust-lang/rust-bindgen/issues/687
-        IgnoredMacros(
-            vec![
-                "FP_INFINITE".into(),
-                "FP_NAN".into(),
-                "FP_NORMAL".into(),
-                "FP_SUBNORMAL".into(),
-                "FP_ZERO".into(),
-                "IPPORT_RESERVED".into(),
-            ]
-            .into_iter()
-            .collect(),
-        )
-    }
-}
-
-impl bindgen::callbacks::ParseCallbacks for IgnoredMacros {
-    fn will_parse_macro(&self, name: &str) -> MacroParsingBehavior {
-        if self.0.contains(name) {
-            bindgen::callbacks::MacroParsingBehavior::Ignore
-        } else {
-            bindgen::callbacks::MacroParsingBehavior::Default
-        }
-    }
 }
