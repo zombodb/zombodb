@@ -1,0 +1,11 @@
+[package]
+name = "pg-sys"
+version = "0.1.0"
+authors = ["Eric B. Ridge <eebbrr@gmail.com>"]
+edition = "2018"
+build = "build.rs"
+
+[build-dependencies]
+bindgen = "0.52.0"
+clang = "0.23.0"
+num_cpus = "1.11.1"

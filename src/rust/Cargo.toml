@@ -3,7 +3,7 @@ members = [
     "zdb-helper",
     "pg-bridge",
     "pg-bridge/pg-guard",
-    "pg-bridge/pg-guard-tests",
+    "pg-bridge/pg-sys",
 ]
 
 [profile.dev]
