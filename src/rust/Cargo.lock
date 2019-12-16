@@ -817,7 +817,6 @@ dependencies = [
  "bindgen 0.52.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clang 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
- "num_cpus 1.11.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pg-guard 0.1.0",
  "proc-macro2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",

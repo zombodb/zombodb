@@ -7,6 +7,7 @@ use quote::quote;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 use syn::export::{ToTokens, TokenStream2};
 use syn::Item;
 
@@ -78,14 +79,7 @@ fn main() -> Result<(), std::io::Error> {
         let mut output_rs = PathBuf::new();
         output_rs.push(format!("src/{}.rs", version));
 
-        if !need_generate
-            && output_rs
-                .metadata()
-                .unwrap()
-                .created()
-                .unwrap()
-                .lt(&pg_git_path.metadata().unwrap().modified().unwrap())
-        {
+        if !need_generate && output_rs.is_file() {
             eprintln!("{} already exists:  skipping", output_rs.to_str().unwrap());
             continue;
         }
@@ -178,10 +172,11 @@ fn clean_and_configure_and_make(path: &Path) -> Result<(), std::io::Error> {
         .current_dir(path)
         .output()?;
 
-    eprintln!("make -j {}", num_cpus::get());
+    let num_jobs = u32::from_str(std::env::var("NUM_JOBS").unwrap().as_str()).unwrap_or(1);
+    eprintln!("make -j {}", num_jobs);
     Command::new("make")
         .arg("-j")
-        .arg(&format!("{}", num_cpus::get()))
+        .arg(&format!("{}", num_jobs))
         .current_dir(path)
         .output()?;
 
