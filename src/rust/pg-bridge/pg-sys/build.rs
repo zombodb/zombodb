@@ -2,9 +2,13 @@ extern crate bindgen;
 extern crate clang;
 
 use bindgen::callbacks::MacroParsingBehavior;
+use common::rewrite_extern_block;
+use quote::quote;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use syn::export::{ToTokens, TokenStream2};
+use syn::Item;
 
 #[derive(Debug)]
 struct IgnoredMacros(HashSet<String>);
@@ -38,12 +42,31 @@ impl bindgen::callbacks::ParseCallbacks for IgnoredMacros {
     }
 }
 
-fn main() -> Result<(), std::io::Error> {
-    let pg_git_repo = "git://git.postgresql.org/git/postgresql.git";
-    let pg_git_path = Path::new("pg_git/");
+fn make_git_repo_path(out_dir: String) -> PathBuf {
+    let mut pg_git_path = PathBuf::from(out_dir);
+    // backup 3 directories
+    pg_git_path.pop();
+    pg_git_path.pop();
+    pg_git_path.pop();
 
-    git_clone_postgres(pg_git_path, pg_git_repo)
-        .expect(&format!("Unable to git clone {}", pg_git_repo));
+    // and a new dir named "pg_git_repo"
+    pg_git_path.push("pg_git_repo");
+
+    // return the path we built
+    pg_git_path
+}
+
+fn main() -> Result<(), std::io::Error> {
+    let out_dir = std::env::var("OUT_DIR").unwrap();
+    let pg_git_path = make_git_repo_path(out_dir);
+    let pg_git_repo_url = "git://git.postgresql.org/git/postgresql.git";
+
+    eprintln!(
+        "postgres checkout directory: {}",
+        pg_git_path.as_os_str().to_str().unwrap()
+    );
+    let need_generate = git_clone_postgres(&pg_git_path, pg_git_repo_url)
+        .expect(&format!("Unable to git clone {}", pg_git_repo_url));
 
     for v in &vec![
         ("pg10", "REL_10_STABLE"),
@@ -55,18 +78,26 @@ fn main() -> Result<(), std::io::Error> {
         let mut output_rs = PathBuf::new();
         output_rs.push(format!("src/{}.rs", version));
 
-        if output_rs.is_file() {
+        if !need_generate
+            && output_rs
+                .metadata()
+                .unwrap()
+                .created()
+                .unwrap()
+                .lt(&pg_git_path.metadata().unwrap().modified().unwrap())
+        {
             eprintln!("{} already exists:  skipping", output_rs.to_str().unwrap());
             continue;
         }
 
-        git_switch_branch(pg_git_path, branch)
+        git_switch_branch(&pg_git_path, branch)
             .expect(&format!("Unable to switch to branch {}", branch));
 
-        clean_and_configure_and_make(pg_git_path).expect(&format!(
+        clean_and_configure_and_make(&pg_git_path).expect(&format!(
             "Unable to make clean and configure postgres branch {}",
             branch
         ));
+
         let bindings = bindgen::Builder::default()
             .header(format!("include/{}.h", version))
             .clang_arg(&format!("-I{}/src/include", pg_git_path.to_str().unwrap()))
@@ -77,16 +108,17 @@ fn main() -> Result<(), std::io::Error> {
             .generate()
             .expect(&format!("Unable to generate bindings for {}", version));
 
-        bindings.write_to_file(output_rs).expect(&format!(
-            "Unable to save bindings for {} to src/{}.rs",
-            version, version
-        ));
+        let bindings = apply_pg_guard(bindings.to_string())?;
+        std::fs::write(output_rs.clone(), bindings)
+            .expect(&format!("Unable to save bindings for {}", version));
+
+        rust_fmt(output_rs.as_path()).expect(&format!("Unable to run rustfmt for {}", version));
     }
 
     Ok(())
 }
 
-fn git_clone_postgres(path: &Path, repo_url: &str) -> Result<(), std::io::Error> {
+fn git_clone_postgres(path: &Path, repo_url: &str) -> Result<bool, std::io::Error> {
     if path.exists() {
         let mut gitdir = path.clone().to_path_buf();
         gitdir.push(Path::new(".git/config"));
@@ -95,24 +127,27 @@ fn git_clone_postgres(path: &Path, repo_url: &str) -> Result<(), std::io::Error>
             // we already have git cloned
             // do a fetch instead
             eprintln!("git fetch --all");
-            Command::new("git")
+            let output = Command::new("git")
                 .arg("fetch")
                 .arg("--all")
                 .current_dir(path)
                 .output()?;
 
-            return Ok(());
+            // a status code of zero and more than 1 line on stdout means we fetched new stuff
+            return Ok(output.status.code().unwrap() == 0
+                && String::from_utf8(output.stdout).unwrap().lines().count() > 1);
         }
     }
 
     eprintln!("git clone {} {}", repo_url, path.to_str().unwrap());
-    Command::new("git")
+    let output = Command::new("git")
         .arg("clone")
         .arg(repo_url)
         .arg(path)
         .output()?;
 
-    Ok(())
+    // if the output status is zero, that means we cloned the repo
+    Ok(output.status.code().unwrap() == 0)
 }
 
 fn git_switch_branch(path: &Path, branch_name: &str) -> Result<(), std::io::Error> {
@@ -148,6 +183,35 @@ fn clean_and_configure_and_make(path: &Path) -> Result<(), std::io::Error> {
         .arg("-j")
         .arg(&format!("{}", num_cpus::get()))
         .current_dir(path)
+        .output()?;
+
+    Ok(())
+}
+
+fn apply_pg_guard(input: String) -> Result<String, std::io::Error> {
+    let mut stream = TokenStream2::new();
+    let file = syn::parse_file(input.as_str()).unwrap();
+
+    for item in file.items.into_iter() {
+        match item {
+            Item::ForeignMod(block) => {
+                let block = rewrite_extern_block(block);
+                stream.extend(quote! { #block });
+            }
+            _ => {
+                stream.extend(quote! { #item });
+            }
+        }
+    }
+
+    Ok(format!("{}", stream.into_token_stream()))
+}
+
+fn rust_fmt(path: &Path) -> Result<(), std::io::Error> {
+    eprintln!("rustfmt {}", path.to_str().unwrap());
+    Command::new("rustfmt")
+        .arg(path)
+        .current_dir(".")
         .output()?;
 
     Ok(())
