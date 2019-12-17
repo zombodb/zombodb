@@ -2,7 +2,7 @@ extern crate bindgen;
 extern crate clang;
 
 use bindgen::callbacks::MacroParsingBehavior;
-use pg_guard_common::rewrite_extern_block;
+use pg_guard_common::rewrite::extern_block;
 use quote::quote;
 use rayon::prelude::*;
 use std::collections::HashSet;
@@ -241,7 +241,7 @@ fn apply_pg_guard(input: String) -> Result<String, std::io::Error> {
     for item in file.items.into_iter() {
         match item {
             Item::ForeignMod(block) => {
-                let block = rewrite_extern_block(block);
+                let block = extern_block(block);
                 stream.extend(quote! { #block });
             }
             _ => {

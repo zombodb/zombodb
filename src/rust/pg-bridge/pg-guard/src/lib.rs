@@ -1,6 +1,6 @@
 extern crate proc_macro;
 
-use pg_guard_common::{build_arg_list, build_func_name, rewrite_extern_block};
+use pg_guard_common::rewrite::{build_arg_list, build_func_name, extern_block};
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::export::ToTokens;
@@ -12,7 +12,7 @@ pub fn pg_guard(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(item as syn::Item);
 
     match ast {
-        Item::ForeignMod(block) => TokenStream::from(rewrite_extern_block(block)),
+        Item::ForeignMod(block) => TokenStream::from(extern_block(block)),
         Item::Fn(func) => TokenStream::from(rewrite_item_fn(func)),
         _ => {
             panic!("#[pg_guard] can only be applied to extern \"C\" blocks and top-level functions")
