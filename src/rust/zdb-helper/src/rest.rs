@@ -9,10 +9,10 @@ const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60 * 60);
 #[pg_guard]
 pub extern "C" fn rest_call(
     method: *mut c_char,
-    url: pg_bridge::externs::StringInfo,
-    post_data: pg_bridge::externs::StringInfo,
+    url: pg_sys::StringInfo,
+    post_data: pg_sys::StringInfo,
     compression_level: usize,
-) -> pg_bridge::externs::StringInfo {
+) -> pg_sys::StringInfo {
     let method = unsafe { CStr::from_ptr(method).to_string_lossy().to_string() };
     let post_data = StringInfo::from_pg(post_data);
     let url = match StringInfo::from_pg(url) {
