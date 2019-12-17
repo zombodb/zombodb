@@ -10,12 +10,12 @@ pub struct StringInfo {
     is_from_pg: bool,
 }
 
-pub trait ToPostgres {
-    fn to_postgres(self) -> pg_sys::StringInfo;
+pub trait IntoPostgres {
+    fn into_postgres(self) -> pg_sys::StringInfo;
 }
 
-impl ToPostgres for StringInfo {
-    fn to_postgres(self) -> pg_sys::StringInfo {
+impl IntoPostgres for StringInfo {
+    fn into_postgres(self) -> pg_sys::StringInfo {
         // TODO: doesn't 'self' (which is a StringInfo) get leaked here?
         let rc = self.sid;
         std::mem::forget(self);
@@ -23,27 +23,27 @@ impl ToPostgres for StringInfo {
     }
 }
 
-impl ToPostgres for String {
-    fn to_postgres(self) -> pg_sys::StringInfo {
-        StringInfo::from(self).to_postgres()
+impl IntoPostgres for String {
+    fn into_postgres(self) -> pg_sys::StringInfo {
+        StringInfo::from(self).into_postgres()
     }
 }
 
-impl ToPostgres for &str {
-    fn to_postgres(self) -> pg_sys::StringInfo {
-        StringInfo::from(self).to_postgres()
+impl IntoPostgres for &str {
+    fn into_postgres(self) -> pg_sys::StringInfo {
+        StringInfo::from(self).into_postgres()
     }
 }
 
-impl ToPostgres for Vec<u8> {
-    fn to_postgres(self) -> pg_sys::StringInfo {
-        StringInfo::from(self).to_postgres()
+impl IntoPostgres for Vec<u8> {
+    fn into_postgres(self) -> pg_sys::StringInfo {
+        StringInfo::from(self).into_postgres()
     }
 }
 
-impl ToPostgres for &[u8] {
-    fn to_postgres(self) -> pg_sys::StringInfo {
-        StringInfo::from(self).to_postgres()
+impl IntoPostgres for &[u8] {
+    fn into_postgres(self) -> pg_sys::StringInfo {
+        StringInfo::from(self).into_postgres()
     }
 }
 

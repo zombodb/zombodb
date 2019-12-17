@@ -1,4 +1,4 @@
-use pg_bridge::stringinfo::{StringInfo, ToPostgres};
+use pg_bridge::stringinfo::{IntoPostgres, StringInfo};
 use pg_bridge::*;
 use std::ffi::CStr;
 use std::io::Read;
@@ -78,7 +78,7 @@ pub extern "C" fn rest_call(
 
                     let body = &mut String::new();
                     let _size = response.read_to_string(body).unwrap_or(0);
-                    body.to_string().to_postgres()
+                    body.to_string().into_postgres()
                 }
                 Err(e) => panic!("{}", e),
             }
