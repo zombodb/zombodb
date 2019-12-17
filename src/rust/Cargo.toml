@@ -2,9 +2,9 @@
 members = [
     "zdb-helper",
     "pg-bridge",
-    "pg-bridge/pg-guard-attr",
-    "pg-bridge/pg-guard-rewriter",
-    "pg-bridge/pg-guard"
+    "pg-guard-attr",
+    "pg-guard-rewriter",
+    "pg-guard"
 ]
 
 [profile.dev]
