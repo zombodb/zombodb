@@ -10,6 +10,12 @@ pub struct StringInfo {
     is_from_pg: bool,
 }
 
+impl Into<pg_sys::StringInfo> for StringInfo {
+    fn into(self) -> pg_sys::StringInfo {
+        self.into_postgres()
+    }
+}
+
 pub trait IntoPostgres {
     fn into_postgres(self) -> pg_sys::StringInfo;
 }
