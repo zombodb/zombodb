@@ -22,8 +22,7 @@ impl PgGuardRewriter {
         match self.0 {
             RewriteMode::ApplyPgGuardMacro => {
                 stream.extend(quote! {
-                    use pg_guard::pg_guard;
-                    #[pg_guard]
+                    #[pg_guard::pg_guard]
                     #block
                 });
             }
@@ -72,35 +71,21 @@ impl PgGuardRewriter {
 
     pub fn foreign_item_fn(&self, func: ForeignItemFn) -> proc_macro2::TokenStream {
         let func_name = PgGuardRewriter::build_func_name(&func.sig);
-        let arg_list = PgGuardRewriter::build_arg_list(&func.sig);
-        let inner_func = func.clone();
+        let arg_list = PgGuardRewriter::rename_arg_list(&func.sig);
+        let arg_list_with_types = PgGuardRewriter::rename_arg_list_with_types(&func.sig);
+        let return_type = PgGuardRewriter::get_return_type(&func.sig);
 
         let body = quote! {
-            {
-                extern "C" {
-                    #inner_func
-                }
+                pub unsafe fn #func_name ( #arg_list_with_types ) #return_type {
+                    extern "C" {
+                        pub fn #func_name( #arg_list_with_types ) #return_type ;
+                    }
 
-                pg_guard::guard(|| unsafe { #func_name( #arg_list) })
-            }
+                    pg_guard::guard(|| unsafe { #func_name( #arg_list) })
+                }
         };
 
-        let mut tokens = proc_macro2::TokenStream::new();
-        let mut outer_func: ForeignItemFn = func.clone();
-        outer_func.attrs.clear();
-        let mut sig = format!("{}", outer_func.into_token_stream());
-        if sig.starts_with("pub") {
-            sig = sig.replace("pub ", "pub unsafe ");
-        } else {
-            sig = format!("unsafe {}", sig);
-        }
-        let sig = sig.replace(";", "");
-
-        tokens.extend(proc_macro2::TokenStream::from_str(
-            format!("{} {}", sig, body.into_token_stream()).as_str(),
-        ));
-
-        tokens
+        body
     }
 
     pub fn build_func_name(sig: &Signature) -> proc_macro2::TokenStream {
@@ -125,5 +110,59 @@ impl PgGuardRewriter {
         }
 
         arg_list
+    }
+
+    pub fn rename_arg_list(sig: &Signature) -> proc_macro2::TokenStream {
+        let mut arg_list = proc_macro2::TokenStream::new();
+
+        for arg in &sig.inputs {
+            match arg {
+                FnArg::Typed(ty) => {
+                    if let Pat::Ident(ident) = ty.pat.deref() {
+                        let name = ident.ident.to_token_stream();
+
+                        // prefix argument name with an underscore
+                        let name =
+                            proc_macro2::TokenStream::from_str(&format!("arg_{}", name)).unwrap();
+
+                        arg_list.extend(quote! { #name, });
+                    }
+                }
+                FnArg::Receiver(_) => panic!(
+                    "#[pg_guard] doesn't support external functions with 'self' as the argument"
+                ),
+            }
+        }
+
+        arg_list
+    }
+
+    pub fn rename_arg_list_with_types(sig: &Signature) -> proc_macro2::TokenStream {
+        let mut arg_list = proc_macro2::TokenStream::new();
+
+        for arg in &sig.inputs {
+            match arg {
+                FnArg::Typed(ty) => {
+                    if let Pat::Ident(_) = ty.pat.deref() {
+                        // prefix argument name with an underscore
+                        let arg =
+                            proc_macro2::TokenStream::from_str(&format!("arg_{}", quote! { #ty}))
+                                .unwrap();
+
+                        arg_list.extend(quote! { #arg, });
+                    }
+                }
+                FnArg::Receiver(_) => panic!(
+                    "#[pg_guard] doesn't support external functions with 'self' as the argument"
+                ),
+            }
+        }
+
+        arg_list
+    }
+
+    pub fn get_return_type(sig: &Signature) -> proc_macro2::TokenStream {
+        let rc = &sig.output;
+        quote! { #rc }
     }
 }
