@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use crate as pg_bridge;
-use pg_guard::*;
+
+use pg_guard::pg_guard;
 use std::ffi::c_void;
 
 #[pg_guard]

@@ -2,8 +2,8 @@
 members = [
     "zdb-helper",
     "pg-bridge",
+    "pg-bridge/pg-guard-attr",
     "pg-bridge/pg-guard",
-    "pg-bridge/pg-guard-common",
     "pg-bridge/pg-sys",
 ]
 

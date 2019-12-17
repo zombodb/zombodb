@@ -1,8 +1,5 @@
-extern crate bindgen;
-extern crate clang;
-
 use bindgen::callbacks::MacroParsingBehavior;
-use pg_guard_common::rewrite::extern_block;
+use pg_guard_rewriter::{PgGuardRewriter, RewriteMode};
 use quote::quote;
 use rayon::prelude::*;
 use std::collections::HashSet;
@@ -235,13 +232,14 @@ fn run_command(command: &mut Command, branch_name: &str) -> Result<Output, std::
 }
 
 fn apply_pg_guard(input: String) -> Result<String, std::io::Error> {
+    let rewriter = PgGuardRewriter::new(RewriteMode::ApplyPgGuardMacro);
     let mut stream = TokenStream2::new();
     let file = syn::parse_file(input.as_str()).unwrap();
 
     for item in file.items.into_iter() {
         match item {
             Item::ForeignMod(block) => {
-                let block = extern_block(block);
+                let block = rewriter.extern_block(block);
                 stream.extend(quote! { #block });
             }
             _ => {

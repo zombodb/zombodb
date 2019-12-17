@@ -1,4 +1,4 @@
-use pg_bridge::guard::register_panic_handler;
+use pg_guard::register_panic_handler;
 
 mod rest;
 

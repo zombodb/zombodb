@@ -1,12 +1,9 @@
 #![allow(dead_code)]
 
+use crate::memcxt::pfree;
+use pg_guard_attr::pg_guard;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
-
-use pg_guard::*;
-
-use crate as pg_bridge;
-use crate::memcxt::pfree;
 
 #[pg_guard]
 extern "C" {
