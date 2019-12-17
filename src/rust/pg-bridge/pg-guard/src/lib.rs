@@ -1,6 +1,6 @@
 extern crate proc_macro;
 
-use common::{build_arg_list, build_func_name, rewrite_extern_block};
+use pg_guard_common::{build_arg_list, build_func_name, rewrite_extern_block};
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::export::ToTokens;

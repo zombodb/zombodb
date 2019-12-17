@@ -2,7 +2,7 @@ extern crate bindgen;
 extern crate clang;
 
 use bindgen::callbacks::MacroParsingBehavior;
-use common::rewrite_extern_block;
+use pg_guard_common::rewrite_extern_block;
 use quote::quote;
 use rayon::prelude::*;
 use std::collections::HashSet;
