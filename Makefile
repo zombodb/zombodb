@@ -28,11 +28,11 @@ PGFILEDESC = "ZomboDB"
 # figure out the build target mode based on the TARGET envvar
 #
 ifeq ($(TARGET),release)
-	BUILD_TARGET = "release"
-	CARGO_TARGET = "--release"
+	BUILD_TARGET = release
+	CARGO_TARGET = --release
 	OPT_LEVEL = 2
 else
-	BUILD_TARGET = "debug"
+	BUILD_TARGET = debug
 	CARGO_TARGET =
 	OPT_LEVEL = 0
 endif
@@ -52,7 +52,7 @@ OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target
 
 all: src/sql/$(EXTENSION)--$(EXTVERSION).sql
 
-src/rust/target/$(BUILD_TARGET)/libzdb_helper.a: src/rust/.cargo/config $(shell find src/rust/ -name '*.toml') $(shell find src/rust/ -name '*.rs')
+src/rust/target/$(BUILD_TARGET)/libzdb_helper.a: src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/)
 	cd src/rust && cargo build $(CARGO_TARGET)
 
 src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list
