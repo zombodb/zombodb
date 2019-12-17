@@ -9,7 +9,7 @@
 #[allow(non_upper_case_globals)]
 #[allow(improper_ctypes)]
 #[cfg(feature = "pg10")]
-pub(crate) mod pg10;
+pub mod pg10;
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
@@ -17,7 +17,7 @@ pub(crate) mod pg10;
 #[allow(non_upper_case_globals)]
 #[allow(improper_ctypes)]
 #[cfg(feature = "pg11")]
-pub(crate) mod pg11;
+pub mod pg11;
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
@@ -25,7 +25,7 @@ pub(crate) mod pg11;
 #[allow(non_upper_case_globals)]
 #[allow(improper_ctypes)]
 #[cfg(feature = "pg12")]
-pub(crate) mod pg12;
+pub mod pg12;
 
 #[cfg(feature = "pg10")]
 pub use pg10::*;
