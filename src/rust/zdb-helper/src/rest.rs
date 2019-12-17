@@ -1,5 +1,5 @@
 use pg_bridge::stringinfo::{StringInfo, ToPostgres};
-use pg_guard::{error, pg_guard};
+use pg_bridge::*;
 use std::ffi::CStr;
 use std::io::Read;
 use std::os::raw::c_char;

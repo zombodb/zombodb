@@ -1,4 +1,5 @@
 #include "postgres.h"
+#include "miscadmin.h"
 #include "access/genam.h"
 #include "access/htup.h"
 #include "access/skey.h"

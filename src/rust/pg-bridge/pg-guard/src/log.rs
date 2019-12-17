@@ -34,6 +34,8 @@ pub fn elog(level: i32, message: &str) {
     }
 }
 
+fn check_for_interrupts() {}
+
 #[macro_export]
 macro_rules! debug5 {
     ($($arg:tt)*) => (
@@ -116,4 +118,16 @@ macro_rules! PANIC {
     ($($arg:tt)*) => (
         { $crate::log::elog($crate::log::PANIC, format!($($arg)*).as_str()); unreachable!("elog failed"); }
     )
+}
+
+#[macro_export]
+macro_rules! check_for_interrupts {
+    () => {
+        unsafe {
+            use pg_bridge;
+            if pg_bridge::externs::InterruptPending {
+                pg_bridge::externs::ProcessInterrupts();
+            }
+        }
+    };
 }
