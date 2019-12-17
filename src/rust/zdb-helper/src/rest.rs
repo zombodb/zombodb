@@ -1,4 +1,4 @@
-use pg_bridge::stringinfo::{PostgresStringInfo, ReturnToPostgres, StringInfo};
+use pg_bridge::stringinfo::{StringInfo, ToPostgres};
 use pg_guard::{error, pg_guard};
 use std::ffi::CStr;
 use std::io::Read;
@@ -9,10 +9,10 @@ const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60 * 60);
 #[pg_guard]
 pub extern "C" fn rest_call(
     method: *mut c_char,
-    url: PostgresStringInfo,
-    post_data: PostgresStringInfo,
+    url: pg_bridge::externs::StringInfo,
+    post_data: pg_bridge::externs::StringInfo,
     compression_level: usize,
-) -> PostgresStringInfo {
+) -> pg_bridge::externs::StringInfo {
     let method = unsafe { CStr::from_ptr(method).to_string_lossy().to_string() };
     let post_data = StringInfo::from_pg(post_data);
     let url = match StringInfo::from_pg(url) {
@@ -78,7 +78,7 @@ pub extern "C" fn rest_call(
 
                     let body = &mut String::new();
                     let _size = response.read_to_string(body).unwrap_or(0);
-                    body.to_string().to_pg()
+                    body.to_string().to_postgres()
                 }
                 Err(e) => panic!("{}", e),
             }

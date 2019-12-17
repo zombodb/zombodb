@@ -9,7 +9,7 @@
 #[allow(non_upper_case_globals)]
 #[allow(improper_ctypes)]
 #[cfg(feature = "pg10")]
-mod pg10;
+pub mod pg10;
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
@@ -17,7 +17,7 @@ mod pg10;
 #[allow(non_upper_case_globals)]
 #[allow(improper_ctypes)]
 #[cfg(feature = "pg11")]
-mod pg11;
+pub mod pg11;
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
@@ -25,4 +25,13 @@ mod pg11;
 #[allow(non_upper_case_globals)]
 #[allow(improper_ctypes)]
 #[cfg(feature = "pg12")]
-mod pg12;
+pub mod pg12;
+
+#[cfg(feature = "pg10")]
+pub use pg10 as externs;
+
+#[cfg(feature = "pg11")]
+pub use pg11 as externs;
+
+#[cfg(feature = "pg12")]
+pub use pg12 as externs;

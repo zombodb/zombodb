@@ -1,43 +1,20 @@
 #![allow(dead_code, non_snake_case)]
 
-use crate::memcxt::pfree;
-use pg_guard_attr::pg_guard;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
 
-#[pg_guard]
-extern "C" {
-    fn makeStringInfo() -> PostgresStringInfo;
-    fn enlargeStringInfo(str: PostgresStringInfo, needed: i32);
-    fn resetStringInfo(str: PostgresStringInfo);
-
-    fn appendStringInfoChar(str: PostgresStringInfo, ch: c_char);
-    fn appendBinaryStringInfo(str: PostgresStringInfo, data: *const c_char, datalen: i32);
-}
-
-#[repr(C)]
-#[derive(Debug)]
-pub struct PostgresStringInfoData {
-    data: *mut c_char,
-    len: i32,
-    maxlen: i32,
-    cursor: i32,
-}
-
-pub type PostgresStringInfo = *mut PostgresStringInfoData;
-
 #[derive(Debug)]
 pub struct StringInfo {
-    sid: PostgresStringInfo,
+    sid: pg_sys::externs::StringInfo,
     is_from_pg: bool,
 }
 
-pub trait ReturnToPostgres {
-    fn to_pg(self) -> PostgresStringInfo;
+pub trait ToPostgres {
+    fn to_postgres(self) -> pg_sys::externs::StringInfo;
 }
 
-impl ReturnToPostgres for StringInfo {
-    fn to_pg(self) -> *mut PostgresStringInfoData {
+impl ToPostgres for StringInfo {
+    fn to_postgres(self) -> pg_sys::externs::StringInfo {
         // TODO: doesn't 'self' (which is a StringInfo) get leaked here?
         let rc = self.sid;
         std::mem::forget(self);
@@ -45,27 +22,27 @@ impl ReturnToPostgres for StringInfo {
     }
 }
 
-impl ReturnToPostgres for String {
-    fn to_pg(self) -> *mut PostgresStringInfoData {
-        StringInfo::from(self).to_pg()
+impl ToPostgres for String {
+    fn to_postgres(self) -> pg_sys::externs::StringInfo {
+        StringInfo::from(self).to_postgres()
     }
 }
 
-impl ReturnToPostgres for &str {
-    fn to_pg(self) -> *mut PostgresStringInfoData {
-        StringInfo::from(self).to_pg()
+impl ToPostgres for &str {
+    fn to_postgres(self) -> pg_sys::externs::StringInfo {
+        StringInfo::from(self).to_postgres()
     }
 }
 
-impl ReturnToPostgres for Vec<u8> {
-    fn to_pg(self) -> *mut PostgresStringInfoData {
-        StringInfo::from(self).to_pg()
+impl ToPostgres for Vec<u8> {
+    fn to_postgres(self) -> pg_sys::externs::StringInfo {
+        StringInfo::from(self).to_postgres()
     }
 }
 
-impl ReturnToPostgres for &[u8] {
-    fn to_pg(self) -> *mut PostgresStringInfoData {
-        StringInfo::from(self).to_pg()
+impl ToPostgres for &[u8] {
+    fn to_postgres(self) -> pg_sys::externs::StringInfo {
+        StringInfo::from(self).to_postgres()
     }
 }
 
@@ -85,12 +62,12 @@ impl ToString for StringInfo {
 impl StringInfo {
     pub fn new() -> Self {
         StringInfo {
-            sid: unsafe { makeStringInfo() },
+            sid: unsafe { pg_sys::externs::makeStringInfo() },
             is_from_pg: false,
         }
     }
 
-    pub fn from_pg(sid: PostgresStringInfo) -> Option<Self> {
+    pub fn from_pg(sid: pg_sys::externs::StringInfo) -> Option<Self> {
         if sid.is_null() {
             None
         } else {
@@ -110,16 +87,22 @@ impl StringInfo {
     }
 
     pub fn push(&mut self, ch: char) {
-        unsafe { appendStringInfoChar(self.sid, ch as c_char) }
+        unsafe { pg_sys::externs::appendStringInfoChar(self.sid, ch as c_char) }
     }
 
     pub fn push_str(&mut self, s: &str) {
-        unsafe { appendBinaryStringInfo(self.sid, s.as_ptr() as *const c_char, s.len() as i32) }
+        unsafe {
+            pg_sys::externs::appendBinaryStringInfo(
+                self.sid,
+                s.as_ptr() as *const c_char,
+                s.len() as i32,
+            )
+        }
     }
 
     pub fn push_bytes(&mut self, bytes: &[u8]) {
         unsafe {
-            appendBinaryStringInfo(
+            pg_sys::externs::appendBinaryStringInfo(
                 self.sid,
                 bytes.as_ptr() as *const c_char,
                 bytes.len() as i32,
@@ -128,11 +111,11 @@ impl StringInfo {
     }
 
     pub fn reset(&mut self) {
-        unsafe { resetStringInfo(self.sid) }
+        unsafe { pg_sys::externs::resetStringInfo(self.sid) }
     }
 
     pub fn enlarge(&mut self, needed: i32) {
-        unsafe { enlargeStringInfo(self.sid, needed) }
+        unsafe { pg_sys::externs::enlargeStringInfo(self.sid, needed) }
     }
 }
 
@@ -180,9 +163,9 @@ impl Drop for StringInfo {
             unsafe {
                 if !self.sid.is_null() {
                     if !(*self.sid).data.is_null() {
-                        pfree((*self.sid).data as *mut c_void);
+                        pg_sys::externs::pfree((*self.sid).data as *mut c_void);
                     }
-                    pfree(self.sid as *mut c_void);
+                    pg_sys::externs::pfree(self.sid as *mut c_void);
                 }
             }
         }

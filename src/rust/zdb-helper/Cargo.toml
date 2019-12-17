@@ -11,6 +11,6 @@ crate-type = ["staticlib", "cdylib"]
 [dependencies]
 reqwest = "0.9.22"
 miniz_oxide = "0.3.5"
-pg-bridge = { path = "../pg-bridge/" }
+pg-bridge = { path = "../pg-bridge/", features = ["pg11"] }
 pg-guard-attr = { path = "../pg-bridge/pg-guard-attr" }
 pg-guard = { path = "../pg-bridge/pg-guard" }

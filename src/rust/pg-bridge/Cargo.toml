@@ -7,3 +7,10 @@ edition = "2018"
 [dependencies]
 pg-guard-attr = { path = "pg-guard-attr/" }
 pg-guard = { path = "pg-guard" }
+pg-sys = { path = "pg-sys", features = ["pg11"] }
+
+[features]
+default = []
+pg10 = []
+pg11 = []
+pg12 = []
