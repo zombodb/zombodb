@@ -1,4 +1,5 @@
 pub mod memcxt;
+pub mod pg_sys;
 pub mod stringinfo;
 
 pub use pg_sys::externs;

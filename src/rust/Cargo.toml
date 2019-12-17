@@ -3,8 +3,8 @@ members = [
     "zdb-helper",
     "pg-bridge",
     "pg-bridge/pg-guard-attr",
-    "pg-bridge/pg-guard",
-    "pg-bridge/pg-sys",
+    "pg-bridge/pg-guard-rewriter",
+    "pg-bridge/pg-guard"
 ]
 
 [profile.dev]

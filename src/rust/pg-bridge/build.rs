@@ -70,7 +70,7 @@ fn main() -> Result<(), std::io::Error> {
         let version = v.0;
         let branch_name = v.1;
         let mut output_rs = PathBuf::new();
-        output_rs.push(format!("src/{}.rs", version));
+        output_rs.push(format!("src/pg_sys/{}.rs", version));
         let pg_git_path = make_git_repo_path(out_dir, branch_name);
 
         let need_generate = git_clone_postgres(&pg_git_path, pg_git_repo_url, branch_name)
