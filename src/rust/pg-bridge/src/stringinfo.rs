@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, non_snake_case)]
 
 use crate::memcxt::pfree;
 use pg_guard_attr::pg_guard;
