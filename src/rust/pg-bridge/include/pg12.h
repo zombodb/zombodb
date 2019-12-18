@@ -7,6 +7,7 @@
 #include "nodes/nodes.h"
 #include "nodes/tidbitmap.h"
 #include "storage/itemptr.h"
+#include "utils/builtins.h"
 #include "utils/palloc.h"
 #include "utils/rel.h"
 #include "utils/relcache.h"

@@ -1,5 +1,6 @@
 use pg_guard::register_panic_handler;
 
+mod playground;
 mod rest;
 
 #[no_mangle]

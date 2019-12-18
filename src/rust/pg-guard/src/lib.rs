@@ -3,7 +3,6 @@
 pub mod log;
 
 use libc::sigset_t;
-pub use pg_guard_attr::pg_guard;
 use std::any::Any;
 use std::cell::Cell;
 use std::mem::MaybeUninit;
@@ -11,6 +10,8 @@ use std::os::raw::{c_int, c_void};
 use std::panic::catch_unwind;
 use std::sync::atomic::{compiler_fence, Ordering};
 use std::thread::LocalKey;
+
+pub use pg_guard_attr::{pg_extern, pg_guard};
 
 extern "C" {
     fn sigsetjmp(env: *mut sigjmp_buf, savesigs: c_int) -> c_int;
