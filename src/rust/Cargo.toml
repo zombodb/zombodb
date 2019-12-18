@@ -1,11 +1,19 @@
-[workspace]
-members = [
-    "zdb-helper",
-    "pg-bridge",
-    "pg-guard-attr",
-    "pg-guard-rewriter",
-    "pg-guard"
-]
+[package]
+name = "zdb-helper"
+version = "0.1.0"
+authors = ["Eric B. Ridge <eebbrr@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "zdb_helper"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+reqwest = "0.9.22"
+miniz_oxide = "0.3.5"
+pg-bridge = { path = "../../../pg-rs-bridge/pg-bridge/", features = ["pg11"] }
+pg-guard-attr = { path = "../../../pg-rs-bridge/pg-guard-attr" }
+pg-guard = { path = "../../../pg-rs-bridge/pg-guard" }
 
 [profile.dev]
 panic = "unwind"
@@ -14,4 +22,5 @@ panic = "unwind"
 panic = "unwind"
 opt-level = 3
 lto = true
-codegen-units = 1
+codegen-units = 1                                                                                                       
+
