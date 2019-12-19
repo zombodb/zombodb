@@ -52,7 +52,7 @@ OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target
 
 all: src/sql/$(EXTENSION)--$(EXTVERSION).sql
 
-src/rust/target/$(BUILD_TARGET)/libzdb_helper.dylib: src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/)
+src/rust/target/$(BUILD_TARGET)/libzdb_helper.dylib: src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/) $(shell find ../pg-rs-bridge/ -type f -name '*.rs' | grep -v target/)
 	cd src/rust && cargo build $(CARGO_TARGET)
 
 src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list
