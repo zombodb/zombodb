@@ -1,5 +1,6 @@
 use pg_guard::register_panic_handler;
 
+mod indexam;
 mod playground;
 mod rest;
 

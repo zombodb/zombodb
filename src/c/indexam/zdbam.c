@@ -147,7 +147,7 @@ static void validate_uuid(STRING_VALIDATOR_SIGNATURE str) {
 }
 
 
-PG_FUNCTION_INFO_V1(zdb_amhandler);
+//PG_FUNCTION_INFO_V1(zdb_amhandler);
 
 static List                     *insert_contexts        = NULL;
 static List                     *to_drop                = NULL;
@@ -1071,7 +1071,7 @@ void zdb_aminit(void) {
 	planner_hook        = zdb_planner_hook;
 }
 
-Datum zdb_amhandler(PG_FUNCTION_ARGS) {
+Datum xxx_zdb_amhandler(PG_FUNCTION_ARGS) {
 	IndexAmRoutine *amroutine = makeNode(IndexAmRoutine);
 
 	amroutine->amstrategies   = 4;
