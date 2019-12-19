@@ -18,3 +18,12 @@
 void zdb_log_proxy(int loglevel, const char *log_msg) {
     elog(loglevel, "%s", log_msg);
 }
+
+size_t zdb_varsize_exhdr(struct varlena *t) {
+    return VARSIZE_ANY_EXHDR(t);
+}
+
+void *zdb_vardata_any(struct varlena *t) {
+    return VARDATA_ANY(t);
+}
+
