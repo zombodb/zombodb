@@ -1,4 +1,3 @@
-use pg_bridge::pg_sys::{pg11 as pg_sys, Datum};
 use pg_bridge::*;
 
 #[pg_extern]
@@ -6,7 +5,7 @@ pub unsafe extern "C" fn rust_add_two_numbers(fcinfo: pg_sys::FunctionCallInfo) 
     let a = pg_getarg_i32(&fcinfo, 0).unwrap();
     let b = pg_getarg_i32(&fcinfo, 1).unwrap();
 
-    (a as i64 + b as i64) as Datum
+    (a as i64 + b as i64) as pg_sys::Datum
 }
 
 #[pg_extern]
@@ -15,5 +14,5 @@ pub unsafe extern "C" fn rust_test_text(fcinfo: pg_sys::FunctionCallInfo) -> pg_
 
     info!("{}", s);
 
-    rust_str_to_text_p("This is a string") as Datum
+    rust_str_to_text_p("some return value") as pg_sys::Datum
 }
