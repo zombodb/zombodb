@@ -21,8 +21,7 @@
 
 /* === Functions we export to RUST === */
 PGDLLEXPORT void zdb_log_proxy(int loglevel, const char *log_msg);
-PGDLLEXPORT size_t zdb_varsize_exhdr(struct varlena *t);
-PGDLLEXPORT void *zdb_vardata_any(struct varlena *t);
+PGDLLEXPORT MemoryContext zdb_GetMemoryChunkContext(void *pointer);
 
 /* === Functions we import from RUST === */
 extern StringInfo rest_call(const char *method, StringInfo url, StringInfo postData, int compressionLevel);
