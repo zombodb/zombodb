@@ -6,8 +6,8 @@ use std::os::raw::c_char;
 
 const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60 * 60);
 
-#[pg_guard]
-pub extern "C" fn rest_call(
+#[pg_extern]
+fn rest_call(
     method: *mut c_char,
     url: pg_sys::StringInfo,
     post_data: pg_sys::StringInfo,

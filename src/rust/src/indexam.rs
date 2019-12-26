@@ -1,81 +1,114 @@
 #![allow(unused_variables)]
 
+use pg_bridge::pg_sys::*;
 use pg_bridge::*;
-use pg_sys::*;
+use std::os::raw::c_void;
 
 #[pg_extern]
-pub unsafe extern "C" fn zdb_amhandler(_fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let mut amroutine = make_node::<pg_sys::IndexAmRoutine>(pg_sys::NodeTag_T_IndexAmRoutine);
+fn zdb_amhandler(_fcinfo: FunctionCallInfo) -> Datum {
+    info!("zdb_handler");
+    let mut amroutine = unsafe { make_node::<IndexAmRoutine>(NodeTag_T_IndexAmRoutine) };
 
-    info!("zdb_amhandler");
+    amroutine.amstrategies = 4;
+    amroutine.amsupport = 0;
+    amroutine.amcanorder = false;
+    amroutine.amcanorderbyop = false;
+    amroutine.amcanbackward = false;
+    amroutine.amcanunique = false;
+    amroutine.amcanmulticol = true;
+    amroutine.amoptionalkey = false;
+    amroutine.amsearcharray = true;
+    amroutine.amsearchnulls = false;
+    amroutine.amstorage = false;
+    amroutine.amclusterable = false;
+    amroutine.ampredlocks = false;
+    amroutine.amcanparallel = false;
+    amroutine.amcaninclude = false;
+    amroutine.amkeytype = InvalidOid;
+    amroutine.amvalidate = Some(zdb_amvalidate);
+    amroutine.ambuild = Some(ambuild);
+    amroutine.ambuildempty = Some(ambuildempty);
+    amroutine.aminsert = Some(aminsert);
+    amroutine.ambulkdelete = Some(ambulkdelete);
+    amroutine.amvacuumcleanup = Some(amvacuumcleanup);
+    amroutine.amcanreturn = None;
+    amroutine.amcostestimate = Some(amcostestimate);
+    amroutine.amoptions = Some(amoptions);
+    amroutine.amproperty = None;
+    amroutine.ambeginscan = Some(ambeginscan);
+    amroutine.amrescan = Some(amrescan);
+    amroutine.amgettuple = Some(amgettuple);
+    amroutine.amgetbitmap = Some(amgetbitmap);
+    amroutine.amendscan = Some(amendscan);
 
-    (*amroutine).amstrategies = 4;
-    (*amroutine).amsupport = 0;
-    (*amroutine).amcanorder = false;
-    (*amroutine).amcanorderbyop = false;
-    (*amroutine).amcanbackward = false;
-    (*amroutine).amcanunique = false;
-    (*amroutine).amcanmulticol = true;
-    (*amroutine).amoptionalkey = false;
-    (*amroutine).amsearcharray = true;
-    (*amroutine).amsearchnulls = false;
-    (*amroutine).amstorage = false;
-    (*amroutine).amclusterable = false;
-    (*amroutine).ampredlocks = false;
-    (*amroutine).amcanparallel = false;
+    amroutine.ammarkpos = None;
+    amroutine.amrestrpos = None;
+    amroutine.amestimateparallelscan = None;
+    amroutine.aminitparallelscan = None;
+    amroutine.amparallelrescan = None;
 
-    (*amroutine).amkeytype = pg_sys::InvalidOid;
-
-    (*amroutine).amvalidate = Some(zdb_amvalidate);
-    (*amroutine).ambuild = Some(ambuild);
-    (*amroutine).ambuildempty = Some(ambuildempty);
-    (*amroutine).aminsert = Some(aminsert);
-    (*amroutine).ambulkdelete = Some(ambulkdelete);
-    (*amroutine).amvacuumcleanup = Some(amvacuumcleanup);
-    (*amroutine).amcanreturn = None;
-    (*amroutine).amcostestimate = Some(amcostestimate);
-    (*amroutine).amoptions = Some(amoptions);
-    (*amroutine).amproperty = None;
-    (*amroutine).ambeginscan = Some(ambeginscan);
-    (*amroutine).amrescan = Some(amrescan);
-    (*amroutine).amgettuple = Some(amgettuple);
-    (*amroutine).amgetbitmap = Some(amgetbitmap);
-    (*amroutine).amendscan = Some(amendscan);
-
-    (*amroutine).ammarkpos = None;
-    (*amroutine).amrestrpos = None;
-    (*amroutine).amestimateparallelscan = None;
-    (*amroutine).aminitparallelscan = None;
-    (*amroutine).amparallelrescan = None;
-
-    amroutine as pg_sys::Datum
+    amroutine.into_pg() as Datum
 }
 
 #[pg_guard]
-unsafe extern "C" fn zdb_amvalidate(opclassoid: Oid) -> bool {
+extern "C" fn zdb_amvalidate(opclassoid: Oid) -> bool {
     info!("zdbamvalidate");
     true
 }
 
+extern "C" fn ambuild_callback(
+    index: Relation,
+    htup: HeapTuple,
+    values: *mut Datum,
+    isnull: *mut bool,
+    tuple_is_alive: bool,
+    state: *mut ::std::os::raw::c_void,
+) {
+    let values = unsafe { std::slice::from_raw_parts(values as *const Datum, 1) };
+    let ctid = (unsafe { *htup }).t_self;
+
+    info!(
+        "({}, {})",
+        item_pointer_get_block_number(&ctid),
+        item_pointer_get_offset_number(&ctid)
+    );
+}
+
 #[pg_guard]
-unsafe extern "C" fn ambuild(
+extern "C" fn ambuild(
     heap_relation: Relation,
     index_relation: Relation,
     index_info: *mut IndexInfo,
 ) -> *mut IndexBuildResult {
     info!("ambuild");
-    let result = palloc0_struct::<pg_sys::IndexBuildResult>();
+    let mut result = PgBox::<IndexBuildResult>::alloc0();
 
-    return result;
+    result.heap_tuples = 12.0;
+
+    info!("{}", result);
+
+    unsafe {
+        IndexBuildHeapScan(
+            heap_relation,
+            index_relation,
+            index_info,
+            true,
+            Some(ambuild_callback),
+            0 as *mut c_void,
+            0 as HeapScanDesc,
+        );
+    }
+
+    return result.into_pg();
 }
 
 #[pg_guard]
-unsafe extern "C" fn ambuildempty(index_relation: Relation) {
+extern "C" fn ambuildempty(index_relation: Relation) {
     info!("ambuildempty");
 }
 
 #[pg_guard]
-unsafe extern "C" fn aminsert(
+extern "C" fn aminsert(
     index_relation: Relation,
     values: *mut Datum,
     isnull: *mut bool,
@@ -89,7 +122,7 @@ unsafe extern "C" fn aminsert(
 }
 
 #[pg_guard]
-unsafe extern "C" fn ambulkdelete(
+extern "C" fn ambulkdelete(
     info: *mut IndexVacuumInfo,
     stats: *mut IndexBulkDeleteResult,
     callback: IndexBulkDeleteCallback,
@@ -100,7 +133,7 @@ unsafe extern "C" fn ambulkdelete(
 }
 
 #[pg_guard]
-unsafe extern "C" fn amvacuumcleanup(
+extern "C" fn amvacuumcleanup(
     info: *mut IndexVacuumInfo,
     stats: *mut IndexBulkDeleteResult,
 ) -> *mut IndexBulkDeleteResult {
@@ -109,7 +142,7 @@ unsafe extern "C" fn amvacuumcleanup(
 }
 
 #[pg_guard]
-unsafe extern "C" fn amcostestimate(
+extern "C" fn amcostestimate(
     root: *mut PlannerInfo,
     path: *mut IndexPath,
     loop_count: f64,
@@ -123,13 +156,13 @@ unsafe extern "C" fn amcostestimate(
 }
 
 #[pg_guard]
-unsafe extern "C" fn amoptions(reloptions: Datum, validate: bool) -> *mut bytea {
+extern "C" fn amoptions(reloptions: Datum, validate: bool) -> *mut bytea {
     info!("amoptions");
     0 as *mut bytea
 }
 
 #[pg_guard]
-unsafe extern "C" fn ambeginscan(
+extern "C" fn ambeginscan(
     index_relation: Relation,
     nkeys: ::std::os::raw::c_int,
     norderbys: ::std::os::raw::c_int,
@@ -137,11 +170,11 @@ unsafe extern "C" fn ambeginscan(
     info!("ambeginscan");
     let result = palloc0_struct::<pg_sys::IndexScanDescData>();
 
-    result
+    result.into_pg()
 }
 
 #[pg_guard]
-unsafe extern "C" fn amrescan(
+extern "C" fn amrescan(
     scan: IndexScanDesc,
     keys: ScanKey,
     nkeys: ::std::os::raw::c_int,
@@ -152,18 +185,18 @@ unsafe extern "C" fn amrescan(
 }
 
 #[pg_guard]
-unsafe extern "C" fn amgettuple(scan: IndexScanDesc, direction: ScanDirection) -> bool {
+extern "C" fn amgettuple(scan: IndexScanDesc, direction: ScanDirection) -> bool {
     info!("amgettuple");
     false
 }
 
 #[pg_guard]
-unsafe extern "C" fn amgetbitmap(scan: IndexScanDesc, tbm: *mut TIDBitmap) -> int64 {
+extern "C" fn amgetbitmap(scan: IndexScanDesc, tbm: *mut TIDBitmap) -> int64 {
     info!("amgetbitmap");
     0
 }
 
 #[pg_guard]
-unsafe extern "C" fn amendscan(scan: IndexScanDesc) {
+extern "C" fn amendscan(scan: IndexScanDesc) {
     info!("amendscan");
 }
