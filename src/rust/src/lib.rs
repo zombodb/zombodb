@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate pg_guard_attr;
-
 use pg_guard::register_panic_handler;
 
 mod indexam;
