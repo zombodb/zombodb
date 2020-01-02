@@ -49,10 +49,8 @@ endif
 #
 
 PG_CPPFLAGS += -Isrc/c/ -O$(OPT_LEVEL)
-## TODO:  figure out link args for Linux too
-SHLIB_LINK += -lcurl -lz -L src/rust/target/$(BUILD_TARGET)
-# -framework CoreFoundation -framework IOKit -framework Security
-OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/$(BUILD_TARGET)/libzdb_helper.$(SHLIB_EXT)
+SHLIB_LINK += -lcurl -lz -L src/rust/target/$(BUILD_TARGET) -lzdb_helper
+OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g)
 
 #
 # make targets
