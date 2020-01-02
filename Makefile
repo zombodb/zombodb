@@ -15,19 +15,6 @@
 #
 
 #
-# extension definition
-#
-
-EXTENSION = zombodb
-EXTVERSION = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
-MODULE_big = $(EXTENSION)
-DATA = $(wildcard src/sql/$(EXTENSION)--*--*.sql) src/sql/$(EXTENSION)--$(EXTVERSION).sql
-PGFILEDESC = "ZomboDB"
-UNAME = $(shell uname)
-RPATH = $(shell pg_config --sharedir)/extension
-
-
-#
 # figure out the build target mode based on the TARGET envvar
 #
 ifeq ($(TARGET),release)
@@ -40,30 +27,43 @@ else
 	OPT_LEVEL = 0
 endif
 
+#
+# how is our shard lib named
+#
 ifeq ($(UNAME),Linux)
-	SHLIB_EXT=so
+	LINK_ARGS =
 else
-	SHLIB_EXT=dylib
+	LINK_ARGS = -framework CoreFoundation -framework IOKit -framework Security
 endif
 
-DATA += src/rust/target/$(BUILD_TARGET)/libzdb_helper.$(SHLIB_EXT)
+#
+# extension definition
+#
+
+EXTENSION = zombodb
+EXTVERSION = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\\([^']*\\)'/\\1/")
+MODULE_big = $(EXTENSION)
+DATA = $(wildcard src/sql/$(EXTENSION)--*--*.sql) src/sql/$(EXTENSION)--$(EXTVERSION).sql
+PGFILEDESC = "ZomboDB"
+UNAME = $(shell uname)
+RPATH = $(shell pg_config --sharedir)/extension
 
 #
 # object files
 #
 
 PG_CPPFLAGS += -Isrc/c/ -O$(OPT_LEVEL)
-SHLIB_LINK += -lcurl -lz -Lsrc/rust/target/$(BUILD_TARGET) -Wl,-rpath=$(RPATH) -lzdb_helper
-OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g)
+SHLIB_LINK += -lcurl -lz $(LINK_ARGS)
+OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/$(BUILD_TARGET)/libzdb_helper.a
 
 #
 # make targets
 #
 
-all: src/sql/$(EXTENSION)--$(EXTVERSION).sql
+all: src/sql/$(EXTENSION)--$(EXTVERSION).sql src/rust/target/$(BUILD_TARGET)/libzdb_helper.a
 
-src/rust/target/$(BUILD_TARGET)/libzdb_helper.$(SHLIB_EXT): src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/) $(shell find ../pg-rs-bridge/ -type f -name '*.rs' | grep -v target/)
-	cd src/rust && cargo -vv build $(CARGO_TARGET)
+src/rust/target/$(BUILD_TARGET)/libzdb_helper.a: src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/) $(shell find ../pg-rs-bridge/ -type f -name '*.rs' | grep -v target/)
+	cd src/rust && cargo build $(CARGO_TARGET)
 
 src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list
 	cat `cat $<` > $@
