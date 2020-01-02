@@ -28,15 +28,6 @@ else
 endif
 
 #
-# how is our shard lib named
-#
-ifeq ($(UNAME),Linux)
-	LINK_ARGS =
-else
-	LINK_ARGS = -framework CoreFoundation -framework IOKit -framework Security
-endif
-
-#
 # extension definition
 #
 
@@ -45,24 +36,32 @@ EXTVERSION = $(shell grep default_version $(EXTENSION).control | sed -e "s/defau
 MODULE_big = $(EXTENSION)
 DATA = $(wildcard src/sql/$(EXTENSION)--*--*.sql) src/sql/$(EXTENSION)--$(EXTVERSION).sql
 PGFILEDESC = "ZomboDB"
-UNAME = $(shell uname)
 RPATH = $(shell pg_config --sharedir)/extension
+
+# how is our shard lib named
+ifeq ($(shell uname),Linux)
+	SHLIB_NAME = libzdb_helper.so
+else
+	SHLIB_NAME = libzdb_helper.dylib
+endif
+SHLIB_PATH = src/rust/target/$(BUILD_TARGET)/$(SHLIB_NAME)
+DATA += $(SHLIB_PATH)
 
 #
 # object files
 #
 
 PG_CPPFLAGS += -Isrc/c/ -O$(OPT_LEVEL)
-SHLIB_LINK += -lcurl -lz $(LINK_ARGS)
-OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/$(BUILD_TARGET)/libzdb_helper.a
+SHLIB_LINK += -lcurl -lz -Lsrc/rust/target/$(BUILD_TARGET)/ -Wl,-rpath,$(RPATH) -lzdb_helper
+OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g)
 
 #
 # make targets
 #
 
-all: src/sql/$(EXTENSION)--$(EXTVERSION).sql src/rust/target/$(BUILD_TARGET)/libzdb_helper.a
+all: src/sql/$(EXTENSION)--$(EXTVERSION).sql $(SHLIB_PATH)
 
-src/rust/target/$(BUILD_TARGET)/libzdb_helper.a: src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/) $(shell find ../pg-rs-bridge/ -type f -name '*.rs' | grep -v target/)
+$(SHLIB_PATH): src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/) $(shell find ../pg-rs-bridge/ -type f -name '*.rs' | grep -v target/)
 	cd src/rust && cargo build $(CARGO_TARGET)
 
 src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list
