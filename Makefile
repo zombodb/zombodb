@@ -23,6 +23,7 @@ EXTVERSION = $(shell grep default_version $(EXTENSION).control | sed -e "s/defau
 MODULE_big = $(EXTENSION)
 DATA = $(wildcard src/sql/$(EXTENSION)--*--*.sql) src/sql/$(EXTENSION)--$(EXTVERSION).sql
 PGFILEDESC = "ZomboDB"
+UNAME = $(shell uname)
 
 #
 # figure out the build target mode based on the TARGET envvar
@@ -37,14 +38,21 @@ else
 	OPT_LEVEL = 0
 endif
 
+ifeq ($(UNAME),Linux)
+	SHLIB_EXT=so
+else
+	SHLIB_EXT=dylib
+endif
+
 #
 # object files
 #
 
 PG_CPPFLAGS += -Isrc/c/ -O$(OPT_LEVEL)
 ## TODO:  figure out link args for Linux too
-SHLIB_LINK += -lcurl -lz -L src/rust/target/$(BUILD_TARGET) -framework CoreFoundation -framework IOKit -framework Security
-OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/$(BUILD_TARGET)/libzdb_helper.dylib
+SHLIB_LINK += -lcurl -lz -L src/rust/target/$(BUILD_TARGET)
+# -framework CoreFoundation -framework IOKit -framework Security
+OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target/$(BUILD_TARGET)/libzdb_helper.$(SHLIB_EXT)
 
 #
 # make targets
@@ -52,7 +60,7 @@ OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g) src/rust/target
 
 all: src/sql/$(EXTENSION)--$(EXTVERSION).sql
 
-src/rust/target/$(BUILD_TARGET)/libzdb_helper.dylib: src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/) $(shell find ../pg-rs-bridge/ -type f -name '*.rs' | grep -v target/)
+src/rust/target/$(BUILD_TARGET)/libzdb_helper.$(SHLIB_EXT): src/rust/.cargo/config $(shell find src/rust/ -type f -name '*.toml') $(shell find src/rust/ -type f -name '*.rs' | grep -v target/) $(shell find ../pg-rs-bridge/ -type f -name '*.rs' | grep -v target/)
 	cd src/rust && cargo -vv build $(CARGO_TARGET)
 
 src/sql/$(EXTENSION)--$(EXTVERSION).sql: src/sql/order.list
