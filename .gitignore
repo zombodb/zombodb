@@ -1,6 +1,7 @@
 .idea/
 *.xcodeproj/
 .DS_Store
+*.bc
 *.iml
 *.ipr
 *.iws

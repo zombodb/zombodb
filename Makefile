@@ -24,6 +24,8 @@ MODULE_big = $(EXTENSION)
 DATA = $(wildcard src/sql/$(EXTENSION)--*--*.sql) src/sql/$(EXTENSION)--$(EXTVERSION).sql
 PGFILEDESC = "ZomboDB"
 UNAME = $(shell uname)
+RPATH = $(shell pg_config --sharedir)/extension
+
 
 #
 # figure out the build target mode based on the TARGET envvar
@@ -44,12 +46,14 @@ else
 	SHLIB_EXT=dylib
 endif
 
+DATA += src/rust/target/$(BUILD_TARGET)/libzdb_helper.$(SHLIB_EXT)
+
 #
 # object files
 #
 
 PG_CPPFLAGS += -Isrc/c/ -O$(OPT_LEVEL)
-SHLIB_LINK += -lcurl -lz -L src/rust/target/$(BUILD_TARGET) -lzdb_helper
+SHLIB_LINK += -lcurl -lz -Lsrc/rust/target/$(BUILD_TARGET) -Wl,-rpath=$(RPATH) -lzdb_helper
 OBJS = $(shell find src/c -type f -name "*.c" | sed s/\\.c/.o/g)
 
 #
