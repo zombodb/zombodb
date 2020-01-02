@@ -42,6 +42,8 @@ fn rust_test_text(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let result: &str = result.try_into().unwrap();
     info!("SPI RESULT={:?}", result);
 
+    check_for_interrupts!();
+
     let result = Spi::connect(|mut client| {
         let rc = client.update("UPDATE foo set a = a", None, None);
         info!("rc={:?}", rc);
