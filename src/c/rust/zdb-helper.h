@@ -19,10 +19,6 @@
 #ifndef ZOMBODB_HELPER_FUNCS_H
 #define ZOMBODB_HELPER_FUNCS_H
 
-/* === Functions we export to RUST === */
-PGDLLEXPORT void zdb_log_proxy(int loglevel, const char *log_msg);
-PGDLLEXPORT MemoryContext zdb_GetMemoryChunkContext(void *pointer);
-
 /* === Functions we import from RUST === */
 extern StringInfo rest_call(const char *method, StringInfo url, StringInfo postData, int compressionLevel);
 extern void rust_init(void);
