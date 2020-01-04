@@ -22,6 +22,7 @@ CREATE AGGREGATE smoothing(float4) (
 */
 use pg_bridge::stringinfo::StringInfo;
 use pg_bridge::*;
+use pg_bridge_macros::*;
 use std::convert::TryInto;
 
 #[derive(Debug, DatumCompatible)]
@@ -33,32 +34,22 @@ struct Smoothing {
 }
 
 #[pg_extern]
-fn smoothing_smooth(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let smoothing = pg_getarg_boxed::<Smoothing>(fcinfo, 0)
-        .expect("input for smoothing_smooth shouldn't be null");
-
-    PgDatum::<f32>::from(smoothing.smooth).into()
+fn smoothing_smooth(smoothing: PgBox<Smoothing>) -> f32 {
+    smoothing.smooth
 }
 
 #[pg_extern]
-fn smoothing_phase(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let smoothing = pg_getarg_boxed::<Smoothing>(fcinfo, 0)
-        .expect("input for smoothing_series shouldn't be null");
-
-    PgDatum::<f32>::from(smoothing.phase).into()
+fn smoothing_phase(smoothing: PgBox<Smoothing>) -> f32 {
+    smoothing.phase
 }
 
 #[pg_extern]
-fn smoothing_series(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let smoothing = pg_getarg_boxed::<Smoothing>(fcinfo, 0)
-        .expect("input for smoothing_series shouldn't be null");
-
-    PgDatum::<f32>::from(smoothing.series).into()
+fn smoothing_series(smoothing: PgBox<Smoothing>) -> f32 {
+    smoothing.series
 }
 
 #[pg_extern]
-fn smoothing_in(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let input = pg_getarg_cstr(fcinfo, 0).expect("input for something_in shouldn't be null");
+fn smoothing_in(input: &std::ffi::CStr) -> PgBox<Smoothing> {
     let mut smoothing = PgBox::<Smoothing>::alloc();
 
     let input = input.to_str().unwrap();
@@ -68,14 +59,11 @@ fn smoothing_in(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     smoothing.phase = vals.get(1).unwrap().parse().unwrap();
     smoothing.series = vals.get(2).unwrap().parse().unwrap();
 
-    smoothing.into()
+    smoothing
 }
 
 #[pg_extern]
-fn smoothing_out(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let input = PgBox::<Smoothing>::from_pg(
-        pg_getarg_pointer(fcinfo, 0).expect("input for something_out shouldn't be null"),
-    );
+fn smoothing_out(input: PgBox<Smoothing>) -> &'static std::ffi::CStr {
     let mut output = StringInfo::new();
 
     output.push_str(&format!(
@@ -83,7 +71,7 @@ fn smoothing_out(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         input.smooth, input.phase, input.series
     ));
 
-    output.into_char_ptr() as pg_sys::Datum
+    output.into()
 }
 
 #[pg_extern]

@@ -1,12 +1,13 @@
 use pg_bridge::stringinfo::{IntoPostgres, StringInfo};
 use pg_bridge::*;
+use pg_bridge_macros::*;
 use std::ffi::CStr;
 use std::io::Read;
 use std::os::raw::c_char;
 
 const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60 * 60);
 
-#[pg_extern]
+#[pg_guard]
 fn rest_call(
     method: *mut c_char,
     url: pg_sys::StringInfo,

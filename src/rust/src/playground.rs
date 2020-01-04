@@ -1,5 +1,14 @@
 use pg_bridge::*;
+use pg_bridge_macros::*;
 use std::convert::TryInto;
+
+#[pg_extern]
+fn test_dynamic_string() -> String {
+    let mut s = String::new();
+    s.push_str("this is dynamic");
+
+    s
+}
 
 #[pg_extern]
 fn rust_add_two_numbers(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
@@ -68,6 +77,6 @@ fn rust_test_text(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
 }
 
 #[pg_extern]
-fn rust_get_tid(_fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+fn rust_get_tid(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     new_item_pointer(12, 42).into_pg() as pg_sys::Datum
 }
