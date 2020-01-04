@@ -75,28 +75,31 @@ fn smoothing_out(input: PgBox<Smoothing>) -> &'static std::ffi::CStr {
 }
 
 #[pg_extern]
-fn smoothing_agg(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let mut smoothing = pg_getarg_boxed(fcinfo, 0).unwrap_or_else(|| {
-        // do initial setup
-        let mut smoothing = PgBox::<Smoothing>::alloc();
-        smoothing.phase = 1.0;
-        smoothing.smooth = 1.0;
-        smoothing.series = 0f32;
+fn smoothing_agg(
+    smoothing: Option<PgBox<Smoothing>>,
+    b: Option<f32>,
+    fcinfo: pg_sys::FunctionCallInfo,
+) -> pg_sys::Datum {
+    let mut smoothing = match smoothing {
+        Some(value) => value,
+        None => {
+            // do initial setup
+            let mut smoothing = PgBox::<Smoothing>::alloc();
+            smoothing.phase = 1.0;
+            smoothing.smooth = 1.0;
+            smoothing.series = 0f32;
 
-        // ... do heavy-weight initialization of 'smoothing' here ...
+            // ... do heavy-weight initialization of 'smoothing' here ...
 
-        // swap in the datum for the first argument to the function
-        // so it'll be available on subsequent calls of this group
-        unsafe { fcinfo.as_mut() }.unwrap().arg[0] = smoothing.as_datum();
+            // swap in the datum for the first argument to the function
+            // so it'll be available on subsequent calls of this group
+            unsafe { fcinfo.as_mut() }.unwrap().arg[0] = smoothing.as_datum();
 
-        smoothing
-    });
+            smoothing
+        }
+    };
 
-    let b: f32 = pg_getarg::<f32>(fcinfo, 1)
-        .try_into()
-        .expect("arg2 should not be null");
-
-    smoothing.series += b;
+    smoothing.series += b.unwrap();
 
     smoothing.into()
 }
