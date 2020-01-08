@@ -1071,7 +1071,7 @@ void zdb_aminit(void) {
 	planner_hook        = zdb_planner_hook;
 }
 
-Datum zdb_amhandler(PG_FUNCTION_ARGS) {
+Datum xxxzdb_amhandler(PG_FUNCTION_ARGS) {
 	IndexAmRoutine *amroutine = makeNode(IndexAmRoutine);
 
 	amroutine->amstrategies   = 4;

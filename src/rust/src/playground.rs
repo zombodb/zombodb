@@ -11,15 +11,15 @@ fn test_dynamic_string() -> String {
 }
 
 #[pg_extern]
-fn rust_add_two_numbers(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+fn rust_add_two_numbers(fcinfo: pg_sys::FunctionCallInfo) -> i64 {
     let a: i32 = pg_getarg::<i32>(fcinfo, 0).try_into().unwrap();
     let b: i32 = pg_getarg::<i32>(fcinfo, 1).try_into().unwrap();
 
-    (a as i64 + b as i64) as pg_sys::Datum
+    a as i64 + b as i64
 }
 
 #[pg_extern]
-fn rust_test_text(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+fn rust_test_text(fcinfo: pg_sys::FunctionCallInfo) -> &'static str {
     let s: &str = pg_getarg::<&str>(fcinfo, 0).try_into().unwrap();
     let _bar = unsafe { pg_sys::palloc(42) };
 
@@ -72,11 +72,10 @@ fn rust_test_text(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     info!("ItemPointerData from SPI result={:?}", result);
     info!("{}", s);
 
-    let rc = rust_str_to_text_p("some return value");
-    rc as pg_sys::Datum
+    "some return value"
 }
 
 #[pg_extern]
-fn rust_get_tid(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    new_item_pointer(12, 42).into_pg() as pg_sys::Datum
+fn rust_get_tid() -> PgBox<pg_sys::ItemPointerData> {
+    new_item_pointer(12, 42)
 }

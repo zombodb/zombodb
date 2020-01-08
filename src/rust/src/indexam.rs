@@ -1,11 +1,16 @@
 #![allow(unused_variables)]
 
+use pg_bridge::pg_sys::pg11_specific::{
+    HeapScanDesc, IndexAmRoutine, IndexBuildHeapScan, IndexInfo, IndexPath, IndexVacuumInfo,
+    NodeTag_T_IndexAmRoutine, PlannerInfo,
+};
 use pg_bridge::pg_sys::*;
 use pg_bridge::*;
+use pg_bridge_macros::*;
 use std::os::raw::c_void;
 
 #[pg_extern]
-fn zdb_amhandler(_fcinfo: FunctionCallInfo) -> Datum {
+fn zdb_amhandler() -> PgBox<pg_sys::IndexAmRoutine> {
     info!("zdb_handler");
     let mut amroutine = unsafe { make_node::<IndexAmRoutine>(NodeTag_T_IndexAmRoutine) };
 
@@ -47,7 +52,7 @@ fn zdb_amhandler(_fcinfo: FunctionCallInfo) -> Datum {
     amroutine.aminitparallelscan = None;
     amroutine.amparallelrescan = None;
 
-    amroutine.into_pg() as Datum
+    amroutine
 }
 
 #[pg_guard]
@@ -69,8 +74,8 @@ extern "C" fn ambuild_callback(
 
     info!(
         "({}, {})",
-        item_pointer_get_block_number(&ctid),
-        item_pointer_get_offset_number(&ctid)
+        unsafe { item_pointer_get_block_number(&ctid) },
+        unsafe { item_pointer_get_offset_number(&ctid) }
     );
 }
 
