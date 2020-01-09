@@ -1,6 +1,6 @@
 use pgx::*;
 
-mod indexam;
+mod access_method;
 
 pg_module_magic!();
 
