@@ -1,2 +1,2 @@
 lib.generated.sql
-indexam.generated.sql
+access_method_mod.generated.sql
