@@ -5,6 +5,10 @@ mod options;
 mod scan;
 mod vacuum;
 
+/// ```sql
+/// CREATE OR REPLACE FUNCTION amhandler(internal) RETURNS index_am_handler PARALLEL SAFE IMMUTABLE STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
+/// CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER zdb.amhandler;
+/// ```
 #[pg_extern]
 fn amhandler(fcinfo: pg_sys::FunctionCallInfo) -> PgBox<pg_sys::IndexAmRoutine> {
     let mut amroutine = PgNodeFactory::makeIndexAmRoutine();
@@ -32,11 +36,6 @@ fn amhandler(fcinfo: pg_sys::FunctionCallInfo) -> PgBox<pg_sys::IndexAmRoutine> 
 
     amroutine
 }
-
-extension_sql! {r#"
-    CREATE OR REPLACE FUNCTION amhandler(internal) RETURNS index_am_handler PARALLEL SAFE IMMUTABLE STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', 'amhandler_wrapper';
-    CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER zdb.amhandler;
-"#}
 
 #[pg_guard]
 extern "C" fn amvalidate(opclassoid: pg_sys::Oid) -> bool {
