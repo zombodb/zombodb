@@ -1,4 +1,5 @@
 use pgx::*;
+use std::ops::DerefMut;
 
 #[pg_guard]
 pub extern "C" fn ambeginscan(
@@ -6,7 +7,10 @@ pub extern "C" fn ambeginscan(
     nkeys: ::std::os::raw::c_int,
     norderbys: ::std::os::raw::c_int,
 ) -> pg_sys::IndexScanDesc {
-    0 as pg_sys::IndexScanDesc
+    let scandesc =
+        PgBox::from_pg(unsafe { pg_sys::RelationGetIndexScan(index_relation, nkeys, norderbys) });
+
+    scandesc.into_pg()
 }
 
 #[pg_guard]

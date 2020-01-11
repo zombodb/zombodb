@@ -1,2 +1,6 @@
 lib.generated.sql
+zdbquery_mod.generated.sql
+zdbquery_input.generated.sql
+zdbquery_cast.generated.sql
 access_method_mod.generated.sql
+zdbquery_opclass.generated.sql
