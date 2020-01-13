@@ -6,7 +6,7 @@ struct BuildState {
 }
 
 impl BuildState {
-    fn from_pg(ptr: *mut std::os::raw::c_void) -> PgBox<BuildState> {
+    fn from_ptr(ptr: *mut std::os::raw::c_void) -> PgBox<BuildState> {
         PgBox::<BuildState>::from_pg(ptr as *mut BuildState)
     }
 }
@@ -61,7 +61,7 @@ unsafe extern "C" fn build_callback(
     tuple_is_alive: bool,
     state: *mut std::os::raw::c_void,
 ) {
-    let mut state = BuildState::from_pg(state);
+    let mut state = BuildState::from_ptr(state);
     let state_mut = state.as_mut().unwrap();
     let values = Array::<pg_sys::Datum>::over(
         values,
