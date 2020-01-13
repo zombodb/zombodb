@@ -3,9 +3,16 @@ use pgx::*;
 use std::any::Any;
 
 #[pg_extern(immutable)]
-fn anyelement_cmpfunc(element: TypedDatum, query: ZDBQuery) -> bool {
-    info!("anyelement_cmpfunc: {:?}", element);
-    true
+fn anyelement_cmpfunc(element: AnyElement, query: ZDBQuery) -> bool {
+    ereport(
+        PgLogLevel::ERROR,
+        PgSqlErrorCode::ERRCODE_INTERNAL_ERROR,
+        "anyelement_cmpfunc called in invalid context",
+        file!(),
+        line!(),
+        column!(),
+    );
+    false
 }
 
 #[pg_extern(immutable)]
