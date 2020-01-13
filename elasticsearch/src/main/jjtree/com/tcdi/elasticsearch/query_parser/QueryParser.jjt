@@ -825,7 +825,7 @@ QueryParserNode Phrase() #Phrase :
     { return jjtThis; }
 }
 
-QueryParserNode Array() #Array(>0) :
+QueryParserNode Array() #Array :
 {
 }
 {

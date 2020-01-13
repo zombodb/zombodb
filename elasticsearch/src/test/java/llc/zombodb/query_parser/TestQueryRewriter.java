@@ -6334,5 +6334,25 @@ public class TestQueryRewriter extends ZomboDBTestCase {
 
         }
     }
+
+    @Test
+    public void testIssue396() throws Exception {
+        assertAST("id:[]",
+                "QueryTree\n" +
+                        "   Expansion\n" +
+                        "      id=<db.schema.table.index>id\n" +
+                        "      Array (fieldname=id, operator=CONTAINS, index=db.schema.table.index) (OR)");
+        assertJson("id:[]", "{\n" +
+                "  \"constant_score\" : {\n" +
+                "    \"filter\" : {\n" +
+                "      \"terms\" : {\n" +
+                "        \"id\" : [ ],\n" +
+                "        \"boost\" : 1.0\n" +
+                "      }\n" +
+                "    },\n" +
+                "    \"boost\" : 1.0\n" +
+                "  }\n" +
+                "}");
+    }
 }
 
