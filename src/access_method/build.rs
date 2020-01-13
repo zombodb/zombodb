@@ -53,13 +53,6 @@ pub extern "C" fn aminsert(
     false
 }
 
-fn run_build_scan(
-    heap_relation: pg_sys::Relation,
-    index_relation: pg_sys::Relation,
-    index_info: *mut pg_sys::IndexInfo,
-) {
-}
-
 unsafe extern "C" fn build_callback(
     index: pg_sys::Relation,
     htup: pg_sys::HeapTuple,
