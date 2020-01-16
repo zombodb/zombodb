@@ -1,5 +1,5 @@
 //
-// Created by Eric B. Ridge on 2019-02-23.
+// Created by Eric B. Ridge on 2020-02-23.
 //
 
 #ifndef ZOMBODB_DEFINE_INDEX_H

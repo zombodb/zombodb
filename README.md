@@ -1,5 +1,5 @@
 [![logo](logo.png)](https://www.zombodb.com/) 
-###### Making Postgres and Elasticsearch work together like it's 2019
+###### Making Postgres and Elasticsearch work together like it's 2020
 [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.com/zombodb/zombodb)
 
 ZomboDB brings powerful text-search and analytics features to Postgres by using Elasticsearch as an index type.  Its comprehensive query language and SQL functions enable new and creative ways to query your relational data.
@@ -163,7 +163,7 @@ ZomboDB was open-sourced in July 2015 and has since been used in numerous produc
 
 ## License
 
-Copyright 2018-2019 ZomboDB, LLC
+Copyright 2018-2020 ZomboDB, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
