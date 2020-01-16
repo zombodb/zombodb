@@ -1,5 +1,5 @@
 # ZomboDB extension
-comment = 'ZomboDB:  Making Postgres and Elasticsearch work together like it''s 2019'
+comment = 'ZomboDB:  Making Postgres and Elasticsearch work together like it''s 2020'
 default_version = '4.0'
 module_pathname = '$libdir/zombodb'
 relocatable = false
