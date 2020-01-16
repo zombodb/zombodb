@@ -322,7 +322,7 @@ public class AnalyzedField {
                         } else {
                             int min_pos = pair.min_pos - (distance + 1);
                             int max_pos = pair.max_pos + (distance);
-                            int pos = lt.getPosition()+1;
+                            int pos = lt.getPosition();
 
                             if (pos >= min_pos && pos <= max_pos) {
                                 pair.tokens.push(lt);

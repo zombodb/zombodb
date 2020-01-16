@@ -6354,5 +6354,1166 @@ public class TestQueryRewriter extends ZomboDBTestCase {
                 "  }\n" +
                 "}");
     }
+
+    @Test
+    public void testProxHighlighting() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+
+        DocumentHighlighter highlighter;
+        List<AnalyzedField.Token> highlights;
+
+        data.put("phrase_field", " CONFIDENTIAL Respect Integrity Communication Excellence\n" +
+                "\n" +
+                "O:\\Legal\\Sbailey\\Misc\\executedmasters.doc\n" +
+                "\n" +
+                "Respect Integrity Communication Excellence\n" +
+                "\n" +
+                "O:\\Legal\\Sbailey\\Misc\\executedmasters.doc INTEROFFICE\n" +
+                "\n" +
+                "MEMORANDUM\n" +
+                "\n" +
+                "To:  All ENA located in North America  Department:   ENA Legal\n" +
+                "\n" +
+                "From:  Financial Trading Group   Date: October 15, 2001\n" +
+                "\n" +
+                "Subject: Executed Master Agreements\n" +
+                "\n" +
+                "The following is a current list of counterparties that have executed Master Agreements with ENA (or another Enron entity, as noted below).  Recently executed Master Agreements and changes to an entity's legal name are shown in bold. \n" +
+                "\n" +
+                "These Master Agreements cover United States and Canada financial transactions only.  If you are doing financial transactions with a counterparty that is not listed below, please call the legal department to determine how to proceed with negotiating a Master Agreement.\n" +
+                "\n" +
+                "THE EXISTENCE OF THESE DOCUMENTS SHOULD NOT BE\n" +
+                "\n" +
+                "DISCUSSED WITH ANYONE OUTSIDE THE COMPANY\n" +
+                "\n" +
+                "AEP Energy Services, Inc.\n" +
+                "\n" +
+                "AES Deepwater, Inc.\n" +
+                "\n" +
+                "ARC Resources Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Abitibi-Consolidated Inc.\n" +
+                "\n" +
+                "Adams Resources Marketing Ltd.\n" +
+                "\n" +
+                "Agrium Inc. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Air Canada\n" +
+                "\n" +
+                "Albchem Industries Ltd. (Enron Canada Corp.) - approved for energy commodities only\n" +
+                "\n" +
+                "Alberta Energy Company Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Alcoa Inc. (f/k/a Aluminum Company of America)\n" +
+                "\n" +
+                "Allegheny Energy Supply Company, LLC (successor-in-interest to the Merrill Lynch Capital Services, Inc. ISDA dated 12/2/92- this is a TEMPORARY bridge master until a new ISDA is put into place) \n" +
+                "\n" +
+                "Allied Waste North America, Inc.\n" +
+                "\n" +
+                "Alma Energy Corp.\n" +
+                "\n" +
+                "American Central Energy, L.L.C. \n" +
+                "\n" +
+                "American Oil & Gas Corporation\n" +
+                "\n" +
+                "American Re Capital Markets, Inc. (weather deals only)\n" +
+                "\n" +
+                "Amtran, Inc.\n" +
+                "\n" +
+                "Anadarko Petroleum Corporation\n" +
+                "\n" +
+                "Andex Resources, LLC\n" +
+                "\n" +
+                "Apache Corporation\n" +
+                "\n" +
+                "Aquila Canada Corp. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Aquila Capital and Trade Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Aquila Risk Management Corporation \n" +
+                "\n" +
+                "Aries Resources, L.L.C.\n" +
+                "\n" +
+                "Arizona Public Service Company\n" +
+                "\n" +
+                "Aspect Resources LLC\n" +
+                "\n" +
+                "Astra Power, LLC\n" +
+                "\n" +
+                "Atlanta Gas Light Company\n" +
+                "\n" +
+                "Atlantic Packaging Products Ltd.\n" +
+                "\n" +
+                "Aurora Natural Gas, LLC\n" +
+                "\n" +
+                "Avista Energy, Inc.\n" +
+                "\n" +
+                "Axem-Blackbird L.L.C.\n" +
+                "\n" +
+                "BC Gas Utility Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "BC Oil Company\n" +
+                "\n" +
+                "BNP Paribas (f/k/a Paribas)\n" +
+                "\n" +
+                "BP Amoco Corporation \n" +
+                "\n" +
+                "BP Capital Energy Fund LP\n" +
+                "\n" +
+                "BP Exploration & Oil Inc.\n" +
+                "\n" +
+                "BP Gas Inc.\n" +
+                "\n" +
+                "BWAB, a Limited Liability Company\n" +
+                "\n" +
+                "The Bakersfield Californian  (newsprint commodity price swap and option transactions only)\n" +
+                "\n" +
+                "Baltimore Gas and Electric Company\n" +
+                "\n" +
+                "Bank of America, National Association (f\\k\\a Bank of America National Trust and Savings Association)\n" +
+                "\n" +
+                "Bank of Montreal  (the master agreement DOES NOT allow payment netting between FX, forward rate and all other Transactions)\n" +
+                "\n" +
+                "Bank One  (f\\k\\a The First National Bank of Chicago)\n" +
+                "\n" +
+                "Bankers Trust Company \n" +
+                "\n" +
+                "Barclays Bank PLC\n" +
+                "\n" +
+                "Bargo Energy Company\n" +
+                "\n" +
+                "Barrett Resources Corporation\n" +
+                "\n" +
+                "Basin Electric Power Cooperative\n" +
+                "\n" +
+                "Bayerische Hypo-Und Vereinsbank AG (approved for all transactions except commodity transactions per the Counterparty's request)\n" +
+                "\n" +
+                "Bear Paw Energy LLC\n" +
+                "\n" +
+                "Belco Energy Corp.\n" +
+                "\n" +
+                "Belco Oil & Gas Corp. (approved for energy commodities only)\n" +
+                "\n" +
+                "Bellingham Cold Storage Co.\n" +
+                "\n" +
+                "Berco Resources, Inc.\n" +
+                "\n" +
+                "Berry Petroleum Company\n" +
+                "\n" +
+                "Bethlehem Steel Corporation\n" +
+                "\n" +
+                "Bison Building Materials, Ltd.\n" +
+                "\n" +
+                "Black Stone Holdings Partnership\n" +
+                "\n" +
+                "Blazer Energy Corp.  (f\\k\\a Ashland Exploration, Inc.)\n" +
+                "\n" +
+                "Blue Flame Propane, Inc.\n" +
+                "\n" +
+                "Blue Range Resource Corporation  (Enron Canada Corp.) - INACTIVE \n" +
+                "\n" +
+                "Boyd Rosene and Associates, Inc.\n" +
+                "\n" +
+                "Brant Allen Industries, Inc.\n" +
+                "\n" +
+                "Bravo Natural Resources, Inc.\n" +
+                "\n" +
+                "Breitburn Energy Company LLC\n" +
+                "\n" +
+                "Bridgeline Gas Marketing LLC\n" +
+                "\n" +
+                "Burlington Northern and Sante Fe Railroad Company (The)\n" +
+                "\n" +
+                "Burlington Resources Trading Inc.\n" +
+                "\n" +
+                "CGAS, Inc. (need resolutions from Counterparty's Board of Director's prior to trading)\n" +
+                "\n" +
+                "CMS Marketing, Services and Trading Company (permits fixed price swaps, basis swaps, swing swaps and options only--all other types of trades require prior consent of Counterparty's Board of Directors)\n" +
+                "\n" +
+                "CV Reef Company, L.P.\n" +
+                "\n" +
+                "Cabot Oil & Gas Marketing Corporation\n" +
+                "\n" +
+                "Calgary Winter Club (Enron Canada Corp.) -- approved for energy commodities only\n" +
+                "\n" +
+                "Calibre Energy Inc. (f\\k\\a Deep Basin Energy Inc.) (Enron Canada Corp.)\n" +
+                "\n" +
+                "Calpine Natural Gas Company (f/k/a Sheridan Energy, Inc.) - INACTIVATED (as a result of an assignment of all transactions as well as the governance of those transactions to the Calpine Energy Services, L.P. ISDA Master Agreement dated 10/20/99 - this contract was inactivated and all financial trades are to be done with Calpine Energy Services, L.P.)\n" +
+                "\n" +
+                "Calpine Energy Services, L.P. (f/k/a Calpine Power Services Company)\n" +
+                "\n" +
+                "Callon Petroleum Company\n" +
+                "\n" +
+                "Canadian Forest Oil Ltd. (f\\k\\a Saxon Petroleum Inc.)  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Canadian Imperial Bank of Commerce\n" +
+                "\n" +
+                "Canadian Natural Resources (Enron Canada Corp.)\n" +
+                "\n" +
+                "Cannat Resources Inc. (f\\k\\a Sceptre Resources Limited) (Enron Canada Corp.)\n" +
+                "\n" +
+                "Cargill-Alliant, LLC\n" +
+                "\n" +
+                "Cargill, Incorporated\n" +
+                "\n" +
+                "Carolina Holdings, Inc.\n" +
+                "\n" +
+                "Carrera Gas Company, L.L.C.\n" +
+                "\n" +
+                "Carrizo Oil & Gas, Inc.\n" +
+                "\n" +
+                "Carrollton Resources, L.L.C.\n" +
+                "\n" +
+                "Casella Waste Systems, Inc.\n" +
+                "\n" +
+                "Castle Texas Production, Limited Partnership\n" +
+                "\n" +
+                "Central Hudson Gas & Electric Corporation\n" +
+                "\n" +
+                "Central Resources, Inc.\n" +
+                "\n" +
+                "Chase Manhattan Bank (The)\n" +
+                "\n" +
+                "Chautauqua Airlines, Inc.\n" +
+                "\n" +
+                "Chemical Bank\n" +
+                "\n" +
+                "Chevron U.S.A. Inc.\n" +
+                "\n" +
+                "Christiania Bank og Kreditkasse ASA\n" +
+                "\n" +
+                "Christico Petroleum Company\n" +
+                "\n" +
+                "Cinergy Marketing & Trading, LLC\n" +
+                "\n" +
+                "Citibank N.A.\n" +
+                "\n" +
+                "Citizens Gas Utility District of Scott and Morgan Counties\n" +
+                "\n" +
+                "Citrus Trading Corp.\n" +
+                "\n" +
+                "City of Eugene, acting by and through the Eugene Water & Electric Board\n" +
+                "\n" +
+                "Clark Oil Trading Company\n" +
+                "\n" +
+                "Coastal Gas Services Company (as a result of a merger into its parent company -- f/k/a Coastal Gas Marketing Company) -- trades are limited to natural gas only\n" +
+                "\n" +
+                "Cody Energy, LLC  (f\\k\\a Cody Energy, Inc.)\n" +
+                "\n" +
+                "CoEnergy Trading Company\n" +
+                "\n" +
+                "Compania Minera Autlan, S.A. de C.V.\n" +
+                "\n" +
+                "Contour Energy Co. (f\\k\\a Kelley Oil & Gas Corporation)\n" +
+                "\n" +
+                "Convermex del Norte, S.A. de C.V.\n" +
+                "\n" +
+                "Convertidora Mexicana de Plasticos, S.A. de C.V.\n" +
+                "\n" +
+                "Cook Inlet Energy Supply Limited Partnership\n" +
+                "\n" +
+                "Columbia Energy Services Corporation\n" +
+                "\n" +
+                "Comstock Oil and Gas, Inc.\n" +
+                "\n" +
+                "ConAgra Energy Services, Inc.\n" +
+                "\n" +
+                "Conectiv Energy Supply, Inc. (successor by assignment to Delmarva Power & Light Company)\n" +
+                "\n" +
+                "Conoco Inc.\n" +
+                "\n" +
+                "Constellation Power Source, Inc.\n" +
+                "\n" +
+                "Consumers' Gas Company Ltd. (The) (Enron Canada Corp.)\n" +
+                "\n" +
+                "Coral Energy Holding, L.P. (f\\k\\a Coral Energy, L.P.)\n" +
+                "\n" +
+                "Cornerstone Propane, LP\n" +
+                "\n" +
+                "Corpus Christi Gas Marketing, L.P.\n" +
+                "\n" +
+                "Corrugated Services, Inc.\n" +
+                "\n" +
+                "Corvair Oils Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Cox & Perkins Exploration, Inc.\n" +
+                "\n" +
+                "Credit Lyonnais New York Branch (AAA Program)  (approved for interest rate, FX and currency and equity transactions only --NO COMMODITY TRANSACTIONS)\n" +
+                "\n" +
+                "Credit Suisse Financial Products\n" +
+                "\n" +
+                "Crete Oil Company, Inc.\n" +
+                "\n" +
+                "Dakota LLC\n" +
+                "\n" +
+                "Deutsche Bank AG\n" +
+                "\n" +
+                "Devon SFS Operating, Inc. (as a result of a merger and name change - f/k/a Santa Fe Snyder Corporation and further f\\k\\a Santa Fe Energy Resources, Inc.)\n" +
+                "\n" +
+                "DevXEnergy, Inc. (as a result of a name change -- f/k/a Queen Sand Resources, Inc.)\n" +
+                "\n" +
+                "Dispatch Printing Company (The)\n" +
+                "\n" +
+                "Doublewood XLIM Fund Ltd. (The)\n" +
+                "\n" +
+                "Doublewood XLIM Fund (USA) L.P. (The)\n" +
+                "\n" +
+                "Dow Chemical Canada Inc. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Dow Hydrocarbons and Resources Inc.\n" +
+                "\n" +
+                "Dresdner Bank AG (approved for FX & Forward Rate transactions only  - NO COMMODITY TRANSACTIONS)\n" +
+                "\n" +
+                "Duke Energy International, L.L.C.\n" +
+                "\n" +
+                "Duke Energy Marketing Limited Partnership (Enron Canada Corp.)\n" +
+                "\n" +
+                "Duke Energy Trading and Marketing, L.L.C.\n" +
+                "\n" +
+                "Dynegy Canada Inc. (f\\k\\a Novagas Clearinghouse Limited Partnership)  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Dynegy Marketing and Trade (f\\k\\a Natural Gas Clearinghouse)\n" +
+                "\n" +
+                "e prime, inc.\n" +
+                "\n" +
+                "E.I.L. Petroleum, Inc.\n" +
+                "\n" +
+                "EnerVest Energy, L.P.\n" +
+                "\n" +
+                "Enron Direct Canada Corp. (Enron Canada Corp.) \n" +
+                "\n" +
+                "Entrada Energy Ventures, L.L.C.\n" +
+                "\n" +
+                "EPEC Energy Marketing Company\n" +
+                "\n" +
+                "E. W. Scripps Company (The)\n" +
+                "\n" +
+                "Eagle Gas Marketing Company\n" +
+                "\n" +
+                "Edge Energy Inc. (f\\k\\a Alberta Oil & Gas Limited) (Enron Canada Corp.)\n" +
+                "\n" +
+                "Edge Joint Venture II\n" +
+                "\n" +
+                "Edge Petroleum Corporation\n" +
+                "\n" +
+                "El Paso Merchant Energy, L.P. (f/k/a El Paso Merchant Energy-Gas, L.P.)\n" +
+                "\n" +
+                "Elf Trading S.A. (ENA)\n" +
+                "\n" +
+                "Elf Trading S.A. (ECT International)\n" +
+                "\n" +
+                "Elm Ridge Exploration Company\n" +
+                "\n" +
+                "Empressa Distribudora de Energia Norte, S.A.\n" +
+                "\n" +
+                "Encal Energy Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Encore Acquisition Partners, Inc.\n" +
+                "\n" +
+                "Energen Resources Corporation -- SUPERCEDED AND REPLACED - the prior Master Agreement dated November 7, 1995, with Taurus Exploration, Inc. (n/k/a Energen Resources Corporation) has been superceded and replaced by an ISDA Master Agreement, dated October 18, 2000.  Therefore, (a) all existing Transactions shall constitute Transactions under this ISDA Master Agreement, and (b) all future Transactions shall be confirmed under this ISDA Master Agreement.\n" +
+                "\n" +
+                "EnergyOne Ventures, L.P.\n" +
+                "\n" +
+                "EnergyUSA-TPC Corp.\n" +
+                "\n" +
+                "Energy West Incorporated  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Engage Energy America LLC\n" +
+                "\n" +
+                "Engage Energy Canada, L.P. (Enron Canada Corp.)\n" +
+                "\n" +
+                "ENMAX Energy Corporation (Enron Canada Corp.)\n" +
+                "\n" +
+                "Enserco Energy Inc.\n" +
+                "\n" +
+                "Entergy-Koch Trading, LP (as a result of a name change -- f/k/a Axia Energy, LP)\n" +
+                "\n" +
+                "Entergy Power Marketing Corp.\n" +
+                "\n" +
+                "Enterprise Products Operating L.P.\n" +
+                "\n" +
+                "Equitable Energy L.L.C.\n" +
+                "\n" +
+                "Equity Oil Company\n" +
+                "\n" +
+                "EXCO Resources, Inc.\n" +
+                "\n" +
+                "Ferrell Resources, L.L.C.\n" +
+                "\n" +
+                "Ferrellgas, L.P. d\\b\\a Ferrell North America\n" +
+                "\n" +
+                "Fersinsa Gist-Brocades, S.A. de C.V.\n" +
+                "\n" +
+                "First Brands Corporation\n" +
+                "\n" +
+                "FirstEnergy Services Corp.\n" +
+                "\n" +
+                "First Union National Bank\n" +
+                "\n" +
+                "Fletcher Challenge Industries Limited (Enron Canada Corp.)\n" +
+                "\n" +
+                "Fletcher Challenge Petroleum Corporation\n" +
+                "\n" +
+                "Florida Power & Light Company\n" +
+                "\n" +
+                "Forcenergy Inc.\n" +
+                "\n" +
+                "Formosa Hydrocarbons Company, Inc.\n" +
+                "\n" +
+                "Forte Energy Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Fortis Bank (Nederland) N.V. (successor entity under the merger with MeesPierson N.V.)\n" +
+                "\n" +
+                "Fortune Energy Inc. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Frito-Lay, Inc.\n" +
+                "\n" +
+                "Frontier Oil Corporation  (f\\k\\a Wainoco Oil Corporation)\n" +
+                "\n" +
+                "Fuji Capital Markets Corporation\n" +
+                "\n" +
+                "Galvak, S.A. de C.V.\n" +
+                "\n" +
+                "Garden State Paper Company, LLC (all 5 trades between Risk Management & Trading Corp. and Garden State are now governed by this new ISDA Master Agreement dated 10/20/2000)\n" +
+                "\n" +
+                "Gas Natural Servicios, S.A. de C.V.\n" +
+                "\n" +
+                "Gaylord Container Corporation \n" +
+                "\n" +
+                "General Mills Operations, Inc.\n" +
+                "\n" +
+                "Gen Re Financial Products Corporation\n" +
+                "\n" +
+                "George E. Warren Corporation\n" +
+                "\n" +
+                "Georgia-Pacific Corporation\n" +
+                "\n" +
+                "Glencore, Ltd.\n" +
+                "\n" +
+                "Global Petroleum Corp.\n" +
+                "\n" +
+                "Gold Kist Inc.\n" +
+                "\n" +
+                "Goldman Sachs Capital Markets, L.P.\n" +
+                "\n" +
+                "Goldman Sachs International  (ECT Investments)\n" +
+                "\n" +
+                "Goodrich Petroleum Corporation\n" +
+                "\n" +
+                "Grupo IMSA, S.A. de C.V.\n" +
+                "\n" +
+                "Grupo Industrial Saltillo, S.A. de C.V.\n" +
+                "\n" +
+                "Grupo Minsa, S.A. de C.V.\n" +
+                "\n" +
+                "Gulf Canada Resources Limited  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Gulf Resources Corporation\n" +
+                "\n" +
+                "H.Q. Energy Services (U.S.) Inc.\n" +
+                "\n" +
+                "HS Resources, Inc.\n" +
+                "\n" +
+                "Hallwood Energy Corporation\n" +
+                "\n" +
+                "Heinz Frozen Food Company  (f\\k\\a Ore-Ida Foods, Inc.)\n" +
+                "\n" +
+                "Hess Energy Trading Company LLC\n" +
+                "\n" +
+                "Holly Sugar Corporation\n" +
+                "\n" +
+                "Home-Stake Oil & Gas Company\n" +
+                "\n" +
+                "Houston Exploration Company (The)\n" +
+                "\n" +
+                "HS Energy Services, Inc.\n" +
+                "\n" +
+                "Humble Petroleum Marketing Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Husky Oil Limited   (Enron Canada Corp.)\n" +
+                "\n" +
+                "IDACORP Energy Solutions, L.P.\n" +
+                "\n" +
+                "Industrias Penoles, S.A. de C.V.\n" +
+                "\n" +
+                "Inland Paperboard and Packaging, Inc.\n" +
+                "\n" +
+                "Inland Production Company\n" +
+                "\n" +
+                "Internationale Nederlanden Bank N.V., New York Branch\n" +
+                "\n" +
+                "Intrepid Oil & Gas LLC\n" +
+                "\n" +
+                "Irving Pulp & Paper, Limited  (now ENA formerly Enron Canada Corp.)\n" +
+                "\n" +
+                "J. Aron & Company\n" +
+                "\n" +
+                "J.M. Huber Corporation\n" +
+                "\n" +
+                "JN Exploration & Production Limited Partnership\n" +
+                "\n" +
+                "Jaguar Fund N.V. (The) - INACTIVE\n" +
+                "\n" +
+                "James Hardie Australia Finance Pty. Limited\n" +
+                "\n" +
+                "Jefferson Smurfit Corporation (U.S.) \n" +
+                "\n" +
+                "Joint Energy Development Investments Limited Partnership\n" +
+                "\n" +
+                "Jolliet Energy Resources Inc. (Enron Canada Corp.)\n" +
+                "\n" +
+                "KCS Energy Marketing Inc.\n" +
+                "\n" +
+                "KLT Inc.\n" +
+                "\n" +
+                "Kellogg Company\n" +
+                "\n" +
+                "Kildair Service Ltee\n" +
+                "\n" +
+                "Kinder Morgan, Inc.\n" +
+                "\n" +
+                "King Ranch Oil and Gas, Inc.\n" +
+                "\n" +
+                "Knauf Fiber Glass GmbH\n" +
+                "\n" +
+                "Knight-Ridder Inc.\n" +
+                "\n" +
+                "Koch Energy Trading, Inc. - INACTIVE\n" +
+                "\n" +
+                "Koch Industries, Inc., acting through its Koch Hydrocarbons Company Division\n" +
+                "\n" +
+                "Kona, Ltd.\n" +
+                "\n" +
+                "LG&E Energy Marketing Inc.\n" +
+                "\n" +
+                "Lehman Brothers Commercial Corporation\n" +
+                "\n" +
+                "Lehman Brothers Finance S.A. (Enron Corp.)  -- approved for equity transactions only -- NO COMMODITY TRANSACTIONS\n" +
+                "\n" +
+                "Lehman Brothers Special Financing Inc.  (approved for weather, interest rate, FX and Currency Option transactions -- NO COMMODITY TRANSACTIONS)\n" +
+                "\n" +
+                "Lillian Vernon Corporation\n" +
+                "\n" +
+                "Lion L.P. - INACTIVE\n" +
+                "\n" +
+                "Louis Dreyfus Corporation\n" +
+                "\n" +
+                "Louis Dreyfus Energy Corp. (Citrus Marketing, Inc.)\n" +
+                "\n" +
+                "Louis Dreyfus Energy Services L.P.\n" +
+                "\n" +
+                "Louis Dreyfus Natural Gas Corp.\n" +
+                "\n" +
+                "Louisiana Land and Exploration Company (The)\n" +
+                "\n" +
+                "Louisiana-Pacific Corporation\n" +
+                "\n" +
+                "Lyco Energy Corporation\n" +
+                "\n" +
+                "MG Natural Gas Corp.\n" +
+                "\n" +
+                "Maclaren Energy Inc.\n" +
+                "\n" +
+                "Macromedia Incorporated\n" +
+                "\n" +
+                "Manti Resources, Inc.\n" +
+                "\n" +
+                "Mariner Energy, Inc.\n" +
+                "\n" +
+                "Markwest Hydrocarbon, Inc. -- SUPERCEDED AND REPLACED - the prior Master Agreement dated October 11, 1996, has been superceded and replaced by an ISDA Master Agreement, dated June 29, 2000.   Therefore, (a) all existing Transactions shall constitute Transactions under this ISDA Master Agreement, and (b) all future Transactions shall be confirmed under this ISDA Master Agreement. \n" +
+                "\n" +
+                "Marsh, Tom F., a natural person (Counterparty can only offer options to ENA; ENA cannot offer options to Counterparty.  No other transactions are permitted.  Only Tom F. Marsh, Joe Coffman (agent and attorney-in-fact) or James C. Crain (agent and attorney-in-fact) are authorized to trade on this account)\n" +
+                "\n" +
+                "Marsh, Tom F., General Trustee of the (i) Tennessee Estelle Marsh Trust, (ii) the Charles Andrew Marsh Trust and (iii) the Charlene Catharine Marsh Trust, collectively doing business (by and through said General Trustee) as the Tom F. Marsh Special Trust (Counterparty can only offer options to ENA; ENA cannot offer options to Counterparty.  No other transactions are permitted)\n" +
+                "\n" +
+                "McMurray Oil Company\n" +
+                "\n" +
+                "Medallion Trading G.P.\n" +
+                "\n" +
+                "Media General, Inc.\n" +
+                "\n" +
+                "MediaNews Group, Inc. (f\\k\\a Affiliated Newspapers Investments, Inc.) \n" +
+                "\n" +
+                "Mellon Bank, N.A.\n" +
+                "\n" +
+                "Mercado Gas Services, Inc.  - TERMINATED (the ISDA Master Agreement dated 3/7/2000 has been terminated) - THIS ENTRY WILL BE DELETED FROM THE NOVEMBER LIST\n" +
+                "\n" +
+                "Merced Irrigation District\n" +
+                "\n" +
+                "Merchant Energy Group of the Americas, Inc.\n" +
+                "\n" +
+                "Meridian Ventures I, L.P.\n" +
+                "\n" +
+                "Merit Energy Partners III, L.P.\n" +
+                "\n" +
+                "Merit Energy Partners VIII, L.P.\n" +
+                "\n" +
+                "Merit Energy Partners IX, L.P.\n" +
+                "\n" +
+                "Merit Energy Partners X, L.P.\n" +
+                "\n" +
+                "Merit Energy Partners A, L.P.\n" +
+                "\n" +
+                "Merit Energy Partners B, L.P.\n" +
+                "\n" +
+                "Merit Partners, L.P.\n" +
+                "\n" +
+                "Merit Energy Partners C-I, L.P.\n" +
+                "\n" +
+                "Merit Energy Partners C-II, L.P.\n" +
+                "\n" +
+                "Merita Bank Plc\n" +
+                "\n" +
+                "Merrill Lynch Capital Services, Inc. (see entry for Allegheny Energy Supply Company, LLC)\n" +
+                "\n" +
+                "Merrill Lynch International Bank\n" +
+                "\n" +
+                "Merrill Lynch International (approved for equity derivatives only--NO COMMODITY TRANSACTIONS)\n" +
+                "\n" +
+                "Mesa Operating Company\n" +
+                "\n" +
+                "Methanex Corp. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Mexichem, S.A. de C.V.\n" +
+                "\n" +
+                "MidAmerican Energy Company\n" +
+                "\n" +
+                "Midcoast Marketing, Inc.  \n" +
+                "\n" +
+                "Middle Bay Oil Company, Inc.\n" +
+                "\n" +
+                "Midland Bank plc\n" +
+                "\n" +
+                "Midland Resources, Inc.\n" +
+                "\n" +
+                "Mieco Inc. \n" +
+                "\n" +
+                "Miles Kimball Company\n" +
+                "\n" +
+                "Minnesota Mining & Manufacturing Company\n" +
+                "\n" +
+                "Mississippi Chemical Corporation\n" +
+                "\n" +
+                "Montello Oil Corporation\n" +
+                "\n" +
+                "Morgan Guaranty Trust Company of New York\n" +
+                "\n" +
+                "Morgan Guaranty Trust Company of New York (ECT Investments)\n" +
+                "\n" +
+                "Morgan Stanley Capital Group, Inc.\n" +
+                "\n" +
+                "Murphy Canada Exploration Company - INACTIVE (as a result of a name change and subsequent amalgamation -- f/k/a Beau Canada Exploration Ltd. (all trades should be done under the Master Agreement with Enron Canada Corp., being No. 308 below))\n" +
+                "\n" +
+                "Murphy Canada Exploration Company (as a result of a name change and subsequent amalgamation -- f/k/a Beau Canada Exploration Ltd.) - (Enron Canada Corp.) \n" +
+                "\n" +
+                "NGTS LLC \n" +
+                "\n" +
+                "NJR Energy Corporation (this Agreement is limited in authority and does not permit unlimited trading or oral trading.  Trades must be in writing and signed by the Treasurer of NJR)\n" +
+                "\n" +
+                "NUI Energy Brokers, Inc.\n" +
+                "\n" +
+                "National Australia Bank Limited  (approved for Interest rate, currency and FX transactions only  -- NO COMMODITY TRANSACTIONS)\n" +
+                "\n" +
+                "National Bank of Canada\n" +
+                "\n" +
+                "National Fuel Marketing Company\n" +
+                "\n" +
+                "National Gypsum Company\n" +
+                "\n" +
+                "National Westminster Bank PLC\n" +
+                "\n" +
+                "Nemak, S.A.\n" +
+                "\n" +
+                "Neumin Production Co.\n" +
+                "\n" +
+                "New Power Company (The)\n" +
+                "\n" +
+                "New York State Electric & Gas Corporation\n" +
+                "\n" +
+                "New York Times Company (The)\n" +
+                "\n" +
+                "Nexan Marketing (as a result of a name change -- f/k/a CXY Energy Marketing)\n" +
+                "\n" +
+                "Noble Gas Marketing, Inc.\n" +
+                "\n" +
+                "Norampac Inc.\n" +
+                "\n" +
+                "Nornew, Inc.\n" +
+                "\n" +
+                "Norse Exploration, Inc.\n" +
+                "\n" +
+                "North Coast Energy Inc.\n" +
+                "\n" +
+                "North Pacific Group Inc.\n" +
+                "\n" +
+                "North Texas Gas Partners, Ltd.\n" +
+                "\n" +
+                "Northeast Energy Associates, a Limited Partnership and North Jersey Energy Associates, a Limited Partnership\n" +
+                "\n" +
+                "Northern Illinois Gas Company d/b/a Nicor Gas Company\n" +
+                "\n" +
+                "Northville Industries Corp.\n" +
+                "\n" +
+                "NOVA Chemicals (Canada) Ltd.\n" +
+                "\n" +
+                "NOVA Chemicals Corporation  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Nuevo Energy Company\n" +
+                "\n" +
+                "OGE Energy Resources, Inc.\n" +
+                "\n" +
+                "Ocean Energy, Inc. (f\\k\\a Flores & Rucks, Inc.)\n" +
+                "\n" +
+                "Ocelot Partners L.P. - INACTIVE\n" +
+                "\n" +
+                "Ocelot (Cayman) Ltd. - INACTIVE\n" +
+                "\n" +
+                "Occidental Energy Marketing, Inc. (successor by assignment from OXY USA Inc. -- the ISDA Master Agreement dated December 1, 1993, and all transactions thereunder were assigned)\n" +
+                "\n" +
+                "Oiltec Resources Ltd. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Olin Corporation\n" +
+                "\n" +
+                "Olympic Steel, Inc.\n" +
+                "\n" +
+                "ONEOK Energy Marketing and Trading Company, L.P. (successor by assignment from ONEOK Energy Marketing and Trading Company II (f/k/a Oneok Gas Marketing Company))\n" +
+                "\n" +
+                "Ospraie Portfolio Ltd. (The)\n" +
+                "\n" +
+                "PCS Nitrogen Fertilizer, L.P.\n" +
+                "\n" +
+                "PG&E Energy Trading, Canada Corporation  (Enron Canada Corp.)\n" +
+                "\n" +
+                "PG&E Energy Trading Corporation\n" +
+                "\n" +
+                "PG&E Energy Trading-Gas Corporation\n" +
+                "\n" +
+                "PG&E Energy Trading - Power, L.P.\n" +
+                "\n" +
+                "P.M.I. Trading, Ltd.\n" +
+                "\n" +
+                "PPG Industries, Inc.\n" +
+                "\n" +
+                "PXRE Corporation  (weather deals only)\n" +
+                "\n" +
+                "Pacific Forest Resources\n" +
+                "\n" +
+                "Palladium Insurance Limited  (weather deals only)\n" +
+                "\n" +
+                "PanCanadian Energy Services Inc.  (FX deals also permitted)\n" +
+                "\n" +
+                "PanCanadian Petroleum Limited (Enron Canada Corp.)\n" +
+                "\n" +
+                "Panther LLC\n" +
+                "\n" +
+                "Papier Masson Ltee. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Par-Pak Ltd.\n" +
+                "\n" +
+                "Peltz Group, Inc.  (The)\n" +
+                "\n" +
+                "Penn West Petroleum\n" +
+                "\n" +
+                "Peoples Energy Corporation\n" +
+                "\n" +
+                "Petro-Canada  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Petrocom Energy Group, Ltd.\n" +
+                "\n" +
+                "Petro-Hunt Corporation\n" +
+                "\n" +
+                "Petro-Hunt, L.L.C.\n" +
+                "\n" +
+                "Petroglyph Energy, Inc. (f\\k\\a Petroglyph Gas Partners, L.P.)\n" +
+                "\n" +
+                "Petrous, L.L.C.\n" +
+                "\n" +
+                "Phibro Inc.\n" +
+                "\n" +
+                "Pickens, T. Boone   (only T. Boone Pickens, Ronald D. Bassett (as agent and attorney-in-fact) and Mike Larson (as agent and attorney-in-fact) are authorized to trade on this account.)\n" +
+                "\n" +
+                "Pilot Corporation\n" +
+                "\n" +
+                "Pinnacle Resources Ltd.  (Enron Canada Corp.)  -- trades may not exceed two (2) years\n" +
+                "\n" +
+                "Pioneer Energy Marketing Company, Inc. \n" +
+                "\n" +
+                "Plains Resources Inc.\n" +
+                "\n" +
+                "Portland General Electric Company\n" +
+                "\n" +
+                "Power Authority of the State of New York\n" +
+                "\n" +
+                "Praxair, Inc.  (natural gas transactions only)\n" +
+                "\n" +
+                "President and Fellows of Harvard College  (all products-commodities, FX & equity deals)\n" +
+                "\n" +
+                "Preston Exploration Company, L.P.   (approved for energy commodities only)\n" +
+                "\n" +
+                "Preussag North America, Inc.\n" +
+                "\n" +
+                "Pride International, Inc.\n" +
+                "\n" +
+                "Prior Energy Corporation -- SUPERCEDED AND REPLACED - the prior Master Agreement dated May 1, 1997, has been superceded and replaced by an ISDA Master Agreement, dated April 10, 2001.   Therefore, (a) all existing Transactions shall constitute Transactions under this ISDA Master Agreement, and (b) all future Transactions shall be confirmed under this ISDA Master Agreement.\n" +
+                "\n" +
+                "Prism Gas Systems, Inc.\n" +
+                "\n" +
+                "Public Service Company of Colorado\n" +
+                "\n" +
+                "PSEG Energy Resources & Trade LLC (pursuant to: (a) Notice of Assignment, and (b) Amendment No.1, Public Service Electric and Gas Company's obligations under an ISDA Master Agreement dated November 29, 1999, were assumed by PSEG Energy Resources & Trade LLC)  \n" +
+                "\n" +
+                "Puma L.P. - INACTIVE\n" +
+                "\n" +
+                "Quaker Oats Company (The)\n" +
+                "\n" +
+                "Qualitech Steel Corporation - INACTIVE\n" +
+                "\n" +
+                "Quark Power LLC\n" +
+                "\n" +
+                "R. Lacy, Inc.\n" +
+                "\n" +
+                "RMS Monte Christo LLC\n" +
+                "\n" +
+                "Rainwater, Richard E.  (only Richard E. Rainwater, Kenneth A. Hersh (as agent and attorney) or James Randall Chappel (as agent and attorney-in-fact) are authorized to trade on this account)\n" +
+                "\n" +
+                "Random House, Inc.\n" +
+                "\n" +
+                "Range Resources Corporation  (f\\k\\a Lomak Petroleum, Inc.)\n" +
+                "\n" +
+                "Reedy Creek Improvement District\n" +
+                "\n" +
+                "Reliant Energy Services, Inc. (f\\k\\a Noram Energy Services, Inc.) \n" +
+                "\n" +
+                "Resource Strategies L.L.C.\n" +
+                "\n" +
+                "Reynolds Metal Company\n" +
+                "\n" +
+                "RIM Offshore, Inc.\n" +
+                "\n" +
+                "Roach, R. Byron (only R. Byron Roach is authorized to transact business on this account)\n" +
+                "\n" +
+                "Rock-Tenn Company\n" +
+                "\n" +
+                "Roman Corporation Limited, by and through its division, Strathcona Paper Company  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Royal Bank of Canada\n" +
+                "\n" +
+                "Royal Bank of Scotland plc (The)\n" +
+                "\n" +
+                "Rumpke Consolidated Companies, Inc.\n" +
+                "\n" +
+                "Sacramento Municipal Utility District\n" +
+                "\n" +
+                "Samedan Oil Corporation\n" +
+                "\n" +
+                "Sanchez Oil & Gas Corporation (f\\k\\a Sanchez-O'Brien Oil & Gas Corporation)\n" +
+                "\n" +
+                "San Diego Gas & Electric (trade limitations in place; call Credit)\n" +
+                "\n" +
+                "Santa Fe Snyder Corporation  (f\\k\\a Snyder Oil Corporation) -- TERMINATED (effective May 5, 1999, the Master Agreement dated August 19, 1994 has been terminated) - THIS ENTRY WILL BE DELETED FROM THE NOVEMBER LIST\n" +
+                "\n" +
+                "Sapient Energy Corp.\n" +
+                "\n" +
+                "Sasferko Products Inc.\n" +
+                "\n" +
+                "SaskEnergy Incorporated  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Seagull Marketing Services, Inc.\n" +
+                "\n" +
+                "Segundo Navarro Drilling, Ltd.\n" +
+                "\n" +
+                "Select Energy, Inc.\n" +
+                "\n" +
+                "Sempra Energy Trading Corp. (covers both financial and physical transactions)\n" +
+                "\n" +
+                "Sempra Energy Trading Services Corp. (f\\k\\a CNG Energy Services Corporation) -- INACTIVE\n" +
+                "\n" +
+                "Seneca Resources Corp.\n" +
+                "\n" +
+                "Sequa Corporation\n" +
+                "\n" +
+                "Shell Chemical Risk Management Company\n" +
+                "\n" +
+                "Shenandoah Energy, Inc.\n" +
+                "\n" +
+                "Skandinaviska Enskilda Banken AB (Publ)\n" +
+                "\n" +
+                "Small Ventures USA, LLC\n" +
+                "\n" +
+                "Smith Barney AAA Energy Fund L.P.\n" +
+                "\n" +
+                "Societe Generale (ENA)\n" +
+                "\n" +
+                "Societe Generale (ECT International)\n" +
+                "\n" +
+                "Sogemin Metals Ltd.\n" +
+                "\n" +
+                "Sonoco Products Company\n" +
+                "\n" +
+                "South Dauphin Partners Ltd.\n" +
+                "\n" +
+                "South Jersey Resources Group LLC\n" +
+                "\n" +
+                "Southern Company Energy Marketing, L.P.\n" +
+                "\n" +
+                "Southern Mineral Corporation\n" +
+                "\n" +
+                "Southern Pacific Transportation Company\n" +
+                "\n" +
+                "Southern Union Company\n" +
+                "\n" +
+                "Southwest Royalties, Inc.\n" +
+                "\n" +
+                "Southwestern Energy Company\n" +
+                "\n" +
+                "Spinnaker Exploration Company, LLC\n" +
+                "\n" +
+                "Star-Kist Foods, Inc.\n" +
+                "\n" +
+                "Startech Energy Inc. (Enron Canada Corp.)\n" +
+                "\n" +
+                "State Street Bank and Trust Company of Connecticut, National Association, not in its individual capacity, but solely as Trustee of the Contractual Asset Securitization Holding Trust VI (ECT International)\n" +
+                "\n" +
+                "Statex Petroleum I, L.P.\n" +
+                "\n" +
+                "Statoil Energy Trading, Inc. (f/k/a Statoil Energy Services, Inc.) -- INACTIVE\n" +
+                "\n" +
+                "Statoil Marketing & Trading (US), Inc.\n" +
+                "\n" +
+                "St. Mary Land & Exploration Company\n" +
+                "\n" +
+                "St. Paul Re (Bermuda) Ltd.    (weather deals only)\n" +
+                "\n" +
+                "Stone Container Corporation \n" +
+                "\n" +
+                "Stonetex Oil Corp.\n" +
+                "\n" +
+                "Stratum Group Energy Capital, L.P.\n" +
+                "\n" +
+                "Stratum Group Energy Partners, L.P.\n" +
+                "\n" +
+                "Stratum Group, L.P.\n" +
+                "\n" +
+                "Sutton Bridge Financing Limited\n" +
+                "\n" +
+                "Sutton Bridge Power\n" +
+                "\n" +
+                "Sweetwater Gas Partners, L.P.\n" +
+                "\n" +
+                "Swiss Re Financial Products Corporation\n" +
+                "\n" +
+                "Talisman Energy, Inc. (Enron Canada Corp.) -- effective October 15, 1999, Highridge Exploration Ltd. was amalgamated with and into Talisman Energy, Inc., the surviving entity\n" +
+                "\n" +
+                "Tauber Oil Company\n" +
+                "\n" +
+                "Tauber Petrochemical Co.\n" +
+                "\n" +
+                "Taylor Energy Company\n" +
+                "\n" +
+                "Tejas Gas Marketing, LLC\n" +
+                "\n" +
+                "Tembec Industries Inc. (f/k/a Tembec Inc. - as a result of an Assignment Agreement all transactions and the Master Agreement between ENA and Tembec Inc. were assigned to Tembec Industries Inc.)   \n" +
+                "\n" +
+                "Tempest Reinsurance Company Limited  (weather deals only)\n" +
+                "\n" +
+                "Temple-Inland Forest Products Corporation\n" +
+                "\n" +
+                "Tenaska Marketing Ventures\n" +
+                "\n" +
+                "Tenaska III Texas Partners\n" +
+                "\n" +
+                "Texaco Inc. (covers commodity transactions only and specifically excludes FX, currency and cross currency rate swaps and currency agreements)\n" +
+                "\n" +
+                "Texla Energy Management, Inc.\n" +
+                "\n" +
+                "Tide West Oil Company\n" +
+                "\n" +
+                "Tidewater Fiber Corp.\n" +
+                "\n" +
+                "Tiger -- INACTIVE\n" +
+                "\n" +
+                "Times Mirror Company (The)\n" +
+                "\n" +
+                "Titan Resources, L.P.\n" +
+                "\n" +
+                "Tokyo-Mitsubishi International plc\n" +
+                "\n" +
+                "Torch Energy Marketing Incorporated\n" +
+                "\n" +
+                "Toronto Dominion Bank, acting through its New York Branch (The)\n" +
+                "\n" +
+                "Total Minatome Corporation\n" +
+                "\n" +
+                "Total Petroleum, Inc.\n" +
+                "\n" +
+                "Tractebel Energy Marketing, Inc.\n" +
+                "\n" +
+                "TransAlta Energy Marketing Corp.  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Transammonia Inc., acting through its division (a) Trammochem, (b) Trammo Gas, or (c) Trammo Gas & Petrochemicals\n" +
+                "\n" +
+                "TransCanada Energy Financial Products Limited  (Enron Canada Corp.)\n" +
+                "\n" +
+                "Transok Gas, LLC   (f\\k\\a Transok Gas Company)\n" +
+                "\n" +
+                "Transonic Companies (The)\n" +
+                "\n" +
+                "Trans-Tec Services, Inc.\n" +
+                "\n" +
+                "Triad Nitrogen, Inc.\n" +
+                "\n" +
+                "Trioco Resources Inc. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Triton Energy Corporation\n" +
+                "\n" +
+                "Triton International Finance Inc.\n" +
+                "\n" +
+                "Trunkline Gas Company\n" +
+                "\n" +
+                "Trussway Holdings, Inc.\n" +
+                "\n" +
+                "Tudor BVI Global Portfolio Ltd. (The)\n" +
+                "\n" +
+                "Tudor Proprietary Trading, LLC\n" +
+                "\n" +
+                "Tucson Electric Power Company\n" +
+                "\n" +
+                "Twister Gas Services L.L.C.\n" +
+                "\n" +
+                "TXU Energy Trading Company  (f\\k\\a Enserch Energy Services, Inc)\n" +
+                "\n" +
+                "UBS AG (f\\k\\a Swiss Bank Corporation, acting through its Chicago Branch)  (ENA)\n" +
+                "\n" +
+                "UBS AG  (ECT Investments) (approved for equity transactions only-NO COMMODITY TRANSACTIONS)\n" +
+                "\n" +
+                "UPM-Kymmene Miramichi Inc. (as a result of a name change f/k/a Repap New Brunswick Inc.)\n" +
+                "\n" +
+                "UPR Energy Services, Inc.  (f\\k\\a Union Pacific Fuels, Inc.)\n" +
+                "\n" +
+                "U.S. Steel Group, a unit of USX Corporation\n" +
+                "\n" +
+                "Union Oil Company of California\n" +
+                "\n" +
+                "Union Pacific Railroad Company\n" +
+                "\n" +
+                "Union Spring Fund Ltd.\n" +
+                "\n" +
+                "Union Spring Fund (USA) L.P.\n" +
+                "\n" +
+                "United Oil & Minerals Limited Partnership (as a result of a name change and entity restructuring f/k/a United Oil & Minerals, Inc.)\n" +
+                "\n" +
+                "United Salt Corporation\n" +
+                "\n" +
+                "United States Gypsum Company\n" +
+                "\n" +
+                "Valero Marketing & Supply Company (f\\k\\a Valero Gas Marketing, L.P.)\n" +
+                "\n" +
+                "Valmora Partners, L.P.\n" +
+                "\n" +
+                "Vanguard Petroleum Corporation -- SUPERCEDED AND REPLACED - the prior Master Energy Price Swap Agreement dated April 1, 1993, has been superceded and replaced by an ISDA Master Agreement, dated June 14, 2001.   Therefore, (a) all existing Transactions shall constitute Transactions under and governed by  this ISDA Master Agreement, and (b) all future Transactions shall be confirmed under this ISDA Master Agreement.\n" +
+                "\n" +
+                "Venoco, Inc.\n" +
+                "\n" +
+                "Vermont Gas Systems Inc. (Enron Canada Corp.)\n" +
+                "\n" +
+                "Vernon E. Faulconer, Inc.\n" +
+                "\n" +
+                "Vessels Hydrocarbons, Inc.\n" +
+                "\n" +
+                "Virginia Power Energy Marketing, Inc.\n" +
+                "\n" +
+                "Vista Energy Resources, Inc.\n" +
+                "\n" +
+                "Vitol Gas & Electric LLC - INACTIVE\n" +
+                "\n" +
+                "Vitol S.A. Inc.\n" +
+                "\n" +
+                "Vitro Corporativo, S.A. de C.V.\n" +
+                "\n" +
+                "Voest-Alpine Intertrading U.S.A., Inc.\n" +
+                "\n" +
+                "Vulcan Materials Company, acting through its division Vulcan Chemicals\n" +
+                "\n" +
+                "WFS Gas Resources Company\n" +
+                "\n" +
+                "WPS Energy Services, Inc.\n" +
+                "\n" +
+                "WTG Gas Marketing, Inc.\n" +
+                "\n" +
+                "Walter Oil & Gas Corporation\n" +
+                "\n" +
+                "Wasatch Energy LLC (f/k/a Wasatch Energy Corporation - as a result of an Assignment Agreement all transactions and the Master Agreement between ENA and Wasatch Energy Corporation were assigned to Wasatch Energy LLC)   \n" +
+                "\n" +
+                "Waste Management, Inc.\n" +
+                "\n" +
+                "Wausau-Mosinee Paper Corporation\n" +
+                "\n" +
+                "Westdeutsche Landesbank Gironzentrale\n" +
+                "\n" +
+                "West Texas Gas, Inc.\n" +
+                "\n" +
+                "Western Gas Resources, Inc.\n" +
+                "\n" +
+                "Western Publishing Co.\n" +
+                "\n" +
+                "Western Resources, Inc.\n" +
+                "\n" +
+                "Westpac Banking Corporation\n" +
+                "\n" +
+                "Westpark Resources, Inc.\n" +
+                "\n" +
+                "Westport Oil and Gas Company, Inc.\n" +
+                "\n" +
+                "Westward Communications, LLC\n" +
+                "\n" +
+                "Weyerhaeuser Company Limited\n" +
+                "\n" +
+                "William Herbert Hunt Trust Estate\n" +
+                "\n" +
+                "Williams Energy Marketing & Trading Company (f\\k\\a Williams Energy Services Company) \n" +
+                "\n" +
+                "Wisconsin Gas Company\n" +
+                "\n" +
+                "Wisconsin Power & Light Company\n" +
+                "\n" +
+                "Wiser Oil Company (The)\n" +
+                "\n" +
+                "Worthington Steel Company (The)\n" +
+                "\n" +
+                "WTG Gas Processing L.P.\n" +
+                "\n" +
+                "Wyman-Gordon Company\n" +
+                "\n" +
+                "Wynn-Crosby 1994, Ltd.\n" +
+                "\n" +
+                "Wynn-Crosby 1995, Ltd.\n" +
+                "\n" +
+                "Wynn-Crosby 1996, Ltd.\n" +
+                "\n" +
+                "Wynn-Crosby 1997, Ltd.\n" +
+                "\n" +
+                "Wynn-Crosby 2000, Ltd.\n" +
+                "\n" +
+                "Xerox Corporation (netting of payments is only permitted for commodity transactions in which paper or pulp is the relevant commodity, unless otherwise agreed by the parties)\n" +
+                "\n" +
+                "XL Trading Partners Ltd. (Element Re Capital Products Inc. is authorized to act as agent for XL Trading Partners Ltd. in negotiating and executing weather transactions)\n" +
+                "\n" +
+                "XPLOR Energy Holding Company\n" +
+                "\n" +
+                "XTO Energy Inc. (as a result of a merger and name change--f/k/a Cross Timbers Oil Company)  \n" +
+                "\n" +
+                "Yuma Companies, Inc. (The)");
+        highlighter = new DocumentHighlighter(client(),
+                DEFAULT_INDEX_NAME,
+                "id",
+                data,
+                "( ( ( phrase_field:(Lay w/3 Enron w/3 Energy) ) ) )");
+        highlights = highlighter.highlight();
+        sortHighlightTokens(highlights);
+
+        assertEquals("[{\"term\":\"energy\",\"startOffset\":9688,\"endOffset\":9694,\"position\":1399,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"enron\",\"startOffset\":9701,\"endOffset\":9706,\"position\":1401,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false},{\"term\":\"lay\",\"startOffset\":9728,\"endOffset\":9731,\"position\":1405,\"positionLength\":0,\"attributes\":null,\"type\":\"<ALPHANUM>\",\"primaryKey\":null,\"fieldName\":\"phrase_field\",\"arrayIndex\":0,\"clause\":\"phrase_field CONTAINS \\\"null\\\"\",\"fragment\":false}]",
+                Utils.objectToJson(highlights));
+
+    }
 }
 
