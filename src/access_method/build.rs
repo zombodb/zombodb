@@ -33,6 +33,9 @@ pub extern "C" fn ambuild(
     }
 
     info!("ntuples={}", state.ntuples);
+    result_mut.heap_tuples = state.ntuples as f64;
+    result_mut.index_tuples = state.ntuples as f64;
+
     result.into_pg()
 }
 
@@ -63,6 +66,7 @@ unsafe extern "C" fn build_callback(
 ) {
     let mut state = BuildState::from_ptr(state);
     let state_mut = state.as_mut().unwrap();
+    let index_ref = index.as_ref().unwrap();
     let values = Array::<pg_sys::Datum>::over(
         values,
         isnull,
@@ -72,7 +76,34 @@ unsafe extern "C" fn build_callback(
     let json_datum =
         direct_function_call::<&str>(pg_sys::row_to_json, vec![values.get(0).unwrap()]);
 
+    // the index should point to a row type, so lets lookup the tuple descriptor for that
+    let tupdesc = pg_sys::lookup_rowtype_tupdesc(
+        index_ref.rd_att.as_ref().unwrap().tdtypeid,
+        index_ref.rd_att.as_ref().unwrap().tdtypmod,
+    );
+
+    row_to_json(values.get(0).unwrap().unwrap(), tupdesc);
     state.ntuples += 1;
 
     info!("build callback: {}", json_datum.unwrap());
+}
+
+fn row_to_json(row: pg_sys::Datum, tupdesc: pg_sys::TupleDesc) {
+    let td =
+        unsafe { pg_sys::pg_detoast_datum(row as *mut pg_sys::varlena) } as pg_sys::HeapTupleHeader;
+    let tuple = pg_sys::HeapTupleData {
+        t_len: unsafe { varsize(td as *mut pg_sys::varlena) } as u32,
+        t_self: pg_sys::ItemPointerData {
+            ip_blkid: pg_sys::BlockIdData { bi_hi: 0, bi_lo: 0 },
+            ip_posid: 0,
+        },
+        t_tableOid: 0,
+        t_data: td,
+    };
+
+    let tupdesc_ref = unsafe { tupdesc.as_ref() }.unwrap();
+    for i in 1..=tupdesc_ref.natts as u32 {
+        let datum = heap_getattr_datum_ex(&tuple, i, tupdesc);
+        info!("#{} of {}: {:?}", i, tupdesc_ref.natts, datum);
+    }
 }

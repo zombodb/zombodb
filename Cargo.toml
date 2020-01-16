@@ -15,6 +15,8 @@ pgx-macros = { path = "../pgx/pgx-macros" }
 pgx-tests = { path = "../pgx/pgx-tests" }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.44"
+serde_cbor = "0.11.1"
+url = "2.1.1"
 
 [profile.dev]
 panic = "unwind"

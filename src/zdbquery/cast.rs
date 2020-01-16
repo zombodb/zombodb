@@ -4,7 +4,7 @@ use serde_json::Value;
 
 #[pg_extern(immutable)]
 fn zdbquery_from_text(input: &str) -> ZDBQuery {
-    ZDBQuery::from_str(input)
+    ZDBQuery::input(input).expect("failed to convert text into a zdbquery")
 }
 
 #[pg_extern(immutable)]

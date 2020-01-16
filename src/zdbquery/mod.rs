@@ -4,11 +4,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 mod cast;
-mod input;
 mod opclass;
 
-extension_sql! {r#"CREATE TYPE pg_catalog.zdbquery;"#}
-#[derive(Debug, Serialize, Deserialize)]
+//extension_sql! {r#"CREATE TYPE pg_catalog.zdbquery;"#}
+#[derive(Debug, Serialize, Deserialize, PostgresType)]
+#[inoutfuncs = "Custom"]
+#[schema = "pg_catalog"]
 pub struct ZDBQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
     want_score: Option<()>,
@@ -26,23 +27,29 @@ pub struct ZDBQuery {
     query_dsl: Option<Value>,
 }
 
-impl FromDatum<ZDBQuery> for ZDBQuery {
-    #[inline]
-    fn from_datum(datum: pg_sys::Datum, is_null: bool, typoid: pg_sys::Oid) -> Option<ZDBQuery> {
-        match str::from_datum(datum, is_null, typoid) {
-            Some(string) => {
-                Some(serde_json::from_str(string).expect("failed to deserialize zdbquery"))
+impl InOutFuncs for ZDBQuery {
+    fn input(input: &str) -> Result<Self, String> {
+        let value: Value = match serde_json::from_str(input) {
+            Ok(value) => value,
+            Err(_) => {
+                // it's not json so assume it's a query_string
+                return Ok(ZDBQuery::new_with_query_string(input));
             }
-            None => None,
-        }
-    }
-}
+        };
 
-impl IntoDatum<ZDBQuery> for ZDBQuery {
-    #[inline]
-    fn into_datum(self) -> Option<pg_sys::Datum> {
-        let string = serde_json::to_string(&self).expect("failed to serialize zdbquery");
-        string.into_datum()
+        match serde_json::from_value::<ZDBQuery>(value.clone()) {
+            Ok(zdbquery) => {
+                if zdbquery.all_none() {
+                    // it parsed as valid json but didn't match any of our
+                    // struct fields, so treat it as if it's query dsl
+                    Ok(ZDBQuery::new_with_query_dsl(value))
+                } else {
+                    // it's a real ZDBQuery
+                    Ok(zdbquery)
+                }
+            }
+            Err(_) => Ok(ZDBQuery::new_with_query_string(input)),
+        }
     }
 }
 
@@ -56,6 +63,18 @@ impl ZDBQuery {
             min_score: None,
             sort_json: None,
             query_dsl: None,
+        }
+    }
+
+    pub fn new_with_query_dsl(query_dsl: Value) -> Self {
+        ZDBQuery {
+            want_score: None,
+            row_estimate: None,
+            limit: None,
+            offset: None,
+            min_score: None,
+            sort_json: None,
+            query_dsl: Some(query_dsl),
         }
     }
 
@@ -77,36 +96,6 @@ impl ZDBQuery {
             sort_json: None,
             query_dsl: Some(query_json),
         }
-    }
-
-    pub fn from_cstr(cstr: &std::ffi::CStr) -> Self {
-        ZDBQuery::from_str(cstr.to_str().unwrap())
-    }
-
-    pub fn from_str(string: &str) -> Self {
-        let value: Value = match serde_json::from_str(string) {
-            Ok(value) => value,
-            Err(_) => {
-                // it's not json so assume it's a query_string
-                return ZDBQuery::new_with_query_string(string);
-            }
-        };
-
-        return match serde_json::from_value::<ZDBQuery>(value.clone()) {
-            Ok(mut zdbquery) => {
-                if zdbquery.all_none() {
-                    zdbquery.query_dsl = Some(value);
-                }
-
-                zdbquery
-            }
-            Err(_) => ZDBQuery::new_with_query_string(string),
-        };
-    }
-
-    pub fn into_cstr(self) -> &'static std::ffi::CStr {
-        let sb = StringInfo::from(serde_json::to_string(&self).unwrap());
-        sb.into()
     }
 
     pub fn all_none(&self) -> bool {
@@ -180,5 +169,54 @@ impl ZDBQuery {
     pub fn set_query_dsl(&mut self, query_dsl: Option<Value>) -> &mut Self {
         self.query_dsl = query_dsl;
         self
+    }
+}
+
+mod tests {
+    use crate::zdbquery::*;
+    use pgx::*;
+    use serde_json::json;
+
+    #[test]
+    fn make_idea_happy() {}
+
+    #[pg_test]
+    fn test_zdbquery_in_with_query_string() {
+        let zdbquery = zdbquery_in(std::ffi::CString::new("this is a test").unwrap().as_c_str());
+        let json = serde_json::to_value(&zdbquery).unwrap();
+
+        assert_eq!(
+            json,
+            json!( {"query_dsl":{"query_string":{"query":"this is a test"}}} )
+        );
+    }
+
+    #[pg_test]
+    fn test_zdbquery_in_with_query_dsl() {
+        let zdbquery = zdbquery_in(
+            std::ffi::CString::new(r#" {"match_all":{}} "#)
+                .unwrap()
+                .as_c_str(),
+        );
+        let json = serde_json::to_value(&zdbquery).unwrap();
+
+        assert_eq!(json, json!( {"query_dsl":{"match_all":{}}} ));
+    }
+
+    #[pg_test]
+    fn test_zdbquery_in_with_full_query() {
+        let zdbquery = zdbquery_in(
+            std::ffi::CString::new(
+                r#" {"query_dsl":{"query_string":{"query":"this is a test"}}} "#,
+            )
+                .unwrap()
+                .as_c_str(),
+        );
+        let json = serde_json::to_value(&zdbquery).unwrap();
+
+        assert_eq!(
+            json,
+            json!( {"query_dsl":{"query_string":{"query":"this is a test"}}} )
+        );
     }
 }

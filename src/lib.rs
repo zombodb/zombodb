@@ -1,6 +1,7 @@
 use pgx::*;
 
 mod access_method;
+mod elasticsearch;
 mod zdbquery;
 
 pg_module_magic!();
