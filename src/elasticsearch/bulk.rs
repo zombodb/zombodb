@@ -18,7 +18,7 @@ struct BulkReceiver {
 impl std::io::Read for BulkReceiver {
     fn read(&mut self, mut buf: &mut [u8]) -> Result<usize, Error> {
         let mut total = 0;
-        let mut
+
         eprintln!("enter");
         for command in self.receiver.iter() {
             eprintln!("got command");
