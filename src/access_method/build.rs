@@ -1,14 +1,12 @@
+use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
+use crate::utils::convert_xid;
 use pgx::*;
+use serde_json::Value;
 use std::ops::DerefMut;
 
 struct BuildState {
     ntuples: usize,
-}
-
-impl BuildState {
-    fn from_ptr(ptr: *mut std::os::raw::c_void) -> PgBox<BuildState> {
-        PgBox::<BuildState>::from_pg(ptr as *mut BuildState)
-    }
+    bulk: ElasticsearchBulkRequest,
 }
 
 #[pg_guard]
@@ -20,7 +18,10 @@ pub extern "C" fn ambuild(
     let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
     let result_mut = result.deref_mut();
 
-    let mut state = BuildState { ntuples: 0 };
+    let mut state = BuildState {
+        ntuples: 0,
+        bulk: Elasticsearch::new("http://localhost:9200/", "test_index").start_bulk(),
+    };
 
     unsafe {
         pg_sys::IndexBuildHeapScan(
@@ -30,6 +31,12 @@ pub extern "C" fn ambuild(
             Some(build_callback),
             &mut state,
         );
+    }
+
+    info!("Waiting to finish");
+    match state.bulk.wait_for_completion() {
+        Ok(cnt) => info!("indexed {} tuples", cnt),
+        Err(e) => panic!("{:?}", e),
     }
 
     info!("ntuples={}", state.ntuples);
@@ -64,28 +71,46 @@ unsafe extern "C" fn build_callback(
     tuple_is_alive: bool,
     state: *mut std::os::raw::c_void,
 ) {
-    let mut state = BuildState::from_ptr(state);
-    let state_mut = state.as_mut().unwrap();
-    let index_ref = index.as_ref().unwrap();
-    let values = Array::<pg_sys::Datum>::over(
-        values,
-        isnull,
-        index.as_ref().unwrap().rd_att.as_ref().unwrap().natts as usize,
-    );
+    let htup_header = htup.as_ref().expect("received null HeapTuple").t_data;
+    let mut state = PgBox::from_pg(state as *mut BuildState);
+    let state_mut = state.deref_mut();
+    //    let index_ref = index.as_ref().unwrap();
+    //    let values = Array::<pg_sys::Datum>::over(
+    //        values,
+    //        isnull,
+    //        index.as_ref().unwrap().rd_att.as_ref().unwrap().natts as usize,
+    //    );
 
-    let json_datum =
-        direct_function_call::<&str>(pg_sys::row_to_json, vec![values.get(0).unwrap()]);
+    //    let json_datum =
+    //        direct_function_call::<&str>(pg_sys::row_to_json, vec![values.get(0).unwrap()]);
 
-    // the index should point to a row type, so lets lookup the tuple descriptor for that
-    let tupdesc = pg_sys::lookup_rowtype_tupdesc(
-        index_ref.rd_att.as_ref().unwrap().tdtypeid,
-        index_ref.rd_att.as_ref().unwrap().tdtypmod,
-    );
+    let cmin = 0; // pg_sys::HeapTupleHeaderGetRawCommandId(htup_header).expect("unable to get tuple raw command id");
+    let cmax = cmin;
+    let xmin =
+        convert_xid(pg_sys::HeapTupleHeaderGetXmin(htup_header).expect("unable to get tuple xmin"));
+    let xmax = pg_sys::InvalidTransactionId as u64;
 
-    row_to_json(values.get(0).unwrap().unwrap(), tupdesc);
+    state
+        .bulk
+        .insert(
+            htup.as_ref().expect("got null HeapTuple").t_self.clone(),
+            cmin,
+            cmax,
+            xmin,
+            xmax,
+            Value::Null,
+        )
+        .expect("failed to insert");
+    //    // the index should point to a row type, so lets lookup the tuple descriptor for that
+    //    let tupdesc = pg_sys::lookup_rowtype_tupdesc(
+    //        index_ref.rd_att.as_ref().unwrap().tdtypeid,
+    //        index_ref.rd_att.as_ref().unwrap().tdtypmod,
+    //    );
+    //
+    //    row_to_json(values.get(0).unwrap().unwrap(), tupdesc);
     state.ntuples += 1;
 
-    info!("build callback: {}", json_datum.unwrap());
+    //    info!("build callback: {}", json_datum.unwrap());
 }
 
 fn row_to_json(row: pg_sys::Datum, tupdesc: pg_sys::TupleDesc) {

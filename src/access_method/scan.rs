@@ -1,5 +1,4 @@
 use pgx::*;
-use std::ops::DerefMut;
 
 #[pg_guard]
 pub extern "C" fn ambeginscan(

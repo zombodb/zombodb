@@ -1,10 +1,22 @@
 use pgx::*;
 
 mod access_method;
+mod custom_scan;
 mod elasticsearch;
+mod utils;
 mod zdbquery;
 
 pg_module_magic!();
+
+#[allow(non_snake_case)]
+#[pg_guard]
+pub unsafe extern "C" fn _PG_init() {
+    custom_scan::init();
+}
+
+#[allow(non_snake_case)]
+#[pg_guard]
+pub extern "C" fn _PG_fini() {}
 
 #[pg_extern]
 fn version() -> &'static str {
