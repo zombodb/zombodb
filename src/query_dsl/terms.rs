@@ -11,7 +11,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn terms_str(field: &str, values: variadic!(Array<&str>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -19,7 +19,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn terms_bool(field: &str, values: variadic!(Array<bool>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -27,7 +27,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn terms_i16(field: &str, values: variadic!(Array<i16>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -35,7 +35,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn terms_i32(field: &str, values: variadic!(Array<i32>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -43,7 +43,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn terms_i64(field: &str, values: variadic!(Array<i64>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -51,7 +51,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn terms_f32(field: &str, values: variadic!(Array<f32>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -59,7 +59,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn terms_f64(field: &str, values: variadic!(Array<f64>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }

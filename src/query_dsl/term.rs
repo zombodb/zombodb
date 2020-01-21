@@ -12,7 +12,7 @@ mod dsl {
     /// ```funcname
     /// term
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn term_str(field: &str, value: &str, boost: default!(f32, 1.0)) -> ZDBQuery {
         make_term_dsl(field, value, boost)
     }
@@ -20,7 +20,7 @@ mod dsl {
     /// ```funcname
     /// term
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn term_bool(field: &str, value: bool, boost: default!(f32, 1.0)) -> ZDBQuery {
         make_term_dsl(field, value, boost)
     }
@@ -28,7 +28,7 @@ mod dsl {
     /// ```funcname
     /// term
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn term_i16(field: &str, value: i16, boost: default!(f32, 1.0)) -> ZDBQuery {
         make_term_dsl(field, value, boost)
     }
@@ -36,7 +36,7 @@ mod dsl {
     /// ```funcname
     /// term
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn term_i32(field: &str, value: i32, boost: default!(f32, 1.0)) -> ZDBQuery {
         make_term_dsl(field, value, boost)
     }
@@ -44,7 +44,7 @@ mod dsl {
     /// ```funcname
     /// term
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn term_i64(field: &str, value: i64, boost: default!(f32, 1.0)) -> ZDBQuery {
         make_term_dsl(field, value, boost)
     }
@@ -52,7 +52,7 @@ mod dsl {
     /// ```funcname
     /// term
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn term_f32(field: &str, value: f32, boost: default!(f32, 1.0)) -> ZDBQuery {
         make_term_dsl(field, value, boost)
     }
@@ -60,7 +60,7 @@ mod dsl {
     /// ```funcname
     /// term
     /// ```
-    #[pg_extern(immutable)]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn term_f64(field: &str, value: f64, boost: default!(f32, 1.0)) -> ZDBQuery {
         make_term_dsl(field, value, boost)
     }
