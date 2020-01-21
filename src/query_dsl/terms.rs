@@ -11,7 +11,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern]
+    #[pg_extern(immutable)]
     pub(super) fn terms_str(field: &str, values: variadic!(Array<&str>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -19,7 +19,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern]
+    #[pg_extern(immutable)]
     pub(super) fn terms_bool(field: &str, values: variadic!(Array<bool>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -27,7 +27,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern]
+    #[pg_extern(immutable)]
     pub(super) fn terms_i16(field: &str, values: variadic!(Array<i16>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -35,7 +35,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern]
+    #[pg_extern(immutable)]
     pub(super) fn terms_i32(field: &str, values: variadic!(Array<i32>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -43,7 +43,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern]
+    #[pg_extern(immutable)]
     pub(super) fn terms_i64(field: &str, values: variadic!(Array<i64>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -51,7 +51,7 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern]
+    #[pg_extern(immutable)]
     pub(super) fn terms_f32(field: &str, values: variadic!(Array<f32>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -59,11 +59,12 @@ mod dsl {
     /// ```funcname
     /// terms
     /// ```
-    #[pg_extern]
+    #[pg_extern(immutable)]
     pub(super) fn terms_f64(field: &str, values: variadic!(Array<f64>)) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
+    #[inline]
     fn make_terms_dsl<T: serde::Serialize + FromDatum<T>>(
         field: &str,
         values: Array<T>,
@@ -138,7 +139,6 @@ mod tests {
         let min = std::i16::MIN;
         let zero = 0_i16;
         let max = std::i16::MAX;
-        let type_oid = PgOid::CommonBuiltIn(CommonBuiltInOids::INT2OID);
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname','{}'::smallint, {}, {});",
@@ -166,7 +166,6 @@ mod tests {
         let min = std::i32::MIN;
         let zero = 0_i32;
         let max = std::i32::MAX;
-        let type_oid = PgOid::CommonBuiltIn(CommonBuiltInOids::INT2OID);
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname', '{}'::integer, {}, {});",
@@ -194,7 +193,6 @@ mod tests {
         let min = std::i64::MIN;
         let zero = 0_i64;
         let max = std::i64::MAX;
-        let type_oid = PgOid::CommonBuiltIn(CommonBuiltInOids::INT2OID);
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname', '{}'::bigint, {}, {});",
@@ -224,7 +222,6 @@ mod tests {
         let zero = 0_f32;
         let max = std::f32::MAX;
         let inf = std::f32::INFINITY;
-        let type_oid = PgOid::CommonBuiltIn(CommonBuiltInOids::INT2OID);
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname', '{}'::real, {}, {}, {},'{}');",
@@ -254,7 +251,6 @@ mod tests {
         let zero = 0_f64;
         let max = std::f64::MAX;
         let inf = std::f64::INFINITY;
-        let type_oid = PgOid::CommonBuiltIn(CommonBuiltInOids::INT2OID);
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname', '{}'::double precision, {}, {},{},'{}');",
