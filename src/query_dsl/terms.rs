@@ -1,5 +1,6 @@
 //! This Module is to ...
 //! https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html
+//!
 //! Returns documents that contain one or more exact terms in a provided field
 
 mod dsl {

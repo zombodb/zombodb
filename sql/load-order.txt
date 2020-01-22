@@ -6,3 +6,5 @@ zdbquery_opclass.generated.sql
 query_dsl_term.generated.sql
 query_dsl_terms.generated.sql
 query_dsl_wildcard.generated.sql
+query_dsl_matchall.generated.sql
+query_dsl_matchnone.generated.sql

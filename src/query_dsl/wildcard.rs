@@ -2,6 +2,7 @@
 //! https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-wildcard-query.html
 //!
 //!Returns documents that contain terms matching a wildcard pattern.
+
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -39,7 +40,7 @@ mod tests {
     fn make_idea_happy() {}
 
     #[pg_test]
-    fn test_wildcard_str_with_boost() {
+    fn test_wildcard_with_boost() {
         let zdbquery = wildcard("fieldname", "t*t", 42.0);
         let dls = zdbquery.query_dsl();
 
@@ -55,7 +56,7 @@ mod tests {
     }
 
     #[pg_test]
-    fn test_wildcard_str_with_default() {
+    fn test_wildcard_with_default() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.wildcard('fieldname', 't*t');")
             .expect("didn't get SPI return value");
         let dls = zdbquery.query_dsl();
