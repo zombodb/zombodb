@@ -12,7 +12,7 @@ mod dsl {
     /// terms
     /// ```
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn terms_str(field: &str, values: variadic!(Array<&str>)) -> ZDBQuery {
+    pub(super) fn terms_str(field: &str, values: VariadicArray<&str>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
@@ -20,7 +20,7 @@ mod dsl {
     /// terms
     /// ```
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn terms_bool(field: &str, values: variadic!(Array<bool>)) -> ZDBQuery {
+    pub(super) fn terms_bool(field: &str, values: VariadicArray<bool>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
@@ -28,7 +28,7 @@ mod dsl {
     /// terms
     /// ```
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn terms_i16(field: &str, values: variadic!(Array<i16>)) -> ZDBQuery {
+    pub(super) fn terms_i16(field: &str, values: VariadicArray<i16>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
@@ -36,7 +36,7 @@ mod dsl {
     /// terms
     /// ```
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn terms_i32(field: &str, values: variadic!(Array<i32>)) -> ZDBQuery {
+    pub(super) fn terms_i32(field: &str, values: VariadicArray<i32>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
@@ -44,7 +44,7 @@ mod dsl {
     /// terms
     /// ```
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn terms_i64(field: &str, values: variadic!(Array<i64>)) -> ZDBQuery {
+    pub(super) fn terms_i64(field: &str, values: VariadicArray<i64>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
@@ -52,7 +52,7 @@ mod dsl {
     /// terms
     /// ```
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn terms_f32(field: &str, values: variadic!(Array<f32>)) -> ZDBQuery {
+    pub(super) fn terms_f32(field: &str, values: VariadicArray<f32>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
@@ -60,7 +60,7 @@ mod dsl {
     /// terms
     /// ```
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn terms_f64(field: &str, values: variadic!(Array<f64>)) -> ZDBQuery {
+    pub(super) fn terms_f64(field: &str, values: VariadicArray<f64>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
