@@ -10,11 +10,6 @@ mod dsl {
 
     #[pg_extern(immutable, parallel_safe)]
     pub(super) fn matchall(boost: default!(f32, 1.0)) -> ZDBQuery {
-        make_matchall_dsl(boost)
-    }
-
-    #[inline]
-    fn make_matchall_dsl(boost: f32) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
              {
                   "match_all": { "boost" : boost }

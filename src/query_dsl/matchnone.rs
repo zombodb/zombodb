@@ -10,11 +10,6 @@ mod dsl {
 
     #[pg_extern(immutable, parallel_safe)]
     pub(super) fn matchnone() -> ZDBQuery {
-        make_matchnone_dsl()
-    }
-
-    #[inline]
-    fn make_matchnone_dsl() -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
              {
                "match_none": { }

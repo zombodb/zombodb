@@ -11,11 +11,6 @@ mod dsl {
 
     #[pg_extern(immutable, parallel_safe)]
     pub(super) fn wildcard(field: &str, value: &str, boost: default!(f32, 1.0)) -> ZDBQuery {
-        make_wildcard_dsl(field, value, boost)
-    }
-
-    #[inline]
-    fn make_wildcard_dsl(field: &str, value: &str, boost: f32) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "wildcard": {

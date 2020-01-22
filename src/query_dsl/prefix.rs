@@ -11,11 +11,6 @@ mod dsl {
 
     #[pg_extern(immutable, parallel_safe)]
     pub(super) fn prefix(field: &str, value: &str) -> ZDBQuery {
-        make_prefix_dsl(field, value)
-    }
-
-    #[inline]
-    fn make_prefix_dsl(field: &str, value: &str) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "prefix": {

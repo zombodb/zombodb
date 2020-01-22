@@ -9,3 +9,4 @@ query_dsl_wildcard.generated.sql
 query_dsl_matchall.generated.sql
 query_dsl_matchnone.generated.sql
 query_dsl_prefix.generated.sql
+query_dsl_termsarray.generated.sql
