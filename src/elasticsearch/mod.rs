@@ -1,11 +1,13 @@
 use pgx::*;
+use serde::*;
 use serde_json::Value;
 
 mod bulk;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub enum BulkRequestCommand {
     Insert {
+        #[serde(skip_serializing)]
         ctid: pg_sys::ItemPointerData,
         cmin: pg_sys::CommandId,
         cmax: pg_sys::CommandId,
@@ -14,16 +16,19 @@ pub enum BulkRequestCommand {
         doc: Value,
     },
     Update {
+        #[serde(skip_serializing)]
         ctid: pg_sys::ItemPointerData,
         cmax: pg_sys::CommandId,
         xmax: u64,
         doc: Value,
     },
     DeleteByXmin {
+        #[serde(skip_serializing)]
         ctid: pg_sys::ItemPointerData,
         xmin: u64,
     },
     DeleteByXmax {
+        #[serde(skip_serializing)]
         ctid: pg_sys::ItemPointerData,
         xmax: u64,
     },

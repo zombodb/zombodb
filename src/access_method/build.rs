@@ -74,17 +74,19 @@ unsafe extern "C" fn build_callback(
     let htup_header = htup.as_ref().expect("received null HeapTuple").t_data;
     let mut state = PgBox::from_pg(state as *mut BuildState);
     let state_mut = state.deref_mut();
-    //    let index_ref = index.as_ref().unwrap();
-    //    let values = Array::<pg_sys::Datum>::over(
-    //        values,
-    //        isnull,
-    //        index.as_ref().unwrap().rd_att.as_ref().unwrap().natts as usize,
-    //    );
+    let index_ref = index.as_ref().unwrap();
+    let values = Array::<pg_sys::Datum>::over(
+        values,
+        isnull,
+        index_ref.rd_att.as_ref().unwrap().natts as usize,
+    );
 
-    //    let json_datum =
-    //        direct_function_call::<&str>(pg_sys::row_to_json, vec![values.get(0).unwrap()]);
+    let json_datum =
+        direct_function_call::<&str>(pg_sys::row_to_json, vec![values.get(0).unwrap()])
+            .expect("couldn't get json datum");
 
-    let cmin = 0; // pg_sys::HeapTupleHeaderGetRawCommandId(htup_header).expect("unable to get tuple raw command id");
+    let cmin = pg_sys::HeapTupleHeaderGetRawCommandId(htup_header)
+        .expect("unable to get tuple raw command id");
     let cmax = cmin;
     let xmin =
         convert_xid(pg_sys::HeapTupleHeaderGetXmin(htup_header).expect("unable to get tuple xmin"));
@@ -98,7 +100,7 @@ unsafe extern "C" fn build_callback(
             cmax,
             xmin,
             xmax,
-            Value::Null,
+            serde_json::from_str(json_datum).expect("couldn't parse json datum"),
         )
         .expect("failed to insert");
     //    // the index should point to a row type, so lets lookup the tuple descriptor for that
