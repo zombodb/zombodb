@@ -7,6 +7,8 @@ mod query_dsl;
 mod utils;
 mod zdbquery;
 
+pg_module_magic!();
+
 #[allow(non_snake_case)]
 #[pg_guard]
 pub unsafe extern "C" fn _PG_init() {
