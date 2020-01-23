@@ -180,6 +180,7 @@ impl ZDBQuery {
     }
 }
 
+#[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::zdbquery::*;
     use pgx::*;

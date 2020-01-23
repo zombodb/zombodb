@@ -26,10 +26,10 @@ mod dsl {
     }
 }
 
+#[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
-    use pgx_tests::*;
     use serde_json::json;
 
     #[test]
