@@ -14,26 +14,26 @@ pub extern "C" fn ambeginscan(
 
 #[pg_guard]
 pub extern "C" fn amrescan(
-    scan: pg_sys::IndexScanDesc,
-    keys: pg_sys::ScanKey,
-    nkeys: ::std::os::raw::c_int,
-    orderbys: pg_sys::ScanKey,
-    norderbys: ::std::os::raw::c_int,
+    _scan: pg_sys::IndexScanDesc,
+    _keys: pg_sys::ScanKey,
+    _nkeys: ::std::os::raw::c_int,
+    _orderbys: pg_sys::ScanKey,
+    _norderbys: ::std::os::raw::c_int,
 ) {
 }
 
 #[pg_guard]
 pub extern "C" fn amgettuple(
-    scan: pg_sys::IndexScanDesc,
-    direction: pg_sys::ScanDirection,
+    _scan: pg_sys::IndexScanDesc,
+    _direction: pg_sys::ScanDirection,
 ) -> bool {
     false
 }
 
 #[pg_guard]
-pub extern "C" fn amgetbitmap(scan: pg_sys::IndexScanDesc, tbm: *mut pg_sys::TIDBitmap) -> i64 {
+pub extern "C" fn amgetbitmap(_scan: pg_sys::IndexScanDesc, _tbm: *mut pg_sys::TIDBitmap) -> i64 {
     0
 }
 
 #[pg_guard]
-pub extern "C" fn amendscan(scan: pg_sys::IndexScanDesc) {}
+pub extern "C" fn amendscan(_scan: pg_sys::IndexScanDesc) {}

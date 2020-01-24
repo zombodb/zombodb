@@ -1,9 +1,8 @@
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
-use std::any::Any;
 
 #[pg_extern(immutable)]
-fn anyelement_cmpfunc(element: AnyElement, query: ZDBQuery) -> bool {
+fn anyelement_cmpfunc(_element: AnyElement, _query: ZDBQuery) -> bool {
     ereport(
         PgLogLevel::ERROR,
         PgSqlErrorCode::ERRCODE_INTERNAL_ERROR,
@@ -17,10 +16,10 @@ fn anyelement_cmpfunc(element: AnyElement, query: ZDBQuery) -> bool {
 
 #[pg_extern(immutable)]
 fn restrict(
-    root: Internal<pg_sys::PlannerInfo>,
-    operator_oid: pg_sys::Oid,
-    args: Internal<pg_sys::List>,
-    var_relid: i32,
+    _root: Internal<pg_sys::PlannerInfo>,
+    _operator_oid: pg_sys::Oid,
+    _args: Internal<pg_sys::List>,
+    _var_relid: i32,
 ) -> f64 {
     info!("in restrict");
     0f64

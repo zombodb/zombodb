@@ -1,7 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::utils::convert_xid;
 use pgx::*;
-use serde_json::Value;
 use std::ops::DerefMut;
 
 struct BuildState {
@@ -47,17 +46,17 @@ pub extern "C" fn ambuild(
 }
 
 #[pg_guard]
-pub extern "C" fn ambuildempty(index_relation: pg_sys::Relation) {}
+pub extern "C" fn ambuildempty(_index_relation: pg_sys::Relation) {}
 
 #[pg_guard]
 pub extern "C" fn aminsert(
-    index_relation: pg_sys::Relation,
-    values: *mut pg_sys::Datum,
-    isnull: *mut bool,
-    heap_tid: pg_sys::ItemPointer,
-    heap_relation: pg_sys::Relation,
-    check_unique: pg_sys::IndexUniqueCheck,
-    index_info: *mut pg_sys::IndexInfo,
+    _index_relation: pg_sys::Relation,
+    _values: *mut pg_sys::Datum,
+    _isnull: *mut bool,
+    _heap_tid: pg_sys::ItemPointer,
+    _heap_relation: pg_sys::Relation,
+    _check_unique: pg_sys::IndexUniqueCheck,
+    _index_info: *mut pg_sys::IndexInfo,
 ) -> bool {
     info!("aminsert");
     false
@@ -68,12 +67,11 @@ unsafe extern "C" fn build_callback(
     htup: pg_sys::HeapTuple,
     values: *mut pg_sys::Datum,
     isnull: *mut bool,
-    tuple_is_alive: bool,
+    _tuple_is_alive: bool,
     state: *mut std::os::raw::c_void,
 ) {
     let htup_header = htup.as_ref().expect("received null HeapTuple").t_data;
     let mut state = PgBox::from_pg(state as *mut BuildState);
-    let state_mut = state.deref_mut();
     let index_ref = index.as_ref().unwrap();
     let values = Array::<pg_sys::Datum>::over(
         values,
@@ -113,24 +111,4 @@ unsafe extern "C" fn build_callback(
     state.ntuples += 1;
 
     //    info!("build callback: {}", json_datum.unwrap());
-}
-
-fn row_to_json(row: pg_sys::Datum, tupdesc: pg_sys::TupleDesc) {
-    let td =
-        unsafe { pg_sys::pg_detoast_datum(row as *mut pg_sys::varlena) } as pg_sys::HeapTupleHeader;
-    let tuple = pg_sys::HeapTupleData {
-        t_len: unsafe { varsize(td as *mut pg_sys::varlena) } as u32,
-        t_self: pg_sys::ItemPointerData {
-            ip_blkid: pg_sys::BlockIdData { bi_hi: 0, bi_lo: 0 },
-            ip_posid: 0,
-        },
-        t_tableOid: 0,
-        t_data: td,
-    };
-
-    let tupdesc_ref = unsafe { tupdesc.as_ref() }.unwrap();
-    for i in 1..=tupdesc_ref.natts as u32 {
-        let datum = heap_getattr_datum_ex(&tuple, i, tupdesc);
-        info!("#{} of {}: {:?}", i, tupdesc_ref.natts, datum);
-    }
 }

@@ -21,7 +21,6 @@ mod dsl {
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::query_dsl::matchnone::dsl::*;
-    use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::json;
 

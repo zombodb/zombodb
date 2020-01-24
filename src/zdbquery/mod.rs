@@ -1,12 +1,9 @@
-use pgx::stringinfo::StringInfo;
 use pgx::*;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 mod cast;
 mod opclass;
 
-use pg_catalog::*;
 pub use pg_catalog::*;
 
 mod pg_catalog {
@@ -60,19 +57,8 @@ impl InOutFuncs for ZDBQuery {
     }
 }
 
+#[allow(dead_code)]
 impl ZDBQuery {
-    pub fn new() -> Self {
-        ZDBQuery {
-            want_score: None,
-            row_estimate: None,
-            limit: None,
-            offset: None,
-            min_score: None,
-            sort_json: None,
-            query_dsl: None,
-        }
-    }
-
     pub fn new_with_query_dsl(query_dsl: Value) -> Self {
         ZDBQuery {
             want_score: None,

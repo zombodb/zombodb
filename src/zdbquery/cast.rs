@@ -1,6 +1,5 @@
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
-use serde_json::Value;
 
 #[pg_extern(immutable)]
 fn zdbquery_from_text(input: &str) -> ZDBQuery {

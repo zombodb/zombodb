@@ -7,7 +7,6 @@ mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::*;
-    use std::iter::FromIterator;
 
     /// ```funcname
     /// term

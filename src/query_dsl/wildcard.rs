@@ -7,7 +7,6 @@ mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::*;
-    use std::iter::FromIterator;
 
     #[pg_extern(immutable, parallel_safe)]
     pub(super) fn wildcard(field: &str, value: &str, boost: default!(f32, 1.0)) -> ZDBQuery {

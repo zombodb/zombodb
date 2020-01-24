@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use pgx::*;
 use serde::*;
 use serde_json::Value;
@@ -79,7 +80,7 @@ impl ElasticsearchBulkRequest {
         }
     }
 
-    pub fn wait_for_completion(mut self) -> Result<usize, BulkRequestError> {
+    pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
         // drop the sender side of the channel since we're done
         // this will signal the receivers that once their queues are empty
         // there's nothing left for them to do

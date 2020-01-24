@@ -1,8 +1,6 @@
 use crate::elasticsearch::{BulkRequestCommand, BulkRequestError, Elasticsearch};
 use pgx::*;
-use reqwest::Client;
 use serde_json::json;
-use std::io::Read;
 use std::io::{Error, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -33,10 +31,10 @@ impl std::io::Read for BulkReceiver {
                 match command {
                     BulkRequestCommand::Insert {
                         ctid,
-                        cmin,
-                        cmax,
-                        xmin,
-                        xmax,
+                        cmin: _,
+                        cmax: _,
+                        xmin: _,
+                        xmax: _,
                         doc,
                     } => {
                         serde_json::to_writer(
@@ -85,7 +83,7 @@ impl Handler {
         elasticsearch: Elasticsearch,
         concurrency: usize,
         bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand>,
-        error_sender: crossbeam::channel::Sender<BulkRequestError>,
+        _error_sender: crossbeam::channel::Sender<BulkRequestError>,
     ) -> Self {
         let mut threads = Vec::new();
         for i in 0..concurrency {
@@ -99,7 +97,7 @@ impl Handler {
                     let docs_out = Arc::new(AtomicUsize::new(0));
 
                     let rx = rx.clone();
-                    let mut reader = BulkReceiver {
+                    let reader = BulkReceiver {
                         receiver: rx.clone(),
                         bytes_out: 0,
                         docs_out: docs_out.clone(),
@@ -119,7 +117,7 @@ impl Handler {
 
                     eprintln!("thread#{}: docs_out={}", i, docs_out);
                     match response {
-                        Ok(mut response) => {
+                        Ok(mut _response) => {
                             // TODO:  parse the response into json and inspect for errors
                             //                        let mut resp_string = String::new();
                             //                        response.read_to_string(&mut resp_string);
@@ -144,16 +142,15 @@ impl Handler {
         Handler { threads }
     }
 
-    pub(crate) fn wait_for_completion(mut self) -> Result<usize, BulkRequestError> {
+    pub(crate) fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
         let mut cnt = 0;
-        let mut error = BulkRequestError::NoError;
 
         for jh in self.threads {
             match jh.join() {
                 Ok(many) => {
                     cnt += many;
                 }
-                Err(e) => panic!("Got an error joining on a thread"),
+                Err(_) => panic!("Got an error joining on a thread"),
             }
         }
 
