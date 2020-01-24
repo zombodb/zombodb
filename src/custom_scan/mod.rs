@@ -98,7 +98,7 @@ unsafe extern "C" fn pathlist_hook(
 
         info!(
             "ri={}",
-            node_to_string(ri.to_pg() as *mut pg_sys::Node).expect("got a null Node")
+            node_to_string(ri.as_ptr() as *mut pg_sys::Node).expect("got a null Node")
         );
     }
 
@@ -107,15 +107,15 @@ unsafe extern "C" fn pathlist_hook(
     custom_path.path.type_ = pg_sys::NodeTag_T_CustomPath;
 
     custom_path.path.pathtype = pg_sys::NodeTag_T_CustomScan;
-    custom_path.path.parent = rel.to_pg();
+    custom_path.path.parent = rel.as_ptr();
     custom_path.path.pathtarget = rel.reltarget;
     custom_path.path.param_info =
-        pg_sys::get_baserel_parampathinfo(root, rel.to_pg(), rel.lateral_relids);
+        pg_sys::get_baserel_parampathinfo(root, rel.as_ptr(), rel.lateral_relids);
 
     custom_path.flags = 0;
     custom_path.methods = &CUSTOM_PATH_METHODS;
 
-    //    pg_sys::add_path(rel.to_pg(), custom_path.into_pg() as *mut pg_sys::Path);
+    //    pg_sys::add_path(rel.as_ptr(), custom_path.into_pg() as *mut pg_sys::Path);
     //    info!("called add_path");
 }
 
@@ -159,7 +159,7 @@ unsafe extern "C" fn CreateCustomScanState(cscan: *mut pg_sys::CustomScan) -> *m
     info!("in CreateCustomScanState");
     let cscan = PgBox::from_pg(cscan);
     let mut state = PgBox::<ZDBScanState>::alloc0();
-    let state_as_node = state.to_pg() as *mut pg_sys::Node;
+    let state_as_node = state.as_ptr() as *mut pg_sys::Node;
     state_as_node.as_mut().unwrap().type_ = pg_sys::NodeTag_T_CustomScanState;
 
     state.custom_scan_state.flags = cscan.flags;
