@@ -1,5 +1,4 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
-use crate::utils::convert_xid;
 use pgx::*;
 use std::ops::DerefMut;
 
@@ -86,8 +85,9 @@ unsafe extern "C" fn build_callback(
     let cmin = pg_sys::HeapTupleHeaderGetRawCommandId(htup_header)
         .expect("unable to get tuple raw command id");
     let cmax = cmin;
-    let xmin =
-        convert_xid(pg_sys::HeapTupleHeaderGetXmin(htup_header).expect("unable to get tuple xmin"));
+    let xmin = xid_to_64bit(
+        pg_sys::HeapTupleHeaderGetXmin(htup_header).expect("unable to get tuple xmin"),
+    );
     let xmax = pg_sys::InvalidTransactionId as u64;
 
     state
