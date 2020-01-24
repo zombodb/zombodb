@@ -16,7 +16,6 @@ mod pg_catalog {
 
     #[derive(Debug, Serialize, Deserialize, PostgresType)]
     #[inoutfuncs = "Custom"]
-    #[schema = "pg_catalog"]
     pub struct ZDBQuery {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) want_score: Option<()>,
