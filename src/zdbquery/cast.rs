@@ -1,6 +1,5 @@
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
-use serde_json::Value;
 
 #[pg_extern(immutable)]
 fn zdbquery_from_text(input: &str) -> ZDBQuery {
@@ -35,6 +34,7 @@ CREATE CAST (zdbquery AS json) WITH FUNCTION zdbquery_to_json(zdbquery) AS IMPLI
 CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMPLICIT;
 "#}
 
+#[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::zdbquery::cast::zdbquery_from_text;
     use pgx::*;

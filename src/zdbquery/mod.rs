@@ -1,30 +1,34 @@
-use pgx::stringinfo::StringInfo;
 use pgx::*;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 mod cast;
 mod opclass;
 
-//extension_sql! {r#"CREATE TYPE pg_catalog.zdbquery;"#}
-#[derive(Debug, Serialize, Deserialize, PostgresType)]
-#[inoutfuncs = "Custom"]
-#[schema = "pg_catalog"]
-pub struct ZDBQuery {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    want_score: Option<()>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    row_estimate: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    limit: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    offset: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    min_score: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    sort_json: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    query_dsl: Option<Value>,
+pub use pg_catalog::*;
+
+mod pg_catalog {
+    use pgx::*;
+    use serde::{Deserialize, Serialize};
+    use serde_json::Value;
+
+    #[derive(Debug, Serialize, Deserialize, PostgresType)]
+    #[inoutfuncs = "Custom"]
+    pub struct ZDBQuery {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(super) want_score: Option<()>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(super) row_estimate: Option<u64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(super) limit: Option<u64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(super) offset: Option<u64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(super) min_score: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(super) sort_json: Option<Value>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(super) query_dsl: Option<Value>,
+    }
 }
 
 impl InOutFuncs for ZDBQuery {
@@ -53,19 +57,8 @@ impl InOutFuncs for ZDBQuery {
     }
 }
 
+#[allow(dead_code)]
 impl ZDBQuery {
-    pub fn new() -> Self {
-        ZDBQuery {
-            want_score: None,
-            row_estimate: None,
-            limit: None,
-            offset: None,
-            min_score: None,
-            sort_json: None,
-            query_dsl: None,
-        }
-    }
-
     pub fn new_with_query_dsl(query_dsl: Value) -> Self {
         ZDBQuery {
             want_score: None,
@@ -172,9 +165,9 @@ impl ZDBQuery {
     }
 }
 
+#[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::zdbquery::*;
-    use pgx::*;
     use serde_json::json;
 
     #[test]
@@ -182,7 +175,8 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_query_string() {
-        let zdbquery = zdbquery_in(std::ffi::CString::new("this is a test").unwrap().as_c_str());
+        let zdbquery =
+            pg_catalog::zdbquery_in(std::ffi::CString::new("this is a test").unwrap().as_c_str());
         let json = serde_json::to_value(&zdbquery).unwrap();
 
         assert_eq!(
@@ -193,7 +187,7 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_query_dsl() {
-        let zdbquery = zdbquery_in(
+        let zdbquery = pg_catalog::zdbquery_in(
             std::ffi::CString::new(r#" {"match_all":{}} "#)
                 .unwrap()
                 .as_c_str(),
@@ -205,12 +199,12 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_full_query() {
-        let zdbquery = zdbquery_in(
+        let zdbquery = pg_catalog::zdbquery_in(
             std::ffi::CString::new(
                 r#" {"query_dsl":{"query_string":{"query":"this is a test"}}} "#,
             )
-                .unwrap()
-                .as_c_str(),
+            .unwrap()
+            .as_c_str(),
         );
         let json = serde_json::to_value(&zdbquery).unwrap();
 

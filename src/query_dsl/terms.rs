@@ -7,7 +7,6 @@ mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::*;
-    use std::iter::FromIterator;
 
     /// ```funcname
     /// terms
@@ -80,12 +79,11 @@ mod dsl {
     }
 }
 
+#[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
-    use pgx_tests::*;
     use serde_json::json;
-    use std::f32::*;
 
     #[test]
     fn make_idea_happy() {}

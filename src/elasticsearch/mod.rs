@@ -1,11 +1,14 @@
+#![allow(dead_code)]
 use pgx::*;
+use serde::*;
 use serde_json::Value;
 
 mod bulk;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub enum BulkRequestCommand {
     Insert {
+        #[serde(skip_serializing)]
         ctid: pg_sys::ItemPointerData,
         cmin: pg_sys::CommandId,
         cmax: pg_sys::CommandId,
@@ -14,16 +17,19 @@ pub enum BulkRequestCommand {
         doc: Value,
     },
     Update {
+        #[serde(skip_serializing)]
         ctid: pg_sys::ItemPointerData,
         cmax: pg_sys::CommandId,
         xmax: u64,
         doc: Value,
     },
     DeleteByXmin {
+        #[serde(skip_serializing)]
         ctid: pg_sys::ItemPointerData,
         xmin: u64,
     },
     DeleteByXmax {
+        #[serde(skip_serializing)]
         ctid: pg_sys::ItemPointerData,
         xmax: u64,
     },
@@ -74,7 +80,7 @@ impl ElasticsearchBulkRequest {
         }
     }
 
-    pub fn wait_for_completion(mut self) -> Result<usize, BulkRequestError> {
+    pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
         // drop the sender side of the channel since we're done
         // this will signal the receivers that once their queues are empty
         // there's nothing left for them to do

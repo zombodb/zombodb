@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use pgx::nodes::node_to_string;
 use pgx::*;
 
@@ -97,7 +98,7 @@ unsafe extern "C" fn pathlist_hook(
 
         info!(
             "ri={}",
-            node_to_string(ri.to_pg() as *mut pg_sys::Node).expect("got a null Node")
+            node_to_string(ri.as_ptr() as *mut pg_sys::Node).expect("got a null Node")
         );
     }
 
@@ -106,15 +107,15 @@ unsafe extern "C" fn pathlist_hook(
     custom_path.path.type_ = pg_sys::NodeTag_T_CustomPath;
 
     custom_path.path.pathtype = pg_sys::NodeTag_T_CustomScan;
-    custom_path.path.parent = rel.to_pg();
+    custom_path.path.parent = rel.as_ptr();
     custom_path.path.pathtarget = rel.reltarget;
     custom_path.path.param_info =
-        pg_sys::get_baserel_parampathinfo(root, rel.to_pg(), rel.lateral_relids);
+        pg_sys::get_baserel_parampathinfo(root, rel.as_ptr(), rel.lateral_relids);
 
     custom_path.flags = 0;
     custom_path.methods = &CUSTOM_PATH_METHODS;
 
-    //    pg_sys::add_path(rel.to_pg(), custom_path.into_pg() as *mut pg_sys::Path);
+    //    pg_sys::add_path(rel.as_ptr(), custom_path.into_pg() as *mut pg_sys::Path);
     //    info!("called add_path");
 }
 
@@ -122,12 +123,12 @@ unsafe extern "C" fn pathlist_hook(
 /// which the callback must allocate and initialize.
 #[pg_guard]
 unsafe extern "C" fn PlanCustomPath(
-    root: *mut pg_sys::PlannerInfo,
+    _root: *mut pg_sys::PlannerInfo,
     rel: *mut pg_sys::RelOptInfo,
     best_path: *mut pg_sys::CustomPath,
     tlist: *mut pg_sys::List,
-    clauses: *mut pg_sys::List,
-    custom_plans: *mut pg_sys::List,
+    _clauses: *mut pg_sys::List,
+    _custom_plans: *mut pg_sys::List,
 ) -> *mut pg_sys::Plan {
     info!("in PlanCustomPath");
     let rel = PgBox::from_pg(rel);
@@ -143,7 +144,7 @@ unsafe extern "C" fn PlanCustomPath(
     //    custom_scan.scan.plan.qual = pg_sys::extract_actual_clauses(clauses, false);
 
     info!("finished PlanCustomPath");
-    let mut ptr = custom_scan.into_pg();
+    let ptr = custom_scan.into_pg();
     &mut ptr.as_mut().unwrap().scan.plan
 }
 
@@ -158,7 +159,7 @@ unsafe extern "C" fn CreateCustomScanState(cscan: *mut pg_sys::CustomScan) -> *m
     info!("in CreateCustomScanState");
     let cscan = PgBox::from_pg(cscan);
     let mut state = PgBox::<ZDBScanState>::alloc0();
-    let mut state_as_node = state.to_pg() as *mut pg_sys::Node;
+    let state_as_node = state.as_ptr() as *mut pg_sys::Node;
     state_as_node.as_mut().unwrap().type_ = pg_sys::NodeTag_T_CustomScanState;
 
     state.custom_scan_state.flags = cscan.flags;
@@ -171,9 +172,9 @@ unsafe extern "C" fn CreateCustomScanState(cscan: *mut pg_sys::CustomScan) -> *m
 /// by `ExecInitCustomScan`, but any private fields should be initialized here.
 #[pg_guard]
 unsafe extern "C" fn BeginCustomScan(
-    node: *mut pg_sys::CustomScanState,
-    estate: *mut pg_sys::EState,
-    eflags: i32,
+    _node: *mut pg_sys::CustomScanState,
+    _estate: *mut pg_sys::EState,
+    _eflags: i32,
 ) {
     info!("in BeginCustomScan");
 }
@@ -183,7 +184,7 @@ unsafe extern "C" fn BeginCustomScan(
 /// slot should be returned.
 #[pg_guard]
 unsafe extern "C" fn ExecCustomScan(
-    node: *mut pg_sys::CustomScanState,
+    _node: *mut pg_sys::CustomScanState,
 ) -> *mut pg_sys::TupleTableSlot {
     info!("in ExecCustomScan");
     0 as *mut pg_sys::TupleTableSlot
@@ -193,24 +194,24 @@ unsafe extern "C" fn ExecCustomScan(
 /// does not need to do anything if there is no associated data or it will be cleaned up
 /// automatically.
 #[pg_guard]
-unsafe extern "C" fn EndCustomScan(node: *mut pg_sys::CustomScanState) {
+unsafe extern "C" fn EndCustomScan(_node: *mut pg_sys::CustomScanState) {
     info!("in EndCustomScan");
 }
 
 /// Rewind the current scan to the beginning and prepare to rescan the relation.
 #[pg_guard]
-unsafe extern "C" fn ReScanCustomScan(node: *mut pg_sys::CustomScanState) {}
+unsafe extern "C" fn ReScanCustomScan(_node: *mut pg_sys::CustomScanState) {}
 
 /// Save the current scan position so that it can subsequently be restored by the `RestrPosCustomScan`
 /// callback. This callback is optional, and need only be supplied if the
 /// `CUSTOMPATH_SUPPORT_MARK_RESTORE` flag is set.
 #[pg_guard]
-unsafe extern "C" fn MarkPosCustomScan(node: *mut pg_sys::CustomScanState) {}
+unsafe extern "C" fn MarkPosCustomScan(_node: *mut pg_sys::CustomScanState) {}
 
 /// Restore the previous scan position as saved by the `MarkPosCustomScan` callback. This callback is
 /// optional, and need only be supplied if the `CUSTOMPATH_SUPPORT_MARK_RESTORE` flag is set.
 #[pg_guard]
-unsafe extern "C" fn RestrPosCustomScan(node: *mut pg_sys::CustomScanState) {}
+unsafe extern "C" fn RestrPosCustomScan(_node: *mut pg_sys::CustomScanState) {}
 
 /// Estimate the amount of dynamic shared memory that will be required for parallel operation. This
 /// may be higher than the amount that will actually be used, but it must not be lower. The return
@@ -218,8 +219,8 @@ unsafe extern "C" fn RestrPosCustomScan(node: *mut pg_sys::CustomScanState) {}
 /// provider supports parallel execution.
 #[pg_guard]
 unsafe extern "C" fn EstimateDSMCustomScan(
-    node: *mut pg_sys::CustomScanState,
-    pcxt: *mut pg_sys::ParallelContext,
+    _node: *mut pg_sys::CustomScanState,
+    _pcxt: *mut pg_sys::ParallelContext,
 ) -> pg_sys::Size {
     0 as pg_sys::Size
 }
@@ -230,9 +231,9 @@ unsafe extern "C" fn EstimateDSMCustomScan(
 /// execution.
 #[pg_guard]
 unsafe extern "C" fn InitializeDSMCustomScan(
-    node: *mut pg_sys::CustomScanState,
-    pcxt: *mut pg_sys::ParallelContext,
-    coordinate: *mut std::os::raw::c_void,
+    _node: *mut pg_sys::CustomScanState,
+    _pcxt: *mut pg_sys::ParallelContext,
+    _coordinate: *mut std::os::raw::c_void,
 ) {
 }
 
@@ -243,9 +244,9 @@ unsafe extern "C" fn InitializeDSMCustomScan(
 /// this callback will be called before `ReScanCustomScan`, but it's best not to rely on that ordering.
 #[pg_guard]
 unsafe extern "C" fn ReInitializeDSMCustomScan(
-    node: *mut pg_sys::CustomScanState,
-    pcxt: *mut pg_sys::ParallelContext,
-    coordinate: *mut std::os::raw::c_void,
+    _node: *mut pg_sys::CustomScanState,
+    _pcxt: *mut pg_sys::ParallelContext,
+    _coordinate: *mut std::os::raw::c_void,
 ) {
 }
 
@@ -254,9 +255,9 @@ unsafe extern "C" fn ReInitializeDSMCustomScan(
 /// scan provider supports parallel execution.
 #[pg_guard]
 unsafe extern "C" fn InitializeWorkerCustomScan(
-    node: *mut pg_sys::CustomScanState,
-    toc: *mut pg_sys::shm_toc,
-    coordinate: *mut std::os::raw::c_void,
+    _node: *mut pg_sys::CustomScanState,
+    _toc: *mut pg_sys::shm_toc,
+    _coordinate: *mut std::os::raw::c_void,
 ) {
 }
 
@@ -266,15 +267,15 @@ unsafe extern "C" fn InitializeWorkerCustomScan(
 /// is invoked, custom scan providers that wish to take some action before the DSM segment goes away
 /// should implement this method.
 #[pg_guard]
-unsafe extern "C" fn ShutdownCustomScan(node: *mut pg_sys::CustomScanState) {}
+unsafe extern "C" fn ShutdownCustomScan(_node: *mut pg_sys::CustomScanState) {}
 
 /// Output additional information for EXPLAIN of a custom-scan plan node. This callback is optional.
 /// Common data stored in the `ScanState`, such as the target list and scan relation, will be shown
 /// even without this callback, but the callback allows the display of additional, private state.
 #[pg_guard]
 unsafe extern "C" fn ExplainCustomScan(
-    node: *mut pg_sys::CustomScanState,
-    ancestors: *mut pg_sys::List,
-    es: *mut pg_sys::ExplainState,
+    _node: *mut pg_sys::CustomScanState,
+    _ancestors: *mut pg_sys::List,
+    _es: *mut pg_sys::ExplainState,
 ) {
 }
