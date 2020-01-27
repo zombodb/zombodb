@@ -9,7 +9,7 @@ mod dsl {
     use serde_json::*;
 
     #[pg_extern(immutable, parallel_safe)]
-    pub fn fieldexists(field: &str) -> ZDBQuery {
+    pub(super) fn field_exists(field: &str) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
         {
             "exists": {
@@ -21,7 +21,7 @@ mod dsl {
 }
 
 mod tests {
-    use crate::query_dsl::fieldexists::dsl::*;
+    use crate::query_dsl::field_exists::dsl::*;
     use pgx::*;
     use serde_json::*;
 
@@ -30,7 +30,7 @@ mod tests {
 
     #[pg_test]
     fn test_field_exists() {
-        let zdbquery = fieldexists("fieldname");
+        let zdbquery = field_exists("fieldname");
         let dsl = zdbquery.query_dsl();
 
         assert!(dsl.is_some());

@@ -20,7 +20,7 @@ mod dsl {
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
-    use crate::query_dsl::matchnone::dsl::*;
+    use crate::query_dsl::match_none::dsl::*;
     use pgx::*;
     use serde_json::json;
 

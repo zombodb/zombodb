@@ -48,7 +48,7 @@ mod dsl {
 }
 
 mod tests {
-    use crate::query_dsl::termslookup::dsl::*;
+    use crate::query_dsl::terms_lookup::dsl::*;
     use pgx::*;
     use serde_json::json;
 

@@ -1,10 +1,10 @@
-mod fieldexists;
-mod fieldmissing;
-mod matchall;
-mod matchnone;
+mod field_exists;
+mod field_missing;
+mod match_all;
+mod match_none;
 mod prefix;
 mod term;
 mod terms;
-mod termsarray;
-mod termslookup;
+mod terms_array;
+mod terms_lookup;
 mod wildcard;
