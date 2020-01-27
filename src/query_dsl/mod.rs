@@ -1,3 +1,5 @@
+mod fieldexists;
+mod fieldmissing;
 mod matchall;
 mod matchnone;
 mod prefix;
