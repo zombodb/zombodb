@@ -1,8 +1,10 @@
 mod field_exists;
 mod field_missing;
+mod limit;
 mod match_all;
 mod match_none;
 mod prefix;
+mod sort;
 mod term;
 mod terms;
 mod terms_array;
