@@ -7,6 +7,7 @@ mod opclass;
 pub use pg_catalog::*;
 
 mod pg_catalog {
+    #![allow(non_camel_case_types)]
     use pgx::*;
     use serde::{Deserialize, Serialize};
     use serde_json::Value;
@@ -28,6 +29,33 @@ mod pg_catalog {
         pub(super) sort_json: Option<Value>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) query_dsl: Option<Value>,
+    }
+
+    #[derive(PostgresEnum, Serialize, Deserialize)]
+    pub enum SortDirection {
+        asc,
+        desc,
+    }
+
+    #[derive(PostgresEnum, Serialize, Deserialize)]
+    pub enum SortMode {
+        min,
+        max,
+        sum,
+        avg,
+        median,
+    }
+
+    #[derive(PostgresType, Serialize, Deserialize)]
+    pub struct SortDescriptor {
+        pub(crate) field: String,
+        pub(crate) order: SortDirection,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(crate) mode: Option<SortMode>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(crate) nested_path: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(crate) nested_filter: Option<ZDBQuery>,
     }
 }
 
@@ -105,7 +133,7 @@ impl ZDBQuery {
         self.want_score == Some(())
     }
 
-    pub fn set_want_score(&mut self, value: bool) -> &mut Self {
+    pub fn set_want_score(mut self, value: bool) -> Self {
         self.want_score = if value { Some(()) } else { None };
         self
     }
@@ -114,7 +142,7 @@ impl ZDBQuery {
         self.row_estimate
     }
 
-    pub fn set_row_estimate(&mut self, row_estimate: Option<u64>) -> &mut Self {
+    pub fn set_row_estimate(mut self, row_estimate: Option<u64>) -> Self {
         self.row_estimate = row_estimate;
         self
     }
@@ -123,7 +151,7 @@ impl ZDBQuery {
         self.limit
     }
 
-    pub fn set_limit(&mut self, limit: Option<u64>) -> &mut Self {
+    pub fn set_limit(mut self, limit: Option<u64>) -> Self {
         self.limit = limit;
         self
     }
@@ -132,7 +160,7 @@ impl ZDBQuery {
         self.offset
     }
 
-    pub fn set_offset(&mut self, offset: Option<u64>) -> &mut Self {
+    pub fn set_offset(mut self, offset: Option<u64>) -> Self {
         self.offset = offset;
         self
     }
@@ -141,7 +169,7 @@ impl ZDBQuery {
         self.min_score
     }
 
-    pub fn set_min_score(&mut self, min_score: Option<f64>) -> &mut Self {
+    pub fn set_min_score(mut self, min_score: Option<f64>) -> Self {
         self.min_score = min_score;
         self
     }
@@ -150,7 +178,29 @@ impl ZDBQuery {
         self.sort_json.as_ref()
     }
 
-    pub fn set_sort_json(&mut self, sort_json: Option<Value>) -> &mut Self {
+    pub fn set_sort_descriptors<I>(mut self, descriptors: I) -> Self
+    where
+        I: IntoIterator<Item = Option<SortDescriptor>>,
+    {
+        // collect all non-None (NULL) sort descriptors
+        let mut v = Vec::new();
+        for descriptor in descriptors {
+            if descriptor.is_some() {
+                v.push(descriptor.unwrap())
+            }
+        }
+
+        if !v.is_empty() {
+            // we have at least one, so serialize it
+            self.sort_json = Some(serde_json::to_value(v).unwrap());
+        } else {
+            // else, we don't have any
+            self.sort_json = None;
+        }
+        self
+    }
+
+    pub fn set_sort_json(mut self, sort_json: Option<Value>) -> Self {
         self.sort_json = sort_json;
         self
     }
@@ -159,9 +209,13 @@ impl ZDBQuery {
         self.query_dsl.as_ref()
     }
 
-    pub fn set_query_dsl(&mut self, query_dsl: Option<Value>) -> &mut Self {
+    pub fn set_query_dsl(mut self, query_dsl: Option<Value>) -> Self {
         self.query_dsl = query_dsl;
         self
+    }
+
+    pub fn into_value(self) -> serde_json::Value {
+        serde_json::to_value(&self).expect("failed to convert ZDBQuery to a json Value")
     }
 }
 

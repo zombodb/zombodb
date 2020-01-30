@@ -30,7 +30,7 @@ mod dsl {
         index: &str,
         id: &str,
         path: &str,
-        routing: Option<&str>,
+        routing: Option<default!(&str, "NULL")>,
     ) -> ZDBQuery {
         let mut terms = HashMap::new();
         terms.insert(
@@ -49,6 +49,7 @@ mod dsl {
 
 mod tests {
     use crate::query_dsl::terms_lookup::dsl::*;
+    use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::json;
 
@@ -94,6 +95,25 @@ mod tests {
             &json! {
                 {
                     "terms": {"fieldname": { "index": "test value", "id": "42.0", "path": "path.test.example.foo" }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_terms_lookup_with_default_routing() {
+        let zdbquery =
+            Spi::get_one::<ZDBQuery>("SELECT dsl.terms_lookup('field', 'index', 'id', 'path')")
+                .expect("failed to get SPI result");
+
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "terms": {"field": { "index": "index", "id": "id", "path": "path" }}
                 }
             }
         );
