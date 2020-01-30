@@ -24,6 +24,7 @@ mod dsl {
     }
 }
 
+#[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::query_dsl::field_missing::dsl::*;
     use pgx::*;

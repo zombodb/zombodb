@@ -13,6 +13,7 @@ mod dsl {
     //    }
 }
 
+#[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::query_dsl::limit::dsl::limit;
     use crate::zdbquery::ZDBQuery;

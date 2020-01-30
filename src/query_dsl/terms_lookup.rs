@@ -47,6 +47,7 @@ mod dsl {
     }
 }
 
+#[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::query_dsl::terms_lookup::dsl::*;
     use crate::zdbquery::ZDBQuery;

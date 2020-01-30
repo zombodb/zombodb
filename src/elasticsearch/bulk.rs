@@ -1,10 +1,14 @@
 use crate::elasticsearch::{BulkRequestCommand, BulkRequestError, Elasticsearch};
 use pgx::*;
-use serde_json::json;
-use std::io::{Error, Write};
+use serde_json::{json, Value};
+use std::any::Any;
+use std::collections::HashMap;
+use std::io::{Error, Read, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
+
+const BULK_FILTER_PATH: &str = "errors,items.*.error";
 
 pub(crate) struct Handler {
     threads: Vec<JoinHandle<usize>>,
@@ -104,7 +108,10 @@ impl Handler {
                         backlog: Vec::new(),
                     };
 
-                    let url = &format!("{}{}/_bulk", es.url, es.index_name);
+                    let url = &format!(
+                        "{}{}/_bulk?filter_path={}",
+                        es.url, es.index_name, BULK_FILTER_PATH
+                    );
                     let client = reqwest::Client::new();
                     let response = client
                         .post(url)
@@ -117,17 +124,51 @@ impl Handler {
 
                     eprintln!("thread#{}: docs_out={}", i, docs_out);
                     match response {
-                        Ok(mut _response) => {
-                            // TODO:  parse the response into json and inspect for errors
-                            //                        let mut resp_string = String::new();
-                            //                        response.read_to_string(&mut resp_string);
-                            //                        eprintln!("response={}", resp_string);
+                        // we got a valid response from ES
+                        Ok(mut response) => {
+                            // quick check on the status code
+                            let code = response.status().as_u16();
+                            if code < 200 || (code >= 300 && code != 404) {
+                                let mut resp_string = String::new();
+                                response
+                                    .read_to_string(&mut resp_string)
+                                    .expect("unable to convert HTTP response to a string");
+                                panic!("{}", resp_string)
+                            } else if code != 200 {
+                                let mut resp_string = String::new();
+                                response
+                                    .read_to_string(&mut resp_string)
+                                    .expect("unable to convert HTTP response to a string");
+
+                                match serde_json::from_str::<HashMap<String, Value>>(&resp_string) {
+                                    // got a valid json response
+                                    Ok(response) => {
+                                        // does it contain a general error?
+                                        match *response.get("error").unwrap_or(&Value::Bool(false))
+                                        {
+                                            Value::Bool(b) if b == false => { /* we're all good */ }
+                                            _ => panic!("{}", resp_string),
+                                        }
+
+                                        // does it contain errors related to the docs we indexed?
+                                        match *response.get("errors").unwrap_or(&Value::Bool(false))
+                                        {
+                                            Value::Bool(b) if b == false => { /* we're all good */ }
+                                            _ => panic!("{}", resp_string),
+                                        }
+                                    }
+
+                                    // got a response that wasn't json, so just panic with it
+                                    Err(_) => panic!("{}", resp_string),
+                                }
+                            }
                         }
 
-                        Err(e) => eprintln!("error {:?}", e),
+                        // this is likely a general reqwest/network communication error
+                        Err(e) => panic!("{:?}", e),
                     }
 
-                    if docs_out == 0 {
+                    if docs_out == 0 || rx.is_empty() {
                         break;
                     }
                 }
@@ -150,7 +191,7 @@ impl Handler {
                 Ok(many) => {
                     cnt += many;
                 }
-                Err(_) => panic!("Got an error joining on a thread"),
+                Err(e) => panic!("Got an error joining on a thread: {}", downcast_err(e)),
             }
         }
 
@@ -158,4 +199,15 @@ impl Handler {
     }
 
     pub(crate) fn terminate(&mut self) {}
+}
+
+fn downcast_err(e: Box<dyn Any + Send>) -> String {
+    if let Some(s) = e.downcast_ref::<&str>() {
+        (*s).to_string()
+    } else if let Some(s) = e.downcast_ref::<String>() {
+        s.to_string()
+    } else {
+        // not a type we understand, so use a generic string
+        "Box<Any>".to_string()
+    }
 }
