@@ -1,5 +1,6 @@
 mod field_exists;
 mod field_missing;
+mod fuzzy;
 mod limit;
 mod match_all;
 mod match_none;
