@@ -2,10 +2,15 @@ mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
 
-    #[pg_extern]
+    #[pg_extern(immutable, parallel_safe)]
     pub(super) fn limit(limit: i64, query: ZDBQuery) -> ZDBQuery {
         query.set_limit(Some(limit as u64))
     }
+
+    //    #[pg_extern]
+    //    fn offset(offset: u64, query: ZDBQuery) -> ZDBQuery {
+    //        query.set_offset(Some(offset))
+    //    }
 }
 
 mod tests {
