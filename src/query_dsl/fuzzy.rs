@@ -6,11 +6,11 @@ mod dsl {
     pub fn fuzzy(
         field: &str,
         value: &str,
-        boost: default!(f32, null),
-        fuzziness_integer: default!(i64, null),
-        prefix_length: default!(i64, null),
-        max_expansions: default!(i64, 50),
-        transpositions: default!(bool, null),
+        boost: default!(Option<f32>, null),
+        fuzziness_integer: default!(Option<i64>, null),
+        prefix_length: default!(Option<i64>, null),
+        max_expansions: default!(Option<i64>, 50),
+        transpositions: default!(Option<bool>, null),
     ) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
@@ -40,7 +40,15 @@ mod tests {
 
     #[pg_test]
     fn test_fuzzy() {
-        let zdbquery = fuzzy("field", "value", 1.0, 10, 50, 50, true);
+        let zdbquery = fuzzy(
+            "field",
+            "value",
+            Some(1.0),
+            Some(10),
+            Some(50),
+            Some(50),
+            Some(true),
+        );
         let dls = zdbquery.query_dsl();
 
         assert!(dls.is_some());
