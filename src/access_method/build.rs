@@ -126,10 +126,6 @@ unsafe extern "C" fn build_callback(
         .insert(ctid, 0, 0, 0, 0, JsonBuilder::new(attnames, values))
         .expect("Unable to send tuple for insert");
     state.ntuples += 1;
-
-    if state.ntuples % 10000 == 0 {
-        info!("cnt={}", state.ntuples);
-    }
 }
 
 unsafe fn row_to_json<'a>(

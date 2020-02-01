@@ -46,7 +46,6 @@ pub struct Elasticsearch {
 
 pub struct ElasticsearchBulkRequest {
     handler: bulk::Handler,
-    bulk_sender: crossbeam::channel::Sender<BulkRequestCommand>,
     error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
 }
 
@@ -65,22 +64,15 @@ impl Elasticsearch {
 
 impl ElasticsearchBulkRequest {
     fn new(elasticsearch: Elasticsearch, queue_size: usize, concurrency: usize) -> Self {
-        let (btx, brx) = crossbeam::channel::bounded(queue_size * concurrency);
         let (etx, erx) = crossbeam::channel::bounded(queue_size * concurrency);
 
         ElasticsearchBulkRequest {
-            handler: bulk::Handler::run(elasticsearch, concurrency, brx, etx),
-            bulk_sender: btx,
+            handler: bulk::Handler::new(elasticsearch, concurrency, etx),
             error_receiver: erx,
         }
     }
 
     pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
-        // drop the sender side of the channel since we're done
-        // this will signal the receivers that once their queues are empty
-        // there's nothing left for them to do
-        std::mem::drop(self.bulk_sender);
-
         // wait for the bulk requests to finish
         self.handler.wait_for_completion()
     }
@@ -96,7 +88,7 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
-        self.bulk_sender.send(BulkRequestCommand::Insert {
+        self.handler.queue_command(BulkRequestCommand::Insert {
             ctid,
             cmin,
             cmax,
@@ -115,7 +107,7 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
-        self.bulk_sender.send(BulkRequestCommand::Update {
+        self.handler.queue_command(BulkRequestCommand::Update {
             ctid,
             cmax,
             xmax,
@@ -130,8 +122,8 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
-        self.bulk_sender
-            .send(BulkRequestCommand::DeleteByXmin { ctid, xmin })
+        self.handler
+            .queue_command(BulkRequestCommand::DeleteByXmin { ctid, xmin })
     }
 
     pub fn delete_by_xmax(
@@ -141,8 +133,8 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
-        self.bulk_sender
-            .send(BulkRequestCommand::DeleteByXmax { ctid, xmax })
+        self.handler
+            .queue_command(BulkRequestCommand::DeleteByXmax { ctid, xmax })
     }
 
     #[inline]
