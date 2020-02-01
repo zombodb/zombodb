@@ -31,7 +31,6 @@ mod dsl {
 
 mod tests {
     use crate::query_dsl::fuzzy::dsl::*;
-    use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::json;
 
