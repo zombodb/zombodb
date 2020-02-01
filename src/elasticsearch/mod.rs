@@ -1,10 +1,10 @@
 #![allow(dead_code)]
+use crate::json::builder::JsonBuilder;
 use pgx::*;
-use serde_json::Value;
 
 mod bulk;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum BulkRequestCommand {
     Insert {
         ctid: pg_sys::ItemPointerData,
@@ -12,13 +12,13 @@ pub enum BulkRequestCommand {
         cmax: pg_sys::CommandId,
         xmin: u64,
         xmax: u64,
-        doc: Value,
+        builder: JsonBuilder,
     },
     Update {
         ctid: pg_sys::ItemPointerData,
         cmax: pg_sys::CommandId,
         xmax: u64,
-        doc: Value,
+        builder: JsonBuilder,
     },
     DeleteByXmin {
         ctid: pg_sys::ItemPointerData,
@@ -92,7 +92,7 @@ impl ElasticsearchBulkRequest {
         cmax: pg_sys::CommandId,
         xmin: u64,
         xmax: u64,
-        doc: Value,
+        builder: JsonBuilder,
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
@@ -102,7 +102,7 @@ impl ElasticsearchBulkRequest {
             cmax,
             xmin,
             xmax,
-            doc,
+            builder,
         })
     }
 
@@ -111,7 +111,7 @@ impl ElasticsearchBulkRequest {
         ctid: pg_sys::ItemPointerData,
         cmax: pg_sys::CommandId,
         xmax: u64,
-        doc: Value,
+        builder: JsonBuilder,
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
@@ -119,7 +119,7 @@ impl ElasticsearchBulkRequest {
             ctid,
             cmax,
             xmax,
-            doc,
+            builder,
         })
     }
 

@@ -15,64 +15,74 @@ pub(crate) struct Handler {
 }
 
 struct BulkReceiver {
+    first: Option<BulkRequestCommand>,
     receiver: crossbeam::channel::Receiver<BulkRequestCommand>,
     bytes_out: usize,
     docs_out: Arc<AtomicUsize>,
-    backlog: Vec<u8>,
+    buffer: Vec<u8>,
 }
 
 impl std::io::Read for BulkReceiver {
     fn read(&mut self, mut buf: &mut [u8]) -> Result<usize, Error> {
-        let mut bytes = &mut self.backlog;
+        // if we have a first value, we need to send it out first
+        if let Some(command) = self.first.take() {
+            self.serialize_command(command);
+        }
 
+        // otherwise we'll wait to receive a command
         if self.docs_out.load(Ordering::SeqCst) < 10_000 && self.bytes_out < 8 * 1024 * 1024 {
-            // we haven't exceeded the max _bulk docs limit
-
+            // but only if we haven't exceeded the max _bulk docs limit
             for command in self.receiver.iter() {
-                self.docs_out.fetch_add(1, Ordering::SeqCst);
-
-                // build json of this entire command and store in self.bytes
-                match command {
-                    BulkRequestCommand::Insert {
-                        ctid,
-                        cmin: _,
-                        cmax: _,
-                        xmin: _,
-                        xmax: _,
-                        doc,
-                    } => {
-                        serde_json::to_writer(
-                            &mut bytes,
-                            &json! {
-                                {"index": {"_id": item_pointer_to_u64(ctid) } }
-                            },
-                        )
-                        .expect("failed to serialize index line");
-                        bytes.push(b'\n');
-
-                        serde_json::to_writer(&mut bytes, &doc).expect("failed to serialize doc");
-                        bytes.push(b'\n');
-                    }
-                    BulkRequestCommand::Update { .. } => panic!("unsupported"),
-                    BulkRequestCommand::DeleteByXmin { .. } => panic!("unsupported"),
-                    BulkRequestCommand::DeleteByXmax { .. } => panic!("unsupported"),
-                    BulkRequestCommand::Interrupt => panic!("unsupported"),
-                    BulkRequestCommand::Done => panic!("unsupported"),
-                }
-
+                self.serialize_command(command);
                 break;
             }
         }
 
-        let amt = buf.write(&bytes)?;
+        let amt = buf.write(&self.buffer)?;
         if amt > 0 {
             // move our bytes forward the amount we wrote above
-            let (_, right) = bytes.split_at(amt);
-            self.backlog = Vec::from(right);
+            let (_, right) = self.buffer.split_at(amt);
+            self.buffer = Vec::from(right);
             self.bytes_out += amt;
         }
 
         Ok(amt)
+    }
+}
+
+impl BulkReceiver {
+    fn serialize_command(&mut self, command: BulkRequestCommand) {
+        self.docs_out.fetch_add(1, Ordering::SeqCst);
+
+        // build json of this entire command and store in self.bytes
+        match command {
+            BulkRequestCommand::Insert {
+                ctid,
+                cmin: _,
+                cmax: _,
+                xmin: _,
+                xmax: _,
+                builder: doc,
+            } => {
+                serde_json::to_writer(
+                    &mut self.buffer,
+                    &json! {
+                        {"index": {"_id": item_pointer_to_u64(ctid) } }
+                    },
+                )
+                .expect("failed to serialize index line");
+                self.buffer.push(b'\n');
+
+                let doc_as_json = doc.build();
+                self.buffer.append(&mut doc_as_json.into_bytes());
+                self.buffer.push(b'\n');
+            }
+            BulkRequestCommand::Update { .. } => panic!("unsupported"),
+            BulkRequestCommand::DeleteByXmin { .. } => panic!("unsupported"),
+            BulkRequestCommand::DeleteByXmax { .. } => panic!("unsupported"),
+            BulkRequestCommand::Interrupt => panic!("unsupported"),
+            BulkRequestCommand::Done => panic!("unsupported"),
+        }
     }
 }
 
@@ -100,12 +110,22 @@ impl Handler {
                 loop {
                     let docs_out = Arc::new(AtomicUsize::new(0));
 
+                    let first = rx.recv();
+                    if let Err(e) = first {
+                        // we no first command to deal with on this iteration b/c
+                        // the channel has been shutdown.  we're simply out of records
+                        // and can safely break out
+                        eprintln!("{:?}", e);
+                        break;
+                    }
+
                     let rx = rx.clone();
                     let reader = BulkReceiver {
+                        first: Some(first.unwrap()),
                         receiver: rx.clone(),
                         bytes_out: 0,
                         docs_out: docs_out.clone(),
-                        backlog: Vec::new(),
+                        buffer: Vec::new(),
                     };
 
                     let url = &format!(
@@ -168,7 +188,7 @@ impl Handler {
                         Err(e) => panic!("{:?}", e),
                     }
 
-                    if docs_out == 0 || rx.is_empty() {
+                    if docs_out == 0 {
                         break;
                     }
                 }
