@@ -28,6 +28,7 @@ pgx-tests = { path = "../pgx/pgx-tests" }
 [profile.dev]
 panic = "unwind"
 debug = true
+opt-level = 0
 
 [profile.release]
 panic = "unwind"

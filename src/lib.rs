@@ -3,6 +3,7 @@ use pgx::*;
 mod access_method;
 mod custom_scan;
 mod elasticsearch;
+mod json;
 mod query_dsl;
 mod zdbquery;
 
