@@ -1,6 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::json::builder::JsonBuilder;
-use crate::json::json_string::JsonString;
 use pgx::*;
 use std::ops::DerefMut;
 
@@ -117,37 +116,30 @@ unsafe extern "C" fn build_callback(
     let htup = PgBox::from_pg(htup);
     let mut state = PgBox::from_pg(state as *mut BuildState);
     let values = std::slice::from_raw_parts(values, 1);
-    let row_datum = values[0];
-    let (attnames, values) = row_to_json(row_datum, &state);
     let ctid = htup.t_self.clone();
+    let builder = row_to_json(values[0], &state);
 
     state
         .bulk
-        .insert(ctid, 0, 0, 0, 0, JsonBuilder::new(attnames, values))
+        .insert(ctid, 0, 0, 0, 0, builder)
         .expect("Unable to send tuple for insert");
     state.ntuples += 1;
 }
 
-unsafe fn row_to_json<'a>(
-    row: pg_sys::Datum,
-    state: &PgBox<BuildState>,
-) -> (Vec<String>, Vec<Box<dyn JsonString>>) {
-    let columns = deconstruct_row_type(state.tupdesc, row);
+unsafe fn row_to_json<'a>(row: pg_sys::Datum, state: &PgBox<BuildState>) -> JsonBuilder {
+    let mut row_data = JsonBuilder::new(state.attributes.len());
 
-    let mut attnames = Vec::with_capacity(state.tupdesc.natts as usize);
-    let mut json = Vec::<Box<dyn JsonString>>::with_capacity(state.tupdesc.natts as usize);
-    for (i, attr) in state.attributes.iter().enumerate() {
+    let datums = deconstruct_row_type(state.tupdesc, row);
+    for (attr, datum) in state.attributes.iter().zip(datums.iter()) {
         if attr.dropped {
             continue;
         }
 
-        let datum = columns.get(i).unwrap();
         match datum {
             None => {
                 // we don't bother to encode null values
             }
             Some(datum) => {
-                attnames.push(attr.name.to_owned());
                 match &attr.typoid {
                     PgOid::InvalidOid => panic!("Found InvalidOid for attname='{}'", attr.name),
                     PgOid::Custom(oid) => {
@@ -155,161 +147,151 @@ unsafe fn row_to_json<'a>(
                         unimplemented!("Found custom oid={}", oid);
                     }
                     PgOid::BuiltIn(oid) => match oid {
-                        PgBuiltInOids::TEXTOID => {
-                            json.push(Box::new(
+                        PgBuiltInOids::TEXTOID | PgBuiltInOids::VARCHAROID => {
+                            row_data.add_value(
+                                attr.name,
                                 String::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
-                        }
-                        PgBuiltInOids::VARCHAROID => {
-                            json.push(Box::new(
-                                String::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::BOOLOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 bool::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::INT2OID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 i16::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::INT4OID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 i32::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::INT8OID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 i64::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
                         }
-                        PgBuiltInOids::OIDOID => {
-                            json.push(Box::new(
+                        PgBuiltInOids::OIDOID | PgBuiltInOids::XIDOID => {
+                            row_data.add_value(
+                                attr.name,
                                 u32::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
-                        }
-                        PgBuiltInOids::XIDOID => {
-                            json.push(Box::new(
-                                u32::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::FLOAT4OID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 f32::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::FLOAT8OID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 f64::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::JSONOID => {
-                            json.push(Box::new(
-                                // JSON types are simple varlena* strings, so we avoid parsing the JSON
-                                // and just treat it as a string
+                            row_data.add_value(
+                                attr.name,
                                 pgx::JsonString::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::JSONBOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 JsonB::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            ));
+                            );
+                        }
+
+                        PgBuiltInOids::TEXTARRAYOID | PgBuiltInOids::VARCHARARRAYOID => {
+                            row_data.add_value(
+                                attr.name,
+                                Vec::<Option<String>>::from_datum(
+                                    datum,
+                                    false,
+                                    attr.typoid.value(),
+                                )
+                                .unwrap(),
+                            );
                         }
                         PgBuiltInOids::BOOLARRAYOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<bool>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::INT2ARRAYOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<i16>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::INT4ARRAYOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<i32>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::INT8ARRAYOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<i64>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
-                        PgBuiltInOids::TEXTARRAYOID => {
-                            json.push(Box::new(
-                                Vec::<Option<String>>::from_datum(
-                                    datum,
-                                    false,
-                                    attr.typoid.value(),
-                                )
-                                .unwrap(),
-                            ));
-                        }
-                        PgBuiltInOids::VARCHARARRAYOID => {
-                            json.push(Box::new(
-                                Vec::<Option<String>>::from_datum(
-                                    datum,
-                                    false,
-                                    attr.typoid.value(),
-                                )
-                                .unwrap(),
-                            ));
-                        }
-                        PgBuiltInOids::OIDARRAYOID => {
-                            json.push(Box::new(
+                        PgBuiltInOids::OIDARRAYOID | PgBuiltInOids::XMLARRAYOID => {
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<u32>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::FLOAT4ARRAYOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<f32>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::FLOAT8ARRAYOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<f64>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::JSONARRAYOID => {
-                            json.push(Box::new(
-                                // JSON types are simple varlena* strings, so we avoid parsing the JSON
-                                // and just treat it as a string
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<pgx::JsonString>>::from_datum(
                                     datum,
                                     false,
                                     attr.typoid.value(),
                                 )
                                 .unwrap(),
-                            ));
+                            );
                         }
                         PgBuiltInOids::JSONBARRAYOID => {
-                            json.push(Box::new(
+                            row_data.add_value(
+                                attr.name,
                                 Vec::<Option<JsonB>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
-                            ));
+                            );
                         }
                         _ => {
-                            //                            let value_as_json = direct_function_call::<pgx::JsonString>(
-                            //                                pg_sys::to_json,
-                            //                                vec![Some(datum)],
-                            //                            )
-                            //                            .expect("detected null while converting unknown type to json");
-                            //                            json.push(Box::new(value_as_json));
-
-                            json.push(Box::new(format!(
-                                "UNSUPPORTED TYPE: {}",
-                                attr.typoid.value()
-                            )));
+                            row_data.add_value(
+                                attr.name,
+                                format!("UNSUPPORTED TYPE: {}", attr.typoid.value()),
+                            );
                         }
                     },
                 }
@@ -317,5 +299,5 @@ unsafe fn row_to_json<'a>(
         }
     }
 
-    (attnames, json)
+    row_data
 }

@@ -261,11 +261,6 @@ impl Handler {
                     eprintln!("thread #{} exiting b/x docs_out == 0", thread_id);
                     break;
                 }
-
-                if rx.is_empty() {
-                    eprintln!("thread #{} exiting b/c rx.is_empty()", thread_id);
-                    break;
-                }
             }
 
             active_thread_cnt.fetch_sub(1, Ordering::SeqCst);
