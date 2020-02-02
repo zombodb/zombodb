@@ -116,12 +116,11 @@ unsafe extern "C" fn build_callback(
     let htup = PgBox::from_pg(htup);
     let mut state = PgBox::from_pg(state as *mut BuildState);
     let values = std::slice::from_raw_parts(values, 1);
-    let ctid = htup.t_self.clone();
     let builder = row_to_json(values[0], &state);
 
     state
         .bulk
-        .insert(ctid, 0, 0, 0, 0, builder)
+        .insert(htup.t_self, 0, 0, 0, 0, builder)
         .expect("Unable to send tuple for insert");
     state.ntuples += 1;
 }
@@ -148,69 +147,69 @@ unsafe fn row_to_json<'a>(row: pg_sys::Datum, state: &PgBox<BuildState>) -> Json
                     }
                     PgOid::BuiltIn(oid) => match oid {
                         PgBuiltInOids::TEXTOID | PgBuiltInOids::VARCHAROID => {
-                            row_data.add_value(
+                            row_data.add_string(
                                 attr.name,
                                 String::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
                         PgBuiltInOids::BOOLOID => {
-                            row_data.add_value(
+                            row_data.add_bool(
                                 attr.name,
                                 bool::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
                         PgBuiltInOids::INT2OID => {
-                            row_data.add_value(
+                            row_data.add_i16(
                                 attr.name,
                                 i16::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
                         PgBuiltInOids::INT4OID => {
-                            row_data.add_value(
+                            row_data.add_i32(
                                 attr.name,
                                 i32::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
                         PgBuiltInOids::INT8OID => {
-                            row_data.add_value(
+                            row_data.add_i64(
                                 attr.name,
                                 i64::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
                         PgBuiltInOids::OIDOID | PgBuiltInOids::XIDOID => {
-                            row_data.add_value(
+                            row_data.add_u32(
                                 attr.name,
                                 u32::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
                         PgBuiltInOids::FLOAT4OID => {
-                            row_data.add_value(
+                            row_data.add_f32(
                                 attr.name,
                                 f32::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
                         PgBuiltInOids::FLOAT8OID => {
-                            row_data.add_value(
+                            row_data.add_f64(
                                 attr.name,
                                 f64::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
                         PgBuiltInOids::JSONOID => {
-                            row_data.add_value(
+                            row_data.add_json_string(
                                 attr.name,
                                 pgx::JsonString::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         PgBuiltInOids::JSONBOID => {
-                            row_data.add_value(
+                            row_data.add_jsonb(
                                 attr.name,
                                 JsonB::from_datum(datum, false, attr.typoid.value()).unwrap(),
                             );
                         }
 
                         PgBuiltInOids::TEXTARRAYOID | PgBuiltInOids::VARCHARARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_string_array(
                                 attr.name,
                                 Vec::<Option<String>>::from_datum(
                                     datum,
@@ -221,56 +220,56 @@ unsafe fn row_to_json<'a>(row: pg_sys::Datum, state: &PgBox<BuildState>) -> Json
                             );
                         }
                         PgBuiltInOids::BOOLARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_bool_array(
                                 attr.name,
                                 Vec::<Option<bool>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         PgBuiltInOids::INT2ARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_i16_array(
                                 attr.name,
                                 Vec::<Option<i16>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         PgBuiltInOids::INT4ARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_i32_array(
                                 attr.name,
                                 Vec::<Option<i32>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         PgBuiltInOids::INT8ARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_i64_array(
                                 attr.name,
                                 Vec::<Option<i64>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         PgBuiltInOids::OIDARRAYOID | PgBuiltInOids::XMLARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_u32_array(
                                 attr.name,
                                 Vec::<Option<u32>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         PgBuiltInOids::FLOAT4ARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_f32_array(
                                 attr.name,
                                 Vec::<Option<f32>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         PgBuiltInOids::FLOAT8ARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_f64_array(
                                 attr.name,
                                 Vec::<Option<f64>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         PgBuiltInOids::JSONARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_json_string_array(
                                 attr.name,
                                 Vec::<Option<pgx::JsonString>>::from_datum(
                                     datum,
@@ -281,17 +280,15 @@ unsafe fn row_to_json<'a>(row: pg_sys::Datum, state: &PgBox<BuildState>) -> Json
                             );
                         }
                         PgBuiltInOids::JSONBARRAYOID => {
-                            row_data.add_value(
+                            row_data.add_jsonb_array(
                                 attr.name,
                                 Vec::<Option<JsonB>>::from_datum(datum, false, attr.typoid.value())
                                     .unwrap(),
                             );
                         }
                         _ => {
-                            row_data.add_value(
-                                attr.name,
-                                format!("UNSUPPORTED TYPE: {}", attr.typoid.value()),
-                            );
+                            // row_data.add_string(attr.name, "UNSUPPORTED TYPE".to_string());
+                            row_data.add_bool(attr.name, false);
                         }
                     },
                 }

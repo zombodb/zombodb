@@ -7,7 +7,7 @@ mod bulk;
 #[derive(Debug)]
 pub enum BulkRequestCommand {
     Insert {
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         cmin: pg_sys::CommandId,
         cmax: pg_sys::CommandId,
         xmin: u64,
@@ -15,17 +15,17 @@ pub enum BulkRequestCommand {
         builder: JsonBuilder,
     },
     Update {
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         cmax: pg_sys::CommandId,
         xmax: u64,
         builder: JsonBuilder,
     },
     DeleteByXmin {
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         xmin: u64,
     },
     DeleteByXmax {
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         xmax: u64,
     },
     Interrupt,
@@ -89,7 +89,7 @@ impl ElasticsearchBulkRequest {
         self.check_for_error();
 
         self.handler.queue_command(BulkRequestCommand::Insert {
-            ctid,
+            ctid: item_pointer_to_u64(ctid),
             cmin,
             cmax,
             xmin,
@@ -108,7 +108,7 @@ impl ElasticsearchBulkRequest {
         self.check_for_error();
 
         self.handler.queue_command(BulkRequestCommand::Update {
-            ctid,
+            ctid: item_pointer_to_u64(ctid),
             cmax,
             xmax,
             builder,
@@ -123,7 +123,10 @@ impl ElasticsearchBulkRequest {
         self.check_for_error();
 
         self.handler
-            .queue_command(BulkRequestCommand::DeleteByXmin { ctid, xmin })
+            .queue_command(BulkRequestCommand::DeleteByXmin {
+                ctid: item_pointer_to_u64(ctid),
+                xmin,
+            })
     }
 
     pub fn delete_by_xmax(
@@ -134,7 +137,10 @@ impl ElasticsearchBulkRequest {
         self.check_for_error();
 
         self.handler
-            .queue_command(BulkRequestCommand::DeleteByXmax { ctid, xmax })
+            .queue_command(BulkRequestCommand::DeleteByXmax {
+                ctid: item_pointer_to_u64(ctid),
+                xmax,
+            })
     }
 
     #[inline]

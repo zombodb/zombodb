@@ -78,7 +78,7 @@ impl BulkReceiver {
                 serde_json::to_writer(
                     &mut self.buffer,
                     &json! {
-                        {"index": {"_id": item_pointer_to_u64(ctid) } }
+                        {"index": {"_id": ctid } }
                     },
                 )
                 .expect("failed to serialize index line");
