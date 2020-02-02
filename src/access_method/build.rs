@@ -3,9 +3,9 @@ use crate::json::builder::JsonBuilder;
 use pgx::*;
 use std::ops::DerefMut;
 
-struct Attribute<'a> {
+struct Attribute {
     dropped: bool,
-    name: &'a str,
+    name: &'static str,
     typoid: PgOid,
 }
 
@@ -13,7 +13,7 @@ struct BuildState<'a> {
     ntuples: usize,
     bulk: ElasticsearchBulkRequest,
     tupdesc: &'a PgBox<pg_sys::TupleDescData>,
-    attributes: Vec<Attribute<'a>>,
+    attributes: Vec<Attribute>,
 }
 
 impl<'a> BuildState<'a> {
@@ -125,7 +125,7 @@ unsafe extern "C" fn build_callback(
     state.ntuples += 1;
 }
 
-unsafe fn row_to_json<'a>(row: pg_sys::Datum, state: &PgBox<BuildState>) -> JsonBuilder {
+unsafe fn row_to_json(row: pg_sys::Datum, state: &PgBox<BuildState>) -> JsonBuilder {
     let mut row_data = JsonBuilder::new(state.attributes.len());
 
     let datums = deconstruct_row_type(state.tupdesc, row);
