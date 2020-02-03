@@ -3,14 +3,15 @@ mod dsl {
     use pgx::*;
     use serde_json::*;
 
+    #[pg_extern(immutable, parallel_safe)]
     pub fn fuzzy(
         field: &str,
         value: &str,
-        boost: default!(Option<f32>, null),
-        fuzziness_integer: default!(Option<i64>, null),
-        prefix_length: default!(Option<i64>, null),
-        max_expansions: default!(Option<i64>, 50),
-        transpositions: default!(Option<bool>, null),
+        boost: Option<default!(f32, null)>,
+        fuzziness_integer: Option<default!(i64, null)>,
+        prefix_length: Option<default!(i64, null)>,
+        max_expansions: Option<default!(i64, 50)>,
+        transpositions: Option<default!(bool, null)>,
     ) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {

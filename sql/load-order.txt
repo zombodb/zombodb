@@ -15,3 +15,4 @@ query_dsl_terms_array.generated.sql
 query_dsl_terms_lookup.generated.sql
 query_dsl_limit.generated.sql
 query_dsl_sort.generated.sql
+query_dsl_fuzzy.generated.sql
