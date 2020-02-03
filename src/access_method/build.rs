@@ -135,170 +135,154 @@ unsafe fn row_to_json(row: pg_sys::Datum, state: &PgBox<BuildState>) -> JsonBuil
     let mut row_data = JsonBuilder::new(state.attributes.len());
 
     let datums = deconstruct_row_type(state.tupdesc, row);
-    for (attr, datum) in state.attributes.iter().zip(datums.iter()) {
-        if attr.dropped {
-            continue;
-        }
+    for (attr, datum) in state
+        .attributes
+        .iter()
+        .zip(datums.iter())
+        .filter(|(attr, datum)| !attr.dropped && datum.is_some())
+    {
+        let datum = datum.expect("found NULL datum"); // shouldn't happen b/c None datums are filtered above
 
-        match datum {
-            None => {
-                // we don't bother to encode null values
+        match &attr.typoid {
+            PgOid::InvalidOid => panic!("Found InvalidOid for attname='{}'", attr.name),
+            PgOid::Custom(oid) => {
+                // TODO:  what to do here?
+                unimplemented!("Found custom oid={}", oid);
             }
-            Some(datum) => {
-                match &attr.typoid {
-                    PgOid::InvalidOid => panic!("Found InvalidOid for attname='{}'", attr.name),
-                    PgOid::Custom(oid) => {
-                        // TODO:  what to do here?
-                        unimplemented!("Found custom oid={}", oid);
-                    }
-                    PgOid::BuiltIn(oid) => match oid {
-                        PgBuiltInOids::TEXTOID | PgBuiltInOids::VARCHAROID => {
-                            row_data.add_string(
-                                attr.name,
-                                String::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::BOOLOID => {
-                            row_data.add_bool(
-                                attr.name,
-                                bool::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::INT2OID => {
-                            row_data.add_i16(
-                                attr.name,
-                                i16::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::INT4OID => {
-                            row_data.add_i32(
-                                attr.name,
-                                i32::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::INT8OID => {
-                            row_data.add_i64(
-                                attr.name,
-                                i64::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::OIDOID | PgBuiltInOids::XIDOID => {
-                            row_data.add_u32(
-                                attr.name,
-                                u32::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::FLOAT4OID => {
-                            row_data.add_f32(
-                                attr.name,
-                                f32::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::FLOAT8OID => {
-                            row_data.add_f64(
-                                attr.name,
-                                f64::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::JSONOID => {
-                            row_data.add_json_string(
-                                attr.name,
-                                pgx::JsonString::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::JSONBOID => {
-                            row_data.add_jsonb(
-                                attr.name,
-                                JsonB::from_datum(datum, false, attr.typoid.value()).unwrap(),
-                            );
-                        }
-
-                        PgBuiltInOids::TEXTARRAYOID | PgBuiltInOids::VARCHARARRAYOID => {
-                            row_data.add_string_array(
-                                attr.name,
-                                Vec::<Option<String>>::from_datum(
-                                    datum,
-                                    false,
-                                    attr.typoid.value(),
-                                )
-                                .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::BOOLARRAYOID => {
-                            row_data.add_bool_array(
-                                attr.name,
-                                Vec::<Option<bool>>::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::INT2ARRAYOID => {
-                            row_data.add_i16_array(
-                                attr.name,
-                                Vec::<Option<i16>>::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::INT4ARRAYOID => {
-                            row_data.add_i32_array(
-                                attr.name,
-                                Vec::<Option<i32>>::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::INT8ARRAYOID => {
-                            row_data.add_i64_array(
-                                attr.name,
-                                Vec::<Option<i64>>::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::OIDARRAYOID | PgBuiltInOids::XMLARRAYOID => {
-                            row_data.add_u32_array(
-                                attr.name,
-                                Vec::<Option<u32>>::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::FLOAT4ARRAYOID => {
-                            row_data.add_f32_array(
-                                attr.name,
-                                Vec::<Option<f32>>::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::FLOAT8ARRAYOID => {
-                            row_data.add_f64_array(
-                                attr.name,
-                                Vec::<Option<f64>>::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::JSONARRAYOID => {
-                            row_data.add_json_string_array(
-                                attr.name,
-                                Vec::<Option<pgx::JsonString>>::from_datum(
-                                    datum,
-                                    false,
-                                    attr.typoid.value(),
-                                )
-                                .unwrap(),
-                            );
-                        }
-                        PgBuiltInOids::JSONBARRAYOID => {
-                            row_data.add_jsonb_array(
-                                attr.name,
-                                Vec::<Option<JsonB>>::from_datum(datum, false, attr.typoid.value())
-                                    .unwrap(),
-                            );
-                        }
-                        _ => {
-                            // row_data.add_string(attr.name, "UNSUPPORTED TYPE".to_string());
-                            row_data.add_bool(attr.name, false);
-                        }
-                    },
+            PgOid::BuiltIn(oid) => match oid {
+                PgBuiltInOids::TEXTOID | PgBuiltInOids::VARCHAROID => {
+                    row_data.add_string(
+                        attr.name,
+                        String::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
                 }
-            }
+                PgBuiltInOids::BOOLOID => {
+                    row_data.add_bool(
+                        attr.name,
+                        bool::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::INT2OID => {
+                    row_data.add_i16(
+                        attr.name,
+                        i16::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::INT4OID => {
+                    row_data.add_i32(
+                        attr.name,
+                        i32::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::INT8OID => {
+                    row_data.add_i64(
+                        attr.name,
+                        i64::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::OIDOID | PgBuiltInOids::XIDOID => {
+                    row_data.add_u32(
+                        attr.name,
+                        u32::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::FLOAT4OID => {
+                    row_data.add_f32(
+                        attr.name,
+                        f32::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::FLOAT8OID => {
+                    row_data.add_f64(
+                        attr.name,
+                        f64::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::JSONOID => {
+                    row_data.add_json_string(
+                        attr.name,
+                        pgx::JsonString::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::JSONBOID => {
+                    row_data.add_jsonb(
+                        attr.name,
+                        JsonB::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+
+                PgBuiltInOids::TEXTARRAYOID | PgBuiltInOids::VARCHARARRAYOID => {
+                    row_data.add_string_array(
+                        attr.name,
+                        Vec::<Option<String>>::from_datum(datum, false, attr.typoid.value())
+                            .unwrap(),
+                    );
+                }
+                PgBuiltInOids::BOOLARRAYOID => {
+                    row_data.add_bool_array(
+                        attr.name,
+                        Vec::<Option<bool>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::INT2ARRAYOID => {
+                    row_data.add_i16_array(
+                        attr.name,
+                        Vec::<Option<i16>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::INT4ARRAYOID => {
+                    row_data.add_i32_array(
+                        attr.name,
+                        Vec::<Option<i32>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::INT8ARRAYOID => {
+                    row_data.add_i64_array(
+                        attr.name,
+                        Vec::<Option<i64>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::OIDARRAYOID | PgBuiltInOids::XMLARRAYOID => {
+                    row_data.add_u32_array(
+                        attr.name,
+                        Vec::<Option<u32>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::FLOAT4ARRAYOID => {
+                    row_data.add_f32_array(
+                        attr.name,
+                        Vec::<Option<f32>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::FLOAT8ARRAYOID => {
+                    row_data.add_f64_array(
+                        attr.name,
+                        Vec::<Option<f64>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                    );
+                }
+                PgBuiltInOids::JSONARRAYOID => {
+                    row_data.add_json_string_array(
+                        attr.name,
+                        Vec::<Option<pgx::JsonString>>::from_datum(
+                            datum,
+                            false,
+                            attr.typoid.value(),
+                        )
+                        .unwrap(),
+                    );
+                }
+                PgBuiltInOids::JSONBARRAYOID => {
+                    row_data.add_jsonb_array(
+                        attr.name,
+                        Vec::<Option<JsonB>>::from_datum(datum, false, attr.typoid.value())
+                            .unwrap(),
+                    );
+                }
+                _ => {
+                    // row_data.add_string(attr.name, "UNSUPPORTED TYPE".to_string());
+                    row_data.add_bool(attr.name, false);
+                }
+            },
         }
     }
 
