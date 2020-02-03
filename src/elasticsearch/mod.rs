@@ -1,13 +1,14 @@
 #![allow(dead_code)]
 use crate::json::builder::JsonBuilder;
 use pgx::*;
+use std::sync::atomic::Ordering;
 
 mod bulk;
 
 #[derive(Debug)]
 pub enum BulkRequestCommand {
     Insert {
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         cmin: pg_sys::CommandId,
         cmax: pg_sys::CommandId,
         xmin: u64,
@@ -15,17 +16,17 @@ pub enum BulkRequestCommand {
         builder: JsonBuilder,
     },
     Update {
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         cmax: pg_sys::CommandId,
         xmax: u64,
         builder: JsonBuilder,
     },
     DeleteByXmin {
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         xmin: u64,
     },
     DeleteByXmax {
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         xmax: u64,
     },
     Interrupt,
@@ -34,7 +35,7 @@ pub enum BulkRequestCommand {
 
 #[derive(Debug)]
 pub enum BulkRequestError {
-    CommError,
+    IndexingError(String),
     NoError,
 }
 
@@ -46,7 +47,6 @@ pub struct Elasticsearch {
 
 pub struct ElasticsearchBulkRequest {
     handler: bulk::Handler,
-    bulk_sender: crossbeam::channel::Sender<BulkRequestCommand>,
     error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
 }
 
@@ -65,24 +65,27 @@ impl Elasticsearch {
 
 impl ElasticsearchBulkRequest {
     fn new(elasticsearch: Elasticsearch, queue_size: usize, concurrency: usize) -> Self {
-        let (btx, brx) = crossbeam::channel::bounded(queue_size * concurrency);
         let (etx, erx) = crossbeam::channel::bounded(queue_size * concurrency);
 
         ElasticsearchBulkRequest {
-            handler: bulk::Handler::run(elasticsearch, concurrency, brx, etx),
-            bulk_sender: btx,
+            handler: bulk::Handler::new(elasticsearch, concurrency, etx),
             error_receiver: erx,
         }
     }
 
     pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
-        // drop the sender side of the channel since we're done
-        // this will signal the receivers that once their queues are empty
-        // there's nothing left for them to do
-        std::mem::drop(self.bulk_sender);
-
         // wait for the bulk requests to finish
         self.handler.wait_for_completion()
+    }
+
+    pub fn terminate(
+        &self,
+    ) -> impl Fn() + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'static {
+        let terminate = self.handler.terminatd.clone();
+        move || {
+            terminate.store(true, Ordering::SeqCst);
+            info!("terminating process");
+        }
     }
 
     pub fn insert(
@@ -96,8 +99,8 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
-        self.bulk_sender.send(BulkRequestCommand::Insert {
-            ctid,
+        self.handler.queue_command(BulkRequestCommand::Insert {
+            ctid: item_pointer_to_u64(ctid),
             cmin,
             cmax,
             xmin,
@@ -115,8 +118,8 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
-        self.bulk_sender.send(BulkRequestCommand::Update {
-            ctid,
+        self.handler.queue_command(BulkRequestCommand::Update {
+            ctid: item_pointer_to_u64(ctid),
             cmax,
             xmax,
             builder,
@@ -130,8 +133,11 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
-        self.bulk_sender
-            .send(BulkRequestCommand::DeleteByXmin { ctid, xmin })
+        self.handler
+            .queue_command(BulkRequestCommand::DeleteByXmin {
+                ctid: item_pointer_to_u64(ctid),
+                xmin,
+            })
     }
 
     pub fn delete_by_xmax(
@@ -141,8 +147,11 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
-        self.bulk_sender
-            .send(BulkRequestCommand::DeleteByXmax { ctid, xmax })
+        self.handler
+            .queue_command(BulkRequestCommand::DeleteByXmax {
+                ctid: item_pointer_to_u64(ctid),
+                xmax,
+            })
     }
 
     #[inline]
@@ -153,9 +162,9 @@ impl ElasticsearchBulkRequest {
             .try_recv()
             .unwrap_or(BulkRequestError::NoError)
         {
-            BulkRequestError::CommError => {
+            BulkRequestError::IndexingError(err_string) => {
                 self.handler.terminate();
-                panic!("Elasticsearch Communication Error");
+                panic!("{}", err_string);
             }
             BulkRequestError::NoError => {}
         }
