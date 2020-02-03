@@ -146,12 +146,9 @@ impl Handler {
         }
 
         self.total_docs += 1;
-        let nthreads = self.active_thread_cnt.load(Ordering::SeqCst);
-        let queue_len = self.bulk_sender.len();
-        let capacity = self.bulk_sender.capacity().unwrap();
 
-        if nthreads == 0 || (queue_len > capacity / self.concurrency && nthreads < self.concurrency)
-        {
+        let nthreads = self.active_thread_cnt.load(Ordering::SeqCst);
+        if nthreads < self.concurrency {
             self.threads
                 .push(self.create_thread(self.threads.len(), Some(command)));
 
