@@ -332,6 +332,11 @@ mod tests {
         validate_url(CString::new("http://localhost:9200/").unwrap().as_ptr());
     }
 
+    #[pg_test]
+    fn test_validate_default_url() {
+        validate_url(CString::new("default").unwrap().as_ptr());
+    }
+
     #[pg_test(error = "url must end with a forward slash")]
     fn test_validate_invalid_url() {
         validate_url(CString::new("http://localhost:9200").unwrap().as_ptr());
