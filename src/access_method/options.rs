@@ -339,11 +339,17 @@ mod tests {
 
     #[pg_test]
     unsafe fn test_index_options() {
-        Spi::run("CREATE TABLE test();  
+        Spi::run(
+            "CREATE TABLE test();  
         CREATE INDEX idxtest 
                   ON test 
                USING zombodb ((test.*)) 
-                WITH (url='localhost:9200/', type_name='test_type_name', alias='test_alias', uuid='test_uuid', refresh_interval='test_refresh_interval'); ");
+                WITH (url='localhost:9200/', 
+                      type_name='test_type_name', 
+                      alias='test_alias', 
+                      uuid='test_uuid', 
+                      refresh_interval='5s'); ",
+        );
 
         let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
             .expect("failed to get SPI result");
@@ -353,7 +359,7 @@ mod tests {
         assert_eq!(options.type_name().unwrap(), "test_type_name");
         assert_eq!(options.alias().unwrap(), "test_alias");
         assert_eq!(options.uuid().unwrap(), "test_uuid");
-        assert_eq!(options.refresh_interval().unwrap(), "test_refresh_interval");
+        assert_eq!(options.refresh_interval().unwrap(), "5s");
         pg_sys::RelationClose(indexrel);
     }
 }
