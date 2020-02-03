@@ -8,7 +8,7 @@ mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde::*;
-    use std::collections::HashMap;
+    use serde_json::*;
 
     #[derive(Serialize)]
     struct TermsLookup<'a> {
@@ -19,31 +19,28 @@ mod dsl {
         routing: Option<&'a str>,
     }
 
-    #[derive(Serialize)]
-    struct Terms<'a> {
-        terms: HashMap<&'a str, TermsLookup<'a>>,
-    }
-
     #[pg_extern(immutable, parallel_safe)]
     pub fn terms_lookup(
         field: &str,
         index: &str,
         id: &str,
         path: &str,
-        routing: Option<default!(&str, "NULL")>,
+        routing: Option<default!(&str, NULL)>,
     ) -> ZDBQuery {
-        let mut terms = HashMap::new();
-        terms.insert(
-            field,
-            TermsLookup {
-                index,
-                id,
-                path,
-                routing,
-            },
-        );
+        let terms_lookup_object = TermsLookup {
+            index,
+            id,
+            path,
+            routing,
+        };
 
-        ZDBQuery::new_with_query_dsl(serde_json::to_value(Terms { terms }).unwrap())
+        ZDBQuery::new_with_query_dsl(json! {
+            {
+                "terms": {
+                    field: terms_lookup_object
+                }
+            }
+        })
     }
 }
 
