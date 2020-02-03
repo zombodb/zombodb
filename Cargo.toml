@@ -13,6 +13,7 @@ pg_test = []
 [dependencies]
 pgx = { path = "../pgx/pgx/", default-features = false }
 pgx-macros = { path = "../pgx/pgx-macros" }
+lazy_static = "1.4.0"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.46"
 serde_cbor = "0.11.1"
