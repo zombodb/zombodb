@@ -58,6 +58,9 @@ pub extern "C" fn ambuild(
 
     let mut state = BuildState::new("http://localhost:9200/", "test_index", &tupdesc);
 
+    // before we start the heap scan build, register an Abort callback so we can quickly terminate
+    // any threads we might have spawned during the process
+    let callback = register_xact_callback(PgXactCallbackEvent::Abort, state.bulk.terminate());
     unsafe {
         pg_sys::IndexBuildHeapScan(
             heap_relation,
@@ -78,6 +81,9 @@ pub extern "C" fn ambuild(
         Ok(cnt) => info!("indexed {} tuples", cnt),
         Err(e) => panic!("{:?}", e),
     }
+
+    // our work with Elasticsearch is done, so we can unregister our Abort callback
+    callback.unregister_callback();
 
     info!("ntuples={}", state.ntuples);
     result_mut.heap_tuples = state.ntuples as f64;

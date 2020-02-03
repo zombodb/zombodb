@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use crate::json::builder::JsonBuilder;
 use pgx::*;
+use std::sync::atomic::Ordering;
 
 mod bulk;
 
@@ -34,7 +35,7 @@ pub enum BulkRequestCommand {
 
 #[derive(Debug)]
 pub enum BulkRequestError {
-    CommError,
+    IndexingError(String),
     NoError,
 }
 
@@ -75,6 +76,16 @@ impl ElasticsearchBulkRequest {
     pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
         // wait for the bulk requests to finish
         self.handler.wait_for_completion()
+    }
+
+    pub fn terminate(
+        &self,
+    ) -> impl Fn() + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'static {
+        let terminate = self.handler.terminatd.clone();
+        move || {
+            terminate.store(true, Ordering::SeqCst);
+            info!("terminating process");
+        }
     }
 
     pub fn insert(
@@ -151,9 +162,9 @@ impl ElasticsearchBulkRequest {
             .try_recv()
             .unwrap_or(BulkRequestError::NoError)
         {
-            BulkRequestError::CommError => {
+            BulkRequestError::IndexingError(err_string) => {
                 self.handler.terminate();
-                panic!("Elasticsearch Communication Error");
+                panic!("{}", err_string);
             }
             BulkRequestError::NoError => {}
         }
