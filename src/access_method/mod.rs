@@ -1,7 +1,8 @@
 use pgx::*;
 
 mod build;
-mod options;
+mod cost_estimate;
+pub mod options;
 mod scan;
 mod vacuum;
 
@@ -26,7 +27,7 @@ fn amhandler() -> PgBox<pg_sys::IndexAmRoutine> {
     amroutine.aminsert = Some(build::aminsert);
     amroutine.ambulkdelete = Some(vacuum::ambulkdelete);
     amroutine.amvacuumcleanup = Some(vacuum::amvacuumcleanup);
-    amroutine.amcostestimate = Some(options::amcostestimate);
+    amroutine.amcostestimate = Some(cost_estimate::amcostestimate);
     amroutine.amoptions = Some(options::amoptions);
     amroutine.ambeginscan = Some(scan::ambeginscan);
     amroutine.amrescan = Some(scan::amrescan);
