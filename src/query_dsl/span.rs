@@ -115,7 +115,7 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    fn span_or(clauses: Array<ZDBQuery>) -> ZDBQuery {
+    fn span_or(clauses: VariadicArray<ZDBQuery>) -> ZDBQuery {
         let clauses: Vec<serde_json::Value> = clauses
             .iter()
             .map(|zdbquery| {
@@ -431,12 +431,10 @@ mod tests {
     #[pg_test]
     fn test_span_or() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
-            "SELECT dsl.span_or( 
-                ARRAY[
+            "SELECT dsl.span_or(
                     dsl.span_term('span_term_field1', 'span_term_value1'), 
                     dsl.span_term('span_term_field2', 'span_term_value2'),
                     dsl.span_term('span_term_field3', 'span_term_value3')
-                ]
             )",
         )
         .expect("failed to get SPI result");
