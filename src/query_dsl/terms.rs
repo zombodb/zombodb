@@ -85,9 +85,6 @@ mod tests {
     use pgx::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     // SELECT terms('fieldname', ARRAY[1,2,3]::integer[], 1.0);
     // SELECT terms('fieldname', ARRAY['one', 'two', 'three']::text[], 1.0);
     #[pg_test]

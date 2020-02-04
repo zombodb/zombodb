@@ -63,9 +63,6 @@ mod tests {
     use pgx::*;
     use serde_json::*;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_sort() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.sort('the_field', 'asc', 'david')")

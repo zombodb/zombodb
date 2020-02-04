@@ -51,9 +51,6 @@ mod tests {
     use pgx::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_terms_lookup_with_routing() {
         let zdbquery = terms_lookup(

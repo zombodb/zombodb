@@ -32,9 +32,6 @@ mod tests {
     use pgx::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_terms_array_with_integers() {
         let zdbquery =

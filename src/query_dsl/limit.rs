@@ -36,9 +36,6 @@ mod tests {
     use pgx::*;
     use serde_json::*;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_limit() {
         let zdbquery = limit(100, ZDBQuery::new_with_query_string("test"));

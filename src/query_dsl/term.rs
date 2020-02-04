@@ -87,9 +87,6 @@ mod tests {
     use serde_json::json;
     use std::f32::{INFINITY, NAN, NEG_INFINITY};
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_term_str() {
         let zdbquery = term_str("fieldname", "test value", 42.0);

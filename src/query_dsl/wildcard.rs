@@ -30,9 +30,6 @@ mod tests {
     use pgx::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_wildcard_with_boost() {
         let zdbquery = wildcard("fieldname", "t*t", 42.0);
