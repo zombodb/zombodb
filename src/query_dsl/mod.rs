@@ -6,6 +6,7 @@ mod match_all;
 mod match_none;
 mod prefix;
 mod sort;
+mod span;
 mod term;
 mod terms;
 mod terms_array;

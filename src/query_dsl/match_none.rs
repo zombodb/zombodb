@@ -24,9 +24,6 @@ mod tests {
     use pgx::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_matchnone() {
         let zdbquery = matchnone();

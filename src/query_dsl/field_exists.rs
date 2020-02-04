@@ -26,9 +26,6 @@ mod tests {
     use pgx::*;
     use serde_json::*;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_field_exists() {
         let zdbquery = field_exists("fieldname");
