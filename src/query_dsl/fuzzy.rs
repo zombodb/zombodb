@@ -54,9 +54,6 @@ mod tests {
     use pgx::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_fuzzy() {
         let zdbquery = fuzzy(
@@ -83,6 +80,26 @@ mod tests {
                         "max_expansions": 50,
                         "prefix_length": 50,
                         "transpositions": true,
+                        }
+                   }
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_fuzzy_with_default() {
+        let zdbquery = fuzzy("field", "value", None, None, None, None, None);
+        let dls = zdbquery.query_dsl();
+
+        assert!(dls.is_some());
+        assert_eq!(
+            dls.unwrap(),
+            &json! {
+                {
+                    "fuzzy": {
+                  "field": {
+                        "value": "value",
                         }
                    }
                 }

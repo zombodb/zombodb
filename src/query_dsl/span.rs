@@ -6,9 +6,11 @@
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
+    use serde::*;
     use serde_json::*;
 
-    fn span_containing(little: ZDBQuery, big: ZDBQuery) -> ZDBQuery {
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn span_containing(little: ZDBQuery, big: ZDBQuery) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "span_containing" : {
@@ -19,7 +21,8 @@ mod dsl {
         })
     }
 
-    fn span_first(query: ZDBQuery, end: i64) -> ZDBQuery {
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn span_first(query: ZDBQuery, end: i64) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "span_first" :query.query_dsl(),
@@ -28,7 +31,8 @@ mod dsl {
         })
     }
 
-    fn span_masking(field: &str, query: ZDBQuery) -> ZDBQuery {
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn span_masking(field: &str, query: ZDBQuery) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
               {
           "field_masking_span" :
@@ -38,7 +42,8 @@ mod dsl {
         })
     }
 
-    fn span_multi(query: ZDBQuery) -> ZDBQuery {
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn span_multi(query: ZDBQuery) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "span_multi": query.query_dsl()
@@ -46,20 +51,23 @@ mod dsl {
         })
     }
 
-    fn span_near(in_order: bool, slop: i64, clauses: Array<ZDBQuery>) -> ZDBQuery {
-        let mut vec = Vec::new();
-        for element in clauses.iter() {
-            match element {
-                Some(zdbquery) => {
-                    let query_dsl = zdbquery.query_dsl();
-                    match query_dsl {
-                        Some(query_dsl) => vec.push(query_dsl.clone()),
-                        None => {}
-                    }
-                }
-                None => {}
-            }
-        }
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn span_near(
+        in_order: bool,
+        slop: i64,
+        clauses: VariadicArray<ZDBQuery>,
+    ) -> ZDBQuery {
+        let clauses: Vec<serde_json::Value> = clauses
+            .iter()
+            .map(|zdbquery| {
+                zdbquery
+                    .expect("found NULL zdbquery in clauses")
+                    .query_dsl()
+                    .expect("zdbquery doesn't contain query dsl")
+                    .clone()
+            })
+            .collect();
+
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "span_near" : {
@@ -71,70 +79,482 @@ mod dsl {
         })
     }
 
-    fn span_not(
+    #[derive(Serialize)]
+    struct SpanNot {
         include: ZDBQuery,
         exclude: ZDBQuery,
-        pre_integer: default!(Option<i64>, NULL),
-        post_integer: default!(Option<i64>, NULL),
-        dis_integer: default!(Option<i64>, NULL),
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pre_integer: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        post_integer: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        dis_integer: Option<i64>,
+    }
+
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn span_not(
+        include: ZDBQuery,
+        exclude: ZDBQuery,
+        pre_integer: Option<default!(i64, NULL)>,
+        post_integer: Option<default!(i64, NULL)>,
+        dis_integer: Option<default!(i64, NULL)>,
     ) -> ZDBQuery {
+        let span_not = SpanNot {
+            include,
+            exclude,
+            pre_integer,
+            post_integer,
+            dis_integer,
+        };
         ZDBQuery::new_with_query_dsl(json! {
             {
-                "span_not" : {
-                    "include" : include.query_dsl(),
-                    "exclude" : exclude.query_dsl(),
-                    "pre" : pre_integer,
-                    "post" : post_integer,
-                    "dis" : dis_integer,
-                }
+                "span_not" :
+                            span_not
             }
         })
     }
 
+    #[pg_extern(immutable, parallel_safe)]
     fn span_or(clauses: Array<ZDBQuery>) -> ZDBQuery {
-        let mut vec = Vec::new();
-        for element in clauses.iter() {
-            match element {
-                Some(zdbquery) => {
-                    let query_dsl = zdbquery.query_dsl();
-                    match query_dsl {
-                        Some(query_dsl) => vec.push(query_dsl.clone()),
-                        None => {}
-                    }
-                }
-                None => {}
-            }
-        }
+        let clauses: Vec<serde_json::Value> = clauses
+            .iter()
+            .map(|zdbquery| {
+                zdbquery
+                    .expect("found NULL zdbquery in clauses")
+                    .query_dsl()
+                    .expect("zdbquery doesn't contain query dsl")
+                    .clone()
+            })
+            .collect();
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "span_or" : {
-                    "clauses" :  vec
+                    "clauses" :  clauses
                 }
             }
         })
     }
 
-    fn span_term(field: &str, value: &str, boost: default!(Option<i64>, NULL)) -> ZDBQuery {
+    #[derive(Serialize)]
+    struct SpanTerm<'a> {
+        value: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        boost: Option<f32>,
+    }
+
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn span_term(
+        field: &str,
+        value: &str,
+        boost: Option<default!(f32, NULL)>,
+    ) -> ZDBQuery {
+        let span_terms = SpanTerm { value, boost };
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "span_term" :{
-                    field : {
-                        "term"  : value,
-                        "boost" : boost
-                    }
+                    field :
+                        span_terms
                 }
             }
         })
     }
 
-    fn span_within(little: ZDBQuery, big: ZDBQuery) -> ZDBQuery {
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn span_within(little: ZDBQuery, big: ZDBQuery) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
-                "span_containing" : {
+                "span_within" : {
                     "little" :  little.query_dsl(),
                     "big" : big.query_dsl()
                 }
             }
         })
+    }
+}
+
+#[cfg(any(test, feature = "pg_test"))]
+mod tests {
+    use crate::query_dsl::span::dsl::*;
+    use crate::zdbquery::ZDBQuery;
+    use pgx::*;
+    use serde_json::json;
+
+    #[pg_test]
+    fn test_span_term_without_boost() {
+        let zdbquery = span_term("term_field", "term_value", None);
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "span_term" :{
+                        "term_field" : {
+                            "value"  : "term_value"
+                        }
+                    }
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_span_term_with_boost() {
+        let term_boost = 2.9 as f32;
+        let zdbquery = span_term("term_field", "term_value", Some(term_boost));
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "span_term" :{
+                        "term_field" : {
+                            "value"  : "term_value",
+                            "boost" : term_boost
+                        }
+                    }
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_span_containing() {
+        let little_boost = 2.9 as f32;
+        let zdbquery = span_containing(
+            span_term("little_field", "little_value", Some(little_boost)),
+            span_term("big_field", "big_value", None),
+        );
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                   "span_containing" : {
+                        "little" :{
+                            "span_term" :{
+                                "little_field" : {
+                                    "value"  : "little_value",
+                                    "boost" : little_boost
+                                }
+                            }
+                        },
+                        "big" :{
+                            "span_term" :{
+                                 "big_field" : {
+                                    "value"  : "big_value",
+                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        );
+    }
+
+    #[pg_test()]
+    fn test_span_first() {
+        let zdbquery = span_first(span_term("span_term_field", "span_term_value", None), 50);
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "span_first" :{
+                           "span_term" :{
+                                     "span_term_field" : {
+                                        "value"  : "span_term_value",
+                                     }
+                                }
+                     },
+                    "end" : 50
+                }
+            }
+        );
+    }
+
+    #[pg_test()]
+    fn test_span_masking() {
+        let zdbquery = span_masking(
+            "span_masking_field",
+            span_term("span_term_field", "span_term_value", None),
+        );
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "field_masking_span" :{
+                           "span_term" :{
+                                     "span_term_field" : {
+                                        "value"  : "span_term_value",
+                                     }
+                                }
+                     },
+                    "field" : "span_masking_field"
+                }
+            }
+        );
+    }
+
+    #[pg_test()]
+    fn test_span_multi() {
+        let zdbquery = span_multi(span_term("span_term_field", "span_term_value", None));
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "span_multi" :{
+                           "span_term" :{
+                                "span_term_field" : {
+                                    "value"  : "span_term_value",
+                                }
+                            }
+                     },
+                }
+            }
+        );
+    }
+
+    #[pg_test(error = "found NULL zdbquery in clauses")]
+    fn test_span_near_with_null() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.span_near(
+                true, 
+                50, 
+                dsl.term('field1', 'value1'), 
+                dsl.term('field2', 'value2'), 
+                null /* this causes the error */
+            )",
+        )
+        .expect("failed to get SPI result");
+        zdbquery.limit(); //using this to prevent an warning that zdbquery is not used
+    }
+
+    #[pg_test]
+    fn test_span_near_with_null_inorder() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.span_near(
+                null, 
+                50, 
+                dsl.term('field1', 'value1'), 
+                dsl.term('field2', 'value2')
+            )",
+        );
+
+        assert!(zdbquery.is_none());
+    }
+
+    #[pg_test]
+    fn test_span_near_without_nulls() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.span_near(
+                true, 
+                50, 
+                dsl.span_term('span_term_field1', 'span_term_value1'), 
+                dsl.span_term('span_term_field2', 'span_term_value2')
+            )",
+        )
+        .expect("failed to get SPI result");
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "span_near" : {
+                        "clauses" : [
+                        {
+                            "span_term" :{
+                                "span_term_field1" : {
+                                    "value"  : "span_term_value1",
+                                }
+                            }
+                            },
+                            {
+                            "span_term" :{
+                                "span_term_field2" : {
+                                    "value"  : "span_term_value2",
+                                }
+                            }
+                            }
+                        ],
+                    "slop" : 50,
+                    "in_order" : true,
+                    }
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_span_within() {
+        let little_boost = 2.9 as f32;
+        let zdbquery = span_within(
+            span_term("little_field", "little_value", Some(little_boost)),
+            span_term("big_field", "big_value", None),
+        );
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                   "span_within" : {
+                        "little" :{
+                            "span_term" :{
+                                "little_field" : {
+                                    "value"  : "little_value",
+                                    "boost" : little_boost
+                                }
+                            }
+                        },
+                        "big" :{
+                            "span_term" :{
+                                 "big_field" : {
+                                    "value"  : "big_value",
+                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_span_or() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.span_or( 
+                ARRAY[
+                    dsl.span_term('span_term_field1', 'span_term_value1'), 
+                    dsl.span_term('span_term_field2', 'span_term_value2'),
+                    dsl.span_term('span_term_field3', 'span_term_value3')
+                ]
+            )",
+        )
+        .expect("failed to get SPI result");
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "span_or" : {
+                        "clauses" : [
+                        {
+                            "span_term" :{
+                                "span_term_field1" : {
+                                    "value"  : "span_term_value1",
+                                }
+                            }
+                            },
+                            {
+                            "span_term" :{
+                                "span_term_field2" : {
+                                    "value"  : "span_term_value2",
+                                }
+                            }
+                            },
+                            {
+                            "span_term" :{
+                                "span_term_field3" : {
+                                    "value"  : "span_term_value3",
+                                }
+                            }
+                            }
+                        ],
+                    }
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_span_not_without_default() {
+        let zdbquery = span_not(
+            span_term("included_field", "included_value", None),
+            span_term("excluded_field", "excluded_value", None),
+            None,
+            None,
+            None,
+        );
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "span_not" : {
+                        "include" : {
+                            "query_dsl": {
+                                "span_term" : {
+                                    "included_field" :{
+                                        "value" : "included_value"
+                                    }
+                                }
+                            }
+                        },
+                        "exclude" : {
+                            "query_dsl": {
+                                "span_term" : {
+                                    "excluded_field" : {
+                                        "value": "excluded_value"
+                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_span_not_with_default() {
+        let term_boost = 2.9 as f32;
+        let zdbquery = span_not(
+            span_term("included_field", "included_value", Some(term_boost)),
+            span_term("excluded_field", "excluded_value", None),
+            None,
+            None,
+            None,
+        );
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "span_not" : {
+                        "include" : {
+                            "query_dsl": {
+                                "span_term" : {
+                                    "included_field" :{
+                                        "value" : "included_value",
+                                        "boost" : term_boost
+                                    }
+                                }
+                            }
+                        },
+                        "exclude" : {
+                            "query_dsl": {
+                                "span_term" : {
+                                    "excluded_field" : {
+                                        "value": "excluded_value"
+                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        );
     }
 }
