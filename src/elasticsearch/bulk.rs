@@ -1,4 +1,5 @@
-use crate::elasticsearch::{BulkRequestCommand, BulkRequestError, Elasticsearch};
+use crate::elasticsearch::Elasticsearch;
+use crate::json::builder::JsonBuilder;
 use pgx::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -9,15 +10,167 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+#[derive(Debug)]
+pub enum BulkRequestCommand {
+    Insert {
+        ctid: u64,
+        cmin: pg_sys::CommandId,
+        cmax: pg_sys::CommandId,
+        xmin: u64,
+        xmax: u64,
+        builder: JsonBuilder,
+    },
+    Update {
+        ctid: u64,
+        cmax: pg_sys::CommandId,
+        xmax: u64,
+        builder: JsonBuilder,
+    },
+    DeleteByXmin {
+        ctid: u64,
+        xmin: u64,
+    },
+    DeleteByXmax {
+        ctid: u64,
+        xmax: u64,
+    },
+    Interrupt,
+    Done,
+}
+
+#[derive(Debug)]
+pub enum BulkRequestError {
+    IndexingError(String),
+    NoError,
+}
+
+pub struct ElasticsearchBulkRequest<'a> {
+    handler: Handler<'a>,
+    error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
+}
+
+impl<'a> ElasticsearchBulkRequest<'a> {
+    pub fn new(elasticsearch: Elasticsearch<'a>, queue_size: usize, concurrency: usize) -> Self {
+        let (etx, erx) = crossbeam::channel::bounded(queue_size * concurrency);
+
+        ElasticsearchBulkRequest {
+            handler: Handler::new(elasticsearch, concurrency, etx),
+            error_receiver: erx,
+        }
+    }
+
+    pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
+        // wait for the bulk requests to finish
+        self.handler.wait_for_completion()
+    }
+
+    pub fn terminate(
+        &self,
+    ) -> impl Fn() + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'static {
+        let terminate = self.handler.terminatd.clone();
+        move || {
+            terminate.store(true, Ordering::SeqCst);
+            info!("terminating process");
+        }
+    }
+
+    pub fn insert(
+        &mut self,
+        ctid: pg_sys::ItemPointerData,
+        cmin: pg_sys::CommandId,
+        cmax: pg_sys::CommandId,
+        xmin: u64,
+        xmax: u64,
+        builder: JsonBuilder,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        self.check_for_error();
+
+        self.handler.queue_command(BulkRequestCommand::Insert {
+            ctid: item_pointer_to_u64(ctid),
+            cmin,
+            cmax,
+            xmin,
+            xmax,
+            builder,
+        })
+    }
+
+    pub fn update(
+        &mut self,
+        ctid: pg_sys::ItemPointerData,
+        cmax: pg_sys::CommandId,
+        xmax: u64,
+        builder: JsonBuilder,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        self.check_for_error();
+
+        self.handler.queue_command(BulkRequestCommand::Update {
+            ctid: item_pointer_to_u64(ctid),
+            cmax,
+            xmax,
+            builder,
+        })
+    }
+
+    pub fn delete_by_xmin(
+        &mut self,
+        ctid: pg_sys::ItemPointerData,
+        xmin: u64,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        self.check_for_error();
+
+        self.handler
+            .queue_command(BulkRequestCommand::DeleteByXmin {
+                ctid: item_pointer_to_u64(ctid),
+                xmin,
+            })
+    }
+
+    pub fn delete_by_xmax(
+        &mut self,
+        ctid: pg_sys::ItemPointerData,
+        xmax: u64,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        self.check_for_error();
+
+        self.handler
+            .queue_command(BulkRequestCommand::DeleteByXmax {
+                ctid: item_pointer_to_u64(ctid),
+                xmax,
+            })
+    }
+
+    #[inline]
+    fn check_for_error(&mut self) {
+        // do we have an error queued up?
+        match self
+            .error_receiver
+            .try_recv()
+            .unwrap_or(BulkRequestError::NoError)
+        {
+            BulkRequestError::IndexingError(err_string) => {
+                self.handler.terminate();
+                panic!("{}", err_string);
+            }
+            BulkRequestError::NoError => {}
+        }
+
+        if interrupt_pending() {
+            self.handler.terminate();
+            check_for_interrupts!();
+        }
+    }
+}
+
 const BULK_FILTER_PATH: &str = "errors,items.index.error.caused_by.reason";
 
-pub(crate) struct Handler {
+pub(crate) struct Handler<'a> {
     pub(crate) terminatd: Arc<AtomicBool>,
     threads: Vec<JoinHandle<usize>>,
     active_thread_cnt: Arc<AtomicUsize>,
     in_flight: Arc<AtomicUsize>,
     total_docs: usize,
-    elasticsearch: Elasticsearch,
+    elasticsearch: Elasticsearch<'a>,
     concurrency: usize,
     bulk_sender: crossbeam::channel::Sender<BulkRequestCommand>,
     bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand>,
@@ -76,11 +229,11 @@ impl BulkReceiver {
         match command {
             BulkRequestCommand::Insert {
                 ctid,
-                cmin: _,
-                cmax: _,
-                xmin: _,
-                xmax: _,
-                builder: doc,
+                cmin,
+                cmax,
+                xmin,
+                xmax,
+                builder: mut doc,
             } => {
                 serde_json::to_writer(
                     &mut self.buffer,
@@ -90,6 +243,11 @@ impl BulkReceiver {
                 )
                 .expect("failed to serialize index line");
                 self.buffer.push(b'\n');
+
+                doc.add_u32("zdb_cmin", cmin);
+                doc.add_u32("zdb_cmax", cmax);
+                doc.add_u64("zdb_xmin", xmin);
+                doc.add_u64("zdb_xmax", xmax);
 
                 let doc_as_json = doc.build();
                 self.buffer.append(&mut doc_as_json.into_bytes());
@@ -110,11 +268,11 @@ impl From<BulkReceiver> for reqwest::Body {
     }
 }
 
-impl Handler {
+impl<'a> Handler<'a> {
     pub(crate) fn new(
-        elasticsearch: Elasticsearch,
+        elasticsearch: Elasticsearch<'a>,
         concurrency: usize,
-        _error_sender: crossbeam::channel::Sender<BulkRequestError>,
+        error_sender: crossbeam::channel::Sender<BulkRequestError>,
     ) -> Self {
         let (tx, rx) = crossbeam::channel::bounded(10_000);
 
@@ -128,7 +286,7 @@ impl Handler {
             concurrency,
             bulk_sender: tx,
             bulk_receiver: rx,
-            error_sender: _error_sender,
+            error_sender,
         }
     }
 
@@ -163,7 +321,12 @@ impl Handler {
         thread_id: usize,
         mut initial_command: Option<BulkRequestCommand>,
     ) -> JoinHandle<usize> {
-        let es = self.elasticsearch.clone();
+        //        let es = self.elasticsearch.clone();
+        let url = self.elasticsearch.options.url().to_owned();
+        let index_name = self
+            .elasticsearch
+            .options
+            .index_name(&self.elasticsearch.heaprel, &self.elasticsearch.indexrel);
         let rx = self.bulk_receiver.clone();
         let in_flight = self.in_flight.clone();
         let active_thread_cnt = self.active_thread_cnt.clone();
@@ -211,7 +374,7 @@ impl Handler {
 
                 let url = &format!(
                     "{}{}/_bulk?filter_path={}",
-                    es.url, es.index_name, BULK_FILTER_PATH
+                    url, index_name, BULK_FILTER_PATH
                 );
                 let client = reqwest::Client::new();
                 let response = client
@@ -306,7 +469,7 @@ impl Handler {
         total_docs_out
     }
 
-    pub(crate) fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
+    pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
         // drop the sender side of the channel since we're done
         // this will signal the receivers that once their queues are empty
         // there's nothing left for them to do

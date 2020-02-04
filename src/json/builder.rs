@@ -9,6 +9,7 @@ pub struct JsonBuilder {
     i32: Vec<(&'static str, i32)>,
     i64: Vec<(&'static str, i64)>,
     u32: Vec<(&'static str, u32)>,
+    u64: Vec<(&'static str, u64)>,
     f32: Vec<(&'static str, f32)>,
     f64: Vec<(&'static str, f64)>,
     string: Vec<(&'static str, String)>,
@@ -35,6 +36,7 @@ impl JsonBuilder {
             i32: Vec::with_capacity(num_fields),
             i64: Vec::with_capacity(num_fields),
             u32: Vec::with_capacity(num_fields),
+            u64: Vec::with_capacity(num_fields),
             f32: Vec::with_capacity(num_fields),
             f64: Vec::with_capacity(num_fields),
             string: Vec::with_capacity(num_fields),
@@ -76,6 +78,11 @@ impl JsonBuilder {
     #[inline]
     pub fn add_u32(&mut self, attname: &'static str, value: u32) {
         self.u32.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_u64(&mut self, attname: &'static str, value: u64) {
+        self.u64.push((attname, value));
     }
 
     #[inline]
@@ -168,6 +175,7 @@ impl JsonBuilder {
         cnt = self.encode(&mut json, &self.i32, cnt);
         cnt = self.encode(&mut json, &self.i64, cnt);
         cnt = self.encode(&mut json, &self.u32, cnt);
+        cnt = self.encode(&mut json, &self.u64, cnt);
         cnt = self.encode(&mut json, &self.f32, cnt);
         cnt = self.encode(&mut json, &self.f64, cnt);
         cnt = self.encode(&mut json, &self.string, cnt);

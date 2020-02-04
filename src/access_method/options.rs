@@ -84,39 +84,84 @@ impl ZDBIndexOptions {
         self.llapi
     }
 
-    pub fn url(&self) -> &str {
+    pub fn url(&self) -> String {
         if self.url_offset == 0 {
-            DEFAULT_URL
+            DEFAULT_URL.to_owned()
         } else {
             self.get_str(self.url_offset).unwrap()
         }
     }
 
-    pub fn type_name(&self) -> &str {
+    pub fn type_name(&self) -> String {
         if self.type_name_offset == 0 {
-            DEFAULT_TYPE_NAME
+            DEFAULT_TYPE_NAME.to_owned()
         } else {
             self.get_str(self.type_name_offset).unwrap()
         }
     }
 
-    pub fn refresh_interval(&self) -> &str {
+    pub fn refresh_interval(&self) -> String {
         if self.refresh_interval_offset == 0 {
-            DEFAULT_REFRESH_INTERVAL
+            DEFAULT_REFRESH_INTERVAL.to_owned()
         } else {
             self.get_str(self.refresh_interval_offset).unwrap()
         }
     }
 
-    pub fn alias(&self) -> Option<&str> {
-        self.get_str(self.alias_offset)
+    pub fn alias(
+        &self,
+        heaprel: &PgBox<pg_sys::RelationData>,
+        indexrel: &PgBox<pg_sys::RelationData>,
+    ) -> String {
+        match self.get_str(self.alias_offset) {
+            Some(alias) => alias.to_owned(),
+            None => format!(
+                "{}.{}.{}.{}-{}",
+                unsafe {
+                    std::ffi::CStr::from_ptr(pg_sys::get_database_name(pg_sys::MyDatabaseId))
+                }
+                .to_str()
+                .unwrap(),
+                unsafe {
+                    std::ffi::CStr::from_ptr(pg_sys::get_namespace_name(
+                        relation_get_namespace_oid(indexrel),
+                    ))
+                }
+                .to_str()
+                .unwrap(),
+                relation_get_relation_name(heaprel),
+                relation_get_relation_name(indexrel),
+                relation_get_id(indexrel)
+            ),
+        }
     }
 
-    pub fn uuid(&self) -> Option<&str> {
-        self.get_str(self.uuid_offset)
+    pub fn uuid(
+        &self,
+        heaprel: &PgBox<pg_sys::RelationData>,
+        indexrel: &PgBox<pg_sys::RelationData>,
+    ) -> String {
+        match self.get_str(self.uuid_offset) {
+            Some(uuid) => uuid,
+            None => format!(
+                "{}.{}.{}.{}",
+                unsafe { pg_sys::MyDatabaseId },
+                relation_get_namespace_oid(indexrel),
+                relation_get_id(heaprel),
+                relation_get_id(indexrel),
+            ),
+        }
     }
 
-    fn get_str(&self, offset: i32) -> Option<&str> {
+    pub fn index_name(
+        &self,
+        heaprel: &PgBox<pg_sys::RelationData>,
+        indexrel: &PgBox<pg_sys::RelationData>,
+    ) -> String {
+        self.uuid(heaprel, indexrel)
+    }
+
+    fn get_str(&self, offset: i32) -> Option<String> {
         if offset == 0 {
             None
         } else {
@@ -124,7 +169,7 @@ impl ZDBIndexOptions {
             let value =
                 unsafe { CStr::from_ptr((opts + offset as usize) as *const std::os::raw::c_char) };
 
-            Some(value.to_str().unwrap())
+            Some(value.to_str().unwrap().to_owned())
         }
     }
 }
@@ -144,6 +189,10 @@ extern "C" fn validate_url(url: *const std::os::raw::c_char) {
 
     if !url.ends_with('/') {
         panic!("url must end with a forward slash");
+    }
+
+    if let Err(e) = url::Url::parse(url) {
+        panic!(e.to_string())
     }
 }
 
@@ -392,15 +441,18 @@ mod tests {
                       refresh_interval='5s'); ",
         );
 
+        let heap_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'test'::regclass::oid")
+            .expect("failed to get SPI result");
         let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
             .expect("failed to get SPI result");
+        let heaprel = PgBox::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgBox::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
-        assert_eq!(options.url(), "localhost:9200/");
-        assert_eq!(options.type_name(), "test_type_name");
-        assert_eq!(options.alias().unwrap(), "test_alias");
-        assert_eq!(options.uuid().unwrap(), "test_uuid");
-        assert_eq!(options.refresh_interval(), "5s");
+        assert_eq!(&options.url(), "localhost:9200/");
+        assert_eq!(&options.type_name(), "test_type_name");
+        assert_eq!(&options.alias(&heaprel, &indexrel), "test_alias");
+        assert_eq!(&options.uuid(&heaprel, &indexrel), "test_uuid");
+        assert_eq!(&options.refresh_interval(), "5s");
         assert_eq!(options.compression_level(), 1);
         assert_eq!(options.shards(), 5);
         assert_eq!(options.replicas(), 0);
@@ -420,15 +472,33 @@ mod tests {
                USING zombodb ((test.*));",
         );
 
+        let heap_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'test'::regclass::oid")
+            .expect("failed to get SPI result");
         let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
             .expect("failed to get SPI result");
+        let heaprel = PgBox::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgBox::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
-        assert_eq!(options.url(), DEFAULT_URL);
-        assert_eq!(options.type_name(), DEFAULT_TYPE_NAME);
-        assert_eq!(options.alias(), None);
-        assert_eq!(options.uuid(), None);
-        assert_eq!(options.refresh_interval(), DEFAULT_REFRESH_INTERVAL);
+        assert_eq!(&options.url(), DEFAULT_URL);
+        assert_eq!(&options.type_name(), DEFAULT_TYPE_NAME);
+        assert_eq!(
+            &options.alias(&heaprel, &indexrel),
+            &format!(
+                "pgx_tests.public.test.idxtest-{}",
+                relation_get_id(&indexrel)
+            )
+        );
+        assert_eq!(
+            &options.uuid(&heaprel, &indexrel),
+            &format!(
+                "{}.{}.{}.{}",
+                unsafe { pg_sys::MyDatabaseId },
+                relation_get_namespace_oid(&indexrel),
+                relation_get_id(&heaprel),
+                relation_get_id(&indexrel)
+            )
+        );
+        assert_eq!(&options.refresh_interval(), DEFAULT_REFRESH_INTERVAL);
         assert_eq!(options.compression_level(), DEFAULT_COMPRESSION_LEVEL);
         assert_eq!(options.shards(), DEFAULT_SHARDS);
         assert_eq!(options.replicas(), ZDB_DEFAULT_REPLICAS_GUC);

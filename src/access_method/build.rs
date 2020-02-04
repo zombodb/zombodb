@@ -1,5 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::json::builder::JsonBuilder;
+use crate::utils::lookup_zdb_index_tupdesc;
 use pgx::*;
 use std::ops::DerefMut;
 
@@ -11,13 +12,17 @@ struct Attribute {
 
 struct BuildState<'a> {
     ntuples: usize,
-    bulk: ElasticsearchBulkRequest,
+    bulk: ElasticsearchBulkRequest<'a>,
     tupdesc: &'a PgBox<pg_sys::TupleDescData>,
     attributes: Vec<Attribute>,
 }
 
 impl<'a> BuildState<'a> {
-    fn new(url: &'a str, index_name: &'a str, tupdesc: &'a PgBox<pg_sys::TupleDescData>) -> Self {
+    fn new(
+        heaprel: &'a PgBox<pg_sys::RelationData>,
+        indexrel: &'a PgBox<pg_sys::RelationData>,
+        tupdesc: &'a PgBox<pg_sys::TupleDescData>,
+    ) -> Self {
         let mut attributes = Vec::new();
         for i in 0..tupdesc.natts {
             let attr = tupdesc_get_attr(&tupdesc, i as usize);
@@ -30,7 +35,7 @@ impl<'a> BuildState<'a> {
 
         BuildState {
             ntuples: 0,
-            bulk: Elasticsearch::new(url, index_name).start_bulk(),
+            bulk: Elasticsearch::new(heaprel, indexrel).start_bulk(),
             tupdesc: &tupdesc,
             attributes,
         }
@@ -43,28 +48,21 @@ pub extern "C" fn ambuild(
     index_relation: pg_sys::Relation,
     index_info: *mut pg_sys::IndexInfo,
 ) -> *mut pg_sys::IndexBuildResult {
+    let heap_relation = PgBox::from_pg(heap_relation);
+    let index_relation = PgBox::from_pg(index_relation);
     let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
     let result_mut = result.deref_mut();
 
-    let tupdesc = PgBox::from_pg(PgBox::from_pg(index_relation).rd_att);
-    // lookup the tuple descriptor for the rowtype we're *indexing*, rather than
-    // using the tuple descriptor for the index definition itself
-    let tupdesc = PgBox::from_pg(unsafe {
-        pg_sys::lookup_rowtype_tupdesc(
-            tupdesc_get_typoid(&tupdesc, 1),
-            tupdesc_get_typmod(&tupdesc, 1),
-        )
-    });
-
-    let mut state = BuildState::new("http://localhost:9200/", "test_index", &tupdesc);
+    let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
+    let mut state = BuildState::new(&heap_relation, &index_relation, &tupdesc);
 
     // before we start the heap scan build, register an Abort callback so we can quickly terminate
     // any threads we might have spawned during the process
     let callback = register_xact_callback(PgXactCallbackEvent::Abort, state.bulk.terminate());
     unsafe {
         pg_sys::IndexBuildHeapScan(
-            heap_relation,
-            index_relation,
+            heap_relation.as_ptr(),
+            index_relation.as_ptr(),
             index_info,
             Some(build_callback),
             &mut state,

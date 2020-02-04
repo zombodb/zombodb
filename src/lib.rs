@@ -4,7 +4,9 @@ mod access_method;
 mod custom_scan;
 mod elasticsearch;
 mod json;
+mod mapping;
 mod query_dsl;
+mod utils;
 mod zdbquery;
 
 pg_module_magic!();
