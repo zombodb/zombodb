@@ -1,6 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::mapping::lookup_analysis_thing;
-use reqwest::*;
 use serde_json::*;
 
 pub struct ElasticsearchCreateIndexRequest<'a> {
@@ -17,10 +16,24 @@ impl<'a> ElasticsearchCreateIndexRequest<'a> {
     }
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
-        Ok(())
+        let url = &format!(
+            "{}{}",
+            self.elasticsearch.options.url(),
+            self.elasticsearch
+                .options
+                .index_name(self.elasticsearch.heaprel, self.elasticsearch.indexrel)
+        );
+
+        Elasticsearch::execute_request(
+            reqwest::Client::new()
+                .put(url)
+                .header("content-type", "application/json")
+                .body(serde_json::to_string(&self.create_request_body()).unwrap()),
+            |_, _| Ok(()),
+        )
     }
 
-    fn create_request(&self) -> Value {
+    fn create_request_body(&self) -> Value {
         json! {
             {
                "settings": {
@@ -37,7 +50,6 @@ impl<'a> ElasticsearchCreateIndexRequest<'a> {
                   }
                },
                "mappings": {
-                  self.elasticsearch.options.type_name(): {
                      "_source": { "enabled": true },
                      "dynamic_templates": [
                           {
@@ -62,9 +74,7 @@ impl<'a> ElasticsearchCreateIndexRequest<'a> {
                               }
                           }
                      ],
-                     "_all": {"enabled":false},
                      "properties": self.mapping
-                  }
                },
                "aliases": {
                   self.elasticsearch.options.alias(self.elasticsearch.heaprel, self.elasticsearch.indexrel): {}

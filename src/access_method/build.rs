@@ -1,43 +1,19 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::json::builder::JsonBuilder;
+use crate::mapping::generate_mapping;
 use crate::utils::lookup_zdb_index_tupdesc;
 use pgx::*;
-use std::ops::DerefMut;
-
-struct Attribute {
-    dropped: bool,
-    name: &'static str,
-    typoid: PgOid,
-}
 
 struct BuildState<'a> {
-    ntuples: usize,
     bulk: ElasticsearchBulkRequest<'a>,
     tupdesc: &'a PgBox<pg_sys::TupleDescData>,
-    attributes: Vec<Attribute>,
 }
 
 impl<'a> BuildState<'a> {
-    fn new(
-        heaprel: &'a PgBox<pg_sys::RelationData>,
-        indexrel: &'a PgBox<pg_sys::RelationData>,
-        tupdesc: &'a PgBox<pg_sys::TupleDescData>,
-    ) -> Self {
-        let mut attributes = Vec::new();
-        for i in 0..tupdesc.natts {
-            let attr = tupdesc_get_attr(&tupdesc, i as usize);
-            attributes.push(Attribute {
-                dropped: attr.attisdropped,
-                name: name_data_to_str(&attr.attname),
-                typoid: PgOid::from(attr.atttypid),
-            });
-        }
-
+    fn new(bulk: ElasticsearchBulkRequest<'a>, tupdesc: &'a PgBox<pg_sys::TupleDescData>) -> Self {
         BuildState {
-            ntuples: 0,
-            bulk: Elasticsearch::new(heaprel, indexrel).start_bulk(),
+            bulk,
             tupdesc: &tupdesc,
-            attributes,
         }
     }
 }
@@ -50,14 +26,18 @@ pub extern "C" fn ambuild(
 ) -> *mut pg_sys::IndexBuildResult {
     let heap_relation = PgBox::from_pg(heap_relation);
     let index_relation = PgBox::from_pg(index_relation);
-    let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
-    let result_mut = result.deref_mut();
-
     let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
-    let mut state = BuildState::new(&heap_relation, &index_relation, &tupdesc);
 
-    // before we start the heap scan build, register an Abort callback so we can quickly terminate
-    // any threads we might have spawned during the process
+    let elasticsearch = Elasticsearch::new(&heap_relation, &index_relation);
+    let create_index = elasticsearch.create_index(generate_mapping(&index_relation));
+
+    create_index
+        .execute()
+        .expect("Failed to create new Elasticsearch index");
+
+    let mut state = BuildState::new(elasticsearch.start_bulk(), &tupdesc);
+
+    // register an Abort callback so we can terminate early if there's an error
     let callback = register_xact_callback(PgXactCallbackEvent::Abort, state.bulk.terminate());
     unsafe {
         pg_sys::IndexBuildHeapScan(
@@ -75,17 +55,15 @@ pub extern "C" fn ambuild(
     }
 
     info!("Waiting to finish");
-    match state.bulk.wait_for_completion() {
-        Ok(cnt) => info!("indexed {} tuples", cnt),
-        Err(e) => panic!("{:?}", e),
-    }
+    let ntuples = state.bulk.finish().expect("Failed to index data");
+    info!("ntuples={}", ntuples);
 
     // our work with Elasticsearch is done, so we can unregister our Abort callback
     callback.unregister_callback();
 
-    info!("ntuples={}", state.ntuples);
-    result_mut.heap_tuples = state.ntuples as f64;
-    result_mut.index_tuples = state.ntuples as f64;
+    let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
+    result.heap_tuples = ntuples as f64;
+    result.index_tuples = ntuples as f64;
 
     result.into_pg()
 }
@@ -126,23 +104,22 @@ unsafe extern "C" fn build_callback(
         .bulk
         .insert(htup.t_self, 0, 0, 0, 0, builder)
         .expect("Unable to send tuple for insert");
-    state.ntuples += 1;
 }
 
 unsafe fn row_to_json(row: pg_sys::Datum, state: &PgBox<BuildState>) -> JsonBuilder {
-    let mut row_data = JsonBuilder::new(state.attributes.len());
+    let mut row_data = JsonBuilder::new(state.tupdesc.len());
 
     let datums = deconstruct_row_type(state.tupdesc, row);
     for (attr, datum) in state
-        .attributes
+        .tupdesc
         .iter()
         .zip(datums.iter())
-        .filter(|(attr, datum)| !attr.dropped && datum.is_some())
+        .filter(|(attr, datum)| !attr.is_dropped() && datum.is_some())
     {
         let datum = datum.expect("found NULL datum"); // shouldn't happen b/c None datums are filtered above
 
-        match &attr.typoid {
-            PgOid::InvalidOid => panic!("Found InvalidOid for attname='{}'", attr.name),
+        match attr.oid() {
+            PgOid::InvalidOid => panic!("Found InvalidOid for attname='{}'", attr.name()),
             PgOid::Custom(oid) => {
                 // TODO:  what to do here?
                 unimplemented!("Found custom oid={}", oid);
@@ -150,135 +127,129 @@ unsafe fn row_to_json(row: pg_sys::Datum, state: &PgBox<BuildState>) -> JsonBuil
             PgOid::BuiltIn(oid) => match oid {
                 PgBuiltInOids::TEXTOID | PgBuiltInOids::VARCHAROID => {
                     row_data.add_string(
-                        attr.name,
-                        String::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        String::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::BOOLOID => {
                     row_data.add_bool(
-                        attr.name,
-                        bool::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        bool::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::INT2OID => {
                     row_data.add_i16(
-                        attr.name,
-                        i16::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        i16::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::INT4OID => {
                     row_data.add_i32(
-                        attr.name,
-                        i32::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        i32::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::INT8OID => {
                     row_data.add_i64(
-                        attr.name,
-                        i64::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        i64::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::OIDOID | PgBuiltInOids::XIDOID => {
                     row_data.add_u32(
-                        attr.name,
-                        u32::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        u32::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::FLOAT4OID => {
                     row_data.add_f32(
-                        attr.name,
-                        f32::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        f32::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::FLOAT8OID => {
                     row_data.add_f64(
-                        attr.name,
-                        f64::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        f64::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::JSONOID => {
                     row_data.add_json_string(
-                        attr.name,
-                        pgx::JsonString::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        pgx::JsonString::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::JSONBOID => {
                     row_data.add_jsonb(
-                        attr.name,
-                        JsonB::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        JsonB::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
 
                 PgBuiltInOids::TEXTARRAYOID | PgBuiltInOids::VARCHARARRAYOID => {
                     row_data.add_string_array(
-                        attr.name,
-                        Vec::<Option<String>>::from_datum(datum, false, attr.typoid.value())
-                            .unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<String>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::BOOLARRAYOID => {
                     row_data.add_bool_array(
-                        attr.name,
-                        Vec::<Option<bool>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<bool>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::INT2ARRAYOID => {
                     row_data.add_i16_array(
-                        attr.name,
-                        Vec::<Option<i16>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<i16>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::INT4ARRAYOID => {
                     row_data.add_i32_array(
-                        attr.name,
-                        Vec::<Option<i32>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<i32>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::INT8ARRAYOID => {
                     row_data.add_i64_array(
-                        attr.name,
-                        Vec::<Option<i64>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<i64>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::OIDARRAYOID | PgBuiltInOids::XMLARRAYOID => {
                     row_data.add_u32_array(
-                        attr.name,
-                        Vec::<Option<u32>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<u32>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::FLOAT4ARRAYOID => {
                     row_data.add_f32_array(
-                        attr.name,
-                        Vec::<Option<f32>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<f32>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::FLOAT8ARRAYOID => {
                     row_data.add_f64_array(
-                        attr.name,
-                        Vec::<Option<f64>>::from_datum(datum, false, attr.typoid.value()).unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<f64>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 PgBuiltInOids::JSONARRAYOID => {
                     row_data.add_json_string_array(
-                        attr.name,
-                        Vec::<Option<pgx::JsonString>>::from_datum(
-                            datum,
-                            false,
-                            attr.typoid.value(),
-                        )
-                        .unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<pgx::JsonString>>::from_datum(datum, false, oid.value())
+                            .unwrap(),
                     );
                 }
                 PgBuiltInOids::JSONBARRAYOID => {
                     row_data.add_jsonb_array(
-                        attr.name,
-                        Vec::<Option<JsonB>>::from_datum(datum, false, attr.typoid.value())
-                            .unwrap(),
+                        attr.name().to_string(),
+                        Vec::<Option<JsonB>>::from_datum(datum, false, oid.value()).unwrap(),
                     );
                 }
                 _ => {
-                    // row_data.add_string(attr.name, "UNSUPPORTED TYPE".to_string());
-                    row_data.add_bool(attr.name, false);
+                    // row_data.add_string(attr.name().to_string(), "UNSUPPORTED TYPE".to_string());
+                    row_data.add_bool(attr.name().to_string(), false);
                 }
             },
         }

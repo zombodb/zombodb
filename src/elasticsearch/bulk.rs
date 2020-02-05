@@ -1,10 +1,10 @@
-use crate::elasticsearch::Elasticsearch;
+use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::json::builder::JsonBuilder;
 use pgx::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::any::Any;
-use std::io::{Error, ErrorKind, Read, Write};
+use std::io::{Error, ErrorKind, Write};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -59,7 +59,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         }
     }
 
-    pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
+    pub fn finish(self) -> Result<usize, BulkRequestError> {
         // wait for the bulk requests to finish
         self.handler.wait_for_completion()
     }
@@ -244,10 +244,10 @@ impl BulkReceiver {
                 .expect("failed to serialize index line");
                 self.buffer.push(b'\n');
 
-                doc.add_u32("zdb_cmin", cmin);
-                doc.add_u32("zdb_cmax", cmax);
-                doc.add_u64("zdb_xmin", xmin);
-                doc.add_u64("zdb_xmax", xmax);
+                doc.add_u32("zdb_cmin".to_string(), cmin);
+                doc.add_u32("zdb_cmax".to_string(), cmax);
+                doc.add_u64("zdb_xmin".to_string(), xmin);
+                doc.add_u64("zdb_xmax".to_string(), xmax);
 
                 let doc_as_json = doc.build();
                 self.buffer.append(&mut doc_as_json.into_bytes());
@@ -376,72 +376,46 @@ impl<'a> Handler<'a> {
                     "{}{}/_bulk?filter_path={}",
                     url, index_name, BULK_FILTER_PATH
                 );
-                let client = reqwest::Client::new();
-                let response = client
-                    .post(url)
-                    .header("content-type", "application/json")
-                    .body(reader)
-                    .send();
+
+                if let Err(e) = Elasticsearch::execute_request(
+                    reqwest::Client::new()
+                        .post(url)
+                        .header("content-type", "application/json")
+                        .body(reader),
+                    |code, resp_string| {
+                        #[derive(Deserialize)]
+                        struct BulkResponse {
+                            errors: bool,
+                            items: Option<Vec<Value>>,
+                        }
+
+                        // NB:  this is stupid that ES forces us to parse the response for requests
+                        // that contain an error, but here we are
+                        let response: BulkResponse = match serde_json::from_str(&resp_string) {
+                            Ok(response) => response,
+
+                            // it didn't parse as json, but we don't care as we just return
+                            // the entire response string anyway
+                            Err(_) => {
+                                return Err(ElasticsearchError(code, resp_string));
+                            }
+                        };
+
+                        if !response.errors {
+                            Ok(())
+                        } else {
+                            // yup, the response contains an error
+                            Err(ElasticsearchError(code, resp_string))
+                        }
+                    },
+                ) {
+                    return Handler::send_error(error, e.0.as_u16(), e.1, total_docs_out);
+                }
 
                 let docs_out = docs_out.load(Ordering::SeqCst);
-
                 in_flight.fetch_sub(docs_out, Ordering::SeqCst);
 
                 total_docs_out += docs_out;
-
-                match response {
-                    // we got a valid response from ES
-                    Ok(mut response) => {
-                        let code = response.status().as_u16();
-                        let mut resp_string = String::new();
-                        response
-                            .read_to_string(&mut resp_string)
-                            .expect("unable to convert HTTP response to a string");
-
-                        if code != 200 {
-                            // it wasn't a valid response code
-                            return Handler::send_error(error, code, resp_string, total_docs_out);
-                        } else {
-                            // it was a valid response code, but does it contain errors?
-                            #[derive(Deserialize)]
-                            struct BulkResponse {
-                                errors: bool,
-                                items: Option<Vec<Value>>,
-                            }
-
-                            // NB:  this is stupid that ES forces us to parse the response for requests
-                            // that contain an error, but here we are
-                            let response: BulkResponse = match serde_json::from_str(&resp_string) {
-                                Ok(json) => json,
-                                Err(_) => {
-                                    // it didn't parse as json, but we don't care as we just return
-                                    // the entire response string anyway
-                                    return Handler::send_error(
-                                        error,
-                                        code,
-                                        resp_string,
-                                        total_docs_out,
-                                    );
-                                }
-                            };
-
-                            if response.errors {
-                                // yup, the response contains an error
-                                return Handler::send_error(
-                                    error,
-                                    code,
-                                    resp_string,
-                                    total_docs_out,
-                                );
-                            }
-                        }
-                    }
-
-                    // this is likely a general reqwest/network communication error
-                    Err(e) => {
-                        return Handler::send_error(error, 0, format!("{:?}", e), total_docs_out);
-                    }
-                }
 
                 if docs_out == 0 {
                     eprintln!("thread #{} exiting b/x docs_out == 0", thread_id);

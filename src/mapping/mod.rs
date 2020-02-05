@@ -3,21 +3,15 @@ use pgx::*;
 use serde_json::*;
 use std::collections::HashMap;
 
-pub fn generate_mapping(indexrel: PgBox<pg_sys::RelationData>) -> serde_json::Value {
+pub fn generate_mapping(indexrel: &PgBox<pg_sys::RelationData>) -> serde_json::Value {
     let tupdesc = lookup_zdb_index_tupdesc(&indexrel);
     let mut mappings = HashMap::new();
-    for i in 0..tupdesc.natts as usize {
-        let att = tupdesc_get_attr(&tupdesc, i);
 
-        if att.attisdropped {
-            continue;
-        }
-
-        mappings.insert(
-            name_data_to_str(&att.attname),
-            lookup_type_mapping(PgOid::from(att.atttypid)),
-        );
-    }
+    tupdesc.iter().filter(|v| !v.is_dropped()).for_each(|att| {
+        // TODO: lookup the att.oid() type and if it's an array (or a domain or something special), then
+        //    do inspect it further
+        mappings.insert(att.name(), lookup_type_mapping(att.oid()));
+    });
 
     mappings.insert(
         "zdb_all",
@@ -34,12 +28,14 @@ pub fn generate_mapping(indexrel: PgBox<pg_sys::RelationData>) -> serde_json::Va
 }
 
 pub fn lookup_analysis_thing(table_name: &str) -> Value {
-    Spi::get_one::<Json>(&format!(
+    // TODO:  pg10 doesn't have "json_object_agg()" -- what do we do instead?
+    match Spi::get_one::<Json>(&format!(
         "SELECT json_object_agg(name, definition) FROM zdb.{};",
         table_name
-    ))
-    .expect(&format!("failed to get analysis thing: {}", table_name))
-    .0
+    )) {
+        Some(json) => json.0,
+        None => json! {{}},
+    }
 }
 
 fn lookup_type_mapping(typoid: PgOid) -> serde_json::Value {
@@ -50,7 +46,7 @@ fn lookup_type_mapping(typoid: PgOid) -> serde_json::Value {
             typoid.clone().into_datum(),
         )],
     )
-    .expect(&format!("failed to lookup type mapping for {:?}", typoid))
+    .expect(&format!("no type mapping for {:?}", typoid))
     .0
 }
 
@@ -66,11 +62,11 @@ mod tests {
     #[pg_test]
     unsafe fn test_generate_mapping() {
         Spi::run("CREATE TABLE test (id serial8, title text, name varchar);");
-        Spi::run("CREATE INDEX idxtest ON test USING zombodb ((test.*))");
+        Spi::run("CREATE INDEX idxtest ON test USING zombodb ((test.*)) WITH (url='http://localhost:9200/')");
         let index_id = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass;")
             .expect("failed to get idxtest oid from SPI");
         let index = PgBox::from_pg(pg_sys::RelationIdGetRelation(index_id));
-        let mapping = generate_mapping(index);
+        let mapping = generate_mapping(&index);
 
         assert_eq!(
             &mapping,

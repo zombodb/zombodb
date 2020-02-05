@@ -434,7 +434,7 @@ mod tests {
         CREATE INDEX idxtest 
                   ON test 
                USING zombodb ((test.*)) 
-                WITH (url='localhost:9200/', 
+                WITH (url='http://localhost:9200/', 
                       type_name='test_type_name', 
                       alias='test_alias', 
                       uuid='test_uuid', 
@@ -448,7 +448,7 @@ mod tests {
         let heaprel = PgBox::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgBox::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
-        assert_eq!(&options.url(), "localhost:9200/");
+        assert_eq!(&options.url(), "http://localhost:9200/");
         assert_eq!(&options.type_name(), "test_type_name");
         assert_eq!(&options.alias(&heaprel, &indexrel), "test_alias");
         assert_eq!(&options.uuid(&heaprel, &indexrel), "test_uuid");
@@ -492,7 +492,7 @@ mod tests {
             &options.uuid(&heaprel, &indexrel),
             &format!(
                 "{}.{}.{}.{}",
-                unsafe { pg_sys::MyDatabaseId },
+                pg_sys::MyDatabaseId,
                 relation_get_namespace_oid(&indexrel),
                 relation_get_id(&heaprel),
                 relation_get_id(&indexrel)
