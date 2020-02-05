@@ -47,6 +47,13 @@ impl JsonString for u32 {
     }
 }
 
+impl JsonString for u64 {
+    #[inline]
+    fn push_json(&self, string: &mut String) {
+        string.push_str(&*self.to_string());
+    }
+}
+
 impl JsonString for bool {
     #[inline]
     fn push_json(&self, string: &mut String) {

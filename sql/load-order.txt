@@ -1,4 +1,5 @@
 lib.generated.sql
+mappings.sql
 zdbquery_mod.generated.sql
 zdbquery_cast.generated.sql
 access_method_mod.generated.sql
