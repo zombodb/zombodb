@@ -1,3 +1,4 @@
+mod constant_score;
 mod field_exists;
 mod field_missing;
 mod fuzzy;

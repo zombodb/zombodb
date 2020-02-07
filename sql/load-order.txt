@@ -21,3 +21,4 @@ query_dsl_misc.generated.sql
 access_method_options.generated.sql
 mapping_mod.generated.sql
 query_dsl_range.generated.sql
+query_dsl_constant_score.generated.sql
