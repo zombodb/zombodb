@@ -70,7 +70,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         let terminate = self.handler.terminatd.clone();
         move || {
             terminate.store(true, Ordering::SeqCst);
-            info!("terminating process");
+            info!("terminating indexing threads");
         }
     }
 
