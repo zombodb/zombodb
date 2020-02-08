@@ -202,6 +202,7 @@ impl<'a> JsonBuilder<'a> {
         json
     }
 
+    #[inline]
     fn encode<T>(&self, json: &mut String, values: &Vec<(&'a str, T)>, mut cnt: usize) -> usize
     where
         T: JsonString,
