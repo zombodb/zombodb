@@ -1,4 +1,5 @@
-pub(crate) fn escape_json(input: &str, target: &mut String) {
+#[inline]
+pub fn escape_json(input: &str, target: &mut String) {
     for c in input.bytes() {
         match c {
             b'\n' => {

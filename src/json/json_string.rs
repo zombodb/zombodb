@@ -100,6 +100,7 @@ impl<T> JsonString for Vec<Option<T>>
 where
     T: FromDatum<T> + JsonString,
 {
+    #[inline]
     fn push_json(&self, string: &mut String) {
         string.push('[');
         for (i, datum) in self.iter().enumerate() {
@@ -116,14 +117,23 @@ where
 }
 
 impl JsonString for Json {
+    #[inline]
     fn push_json(&self, string: &mut String) {
         string.push_str(&serde_json::to_string(&(*self).0).unwrap());
     }
 }
 
 impl JsonString for JsonB {
+    #[inline]
     fn push_json(&self, string: &mut String) {
         string.push_str(&serde_json::to_string(&(*self).0).unwrap());
+    }
+}
+
+impl JsonString for serde_json::Value {
+    #[inline]
+    fn push_json(&self, string: &mut String) {
+        string.push_str(serde_json::to_string(self).unwrap().as_str())
     }
 }
 

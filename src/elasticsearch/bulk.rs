@@ -1,30 +1,30 @@
-use crate::elasticsearch::Elasticsearch;
+use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::json::builder::JsonBuilder;
 use pgx::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::any::Any;
-use std::io::{Error, ErrorKind, Read, Write};
+use std::io::{Error, ErrorKind, Write};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 #[derive(Debug)]
-pub enum BulkRequestCommand {
+pub enum BulkRequestCommand<'a> {
     Insert {
         ctid: u64,
         cmin: pg_sys::CommandId,
         cmax: pg_sys::CommandId,
         xmin: u64,
         xmax: u64,
-        builder: JsonBuilder,
+        builder: JsonBuilder<'a>,
     },
     Update {
         ctid: u64,
         cmax: pg_sys::CommandId,
         xmax: u64,
-        builder: JsonBuilder,
+        builder: JsonBuilder<'a>,
     },
     DeleteByXmin {
         ctid: u64,
@@ -59,7 +59,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         }
     }
 
-    pub fn wait_for_completion(self) -> Result<usize, BulkRequestError> {
+    pub fn finish(self) -> Result<usize, BulkRequestError> {
         // wait for the bulk requests to finish
         self.handler.wait_for_completion()
     }
@@ -81,8 +81,8 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         cmax: pg_sys::CommandId,
         xmin: u64,
         xmax: u64,
-        builder: JsonBuilder,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        builder: JsonBuilder<'static>,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'a>>> {
         self.check_for_error();
 
         self.handler.queue_command(BulkRequestCommand::Insert {
@@ -100,8 +100,8 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         ctid: pg_sys::ItemPointerData,
         cmax: pg_sys::CommandId,
         xmax: u64,
-        builder: JsonBuilder,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        builder: JsonBuilder<'static>,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'a>>> {
         self.check_for_error();
 
         self.handler.queue_command(BulkRequestCommand::Update {
@@ -116,7 +116,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         &mut self,
         ctid: pg_sys::ItemPointerData,
         xmin: u64,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'a>>> {
         self.check_for_error();
 
         self.handler
@@ -130,7 +130,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         &mut self,
         ctid: pg_sys::ItemPointerData,
         xmax: u64,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'a>>> {
         self.check_for_error();
 
         self.handler
@@ -172,22 +172,22 @@ pub(crate) struct Handler<'a> {
     total_docs: usize,
     elasticsearch: Elasticsearch<'a>,
     concurrency: usize,
-    bulk_sender: crossbeam::channel::Sender<BulkRequestCommand>,
-    bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand>,
+    bulk_sender: crossbeam::channel::Sender<BulkRequestCommand<'static>>,
+    bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand<'static>>,
     error_sender: crossbeam::channel::Sender<BulkRequestError>,
 }
 
-struct BulkReceiver {
+struct BulkReceiver<'a> {
     terminated: Arc<AtomicBool>,
-    first: Option<BulkRequestCommand>,
+    first: Option<BulkRequestCommand<'a>>,
     in_flight: Arc<AtomicUsize>,
-    receiver: crossbeam::channel::Receiver<BulkRequestCommand>,
+    receiver: crossbeam::channel::Receiver<BulkRequestCommand<'a>>,
     bytes_out: usize,
     docs_out: Arc<AtomicUsize>,
     buffer: Vec<u8>,
 }
 
-impl std::io::Read for BulkReceiver {
+impl<'a> std::io::Read for BulkReceiver<'a> {
     fn read(&mut self, mut buf: &mut [u8]) -> Result<usize, Error> {
         // were we asked to terminate?
         if self.terminated.load(Ordering::SeqCst) {
@@ -220,8 +220,8 @@ impl std::io::Read for BulkReceiver {
     }
 }
 
-impl BulkReceiver {
-    fn serialize_command(&mut self, command: BulkRequestCommand) {
+impl<'a> BulkReceiver<'a> {
+    fn serialize_command(&mut self, command: BulkRequestCommand<'a>) {
         self.in_flight.fetch_add(1, Ordering::SeqCst);
         self.docs_out.fetch_add(1, Ordering::SeqCst);
 
@@ -262,8 +262,8 @@ impl BulkReceiver {
     }
 }
 
-impl From<BulkReceiver> for reqwest::Body {
-    fn from(reader: BulkReceiver) -> Self {
+impl From<BulkReceiver<'static>> for reqwest::Body {
+    fn from(reader: BulkReceiver<'static>) -> Self {
         reqwest::Body::new(reader)
     }
 }
@@ -292,8 +292,8 @@ impl<'a> Handler<'a> {
 
     pub fn queue_command(
         &mut self,
-        command: BulkRequestCommand,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        command: BulkRequestCommand<'static>,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'static>>> {
         if self.total_docs % 10000 == 0 {
             info!(
                 "total={}, in_flight={}, active_threads={}",
@@ -308,7 +308,7 @@ impl<'a> Handler<'a> {
         let nthreads = self.active_thread_cnt.load(Ordering::SeqCst);
         if nthreads < self.concurrency {
             self.threads
-                .push(self.create_thread(self.threads.len(), Some(command)));
+                .push(self.create_thread(self.threads.len(), command));
 
             Ok(())
         } else {
@@ -319,7 +319,7 @@ impl<'a> Handler<'a> {
     fn create_thread(
         &self,
         thread_id: usize,
-        mut initial_command: Option<BulkRequestCommand>,
+        initial_command: BulkRequestCommand<'static>,
     ) -> JoinHandle<usize> {
         //        let es = self.elasticsearch.clone();
         let url = self.elasticsearch.options.url().to_owned();
@@ -336,17 +336,17 @@ impl<'a> Handler<'a> {
         info!("spawning thread #{}", thread_id + 1);
         self.active_thread_cnt.fetch_add(1, Ordering::SeqCst);
         std::thread::spawn(move || {
+            let mut initial_command = Some(initial_command);
             let mut total_docs_out = 0;
             loop {
                 if terminated.load(Ordering::SeqCst) {
                     eprintln!("thread #{} existing b/c of termination", thread_id);
                     break;
                 }
-                let initial_command = initial_command.take();
                 let first;
 
                 if initial_command.is_some() {
-                    first = initial_command;
+                    first = initial_command.take();
                 } else {
                     first = Some(match rx.recv() {
                         Ok(command) => command,
@@ -376,72 +376,46 @@ impl<'a> Handler<'a> {
                     "{}{}/_bulk?filter_path={}",
                     url, index_name, BULK_FILTER_PATH
                 );
-                let client = reqwest::Client::new();
-                let response = client
-                    .post(url)
-                    .header("content-type", "application/json")
-                    .body(reader)
-                    .send();
+
+                if let Err(e) = Elasticsearch::execute_request(
+                    reqwest::Client::new()
+                        .post(url)
+                        .header("content-type", "application/json")
+                        .body(reader),
+                    |code, resp_string| {
+                        #[derive(Deserialize)]
+                        struct BulkResponse {
+                            errors: bool,
+                            items: Option<Vec<Value>>,
+                        }
+
+                        // NB:  this is stupid that ES forces us to parse the response for requests
+                        // that contain an error, but here we are
+                        let response: BulkResponse = match serde_json::from_str(&resp_string) {
+                            Ok(response) => response,
+
+                            // it didn't parse as json, but we don't care as we just return
+                            // the entire response string anyway
+                            Err(_) => {
+                                return Err(ElasticsearchError(code, resp_string));
+                            }
+                        };
+
+                        if !response.errors {
+                            Ok(())
+                        } else {
+                            // yup, the response contains an error
+                            Err(ElasticsearchError(code, resp_string))
+                        }
+                    },
+                ) {
+                    return Handler::send_error(error, e.0.as_u16(), e.1, total_docs_out);
+                }
 
                 let docs_out = docs_out.load(Ordering::SeqCst);
-
                 in_flight.fetch_sub(docs_out, Ordering::SeqCst);
 
                 total_docs_out += docs_out;
-
-                match response {
-                    // we got a valid response from ES
-                    Ok(mut response) => {
-                        let code = response.status().as_u16();
-                        let mut resp_string = String::new();
-                        response
-                            .read_to_string(&mut resp_string)
-                            .expect("unable to convert HTTP response to a string");
-
-                        if code != 200 {
-                            // it wasn't a valid response code
-                            return Handler::send_error(error, code, resp_string, total_docs_out);
-                        } else {
-                            // it was a valid response code, but does it contain errors?
-                            #[derive(Deserialize)]
-                            struct BulkResponse {
-                                errors: bool,
-                                items: Option<Vec<Value>>,
-                            }
-
-                            // NB:  this is stupid that ES forces us to parse the response for requests
-                            // that contain an error, but here we are
-                            let response: BulkResponse = match serde_json::from_str(&resp_string) {
-                                Ok(json) => json,
-                                Err(_) => {
-                                    // it didn't parse as json, but we don't care as we just return
-                                    // the entire response string anyway
-                                    return Handler::send_error(
-                                        error,
-                                        code,
-                                        resp_string,
-                                        total_docs_out,
-                                    );
-                                }
-                            };
-
-                            if response.errors {
-                                // yup, the response contains an error
-                                return Handler::send_error(
-                                    error,
-                                    code,
-                                    resp_string,
-                                    total_docs_out,
-                                );
-                            }
-                        }
-                    }
-
-                    // this is likely a general reqwest/network communication error
-                    Err(e) => {
-                        return Handler::send_error(error, 0, format!("{:?}", e), total_docs_out);
-                    }
-                }
 
                 if docs_out == 0 {
                     eprintln!("thread #{} exiting b/x docs_out == 0", thread_id);

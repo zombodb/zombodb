@@ -1,5 +1,6 @@
 lib.generated.sql
 mappings.sql
+type-conversions.sql
 zdbquery_mod.generated.sql
 zdbquery_cast.generated.sql
 access_method_mod.generated.sql
@@ -18,8 +19,6 @@ query_dsl_sort.generated.sql
 query_dsl_fuzzy.generated.sql
 query_dsl_span.generated.sql
 query_dsl_misc.generated.sql
-access_method_options.generated.sql
-mapping_mod.generated.sql
 query_dsl_range.generated.sql
 query_dsl_constant_score.generated.sql
 query_dsl_bool.generated.sql
