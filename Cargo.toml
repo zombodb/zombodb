@@ -26,6 +26,7 @@ num_cpus = "1.12.0"
 memoffset = "0.5.3"
 rand = "0.7.3"
 reqwest = "0.9.24"
+time = {version = "0.2.6", features = ["serde"] }
 
 [dev-dependencies]
 pgx-tests = { path = "../pgx/pgx-tests" }

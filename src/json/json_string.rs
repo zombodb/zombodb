@@ -1,5 +1,5 @@
 use crate::json::utils::escape_json;
-use pgx::{FromDatum, Json, JsonB};
+use pgx::{Date, FromDatum, Json, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
 pub trait JsonString: Send + Sync {
     fn push_json(&self, string: &mut String);
@@ -58,6 +58,41 @@ impl JsonString for bool {
     #[inline]
     fn push_json(&self, string: &mut String) {
         string.push_str(&*self.to_string());
+    }
+}
+
+impl JsonString for Time {
+    #[inline]
+    fn push_json(&self, string: &mut String) {
+        string.push_str(&serde_json::to_string(self).unwrap())
+    }
+}
+
+impl JsonString for TimeWithTimeZone {
+    #[inline]
+    fn push_json(&self, string: &mut String) {
+        string.push_str(&serde_json::to_string(self).unwrap())
+    }
+}
+
+impl JsonString for Timestamp {
+    #[inline]
+    fn push_json(&self, string: &mut String) {
+        string.push_str(&serde_json::to_string(self).unwrap())
+    }
+}
+
+impl JsonString for TimestampWithTimeZone {
+    #[inline]
+    fn push_json(&self, string: &mut String) {
+        string.push_str(&serde_json::to_string(self).unwrap())
+    }
+}
+
+impl JsonString for Date {
+    #[inline]
+    fn push_json(&self, string: &mut String) {
+        string.push_str(&serde_json::to_string(self).unwrap())
     }
 }
 

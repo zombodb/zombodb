@@ -10,7 +10,6 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-#[derive(Debug)]
 pub enum BulkRequestCommand<'a> {
     Insert {
         ctid: u64,

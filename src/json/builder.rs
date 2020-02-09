@@ -1,8 +1,7 @@
 use crate::json::json_string::JsonString;
 use crate::json::utils::escape_json;
-use pgx::JsonB;
+use pgx::{Date, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
-#[derive(Debug)]
 pub struct JsonBuilder<'a> {
     bool: Vec<(&'a str, bool)>,
     i16: Vec<(&'a str, i16)>,
@@ -12,6 +11,11 @@ pub struct JsonBuilder<'a> {
     u64: Vec<(&'a str, u64)>,
     f32: Vec<(&'a str, f32)>,
     f64: Vec<(&'a str, f64)>,
+    time: Vec<(&'a str, Time)>,
+    time_with_time_zone: Vec<(&'a str, TimeWithTimeZone)>,
+    timestamp: Vec<(&'a str, Timestamp)>,
+    timestamp_with_time_zone: Vec<(&'a str, TimestampWithTimeZone)>,
+    date: Vec<(&'a str, Date)>,
     string: Vec<(&'a str, String)>,
     json_string: Vec<(&'a str, pgx::JsonString)>,
     jsonb: Vec<(&'a str, JsonB)>,
@@ -24,6 +28,11 @@ pub struct JsonBuilder<'a> {
     u32_array: Vec<(&'a str, Vec<Option<u32>>)>,
     f32_array: Vec<(&'a str, Vec<Option<f32>>)>,
     f64_array: Vec<(&'a str, Vec<Option<f64>>)>,
+    time_array: Vec<(&'a str, Vec<Option<Time>>)>,
+    time_with_time_zone_array: Vec<(&'a str, Vec<Option<TimeWithTimeZone>>)>,
+    timestamp_array: Vec<(&'a str, Vec<Option<Timestamp>>)>,
+    timestamp_with_time_zone_array: Vec<(&'a str, Vec<Option<TimestampWithTimeZone>>)>,
+    date_array: Vec<(&'a str, Vec<Option<Date>>)>,
     string_array: Vec<(&'a str, Vec<Option<String>>)>,
     json_string_array: Vec<(&'a str, Vec<Option<pgx::JsonString>>)>,
     jsonb_array: Vec<(&'a str, Vec<Option<JsonB>>)>,
@@ -40,6 +49,11 @@ impl<'a> JsonBuilder<'a> {
             u64: Vec::with_capacity(num_fields),
             f32: Vec::with_capacity(num_fields),
             f64: Vec::with_capacity(num_fields),
+            time: Vec::with_capacity(num_fields),
+            time_with_time_zone: Vec::with_capacity(num_fields),
+            timestamp: Vec::with_capacity(num_fields),
+            timestamp_with_time_zone: Vec::with_capacity(num_fields),
+            date: Vec::with_capacity(num_fields),
             string: Vec::with_capacity(num_fields),
             json_string: Vec::with_capacity(num_fields),
             jsonb: Vec::with_capacity(num_fields),
@@ -51,6 +65,11 @@ impl<'a> JsonBuilder<'a> {
             u32_array: Vec::with_capacity(num_fields),
             f32_array: Vec::with_capacity(num_fields),
             f64_array: Vec::with_capacity(num_fields),
+            time_array: Vec::with_capacity(num_fields),
+            time_with_time_zone_array: Vec::with_capacity(num_fields),
+            timestamp_array: Vec::with_capacity(num_fields),
+            timestamp_with_time_zone_array: Vec::with_capacity(num_fields),
+            date_array: Vec::with_capacity(num_fields),
             string_array: Vec::with_capacity(num_fields),
             json_string_array: Vec::with_capacity(num_fields),
             jsonb_array: Vec::with_capacity(num_fields),
@@ -95,6 +114,35 @@ impl<'a> JsonBuilder<'a> {
     #[inline]
     pub fn add_f64(&mut self, attname: &'a str, value: f64) {
         self.f64.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_time(&mut self, attname: &'a str, value: Time) {
+        self.time.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_time_with_time_zone(&mut self, attname: &'a str, value: TimeWithTimeZone) {
+        self.time_with_time_zone.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_timestamp(&mut self, attname: &'a str, value: Timestamp) {
+        self.timestamp.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_timestamp_with_timestamp_zone(
+        &mut self,
+        attname: &'a str,
+        value: TimestampWithTimeZone,
+    ) {
+        self.timestamp_with_time_zone.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_date(&mut self, attname: &'a str, value: Date) {
+        self.date.push((attname, value));
     }
 
     #[inline]
@@ -153,6 +201,39 @@ impl<'a> JsonBuilder<'a> {
     }
 
     #[inline]
+    pub fn add_time_array(&mut self, attname: &'a str, value: Vec<Option<Time>>) {
+        self.time_array.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_time_with_time_zone_array(
+        &mut self,
+        attname: &'a str,
+        value: Vec<Option<TimeWithTimeZone>>,
+    ) {
+        self.time_with_time_zone_array.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_timestamp_array(&mut self, attname: &'a str, value: Vec<Option<Timestamp>>) {
+        self.timestamp_array.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_timestamp_with_timestamp_zone_array(
+        &mut self,
+        attname: &'a str,
+        value: Vec<Option<TimestampWithTimeZone>>,
+    ) {
+        self.timestamp_with_time_zone_array.push((attname, value));
+    }
+
+    #[inline]
+    pub fn add_date_array(&mut self, attname: &'a str, value: Vec<Option<Date>>) {
+        self.date_array.push((attname, value));
+    }
+
+    #[inline]
     pub fn add_string_array(&mut self, attname: &'a str, value: Vec<Option<String>>) {
         self.string_array.push((attname, value));
     }
@@ -185,6 +266,11 @@ impl<'a> JsonBuilder<'a> {
         cnt = self.encode(&mut json, &self.json_string, cnt);
         cnt = self.encode(&mut json, &self.jsonb, cnt);
         cnt = self.encode(&mut json, &self.json_value, cnt);
+        cnt = self.encode(&mut json, &self.time, cnt);
+        cnt = self.encode(&mut json, &self.time_with_time_zone, cnt);
+        cnt = self.encode(&mut json, &self.timestamp, cnt);
+        cnt = self.encode(&mut json, &self.timestamp_with_time_zone, cnt);
+        cnt = self.encode(&mut json, &self.date, cnt);
 
         cnt = self.encode(&mut json, &self.bool_array, cnt);
         cnt = self.encode(&mut json, &self.i16_array, cnt);
@@ -193,6 +279,11 @@ impl<'a> JsonBuilder<'a> {
         cnt = self.encode(&mut json, &self.u32_array, cnt);
         cnt = self.encode(&mut json, &self.f32_array, cnt);
         cnt = self.encode(&mut json, &self.f64_array, cnt);
+        cnt = self.encode(&mut json, &self.time_array, cnt);
+        cnt = self.encode(&mut json, &self.time_with_time_zone_array, cnt);
+        cnt = self.encode(&mut json, &self.timestamp_array, cnt);
+        cnt = self.encode(&mut json, &self.timestamp_with_time_zone_array, cnt);
+        cnt = self.encode(&mut json, &self.date_array, cnt);
         cnt = self.encode(&mut json, &self.string_array, cnt);
         cnt = self.encode(&mut json, &self.json_string_array, cnt);
         self.encode(&mut json, &self.jsonb_array, cnt);
