@@ -92,7 +92,6 @@ mod dsl {
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::query_dsl::range::dsl::{range_numeric, range_str};
-    use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::*;
 

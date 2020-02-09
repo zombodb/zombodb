@@ -21,3 +21,4 @@ query_dsl_span.generated.sql
 query_dsl_misc.generated.sql
 query_dsl_range.generated.sql
 query_dsl_constant_score.generated.sql
+query_dsl_bool.generated.sql
