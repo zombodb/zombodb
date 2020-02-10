@@ -80,9 +80,9 @@ mod dsl {
     }
 
     #[derive(Serialize)]
-    struct SpanNot {
-        include: ZDBQuery,
-        exclude: ZDBQuery,
+    struct SpanNot<'a> {
+        include: &'a Value,
+        exclude: &'a Value,
         #[serde(skip_serializing_if = "Option::is_none")]
         pre_integer: Option<i64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -100,8 +100,12 @@ mod dsl {
         dis_integer: Option<default!(i64, NULL)>,
     ) -> ZDBQuery {
         let span_not = SpanNot {
-            include,
-            exclude,
+            include: include
+                .query_dsl()
+                .expect("'include' zdbquery doesn't contain query dsl"),
+            exclude: exclude
+                .query_dsl()
+                .expect("'exclude' zdbquery doesn't contain query dsl"),
             pre_integer,
             post_integer,
             dis_integer,
@@ -491,22 +495,18 @@ mod tests {
                 {
                     "span_not" : {
                         "include" : {
-                            "query_dsl": {
                                 "span_term" : {
                                     "included_field" :{
                                         "value" : "included_value"
                                     }
                                 }
-                            }
                         },
                         "exclude" : {
-                            "query_dsl": {
                                 "span_term" : {
                                     "excluded_field" : {
                                         "value": "excluded_value"
                                      }
                                 }
-                            }
                         }
                     }
                 }
@@ -532,23 +532,19 @@ mod tests {
                 {
                     "span_not" : {
                         "include" : {
-                            "query_dsl": {
                                 "span_term" : {
                                     "included_field" :{
                                         "value" : "included_value",
                                         "boost" : term_boost
                                     }
                                 }
-                            }
                         },
                         "exclude" : {
-                            "query_dsl": {
                                 "span_term" : {
                                     "excluded_field" : {
                                         "value": "excluded_value"
                                      }
                                 }
-                            }
                         }
                     }
                 }

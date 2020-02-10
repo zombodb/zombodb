@@ -9,7 +9,7 @@ mod dsl {
             {
                 "constant_score": {
                     "filter":
-                        query,
+                        query.query_dsl().expect("'constanst score' zdbquery doesn't contain query dsl"),
                     "boost": boost,
                 }
             }
@@ -25,8 +25,8 @@ mod dsl {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "boosting" : {
-                    "positive" : positive_query,
-                    "negative" : negative_query,
+                    "positive" : positive_query.query_dsl().expect("'positive' zdbquery doesn't contain query dsl"),
+                    "negative" : negative_query.query_dsl().expect("'negative' zdbquery doesn't contain query dsl"),
                     "negative_boost" : negative_boost,
                 },
             }
@@ -52,8 +52,7 @@ mod tests {
                 {
                     "query_dsl" : {
                         "constant_score" : {
-                            "filter": { "query_dsl": {"query_string": {"query": "test"}}},
-
+                            "filter": { "query_string": {"query": "test"}},
                             "boost" : boost,
                         }
                     }
@@ -77,8 +76,8 @@ mod tests {
                 {
                     "query_dsl" : {
                         "boosting" : {
-                            "positive": { "query_dsl": {"query_string": {"query": "test_pos"}}},
-                            "negative": { "query_dsl": {"query_string": {"query": "test_neg"}}},
+                            "positive": { "query_string": {"query": "test_pos"}},
+                            "negative": { "query_string": {"query": "test_neg"}},
                             "negative_boost" : boost,
                         }
                     }
