@@ -5,7 +5,6 @@ mod field_missing;
 mod fuzzy;
 mod limit;
 mod match_all;
-mod match_none;
 mod misc;
 mod prefix;
 mod range;

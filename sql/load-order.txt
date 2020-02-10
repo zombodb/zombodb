@@ -11,7 +11,6 @@ query_dsl_prefix.generated.sql
 query_dsl_field_exists.generated.sql
 query_dsl_field_missing.generated.sql
 query_dsl_match_all.generated.sql
-query_dsl_match_none.generated.sql
 query_dsl_terms_array.generated.sql
 query_dsl_terms_lookup.generated.sql
 query_dsl_limit.generated.sql
