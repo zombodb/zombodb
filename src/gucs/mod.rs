@@ -13,6 +13,21 @@ pub enum ZDBLogLevel {
     Log = PgLogLevel::LOG as isize,
 }
 
+impl ZDBLogLevel {
+    pub fn log_level(&self) -> PgLogLevel {
+        match *self {
+            ZDBLogLevel::Debug => PgLogLevel::DEBUG2,
+            ZDBLogLevel::Debug1 => PgLogLevel::DEBUG1,
+            ZDBLogLevel::Debug3 => PgLogLevel::DEBUG3,
+            ZDBLogLevel::Debug4 => PgLogLevel::DEBUG4,
+            ZDBLogLevel::Debug5 => PgLogLevel::DEBUG5,
+            ZDBLogLevel::Info => PgLogLevel::INFO,
+            ZDBLogLevel::Notice => PgLogLevel::NOTICE,
+            ZDBLogLevel::Log => PgLogLevel::LOG,
+        }
+    }
+}
+
 pub static ZDB_IGNORE_VISIBILITY: GucSetting<bool> = GucSetting::new(false);
 pub static ZDB_DEFAULT_ROW_ESTIMATE: GucSetting<i32> = GucSetting::new(2500);
 pub static ZDB_DEFAULT_REPLICAS: GucSetting<i32> = GucSetting::new(0);

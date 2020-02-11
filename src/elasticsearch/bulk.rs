@@ -1,4 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
+use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use pgx::*;
 use serde::Deserialize;
@@ -69,7 +70,6 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         let terminate = self.handler.terminatd.clone();
         move || {
             terminate.store(true, Ordering::SeqCst);
-            info!("terminating indexing threads");
         }
     }
 
@@ -294,11 +294,14 @@ impl<'a> Handler<'a> {
         command: BulkRequestCommand<'static>,
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'static>>> {
         if self.total_docs % 10000 == 0 {
-            info!(
-                "total={}, in_flight={}, active_threads={}",
-                self.total_docs,
-                self.in_flight.load(Ordering::SeqCst),
-                self.active_thread_cnt.load(Ordering::SeqCst)
+            elog(
+                ZDB_LOG_LEVEL.get().log_level(),
+                &format!(
+                    "total={}, in_flight={}, active_threads={}",
+                    self.total_docs,
+                    self.in_flight.load(Ordering::SeqCst),
+                    self.active_thread_cnt.load(Ordering::SeqCst)
+                ),
             );
         }
 
@@ -317,7 +320,7 @@ impl<'a> Handler<'a> {
 
     fn create_thread(
         &self,
-        thread_id: usize,
+        _thread_id: usize,
         initial_command: BulkRequestCommand<'static>,
     ) -> JoinHandle<usize> {
         //        let es = self.elasticsearch.clone();
@@ -332,14 +335,13 @@ impl<'a> Handler<'a> {
         let error = self.error_sender.clone();
         let terminated = self.terminatd.clone();
 
-        info!("spawning thread #{}", thread_id + 1);
         self.active_thread_cnt.fetch_add(1, Ordering::SeqCst);
         std::thread::spawn(move || {
             let mut initial_command = Some(initial_command);
             let mut total_docs_out = 0;
             loop {
                 if terminated.load(Ordering::SeqCst) {
-                    eprintln!("thread #{} existing b/c of termination", thread_id);
+                    // we've been signaled to terminate, so get out now
                     break;
                 }
                 let first;
@@ -353,7 +355,6 @@ impl<'a> Handler<'a> {
                             // we don't have a first command to deal with on this iteration b/c
                             // the channel has been shutdown.  we're simply out of records
                             // and can safely break out
-                            eprintln!("thread #{} exiting b/c channel is closed", thread_id);
                             break;
                         }
                     })
@@ -417,7 +418,8 @@ impl<'a> Handler<'a> {
                 total_docs_out += docs_out;
 
                 if docs_out == 0 {
-                    eprintln!("thread #{} exiting b/x docs_out == 0", thread_id);
+                    // we didn't output any docs, which likely means there's no more in the channel
+                    // to process, so get out.
                     break;
                 }
             }
@@ -448,17 +450,10 @@ impl<'a> Handler<'a> {
         // there's nothing left for them to do
         std::mem::drop(self.bulk_sender);
 
-        info!("thead count={}", self.threads.len());
         let mut cnt = 0;
-        for (i, jh) in self.threads.into_iter().enumerate() {
+        for jh in self.threads.into_iter() {
             match jh.join() {
                 Ok(many) => {
-                    info!(
-                        "thread #{}: total_docs_out={}, in_flight={}",
-                        i + 1,
-                        many,
-                        self.in_flight.load(Ordering::SeqCst)
-                    );
                     cnt += many;
                 }
                 Err(e) => panic!("Got an error joining on a thread: {}", downcast_err(e)),

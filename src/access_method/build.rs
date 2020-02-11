@@ -64,9 +64,7 @@ pub extern "C" fn ambuild(
         }
     }
 
-    info!("Waiting to finish");
     let ntuples = state.bulk.finish().expect("Failed to index data");
-    info!("ntuples={}", ntuples);
 
     // our work with Elasticsearch is done, so we can unregister our Abort callback
     callback.unregister_callback();

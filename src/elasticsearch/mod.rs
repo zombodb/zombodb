@@ -28,7 +28,7 @@ impl<'a> Elasticsearch<'a> {
         Elasticsearch {
             heaprel,
             indexrel,
-            options: unsafe { ZDBIndexOptions::from(indexrel) },
+            options: ZDBIndexOptions::from(indexrel),
         }
     }
 
