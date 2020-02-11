@@ -3,6 +3,7 @@ use pgx::*;
 mod access_method;
 mod custom_scan;
 mod elasticsearch;
+mod gucs;
 mod json;
 mod mapping;
 mod query_dsl;
@@ -14,6 +15,7 @@ pg_module_magic!();
 #[allow(non_snake_case)]
 #[pg_guard]
 pub unsafe extern "C" fn _PG_init() {
+    gucs::init_gucs();
     access_method::options::init();
     custom_scan::init();
 }
