@@ -1,3 +1,4 @@
+use crate::gucs::ZDB_DEFAULT_ELASTICSEARCH_URL;
 use lazy_static::*;
 use memoffset::*;
 use pgx::*;
@@ -38,7 +39,7 @@ pub struct ZDBIndexOptions {
 
 #[allow(dead_code)]
 impl ZDBIndexOptions {
-    pub unsafe fn from(relation: &PgBox<pg_sys::RelationData>) -> PgBox<ZDBIndexOptions> {
+    pub fn from(relation: &PgBox<pg_sys::RelationData>) -> PgBox<ZDBIndexOptions> {
         if relation.rd_index.is_null() {
             panic!("relation doesn't represent an index")
         } else if relation.rd_options.is_null() {
@@ -85,10 +86,24 @@ impl ZDBIndexOptions {
     }
 
     pub fn url(&self) -> String {
-        if self.url_offset == 0 {
+        let url = if self.url_offset == 0 {
             DEFAULT_URL.to_owned()
         } else {
             self.get_str(self.url_offset).unwrap()
+        };
+
+        if url == DEFAULT_URL {
+            // the url option on the index could also be the string 'default', so
+            // in either case above, lets use the setting from postgresql.conf
+            if ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_some() {
+                ZDB_DEFAULT_ELASTICSEARCH_URL.get().unwrap()
+            } else {
+                // the user hasn't provided one
+                panic!("Must set zdb.default_elasticsearch_url");
+            }
+        } else {
+            // the index itself has a valid url
+            url
         }
     }
 
