@@ -126,9 +126,15 @@ unsafe extern "C" fn build_callback(
     let values = std::slice::from_raw_parts(values, 1);
     let builder = row_to_json(values[0], &state);
 
+    let cmin = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
+    let cmax = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
+
+    let xmin = xid_to_64bit(pg_sys::HeapTupleHeaderGetXmin(htup.t_data).unwrap());
+    let xmax = pg_sys::InvalidTransactionId;
+
     state
         .bulk
-        .insert(htup.t_self, 0, 0, 0, 0, builder)
+        .insert(htup.t_self, cmin, cmax, xmin, xmax as u64, builder)
         .expect("Unable to send tuple for insert");
 }
 
