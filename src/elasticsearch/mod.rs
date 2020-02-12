@@ -3,9 +3,11 @@
 mod bulk;
 mod create_index;
 mod delete_index;
+mod refresh_index;
 
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
+use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 pub use bulk::*;
 pub use create_index::*;
 use pgx::{pg_sys, PgBox};
@@ -81,6 +83,10 @@ impl Elasticsearch {
 
     pub fn delete_index(&self) -> ElasticsearchDeleteIndexRequest {
         ElasticsearchDeleteIndexRequest::new(self)
+    }
+
+    pub fn refresh_index(&self) -> ElasticsearchRefreshIndexRequest {
+        ElasticsearchRefreshIndexRequest::new(self)
     }
 
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {

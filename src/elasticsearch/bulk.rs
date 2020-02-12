@@ -41,6 +41,7 @@ pub enum BulkRequestCommand<'a> {
 #[derive(Debug)]
 pub enum BulkRequestError {
     IndexingError(String),
+    RefreshError(String),
     NoError,
 }
 
@@ -61,7 +62,15 @@ impl ElasticsearchBulkRequest {
 
     pub fn finish(self) -> Result<usize, BulkRequestError> {
         // wait for the bulk requests to finish
-        self.handler.wait_for_completion()
+        let elasticsearch = self.handler.elasticsearch.clone();
+        let total_docs = self.handler.wait_for_completion()?;
+
+        // now refresh the index
+        if let Err(e) = elasticsearch.refresh_index().execute() {
+            Err(BulkRequestError::RefreshError(e.message().to_string()))
+        } else {
+            Ok(total_docs)
+        }
     }
 
     pub fn terminate(
@@ -147,7 +156,8 @@ impl ElasticsearchBulkRequest {
             .try_recv()
             .unwrap_or(BulkRequestError::NoError)
         {
-            BulkRequestError::IndexingError(err_string) => {
+            BulkRequestError::IndexingError(err_string)
+            | BulkRequestError::RefreshError(err_string) => {
                 self.handler.terminate();
                 panic!("{}", err_string);
             }
@@ -293,7 +303,7 @@ impl Handler {
         &mut self,
         command: BulkRequestCommand<'static>,
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'static>>> {
-        if self.total_docs % 10000 == 0 {
+        if self.total_docs > 0 && self.total_docs % 10000 == 0 {
             elog(
                 ZDB_LOG_LEVEL.get().log_level(),
                 &format!(
