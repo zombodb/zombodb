@@ -1,4 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
+use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crate::mapping::{categorize_tupdesc, generate_default_mapping, CategorizedAttribute};
 use crate::utils::lookup_zdb_index_tupdesc;
@@ -77,7 +78,11 @@ pub extern "C" fn ambuild(
         }
     }
 
-    let ntuples = state.bulk.finish().expect("Failed to index data");
+    let ntuples = state.bulk.finish().expect("Failed to finalize indexing");
+    elog(
+        ZDB_LOG_LEVEL.get().log_level(),
+        &format!("Indexed {} rows to {}", ntuples, elasticsearch.base_url()),
+    );
 
     // our work with Elasticsearch is done, so we can unregister our Abort callback
     callback.unregister_callback();
