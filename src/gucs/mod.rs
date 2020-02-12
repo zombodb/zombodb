@@ -82,7 +82,11 @@ mod tests {
 
     #[pg_test]
     fn test_default_url() {
-        assert!(ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_none());
+        assert!(ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_some());
+        assert_eq!(
+            ZDB_DEFAULT_ELASTICSEARCH_URL.get().unwrap(),
+            "http://localhost:19200/"
+        );
     }
 
     #[pg_test]

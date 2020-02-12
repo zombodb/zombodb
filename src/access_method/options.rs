@@ -419,7 +419,7 @@ mod tests {
     use crate::access_method::options::{
         validate_url, ZDBIndexOptions, DEFAULT_BATCH_SIZE, DEFAULT_BULK_CONCURRENCY,
         DEFAULT_COMPRESSION_LEVEL, DEFAULT_OPTIMIZE_AFTER, DEFAULT_REFRESH_INTERVAL,
-        DEFAULT_SHARDS, DEFAULT_TYPE_NAME, DEFAULT_URL, ZDB_DEFAULT_REPLICAS_GUC,
+        DEFAULT_SHARDS, DEFAULT_TYPE_NAME, ZDB_DEFAULT_REPLICAS_GUC,
     };
     use pgx::*;
     use std::ffi::CString;
@@ -443,18 +443,21 @@ mod tests {
     }
 
     #[pg_test]
+    #[initialize(es = true)]
     unsafe fn test_index_options() {
-        Spi::run(
+        let uuid = rand::random::<u64>();
+        Spi::run(&format!(
             "CREATE TABLE test();  
         CREATE INDEX idxtest 
                   ON test 
                USING zombodb ((test.*)) 
-                WITH (url='http://localhost:9200/', 
+                WITH (url='http://localhost:19200/', 
                       type_name='test_type_name', 
                       alias='test_alias', 
-                      uuid='test_uuid', 
-                      refresh_interval='5s'); ",
-        );
+                      uuid='{}', 
+                      refresh_interval='5s');",
+            uuid
+        ));
 
         let heap_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'test'::regclass::oid")
             .expect("failed to get SPI result");
@@ -463,10 +466,10 @@ mod tests {
         let heaprel = PgBox::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgBox::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
-        assert_eq!(&options.url(), "http://localhost:9200/");
+        assert_eq!(&options.url(), "http://localhost:19200/");
         assert_eq!(&options.type_name(), "test_type_name");
         assert_eq!(&options.alias(&heaprel, &indexrel), "test_alias");
-        assert_eq!(&options.uuid(&heaprel, &indexrel), "test_uuid");
+        assert_eq!(&options.uuid(&heaprel, &indexrel), &uuid.to_string());
         assert_eq!(&options.refresh_interval(), "5s");
         assert_eq!(options.compression_level(), 1);
         assert_eq!(options.shards(), 5);
@@ -479,12 +482,13 @@ mod tests {
     }
 
     #[pg_test]
+    #[initialize(es = true)]
     unsafe fn test_index_options_defaults() {
         Spi::run(
             "CREATE TABLE test();  
         CREATE INDEX idxtest 
                   ON test 
-               USING zombodb ((test.*));",
+               USING zombodb ((test.*)) WITH (url='http://localhost:19200/');",
         );
 
         let heap_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'test'::regclass::oid")
@@ -494,7 +498,6 @@ mod tests {
         let heaprel = PgBox::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgBox::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
-        assert_eq!(&options.url(), DEFAULT_URL);
         assert_eq!(&options.type_name(), DEFAULT_TYPE_NAME);
         assert_eq!(
             &options.alias(&heaprel, &indexrel),

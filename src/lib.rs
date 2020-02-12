@@ -41,3 +41,16 @@ mod tests {
         assert_eq!("5.0", crate::version());
     }
 }
+
+#[cfg(test)]
+mod testing;
+
+#[cfg(test)]
+pub fn pg_test_setup(options: Vec<&str>) {
+    testing::initialize_tests(options);
+}
+
+#[cfg(test)]
+pub fn pg_test_postgresql_conf_options() -> Vec<&'static str> {
+    vec!["zdb.default_elasticsearch_url = 'http://localhost:19200/'"]
+}
