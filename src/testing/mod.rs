@@ -35,6 +35,8 @@ fn start_es() {
 
     let mut es = Command::new("elasticsearch");
     es.arg("-Ehttp.port=19200")
+        .arg("-Ecluster.name=zombodb_test_framework")
+        .arg("-Ediscovery.type=single-node")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .env(
