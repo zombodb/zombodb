@@ -1,4 +1,4 @@
-use crate::gucs::ZDB_DEFAULT_ELASTICSEARCH_URL;
+use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
 use lazy_static::*;
 use memoffset::*;
 use pgx::*;
@@ -47,7 +47,7 @@ impl ZDBIndexOptions {
             let mut ops = PgBox::<ZDBIndexOptions>::alloc0();
             ops.compression_level = DEFAULT_COMPRESSION_LEVEL;
             ops.shards = DEFAULT_SHARDS;
-            ops.replicas = ZDB_DEFAULT_REPLICAS_GUC;
+            ops.replicas = ZDB_DEFAULT_REPLICAS.get();
             ops.bulk_concurrency = *DEFAULT_BULK_CONCURRENCY;
             ops.batch_size = DEFAULT_BATCH_SIZE;
             ops.optimize_after = DEFAULT_OPTIMIZE_AFTER;
@@ -189,7 +189,6 @@ impl ZDBIndexOptions {
     }
 }
 
-static ZDB_DEFAULT_REPLICAS_GUC: i32 = 0;
 static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind = 0;
 
 extern "C" fn validate_url(url: *const std::os::raw::c_char) {
@@ -340,7 +339,7 @@ pub unsafe fn init() {
         RELOPT_KIND_ZDB,
         CStr::from_bytes_with_nul_unchecked(b"replicas\0").as_ptr(),
         CStr::from_bytes_with_nul_unchecked(b"The number of replicas for the index\0").as_ptr(),
-        ZDB_DEFAULT_REPLICAS_GUC,
+        ZDB_DEFAULT_REPLICAS.get(),
         0,
         32768,
     );
@@ -419,8 +418,9 @@ mod tests {
     use crate::access_method::options::{
         validate_url, ZDBIndexOptions, DEFAULT_BATCH_SIZE, DEFAULT_BULK_CONCURRENCY,
         DEFAULT_COMPRESSION_LEVEL, DEFAULT_OPTIMIZE_AFTER, DEFAULT_REFRESH_INTERVAL,
-        DEFAULT_SHARDS, DEFAULT_TYPE_NAME, ZDB_DEFAULT_REPLICAS_GUC,
+        DEFAULT_SHARDS, DEFAULT_TYPE_NAME,
     };
+    use crate::gucs::ZDB_DEFAULT_REPLICAS;
     use pgx::*;
     use std::ffi::CString;
 
@@ -519,7 +519,7 @@ mod tests {
         assert_eq!(&options.refresh_interval(), DEFAULT_REFRESH_INTERVAL);
         assert_eq!(options.compression_level(), DEFAULT_COMPRESSION_LEVEL);
         assert_eq!(options.shards(), DEFAULT_SHARDS);
-        assert_eq!(options.replicas(), ZDB_DEFAULT_REPLICAS_GUC);
+        assert_eq!(options.replicas(), ZDB_DEFAULT_REPLICAS.get());
         assert_eq!(options.bulk_concurrency(), *DEFAULT_BULK_CONCURRENCY);
         assert_eq!(options.batch_size(), DEFAULT_BATCH_SIZE);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
