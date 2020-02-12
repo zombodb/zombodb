@@ -44,17 +44,17 @@ pub enum BulkRequestError {
     NoError,
 }
 
-pub struct ElasticsearchBulkRequest<'a> {
-    handler: Handler<'a>,
+pub struct ElasticsearchBulkRequest {
+    handler: Handler,
     error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
 }
 
-impl<'a> ElasticsearchBulkRequest<'a> {
-    pub fn new(elasticsearch: Elasticsearch<'a>, queue_size: usize, concurrency: usize) -> Self {
+impl ElasticsearchBulkRequest {
+    pub fn new(elasticsearch: &Elasticsearch, queue_size: usize, concurrency: usize) -> Self {
         let (etx, erx) = crossbeam::channel::bounded(queue_size * concurrency);
 
         ElasticsearchBulkRequest {
-            handler: Handler::new(elasticsearch, concurrency, etx),
+            handler: Handler::new(elasticsearch.clone(), concurrency, etx),
             error_receiver: erx,
         }
     }
@@ -81,7 +81,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         xmin: u64,
         xmax: u64,
         builder: JsonBuilder<'static>,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'a>>> {
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
         self.handler.queue_command(BulkRequestCommand::Insert {
@@ -100,7 +100,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         cmax: pg_sys::CommandId,
         xmax: u64,
         builder: JsonBuilder<'static>,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'a>>> {
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
         self.handler.queue_command(BulkRequestCommand::Update {
@@ -115,7 +115,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         &mut self,
         ctid: pg_sys::ItemPointerData,
         xmin: u64,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'a>>> {
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
         self.handler
@@ -129,7 +129,7 @@ impl<'a> ElasticsearchBulkRequest<'a> {
         &mut self,
         ctid: pg_sys::ItemPointerData,
         xmax: u64,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'a>>> {
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.check_for_error();
 
         self.handler
@@ -163,13 +163,13 @@ impl<'a> ElasticsearchBulkRequest<'a> {
 
 const BULK_FILTER_PATH: &str = "errors,items.index.error.caused_by.reason";
 
-pub(crate) struct Handler<'a> {
+pub(crate) struct Handler {
     pub(crate) terminatd: Arc<AtomicBool>,
     threads: Vec<JoinHandle<usize>>,
     active_thread_cnt: Arc<AtomicUsize>,
     in_flight: Arc<AtomicUsize>,
     total_docs: usize,
-    elasticsearch: Elasticsearch<'a>,
+    elasticsearch: Elasticsearch,
     concurrency: usize,
     bulk_sender: crossbeam::channel::Sender<BulkRequestCommand<'static>>,
     bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand<'static>>,
@@ -267,9 +267,9 @@ impl From<BulkReceiver<'static>> for reqwest::Body {
     }
 }
 
-impl<'a> Handler<'a> {
+impl Handler {
     pub(crate) fn new(
-        elasticsearch: Elasticsearch<'a>,
+        elasticsearch: Elasticsearch,
         concurrency: usize,
         error_sender: crossbeam::channel::Sender<BulkRequestError>,
     ) -> Self {

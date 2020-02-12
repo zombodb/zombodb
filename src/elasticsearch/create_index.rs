@@ -2,15 +2,15 @@ use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::mapping::lookup_analysis_thing;
 use serde_json::*;
 
-pub struct ElasticsearchCreateIndexRequest<'a> {
-    elasticsearch: &'a Elasticsearch<'a>,
+pub struct ElasticsearchCreateIndexRequest {
+    elasticsearch: Elasticsearch,
     mapping: Value,
 }
 
-impl<'a> ElasticsearchCreateIndexRequest<'a> {
-    pub fn new(elasticsearch: &'a Elasticsearch, mapping: Value) -> Self {
+impl ElasticsearchCreateIndexRequest {
+    pub fn new(elasticsearch: &Elasticsearch, mapping: Value) -> Self {
         ElasticsearchCreateIndexRequest {
-            elasticsearch,
+            elasticsearch: elasticsearch.clone(),
             mapping,
         }
     }
@@ -29,7 +29,7 @@ impl<'a> ElasticsearchCreateIndexRequest<'a> {
         json! {
             {
                "settings": {
-                  "number_of_shards": self.elasticsearch.options.shards(),
+                  "number_of_shards": self.elasticsearch.options.shards,
                   "index.number_of_replicas": 0,
                   "index.refresh_interval": "-1",
                   "index.query.default_field": "zdb_all",
@@ -69,7 +69,7 @@ impl<'a> ElasticsearchCreateIndexRequest<'a> {
                      "properties": self.mapping
                },
                "aliases": {
-                  self.elasticsearch.options.alias(self.elasticsearch.heaprel, self.elasticsearch.indexrel): {}
+                  &self.elasticsearch.options.alias: {}
                }
             }
         }

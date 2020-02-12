@@ -13,10 +13,27 @@ use reqwest::RequestBuilder;
 use serde_json::Value;
 use std::io::Read;
 
-pub struct Elasticsearch<'a> {
-    pub(crate) heaprel: &'a PgBox<pg_sys::RelationData>,
-    pub(crate) indexrel: &'a PgBox<pg_sys::RelationData>,
-    pub(crate) options: PgBox<ZDBIndexOptions>,
+#[derive(Clone)]
+struct InternalOptions {
+    url: String,
+    type_name: String,
+    refresh_interval: String,
+    alias: String,
+    uuid: String,
+    index_name: String,
+
+    optimize_after: i32,
+    compression_level: i32,
+    shards: i32,
+    replicas: i32,
+    bulk_concurrency: i32,
+    batch_size: i32,
+    llapi: bool,
+}
+
+#[derive(Clone)]
+pub struct Elasticsearch {
+    options: InternalOptions,
 }
 
 #[derive(Debug)]
@@ -32,36 +49,47 @@ impl ElasticsearchError {
     }
 }
 
-impl<'a> Elasticsearch<'a> {
+impl Elasticsearch {
     pub fn new(
-        heaprel: &'a PgBox<pg_sys::RelationData>,
-        indexrel: &'a PgBox<pg_sys::RelationData>,
+        heaprel: &PgBox<pg_sys::RelationData>,
+        indexrel: &PgBox<pg_sys::RelationData>,
     ) -> Self {
+        let zdboptions = ZDBIndexOptions::from(indexrel);
         Elasticsearch {
-            heaprel,
-            indexrel,
-            options: ZDBIndexOptions::from(indexrel),
+            options: InternalOptions {
+                url: zdboptions.url(),
+                type_name: zdboptions.type_name(),
+                refresh_interval: zdboptions.refresh_interval(),
+                alias: zdboptions.alias(heaprel, indexrel),
+                uuid: zdboptions.uuid(heaprel, indexrel),
+                index_name: zdboptions.index_name(heaprel, indexrel),
+
+                optimize_after: zdboptions.optimize_after(),
+                compression_level: zdboptions.compression_level(),
+                shards: zdboptions.shards(),
+                replicas: zdboptions.replicas(),
+                bulk_concurrency: zdboptions.bulk_concurrency(),
+                batch_size: zdboptions.batch_size(),
+                llapi: zdboptions.llapi(),
+            },
         }
     }
 
-    pub fn create_index(&'a self, mapping: Value) -> ElasticsearchCreateIndexRequest<'a> {
+    pub fn create_index(&self, mapping: Value) -> ElasticsearchCreateIndexRequest {
         ElasticsearchCreateIndexRequest::new(self, mapping)
     }
 
-    pub fn delete_index(&'a self) -> ElasticsearchDeleteIndexRequest {
-        ElasticsearchDeleteIndexRequest::new(self.base_url())
+    pub fn delete_index(&self) -> ElasticsearchDeleteIndexRequest {
+        ElasticsearchDeleteIndexRequest::new(self)
     }
 
-    pub fn start_bulk(self) -> ElasticsearchBulkRequest<'a> {
-        ElasticsearchBulkRequest::new(self, 10_000, num_cpus::get())
+    pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
+        let concurrency = num_cpus::get().min(self.options.bulk_concurrency as usize);
+        ElasticsearchBulkRequest::new(self, 10_000, concurrency)
     }
 
     pub fn base_url(&self) -> String {
-        format!(
-            "{}{}",
-            self.options.url(),
-            self.options.index_name(self.heaprel, self.indexrel)
-        )
+        format!("{}{}", self.options.url, self.options.index_name)
     }
 
     pub fn execute_request<F, R>(

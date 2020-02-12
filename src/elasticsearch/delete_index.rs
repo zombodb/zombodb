@@ -1,16 +1,17 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 
-pub struct ElasticsearchDeleteIndexRequest(String);
+pub struct ElasticsearchDeleteIndexRequest(Elasticsearch);
 
 impl ElasticsearchDeleteIndexRequest {
-    pub fn new(url: String) -> Self {
-        ElasticsearchDeleteIndexRequest(url)
+    pub fn new(elasticsearch: &Elasticsearch) -> Self {
+        ElasticsearchDeleteIndexRequest(elasticsearch.clone())
     }
 
     pub fn execute(&self) -> Result<(), ElasticsearchError> {
-        if let Err(e) =
-            Elasticsearch::execute_request(reqwest::Client::new().delete(&self.0), |_, _| Ok(()))
-        {
+        if let Err(e) = Elasticsearch::execute_request(
+            reqwest::Client::new().delete(&self.0.base_url()),
+            |_, _| Ok(()),
+        ) {
             if let Some(status) = e.status() {
                 if status.as_u16() == 404 {
                     // 404 NOT FOUND is okay for us

@@ -5,14 +5,14 @@ use crate::utils::lookup_zdb_index_tupdesc;
 use pgx::*;
 
 struct BuildState<'a> {
-    bulk: ElasticsearchBulkRequest<'a>,
+    bulk: ElasticsearchBulkRequest,
     tupdesc: &'a PgBox<pg_sys::TupleDescData>,
     attributes: Vec<CategorizedAttribute<'a>>,
 }
 
 impl<'a> BuildState<'a> {
     fn new(
-        bulk: ElasticsearchBulkRequest<'a>,
+        bulk: ElasticsearchBulkRequest,
         tupdesc: &'a PgBox<pg_sys::TupleDescData>,
         attributes: Vec<CategorizedAttribute<'a>>,
     ) -> Self {
