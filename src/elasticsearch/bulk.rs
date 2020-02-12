@@ -323,12 +323,7 @@ impl<'a> Handler<'a> {
         _thread_id: usize,
         initial_command: BulkRequestCommand<'static>,
     ) -> JoinHandle<usize> {
-        //        let es = self.elasticsearch.clone();
-        let url = self.elasticsearch.options.url().to_owned();
-        let index_name = self
-            .elasticsearch
-            .options
-            .index_name(&self.elasticsearch.heaprel, &self.elasticsearch.indexrel);
+        let base_url = self.elasticsearch.base_url().clone();
         let rx = self.bulk_receiver.clone();
         let in_flight = self.in_flight.clone();
         let active_thread_cnt = self.active_thread_cnt.clone();
@@ -372,10 +367,7 @@ impl<'a> Handler<'a> {
                     buffer: Vec::new(),
                 };
 
-                let url = &format!(
-                    "{}{}/_bulk?filter_path={}",
-                    url, index_name, BULK_FILTER_PATH
-                );
+                let url = &format!("{}/_bulk?filter_path={}", base_url, BULK_FILTER_PATH);
 
                 if let Err(e) = Elasticsearch::execute_request(
                     reqwest::Client::new()
@@ -397,7 +389,7 @@ impl<'a> Handler<'a> {
                             // it didn't parse as json, but we don't care as we just return
                             // the entire response string anyway
                             Err(_) => {
-                                return Err(ElasticsearchError(code, resp_string));
+                                return Err(ElasticsearchError(Some(code), resp_string));
                             }
                         };
 
@@ -405,11 +397,11 @@ impl<'a> Handler<'a> {
                             Ok(())
                         } else {
                             // yup, the response contains an error
-                            Err(ElasticsearchError(code, resp_string))
+                            Err(ElasticsearchError(Some(code), resp_string))
                         }
                     },
                 ) {
-                    return Handler::send_error(error, e.0.as_u16(), e.1, total_docs_out);
+                    return Handler::send_error(error, e.status(), e.message(), total_docs_out);
                 }
 
                 let docs_out = docs_out.load(Ordering::SeqCst);
@@ -431,13 +423,13 @@ impl<'a> Handler<'a> {
 
     fn send_error(
         sender: crossbeam::Sender<BulkRequestError>,
-        code: u16,
-        message: String,
+        code: Option<reqwest::StatusCode>,
+        message: &str,
         total_docs_out: usize,
     ) -> usize {
         sender
             .send(BulkRequestError::IndexingError(format!(
-                "code={}, {}",
+                "code={:?}, {}",
                 code, message
             )))
             .expect("failed to send error over channel");

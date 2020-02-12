@@ -16,17 +16,9 @@ impl<'a> ElasticsearchCreateIndexRequest<'a> {
     }
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
-        let url = &format!(
-            "{}{}",
-            self.elasticsearch.options.url(),
-            self.elasticsearch
-                .options
-                .index_name(self.elasticsearch.heaprel, self.elasticsearch.indexrel)
-        );
-
         Elasticsearch::execute_request(
             reqwest::Client::new()
-                .put(url)
+                .put(&self.elasticsearch.base_url())
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&self.create_request_body()).unwrap()),
             |_, _| Ok(()),

@@ -36,14 +36,27 @@ pub extern "C" fn ambuild(
 
     let mut mapping = generate_default_mapping();
     let attributes = categorize_tupdesc(&tupdesc, &mut mapping);
-
     let elasticsearch = Elasticsearch::new(&heap_relation, &index_relation);
-    let create_index = elasticsearch
-        .create_index(serde_json::to_value(&mapping).expect("failed to generate mapping"));
 
-    create_index
+    // delete any existing Elasticsearch index with the same name as this one we're about to create
+    elasticsearch
+        .delete_index()
         .execute()
-        .expect("Failed to create new Elasticsearch index");
+        .expect("failed to delete existing Elasticsearch index");
+
+    // create the new index
+    elasticsearch
+        .create_index(serde_json::to_value(&mapping).expect("failed to generate mapping"))
+        .execute()
+        .expect("failed to create new Elasticsearch index");
+
+    // register a callback to delete the newly-created ES index if our transaction aborts
+    let delete_on_abort = elasticsearch.delete_index();
+    register_xact_callback(PgXactCallbackEvent::Abort, move || {
+        delete_on_abort
+            .execute()
+            .expect("failed to delete Elasticsearch index on transaction abort")
+    });
 
     let mut state = BuildState::new(elasticsearch.start_bulk(), &tupdesc, attributes);
 

@@ -2,12 +2,14 @@
 
 mod bulk;
 mod create_index;
+mod delete_index;
 
 use crate::access_method::options::ZDBIndexOptions;
+use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 pub use bulk::*;
 pub use create_index::*;
 use pgx::{pg_sys, PgBox};
-use reqwest::{RequestBuilder, StatusCode};
+use reqwest::RequestBuilder;
 use serde_json::Value;
 use std::io::Read;
 
@@ -18,7 +20,17 @@ pub struct Elasticsearch<'a> {
 }
 
 #[derive(Debug)]
-pub struct ElasticsearchError(reqwest::StatusCode, String);
+pub struct ElasticsearchError(Option<reqwest::StatusCode>, String);
+
+impl ElasticsearchError {
+    pub fn status(&self) -> Option<reqwest::StatusCode> {
+        self.0
+    }
+
+    pub fn message(&self) -> &str {
+        &self.1
+    }
+}
 
 impl<'a> Elasticsearch<'a> {
     pub fn new(
@@ -36,8 +48,20 @@ impl<'a> Elasticsearch<'a> {
         ElasticsearchCreateIndexRequest::new(self, mapping)
     }
 
+    pub fn delete_index(&'a self) -> ElasticsearchDeleteIndexRequest {
+        ElasticsearchDeleteIndexRequest::new(self.base_url())
+    }
+
     pub fn start_bulk(self) -> ElasticsearchBulkRequest<'a> {
         ElasticsearchBulkRequest::new(self, 10_000, num_cpus::get())
+    }
+
+    pub fn base_url(&self) -> String {
+        format!(
+            "{}{}",
+            self.options.url(),
+            self.options.index_name(self.heaprel, self.indexrel)
+        )
     }
 
     pub fn execute_request<F, R>(
@@ -48,6 +72,7 @@ impl<'a> Elasticsearch<'a> {
         F: FnOnce(reqwest::StatusCode, String) -> std::result::Result<R, ElasticsearchError>,
     {
         match builder.send() {
+            // the request was processed by ES, but maybe not successfully
             Ok(mut response) => {
                 let code = response.status();
                 let mut body_string = String::new();
@@ -57,16 +82,14 @@ impl<'a> Elasticsearch<'a> {
 
                 if code.as_u16() != 200 {
                     // it wasn't a valid response code
-                    Err(ElasticsearchError(code, body_string))
+                    Err(ElasticsearchError(Some(code), body_string))
                 } else {
                     response_parser(code, body_string)
                 }
             }
 
-            Err(e) => Err(ElasticsearchError(
-                e.status().unwrap_or(StatusCode::from_u16(500).unwrap()),
-                e.to_string(),
-            )),
+            // the request didn't reach ES
+            Err(e) => Err(ElasticsearchError(e.status(), e.to_string())),
         }
     }
 }
