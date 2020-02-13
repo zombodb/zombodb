@@ -6,6 +6,7 @@ use crate::utils::lookup_zdb_index_tupdesc;
 use pgx::*;
 
 struct BuildState<'a> {
+    table_name: &'a str,
     bulk: ElasticsearchBulkRequest,
     tupdesc: &'a PgBox<pg_sys::TupleDescData>,
     attributes: Vec<CategorizedAttribute<'a>>,
@@ -13,11 +14,13 @@ struct BuildState<'a> {
 
 impl<'a> BuildState<'a> {
     fn new(
+        table_name: &'a str,
         bulk: ElasticsearchBulkRequest,
         tupdesc: &'a PgBox<pg_sys::TupleDescData>,
         attributes: Vec<CategorizedAttribute<'a>>,
     ) -> Self {
         BuildState {
+            table_name,
             bulk,
             tupdesc,
             attributes,
@@ -59,7 +62,12 @@ pub extern "C" fn ambuild(
             .expect("failed to delete Elasticsearch index on transaction abort")
     });
 
-    let mut state = BuildState::new(elasticsearch.start_bulk(), &tupdesc, attributes);
+    let mut state = BuildState::new(
+        relation_get_relation_name(&heap_relation),
+        elasticsearch.start_bulk(),
+        &tupdesc,
+        attributes,
+    );
 
     // register an Abort callback so we can terminate early if there's an error
     let callback = register_xact_callback(PgXactCallbackEvent::Abort, state.bulk.terminate());
@@ -123,6 +131,15 @@ unsafe extern "C" fn build_callback(
 
     let htup = PgBox::from_pg(htup);
     let mut state = PgBox::from_pg(state as *mut BuildState);
+
+    if pg_sys::HeapTupleHeaderIsHeapOnly(htup.t_data) {
+        ereport(PgLogLevel::ERROR,
+                PgSqlErrorCode::ERRCODE_DATA_EXCEPTION,
+                &format!("Heap Only Tuple (HOT) found at ({}, {}).  Run VACUUM FULL {}; and then create the index", item_pointer_get_block_number(&htup.t_self), item_pointer_get_offset_number(&htup.t_self), state.table_name),
+            file!(), line!(), column!()
+        )
+    }
+
     let values = std::slice::from_raw_parts(values, 1);
     let builder = row_to_json(values[0], &state);
 
@@ -157,4 +174,22 @@ unsafe fn row_to_json<'a>(
     }
 
     builder
+}
+
+#[cfg(any(test, feature = "pg_test"))]
+mod tests {
+    use pgx::*;
+
+    #[pg_test(
+        error = "Heap Only Tuple (HOT) found at (0, 1).  Run VACUUM FULL check_for_hot; and then create the index"
+    )]
+    #[initialize(es = true)]
+    fn check_for_hot_tuple() {
+        Spi::run("CREATE TABLE check_for_hot(id bigint);");
+        Spi::run("INSERT INTO check_for_hot VALUES (1);");
+        Spi::run("UPDATE check_for_hot SET id = id;");
+        Spi::run(
+            "CREATE INDEX idxcheck_for_hot ON check_for_hot USING zombodb ((check_for_hot.*));",
+        );
+    }
 }
