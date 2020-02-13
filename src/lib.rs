@@ -6,7 +6,7 @@ mod elasticsearch;
 mod gucs;
 mod json;
 mod mapping;
-mod query_dsl;
+pub mod query_dsl;
 mod utils;
 mod zdbquery;
 

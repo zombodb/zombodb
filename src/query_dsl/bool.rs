@@ -7,7 +7,7 @@ mod pg_catalog {
     pub struct BoolQueryPart(pub Value);
 }
 
-mod dsl {
+pub mod dsl {
     use super::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -153,6 +153,18 @@ mod dsl {
                     .collect::<Vec<Value>>(),
             )
             .unwrap(),
+        }))
+    }
+
+    #[pg_extern(immutable, parallel_safe)]
+    pub fn binary_and(a: ZDBQuery, b: ZDBQuery) -> ZDBQuery {
+        let a_dsl = a.query_dsl().unwrap().clone();
+        a.set_query_dsl(Some(json! {
+            {
+                "bool": {
+                    "must": [a_dsl, b.query_dsl()]
+                }
+            }
         }))
     }
 
@@ -496,6 +508,28 @@ mod tests {
                                 }
                             },
                         ],
+                    }
+                }
+            }
+        )
+    }
+
+    #[pg_test]
+    fn test_binary_and() {
+        let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.binary_and(dsl.limit(10, 'a'), 'b');")
+            .expect("failed to get SPI result");
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(zdbquery.limit().unwrap(), 10);
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "bool": {
+                        "must": [
+                            {"query_string":{"query":"a"}},
+                            {"query_string":{"query":"b"}}
+                        ]
                     }
                 }
             }
