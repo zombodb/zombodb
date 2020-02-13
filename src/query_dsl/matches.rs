@@ -128,7 +128,7 @@ mod dsl {
     /// match
     /// ```
     #[pg_extern(immutable, parallel_safe)]
-    fn match_(
+    fn match_wrapper(
         field: &str,
         query: &str,
         boost: Option<default!(f32, NULL)>,
