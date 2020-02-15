@@ -79,9 +79,16 @@ impl ElasticsearchSearchRequest {
         }
     }
 
-    pub fn execute(&self) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
+    pub fn execute(self) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
+        ElasticsearchSearchRequest::initial_search(self.elasticsearch, self.query)
+    }
+
+    fn initial_search(
+        elasticsearch: Elasticsearch,
+        query: ZDBQuery,
+    ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
-        url.push_str(&self.elasticsearch.base_url());
+        url.push_str(&elasticsearch.base_url());
         url.push_str("/_search");
         url.push_str("?search_type=query_then_fetch");
         url.push_str("&_source=false");
@@ -96,10 +103,32 @@ impl ElasticsearchSearchRequest {
             url,
             json! {
                 {
-                    "query": self.query.query_dsl().expect("zdbquery QueryDSL is None")
+                    "query": query.query_dsl().expect("zdbquery has None QueryDSL")
                 }
             },
-            self.elasticsearch.clone(),
+            elasticsearch,
+        )
+    }
+
+    fn scroll(
+        elasticsearch: Elasticsearch,
+        scroll_id: &str,
+    ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
+        let mut url = String::new();
+        url.push_str(&elasticsearch.options.url);
+        url.push_str("_search/scroll");
+        url.push_str("?filter_path=");
+        url.push_str(SEARCH_FILTER_PATH);
+
+        ElasticsearchSearchRequest::get_hits(
+            url,
+            json! {
+                {
+                    "scroll": "10m",
+                    "scroll_id": scroll_id
+                }
+            },
+            elasticsearch,
         )
     }
 
@@ -147,41 +176,22 @@ impl Iterator for SearchResponseIntoIter {
         let item = match self.inner_hits_iter.next() {
             Some(inner_hit) => Some((inner_hit.score, inner_hit.fields.zdb_ctid[0])),
             None => {
-                if self.curr >= self.total_hits {
-                    // we're all done
-                    None
-                } else {
-                    // go get next scroll chunk
-                    // TODO:  we'll at least need to also replace self.inner_hits_iter here
-                    let mut url = String::new();
-                    url.push_str(&self.elasticsearch.options.url);
-                    url.push_str("_search/scroll");
-                    url.push_str("?filter_path=");
-                    url.push_str(SEARCH_FILTER_PATH);
+                // go get next scroll chunk
+                let response = ElasticsearchSearchRequest::scroll(
+                    self.elasticsearch.clone(),
+                    self.scroll_id.as_ref().expect("no scroll id"),
+                )
+                .expect("failed to get next set of hits");
 
-                    let response = ElasticsearchSearchRequest::get_hits(
-                        url,
-                        json! {
-                            {
-                                "scroll": "10m",
-                                "scroll_id": self.scroll_id
-                            }
-                        },
-                        self.elasticsearch.clone(),
-                    )
-                    .expect("failed to get next set of hits");
+                self.scroll_id = response.scroll_id;
+                self.inner_hits_iter = match response.hits.hits {
+                    Some(inner_hits) => inner_hits.into_iter(),
+                    None => return None,
+                };
 
-                    self.scroll_id = response.scroll_id;
-                    self.inner_hits_iter = response
-                        .hits
-                        .hits
-                        .expect("no inner hits in scroll response")
-                        .into_iter();
-
-                    match self.inner_hits_iter.next() {
-                        Some(inner_hit) => Some((inner_hit.score, inner_hit.fields.zdb_ctid[0])),
-                        None => None,
-                    }
+                match self.inner_hits_iter.next() {
+                    Some(inner_hit) => Some((inner_hit.score, inner_hit.fields.zdb_ctid[0])),
+                    None => None,
                 }
             }
         };
