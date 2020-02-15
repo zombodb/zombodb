@@ -4,10 +4,13 @@ mod bulk;
 mod create_index;
 mod delete_index;
 mod refresh_index;
+pub mod search;
 
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
+use crate::elasticsearch::search::ElasticsearchSearchRequest;
+use crate::zdbquery::ZDBQuery;
 pub use bulk::*;
 pub use create_index::*;
 use pgx::{pg_sys, PgBox};
@@ -92,6 +95,10 @@ impl Elasticsearch {
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
         let concurrency = num_cpus::get().min(self.options.bulk_concurrency as usize);
         ElasticsearchBulkRequest::new(self, 10_000, concurrency)
+    }
+
+    pub fn open_search(&self, query: ZDBQuery) -> ElasticsearchSearchRequest {
+        ElasticsearchSearchRequest::new(self, query)
     }
 
     pub fn base_url(&self) -> String {
