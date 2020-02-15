@@ -7,6 +7,7 @@ mod limit;
 mod match_all;
 mod matches;
 mod misc;
+mod nested;
 mod prefix;
 mod range;
 mod sort;
