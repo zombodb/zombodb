@@ -253,6 +253,7 @@ impl<'a> BulkReceiver<'a> {
                 .expect("failed to serialize index line");
                 self.buffer.push(b'\n');
 
+                doc.add_u64("zdb_ctid", ctid);
                 doc.add_u32("zdb_cmin", cmin);
                 doc.add_u32("zdb_cmax", cmax);
                 doc.add_u64("zdb_xmin", xmin);
