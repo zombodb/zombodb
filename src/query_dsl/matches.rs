@@ -236,6 +236,18 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
+    fn phrase(
+        field: &str,
+        query: &str,
+        boost: Option<default!(f32, NULL)>,
+        slop: Option<default!(i32, NULL)>,
+        analyzer: Option<default!(&str, NULL)>,
+        zero_terms_query: Option<default!(ZeroTermsQuery, NULL)>,
+    ) -> ZDBQuery {
+        match_phrase(field, query, boost, slop, analyzer, zero_terms_query)
+    }
+
+    #[pg_extern(immutable, parallel_safe)]
     fn match_phrase_prefix(
         field: &str,
         query: &str,
@@ -538,6 +550,65 @@ mod tests {
                     "match_phrase": {
                         "match_phrase_field": {
                             "query": "match_phrase_query",
+                            "boost": boost,
+                            "slop": 54,
+                            "analyzer": "analyzer_phrase",
+                            "zero_terms_query": "none",
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    #[pg_test]
+    fn test_phrase_with_defaults() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.phrase(
+                'phrase_field',
+                'phrase_query'
+            )",
+        )
+        .expect("failed to get SPI result");
+        let dls = zdbquery.query_dsl();
+
+        assert_eq!(
+            dls.unwrap(),
+            &json! {
+                {
+                    "match_phrase": {
+                        "phrase_field": {
+                            "query": "phrase_query",
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    #[pg_test]
+    fn test_phrase_without_defaults() {
+        let boost = 2.0 as f32;
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.phrase(
+                'phrase_field',
+                'phrase_query',
+                '2.0',
+                '54',
+                'analyzer_phrase',
+                'none'
+            )",
+        )
+        .expect("failed to get SPI result");
+        let dls = zdbquery.query_dsl();
+
+        assert_eq!(
+            dls.unwrap(),
+            &json! {
+                {
+                    "match_phrase": {
+                        "phrase_field": {
+                            "query": "phrase_query",
                             "boost": boost,
                             "slop": 54,
                             "analyzer": "analyzer_phrase",
