@@ -25,3 +25,5 @@ access_method_build.generated.sql
 access_method_options.generated.sql
 gucs_mod.generated.sql
 mapping_mod.generated.sql
+query_dsl_matches.generated.sql
+query_dsl_nested.generated.sql

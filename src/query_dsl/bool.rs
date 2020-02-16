@@ -230,10 +230,22 @@ pub mod dsl {
             }
         })
     }
+
+    #[pg_extern(immutable, parallel_safe)]
+    pub(crate) fn not_eq(query: ZDBQuery) -> ZDBQuery {
+        ZDBQuery::new_with_query_dsl(json! {
+            {
+                "bool": {
+                    "must_not": query.query_dsl()
+                }
+            }
+        })
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
+    use crate::query_dsl::bool::dsl::*;
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::json;
@@ -534,5 +546,26 @@ mod tests {
                 }
             }
         )
+    }
+
+    #[pg_test]
+    fn test_noteq() {
+        let zdbquery = not_eq(ZDBQuery::new_with_query_string("test_notEq"));
+        let dsl = zdbquery.query_dsl();
+
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "bool": {
+                        "must_not": {
+                            "query_string": {
+                                "query": "test_notEq"
+                            }
+                        }
+                    }
+                }
+            }
+        );
     }
 }
