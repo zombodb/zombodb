@@ -116,6 +116,6 @@ pub extern "C" fn amendscan(scan: pg_sys::IndexScanDesc) {
     let state = PgBox::from_pg(scan.opaque as *mut ZDBScanState);
 
     // drop the iterator
-    let iter = unsafe { Box::from_raw(iter_ptr as *mut SearchResponseIntoIter) };
+    let iter = unsafe { Box::from_raw(state.iterator as *mut SearchResponseIntoIter) };
     drop(iter);
 }
