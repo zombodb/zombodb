@@ -161,43 +161,94 @@ impl ElasticsearchSearchRequest {
     }
 }
 
+pub struct Scroller {
+    receiver: crossbeam::channel::Receiver<(f64, u64)>,
+}
+
+impl Scroller {
+    fn new(
+        elasticsearch: Elasticsearch,
+        mut scroll_id: Option<String>,
+        iter: std::vec::IntoIter<InnerHit>,
+    ) -> Self {
+        let (sender, receiver) = crossbeam::channel::unbounded();
+        let (scroll_sender, scroll_receiver) = crossbeam::channel::unbounded();
+
+        // go ahead and queue up the results we currently have from the initial search
+        scroll_sender
+            .send(iter)
+            .expect("scroll_sender channel is closed");
+
+        // spawn a thread to continually get the next scroll chunk from Elasticsearch
+        // until there's no more to get
+        std::thread::spawn(move || {
+            std::panic::catch_unwind(|| {
+                while let Some(sid) = scroll_id {
+                    match ElasticsearchSearchRequest::scroll(elasticsearch.clone(), &sid) {
+                        Ok(response) => {
+                            scroll_id = response.scroll_id;
+
+                            match response.hits.hits {
+                                Some(inner_hits) => {
+                                    // send the hits across the scroll_sender channel
+                                    // so they can be iterated from another thread
+                                    scroll_sender
+                                        .send(inner_hits.into_iter())
+                                        .expect("failed to send iter over scroll_sender");
+                                }
+                                None => {
+                                    break;
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            break;
+                        }
+                    }
+
+                    if scroll_id.is_none() {
+                        break;
+                    }
+                }
+            })
+            .ok();
+        });
+
+        // this thread sends the hits back to the main thread across the 'sender/receiver' channel
+        // until there's no more to send
+        std::thread::spawn(move || {
+            std::panic::catch_unwind(|| {
+                for itr in scroll_receiver {
+                    for hit in itr {
+                        sender
+                            .send((hit.score, hit.fields.zdb_ctid[0]))
+                            .expect("failed to send hit over sender");
+                    }
+                }
+            })
+            .ok();
+        });
+
+        Scroller { receiver }
+    }
+
+    fn next(&self) -> Option<(f64, u64)> {
+        match self.receiver.recv() {
+            Ok(tuple) => Some(tuple),
+            Err(_) => None,
+        }
+    }
+}
+
 pub struct SearchResponseIntoIter {
-    elasticsearch: Elasticsearch,
-    scroll_id: Option<String>,
-    total_hits: u64,
-    inner_hits_iter: std::vec::IntoIter<InnerHit>,
-    curr: u64,
+    scroller: Scroller,
 }
 
 impl Iterator for SearchResponseIntoIter {
     type Item = (f64, u64);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let item = match self.inner_hits_iter.next() {
-            Some(inner_hit) => Some((inner_hit.score, inner_hit.fields.zdb_ctid[0])),
-            None => {
-                // go get next scroll chunk
-                let response = ElasticsearchSearchRequest::scroll(
-                    self.elasticsearch.clone(),
-                    self.scroll_id.as_ref().expect("no scroll id"),
-                )
-                .expect("failed to get next set of hits");
-
-                self.scroll_id = response.scroll_id;
-                self.inner_hits_iter = match response.hits.hits {
-                    Some(inner_hits) => inner_hits.into_iter(),
-                    None => return None,
-                };
-
-                match self.inner_hits_iter.next() {
-                    Some(inner_hit) => Some((inner_hit.score, inner_hit.fields.zdb_ctid[0])),
-                    None => None,
-                }
-            }
-        };
-
-        self.curr += 1;
-        item
+        self.scroller.next()
     }
 }
 
@@ -206,17 +257,12 @@ impl IntoIterator for ElasticsearchSearchResponse {
     type IntoIter = SearchResponseIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        let elasticsearch = self.elasticsearch.as_ref().unwrap().clone();
         SearchResponseIntoIter {
-            elasticsearch,
-            scroll_id: self.scroll_id,
-            total_hits: self.hits.total.value,
-            inner_hits_iter: self
-                .hits
-                .hits
-                .expect("no inner hits in response")
-                .into_iter(),
-            curr: 0,
+            scroller: Scroller::new(
+                self.elasticsearch.expect("no elasticsearch"),
+                self.scroll_id,
+                self.hits.hits.unwrap_or_default().into_iter(),
+            ),
         }
     }
 }
