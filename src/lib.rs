@@ -46,11 +46,14 @@ mod tests {
 mod testing;
 
 #[cfg(test)]
-pub fn pg_test_setup(options: Vec<&str>) {
-    testing::initialize_tests(options);
-}
+pub mod pg_test {
+    use crate::testing;
 
-#[cfg(test)]
-pub fn pg_test_postgresql_conf_options() -> Vec<&'static str> {
-    vec!["zdb.default_elasticsearch_url = 'http://localhost:19200/'"]
+    pub fn setup(options: Vec<&str>) {
+        testing::initialize_tests(options);
+    }
+
+    pub fn postgresql_conf_options() -> Vec<&'static str> {
+        vec!["zdb.default_elasticsearch_url = 'http://localhost:19200/'"]
+    }
 }
