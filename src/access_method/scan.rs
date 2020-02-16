@@ -4,9 +4,8 @@ use crate::zdbquery::ZDBQuery;
 use pgx::*;
 
 struct ZDBScanState {
-    ntuples: u64,
     zdbregtype: pg_sys::Oid,
-    iterator: SearchResponseIntoIter,
+    iterator: *mut SearchResponseIntoIter,
 }
 
 #[pg_guard]
@@ -17,12 +16,8 @@ pub extern "C" fn ambeginscan(
 ) -> pg_sys::IndexScanDesc {
     let mut scandesc: PgBox<pg_sys::IndexScanDescData> =
         PgBox::from_pg(unsafe { pg_sys::RelationGetIndexScan(index_relation, nkeys, norderbys) });
-
-    info!("ambeginscan");
-
     let mut state = PgBox::<ZDBScanState>::alloc0();
 
-    state.ntuples = 0;
     state.zdbregtype = unsafe {
         direct_function_call::<pg_sys::Oid>(
             pg_sys::to_regtype,
@@ -44,7 +39,6 @@ pub extern "C" fn amrescan(
     _orderbys: pg_sys::ScanKey,
     _norderbys: ::std::os::raw::c_int,
 ) {
-    info!("amrescan: nkeys={}", nkeys);
     if nkeys == 0 {
         panic!("No ScanKeys provided");
     }
@@ -65,15 +59,27 @@ pub extern "C" fn amrescan(
     // TODO:  query elasticsearch
     let heaprel = PgBox::from_pg(scan.heapRelation);
     let indexrel = PgBox::from_pg(scan.indexRelation);
-    let es = Elasticsearch::new(&heaprel, &indexrel);
-    info!("query={}", serde_json::to_string(&query).unwrap());
+    let elasticsearch = Elasticsearch::new(&heaprel, &indexrel);
 
-    let response = es
+    let response = elasticsearch
         .open_search(query)
         .execute()
         .expect("failed to execute ES query");
 
-    state.iterator = response.into_iter();
+    // we convert the response from above into a Boxed iterator
+    // and then we leak it so we can hold onto a reference to it in case
+    // the transaction aborts
+    let iterator = Box::new(response.into_iter());
+    state.iterator = Box::leak(iterator);
+
+    // and if the transaction does abort, we'll re-box the iterator and then
+    // immediately drop it, ensuring we don't leak anything across transactions
+    let iter_ptr = state.iterator as void_mut_ptr;
+    register_xact_callback(PgXactCallbackEvent::Abort, move || {
+        // drop the iterator
+        let iter = unsafe { Box::from_raw(iter_ptr as *mut SearchResponseIntoIter) };
+        drop(iter);
+    });
 }
 
 #[pg_guard]
@@ -87,11 +93,10 @@ pub extern "C" fn amgettuple(
     // no need to recheck the returned tuples as ZomboDB indices are not lossy
     scan.xs_recheck = false;
 
-    match state.iterator.next() {
+    let iter = unsafe { &mut *state.iterator };
+    match iter.next() {
         Some((_score, ctid)) => {
             u64_to_item_pointer(ctid, &mut scan.xs_ctup.t_self);
-
-            state.ntuples += 1;
             true
         }
         None => false,
@@ -106,6 +111,11 @@ pub extern "C" fn amgetbitmap(_scan: pg_sys::IndexScanDesc, _tbm: *mut pg_sys::T
 }
 
 #[pg_guard]
-pub extern "C" fn amendscan(_scan: pg_sys::IndexScanDesc) {
-    info!("amendscan");
+pub extern "C" fn amendscan(scan: pg_sys::IndexScanDesc) {
+    let scan: PgBox<pg_sys::IndexScanDescData> = PgBox::from_pg(scan);
+    let state = PgBox::from_pg(scan.opaque as *mut ZDBScanState);
+
+    // drop the iterator
+    let iter = unsafe { Box::from_raw(iter_ptr as *mut SearchResponseIntoIter) };
+    drop(iter);
 }
