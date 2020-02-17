@@ -61,14 +61,16 @@ pub struct Hits {
 pub struct ElasticsearchSearchResponse {
     #[serde(skip)]
     elasticsearch: Option<Elasticsearch>,
+    #[serde(skip)]
+    limit: Option<u64>,
 
     #[serde(rename = "_scroll_id")]
     scroll_id: Option<String>,
 
     #[serde(rename = "_shards")]
-    shards: Shards,
+    shards: Option<Shards>,
 
-    hits: Hits,
+    hits: Option<Hits>,
 }
 
 impl ElasticsearchSearchRequest {
@@ -92,21 +94,42 @@ impl ElasticsearchSearchRequest {
         url.push_str("/_search");
         url.push_str("?search_type=query_then_fetch");
         url.push_str("&_source=false");
-        url.push_str("&size=10000");
         url.push_str("&scroll=10m");
-        url.push_str("&filter_path=");
-        url.push_str(SEARCH_FILTER_PATH);
+        url.push_str(&format!("&filter_path={}", SEARCH_FILTER_PATH));
         url.push_str("&stored_fields=_none_");
         url.push_str("&docvalue_fields=zdb_ctid");
 
+        // adjust the chunk size we want Elasticsearch to return for us
+        // to be that of our limit
+        match query.limit() {
+            Some(limit) if limit == 0 => {
+                // with a limit of zero, we can avoid going to Elasticsearch at all
+                // and just return a (mostly) None'd response
+                return Ok(ElasticsearchSearchResponse {
+                    elasticsearch: None,
+                    limit: Some(0),
+                    scroll_id: None,
+                    shards: None,
+                    hits: None,
+                });
+            }
+            Some(limit) if limit < 10_000 => {
+                url.push_str(&format!("&size={}", limit));
+            }
+            _ => {
+                url.push_str("&size=10000");
+            }
+        }
+
         ElasticsearchSearchRequest::get_hits(
             url,
+            query.limit(),
+            elasticsearch,
             json! {
                 {
                     "query": query.query_dsl().expect("zdbquery has None QueryDSL")
                 }
             },
-            elasticsearch,
         )
     }
 
@@ -122,20 +145,22 @@ impl ElasticsearchSearchRequest {
 
         ElasticsearchSearchRequest::get_hits(
             url,
+            None,
+            elasticsearch,
             json! {
                 {
                     "scroll": "10m",
                     "scroll_id": scroll_id
                 }
             },
-            elasticsearch,
         )
     }
 
     fn get_hits(
         url: String,
-        body: serde_json::Value,
+        limit: Option<u64>,
         elasticsearch: Elasticsearch,
+        body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         Elasticsearch::execute_request(
             reqwest::Client::new()
@@ -154,6 +179,7 @@ impl ElasticsearchSearchRequest {
                 // assign a clone of our ES client to the response too,
                 // for future use during iteration
                 response.elasticsearch = Some(elasticsearch);
+                response.limit = limit;
 
                 Ok(response)
             },
@@ -188,7 +214,7 @@ impl Scroller {
                         Ok(response) => {
                             scroll_id = response.scroll_id;
 
-                            match response.hits.hits {
+                            match response.hits.unwrap().hits {
                                 Some(inner_hits) => {
                                     // send the hits across the scroll_sender channel
                                     // so they can be iterated from another thread
@@ -241,14 +267,26 @@ impl Scroller {
 }
 
 pub struct SearchResponseIntoIter {
-    scroller: Scroller,
+    scroller: Option<Scroller>,
+    limit: Option<u64>,
+    cnt: u64,
 }
 
 impl Iterator for SearchResponseIntoIter {
     type Item = (f64, u64);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.scroller.next()
+        if let Some(limit) = self.limit {
+            if self.cnt >= limit {
+                // we've reached our limit
+                return None;
+            }
+        }
+
+        let scroller = self.scroller.as_ref().unwrap();
+        let item = scroller.next();
+        self.cnt += 1;
+        item
     }
 }
 
@@ -257,12 +295,92 @@ impl IntoIterator for ElasticsearchSearchResponse {
     type IntoIter = SearchResponseIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        SearchResponseIntoIter {
-            scroller: Scroller::new(
-                self.elasticsearch.expect("no elasticsearch"),
-                self.scroll_id,
-                self.hits.hits.unwrap_or_default().into_iter(),
-            ),
+        if self.elasticsearch.is_none() {
+            SearchResponseIntoIter {
+                scroller: None,
+                limit: Some(0),
+                cnt: 0,
+            }
+        } else {
+            SearchResponseIntoIter {
+                scroller: Some(Scroller::new(
+                    self.elasticsearch.expect("no elasticsearch"),
+                    self.scroll_id,
+                    self.hits.unwrap().hits.unwrap_or_default().into_iter(),
+                )),
+                limit: self.limit,
+                cnt: 0,
+            }
         }
+    }
+}
+
+#[cfg(any(test, feature = "pg_test"))]
+mod tests {
+    use pgx::*;
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_limit_none() {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
+        let count = Spi::get_one::<i64>(
+            "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.match_all(); ",
+        )
+        .expect("failed to get SPI result");
+        assert_eq!(count, 10_001);
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_limit_exact() {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
+        let count = Spi::get_one::<i64>(
+            "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(10001, dsl.match_all()); ",
+        )
+        .expect("failed to get SPI result");
+        assert_eq!(count, 10001);
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_limit_10() {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
+        let count = Spi::get_one::<i64>(
+            "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(10, dsl.match_all()); ",
+        )
+        .expect("failed to get SPI result");
+        assert_eq!(count, 10);
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_limit_0() {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
+        let count = Spi::get_one::<i64>(
+            "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(0, dsl.match_all()); ",
+        )
+        .expect("failed to get SPI result");
+        assert_eq!(count, 0);
+    }
+
+    #[pg_test(error = "limit must be positive")]
+    #[initialize(es = true)]
+    fn test_limit_negative() {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
+        let count = Spi::get_one::<i64>(
+            "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(-1, dsl.match_all()); ",
+        )
+        .expect("failed to get SPI result");
+        panic!("executed a search with a negative limit.  count={}", count);
     }
 }

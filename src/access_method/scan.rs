@@ -6,6 +6,7 @@ use pgx::*;
 struct ZDBScanState {
     zdbregtype: pg_sys::Oid,
     iterator: *mut SearchResponseIntoIter,
+    abort_receipt: Option<XactCallbackReceipt>,
 }
 
 #[pg_guard]
@@ -14,6 +15,7 @@ pub extern "C" fn ambeginscan(
     nkeys: ::std::os::raw::c_int,
     norderbys: ::std::os::raw::c_int,
 ) -> pg_sys::IndexScanDesc {
+    info!("ambeginscan");
     let mut scandesc: PgBox<pg_sys::IndexScanDescData> =
         PgBox::from_pg(unsafe { pg_sys::RelationGetIndexScan(index_relation, nkeys, norderbys) });
     let mut state = PgBox::<ZDBScanState>::alloc0();
@@ -39,6 +41,7 @@ pub extern "C" fn amrescan(
     _orderbys: pg_sys::ScanKey,
     _norderbys: ::std::os::raw::c_int,
 ) {
+    info!("amrescan");
     if nkeys == 0 {
         panic!("No ScanKeys provided");
     }
@@ -75,11 +78,14 @@ pub extern "C" fn amrescan(
     // and if the transaction does abort, we'll re-box the iterator and then
     // immediately drop it, ensuring we don't leak anything across transactions
     let iter_ptr = state.iterator as void_mut_ptr;
-    register_xact_callback(PgXactCallbackEvent::Abort, move || {
-        // drop the iterator
-        let iter = unsafe { Box::from_raw(iter_ptr as *mut SearchResponseIntoIter) };
-        drop(iter);
-    });
+    state.abort_receipt = Some(register_xact_callback(
+        PgXactCallbackEvent::Abort,
+        move || {
+            // drop the iterator
+            let iter = unsafe { Box::from_raw(iter_ptr as *mut SearchResponseIntoIter) };
+            drop(iter);
+        },
+    ));
 }
 
 #[pg_guard]
@@ -119,7 +125,14 @@ pub extern "C" fn amgetbitmap(_scan: pg_sys::IndexScanDesc, _tbm: *mut pg_sys::T
 #[pg_guard]
 pub extern "C" fn amendscan(scan: pg_sys::IndexScanDesc) {
     let scan: PgBox<pg_sys::IndexScanDescData> = PgBox::from_pg(scan);
-    let state = PgBox::from_pg(scan.opaque as *mut ZDBScanState);
+    let mut state = PgBox::from_pg(scan.opaque as *mut ZDBScanState);
+
+    // unregister the abort callback
+    state
+        .abort_receipt
+        .take()
+        .expect("no amscan abort receipt")
+        .unregister_callback();
 
     // drop the iterator
     let iter = unsafe { Box::from_raw(state.iterator as *mut SearchResponseIntoIter) };
