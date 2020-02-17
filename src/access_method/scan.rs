@@ -96,7 +96,13 @@ pub extern "C" fn amgettuple(
     let iter = unsafe { &mut *state.iterator };
     match iter.next() {
         Some((_score, ctid)) => {
-            u64_to_item_pointer(ctid, &mut scan.xs_ctup.t_self);
+            #[cfg(any(feature = "pg10", feature = "pg11"))]
+            let tid = &mut scan.xs_ctup.t_self;
+
+            #[cfg(feature = "pg12")]
+            let tid = &mut scan.xs_heaptid;
+
+            u64_to_item_pointer(ctid, tid);
             true
         }
         None => false,
