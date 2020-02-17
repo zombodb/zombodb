@@ -3,18 +3,24 @@ mod dsl {
     use pgx::*;
 
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn limit(limit: i64, query: ZDBQuery) -> ZDBQuery {
+    pub fn limit(limit: i64, query: ZDBQuery) -> ZDBQuery {
+        if limit < 0 {
+            panic!("limit must be positive");
+        }
         query.set_limit(Some(limit as u64))
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    pub(super) fn off_set(offset: i64, query: ZDBQuery) -> ZDBQuery {
+    pub fn offset(offset: i64, query: ZDBQuery) -> ZDBQuery {
+        if offset < 0 {
+            panic!("offset must be positive");
+        }
         query.set_offset(Some(offset as u64))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     pub fn offset_limit(offset: i64, limit: i64, mut query: ZDBQuery) -> ZDBQuery {
-        query = off_set(offset, query);
+        query = self::offset(offset, query);
         query.set_limit(Some(limit as u64))
     }
 
@@ -50,7 +56,7 @@ mod tests {
 
     #[pg_test]
     fn test_offset() {
-        let zdbquery = off_set(10, ZDBQuery::new_with_query_string("test"));
+        let zdbquery = offset(10, ZDBQuery::new_with_query_string("test"));
 
         assert_eq!(
             zdbquery.into_value(),
