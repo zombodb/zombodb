@@ -42,7 +42,7 @@ pub struct InnerHit {
     type_: Option<String>,
 
     #[serde(rename = "_score")]
-    score: f64,
+    score: Option<f64>,
 
     #[serde(rename = "_id")]
     id: Option<String>,
@@ -99,6 +99,13 @@ impl ElasticsearchSearchRequest {
         url.push_str("&stored_fields=_none_");
         url.push_str("&docvalue_fields=zdb_ctid");
 
+        // do we need to track scores?
+        let track_scores =
+            query.want_score() || query.limit().is_some() || query.min_score().is_some();
+
+        // how should we sort the results?
+        let mut sort_json = query.sort_json().cloned();
+
         // adjust the chunk size we want Elasticsearch to return for us
         // to be that of our limit
         match query.limit() {
@@ -115,22 +122,46 @@ impl ElasticsearchSearchRequest {
             }
             Some(limit) if limit < 10_000 => {
                 url.push_str(&format!("&size={}", limit));
+                // if we don't already have a sort_json, create one to
+                // order by _score desc
+                if sort_json.is_none() {
+                    sort_json = Some(json!([{"_score": "desc"}]));
+                }
             }
             _ => {
                 url.push_str("&size=10000");
             }
         }
 
-        ElasticsearchSearchRequest::get_hits(
-            url,
-            query.limit(),
-            elasticsearch,
-            json! {
-                {
-                    "query": query.query_dsl().expect("zdbquery has None QueryDSL")
-                }
-            },
-        )
+        // if we made it this far and never set a sort, we'll hard-code
+        // sorting against zdb_ctid asc so that we return rows in heap
+        // order, which is much nicer to disk I/O
+        if sort_json.is_none() {
+            // TODO:  This is about 50% slower on my laptop.
+            // sort_json = Some(json!([{"zdb_ctid": "asc"}]))
+        }
+
+        #[derive(Serialize)]
+        struct Body<'a> {
+            track_scores: bool,
+
+            #[serde(skip_serializing_if = "Option::is_none")]
+            min_score: Option<f64>,
+
+            #[serde(skip_serializing_if = "Option::is_none")]
+            sort: Option<Value>,
+
+            query: &'a Value,
+        }
+
+        let body = Body {
+            track_scores,
+            min_score: query.min_score(),
+            sort: sort_json,
+            query: query.query_dsl().expect("zdbquery has no QueryDSL"),
+        };
+
+        ElasticsearchSearchRequest::get_hits(url, query.limit(), elasticsearch, json! { body })
     }
 
     fn scroll(
@@ -247,7 +278,7 @@ impl Scroller {
                 for itr in scroll_receiver {
                     for hit in itr {
                         sender
-                            .send((hit.score, hit.fields.zdb_ctid[0]))
+                            .send((hit.score.unwrap_or_default(), hit.fields.zdb_ctid[0]))
                             .expect("failed to send hit over sender");
                     }
                 }
