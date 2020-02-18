@@ -425,7 +425,6 @@ mod tests {
                 let current =
                     unsafe { i64::from_datum(col, false, PgBuiltInOids::INT8OID.value()) }.unwrap();
 
-                info!("current={}, previous={}", current, previous);
                 assert!(current < previous);
                 previous = current;
             }
