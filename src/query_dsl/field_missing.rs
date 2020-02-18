@@ -15,9 +15,9 @@ mod dsl {
             "bool": {
                 "must_not": {
                     "exists": {
-                    "field": field
-                   }
-               }
+                        "field": field
+                    }
+                }
             }
         }
         })

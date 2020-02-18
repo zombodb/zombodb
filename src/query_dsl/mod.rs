@@ -1,5 +1,6 @@
 pub mod bool;
 mod constant_score;
+mod datetime_range;
 mod field_exists;
 mod field_missing;
 mod fuzzy;
