@@ -186,7 +186,6 @@ mod dsl {
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
-    use crate::query_dsl::term::dsl::*;
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::json;
@@ -230,7 +229,7 @@ mod tests {
 
     #[pg_test]
     fn test_term_bool_true() {
-        let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'true','42.0');")
+        let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', true,'42.0');")
             .expect("didn't get SPI return value");
         let dsl = zdbquery.query_dsl();
 
@@ -247,7 +246,7 @@ mod tests {
 
     #[pg_test]
     fn test_term_bool_false() {
-        let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'false','42.0');")
+        let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', false,'42.0');")
             .expect("didn't get SPI return value");
         let dsl = zdbquery.query_dsl();
 
@@ -315,9 +314,8 @@ mod tests {
 
     #[pg_test]
     fn test_term_negative_i16() {
-        let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', -32767, 42.0);")
+        let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', -32700, 42.0);")
             .expect("didn't get SPI return value");
-        // let zdbquery = term_i16("fieldname", -32700, 42.0);
         let dsl = zdbquery.query_dsl();
 
         assert!(dsl.is_some());
@@ -406,9 +404,8 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 214740083647,'42.0');")
                 .expect("didn't get SPI return value");
-        // let zdbquery = term_i64("fieldname", i64::max_value(), 42.0);
         let dsl = zdbquery.query_dsl();
-        let value = 21474083647 as i64;
+        let value = 214740083647 as i64;
 
         assert!(dsl.is_some());
         assert_eq!(
@@ -427,7 +424,7 @@ mod tests {
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', -214740083647,'42.0');")
                 .expect("didn't get SPI return value");
         let dsl = zdbquery.query_dsl();
-        let value = -21474083647 as i64;
+        let value = -214740083647 as i64;
 
         assert!(dsl.is_some());
         assert_eq!(
@@ -509,7 +506,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term":{"fieldname":{"value": value,"boost":1.0}}
+                    "term":{"fieldname":{"value": value}}
                 }
             }
         )
@@ -527,7 +524,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term":{"fieldname":{"value": value,"boost":1.0}}
+                    "term":{"fieldname":{"value": value}}
                 }
             }
         )
@@ -545,7 +542,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term":{"fieldname":{"value": value,"boost":1.0}}
+                    "term":{"fieldname":{"value": value}}
                 }
             }
         )
@@ -563,7 +560,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term":{"fieldname":{"value": value,"boost":1.0}}
+                    "term":{"fieldname":{"value": value}}
                 }
             }
         )
@@ -620,7 +617,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term":{"fieldname":{"value": value,"boost":1.0}}
+                    "term":{"fieldname":{"value": value}}
                 }
             }
         )
@@ -638,7 +635,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term":{"fieldname":{"value": value,"boost":1.0}}
+                    "term":{"fieldname":{"value": value}}
                 }
             }
         )
@@ -658,7 +655,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term":{"fieldname":{"value": value,"boost":1.0}}
+                    "term":{"fieldname":{"value": value}}
                 }
             }
         )
@@ -677,7 +674,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term":{"fieldname":{"value": value,"boost":1.0}}
+                    "term":{"fieldname":{"value": value}}
                 }
             }
         )
