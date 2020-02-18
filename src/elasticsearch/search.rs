@@ -351,7 +351,7 @@ impl IntoIterator for ElasticsearchSearchResponse {
                 self.hits.unwrap().hits.unwrap_or_default().into_iter(),
             );
 
-            // fast forward to our offset
+            // fast forward to our offset -- using the ?from= ES request parameter doesn't work with scroll requests
             if let Some(offset) = self.offset {
                 for _ in 0..offset {
                     if scroller.next().is_none() {
