@@ -355,7 +355,6 @@ mod tests {
     fn test_limit_none() {
         Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
         Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
-        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.match_all(); ",
         )
@@ -368,7 +367,6 @@ mod tests {
     fn test_limit_exact() {
         Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
         Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
-        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(10001, dsl.match_all()); ",
         )
@@ -381,7 +379,6 @@ mod tests {
     fn test_limit_10() {
         Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
         Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
-        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(10, dsl.match_all()); ",
         )
@@ -394,7 +391,6 @@ mod tests {
     fn test_limit_0() {
         Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
         Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
-        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(0, dsl.match_all()); ",
         )
@@ -407,11 +403,47 @@ mod tests {
     fn test_limit_negative() {
         Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
         Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
-        Spi::run("SET enable_seqscan TO OFF;  SET enable_indexscan TO ON;");
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(-1, dsl.match_all()); ",
         )
         .expect("failed to get SPI result");
         panic!("executed a search with a negative limit.  count={}", count);
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_sort_desc() {
+        Spi::run("CREATE TABLE test_sort AS SELECT * FROM generate_series(1, 100);");
+        Spi::run("CREATE INDEX idxtest_sort ON test_sort USING zombodb ((test_sort.*));");
+        Spi::connect(|client| {
+            let mut table = client.select("SELECT * FROM test_sort WHERE test_sort ==> dsl.sort('generate_series', 'desc', dsl.match_all());", None, None);
+
+            let mut previous = table.get_one::<i64>().unwrap();
+            table.next();
+            while let Some(row) = table.next() {
+                let col = row.get(0).unwrap().unwrap();
+                let current =
+                    unsafe { i64::from_datum(col, false, PgBuiltInOids::INT8OID.value()) }.unwrap();
+
+                info!("current={}, previous={}", current, previous);
+                assert!(current < previous);
+                previous = current;
+            }
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_min_score_cutoff() {
+        Spi::run("CREATE TABLE test_minscore AS SELECT * FROM generate_series(1, 100);");
+        Spi::run(
+            "CREATE INDEX idxtest_minscore ON test_minscore USING zombodb ((test_minscore.*));",
+        );
+        let count = Spi::get_one::<i64>(
+            "SELECT count(*) FROM test_minscore WHERE test_minscore ==> dsl.min_score(2, dsl.match_all()); ",
+        )
+            .expect("failed to get SPI result");
+        assert_eq!(count, 0);
     }
 }
