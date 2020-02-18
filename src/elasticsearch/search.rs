@@ -63,6 +63,8 @@ pub struct ElasticsearchSearchResponse {
     elasticsearch: Option<Elasticsearch>,
     #[serde(skip)]
     limit: Option<u64>,
+    #[serde(skip)]
+    offset: Option<u64>,
 
     #[serde(rename = "_scroll_id")]
     scroll_id: Option<String>,
@@ -115,6 +117,7 @@ impl ElasticsearchSearchRequest {
                 return Ok(ElasticsearchSearchResponse {
                     elasticsearch: None,
                     limit: Some(0),
+                    offset: None,
                     scroll_id: None,
                     shards: None,
                     hits: None,
@@ -161,7 +164,13 @@ impl ElasticsearchSearchRequest {
             query: query.query_dsl().expect("zdbquery has no QueryDSL"),
         };
 
-        ElasticsearchSearchRequest::get_hits(url, query.limit(), elasticsearch, json! { body })
+        ElasticsearchSearchRequest::get_hits(
+            url,
+            query.limit(),
+            query.offset(),
+            elasticsearch,
+            json! { body },
+        )
     }
 
     fn scroll(
@@ -177,6 +186,7 @@ impl ElasticsearchSearchRequest {
         ElasticsearchSearchRequest::get_hits(
             url,
             None,
+            None,
             elasticsearch,
             json! {
                 {
@@ -190,6 +200,7 @@ impl ElasticsearchSearchRequest {
     fn get_hits(
         url: String,
         limit: Option<u64>,
+        offset: Option<u64>,
         elasticsearch: Elasticsearch,
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
@@ -211,6 +222,7 @@ impl ElasticsearchSearchRequest {
                 // for future use during iteration
                 response.elasticsearch = Some(elasticsearch);
                 response.limit = limit;
+                response.offset = offset;
 
                 Ok(response)
             },
@@ -333,12 +345,23 @@ impl IntoIterator for ElasticsearchSearchResponse {
                 cnt: 0,
             }
         } else {
+            let scroller = Scroller::new(
+                self.elasticsearch.expect("no elasticsearch"),
+                self.scroll_id,
+                self.hits.unwrap().hits.unwrap_or_default().into_iter(),
+            );
+
+            // fast forward to our offset
+            if let Some(offset) = self.offset {
+                for _ in 0..offset {
+                    if scroller.next().is_none() {
+                        break;
+                    }
+                }
+            }
+
             SearchResponseIntoIter {
-                scroller: Some(Scroller::new(
-                    self.elasticsearch.expect("no elasticsearch"),
-                    self.scroll_id,
-                    self.hits.unwrap().hits.unwrap_or_default().into_iter(),
-                )),
+                scroller: Some(scroller),
                 limit: self.limit,
                 cnt: 0,
             }
@@ -444,5 +467,27 @@ mod tests {
         )
             .expect("failed to get SPI result");
         assert_eq!(count, 0);
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_offset_scan() {
+        Spi::run("CREATE TABLE test_offset AS SELECT * FROM generate_series(1, 100);");
+        Spi::run("CREATE INDEX idxtest_offset ON test_offset USING zombodb ((test_offset.*));");
+        let count = Spi::get_one::<i64>(
+            "SELECT * FROM test_offset WHERE test_offset ==> dsl.sort('generate_series', 'asc', dsl.offset(10, dsl.match_all()));"
+        )
+            .expect("failed to get SPI result");
+        assert_eq!(count, 11);
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_offset_overflow() {
+        Spi::run("CREATE TABLE test_offset AS SELECT * FROM generate_series(1, 100);");
+        Spi::run("CREATE INDEX idxtest_offset ON test_offset USING zombodb ((test_offset.*));");
+        assert!(Spi::get_one::<i64>(
+            "SELECT * FROM test_offset WHERE test_offset ==> dsl.sort('generate_series', 'asc', dsl.offset(1000, dsl.match_all()));"
+        ).is_none());
     }
 }
