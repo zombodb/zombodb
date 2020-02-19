@@ -51,11 +51,22 @@ pub struct ElasticsearchBulkRequest {
 }
 
 impl ElasticsearchBulkRequest {
-    pub fn new(elasticsearch: &Elasticsearch, queue_size: usize, concurrency: usize) -> Self {
-        let (etx, erx) = crossbeam::channel::bounded(queue_size * concurrency);
+    pub fn new(
+        elasticsearch: &Elasticsearch,
+        queue_size: usize,
+        concurrency: usize,
+        batch_size: usize,
+    ) -> Self {
+        let (etx, erx) = crossbeam::channel::bounded(concurrency);
 
         ElasticsearchBulkRequest {
-            handler: Handler::new(elasticsearch.clone(), concurrency, etx),
+            handler: Handler::new(
+                elasticsearch.clone(),
+                queue_size,
+                concurrency,
+                batch_size,
+                etx,
+            ),
             error_receiver: erx,
         }
     }
@@ -181,6 +192,7 @@ pub(crate) struct Handler {
     total_docs: usize,
     elasticsearch: Elasticsearch,
     concurrency: usize,
+    batch_size: usize,
     bulk_sender: crossbeam::channel::Sender<BulkRequestCommand<'static>>,
     bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand<'static>>,
     error_sender: crossbeam::channel::Sender<BulkRequestError>,
@@ -194,6 +206,7 @@ struct BulkReceiver<'a> {
     bytes_out: usize,
     docs_out: Arc<AtomicUsize>,
     buffer: Vec<u8>,
+    batch_size: usize,
 }
 
 impl<'a> std::io::Read for BulkReceiver<'a> {
@@ -209,7 +222,7 @@ impl<'a> std::io::Read for BulkReceiver<'a> {
         }
 
         // otherwise we'll wait to receive a command
-        if self.docs_out.load(Ordering::SeqCst) < 10_000 && self.bytes_out < 8 * 1024 * 1024 {
+        if self.docs_out.load(Ordering::SeqCst) < 10_000 && self.bytes_out < self.batch_size {
             // but only if we haven't exceeded the max _bulk docs limit
             match self.receiver.recv_timeout(Duration::from_millis(333)) {
                 Ok(command) => self.serialize_command(command),
@@ -281,10 +294,13 @@ impl From<BulkReceiver<'static>> for reqwest::Body {
 impl Handler {
     pub(crate) fn new(
         elasticsearch: Elasticsearch,
+        queue_size: usize,
         concurrency: usize,
+        batch_size: usize,
         error_sender: crossbeam::channel::Sender<BulkRequestError>,
     ) -> Self {
-        let (tx, rx) = crossbeam::channel::bounded(10_000);
+        pgx::info!("bounds={}", queue_size * concurrency);
+        let (tx, rx) = crossbeam::channel::bounded(queue_size * concurrency);
 
         Handler {
             terminatd: Arc::new(AtomicBool::new(false)),
@@ -293,6 +309,7 @@ impl Handler {
             in_flight: Arc::new(AtomicUsize::new(0)),
             total_docs: 0,
             elasticsearch,
+            batch_size,
             concurrency,
             bulk_sender: tx,
             bulk_receiver: rx,
@@ -340,6 +357,7 @@ impl Handler {
         let active_thread_cnt = self.active_thread_cnt.clone();
         let error = self.error_sender.clone();
         let terminated = self.terminatd.clone();
+        let batch_size = self.batch_size;
 
         self.active_thread_cnt.fetch_add(1, Ordering::SeqCst);
         std::thread::spawn(move || {
@@ -373,6 +391,7 @@ impl Handler {
                     first,
                     in_flight: in_flight.clone(),
                     receiver: rx.clone(),
+                    batch_size,
                     bytes_out: 0,
                     docs_out: docs_out.clone(),
                     buffer: Vec::new(),
