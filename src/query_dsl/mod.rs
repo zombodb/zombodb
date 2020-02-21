@@ -10,6 +10,7 @@ mod matches;
 mod misc;
 mod nested;
 mod prefix;
+mod query_string;
 mod range;
 mod sort;
 mod span;
