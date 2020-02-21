@@ -158,7 +158,6 @@ mod tests {
                           "term": {
                             "fieldname": {
                               "value": "filter",
-                              "boost": 1.0
                             }
                           }
                         },
@@ -173,7 +172,6 @@ mod tests {
                           "term": {
                             "fieldname": {
                               "value": "filter",
-                              "boost": 1.0
                             }
                           }
                         },
@@ -188,7 +186,6 @@ mod tests {
                           "term": {
                             "fieldname": {
                               "value": "filter",
-                              "boost": 1.0
                             }
                           }
                         },
