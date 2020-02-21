@@ -232,7 +232,7 @@ pub mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    pub(crate) fn not_eq(query: ZDBQuery) -> ZDBQuery {
+    pub(crate) fn noteq(query: ZDBQuery) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "bool": {
@@ -550,7 +550,7 @@ mod tests {
 
     #[pg_test]
     fn test_noteq() {
-        let zdbquery = not_eq(ZDBQuery::new_with_query_string("test_notEq"));
+        let zdbquery = noteq(ZDBQuery::new_with_query_string("test_notEq"));
         let dsl = zdbquery.query_dsl();
 
         assert_eq!(
