@@ -28,3 +28,4 @@ access_method_options.generated.sql
 elasticsearch_search.generated.sql
 gucs_mod.generated.sql
 mapping_mod.generated.sql
+query_dsl_datetime_range.generated.sql

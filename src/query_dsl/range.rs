@@ -18,6 +18,20 @@ mod dsl {
         boost: Option<f32>,
     }
 
+    #[derive(Serialize)]
+    struct RangeNumber {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        lt: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gt: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        lte: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gte: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        boost: Option<f32>,
+    }
+
     /// ```funcname
     /// range
     /// ```
@@ -44,20 +58,6 @@ mod dsl {
                  }
             }
         })
-    }
-
-    #[derive(Serialize)]
-    struct RangeNumber {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        lt: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        gt: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        lte: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        gte: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        boost: Option<f32>,
     }
 
     /// ```funcname

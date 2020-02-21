@@ -33,7 +33,7 @@ mod dsl {
     fn nested(
         path: &str,
         query: ZDBQuery,
-        score_mode: default!(ScoreMode, " 'avg' "),
+        score_mode: default!(ScoreMode, "avg"),
         ignore_unmapped: Option<default!(bool, NULL)>,
     ) -> ZDBQuery {
         let nest = Nested {
