@@ -622,6 +622,7 @@ mod tests {
             }
         )
     }
+
     #[pg_test]
     fn test_term_f64_with_infinity() {
         let value = std::f64::INFINITY;
@@ -680,36 +681,267 @@ mod tests {
         )
     }
 
-    // #[pg_test]
-    // fn test_term_date() {
-    //     let zdbquery = term_str("fieldname", Date, 42.0);
-    //     let dsl = zdbquery.query_dsl();
-    //
-    //     assert!(dsl.is_some());
-    //     assert_eq!(
-    //         dsl.unwrap(),
-    //         &json! {
-    //             {
-    //                 "term": {"fieldname": { "value": "test value", "boost": 42.0}}
-    //             }
-    //         }
-    //     );
-    // }
-    //
-    // #[pg_test]
-    // fn test_term_date_with_default_boost() {
-    //     let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'test value');")
-    //         .expect("didn't get SPI return value");
-    //     let dsl = zdbquery.query_dsl();
-    //
-    //     assert!(dsl.is_some());
-    //     assert_eq!(
-    //         dsl.unwrap(),
-    //         &json! {
-    //             {
-    //                 "term": {"fieldname": { "value": "test value", "boost": 1.0}}
-    //             }
-    //         }
-    //     );
-    // }
+    #[pg_test]
+    fn test_term_date() {
+        let zdbquery =
+            Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', CAST('2020-01-01' AS date) );")
+                .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "2020-01-01"}}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_date_with_boost() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('2020-01-01' AS date), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "2020-01-01" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_time() {
+        let zdbquery =
+            Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', CAST('13:15:35' AS time) );")
+                .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "13:15:35Z"}}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_time_with_boost() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('12:59:35' AS time), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "12:59:35Z" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_time_with_milliseconds_and_with_boost() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('12:59:35.567' AS time), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "12:59:35.567Z" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_time_with_timezone() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('13:15:35 +0900' AS time) );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "13:15:35Z"}}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_time_with_boost_and_with_timezone() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('12:59:35 +0830' AS time), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "12:59:35Z" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_time_with_milliseconds_with_timezone_and_with_boost() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('12:59:35.567 -1200' AS time), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "12:59:35.567Z" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_timestamp() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('12-12-12 13:15:35' AS timestamp) );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "2012-12-12T13:15:35Z"}}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_timestamp_with_boost() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('2013-04-10 12:59:35' AS timestamp), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "2013-04-10T12:59:35Z" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_timestamp_with_milliseconds_and_with_boost() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('2019-09-15 12:59:35.567' AS timestamp), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567Z" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_timestamp_with_timezone() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('12-12-12 13:15:35 -0700' AS timestamp) );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "2012-12-12T13:15:35Z"}}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_timestamp_with_timezone_with_boost() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('2013-04-10 12:59:35 -0700' AS timestamp), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "2013-04-10T12:59:35Z" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
+
+    #[pg_test]
+    fn test_term_timestamp_with_timezone_with_milliseconds_and_with_boost() {
+        let zdbquery = Spi::get_one::<ZDBQuery>(
+            "SELECT dsl.term('fieldname', CAST('2019-09-15 12:59:35.567 -0700' AS timestamp), 42.0 );",
+        )
+        .expect("didn't get SPI return value");
+        let dsl = zdbquery.query_dsl();
+
+        assert!(dsl.is_some());
+        assert_eq!(
+            dsl.unwrap(),
+            &json! {
+                {
+                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567Z" , "boost": 42.0 as f32 }}
+                }
+            }
+        );
+    }
 }
