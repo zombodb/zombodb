@@ -148,9 +148,9 @@ mod tests {
                 {
                     "dis_max" : {
                         "queries": [
-                            {"term": {"term_field1": { "value": "term_value1", "boost": 1.0}}},
-                            {"term": {"term_field2": { "value": "term_value2", "boost": 1.0}}},
-                            {"term": {"term_field3": { "value": "term_value3", "boost": 1.0}}},
+                            {"term": {"term_field1": { "value": "term_value1"}}},
+                            {"term": {"term_field2": { "value": "term_value2"}}},
+                            {"term": {"term_field3": { "value": "term_value3"}}},
                         ],
                         "boost" : boost,
                         "tie_breaker": tie,
