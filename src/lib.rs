@@ -54,6 +54,10 @@ pub mod pg_test {
     }
 
     pub fn postgresql_conf_options() -> Vec<&'static str> {
-        vec!["zdb.default_elasticsearch_url = 'http://localhost:19200/'"]
+        vec![
+            "zdb.default_elasticsearch_url = 'http://localhost:19200/'",
+            "enable_seqscan = false",
+            "enable_indexscan = true",
+        ]
     }
 }

@@ -1,3 +1,3 @@
 [build]
 # Postgres symbols won't ve available until runtime
-rustflags = ["-g", "-C", "link-args=-Wl,-undefined,dynamic_lookup"]
+rustflags = ["-C", "link-args=-Wl,-undefined,dynamic_lookup"]

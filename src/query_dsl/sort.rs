@@ -4,17 +4,21 @@
 //! Allows you to add one or more sorts on specific fields. Each sort can be reversed as well.
 
 mod dsl {
-    use crate::zdbquery::{SortDescriptor, SortDirection, SortMode, ZDBQuery};
+    use crate::zdbquery::{
+        SortDescriptor, SortDescriptorOptions, SortDirection, SortMode, ZDBQuery,
+    };
     use pgx::*;
 
     #[pg_extern(immutable, parallel_safe)]
     fn sd(field: &str, order: SortDirection, mode: Option<SortMode>) -> SortDescriptor {
         SortDescriptor {
             field: field.to_string(),
-            order,
-            mode,
-            nested_path: None,
-            nested_filter: None,
+            options: SortDescriptorOptions {
+                order,
+                mode,
+                nested_path: None,
+                nested_filter: None,
+            },
         }
     }
 
@@ -28,10 +32,12 @@ mod dsl {
     ) -> SortDescriptor {
         SortDescriptor {
             field: field.to_string(),
-            order,
-            mode,
-            nested_path: Some(nested_path.to_string()),
-            nested_filter: Some(nested_filter),
+            options: SortDescriptorOptions {
+                order,
+                mode,
+                nested_path: Some(nested_path.to_string()),
+                nested_filter: nested_filter.query_dsl().cloned(),
+            },
         }
     }
 
@@ -39,10 +45,12 @@ mod dsl {
     fn sort(sort_field: &str, sort_direction: SortDirection, zdbquery: ZDBQuery) -> ZDBQuery {
         zdbquery.set_sort_descriptors(vec![Some(SortDescriptor {
             field: sort_field.to_string(),
-            order: sort_direction,
-            mode: None,
-            nested_path: None,
-            nested_filter: None,
+            options: SortDescriptorOptions {
+                order: sort_direction,
+                mode: None,
+                nested_path: None,
+                nested_filter: None,
+            },
         })])
     }
 
@@ -73,7 +81,7 @@ mod tests {
             &json!(
                 {
                     "query_dsl": { "query_string": {"query": "david"}},
-                    "sort_json": [ {"field": "the_field", "order": "asc"}]
+                    "sort_json": [ {"the_field" : { "order": "asc"} }]
                 }
             )
         );
@@ -113,9 +121,9 @@ mod tests {
                 {
                     "query_dsl": { "query_string": {"query": "query"}},
                     "sort_json": [
-                                   {"field": "cat", "mode": "max", "order": "asc"},
-                                   {"field": "dog", "mode": "min", "order": "asc"},
-                                   {"field": "foo", "mode": "sum", "order": "desc"}
+                                   {"cat": { "mode": "max", "order": "asc"} },
+                                   {"dog": { "mode": "min", "order": "asc"} },
+                                   {"foo": { "mode": "sum", "order": "desc"} }
                                  ]
                 }
             )
@@ -135,23 +143,62 @@ mod tests {
 
         assert_eq!(
             &serde_json::to_value(&zdbquery).unwrap(),
-            &json!(
+            &json! {
                 {
-                    "query_dsl": { "query_string": {"query": "query"}},
-                    "sort_json": [
-                                   {"field": "cat", "mode": "max", "nested_filter":  {
-                     "query_dsl":{ "term": {"fieldname": { "value": "filter", "boost": 1.0}}}
-                },
-                 "nested_path": "a_path", "order": "asc"},
-                                   {"field": "dog", "mode": "min", "nested_filter": {
-                     "query_dsl":{ "term": {"fieldname": { "value": "filter", "boost": 1.0}}}
-                }, "nested_path": "a_path", "order": "asc"},
-                                   {"field": "foo", "mode": "sum", "nested_filter": {
-                     "query_dsl":{ "term": {"fieldname": { "value": "filter", "boost": 1.0}}}
-                }, "nested_path": "a_path", "order": "desc"}
-                                 ]
+                  "query_dsl": {
+                    "query_string": {
+                      "query": "query"
+                    }
+                  },
+                  "sort_json": [
+                    {
+                      "cat": {
+                        "mode": "max",
+                        "nested_filter": {
+                          "term": {
+                            "fieldname": {
+                              "value": "filter",
+                              "boost": 1.0
+                            }
+                          }
+                        },
+                        "nested_path": "a_path",
+                        "order": "asc"
+                      }
+                    },
+                    {
+                      "dog": {
+                        "mode": "min",
+                        "nested_filter": {
+                          "term": {
+                            "fieldname": {
+                              "value": "filter",
+                              "boost": 1.0
+                            }
+                          }
+                        },
+                        "nested_path": "a_path",
+                        "order": "asc"
+                      }
+                    },
+                    {
+                      "foo": {
+                        "mode": "sum",
+                        "nested_filter": {
+                          "term": {
+                            "fieldname": {
+                              "value": "filter",
+                              "boost": 1.0
+                            }
+                          }
+                        },
+                        "nested_path": "a_path",
+                        "order": "desc"
+                      }
+                    }
+                  ]
                 }
-            )
+            }
         );
     }
 }

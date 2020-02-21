@@ -1,5 +1,5 @@
 use pgx::*;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 mod cast;
 mod opclass;
@@ -47,15 +47,20 @@ mod pg_catalog {
     }
 
     #[derive(PostgresType, Serialize, Deserialize)]
-    pub struct SortDescriptor {
-        pub(crate) field: String,
+    pub struct SortDescriptorOptions {
         pub(crate) order: SortDirection,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(crate) mode: Option<SortMode>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(crate) nested_path: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub(crate) nested_filter: Option<ZDBQuery>,
+        pub(crate) nested_filter: Option<Value>,
+    }
+
+    #[derive(PostgresType, Serialize, Deserialize)]
+    pub struct SortDescriptor {
+        pub(crate) field: String,
+        pub(crate) options: SortDescriptorOptions,
     }
 }
 
@@ -186,7 +191,12 @@ impl ZDBQuery {
         let mut v = Vec::new();
         for descriptor in descriptors {
             if descriptor.is_some() {
-                v.push(descriptor.unwrap())
+                let descriptor = descriptor.unwrap();
+                v.push(json! {
+                    {
+                        &descriptor.field: descriptor.options
+                    }
+                });
             }
         }
 

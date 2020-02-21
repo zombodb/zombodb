@@ -94,7 +94,7 @@ impl Elasticsearch {
 
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
         let concurrency = num_cpus::get().min(self.options.bulk_concurrency as usize);
-        ElasticsearchBulkRequest::new(self, 10_000, concurrency)
+        ElasticsearchBulkRequest::new(self, 10_000, concurrency, self.options.batch_size as usize)
     }
 
     pub fn open_search(&self, query: ZDBQuery) -> ElasticsearchSearchRequest {
