@@ -34,7 +34,7 @@ pub static ZDB_DEFAULT_REPLICAS: GucSetting<i32> = GucSetting::new(0);
 pub static ZDB_DEFAULT_ELASTICSEARCH_URL: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub static ZDB_LOG_LEVEL: GucSetting<ZDBLogLevel> = GucSetting::new(ZDBLogLevel::Debug);
 
-pub fn init_gucs() {
+pub fn init() {
     GucRegistry::define_bool_guc("zdb.ignore_visibility",
                                  "Should queries honor visibility rules?", 
                                  "By default, all Elasticsearch search requests apply a MVCC snapshot visibility filter.  Disabling this might provide a slight performance boost at the expense of correct results", 

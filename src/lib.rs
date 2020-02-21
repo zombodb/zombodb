@@ -15,7 +15,7 @@ pg_module_magic!();
 #[allow(non_snake_case)]
 #[pg_guard]
 pub unsafe extern "C" fn _PG_init() {
-    gucs::init_gucs();
+    gucs::init();
     access_method::options::init();
     custom_scan::init();
 }
