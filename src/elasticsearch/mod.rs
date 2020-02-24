@@ -17,7 +17,7 @@ use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::zdbquery::ZDBQuery;
 pub use bulk::*;
 pub use create_index::*;
-use pgx::{pg_sys, PgBox};
+use pgx::PgRelation;
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
@@ -61,10 +61,7 @@ impl ElasticsearchError {
 }
 
 impl Elasticsearch {
-    pub fn new(
-        heaprel: &PgBox<pg_sys::RelationData>,
-        indexrel: &PgBox<pg_sys::RelationData>,
-    ) -> Self {
+    pub fn new(heaprel: &PgRelation, indexrel: &PgRelation) -> Self {
         let zdboptions = ZDBIndexOptions::from(indexrel);
         Elasticsearch {
             options: InternalOptions {

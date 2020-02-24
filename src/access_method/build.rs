@@ -1,4 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
+use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crate::mapping::{categorize_tupdesc, generate_default_mapping, CategorizedAttribute};
@@ -8,7 +9,7 @@ use pgx::*;
 struct BuildState<'a> {
     table_name: &'a str,
     bulk: ElasticsearchBulkRequest,
-    tupdesc: &'a PgBox<pg_sys::TupleDescData>,
+    tupdesc: &'a PgTupleDesc,
     attributes: Vec<CategorizedAttribute<'a>>,
 }
 
@@ -16,7 +17,7 @@ impl<'a> BuildState<'a> {
     fn new(
         table_name: &'a str,
         bulk: ElasticsearchBulkRequest,
-        tupdesc: &'a PgBox<pg_sys::TupleDescData>,
+        tupdesc: &'a PgTupleDesc,
         attributes: Vec<CategorizedAttribute<'a>>,
     ) -> Self {
         BuildState {
@@ -34,12 +35,12 @@ pub extern "C" fn ambuild(
     index_relation: pg_sys::Relation,
     index_info: *mut pg_sys::IndexInfo,
 ) -> *mut pg_sys::IndexBuildResult {
-    let heap_relation = PgBox::from_pg(heap_relation);
-    let index_relation = PgBox::from_pg(index_relation);
+    let heap_relation = PgRelation::from_pg(heap_relation);
+    let index_relation = PgRelation::from_pg(index_relation);
     let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
 
     let mut mapping = generate_default_mapping();
-    let attributes = categorize_tupdesc(&tupdesc, &mut mapping);
+    let attributes = categorize_tupdesc(&tupdesc, Some(&mut mapping));
     let elasticsearch = Elasticsearch::new(&heap_relation, &index_relation);
 
     // delete any existing Elasticsearch index with the same name as this one we're about to create
@@ -62,8 +63,32 @@ pub extern "C" fn ambuild(
             .expect("failed to delete Elasticsearch index on transaction abort")
     });
 
+    let ntuples = do_heap_scan(
+        index_info,
+        &heap_relation,
+        index_relation,
+        &tupdesc,
+        attributes,
+        &elasticsearch,
+    );
+
+    let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
+    result.heap_tuples = ntuples as f64;
+    result.index_tuples = ntuples as f64;
+
+    result.into_pg()
+}
+
+fn do_heap_scan<'a>(
+    index_info: *mut pg_sys::IndexInfo,
+    heap_relation: &'a PgRelation,
+    index_relation: PgRelation,
+    tupdesc: &'a PgTupleDesc,
+    attributes: Vec<CategorizedAttribute<'a>>,
+    elasticsearch: &Elasticsearch,
+) -> usize {
     let mut state = BuildState::new(
-        relation_get_relation_name(&heap_relation),
+        heap_relation.name(),
         elasticsearch.start_bulk(),
         &tupdesc,
         attributes,
@@ -80,26 +105,18 @@ pub extern "C" fn ambuild(
             &mut state,
         );
     }
-    if tupdesc.tdrefcount >= 0 {
-        unsafe {
-            pg_sys::DecrTupleDescRefCount(tupdesc.as_ptr());
-        }
-    }
 
     let ntuples = state.bulk.finish().expect("Failed to finalize indexing");
+
+    // our work with Elasticsearch is done, so we can unregister our Abort callback
+    callback.unregister_callback();
+
     elog(
         ZDB_LOG_LEVEL.get().log_level(),
         &format!("Indexed {} rows to {}", ntuples, elasticsearch.base_url()),
     );
 
-    // our work with Elasticsearch is done, so we can unregister our Abort callback
-    callback.unregister_callback();
-
-    let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
-    result.heap_tuples = ntuples as f64;
-    result.index_tuples = ntuples as f64;
-
-    result.into_pg()
+    ntuples
 }
 
 #[pg_guard]
@@ -107,7 +124,7 @@ pub extern "C" fn ambuildempty(_index_relation: pg_sys::Relation) {}
 
 #[pg_guard]
 pub extern "C" fn aminsert(
-    _index_relation: pg_sys::Relation,
+    index_relation: pg_sys::Relation,
     _values: *mut pg_sys::Datum,
     _isnull: *mut bool,
     _heap_tid: pg_sys::ItemPointer,
@@ -115,6 +132,8 @@ pub extern "C" fn aminsert(
     _check_unique: pg_sys::IndexUniqueCheck,
     _index_info: *mut pg_sys::IndexInfo,
 ) -> bool {
+    let index_relation = PgRelation::from_pg(index_relation);
+    let bulk = get_executor_manager().checkout_bulk_context(&index_relation);
     info!("aminsert");
     false
 }
@@ -155,10 +174,7 @@ unsafe extern "C" fn build_callback(
         .expect("Unable to send tuple for insert");
 }
 
-unsafe fn row_to_json<'a>(
-    row: pg_sys::Datum,
-    state: &PgBox<BuildState<'static>>,
-) -> JsonBuilder<'a> {
+unsafe fn row_to_json<'a>(row: pg_sys::Datum, state: &PgBox<BuildState<'a>>) -> JsonBuilder<'a> {
     let mut builder = JsonBuilder::new(state.attributes.len());
 
     let datums = deconstruct_row_type(state.tupdesc, row);

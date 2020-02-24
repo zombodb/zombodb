@@ -123,12 +123,9 @@ impl ZDBIndexOptions {
         }
     }
 
-    pub fn alias(
-        &self,
-        heaprel: &PgBox<pg_sys::RelationData>,
-        indexrel: &PgBox<pg_sys::RelationData>,
-    ) -> String {
-        match self.get_str(self.alias_offset) {
+    pub fn alias(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
+        pgx::info!("in alias");
+        let rc = match self.get_str(self.alias_offset) {
             Some(alias) => alias.to_owned(),
             None => format!(
                 "{}.{}.{}.{}-{}",
@@ -138,41 +135,33 @@ impl ZDBIndexOptions {
                 .to_str()
                 .unwrap(),
                 unsafe {
-                    std::ffi::CStr::from_ptr(pg_sys::get_namespace_name(
-                        relation_get_namespace_oid(indexrel),
-                    ))
+                    std::ffi::CStr::from_ptr(pg_sys::get_namespace_name(indexrel.namespace_oid()))
                 }
                 .to_str()
                 .unwrap(),
-                relation_get_relation_name(heaprel),
-                relation_get_relation_name(indexrel),
-                relation_get_id(indexrel)
+                heaprel.name(),
+                indexrel.name(),
+                indexrel.oid()
             ),
-        }
+        };
+        pgx::info!("returning {}", &rc);
+        rc
     }
 
-    pub fn uuid(
-        &self,
-        heaprel: &PgBox<pg_sys::RelationData>,
-        indexrel: &PgBox<pg_sys::RelationData>,
-    ) -> String {
+    pub fn uuid(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
         match self.get_str(self.uuid_offset) {
             Some(uuid) => uuid,
             None => format!(
                 "{}.{}.{}.{}",
                 unsafe { pg_sys::MyDatabaseId },
-                relation_get_namespace_oid(indexrel),
-                relation_get_id(heaprel),
-                relation_get_id(indexrel),
+                indexrel.namespace_oid(),
+                heaprel.oid(),
+                indexrel.oid(),
             ),
         }
     }
 
-    pub fn index_name(
-        &self,
-        heaprel: &PgBox<pg_sys::RelationData>,
-        indexrel: &PgBox<pg_sys::RelationData>,
-    ) -> String {
+    pub fn index_name(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
         self.uuid(heaprel, indexrel)
     }
 
@@ -463,8 +452,8 @@ mod tests {
             .expect("failed to get SPI result");
         let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
             .expect("failed to get SPI result");
-        let heaprel = PgBox::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
-        let indexrel = PgBox::from_pg(pg_sys::RelationIdGetRelation(index_oid));
+        let heaprel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
+        let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
         assert_eq!(&options.url(), "http://localhost:19200/");
         assert_eq!(&options.type_name(), "test_type_name");
@@ -478,7 +467,6 @@ mod tests {
         assert_eq!(options.batch_size(), 8 * 1024 * 1024);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
         assert_eq!(options.llapi(), false);
-        pg_sys::RelationClose(indexrel.into_pg());
     }
 
     #[pg_test]
@@ -495,25 +483,22 @@ mod tests {
             .expect("failed to get SPI result");
         let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
             .expect("failed to get SPI result");
-        let heaprel = PgBox::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
-        let indexrel = PgBox::from_pg(pg_sys::RelationIdGetRelation(index_oid));
+        let heaprel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
+        let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
         assert_eq!(&options.type_name(), DEFAULT_TYPE_NAME);
         assert_eq!(
             &options.alias(&heaprel, &indexrel),
-            &format!(
-                "pgx_tests.public.test.idxtest-{}",
-                relation_get_id(&indexrel)
-            )
+            &format!("pgx_tests.public.test.idxtest-{}", indexrel.oid())
         );
         assert_eq!(
             &options.uuid(&heaprel, &indexrel),
             &format!(
                 "{}.{}.{}.{}",
                 pg_sys::MyDatabaseId,
-                relation_get_namespace_oid(&indexrel),
-                relation_get_id(&heaprel),
-                relation_get_id(&indexrel)
+                indexrel.namespace_oid(),
+                heaprel.oid(),
+                indexrel.oid()
             )
         );
         assert_eq!(&options.refresh_interval(), DEFAULT_REFRESH_INTERVAL);
@@ -524,6 +509,5 @@ mod tests {
         assert_eq!(options.batch_size(), DEFAULT_BATCH_SIZE);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
         assert_eq!(options.llapi(), false);
-        pg_sys::RelationClose(indexrel.into_pg());
     }
 }

@@ -12,8 +12,8 @@ pub struct CategorizedAttribute<'a> {
 }
 
 pub fn categorize_tupdesc<'a>(
-    tupdesc: &'a PgBox<pg_sys::TupleDescData>,
-    mapping: &mut HashMap<&'a str, serde_json::Value>,
+    tupdesc: &'a PgTupleDesc,
+    mut mapping: Option<&mut HashMap<&'a str, serde_json::Value>>,
 ) -> Vec<CategorizedAttribute<'a>> {
     let mut vec = Vec::with_capacity(tupdesc.len());
     for attribute in tupdesc.iter() {
@@ -345,19 +345,21 @@ pub fn categorize_tupdesc<'a>(
             }
         };
 
-        mapping.insert(
-            attribute.name(),
-            match lookup_type_mapping(&typoid) {
-                Some(json) => json,
-                None => {
-                    info!(
-                        "Unrecognized type {:?} for {}, generating mapping as 'keyword'",
-                        typoid, attname
-                    );
-                    json!({"type": "keyword"})
-                }
-            },
-        );
+        if mapping.is_some() {
+            mapping.as_mut().unwrap().insert(
+                attribute.name(),
+                match lookup_type_mapping(&typoid) {
+                    Some(json) => json,
+                    None => {
+                        info!(
+                            "Unrecognized type {:?} for {}, generating mapping as 'keyword'",
+                            typoid, attname
+                        );
+                        json!({"type": "keyword"})
+                    }
+                },
+            );
+        }
 
         vec.push(CategorizedAttribute {
             attname,
@@ -469,7 +471,7 @@ mod tests {
         let tupdesc = lookup_zdb_index_tupdesc(&index);
         let mut mapping = generate_default_mapping();
 
-        categorize_tupdesc(&tupdesc, &mut mapping);
+        categorize_tupdesc(&tupdesc, Some(&mut mapping));
         let mapping_json = serde_json::to_value(&mapping).unwrap();
 
         assert_eq!(

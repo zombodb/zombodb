@@ -1,9 +1,12 @@
+use crate::executor_manager::get_executor_manager;
 use pgx::*;
 
 mod access_method;
 mod custom_scan;
 mod elasticsearch;
+mod executor_manager;
 mod gucs;
+mod hooks;
 mod json;
 mod mapping;
 pub mod query_dsl;
@@ -18,6 +21,8 @@ pub unsafe extern "C" fn _PG_init() {
     gucs::init();
     access_method::options::init();
     custom_scan::init();
+
+    crate::hooks::register_hook(get_executor_manager());
 }
 
 #[allow(non_snake_case)]

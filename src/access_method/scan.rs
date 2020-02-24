@@ -60,8 +60,8 @@ pub extern "C" fn amrescan(
     }
 
     // TODO:  query elasticsearch
-    let heaprel = PgBox::from_pg(scan.heapRelation);
-    let indexrel = PgBox::from_pg(scan.indexRelation);
+    let heaprel = PgRelation::from_pg(scan.heapRelation);
+    let indexrel = PgRelation::from_pg(scan.indexRelation);
     let elasticsearch = Elasticsearch::new(&heaprel, &indexrel);
 
     let response = elasticsearch
