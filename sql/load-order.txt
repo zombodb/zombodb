@@ -30,3 +30,4 @@ gucs_mod.generated.sql
 mapping_mod.generated.sql
 query_dsl_datetime_range.generated.sql
 query_dsl_query_string.generated.sql
+query_dsl_more_like_this.generated.sql

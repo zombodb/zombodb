@@ -8,6 +8,7 @@ mod limit;
 mod match_all;
 mod matches;
 mod misc;
+mod more_like_this;
 mod nested;
 mod prefix;
 mod query_string;
