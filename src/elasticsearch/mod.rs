@@ -1,12 +1,16 @@
 #![allow(dead_code)]
 
+mod aggregates;
 mod bulk;
 mod create_index;
 mod delete_index;
 mod refresh_index;
+
+pub mod aggregate_search;
 pub mod search;
 
 use crate::access_method::options::ZDBIndexOptions;
+use crate::elasticsearch::aggregate_search::ElasticsearchAggregateSearchRequest;
 use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
@@ -15,6 +19,8 @@ pub use bulk::*;
 pub use create_index::*;
 use pgx::{pg_sys, PgBox};
 use reqwest::RequestBuilder;
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use serde_json::Value;
 use std::io::Read;
 
@@ -99,6 +105,14 @@ impl Elasticsearch {
 
     pub fn open_search(&self, query: ZDBQuery) -> ElasticsearchSearchRequest {
         ElasticsearchSearchRequest::new(self, query)
+    }
+
+    pub fn aggregate<T: DeserializeOwned>(
+        &self,
+        query: ZDBQuery,
+        agg_request: serde_json::Value,
+    ) -> ElasticsearchAggregateSearchRequest<T> {
+        ElasticsearchAggregateSearchRequest::new(self, query, agg_request)
     }
 
     pub fn base_url(&self) -> String {
