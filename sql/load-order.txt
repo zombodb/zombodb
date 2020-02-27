@@ -23,11 +23,6 @@ query_dsl_constant_score.generated.sql
 query_dsl_bool.generated.sql
 query_dsl_matches.generated.sql
 query_dsl_nested.generated.sql
-access_method_build.generated.sql
-access_method_options.generated.sql
-elasticsearch_search.generated.sql
-gucs_mod.generated.sql
-mapping_mod.generated.sql
 query_dsl_datetime_range.generated.sql
 query_dsl_query_string.generated.sql
 query_dsl_more_like_this.generated.sql

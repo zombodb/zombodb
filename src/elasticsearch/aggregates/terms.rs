@@ -27,8 +27,7 @@ fn terms(
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
     order_by: Option<default!(TermsOrderBy, NULL)>,
-) {
-    // TODO:  pgx support for turning a FromIterator into a SRF -> impl FromIterator<(String, i64)> {
+) -> impl std::iter::Iterator<Item = (name!(term, String), name!(doc_count, i64))> {
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         doc_count: i64,
@@ -64,7 +63,6 @@ fn terms(
 
     result
         .buckets
-        .iter()
+        .into_iter()
         .map(|entry| (entry.key.to_string(), entry.doc_count))
-        .collect::<Vec<(String, i64)>>();
 }
