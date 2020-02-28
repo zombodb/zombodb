@@ -20,7 +20,6 @@ pub use create_index::*;
 use pgx::PgRelation;
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
 use serde_json::Value;
 use std::io::Read;
 
