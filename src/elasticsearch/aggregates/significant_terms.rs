@@ -1,38 +1,31 @@
-use crate::elasticsearch::aggregates::terms::pg_catalog::TermsOrderBy;
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde::*;
 use serde_json::*;
 
-mod pg_catalog {
-    use pgx::*;
-    use serde::Serialize;
-
-    #[allow(non_camel_case_types)]
-    #[derive(PostgresEnum, Serialize)]
-    pub(crate) enum TermsOrderBy {
-        count,
-        term,
-        key,
-        reverse_count,
-        reverse_term,
-        reverse_key,
-    }
-}
-
 #[pg_extern(immutable, parallel_safe)]
-fn terms(
+fn significant_terms(
     index: PgRelation,
     field_name: &str,
     query: ZDBQuery,
+    include: Option<default!(&str, ".*")>,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
-) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(doc_count, i64))> {
+    min_doc_count: Option<default!(i32, 3)>,
+) -> impl std::iter::Iterator<
+    Item = (
+        name!(term, Option<String>),
+        name!(doc_count, i64),
+        name!(score, f32),
+        name!(bg_count, i64),
+    ),
+> {
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         doc_count: i64,
         key: serde_json::Value,
+        score: f32,
+        bg_count: i64,
     }
 
     #[derive(Deserialize, Serialize)]
@@ -41,27 +34,17 @@ fn terms(
     }
 
     let elasticsearch = Elasticsearch::new(&index);
-    let order = match order_by {
-        Some(order_by) => match order_by {
-            TermsOrderBy::count => json! {{ "_count": "asc" }},
-            TermsOrderBy::term | TermsOrderBy::key => json! {{ "_key": "asc" }},
-            TermsOrderBy::reverse_count => json! {{ "_count": "desc" }},
-            TermsOrderBy::reverse_term | TermsOrderBy::reverse_key => json! {{ "_key": "desc" }},
-        },
-        None => {
-            json! {{ "_count": "desc" }}
-        }
-    };
 
     let request = elasticsearch.aggregate::<TermsAggData>(
         query,
         json! {
             {
-                "terms": {
+                "significant_terms": {
                     "field": field_name,
+                    "include": include,
                     "shard_size": std::i32::MAX,
                     "size": size_limit,
-                    "order": order
+                    "min_doc_count": min_doc_count,
                 }
             }
         },
@@ -85,6 +68,8 @@ fn terms(
                 _ => panic!("unsupported value type"),
             },
             entry.doc_count,
+            entry.score,
+            entry.bg_count,
         )
     })
 }
