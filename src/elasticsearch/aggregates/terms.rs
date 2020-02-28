@@ -4,7 +4,6 @@ use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde::*;
 use serde_json::*;
-use std::iter::FromIterator;
 
 mod pg_catalog {
     use pgx::*;
@@ -15,8 +14,10 @@ mod pg_catalog {
     pub(crate) enum TermsOrderBy {
         count,
         term,
+        key,
         reverse_count,
         reverse_term,
+        reverse_key,
     }
 }
 
@@ -27,7 +28,7 @@ fn terms(
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
     order_by: Option<default!(TermsOrderBy, NULL)>,
-) -> impl std::iter::Iterator<Item = (name!(term, String), name!(doc_count, i64))> {
+) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(doc_count, i64))> {
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         doc_count: i64,
@@ -39,10 +40,18 @@ fn terms(
         buckets: Vec<BucketEntry>,
     }
 
-    let heaprel = index.get_heap_relation().expect("index is not an index");
-    let elasticsearch = Elasticsearch::new(&heaprel, &index);
-
-    // TODO:  how to deal with the order by?
+    let elasticsearch = Elasticsearch::new(&index);
+    let order = match order_by {
+        Some(order_by) => match order_by {
+            TermsOrderBy::count => json! {{ "_count": "asc" }},
+            TermsOrderBy::term | TermsOrderBy::key => json! {{ "_key": "asc" }},
+            TermsOrderBy::reverse_count => json! {{ "_count": "desc" }},
+            TermsOrderBy::reverse_term | TermsOrderBy::reverse_key => json! {{ "_key": "desc" }},
+        },
+        None => {
+            json! {{ "_count": "desc" }}
+        }
+    };
 
     let request = elasticsearch.aggregate::<TermsAggData>(
         query,
@@ -51,7 +60,8 @@ fn terms(
                 "terms": {
                     "field": field_name,
                     "shard_size": std::i32::MAX,
-                    "size": size_limit
+                    "size": size_limit,
+                    "order": order
                 }
             }
         },
@@ -61,8 +71,20 @@ fn terms(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
-        .buckets
-        .into_iter()
-        .map(|entry| (entry.key.to_string(), entry.doc_count))
+    result.buckets.into_iter().map(|entry| {
+        (
+            match entry.key {
+                Value::Null => None,
+                Value::Bool(b) => Some(if b {
+                    "true".to_string()
+                } else {
+                    "false".to_string()
+                }),
+                Value::Number(n) => Some(n.to_string()),
+                Value::String(s) => Some(s),
+                _ => panic!("unsupported value type"),
+            },
+            entry.doc_count,
+        )
+    })
 }
