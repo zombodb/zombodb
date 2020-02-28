@@ -75,8 +75,7 @@ impl ExecutorManager {
 
         let bulk_map = self.bulk_requests.as_mut().unwrap();
         bulk_map.entry(relid).or_insert_with(move || {
-            let heap_relation = indexrel.get_heap_relation().expect("not an index");
-            let elasticsearch = Elasticsearch::new(&heap_relation, indexrel);
+            let elasticsearch = Elasticsearch::new(indexrel);
             let attributes = categorize_tupdesc(tupdesc, None);
 
             info!("checking out new bulk context");

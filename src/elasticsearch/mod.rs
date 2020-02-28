@@ -60,16 +60,17 @@ impl ElasticsearchError {
 }
 
 impl Elasticsearch {
-    pub fn new(heaprel: &PgRelation, indexrel: &PgRelation) -> Self {
+    pub fn new(indexrel: &PgRelation) -> Self {
+        let heaprel = indexrel.get_heap_relation().expect("index is not an index");
         let zdboptions = ZDBIndexOptions::from(indexrel);
         Elasticsearch {
             options: InternalOptions {
                 url: zdboptions.url(),
                 type_name: zdboptions.type_name(),
                 refresh_interval: zdboptions.refresh_interval(),
-                alias: zdboptions.alias(heaprel, indexrel),
-                uuid: zdboptions.uuid(heaprel, indexrel),
-                index_name: zdboptions.index_name(heaprel, indexrel),
+                alias: zdboptions.alias(&heaprel, indexrel),
+                uuid: zdboptions.uuid(&heaprel, indexrel),
+                index_name: zdboptions.index_name(&heaprel, indexrel),
 
                 optimize_after: zdboptions.optimize_after(),
                 compression_level: zdboptions.compression_level(),
