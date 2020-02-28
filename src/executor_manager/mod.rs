@@ -38,7 +38,6 @@ impl ExecutorManager {
         self.depth -= 1;
 
         if self.depth == 0 {
-            info!("self.depth == 0");
             self.cleanup()
         }
     }
@@ -78,7 +77,6 @@ impl ExecutorManager {
             let elasticsearch = Elasticsearch::new(indexrel);
             let attributes = categorize_tupdesc(tupdesc, None);
 
-            info!("checking out new bulk context");
             BulkContext {
                 bulk: elasticsearch.start_bulk(),
                 attributes,

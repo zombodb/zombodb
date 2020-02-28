@@ -26,7 +26,6 @@ impl PgHooks for ZDBHooks {
         eflags: i32,
         prev_hook: fn(PgBox<QueryDesc>, i32) -> HookResult<()>,
     ) -> HookResult<()> {
-        info!("start: depth={}", self.manager().depth());
         self.manager().push();
         pg_try(|| prev_hook(query_desc, eflags)).unwrap_or_rethrow(|| self.manager().pop())
     }
@@ -39,7 +38,6 @@ impl PgHooks for ZDBHooks {
         execute_once: bool,
         prev_hook: fn(PgBox<QueryDesc>, i32, u64, bool) -> HookResult<()>,
     ) -> HookResult<()> {
-        info!("run");
         self.manager().push();
         pg_try(|| prev_hook(query_desc, direction, count, execute_once))
             .unwrap_or_rethrow(|| self.manager().pop())
@@ -50,7 +48,6 @@ impl PgHooks for ZDBHooks {
         query_desc: PgBox<QueryDesc>,
         prev_hook: fn(PgBox<QueryDesc>) -> HookResult<()>,
     ) -> HookResult<()> {
-        info!("finish");
         pg_try(|| prev_hook(query_desc)).finally_or_rethrow(|| self.manager().pop())
     }
 
@@ -59,7 +56,6 @@ impl PgHooks for ZDBHooks {
         query_desc: PgBox<QueryDesc>,
         prev_hook: fn(PgBox<QueryDesc>) -> HookResult<()>,
     ) -> HookResult<()> {
-        info!("end");
         pg_try(|| prev_hook(query_desc)).finally_or_rethrow(|| self.manager().pop())
     }
 
@@ -70,7 +66,6 @@ impl PgHooks for ZDBHooks {
         bound_params: PgBox<ParamListInfoData>,
         prev_hook: fn(PgBox<Query>, i32, PgBox<ParamListInfoData>) -> HookResult<*mut PlannedStmt>,
     ) -> HookResult<*mut PlannedStmt> {
-        info!("planner");
         prev_hook(parse, cursor_options, bound_params)
     }
 
