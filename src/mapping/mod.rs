@@ -15,15 +15,16 @@ pub fn categorize_tupdesc<'a>(
     tupdesc: &'a PgTupleDesc,
     mut mapping: Option<&mut HashMap<&'a str, serde_json::Value>>,
 ) -> Vec<CategorizedAttribute<'a>> {
+    let type_conversion_cache = lookup_type_conversions();
     let mut vec = Vec::with_capacity(tupdesc.len());
     for attribute in tupdesc.iter() {
         let attname = attribute.name();
         let dropped = attribute.is_dropped();
         let mut typoid = attribute.type_oid();
 
-        let conversion_func: Box<ConversionFunc> = if let Some(custom_converter) =
-            lookup_type_conversion(attribute.type_oid())
-        {
+        let conversion_func = type_conversion_cache.get(&typoid.value()).cloned();
+
+        let conversion_func: Box<ConversionFunc> = if let Some(custom_converter) = conversion_func {
             // use a configured zdb.type_conversion
             let typoid = typoid.clone();
             Box::new(move |builder, name, datum, _oid| {
@@ -439,14 +440,22 @@ fn lookup_type_mapping(typoid: &PgOid) -> Option<serde_json::Value> {
     }
 }
 
-fn lookup_type_conversion(typoid: PgOid) -> Option<pg_sys::Oid> {
-    Spi::get_one_with_args::<pg_sys::Oid>(
-        "SELECT funcoid FROM zdb.type_conversions WHERE typeoid = $1;",
-        vec![(
-            PgOid::BuiltIn(PgBuiltInOids::OIDOID),
-            typoid.clone().into_datum(),
-        )],
-    )
+fn lookup_type_conversions() -> HashMap<pg_sys::Oid, pg_sys::Oid> {
+    let mut cache = HashMap::new();
+    Spi::connect(|client| {
+        let mut table = client.select(
+            "SELECT typeoid, funcoid FROM zdb.type_conversions",
+            None,
+            None,
+        );
+        while table.next().is_some() {
+            let (typeoid, funcoid) = table.get_two::<pg_sys::Oid, pg_sys::Oid>();
+            cache.insert(typeoid.unwrap(), funcoid.unwrap());
+        }
+
+        Ok(Some(()))
+    });
+    cache
 }
 
 #[cfg(any(test, feature = "pg_test"))]
