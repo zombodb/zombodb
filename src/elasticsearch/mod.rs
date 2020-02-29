@@ -17,11 +17,16 @@ use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::zdbquery::ZDBQuery;
 pub use bulk::*;
 pub use create_index::*;
+use lazy_static::*;
 use pgx::PgRelation;
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::io::Read;
+
+lazy_static! {
+    static ref NUM_CPUS: usize = num_cpus::get();
+}
 
 #[derive(Clone)]
 struct InternalOptions {
@@ -96,7 +101,7 @@ impl Elasticsearch {
     }
 
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
-        let concurrency = num_cpus::get().min(self.options.bulk_concurrency as usize);
+        let concurrency = NUM_CPUS.min(self.options.bulk_concurrency as usize);
         ElasticsearchBulkRequest::new(self, 10_000, concurrency, self.options.batch_size as usize)
     }
 
