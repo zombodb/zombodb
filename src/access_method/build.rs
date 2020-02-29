@@ -9,7 +9,7 @@ use pgx::*;
 struct BuildState<'a> {
     table_name: &'a str,
     bulk: ElasticsearchBulkRequest,
-    tupdesc: &'a PgTupleDesc,
+    tupdesc: &'a PgTupleDesc<'a>,
     attributes: Vec<CategorizedAttribute<'a>>,
 }
 
@@ -31,17 +31,18 @@ impl<'a> BuildState<'a> {
 
 #[pg_guard]
 pub extern "C" fn ambuild(
-    heap_relation: pg_sys::Relation,
-    index_relation: pg_sys::Relation,
+    heaprel: pg_sys::Relation,
+    indexrel: pg_sys::Relation,
     index_info: *mut pg_sys::IndexInfo,
 ) -> *mut pg_sys::IndexBuildResult {
-    let heap_relation = PgRelation::from_pg(heap_relation);
-    let index_relation = PgRelation::from_pg(index_relation);
+    let heap_relation = unsafe { PgRelation::from_pg(heaprel) };
+    let index_relation = unsafe { PgRelation::from_pg(indexrel) };
+
+    let elasticsearch = Elasticsearch::new(&index_relation);
     let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
 
     let mut mapping = generate_default_mapping();
     let attributes = categorize_tupdesc(&tupdesc, Some(&mut mapping));
-    let elasticsearch = Elasticsearch::new(&index_relation);
 
     // delete any existing Elasticsearch index with the same name as this one we're about to create
     elasticsearch
@@ -66,7 +67,7 @@ pub extern "C" fn ambuild(
     let ntuples = do_heap_scan(
         index_info,
         &heap_relation,
-        index_relation,
+        &index_relation,
         &tupdesc,
         attributes,
         &elasticsearch,
@@ -82,7 +83,7 @@ pub extern "C" fn ambuild(
 fn do_heap_scan<'a>(
     index_info: *mut pg_sys::IndexInfo,
     heap_relation: &'a PgRelation,
-    index_relation: PgRelation,
+    index_relation: &'a PgRelation,
     tupdesc: &'a PgTupleDesc,
     attributes: Vec<CategorizedAttribute<'a>>,
     elasticsearch: &Elasticsearch,
@@ -123,19 +124,29 @@ fn do_heap_scan<'a>(
 pub extern "C" fn ambuildempty(_index_relation: pg_sys::Relation) {}
 
 #[pg_guard]
-pub extern "C" fn aminsert(
+pub unsafe extern "C" fn aminsert(
     index_relation: pg_sys::Relation,
-    _values: *mut pg_sys::Datum,
+    values: *mut pg_sys::Datum,
     _isnull: *mut bool,
-    _heap_tid: pg_sys::ItemPointer,
+    heap_tid: pg_sys::ItemPointer,
     _heap_relation: pg_sys::Relation,
     _check_unique: pg_sys::IndexUniqueCheck,
     _index_info: *mut pg_sys::IndexInfo,
 ) -> bool {
     let index_relation = PgRelation::from_pg(index_relation);
     let bulk = get_executor_manager().checkout_bulk_context(&index_relation);
-    info!("aminsert");
-    false
+    let values = std::slice::from_raw_parts(values, 1);
+    let builder = row_to_json(values[0], bulk.tupdesc, &bulk.attributes);
+    let cmin = pg_sys::GetCurrentCommandId(true);
+    let cmax = cmin;
+    let xmin = xid_to_64bit(pg_sys::GetCurrentTransactionId());
+    let xmax = pg_sys::InvalidTransactionId as u64;
+
+    bulk.bulk
+        .insert(*heap_tid, cmin, cmax, xmin, xmax, builder)
+        .expect("Unable to send tuple for insert");
+
+    true
 }
 
 unsafe extern "C" fn build_callback(
@@ -160,7 +171,7 @@ unsafe extern "C" fn build_callback(
     }
 
     let values = std::slice::from_raw_parts(values, 1);
-    let builder = row_to_json(values[0], &state);
+    let builder = row_to_json(values[0], &state.tupdesc, &state.attributes);
 
     let cmin = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
     let cmax = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
@@ -174,12 +185,15 @@ unsafe extern "C" fn build_callback(
         .expect("Unable to send tuple for insert");
 }
 
-unsafe fn row_to_json<'a>(row: pg_sys::Datum, state: &PgBox<BuildState<'a>>) -> JsonBuilder<'a> {
-    let mut builder = JsonBuilder::new(state.attributes.len());
+unsafe fn row_to_json<'a>(
+    row: pg_sys::Datum,
+    tupdesc: &PgTupleDesc,
+    attributes: &Vec<CategorizedAttribute<'a>>,
+) -> JsonBuilder<'a> {
+    let mut builder = JsonBuilder::new(attributes.len());
 
-    let datums = deconstruct_row_type(state.tupdesc, row);
-    for (attr, datum) in state
-        .attributes
+    let datums = deconstruct_row_type(tupdesc, row);
+    for (attr, datum) in attributes
         .iter()
         .zip(datums.iter())
         .filter(|(attr, datum)| !attr.dropped && datum.is_some())

@@ -61,7 +61,7 @@ impl ElasticsearchError {
 
 impl Elasticsearch {
     pub fn new(indexrel: &PgRelation) -> Self {
-        let heaprel = indexrel.get_heap_relation().expect("index is not an index");
+        let heaprel = indexrel.heap_relation().expect("index is not an index");
         let zdboptions = ZDBIndexOptions::from(indexrel);
         Elasticsearch {
             options: InternalOptions {

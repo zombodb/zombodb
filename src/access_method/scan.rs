@@ -59,8 +59,7 @@ pub extern "C" fn amrescan(
         });
     }
 
-    // TODO:  query elasticsearch
-    let indexrel = PgRelation::from_pg(scan.indexRelation);
+    let indexrel = unsafe { PgRelation::from_pg(scan.indexRelation) };
     let elasticsearch = Elasticsearch::new(&indexrel);
 
     let response = elasticsearch

@@ -1,13 +1,21 @@
-use pgx::{pg_sys, tupdesc_get_typmod, tupdesc_get_typoid, PgBox, PgTupleDesc};
+use pgx::{pg_sys, PgMemoryContexts, PgRelation, PgTupleDesc};
 
-pub fn lookup_zdb_index_tupdesc(indexrel: &PgBox<pg_sys::RelationData>) -> PgTupleDesc {
-    let tupdesc = PgBox::from_pg(indexrel.rd_att);
+pub fn lookup_zdb_index_tupdesc(indexrel: &PgRelation) -> PgTupleDesc<'static> {
+    let tupdesc = indexrel.tuple_desc();
+
+    let typid = tupdesc
+        .get(0)
+        .expect("no attribute #0 on tupledesc")
+        .type_oid()
+        .value();
+    let typmod = tupdesc
+        .get(0)
+        .expect("no attribute #0 on tupledesc")
+        .type_mod();
+
     // lookup the tuple descriptor for the rowtype we're *indexing*, rather than
     // using the tuple descriptor for the index definition itself
-    PgTupleDesc::from_pg(unsafe {
-        pg_sys::lookup_rowtype_tupdesc(
-            tupdesc_get_typoid(&tupdesc, 1),
-            tupdesc_get_typmod(&tupdesc, 1),
-        )
+    PgMemoryContexts::TopTransactionContext.switch_to(|| unsafe {
+        PgTupleDesc::from_pg_is_copy(pg_sys::lookup_rowtype_tupdesc_copy(typid, typmod))
     })
 }

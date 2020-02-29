@@ -466,8 +466,7 @@ mod tests {
         Spi::run("CREATE INDEX idxtest ON test USING zombodb ((test.*)) WITH (url='http://localhost:19200/')");
         let index_id = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass;")
             .expect("failed to get idxtest oid from SPI");
-        let index: PgBox<pg_sys::RelationData> =
-            PgBox::from_pg(pg_sys::RelationIdGetRelation(index_id));
+        let index = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_id));
         let tupdesc = lookup_zdb_index_tupdesc(&index);
         let mut mapping = generate_default_mapping();
 

@@ -13,11 +13,12 @@ pub fn get_executor_manager() -> &'static mut ExecutorManager {
 pub struct BulkContext {
     pub bulk: ElasticsearchBulkRequest,
     pub attributes: Vec<CategorizedAttribute<'static>>,
+    pub tupdesc: &'static PgTupleDesc<'static>,
 }
 
 pub struct ExecutorManager {
     depth: u32,
-    tuple_descriptors: Option<HashMap<pg_sys::Oid, PgTupleDesc>>,
+    tuple_descriptors: Option<HashMap<pg_sys::Oid, PgTupleDesc<'static>>>,
     bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext>>,
 }
 
@@ -38,22 +39,46 @@ impl ExecutorManager {
         self.depth -= 1;
 
         if self.depth == 0 {
+            self.finalize_bulk_requests();
             self.cleanup()
         }
     }
 
-    pub fn depth(&self) -> u32 {
-        self.depth
-    }
-
     pub fn abort(&mut self) {
-        // TODO:  Terminate the bulk requests
+        self.terminate_bulk_requests();
         self.cleanup()
     }
 
+    fn finalize_bulk_requests(&mut self) {
+        match self.bulk_requests.take() {
+            Some(bulk_requests) => {
+                // finish any of the bulk requests we have going on
+                for (_, bulk) in bulk_requests.into_iter() {
+                    match bulk.bulk.finish() {
+                        Ok(cnt) => info!("indexed {} tuples", cnt),
+                        Err(e) => panic!(e),
+                    }
+                }
+            }
+            None => {}
+        }
+    }
+
+    fn terminate_bulk_requests(&mut self) {
+        // forcefully terminate any of the bulk requests we have going on
+        match self.bulk_requests.take() {
+            Some(bulk_requests) => {
+                for (_, bulk) in bulk_requests.into_iter() {
+                    bulk.bulk.terminate_now();
+                }
+            }
+            None => {}
+        }
+    }
+
     fn cleanup(&mut self) {
-        self.tuple_descriptors.replace(HashMap::new());
-        self.bulk_requests.replace(HashMap::new());
+        self.tuple_descriptors.take();
+        self.bulk_requests.take();
         self.depth = 0;
     }
 
@@ -74,12 +99,13 @@ impl ExecutorManager {
 
         let bulk_map = self.bulk_requests.as_mut().unwrap();
         bulk_map.entry(relid).or_insert_with(move || {
-            let elasticsearch = Elasticsearch::new(indexrel);
+            let elasticsearch = Elasticsearch::new(&indexrel);
             let attributes = categorize_tupdesc(tupdesc, None);
 
             BulkContext {
                 bulk: elasticsearch.start_bulk(),
                 attributes,
+                tupdesc,
             }
         })
     }

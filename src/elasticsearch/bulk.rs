@@ -93,6 +93,10 @@ impl ElasticsearchBulkRequest {
         }
     }
 
+    pub fn terminate_now(&self) {
+        (self.terminate())();
+    }
+
     pub fn insert(
         &mut self,
         ctid: pg_sys::ItemPointerData,
@@ -325,9 +329,10 @@ impl Handler {
             elog(
                 ZDB_LOG_LEVEL.get().log_level(),
                 &format!(
-                    "total={}, in_flight={}, active_threads={}",
+                    "total={}, in_flight={}, queued={}, active_threads={}",
                     self.total_docs,
                     self.in_flight.load(Ordering::SeqCst),
+                    self.bulk_receiver.len(),
                     self.active_thread_cnt.load(Ordering::SeqCst)
                 ),
             );
@@ -336,7 +341,7 @@ impl Handler {
         self.total_docs += 1;
 
         let nthreads = self.active_thread_cnt.load(Ordering::SeqCst);
-        if nthreads < self.concurrency {
+        if nthreads == 0 || (nthreads < self.concurrency && self.bulk_receiver.len() > 10000) {
             self.threads
                 .push(self.create_thread(self.threads.len(), command));
 
@@ -476,6 +481,7 @@ impl Handler {
         for jh in self.threads.into_iter() {
             match jh.join() {
                 Ok(many) => {
+                    info!("jh finished");
                     cnt += many;
                 }
                 Err(e) => panic!("Got an error joining on a thread: {}", downcast_err(e)),
