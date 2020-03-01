@@ -40,9 +40,6 @@ mod tests {
     use pgx::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_zdbquery_from_random_text() {
         let zdbquery = zdbquery_from_text("test 2");

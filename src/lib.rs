@@ -38,9 +38,6 @@ fn version() -> &'static str {
 mod tests {
     use pgx::*;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_version() {
         assert_eq!("5.0", crate::version());

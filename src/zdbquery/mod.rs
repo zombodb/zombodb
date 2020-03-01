@@ -234,9 +234,6 @@ mod tests {
     use crate::zdbquery::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     fn test_zdbquery_in_with_query_string() {
         let zdbquery =

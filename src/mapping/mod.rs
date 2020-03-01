@@ -465,9 +465,6 @@ mod tests {
     use pgx::*;
     use serde_json::json;
 
-    #[test]
-    fn make_idea_happy() {}
-
     #[pg_test]
     #[initialize(es = true)]
     unsafe fn test_generate_mapping() {
