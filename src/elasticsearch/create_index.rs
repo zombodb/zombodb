@@ -33,6 +33,7 @@ impl ElasticsearchCreateIndexRequest {
                   "index.number_of_replicas": 0,
                   "index.refresh_interval": "-1",
                   "index.query.default_field": "zdb_all",
+                  "index.translog.durability": self.elasticsearch.options.translog_durability,
                   "analysis": {
                      "filter": lookup_analysis_thing("filters"),
                      "char_filter" : lookup_analysis_thing("char_filters"),

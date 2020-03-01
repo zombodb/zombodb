@@ -11,6 +11,7 @@ const DEFAULT_OPTIMIZE_AFTER: i32 = 0;
 const DEFAULT_URL: &str = "default";
 const DEFAULT_TYPE_NAME: &str = "doc";
 const DEFAULT_REFRESH_INTERVAL: &str = "-1";
+const DEFAULT_TRANSLOG_DURABILITY: &str = "request";
 
 lazy_static! {
     static ref DEFAULT_BULK_CONCURRENCY: i32 = num_cpus::get() as i32;
@@ -27,6 +28,7 @@ pub struct ZDBIndexOptions {
     refresh_interval_offset: i32,
     alias_offset: i32,
     uuid_offset: i32,
+    translog_durability_offset: i32,
 
     optimize_after: i32,
     compression_level: i32,
@@ -165,6 +167,13 @@ impl ZDBIndexOptions {
         self.uuid(heaprel, indexrel)
     }
 
+    pub fn translog_durability(&self) -> String {
+        match self.get_str(self.translog_durability_offset) {
+            Some(value) => value,
+            None => DEFAULT_TRANSLOG_DURABILITY.to_owned(),
+        }
+    }
+
     fn get_str(&self, offset: i32) -> Option<String> {
         if offset == 0 {
             None
@@ -199,13 +208,30 @@ extern "C" fn validate_url(url: *const std::os::raw::c_char) {
     }
 }
 
+extern "C" fn validate_translog_durability(value: *const std::os::raw::c_char) {
+    if value.is_null() {
+        // null is fine -- we'll just use our default
+        return;
+    }
+
+    let value = unsafe { CStr::from_ptr(value) }
+        .to_str()
+        .expect("failed to convert translog_durability to utf8");
+    if value != "request" && value != "async" {
+        panic!(
+            "invalid translog_durability setting.  Must be one of 'request' or 'async': {}",
+            value
+        )
+    }
+}
+
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
     reloptions: pg_sys::Datum,
     validate: bool,
 ) -> *mut pg_sys::bytea {
     // TODO:  how to make this const?  we can't use offset_of!() macro in const definitions, apparently
-    let tab: [pg_sys::relopt_parse_elt; 12] = [
+    let tab: [pg_sys::relopt_parse_elt; 13] = [
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"url\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
@@ -265,6 +291,11 @@ pub unsafe extern "C" fn amoptions(
             optname: CStr::from_bytes_with_nul_unchecked(b"uuid\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptions, uuid_offset) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: CStr::from_bytes_with_nul_unchecked(b"translog_durability\0").as_ptr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            offset: offset_of!(ZDBIndexOptions, translog_durability_offset) as i32,
         },
     ];
 
@@ -380,6 +411,16 @@ pub unsafe fn init() {
         std::ptr::null(),
         None,
     );
+    pg_sys::add_string_reloption(
+        RELOPT_KIND_ZDB,
+        CStr::from_bytes_with_nul_unchecked(b"translog_durability\0").as_ptr(),
+        CStr::from_bytes_with_nul_unchecked(
+            b"Elasticsearch index.translog.durability setting.  Defaults to 'request'",
+        )
+        .as_ptr(),
+        CStr::from_bytes_with_nul_unchecked(b"request\0").as_ptr(),
+        None,
+    );
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
         CStr::from_bytes_with_nul_unchecked(b"optimize_after\0").as_ptr(),
@@ -405,16 +446,13 @@ pub unsafe fn init() {
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::access_method::options::{
-        validate_url, ZDBIndexOptions, DEFAULT_BATCH_SIZE, DEFAULT_BULK_CONCURRENCY,
-        DEFAULT_COMPRESSION_LEVEL, DEFAULT_OPTIMIZE_AFTER, DEFAULT_REFRESH_INTERVAL,
-        DEFAULT_SHARDS, DEFAULT_TYPE_NAME,
+        validate_translog_durability, validate_url, ZDBIndexOptions, DEFAULT_BATCH_SIZE,
+        DEFAULT_BULK_CONCURRENCY, DEFAULT_COMPRESSION_LEVEL, DEFAULT_OPTIMIZE_AFTER,
+        DEFAULT_REFRESH_INTERVAL, DEFAULT_SHARDS, DEFAULT_TYPE_NAME,
     };
     use crate::gucs::ZDB_DEFAULT_REPLICAS;
     use pgx::*;
     use std::ffi::CString;
-
-    #[test]
-    fn make_idea_happy() {}
 
     #[pg_test]
     fn test_validate_url() {
@@ -431,6 +469,23 @@ mod tests {
         validate_url(CString::new("http://localhost:9200").unwrap().as_ptr());
     }
 
+    #[pg_test(
+        error = "invalid translog_durability setting.  Must be one of 'request' or 'async': foo"
+    )]
+    fn test_validate_invalid_translog_durability() {
+        validate_translog_durability(CString::new("foo").unwrap().as_ptr());
+    }
+
+    #[test]
+    fn test_valid_translog_durability_request() {
+        validate_translog_durability(CString::new("request").unwrap().as_ptr());
+    }
+
+    #[test]
+    fn test_valid_translog_durability_async() {
+        validate_translog_durability(CString::new("async").unwrap().as_ptr());
+    }
+
     #[pg_test]
     #[initialize(es = true)]
     unsafe fn test_index_options() {
@@ -444,7 +499,8 @@ mod tests {
                       type_name='test_type_name', 
                       alias='test_alias', 
                       uuid='{}', 
-                      refresh_interval='5s');",
+                      refresh_interval='5s',
+                      translog_durability='async');",
             uuid
         ));
 
@@ -467,6 +523,7 @@ mod tests {
         assert_eq!(options.batch_size(), 8 * 1024 * 1024);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
         assert_eq!(options.llapi(), false);
+        assert_eq!(options.translog_durability(), "async")
     }
 
     #[pg_test]
@@ -509,5 +566,6 @@ mod tests {
         assert_eq!(options.batch_size(), DEFAULT_BATCH_SIZE);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
         assert_eq!(options.llapi(), false);
+        assert_eq!(options.translog_durability(), "request")
     }
 }
