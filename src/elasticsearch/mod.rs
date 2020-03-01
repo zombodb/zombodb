@@ -36,6 +36,7 @@ struct InternalOptions {
     alias: String,
     uuid: String,
     index_name: String,
+    translog_durability: String,
 
     optimize_after: i32,
     compression_level: i32,
@@ -76,6 +77,7 @@ impl Elasticsearch {
                 alias: zdboptions.alias(&heaprel, indexrel),
                 uuid: zdboptions.uuid(&heaprel, indexrel),
                 index_name: zdboptions.index_name(&heaprel, indexrel),
+                translog_durability: zdboptions.translog_durability(),
 
                 optimize_after: zdboptions.optimize_after(),
                 compression_level: zdboptions.compression_level(),
