@@ -419,7 +419,7 @@ pub unsafe fn init() {
         )
         .as_ptr(),
         CStr::from_bytes_with_nul_unchecked(b"request\0").as_ptr(),
-        None,
+        Some(validate_translog_durability),
     );
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
