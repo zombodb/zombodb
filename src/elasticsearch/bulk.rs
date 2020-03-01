@@ -226,7 +226,7 @@ impl<'a> std::io::Read for BulkReceiver<'a> {
         }
 
         // otherwise we'll wait to receive a command
-        if self.docs_out.load(Ordering::SeqCst) < 10_000 && self.bytes_out < self.batch_size {
+        if self.docs_out.load(Ordering::Relaxed) < 10_000 && self.bytes_out < self.batch_size {
             // but only if we haven't exceeded the max _bulk docs limit
             match self.receiver.recv_timeout(Duration::from_millis(333)) {
                 Ok(command) => self.serialize_command(command),
@@ -248,8 +248,8 @@ impl<'a> std::io::Read for BulkReceiver<'a> {
 
 impl<'a> BulkReceiver<'a> {
     fn serialize_command(&mut self, command: BulkRequestCommand<'a>) {
-        self.in_flight.fetch_add(1, Ordering::SeqCst);
-        self.docs_out.fetch_add(1, Ordering::SeqCst);
+        self.in_flight.fetch_add(1, Ordering::Relaxed);
+        self.docs_out.fetch_add(1, Ordering::Relaxed);
 
         // build json of this entire command and store in self.bytes
         match command {
@@ -298,13 +298,14 @@ impl From<BulkReceiver<'static>> for reqwest::Body {
 impl Handler {
     pub(crate) fn new(
         elasticsearch: Elasticsearch,
-        queue_size: usize,
+        _queue_size: usize,
         concurrency: usize,
         batch_size: usize,
         error_sender: crossbeam::channel::Sender<BulkRequestError>,
     ) -> Self {
-        pgx::info!("bounds={}", queue_size * concurrency);
-        let (tx, rx) = crossbeam::channel::bounded(queue_size * concurrency);
+        // NB:  creating a large (queue_size * concurrency) bounded channel
+        // is quite slow.  Going with unbounded
+        let (tx, rx) = crossbeam::channel::unbounded();
 
         Handler {
             terminatd: Arc::new(AtomicBool::new(false)),
@@ -331,16 +332,16 @@ impl Handler {
                 &format!(
                     "total={}, in_flight={}, queued={}, active_threads={}",
                     self.total_docs,
-                    self.in_flight.load(Ordering::SeqCst),
+                    self.in_flight.load(Ordering::Relaxed),
                     self.bulk_receiver.len(),
-                    self.active_thread_cnt.load(Ordering::SeqCst)
+                    self.active_thread_cnt.load(Ordering::Relaxed)
                 ),
             );
         }
 
         self.total_docs += 1;
 
-        let nthreads = self.active_thread_cnt.load(Ordering::SeqCst);
+        let nthreads = self.active_thread_cnt.load(Ordering::Relaxed);
         if nthreads == 0 || (nthreads < self.concurrency && self.bulk_receiver.len() > 10000) {
             self.threads
                 .push(self.create_thread(self.threads.len(), command));
@@ -364,12 +365,12 @@ impl Handler {
         let terminated = self.terminatd.clone();
         let batch_size = self.batch_size;
 
-        self.active_thread_cnt.fetch_add(1, Ordering::SeqCst);
+        self.active_thread_cnt.fetch_add(1, Ordering::Relaxed);
         std::thread::spawn(move || {
             let mut initial_command = Some(initial_command);
             let mut total_docs_out = 0;
             loop {
-                if terminated.load(Ordering::SeqCst) {
+                if terminated.load(Ordering::Relaxed) {
                     // we've been signaled to terminate, so get out now
                     break;
                 }
@@ -439,8 +440,8 @@ impl Handler {
                     return Handler::send_error(error, e.status(), e.message(), total_docs_out);
                 }
 
-                let docs_out = docs_out.load(Ordering::SeqCst);
-                in_flight.fetch_sub(docs_out, Ordering::SeqCst);
+                let docs_out = docs_out.load(Ordering::Relaxed);
+                in_flight.fetch_sub(docs_out, Ordering::Relaxed);
 
                 total_docs_out += docs_out;
 
@@ -451,7 +452,7 @@ impl Handler {
                 }
             }
 
-            active_thread_cnt.fetch_sub(1, Ordering::SeqCst);
+            active_thread_cnt.fetch_sub(1, Ordering::Relaxed);
             total_docs_out
         })
     }
