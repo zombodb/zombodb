@@ -37,7 +37,9 @@ impl ExecutorManager {
 
     pub fn pop(&mut self) {
         self.depth -= 1;
+    }
 
+    pub fn on_end(&mut self) {
         if self.depth == 0 {
             self.finalize_bulk_requests();
             self.cleanup()

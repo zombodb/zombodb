@@ -27,7 +27,7 @@ impl PgHooks for ZDBHooks {
         prev_hook: fn(PgBox<QueryDesc>, i32) -> HookResult<()>,
     ) -> HookResult<()> {
         self.manager().push();
-        pg_try(|| prev_hook(query_desc, eflags)).unwrap_or_rethrow(|| self.manager().pop())
+        pg_try(|| prev_hook(query_desc, eflags)).finally_or_rethrow(|| self.manager().pop())
     }
 
     fn executor_run(
@@ -40,7 +40,7 @@ impl PgHooks for ZDBHooks {
     ) -> HookResult<()> {
         self.manager().push();
         pg_try(|| prev_hook(query_desc, direction, count, execute_once))
-            .unwrap_or_rethrow(|| self.manager().pop())
+            .finally_or_rethrow(|| self.manager().pop())
     }
 
     fn executor_finish(
@@ -48,6 +48,7 @@ impl PgHooks for ZDBHooks {
         query_desc: PgBox<QueryDesc>,
         prev_hook: fn(PgBox<QueryDesc>) -> HookResult<()>,
     ) -> HookResult<()> {
+        self.manager().push();
         pg_try(|| prev_hook(query_desc)).finally_or_rethrow(|| self.manager().pop())
     }
 
@@ -56,6 +57,8 @@ impl PgHooks for ZDBHooks {
         query_desc: PgBox<QueryDesc>,
         prev_hook: fn(PgBox<QueryDesc>) -> HookResult<()>,
     ) -> HookResult<()> {
+        self.manager().on_end();
+        self.manager().push();
         pg_try(|| prev_hook(query_desc)).finally_or_rethrow(|| self.manager().pop())
     }
 
