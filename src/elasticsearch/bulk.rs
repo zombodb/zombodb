@@ -304,8 +304,8 @@ impl Handler {
         error_sender: crossbeam::channel::Sender<BulkRequestError>,
     ) -> Self {
         // NB:  creating a large (queue_size * concurrency) bounded channel
-        // is quite slow.  Going with unbounded
-        let (tx, rx) = crossbeam::channel::unbounded();
+        // is quite slow.  Going with our max docs per bulk request
+        let (tx, rx) = crossbeam::channel::bounded(10_000);
 
         Handler {
             terminatd: Arc::new(AtomicBool::new(false)),
@@ -326,7 +326,7 @@ impl Handler {
         &mut self,
         command: BulkRequestCommand<'static>,
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'static>>> {
-        if self.total_docs > 0 && self.total_docs % 10000 == 0 {
+        if self.total_docs > 0 && self.total_docs % 10_000 == 0 {
             elog(
                 ZDB_LOG_LEVEL.get().log_level(),
                 &format!(
@@ -342,7 +342,9 @@ impl Handler {
         self.total_docs += 1;
 
         let nthreads = self.active_thread_cnt.load(Ordering::Relaxed);
-        if nthreads == 0 || (nthreads < self.concurrency && self.bulk_receiver.len() > 10000) {
+        if nthreads == 0
+            || (nthreads < self.concurrency && self.bulk_receiver.len() > 10_000 / self.concurrency)
+        {
             self.threads
                 .push(self.create_thread(self.threads.len(), command));
 

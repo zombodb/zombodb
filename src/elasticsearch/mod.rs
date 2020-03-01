@@ -103,7 +103,8 @@ impl Elasticsearch {
     }
 
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
-        let concurrency = NUM_CPUS.min(self.options.bulk_concurrency as usize);
+        let concurrency = (self.options.shards as usize)
+            .min(NUM_CPUS.min(self.options.bulk_concurrency as usize));
         ElasticsearchBulkRequest::new(self, 10_000, concurrency, self.options.batch_size as usize)
     }
 
