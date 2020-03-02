@@ -105,7 +105,7 @@ impl ExecutorManager {
             let attributes = categorize_tupdesc(tupdesc, None);
 
             BulkContext {
-                bulk: elasticsearch.start_bulk(true),
+                bulk: elasticsearch.start_bulk_with_refresh(),
                 attributes,
                 tupdesc,
             }
