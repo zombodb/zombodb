@@ -96,7 +96,7 @@ fn do_heap_scan<'a>(
 ) -> usize {
     let mut state = BuildState::new(
         heap_relation.name(),
-        elasticsearch.start_bulk(),
+        elasticsearch.start_bulk(false),
         &tupdesc,
         attributes,
     );

@@ -108,10 +108,16 @@ impl Elasticsearch {
         ElasticsearchUpdateSettingsRequest::new(self)
     }
 
-    pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
+    pub fn start_bulk(&self, allow_refresh: bool) -> ElasticsearchBulkRequest {
         let concurrency = (self.options.shards as usize)
             .min(NUM_CPUS.min(self.options.bulk_concurrency as usize));
-        ElasticsearchBulkRequest::new(self, 10_000, concurrency, self.options.batch_size as usize)
+        ElasticsearchBulkRequest::new(
+            self,
+            10_000,
+            concurrency,
+            self.options.batch_size as usize,
+            allow_refresh,
+        )
     }
 
     pub fn open_search(&self, query: ZDBQuery) -> ElasticsearchSearchRequest {
