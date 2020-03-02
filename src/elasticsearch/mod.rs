@@ -5,15 +5,17 @@ mod bulk;
 mod create_index;
 mod delete_index;
 mod refresh_index;
+mod update_settings;
 
 pub mod aggregate_search;
 pub mod search;
 
-use crate::access_method::options::ZDBIndexOptions;
+use crate::access_method::options::{RefreshInterval, ZDBIndexOptions};
 use crate::elasticsearch::aggregate_search::ElasticsearchAggregateSearchRequest;
 use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
+use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
 use crate::zdbquery::ZDBQuery;
 pub use bulk::*;
 pub use create_index::*;
@@ -32,7 +34,7 @@ lazy_static! {
 struct InternalOptions {
     url: String,
     type_name: String,
-    refresh_interval: String,
+    refresh_interval: RefreshInterval,
     alias: String,
     uuid: String,
     index_name: String,
@@ -100,6 +102,10 @@ impl Elasticsearch {
 
     pub fn refresh_index(&self) -> ElasticsearchRefreshIndexRequest {
         ElasticsearchRefreshIndexRequest::new(self)
+    }
+
+    pub fn update_settings(&self) -> ElasticsearchUpdateSettingsRequest {
+        ElasticsearchUpdateSettingsRequest::new(self)
     }
 
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {

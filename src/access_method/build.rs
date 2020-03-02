@@ -73,6 +73,12 @@ pub extern "C" fn ambuild(
         &elasticsearch,
     );
 
+    // update the index settings, such as refresh_interval and number of replicas
+    elasticsearch
+        .update_settings()
+        .execute()
+        .expect("failed to update index settings after build");
+
     let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
     result.heap_tuples = ntuples as f64;
     result.index_tuples = ntuples as f64;

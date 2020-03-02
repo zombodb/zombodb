@@ -17,6 +17,23 @@ lazy_static! {
     static ref DEFAULT_BULK_CONCURRENCY: i32 = num_cpus::get() as i32;
 }
 
+#[derive(Eq, PartialEq, Debug, Clone)]
+pub enum RefreshInterval {
+    Immediate,
+    ImmediateAsync,
+    Background(String),
+}
+
+impl RefreshInterval {
+    pub fn as_str(&self) -> &str {
+        match self {
+            RefreshInterval::Immediate => "-1",
+            RefreshInterval::ImmediateAsync => "-1",
+            RefreshInterval::Background(s) => s.as_str(),
+        }
+    }
+}
+
 #[repr(C)]
 pub struct ZDBIndexOptions {
     /* varlena header (do not touch directly!) */
@@ -109,10 +126,17 @@ impl ZDBIndexOptions {
         self.get_str(self.type_name_offset, || DEFAULT_TYPE_NAME.to_owned())
     }
 
-    pub fn refresh_interval(&self) -> String {
-        self.get_str(self.refresh_interval_offset, || {
-            DEFAULT_REFRESH_INTERVAL.to_owned()
-        })
+    pub fn refresh_interval(&self) -> RefreshInterval {
+        match self
+            .get_str(self.refresh_interval_offset, || {
+                DEFAULT_REFRESH_INTERVAL.to_owned()
+            })
+            .as_str()
+        {
+            "-1" => RefreshInterval::Immediate,
+            "async" => RefreshInterval::ImmediateAsync,
+            other => RefreshInterval::Background(other.to_owned()),
+        }
     }
 
     pub fn alias(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
@@ -430,9 +454,9 @@ pub unsafe fn init() {
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::access_method::options::{
-        validate_translog_durability, validate_url, ZDBIndexOptions, DEFAULT_BATCH_SIZE,
-        DEFAULT_BULK_CONCURRENCY, DEFAULT_COMPRESSION_LEVEL, DEFAULT_OPTIMIZE_AFTER,
-        DEFAULT_REFRESH_INTERVAL, DEFAULT_SHARDS, DEFAULT_TYPE_NAME,
+        validate_translog_durability, validate_url, RefreshInterval, ZDBIndexOptions,
+        DEFAULT_BATCH_SIZE, DEFAULT_BULK_CONCURRENCY, DEFAULT_COMPRESSION_LEVEL,
+        DEFAULT_OPTIMIZE_AFTER, DEFAULT_SHARDS, DEFAULT_TYPE_NAME,
     };
     use crate::gucs::ZDB_DEFAULT_REPLICAS;
     use pgx::*;
@@ -499,7 +523,10 @@ mod tests {
         assert_eq!(&options.type_name(), "test_type_name");
         assert_eq!(&options.alias(&heaprel, &indexrel), "test_alias");
         assert_eq!(&options.uuid(&heaprel, &indexrel), &uuid.to_string());
-        assert_eq!(&options.refresh_interval(), "5s");
+        assert_eq!(
+            options.refresh_interval(),
+            RefreshInterval::Background("5s".to_owned())
+        );
         assert_eq!(options.compression_level(), 1);
         assert_eq!(options.shards(), 5);
         assert_eq!(options.replicas(), 0);
@@ -542,7 +569,7 @@ mod tests {
                 indexrel.oid()
             )
         );
-        assert_eq!(&options.refresh_interval(), DEFAULT_REFRESH_INTERVAL);
+        assert_eq!(options.refresh_interval(), RefreshInterval::Immediate);
         assert_eq!(options.compression_level(), DEFAULT_COMPRESSION_LEVEL);
         assert_eq!(options.shards(), DEFAULT_SHARDS);
         assert_eq!(options.replicas(), ZDB_DEFAULT_REPLICAS.get());
