@@ -21,7 +21,7 @@ pub fn lookup_zdb_index_tupdesc(indexrel: &PgRelation) -> PgTupleDesc<'static> {
     })
 }
 
-pub fn json_to_string(key: serde_json::Value) -> String {
+pub fn json_to_string(key: serde_json::Value) -> Option<String> {
     match key {
         Value::Null => None,
         Value::Bool(b) => Some(if b {
@@ -33,5 +33,4 @@ pub fn json_to_string(key: serde_json::Value) -> String {
         Value::String(s) => Some(s),
         _ => panic!("unsupported value type"),
     }
-    .unwrap()
 }

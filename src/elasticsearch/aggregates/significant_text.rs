@@ -6,13 +6,12 @@ use serde::*;
 use serde_json::*;
 
 #[pg_extern(immutable, parallel_safe)]
-fn significant_terms(
+fn significant_text(
     index: PgRelation,
     field_name: &str,
     query: ZDBQuery,
-    include: Option<default!(&str, ".*")>,
-    size_limit: Option<default!(i32, 2147483647)>,
-    min_doc_count: Option<default!(i32, 3)>,
+    sample_size: Option<default!(i32, 0)>,
+    filter_duplicate_text: Option<default!(bool, true)>,
 ) -> impl std::iter::Iterator<
     Item = (
         name!(term, Option<String>),
@@ -40,12 +39,11 @@ fn significant_terms(
         query,
         json! {
             {
-                "significant_terms": {
+                "significant_text": {
                     "field": field_name,
-                    "include": include,
                     "shard_size": std::i32::MAX,
-                    "size": size_limit,
-                    "min_doc_count": min_doc_count
+                    "sample_size": sample_size,
+                    "filter_duplicate_text": filter_duplicate_text
                 }
             }
         },
