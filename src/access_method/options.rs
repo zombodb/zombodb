@@ -88,11 +88,7 @@ impl ZDBIndexOptions {
     }
 
     pub fn url(&self) -> String {
-        let url = if self.url_offset == 0 {
-            DEFAULT_URL.to_owned()
-        } else {
-            self.get_str(self.url_offset).unwrap()
-        };
+        let url = self.get_str(self.url_offset, || DEFAULT_URL.to_owned());
 
         if url == DEFAULT_URL {
             // the url option on the index could also be the string 'default', so
@@ -110,25 +106,18 @@ impl ZDBIndexOptions {
     }
 
     pub fn type_name(&self) -> String {
-        if self.type_name_offset == 0 {
-            DEFAULT_TYPE_NAME.to_owned()
-        } else {
-            self.get_str(self.type_name_offset).unwrap()
-        }
+        self.get_str(self.type_name_offset, || DEFAULT_TYPE_NAME.to_owned())
     }
 
     pub fn refresh_interval(&self) -> String {
-        if self.refresh_interval_offset == 0 {
+        self.get_str(self.refresh_interval_offset, || {
             DEFAULT_REFRESH_INTERVAL.to_owned()
-        } else {
-            self.get_str(self.refresh_interval_offset).unwrap()
-        }
+        })
     }
 
     pub fn alias(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
-        match self.get_str(self.alias_offset) {
-            Some(alias) => alias.to_owned(),
-            None => format!(
+        self.get_str(self.alias_offset, || {
+            format!(
                 "{}.{}.{}.{}-{}",
                 unsafe {
                     std::ffi::CStr::from_ptr(pg_sys::get_database_name(pg_sys::MyDatabaseId))
@@ -143,21 +132,20 @@ impl ZDBIndexOptions {
                 heaprel.name(),
                 indexrel.name(),
                 indexrel.oid()
-            ),
-        }
+            )
+        })
     }
 
     pub fn uuid(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
-        match self.get_str(self.uuid_offset) {
-            Some(uuid) => uuid,
-            None => format!(
+        self.get_str(self.uuid_offset, || {
+            format!(
                 "{}.{}.{}.{}",
                 unsafe { pg_sys::MyDatabaseId },
                 indexrel.namespace_oid(),
                 heaprel.oid(),
                 indexrel.oid(),
-            ),
-        }
+            )
+        })
     }
 
     pub fn index_name(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
@@ -165,21 +153,20 @@ impl ZDBIndexOptions {
     }
 
     pub fn translog_durability(&self) -> String {
-        match self.get_str(self.translog_durability_offset) {
-            Some(value) => value,
-            None => DEFAULT_TRANSLOG_DURABILITY.to_owned(),
-        }
+        self.get_str(self.translog_durability_offset, || {
+            DEFAULT_TRANSLOG_DURABILITY.to_owned()
+        })
     }
 
-    fn get_str(&self, offset: i32) -> Option<String> {
+    fn get_str<F: FnOnce() -> String>(&self, offset: i32, default: F) -> String {
         if offset == 0 {
-            None
+            default()
         } else {
             let opts = self as *const _ as void_ptr as usize;
             let value =
                 unsafe { CStr::from_ptr((opts + offset as usize) as *const std::os::raw::c_char) };
 
-            Some(value.to_str().unwrap().to_owned())
+            value.to_str().unwrap().to_owned()
         }
     }
 }
