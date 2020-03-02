@@ -126,8 +126,7 @@ impl ZDBIndexOptions {
     }
 
     pub fn alias(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
-        pgx::info!("in alias");
-        let rc = match self.get_str(self.alias_offset) {
+        match self.get_str(self.alias_offset) {
             Some(alias) => alias.to_owned(),
             None => format!(
                 "{}.{}.{}.{}-{}",
@@ -145,9 +144,7 @@ impl ZDBIndexOptions {
                 indexrel.name(),
                 indexrel.oid()
             ),
-        };
-        pgx::info!("returning {}", &rc);
-        rc
+        }
     }
 
     pub fn uuid(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
