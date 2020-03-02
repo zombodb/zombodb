@@ -18,7 +18,8 @@ impl ElasticsearchUpdateSettingsRequest {
                         {
                             "index": {
                                 "refresh_interval": self.0.options.refresh_interval.as_str(),
-                                "number_of_replicas": self.0.options.replicas
+                                "number_of_replicas": self.0.options.replicas,
+                                "translog.durability": self.0.options.translog_durability,
                             }
                         }
                     })
