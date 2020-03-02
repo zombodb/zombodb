@@ -191,7 +191,6 @@ const BULK_FILTER_PATH: &str = "errors,items.index.error.caused_by.reason";
 pub(crate) struct Handler {
     pub(crate) terminatd: Arc<AtomicBool>,
     threads: Vec<JoinHandle<usize>>,
-    active_thread_cnt: Arc<AtomicUsize>,
     in_flight: Arc<AtomicUsize>,
     total_docs: usize,
     elasticsearch: Elasticsearch,
@@ -310,7 +309,6 @@ impl Handler {
         Handler {
             terminatd: Arc::new(AtomicBool::new(false)),
             threads: Vec::new(),
-            active_thread_cnt: Arc::new(AtomicUsize::new(0)),
             in_flight: Arc::new(AtomicUsize::new(0)),
             total_docs: 0,
             elasticsearch,
@@ -334,14 +332,14 @@ impl Handler {
                     self.total_docs,
                     self.in_flight.load(Ordering::Relaxed),
                     self.bulk_receiver.len(),
-                    self.active_thread_cnt.load(Ordering::Relaxed)
+                    self.threads.len()
                 ),
             );
         }
 
         self.total_docs += 1;
 
-        let nthreads = self.active_thread_cnt.load(Ordering::Relaxed);
+        let nthreads = self.threads.len();
         if nthreads == 0
             || (nthreads < self.concurrency && self.bulk_receiver.len() > 10_000 / self.concurrency)
         {
@@ -362,12 +360,10 @@ impl Handler {
         let base_url = self.elasticsearch.base_url().clone();
         let rx = self.bulk_receiver.clone();
         let in_flight = self.in_flight.clone();
-        let active_thread_cnt = self.active_thread_cnt.clone();
         let error = self.error_sender.clone();
         let terminated = self.terminatd.clone();
         let batch_size = self.batch_size;
 
-        self.active_thread_cnt.fetch_add(1, Ordering::Relaxed);
         std::thread::spawn(move || {
             let mut initial_command = Some(initial_command);
             let mut total_docs_out = 0;
@@ -454,7 +450,6 @@ impl Handler {
                 }
             }
 
-            active_thread_cnt.fetch_sub(1, Ordering::Relaxed);
             total_docs_out
         })
     }
