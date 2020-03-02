@@ -1,3 +1,4 @@
+use crate::access_method::options::RefreshInterval;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
@@ -56,6 +57,7 @@ impl ElasticsearchBulkRequest {
         queue_size: usize,
         concurrency: usize,
         batch_size: usize,
+        allow_refresh: bool,
     ) -> Self {
         let (etx, erx) = crossbeam::channel::bounded(concurrency);
 
@@ -66,6 +68,7 @@ impl ElasticsearchBulkRequest {
                 concurrency,
                 batch_size,
                 etx,
+                allow_refresh,
             ),
             error_receiver: erx,
         }
@@ -73,14 +76,39 @@ impl ElasticsearchBulkRequest {
 
     pub fn finish(self) -> Result<usize, BulkRequestError> {
         // wait for the bulk requests to finish
+        let nrequests = self.handler.successful_requests.load(Ordering::SeqCst);
         let elasticsearch = self.handler.elasticsearch.clone();
         let total_docs = self.handler.wait_for_completion()?;
 
-        // now refresh the index
+        // now refresh the index if necessary
+        //
+        // We don't even need to try if the bulk request only performed 1 successful request
+        if nrequests > 1 {
+            match elasticsearch.options.refresh_interval {
+                RefreshInterval::Immediate => {
+                    ElasticsearchBulkRequest::refresh_index(elasticsearch)?
+                }
+                RefreshInterval::ImmediateAsync => {
+                    std::thread::spawn(|| {
+                        ElasticsearchBulkRequest::refresh_index(elasticsearch).ok()
+                    });
+                }
+                RefreshInterval::Background(_) => {
+                    // Elasticsearch will do it for us in the future
+                }
+            }
+        } else {
+            info!("no direct refresh");
+        }
+
+        Ok(total_docs)
+    }
+
+    fn refresh_index(elasticsearch: Elasticsearch) -> Result<(), BulkRequestError> {
         if let Err(e) = elasticsearch.refresh_index().execute() {
             Err(BulkRequestError::RefreshError(e.message().to_string()))
         } else {
-            Ok(total_docs)
+            Ok(())
         }
     }
 
@@ -193,12 +221,15 @@ pub(crate) struct Handler {
     threads: Vec<JoinHandle<usize>>,
     in_flight: Arc<AtomicUsize>,
     total_docs: usize,
+    active_threads: Arc<AtomicUsize>,
+    successful_requests: Arc<AtomicUsize>,
     elasticsearch: Elasticsearch,
     concurrency: usize,
     batch_size: usize,
     bulk_sender: crossbeam::channel::Sender<BulkRequestCommand<'static>>,
     bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand<'static>>,
     error_sender: crossbeam::channel::Sender<BulkRequestError>,
+    allow_refresh: bool,
 }
 
 struct BulkReceiver<'a> {
@@ -301,6 +332,7 @@ impl Handler {
         concurrency: usize,
         batch_size: usize,
         error_sender: crossbeam::channel::Sender<BulkRequestError>,
+        allow_refresh: bool,
     ) -> Self {
         // NB:  creating a large (queue_size * concurrency) bounded channel
         // is quite slow.  Going with our max docs per bulk request
@@ -311,12 +343,15 @@ impl Handler {
             threads: Vec::new(),
             in_flight: Arc::new(AtomicUsize::new(0)),
             total_docs: 0,
+            active_threads: Arc::new(AtomicUsize::new(0)),
+            successful_requests: Arc::new(AtomicUsize::new(0)),
             elasticsearch,
             batch_size,
             concurrency,
             bulk_sender: tx,
             bulk_receiver: rx,
             error_sender,
+            allow_refresh,
         }
     }
 
@@ -363,8 +398,13 @@ impl Handler {
         let error = self.error_sender.clone();
         let terminated = self.terminatd.clone();
         let batch_size = self.batch_size;
+        let active_threads = self.active_threads.clone();
+        let successful_requests = self.successful_requests.clone();
+        let allow_refresh = self.allow_refresh.clone();
+        let refresh_interval = self.elasticsearch.options.refresh_interval.clone();
 
         std::thread::spawn(move || {
+            active_threads.fetch_add(1, Ordering::SeqCst);
             let mut initial_command = Some(initial_command);
             let mut total_docs_out = 0;
             loop {
@@ -401,11 +441,21 @@ impl Handler {
                     buffer: Vec::new(),
                 };
 
-                let url = &format!("{}/_bulk?filter_path={}", base_url, BULK_FILTER_PATH);
+                let mut url = format!("{}/_bulk?filter_path={}", base_url, BULK_FILTER_PATH);
+                if allow_refresh && refresh_interval == RefreshInterval::Immediate {
+                    let nthreads = active_threads.load(Ordering::SeqCst);
+                    let nrequests = successful_requests.load(Ordering::SeqCst);
+
+                    if nthreads == 1 && nrequests == 0 {
+                        // we can force a refresh here only if we have 1 thread
+                        // and also haven't had any successful requests yet
+                        url.push_str("&refresh=true");
+                    }
+                }
 
                 if let Err(e) = Elasticsearch::execute_request(
                     reqwest::Client::new()
-                        .post(url)
+                        .post(&url)
                         .header("content-type", "application/json")
                         .body(reader),
                     |code, resp_string| {
@@ -428,6 +478,7 @@ impl Handler {
                         };
 
                         if !response.errors {
+                            successful_requests.fetch_add(1, Ordering::SeqCst);
                             Ok(())
                         } else {
                             // yup, the response contains an error
@@ -450,6 +501,7 @@ impl Handler {
                 }
             }
 
+            active_threads.fetch_sub(1, Ordering::SeqCst);
             total_docs_out
         })
     }
