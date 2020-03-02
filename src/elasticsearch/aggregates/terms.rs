@@ -1,5 +1,6 @@
 use crate::elasticsearch::aggregates::terms::pg_catalog::TermsOrderBy;
 use crate::elasticsearch::Elasticsearch;
+use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde::*;
@@ -71,20 +72,8 @@ fn terms(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result.buckets.into_iter().map(|entry| {
-        (
-            match entry.key {
-                Value::Null => None,
-                Value::Bool(b) => Some(if b {
-                    "true".to_string()
-                } else {
-                    "false".to_string()
-                }),
-                Value::Number(n) => Some(n.to_string()),
-                Value::String(s) => Some(s),
-                _ => panic!("unsupported value type"),
-            },
-            entry.doc_count,
-        )
-    })
+    result
+        .buckets
+        .into_iter()
+        .map(|entry| (json_to_string(entry.key), entry.doc_count))
 }

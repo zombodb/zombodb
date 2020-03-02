@@ -1,4 +1,5 @@
 use crate::elasticsearch::Elasticsearch;
+use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde::*;
@@ -56,17 +57,7 @@ fn significant_terms(
 
     result.buckets.into_iter().map(|entry| {
         (
-            match entry.key {
-                Value::Null => None,
-                Value::Bool(b) => Some(if b {
-                    "true".to_string()
-                } else {
-                    "false".to_string()
-                }),
-                Value::Number(n) => Some(n.to_string()),
-                Value::String(s) => Some(s),
-                _ => panic!("unsupported value type"),
-            },
+            json_to_string(entry.key),
             entry.doc_count,
             entry.score,
             entry.bg_count,
