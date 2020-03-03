@@ -30,13 +30,13 @@ fn significant_terms(
     }
 
     #[derive(Deserialize, Serialize)]
-    struct TermsAggData {
+    struct SignificantTermsAggData {
         buckets: Vec<BucketEntry>,
     }
 
     let elasticsearch = Elasticsearch::new(&index);
 
-    let request = elasticsearch.aggregate::<TermsAggData>(
+    let request = elasticsearch.aggregate::<SignificantTermsAggData>(
         query,
         json! {
             {
