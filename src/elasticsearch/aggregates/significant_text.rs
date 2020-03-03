@@ -10,7 +10,7 @@ fn significant_text(
     index: PgRelation,
     field_name: &str,
     query: ZDBQuery,
-    sample_size: Option<default!(i32, 0)>,
+    size: default!(i32, 10),
     filter_duplicate_text: Option<default!(bool, true)>,
 ) -> impl std::iter::Iterator<
     Item = (
@@ -29,21 +29,32 @@ fn significant_text(
     }
 
     #[derive(Deserialize, Serialize)]
-    struct TermsAggData {
+    struct SignificantTextAggData {
         buckets: Vec<BucketEntry>,
+    }
+
+    #[derive(Deserialize, Serialize)]
+    struct SignificantKeywords {
+        significant_keywords: SignificantTextAggData,
     }
 
     let elasticsearch = Elasticsearch::new(&index);
 
-    let request = elasticsearch.aggregate::<TermsAggData>(
+    let request = elasticsearch.aggregate::<SignificantKeywords>(
         query,
         json! {
             {
-                "significant_text": {
-                    "field": field_name,
-                    "shard_size": std::i32::MAX,
-                    "sample_size": sample_size,
-                    "filter_duplicate_text": filter_duplicate_text
+                "sampler" : {
+                    "shard_size" : (2.0 * (size as f32 * 1.5 + 10.0)) as i32
+                },
+                "aggregations": {
+                    "significant_keywords" : {
+                        "significant_text" : {
+                            "field": field_name,
+                            "size": size,
+                            "filter_duplicate_text": filter_duplicate_text
+                        }
+                    }
                 }
             }
         },
@@ -53,12 +64,16 @@ fn significant_text(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result.buckets.into_iter().map(|entry| {
-        (
-            json_to_string(entry.key),
-            entry.doc_count,
-            entry.score,
-            entry.bg_count,
-        )
-    })
+    result
+        .significant_keywords
+        .buckets
+        .into_iter()
+        .map(|entry| {
+            (
+                json_to_string(entry.key),
+                entry.doc_count,
+                entry.score,
+                entry.bg_count,
+            )
+        })
 }
