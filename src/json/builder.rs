@@ -2,6 +2,7 @@ use crate::json::json_string::JsonString;
 use crate::json::utils::escape_json;
 use pgx::{Date, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
+#[derive(Debug)]
 pub struct JsonBuilder<'a> {
     bool: Vec<(&'a str, bool)>,
     i16: Vec<(&'a str, i16)>,

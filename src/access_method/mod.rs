@@ -4,6 +4,7 @@ mod build;
 mod cost_estimate;
 pub mod options;
 mod scan;
+mod triggers;
 mod vacuum;
 
 /// ```sql

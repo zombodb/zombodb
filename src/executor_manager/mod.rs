@@ -86,21 +86,22 @@ impl ExecutorManager {
 
     pub fn checkout_bulk_context(
         &'static mut self,
-        indexrel: &PgRelation,
+        relid: pg_sys::Oid,
     ) -> &'static mut BulkContext {
         if self.bulk_requests.is_none() {
             self.bulk_requests.replace(HashMap::new());
             self.tuple_descriptors.replace(HashMap::new());
         }
 
-        let relid = indexrel.oid();
         let tupdesc_map = self.tuple_descriptors.as_mut().unwrap();
-        let tupdesc = tupdesc_map
-            .entry(relid)
-            .or_insert_with(|| lookup_zdb_index_tupdesc(&indexrel));
+        let tupdesc = tupdesc_map.entry(relid).or_insert_with(|| {
+            let indexrel = unsafe { PgRelation::open(relid) };
+            lookup_zdb_index_tupdesc(&indexrel)
+        });
 
         let bulk_map = self.bulk_requests.as_mut().unwrap();
         bulk_map.entry(relid).or_insert_with(move || {
+            let indexrel = unsafe { PgRelation::open(relid) };
             let elasticsearch = Elasticsearch::new(&indexrel);
             let attributes = categorize_tupdesc(tupdesc, None);
 

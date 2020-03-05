@@ -1,3 +1,4 @@
+use crate::access_method::triggers::create_triggers;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
@@ -79,6 +80,9 @@ pub extern "C" fn ambuild(
         .execute()
         .expect("failed to update index settings after build");
 
+    // create the triggers we need on the table to which this index is attached
+    create_triggers(&index_relation);
+
     let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
     result.heap_tuples = ntuples as f64;
     result.index_tuples = ntuples as f64;
@@ -140,7 +144,7 @@ pub unsafe extern "C" fn aminsert(
     _index_info: *mut pg_sys::IndexInfo,
 ) -> bool {
     let index_relation = PgRelation::from_pg(index_relation);
-    let bulk = get_executor_manager().checkout_bulk_context(&index_relation);
+    let bulk = get_executor_manager().checkout_bulk_context(index_relation.oid());
     let values = std::slice::from_raw_parts(values, 1);
     let builder = row_to_json(values[0], bulk.tupdesc, &bulk.attributes);
     let cmin = pg_sys::GetCurrentCommandId(true);

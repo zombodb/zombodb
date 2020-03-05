@@ -133,7 +133,7 @@ impl ZDBIndexOptions {
             })
             .as_str()
         {
-            "-1" => RefreshInterval::Immediate,
+            "-1" | "immediate" => RefreshInterval::Immediate,
             "async" => RefreshInterval::ImmediateAsync,
             other => RefreshInterval::Background(other.to_owned()),
         }
