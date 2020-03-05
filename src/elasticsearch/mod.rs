@@ -140,6 +140,13 @@ impl Elasticsearch {
         ElasticsearchAggregateSearchRequest::new(self, query, agg_request)
     }
 
+    pub fn raw_json_aggregate<T: DeserializeOwned>(
+        &self,
+        agg_request: serde_json::Value,
+    ) -> ElasticsearchAggregateSearchRequest<T> {
+        ElasticsearchAggregateSearchRequest::from_raw(self, agg_request)
+    }
+
     pub fn base_url(&self) -> String {
         format!("{}{}", self.options.url, self.options.index_name)
     }
