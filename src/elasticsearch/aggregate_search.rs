@@ -10,8 +10,7 @@ where
     ReturnType: DeserializeOwned,
 {
     elasticsearch: Elasticsearch,
-    query: ZDBQuery,
-    agg_json: serde_json::Value,
+    json_query: serde_json::Value,
     _marker: PhantomData<ReturnType>,
 }
 
@@ -26,8 +25,31 @@ where
     ) -> ElasticsearchAggregateSearchRequest<ReturnType> {
         ElasticsearchAggregateSearchRequest::<ReturnType> {
             elasticsearch: elasticsearch.clone(),
-            query,
-            agg_json,
+            json_query: json! {
+                {
+                    "query": query.query_dsl().expect("zdbquery has no query_dsl"),
+                    "aggs": {
+                        "the_agg": agg_json
+                    }
+                }
+            },
+            _marker: PhantomData::<ReturnType>,
+        }
+    }
+
+    pub fn from_raw(
+        elasticsearch: &Elasticsearch,
+        agg_json: serde_json::Value,
+    ) -> ElasticsearchAggregateSearchRequest<ReturnType> {
+        ElasticsearchAggregateSearchRequest::<ReturnType> {
+            elasticsearch: elasticsearch.clone(),
+            json_query: json! {
+                {
+                    "aggs": {
+                        "the_agg": agg_json
+                    }
+                }
+            },
             _marker: PhantomData::<ReturnType>,
         }
     }
@@ -36,21 +58,10 @@ where
         let mut url = self.elasticsearch.base_url();
         url.push_str("/_search");
         url.push_str("?size=0");
-        let query_dsl = self.query.query_dsl().expect("zdbquery has no query_dsl");
         let client = reqwest::Client::new()
             .get(&url)
             .header("content-type", "application/json")
-            .body(
-                serde_json::to_string(&json! {
-                    {
-                        "query": query_dsl,
-                        "aggs": {
-                            "the_agg": self.agg_json
-                        }
-                    }
-                })
-                .unwrap(),
-            );
+            .body(serde_json::to_string(&self.json_query).unwrap());
 
         Elasticsearch::execute_request(client, |_, body| {
             #[derive(Deserialize)]
