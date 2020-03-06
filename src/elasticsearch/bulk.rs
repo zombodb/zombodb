@@ -546,7 +546,6 @@ impl Handler {
             match jh.join() {
                 Ok(many) => {
                     self.check_for_error();
-                    info!("jh finished");
                     cnt += many;
                 }
                 Err(e) => panic!("Got an error joining on a thread: {}", downcast_err(e)),
