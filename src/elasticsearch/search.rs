@@ -27,10 +27,19 @@ pub struct HitsTotal {
 
 #[derive(Deserialize)]
 pub struct Fields {
-    zdb_ctid: [u64; 1],
+    zdb_ctid: Option<[u64; 1]>,
 
     #[serde(flatten)]
     other: HashMap<String, serde_json::Value>,
+}
+
+impl Default for Fields {
+    fn default() -> Self {
+        Fields {
+            zdb_ctid: None,
+            other: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -47,7 +56,7 @@ pub struct InnerHit {
     #[serde(rename = "_id")]
     id: Option<String>,
 
-    fields: Fields,
+    fields: Option<Fields>,
 }
 
 #[derive(Deserialize)]
@@ -289,8 +298,16 @@ impl Scroller {
             std::panic::catch_unwind(|| {
                 for itr in scroll_receiver {
                     for hit in itr {
+                        let ctid = hit.fields.unwrap_or_default().zdb_ctid.unwrap_or([0])[0];
+
+                        if ctid == 0 {
+                            // this most likely represents the "zdb_aborted_xids" document,
+                            // so we can just skip it
+                            continue;
+                        }
+
                         sender
-                            .send((hit.score.unwrap_or_default(), hit.fields.zdb_ctid[0]))
+                            .send((hit.score.unwrap_or_default(), ctid))
                             .expect("failed to send hit over sender");
                     }
                 }

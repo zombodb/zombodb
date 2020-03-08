@@ -94,6 +94,10 @@ pub extern "C" fn amgettuple(
             let tid = &mut scan.xs_heaptid;
 
             u64_to_item_pointer(ctid, tid);
+
+            if !item_pointer_is_valid(tid) {
+                panic!("invalid item pointer: {:?}", item_pointer_get_both(&tid));
+            }
             true
         }
         None => false,

@@ -17,7 +17,6 @@ pub struct BulkContext {
 }
 
 pub struct ExecutorManager {
-    depth: u32,
     tuple_descriptors: Option<HashMap<pg_sys::Oid, PgTupleDesc<'static>>>,
     bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext>>,
 }
@@ -25,39 +24,33 @@ pub struct ExecutorManager {
 impl ExecutorManager {
     pub const fn new() -> Self {
         ExecutorManager {
-            depth: 0,
             tuple_descriptors: None,
             bulk_requests: None,
         }
     }
 
-    pub fn push(&mut self) {
-        self.depth += 1;
-    }
-
-    pub fn pop(&mut self) {
-        self.depth -= 1;
-    }
-
-    pub fn on_end(&mut self) {
-        if self.depth == 0 {
-            self.finalize_bulk_requests();
-            self.cleanup()
-        }
-    }
-
     pub fn abort(&mut self) {
         self.terminate_bulk_requests();
-        self.cleanup()
+        self.cleanup();
+    }
+
+    pub fn commit(&mut self) {
+        self.finalize_bulk_requests();
+        self.cleanup();
     }
 
     fn finalize_bulk_requests(&mut self) {
         match self.bulk_requests.take() {
             Some(bulk_requests) => {
                 // finish any of the bulk requests we have going on
-                for (_, bulk) in bulk_requests.into_iter() {
+                for (_, mut bulk) in bulk_requests.into_iter() {
+                    bulk.bulk
+                        .transaction_committed(unsafe { pg_sys::GetCurrentTransactionId() })
+                        .expect("failed to mark transaction as committed");
                     match bulk.bulk.finish() {
-                        Ok(cnt) => info!("indexed {} tuples", cnt),
+                        Ok((ntuples, nrequests)) => {
+                            info!("indexed {} tuples in {} requests", ntuples, nrequests)
+                        }
                         Err(e) => panic!(e),
                     }
                 }
@@ -81,7 +74,6 @@ impl ExecutorManager {
     fn cleanup(&mut self) {
         self.tuple_descriptors.take();
         self.bulk_requests.take();
-        self.depth = 0;
     }
 
     pub fn checkout_bulk_context(
@@ -105,11 +97,24 @@ impl ExecutorManager {
             let elasticsearch = Elasticsearch::new(&indexrel);
             let attributes = categorize_tupdesc(tupdesc, None);
 
-            BulkContext {
-                bulk: elasticsearch.start_bulk_with_refresh(),
+            let mut bulk = BulkContext {
+                bulk: elasticsearch.start_bulk(),
                 attributes,
                 tupdesc,
-            }
+            };
+
+            bulk.bulk
+                .transaction_in_progress(unsafe { pg_sys::GetCurrentTransactionId() })
+                .expect("failed to mark transaction as in progress");
+
+            register_xact_callback(PgXactCallbackEvent::PreCommit, || {
+                get_executor_manager().commit()
+            });
+            register_xact_callback(PgXactCallbackEvent::Abort, || {
+                get_executor_manager().abort()
+            });
+
+            bulk
         })
     }
 }

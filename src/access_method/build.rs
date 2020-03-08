@@ -100,7 +100,7 @@ fn do_heap_scan<'a>(
 ) -> usize {
     let mut state = BuildState::new(
         heap_relation.name(),
-        elasticsearch.start_bulk_without_refresh(),
+        elasticsearch.start_bulk(),
         &tupdesc,
         attributes,
     );
@@ -117,14 +117,19 @@ fn do_heap_scan<'a>(
         );
     }
 
-    let ntuples = state.bulk.finish().expect("Failed to finalize indexing");
+    let (ntuples, nrequests) = state.bulk.finish().expect("Failed to finalize indexing");
 
     // our work with Elasticsearch is done, so we can unregister our Abort callback
     callback.unregister_callback();
 
     elog(
         ZDB_LOG_LEVEL.get().log_level(),
-        &format!("Indexed {} rows to {}", ntuples, elasticsearch.base_url()),
+        &format!(
+            "Indexed {} rows to {} in {} requests",
+            ntuples,
+            elasticsearch.base_url(),
+            nrequests
+        ),
     );
 
     ntuples
