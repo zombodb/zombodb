@@ -58,7 +58,7 @@ pub struct ZDBIndexOptions {
 
 #[allow(dead_code)]
 impl ZDBIndexOptions {
-    pub fn from(relation: &PgBox<pg_sys::RelationData>) -> PgBox<ZDBIndexOptions> {
+    pub fn from(relation: &PgRelation) -> PgBox<ZDBIndexOptions> {
         if relation.rd_index.is_null() {
             panic!("relation doesn't represent an index")
         } else if relation.rd_options.is_null() {
@@ -193,6 +193,24 @@ impl ZDBIndexOptions {
             value.to_str().unwrap().to_owned()
         }
     }
+}
+
+#[pg_extern]
+fn index_name(index_relation: PgRelation) -> String {
+    let heap_relation = index_relation
+        .heap_relation()
+        .expect("relation is not an index relation");
+    ZDBIndexOptions::from(&index_relation).index_name(&heap_relation, &index_relation)
+}
+
+#[pg_extern]
+fn index_url(index_relation: PgRelation) -> String {
+    ZDBIndexOptions::from(&index_relation).url()
+}
+
+#[pg_extern]
+fn index_type_name(index_relation: PgRelation) -> String {
+    ZDBIndexOptions::from(&index_relation).type_name()
 }
 
 static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind = 0;
@@ -578,5 +596,57 @@ mod tests {
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
         assert_eq!(options.llapi(), false);
         assert_eq!(options.translog_durability(), "request")
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    unsafe fn test_index_name() {
+        Spi::run(
+            "CREATE TABLE test();  
+        CREATE INDEX idxtest 
+                  ON test 
+               USING zombodb ((test.*)) WITH (url='http://localhost:19200/');",
+        );
+
+        let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
+        let heap_relation = index_relation.heap_relation().unwrap();
+        let options = ZDBIndexOptions::from(&index_relation);
+
+        assert_eq!(
+            options.index_name(&heap_relation, &index_relation),
+            options.uuid(&heap_relation, &index_relation)
+        );
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    unsafe fn test_index_url() {
+        Spi::run(
+            "CREATE TABLE test();  
+        CREATE INDEX idxtest 
+                  ON test 
+               USING zombodb ((test.*)) WITH (url='http://localhost:19200/');",
+        );
+
+        let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
+        let options = ZDBIndexOptions::from(&index_relation);
+
+        assert_eq!(options.url(), "http://localhost:19200/");
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    unsafe fn test_index_type_name() {
+        Spi::run(
+            "CREATE TABLE test();  
+        CREATE INDEX idxtest 
+                  ON test 
+               USING zombodb ((test.*)) WITH (url='http://localhost:19200/');",
+        );
+
+        let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
+        let options = ZDBIndexOptions::from(&index_relation);
+
+        assert_eq!(options.type_name(), "doc");
     }
 }
