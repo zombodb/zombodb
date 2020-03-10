@@ -5,5 +5,7 @@ mod histogram;
 mod percentile_ranks;
 mod percentiles;
 mod significant_terms;
+mod significant_terms_two_level;
 mod significant_text;
 mod terms;
+mod terms_two_level;

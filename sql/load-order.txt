@@ -36,3 +36,5 @@ elasticsearch_aggregates_adjacency_matrix.generated.sql
 elasticsearch_aggregates_arbitrary_agg.generated.sql
 elasticsearch_aggregates_percentiles.generated.sql
 elasticsearch_aggregates_percentile_ranks.generated.sql
+access_method_options.generated.sql
+elasticsearch_aggregates_terms_two_level.generated.sql
