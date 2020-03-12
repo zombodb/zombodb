@@ -125,7 +125,7 @@ fn do_heap_scan<'a>(
     elog(
         ZDB_LOG_LEVEL.get().log_level(),
         &format!(
-            "Indexed {} rows to {} in {} requests",
+            "[zombodb] indexed {} rows to {} in {} requests",
             ntuples,
             elasticsearch.base_url(),
             nrequests

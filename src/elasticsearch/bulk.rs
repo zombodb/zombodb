@@ -41,6 +41,13 @@ pub enum BulkRequestCommand<'a> {
         ctid: u64,
         xmax: u64,
     },
+    VacuumXmax {
+        ctid: u64,
+        xmax: u64,
+    },
+    RemoveAbortedTransactions {
+        xids: Vec<u64>,
+    },
     Interrupt,
     Done,
 }
@@ -197,30 +204,50 @@ impl ElasticsearchBulkRequest {
 
     pub fn delete_by_xmin(
         &mut self,
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         xmin: u64,
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
-            .queue_command(BulkRequestCommand::DeleteByXmin {
-                ctid: item_pointer_to_u64(ctid),
-                xmin,
-            })
+            .queue_command(BulkRequestCommand::DeleteByXmin { ctid, xmin })
     }
 
     pub fn delete_by_xmax(
         &mut self,
-        ctid: pg_sys::ItemPointerData,
+        ctid: u64,
         xmax: u64,
     ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
-            .queue_command(BulkRequestCommand::DeleteByXmax {
-                ctid: item_pointer_to_u64(ctid),
-                xmax,
-            })
+            .queue_command(BulkRequestCommand::DeleteByXmax { ctid, xmax })
+    }
+
+    pub fn vacuum_xmax(
+        &mut self,
+        ctid: u64,
+        xmax: u64,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        self.handler.check_for_error();
+
+        self.handler
+            .queue_command(BulkRequestCommand::VacuumXmax { ctid, xmax })
+    }
+
+    pub fn remove_aborted_xids(
+        &mut self,
+        xids: Vec<u64>,
+    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+        self.handler.check_for_error();
+
+        if xids.is_empty() {
+            // nothing to do
+            Ok(())
+        } else {
+            self.handler
+                .queue_command(BulkRequestCommand::RemoveAbortedTransactions { xids })
+        }
     }
 }
 
@@ -316,9 +343,13 @@ impl<'a> BulkReceiver<'a> {
 
                 doc.add_u64("zdb_ctid", ctid);
                 doc.add_u32("zdb_cmin", cmin);
-                doc.add_u32("zdb_cmax", cmax);
+                if cmax as pg_sys::CommandId != pg_sys::InvalidCommandId {
+                    doc.add_u32("zdb_cmax", cmax);
+                }
                 doc.add_u64("zdb_xmin", xmin);
-                doc.add_u64("zdb_xmax", xmax);
+                if xmax as pg_sys::TransactionId != pg_sys::InvalidTransactionId {
+                    doc.add_u64("zdb_xmax", xmax);
+                }
 
                 let doc_as_json = doc.build();
                 self.buffer.append(&mut doc_as_json.into_bytes());
@@ -420,8 +451,105 @@ impl<'a> BulkReceiver<'a> {
                 .expect("failed to serialize update line for transaction committed");
                 self.buffer.push(b'\n');
             }
-            BulkRequestCommand::DeleteByXmin { .. } => panic!("unsupported"),
-            BulkRequestCommand::DeleteByXmax { .. } => panic!("unsupported"),
+            BulkRequestCommand::DeleteByXmin { ctid, xmin } => {
+                serde_json::to_writer(
+                    &mut self.buffer,
+                    &json! {
+                        {
+                            "update": { "_id": ctid }
+                        }
+                    },
+                )
+                .expect("failed to serialize update line for delete by xmin");
+                self.buffer.push(b'\n');
+
+                serde_json::to_writer(&mut self.buffer,
+                &json! {
+                    {
+                        "script": {
+                            "source": "if (ctx._source.zdb_xmin == params.EXPECTED_XMIN) { ctx.op='delete'; } else { ctx.op='none'; }",
+                            "lang": "painless",
+                            "params": { "EXPECTED_XMIN": xmin }
+                        }
+                    }
+                }).expect("failed to serialize script line for delete by xmin");
+                self.buffer.push(b'\n');
+            }
+            BulkRequestCommand::DeleteByXmax { ctid, xmax } => {
+                serde_json::to_writer(
+                    &mut self.buffer,
+                    &json! {
+                        {
+                            "update": { "_id": ctid }
+                        }
+                    },
+                )
+                .expect("failed to serialize update line for delete by xmax");
+                self.buffer.push(b'\n');
+
+                serde_json::to_writer(&mut self.buffer,
+                                      &json! {
+                    {
+                        "script": {
+                            "source": "if (ctx._source.zdb_xmax == params.EXPECTED_XMAX) { ctx.op='delete'; } else { ctx.op='none'; }",
+                            "lang": "painless",
+                            "params": { "EXPECTED_XMAX": xmax }
+                        }
+                    }
+                }).expect("failed to serialize script line for delete by xmax");
+                self.buffer.push(b'\n');
+            }
+            BulkRequestCommand::VacuumXmax { ctid, xmax } => {
+                serde_json::to_writer(
+                    &mut self.buffer,
+                    &json! {
+                        {
+                            "update": { "_id": ctid, "retry_on_conflict": 0 }
+                        }
+                    },
+                )
+                .expect("failed to serialize update line for vacuum xmax");
+                self.buffer.push(b'\n');
+
+                serde_json::to_writer(&mut self.buffer,
+                                      &json! {
+                    {
+                        "script": {
+                            "source": "if (ctx._source.zdb_xmax != params.EXPECTED_XMAX) { ctx.op='none'; } else { ctx._source.zdb_xmax=null; }",
+                            "lang": "painless",
+                            "params": { "EXPECTED_XMAX": xmax }
+                        }
+                    }
+                }).expect("failed to serialize script line for vacuum xmax");
+                self.buffer.push(b'\n');
+            }
+            BulkRequestCommand::RemoveAbortedTransactions { xids } => {
+                serde_json::to_writer(
+                    &mut self.buffer,
+                    &json! {
+                        {
+                            "update": { "_id": "zdb_aborted_xids", "retry_on_conflict": 128 }
+                        }
+                    },
+                )
+                .expect("failed to serialize update line for remove aborted transactions");
+                self.buffer.push(b'\n');
+
+                serde_json::to_writer(
+                    &mut self.buffer,
+                    &json! {
+                        {
+                            "script": {
+                                "source": "ctx._source.zdb_aborted_xids.removeAll(params.XIDS);",
+                                "lang": "painless",
+                                "params": { "XIDS": xids }
+                            }
+                        }
+                    },
+                )
+                .expect("failed to serialize script line for remove aborted transactions");
+                self.buffer.push(b'\n');
+            }
             BulkRequestCommand::Interrupt => panic!("unsupported"),
             BulkRequestCommand::Done => panic!("unsupported"),
         }
