@@ -3,6 +3,8 @@ mod arbitrary_agg;
 mod count;
 mod date_histogram;
 mod histogram;
+mod percentile_ranks;
+mod percentiles;
 mod significant_terms;
 mod significant_text;
 mod terms;
