@@ -235,7 +235,10 @@ impl ElasticsearchSearchRequest {
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         Elasticsearch::execute_request(
-            reqwest::Client::new()
+            reqwest::Client::builder()
+                .gzip(true)
+                .build()
+                .expect("failed to build client")
                 .post(&url)
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&body).unwrap()),

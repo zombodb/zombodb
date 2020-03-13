@@ -610,17 +610,22 @@ impl Handler {
             );
         }
 
-        self.total_docs += 1;
-
         // send the command
         self.bulk_sender.as_ref().unwrap().send(command)?;
 
         // now determine if we need to start a new thread to handle what's in the queue
-        if nthreads == 0 || (nthreads < self.concurrency && self.total_docs > 10_000) {
-            info!("queue={}", self.bulk_receiver.len());
+        if nthreads == 0
+            || (nthreads < self.concurrency && self.total_docs % (10_000 / self.concurrency) == 0)
+        {
+            info!(
+                "queue={}, total_docs={}",
+                self.bulk_receiver.len(),
+                self.total_docs
+            );
             self.threads.push(Some(self.create_thread(nthreads)));
         }
 
+        self.total_docs += 1;
         Ok(())
     }
 
@@ -669,7 +674,11 @@ impl Handler {
 
                 let url = format!("{}/_bulk?filter_path={}", base_url, BULK_FILTER_PATH);
                 if let Err(e) = Elasticsearch::execute_request(
-                    reqwest::Client::new()
+                    reqwest::Client::builder()
+                        .timeout(Duration::from_secs(60 * 60))
+                        .gzip(true)
+                        .build()
+                        .expect("failed to build client")
                         .post(&url)
                         .header("content-type", "application/json")
                         .body(reader),
