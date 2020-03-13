@@ -95,7 +95,7 @@ impl ExecutorManager {
         bulk_map.entry(relid).or_insert_with(move || {
             let indexrel = unsafe { PgRelation::open(relid) };
             let elasticsearch = Elasticsearch::new(&indexrel);
-            let attributes = categorize_tupdesc(tupdesc, None);
+            let attributes = categorize_tupdesc(tupdesc, &indexrel.heap_relation().unwrap(), None);
 
             let mut bulk = BulkContext {
                 bulk: elasticsearch.start_bulk(),

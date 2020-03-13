@@ -42,8 +42,8 @@ pub extern "C" fn ambuild(
     let elasticsearch = Elasticsearch::new(&index_relation);
     let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
 
-    let mut mapping = generate_default_mapping();
-    let attributes = categorize_tupdesc(&tupdesc, Some(&mut mapping));
+    let mut mapping = generate_default_mapping(&heap_relation);
+    let attributes = categorize_tupdesc(&tupdesc, &heap_relation, Some(&mut mapping));
 
     // delete any existing Elasticsearch index with the same name as this one we're about to create
     elasticsearch

@@ -13,10 +13,17 @@ pub struct CategorizedAttribute<'a> {
 
 pub fn categorize_tupdesc<'a>(
     tupdesc: &'a PgTupleDesc,
-    mut mapping: Option<&mut HashMap<&'a str, serde_json::Value>>,
+    heap_relation: &PgRelation,
+    mut mapping: Option<&mut HashMap<String, serde_json::Value>>,
 ) -> Vec<CategorizedAttribute<'a>> {
+    let mut categorized_attributes = Vec::with_capacity(tupdesc.len());
     let type_conversion_cache = lookup_type_conversions();
-    let mut vec = Vec::with_capacity(tupdesc.len());
+    let user_mappings = if mapping.is_some() {
+        Some(lookup_mappings(&heap_relation))
+    } else {
+        None
+    };
+
     for attribute in tupdesc.iter() {
         let attname = attribute.name();
         let dropped = attribute.is_dropped();
@@ -36,7 +43,7 @@ pub fn categorize_tupdesc<'a>(
                 builder.add_json_value(name, json.0);
             })
         } else {
-            // use one of our built-in coverters, downcasting arrays to their element type
+            // use one of our built-in converters, downcasting arrays to their element type
             // as Elasticsearch doesn't require special mapping notations for arrays
             let array_type = unsafe { pg_sys::get_element_type(attribute.type_oid().value()) };
 
@@ -347,9 +354,9 @@ pub fn categorize_tupdesc<'a>(
         };
 
         if mapping.is_some() {
-            mapping.as_mut().unwrap().insert(
-                attribute.name(),
-                match lookup_type_mapping(&typoid) {
+            let definition = match user_mappings.as_ref().unwrap().get(attname).cloned() {
+                Some(json) => json,
+                None => match lookup_type_mapping(&typoid) {
                     Some(json) => json,
                     None => {
                         info!(
@@ -359,10 +366,15 @@ pub fn categorize_tupdesc<'a>(
                         json!({"type": "keyword"})
                     }
                 },
-            );
+            };
+
+            mapping
+                .as_mut()
+                .unwrap()
+                .insert(attname.to_owned(), definition);
         }
 
-        vec.push(CategorizedAttribute {
+        categorized_attributes.push(CategorizedAttribute {
             attname,
             dropped,
             typoid: typoid.value(),
@@ -370,7 +382,7 @@ pub fn categorize_tupdesc<'a>(
         });
     }
 
-    vec
+    categorized_attributes
 }
 
 fn handle_unsupported_type<'a>(
@@ -399,21 +411,75 @@ fn handle_unsupported_type<'a>(
     })
 }
 
-pub fn generate_default_mapping() -> HashMap<&'static str, serde_json::Value> {
+pub fn generate_default_mapping(heap_relation: &PgRelation) -> HashMap<String, serde_json::Value> {
     let mut mapping = HashMap::new();
 
     mapping.insert(
-        "zdb_all",
+        "zdb_all".to_owned(),
         json! {{ "type": "text", "analyzer": "zdb_all_analyzer" }},
     );
-    mapping.insert("zdb_ctid", json! {{ "type": "long" }});
-    mapping.insert("zdb_cmin", json! {{ "type": "integer" }});
-    mapping.insert("zdb_cmax", json! {{ "type": "integer" }});
-    mapping.insert("zdb_xmin", json! {{ "type": "long" }});
-    mapping.insert("zdb_xmax", json! {{ "type": "long" }});
-    mapping.insert("zdb_aborted_xids", json! {{ "type": "long" }});
+    mapping.insert("zdb_ctid".to_owned(), json! {{ "type": "long" }});
+    mapping.insert("zdb_cmin".to_owned(), json! {{ "type": "integer" }});
+    mapping.insert("zdb_cmax".to_owned(), json! {{ "type": "integer" }});
+    mapping.insert("zdb_xmin".to_owned(), json! {{ "type": "long" }});
+    mapping.insert("zdb_xmax".to_owned(), json! {{ "type": "long" }});
+    mapping.insert("zdb_aborted_xids".to_owned(), json! {{ "type": "long" }});
+
+    for (field, definition) in lookup_es_only_field_mappings(heap_relation) {
+        mapping.insert(field, definition);
+    }
 
     mapping
+}
+
+pub fn lookup_es_only_field_mappings(
+    heap_relation: &PgRelation,
+) -> Vec<(String, serde_json::Value)> {
+    let mut mappings = Vec::new();
+    Spi::connect(|client| {
+        let mut table = client.select("SELECT field_name, definition FROM zdb.mappings WHERE table_name = $1 and es_only = true",
+                                      None,
+                                      Some(
+                                          vec![
+                                              (PgOid::BuiltIn(PgBuiltInOids::OIDOID), heap_relation.clone().into_datum())
+                                          ]
+                                      )
+        );
+
+        while table.next().is_some() {
+            let data = table.get_two::<String, JsonB>();
+            mappings.push((
+                data.0.expect("field_name is NULL"),
+                data.1.expect("mapping definition is NULL").0,
+            ));
+        }
+
+        Ok(Some(()))
+    });
+    mappings
+}
+
+pub fn lookup_mappings(heap_relation: &PgRelation) -> HashMap<String, serde_json::Value> {
+    let mut mappings = HashMap::new();
+    Spi::connect(|client| {
+        let mut table = client.select("SELECT field_name, definition FROM zdb.mappings WHERE table_name = $1 and es_only = false",
+                                      None,
+                                      Some(
+                                          vec![
+                                              (PgOid::BuiltIn(PgBuiltInOids::OIDOID), heap_relation.clone().into_datum())
+                                          ]
+                                      )
+        );
+        while table.next().is_some() {
+            let data = table.get_two::<String, JsonB>();
+            mappings.insert(
+                data.0.expect("fieldname was null"),
+                data.1.expect("mapping definition was null").0,
+            );
+        }
+        Ok(Some(()))
+    });
+    mappings
 }
 
 pub fn lookup_analysis_thing(table_name: &str) -> Value {
@@ -474,9 +540,13 @@ mod tests {
             .expect("failed to get idxtest oid from SPI");
         let index = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_id));
         let tupdesc = lookup_zdb_index_tupdesc(&index);
-        let mut mapping = generate_default_mapping();
+        let mut mapping = generate_default_mapping(&index.heap_relation().unwrap());
 
-        categorize_tupdesc(&tupdesc, Some(&mut mapping));
+        categorize_tupdesc(
+            &tupdesc,
+            &index.heap_relation().unwrap(),
+            Some(&mut mapping),
+        );
         let mapping_json = serde_json::to_value(&mapping).unwrap();
 
         assert_eq!(
