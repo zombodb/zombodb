@@ -61,7 +61,7 @@ pub enum BulkRequestError {
 
 pub struct ElasticsearchBulkRequest {
     handler: Handler,
-    error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
+    error_receiver: crossbeam_channel::Receiver<BulkRequestError>,
 }
 
 impl ElasticsearchBulkRequest {
@@ -71,7 +71,7 @@ impl ElasticsearchBulkRequest {
         concurrency: usize,
         batch_size: usize,
     ) -> Self {
-        let (etx, erx) = crossbeam::channel::bounded(concurrency);
+        let (etx, erx) = crossbeam_channel::bounded(concurrency);
 
         ElasticsearchBulkRequest {
             handler: Handler::new(
@@ -141,7 +141,7 @@ impl ElasticsearchBulkRequest {
         xmin: u64,
         xmax: u64,
         builder: JsonBuilder<'static>,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler.queue_command(BulkRequestCommand::Insert {
@@ -159,7 +159,7 @@ impl ElasticsearchBulkRequest {
         ctid: pg_sys::ItemPointerData,
         cmax: pg_sys::CommandId,
         xmax: u64,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler.queue_command(BulkRequestCommand::Update {
@@ -172,7 +172,7 @@ impl ElasticsearchBulkRequest {
     pub fn transaction_in_progress(
         &mut self,
         xid: pg_sys::TransactionId,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
@@ -184,7 +184,7 @@ impl ElasticsearchBulkRequest {
     pub fn transaction_committed(
         &mut self,
         xid: pg_sys::TransactionId,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         // the transaction committed command needs to be the last command we send
@@ -206,7 +206,7 @@ impl ElasticsearchBulkRequest {
         &mut self,
         ctid: u64,
         xmin: u64,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
@@ -217,7 +217,7 @@ impl ElasticsearchBulkRequest {
         &mut self,
         ctid: u64,
         xmax: u64,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
@@ -228,7 +228,7 @@ impl ElasticsearchBulkRequest {
         &mut self,
         ctid: u64,
         xmax: u64,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
@@ -238,7 +238,7 @@ impl ElasticsearchBulkRequest {
     pub fn remove_aborted_xids(
         &mut self,
         xids: Vec<u64>,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         if xids.is_empty() {
@@ -263,17 +263,17 @@ pub(crate) struct Handler {
     elasticsearch: Elasticsearch,
     concurrency: usize,
     batch_size: usize,
-    bulk_sender: Option<crossbeam::channel::Sender<BulkRequestCommand<'static>>>,
-    bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand<'static>>,
-    error_sender: crossbeam::channel::Sender<BulkRequestError>,
-    error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
+    bulk_sender: Option<crossbeam_channel::Sender<BulkRequestCommand<'static>>>,
+    bulk_receiver: crossbeam_channel::Receiver<BulkRequestCommand<'static>>,
+    error_sender: crossbeam_channel::Sender<BulkRequestError>,
+    error_receiver: crossbeam_channel::Receiver<BulkRequestError>,
 }
 
 struct BulkReceiver<'a> {
     terminated: Arc<AtomicBool>,
     first: Option<BulkRequestCommand<'a>>,
     in_flight: Arc<AtomicUsize>,
-    receiver: crossbeam::channel::Receiver<BulkRequestCommand<'a>>,
+    receiver: crossbeam_channel::Receiver<BulkRequestCommand<'a>>,
     bytes_out: usize,
     docs_out: Arc<AtomicUsize>,
     active_threads: Arc<AtomicUsize>,
@@ -568,12 +568,12 @@ impl Handler {
         _queue_size: usize,
         concurrency: usize,
         batch_size: usize,
-        error_sender: crossbeam::channel::Sender<BulkRequestError>,
-        error_receiver: &crossbeam::channel::Receiver<BulkRequestError>,
+        error_sender: crossbeam_channel::Sender<BulkRequestError>,
+        error_receiver: &crossbeam_channel::Receiver<BulkRequestError>,
     ) -> Self {
         // NB:  creating a large (queue_size * concurrency) bounded channel
-        // is quite slow.  Going with our max docs per bulk request
-        let (tx, rx) = crossbeam::channel::bounded(10_000);
+        // is quite slow.  Going with 2 * concurrency, which should be twice the number of index shards
+        let (tx, rx) = crossbeam_channel::bounded(2 * concurrency);
 
         Handler {
             terminatd: Arc::new(AtomicBool::new(false)),
@@ -595,7 +595,7 @@ impl Handler {
     pub fn queue_command(
         &mut self,
         command: BulkRequestCommand<'static>,
-    ) -> Result<(), crossbeam::SendError<BulkRequestCommand<'static>>> {
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
         let nthreads = self.active_threads.load(Ordering::SeqCst);
         if self.total_docs > 0 && self.total_docs % 10_000 == 0 {
             elog(
@@ -616,10 +616,7 @@ impl Handler {
         self.bulk_sender.as_ref().unwrap().send(command)?;
 
         // now determine if we need to start a new thread to handle what's in the queue
-        if nthreads == 0
-            || (nthreads < self.concurrency
-                && self.bulk_receiver.len() >= 10_000 / self.concurrency)
-        {
+        if nthreads == 0 || (nthreads < self.concurrency && self.total_docs > 10_000) {
             info!("queue={}", self.bulk_receiver.len());
             self.threads.push(Some(self.create_thread(nthreads)));
         }
@@ -647,7 +644,7 @@ impl Handler {
                     break;
                 }
 
-                let first = Some(match rx.recv_timeout(Duration::from_millis(10)) {
+                let first = Some(match rx.recv_timeout(Duration::from_millis(333)) {
                     Ok(command) => command,
                     Err(_) => {
                         // we don't have a first command to deal with on this iteration b/c
@@ -730,7 +727,7 @@ impl Handler {
     }
 
     fn send_error(
-        sender: crossbeam::Sender<BulkRequestError>,
+        sender: crossbeam_channel::Sender<BulkRequestError>,
         code: Option<reqwest::StatusCode>,
         message: &str,
         total_docs_out: usize,
