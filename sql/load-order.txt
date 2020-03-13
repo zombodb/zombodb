@@ -39,3 +39,4 @@ elasticsearch_aggregates_percentile_ranks.generated.sql
 access_method_options.generated.sql
 elasticsearch_aggregates_terms_two_level.generated.sql
 elasticsearch_aggregates_significant_terms_two_level.generated.sql
+elasticsearch_aggregates_filters.generated.sql

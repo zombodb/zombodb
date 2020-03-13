@@ -1,6 +1,7 @@
 mod adjacency_matrix;
 mod arbitrary_agg;
 mod date_histogram;
+mod filters;
 mod histogram;
 mod percentile_ranks;
 mod percentiles;
