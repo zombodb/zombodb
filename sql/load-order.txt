@@ -34,6 +34,8 @@ elasticsearch_aggregates_histogram.generated.sql
 elasticsearch_aggregates_date_histogram.generated.sql
 elasticsearch_aggregates_adjacency_matrix.generated.sql
 elasticsearch_aggregates_arbitrary_agg.generated.sql
+access_method_options.generated.sql
+elasticsearch_aggregates_count.generated.sql
 elasticsearch_aggregates_percentiles.generated.sql
 elasticsearch_aggregates_percentile_ranks.generated.sql
 access_method_options.generated.sql

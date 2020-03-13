@@ -86,7 +86,7 @@ pub extern "C" fn amgettuple(
 
     let iter = unsafe { state.iterator.as_mut() }.expect("no iterator in state");
     match iter.next() {
-        Some((_score, ctid)) => {
+        Some((_score, ctid, _)) => {
             #[cfg(any(feature = "pg10", feature = "pg11"))]
             let tid = &mut scan.xs_ctup.t_self;
 

@@ -1,4 +1,4 @@
-mod dsl {
+pub mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde::*;

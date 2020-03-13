@@ -25,18 +25,22 @@ pub struct HitsTotal {
     relation: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Fields {
-    zdb_ctid: Option<[u64; 1]>,
+    pub zdb_ctid: Option<[u64; 1]>,
+    pub zdb_xmin: Option<[u64; 1]>,
+    pub zdb_xmax: Option<[u64; 1]>,
 
     #[serde(flatten)]
-    other: HashMap<String, serde_json::Value>,
+    pub other: HashMap<String, serde_json::Value>,
 }
 
 impl Default for Fields {
     fn default() -> Self {
         Fields {
             zdb_ctid: None,
+            zdb_xmin: None,
+            zdb_xmax: None,
             other: HashMap::new(),
         }
     }
@@ -93,12 +97,24 @@ impl ElasticsearchSearchRequest {
     }
 
     pub fn execute(self) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
-        ElasticsearchSearchRequest::initial_search(self.elasticsearch, self.query)
+        ElasticsearchSearchRequest::initial_search(self.elasticsearch, self.query, None)
+    }
+
+    pub fn execute_with_fields(
+        self,
+        extra_fields: Vec<&str>,
+    ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
+        ElasticsearchSearchRequest::initial_search(
+            self.elasticsearch,
+            self.query,
+            Some(extra_fields),
+        )
     }
 
     fn initial_search(
         elasticsearch: Elasticsearch,
         query: ZDBQuery,
+        extra_fields: Option<Vec<&str>>,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
         url.push_str(&elasticsearch.base_url());
@@ -108,7 +124,12 @@ impl ElasticsearchSearchRequest {
         url.push_str("&scroll=10m");
         url.push_str(&format!("&filter_path={}", SEARCH_FILTER_PATH));
         url.push_str("&stored_fields=_none_");
-        url.push_str("&docvalue_fields=zdb_ctid");
+
+        let mut docvalue_fields = extra_fields.unwrap_or_default();
+
+        // we always want the zdb_ctid field
+        docvalue_fields.push("zdb_ctid");
+        url.push_str(&format!("&docvalue_fields={}", docvalue_fields.join(",")));
 
         // do we need to track scores?
         let track_scores =
@@ -240,7 +261,7 @@ impl ElasticsearchSearchRequest {
 }
 
 pub struct Scroller {
-    receiver: crossbeam::channel::Receiver<(f64, u64)>,
+    receiver: crossbeam::channel::Receiver<(f64, u64, Fields)>,
 }
 
 impl Scroller {
@@ -298,7 +319,8 @@ impl Scroller {
             std::panic::catch_unwind(|| {
                 for itr in scroll_receiver {
                     for hit in itr {
-                        let ctid = hit.fields.unwrap_or_default().zdb_ctid.unwrap_or([0])[0];
+                        let fields = hit.fields.unwrap_or_default();
+                        let ctid = fields.zdb_ctid.unwrap_or([0])[0];
 
                         if ctid == 0 {
                             // this most likely represents the "zdb_aborted_xids" document,
@@ -307,7 +329,7 @@ impl Scroller {
                         }
 
                         sender
-                            .send((hit.score.unwrap_or_default(), ctid))
+                            .send((hit.score.unwrap_or_default(), ctid, fields))
                             .expect("failed to send hit over sender");
                     }
                 }
@@ -318,7 +340,7 @@ impl Scroller {
         Scroller { receiver }
     }
 
-    fn next(&self) -> Option<(f64, u64)> {
+    fn next(&self) -> Option<(f64, u64, Fields)> {
         match self.receiver.recv() {
             Ok(tuple) => Some(tuple),
             Err(_) => None,
@@ -333,7 +355,7 @@ pub struct SearchResponseIntoIter {
 }
 
 impl Iterator for SearchResponseIntoIter {
-    type Item = (f64, u64);
+    type Item = (f64, u64, Fields);
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(limit) = self.limit {
@@ -351,7 +373,7 @@ impl Iterator for SearchResponseIntoIter {
 }
 
 impl IntoIterator for ElasticsearchSearchResponse {
-    type Item = (f64, u64);
+    type Item = (f64, u64, Fields);
     type IntoIter = SearchResponseIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {

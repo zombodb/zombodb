@@ -4,7 +4,7 @@
 //!Terms lookup fetches the field values of an existing document.
 //! Elasticsearch then uses those values as search terms. This can be helpful when searching for a large set of terms.
 
-mod dsl {
+pub mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde::*;

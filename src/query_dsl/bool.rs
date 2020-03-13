@@ -169,9 +169,9 @@ pub mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    fn and(queries: VariadicArray<ZDBQuery>) -> ZDBQuery {
+    pub fn and(queries: Vec<Option<ZDBQuery>>) -> ZDBQuery {
         let clauses: Vec<serde_json::Value> = queries
-            .iter()
+            .into_iter()
             .map(|zdbquery| {
                 zdbquery
                     .expect("found NULL zdbquery in clauses")

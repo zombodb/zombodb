@@ -2,8 +2,11 @@
 
 mod aggregates;
 mod bulk;
+mod count;
 mod create_index;
 mod delete_index;
+mod expunge_deletes;
+mod get_document;
 mod refresh_index;
 mod update_settings;
 
@@ -12,7 +15,10 @@ pub mod search;
 
 use crate::access_method::options::{RefreshInterval, ZDBIndexOptions};
 use crate::elasticsearch::aggregate_search::ElasticsearchAggregateSearchRequest;
+use crate::elasticsearch::count::ElasticsearchCountRequest;
 use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
+use crate::elasticsearch::expunge_deletes::ElasticsearchExpungeDeletesRequest;
+use crate::elasticsearch::get_document::ElasticsearchGetDocumentRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
@@ -104,6 +110,10 @@ impl Elasticsearch {
         ElasticsearchRefreshIndexRequest::new(self)
     }
 
+    pub fn expunge_deletes(&self) -> ElasticsearchExpungeDeletesRequest {
+        ElasticsearchExpungeDeletesRequest::new(self)
+    }
+
     pub fn update_settings(&self) -> ElasticsearchUpdateSettingsRequest {
         ElasticsearchUpdateSettingsRequest::new(self)
     }
@@ -131,6 +141,18 @@ impl Elasticsearch {
         agg_request: serde_json::Value,
     ) -> ElasticsearchAggregateSearchRequest<T> {
         ElasticsearchAggregateSearchRequest::from_raw(self, agg_request)
+    }
+
+    pub fn count(&self, query: ZDBQuery) -> ElasticsearchCountRequest {
+        ElasticsearchCountRequest::new(self, query)
+    }
+
+    pub fn get_document<'a, T: DeserializeOwned>(
+        &self,
+        id: &'a str,
+        realtime: bool,
+    ) -> ElasticsearchGetDocumentRequest<'a, T> {
+        ElasticsearchGetDocumentRequest::<T>::new(self, id, realtime)
     }
 
     pub fn base_url(&self) -> String {

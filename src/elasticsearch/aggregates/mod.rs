@@ -1,5 +1,6 @@
 mod adjacency_matrix;
 mod arbitrary_agg;
+mod count;
 mod date_histogram;
 mod filters;
 mod histogram;
