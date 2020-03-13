@@ -261,7 +261,7 @@ impl ElasticsearchSearchRequest {
 }
 
 pub struct Scroller {
-    receiver: crossbeam::channel::Receiver<(f64, u64, Fields)>,
+    receiver: crossbeam_channel::Receiver<(f64, u64, Fields)>,
 }
 
 impl Scroller {
@@ -270,8 +270,8 @@ impl Scroller {
         mut scroll_id: Option<String>,
         iter: std::vec::IntoIter<InnerHit>,
     ) -> Self {
-        let (sender, receiver) = crossbeam::channel::unbounded();
-        let (scroll_sender, scroll_receiver) = crossbeam::channel::unbounded();
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        let (scroll_sender, scroll_receiver) = crossbeam_channel::unbounded();
 
         // go ahead and queue up the results we currently have from the initial search
         scroll_sender
