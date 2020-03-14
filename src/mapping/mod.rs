@@ -246,7 +246,7 @@ pub fn categorize_tupdesc<'a>(
                     PgBuiltInOids::TIMESTAMPTZOID => {
                         if is_array {
                             Box::new(|builder, name, datum, oid| {
-                                builder.add_timestamp_with_timestamp_zone_array(
+                                builder.add_timestamp_with_time_zone_array(
                                     name,
                                     unsafe {
                                         Vec::<Option<TimestampWithTimeZone>>::from_datum(
@@ -258,7 +258,7 @@ pub fn categorize_tupdesc<'a>(
                             })
                         } else {
                             Box::new(|builder, name, datum, oid| {
-                                builder.add_timestamp_with_timestamp_zone(
+                                builder.add_timestamp_with_time_zone(
                                     name,
                                     unsafe { TimestampWithTimeZone::from_datum(datum, false, oid) }
                                         .unwrap(),

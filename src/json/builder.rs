@@ -133,11 +133,7 @@ impl<'a> JsonBuilder<'a> {
     }
 
     #[inline]
-    pub fn add_timestamp_with_timestamp_zone(
-        &mut self,
-        attname: &'a str,
-        value: TimestampWithTimeZone,
-    ) {
+    pub fn add_timestamp_with_time_zone(&mut self, attname: &'a str, value: TimestampWithTimeZone) {
         self.timestamp_with_time_zone.push((attname, value));
     }
 
@@ -221,7 +217,7 @@ impl<'a> JsonBuilder<'a> {
     }
 
     #[inline]
-    pub fn add_timestamp_with_timestamp_zone_array(
+    pub fn add_timestamp_with_time_zone_array(
         &mut self,
         attname: &'a str,
         value: Vec<Option<TimestampWithTimeZone>>,
