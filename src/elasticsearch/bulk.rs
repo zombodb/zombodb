@@ -573,7 +573,7 @@ impl Handler {
     ) -> Self {
         // NB:  creating a large (queue_size * concurrency) bounded channel
         // is quite slow.  Going with 2 * concurrency, which should be twice the number of index shards
-        let (tx, rx) = crossbeam_channel::bounded(2 * concurrency);
+        let (tx, rx) = crossbeam_channel::bounded((2 * concurrency).max(4));
 
         Handler {
             terminatd: Arc::new(AtomicBool::new(false)),
