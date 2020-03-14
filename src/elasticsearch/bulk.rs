@@ -618,7 +618,7 @@ impl Handler {
             || (nthreads < self.concurrency && self.total_docs % (10_000 / self.concurrency) == 0)
         {
             info!(
-                "queue={}, total_docs={}",
+                "creating thread:  queue={}, total_docs={}",
                 self.bulk_receiver.len(),
                 self.total_docs
             );
@@ -630,7 +630,6 @@ impl Handler {
     }
 
     fn create_thread(&self, _thread_id: usize) -> JoinHandle<usize> {
-        info!("creating thread");
         let base_url = self.elasticsearch.base_url().clone();
         let rx = self.bulk_receiver.clone();
         let in_flight = self.in_flight.clone();
