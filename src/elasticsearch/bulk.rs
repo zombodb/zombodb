@@ -601,11 +601,12 @@ impl Handler {
             elog(
                 ZDB_LOG_LEVEL.get().log_level(),
                 &format!(
-                    "total={}, in_flight={}, queued={}, active_threads={}",
+                    "[zombodb] total={}, in_flight={}, queued={}, active_threads={}, index={}",
                     self.total_docs,
                     self.in_flight.load(Ordering::SeqCst),
                     self.bulk_receiver.len(),
                     nthreads,
+                    self.elasticsearch.base_url()
                 ),
             );
         }
