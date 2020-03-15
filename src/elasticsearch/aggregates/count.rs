@@ -13,3 +13,14 @@ fn count(index: PgRelation, query: ZDBQuery) -> i64 {
         .try_into()
         .expect("count request overflowed an i64")
 }
+
+#[pg_extern(immutable, parallel_safe)]
+fn raw_count(index: PgRelation, query: ZDBQuery) -> i64 {
+    let es = Elasticsearch::new(&index);
+
+    es.raw_count(query)
+        .execute()
+        .expect("failed to execute raw count query")
+        .try_into()
+        .expect("count request overflowed an i64")
+}

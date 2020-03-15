@@ -2,6 +2,7 @@ use pgx::*;
 use serde_json::{json, Value};
 
 mod cast;
+pub mod mvcc;
 mod opclass;
 
 pub use pg_catalog::*;
@@ -86,6 +87,20 @@ impl InOutFuncs for ZDBQuery {
                 }
             }
             Err(_) => Ok(ZDBQuery::new_with_query_string(input)),
+        }
+    }
+}
+
+impl Default for ZDBQuery {
+    fn default() -> Self {
+        ZDBQuery {
+            want_score: None,
+            row_estimate: None,
+            limit: None,
+            offset: None,
+            min_score: None,
+            sort_json: None,
+            query_dsl: None,
         }
     }
 }

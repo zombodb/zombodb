@@ -1,4 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
+use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use serde::*;
 use serde_json::*;
@@ -175,7 +176,7 @@ impl ElasticsearchSearchRequest {
         }
 
         #[derive(Serialize)]
-        struct Body<'a> {
+        struct Body {
             track_scores: bool,
 
             #[serde(skip_serializing_if = "Option::is_none")]
@@ -184,14 +185,23 @@ impl ElasticsearchSearchRequest {
             #[serde(skip_serializing_if = "Option::is_none")]
             sort: Option<Value>,
 
-            query: &'a Value,
+            query: Value,
         }
+
+        // we only need to apply the visibility clause for searching if the query has a limit
+        // in the future, maybe we can look at some table dead tuple stats and decide
+        // to apply the clause if the table has a high percentage of them
+        let query_dsl = if query.limit().is_some() {
+            apply_visibility_clause(&elasticsearch, &query, false)
+        } else {
+            query.query_dsl().expect("zdbquery has no QueryDSL").clone()
+        };
 
         let body = Body {
             track_scores,
             min_score: query.min_score(),
             sort: sort_json,
-            query: query.query_dsl().expect("zdbquery has no QueryDSL"),
+            query: query_dsl,
         };
 
         ElasticsearchSearchRequest::get_hits(

@@ -144,7 +144,11 @@ impl Elasticsearch {
     }
 
     pub fn count(&self, query: ZDBQuery) -> ElasticsearchCountRequest {
-        ElasticsearchCountRequest::new(self, query)
+        ElasticsearchCountRequest::new(self, query, false)
+    }
+
+    pub fn raw_count(&self, query: ZDBQuery) -> ElasticsearchCountRequest {
+        ElasticsearchCountRequest::new(self, query, true)
     }
 
     pub fn get_document<'a, T: DeserializeOwned>(
@@ -157,6 +161,14 @@ impl Elasticsearch {
 
     pub fn base_url(&self) -> String {
         format!("{}{}", self.options.url, self.options.index_name)
+    }
+
+    pub fn index_name(&self) -> &str {
+        &self.options.index_name
+    }
+
+    pub fn type_name(&self) -> &str {
+        &self.options.type_name
     }
 
     pub fn execute_request<F, R>(

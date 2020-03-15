@@ -1,4 +1,5 @@
 use crate::elasticsearch::Elasticsearch;
+use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde::*;
@@ -11,6 +12,8 @@ fn filters(
     labels: Array<&str>,
     filters: Array<ZDBQuery>,
 ) -> impl std::iter::Iterator<Item = (name!(term, String), name!(doc_count, i64))> {
+    let elasticsearch = Elasticsearch::new(&index);
+
     #[derive(Deserialize, Serialize)]
     struct FilterAggData {
         buckets: HashMap<String, BucketEntry>,
@@ -23,19 +26,14 @@ fn filters(
 
     let mut filters_map = HashMap::new();
     for (label, filter) in labels.iter().zip(filters.iter()) {
-        let label = label.unwrap_or_else(|| panic!("NULL labels are not allowed"));
-        let filter = filter.unwrap_or_else(|| panic!("NULL filters are not allowed"));
+        let label = label.expect("NULL labels are not allowed");
+        let filter = filter.expect("NULL filters are not allowed");
 
         filters_map.insert(
             label,
-            filter
-                .query_dsl()
-                .unwrap_or_else(|| panic!("ZDBQuery doesn't have a query_dsl"))
-                .clone(),
+            apply_visibility_clause(&elasticsearch, &filter, false),
         );
     }
-
-    let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.raw_json_aggregate::<FilterAggData>(json! {
         {

@@ -1,4 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
+use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use serde::de::DeserializeOwned;
 use serde::export::PhantomData;
@@ -23,11 +24,12 @@ where
         query: ZDBQuery,
         agg_json: serde_json::Value,
     ) -> ElasticsearchAggregateSearchRequest<ReturnType> {
+        let query_dsl = apply_visibility_clause(&elasticsearch, &query, false);
         ElasticsearchAggregateSearchRequest::<ReturnType> {
             elasticsearch: elasticsearch.clone(),
             json_query: json! {
                 {
-                    "query": query.query_dsl().expect("zdbquery has no query_dsl"),
+                    "query": query_dsl,
                     "aggs": {
                         "the_agg": agg_json
                     }
