@@ -11,5 +11,6 @@ mod percentiles;
 mod significant_terms;
 mod significant_terms_two_level;
 mod significant_text;
+mod stats;
 mod terms;
 mod terms_two_level;

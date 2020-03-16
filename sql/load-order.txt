@@ -45,3 +45,4 @@ elasticsearch_aggregates_filters.generated.sql
 elasticsearch_aggregates_matrix_stats.generated.sql
 zdbquery_mvcc.generated.sql
 elasticsearch_aggregates_metrics.generated.sql
+elasticsearch_aggregates_stats.generated.sql
