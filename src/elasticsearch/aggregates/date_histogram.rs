@@ -1,6 +1,5 @@
 use crate::elasticsearch::aggregates::date_histogram::pg_catalog::*;
 use crate::elasticsearch::Elasticsearch;
-use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde::*;
