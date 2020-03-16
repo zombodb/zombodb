@@ -5,7 +5,7 @@ use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
 
-const SEARCH_FILTER_PATH:&'static str = "_scroll_id,_shards.*,hits.total,hits.max_score,hits.hits._score,hits.hits.fields.*,hits.hits.highlight.*";
+const SEARCH_FILTER_PATH:&str = "_scroll_id,_shards.*,hits.total,hits.max_score,hits.hits._score,hits.hits.fields.*,hits.hits.highlight.*";
 
 pub struct ElasticsearchSearchRequest {
     elasticsearch: Elasticsearch,

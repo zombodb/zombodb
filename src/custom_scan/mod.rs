@@ -89,11 +89,12 @@ unsafe extern "C" fn pathlist_hook(
         None => {}
     }
 
-    let zdbquery_oid =
-        pg_sys::TypenameGetTypid(std::ffi::CString::new("zdbquery").unwrap().as_ptr());
+    let zdbquery_oid = pg_sys::TypenameGetTypid(
+        std::ffi::CStr::from_bytes_with_nul_unchecked(b"zdbquery\0").as_ptr(),
+    );
     let zdb_operator_oid = PgQualifiedNameBuilder::new()
-        .add("pg_catalog")
-        .add("==>")
+        .push("pg_catalog")
+        .push("==>")
         .get_operator_oid(pg_sys::ANYELEMENTOID, zdbquery_oid);
 
     info!("type_oid={}, op_oid={}", zdbquery_oid, zdb_operator_oid);
@@ -194,7 +195,7 @@ unsafe extern "C" fn ExecCustomScan(
     _node: *mut pg_sys::CustomScanState,
 ) -> *mut pg_sys::TupleTableSlot {
     info!("in ExecCustomScan");
-    0 as *mut pg_sys::TupleTableSlot
+    std::ptr::null_mut()
 }
 
 /// Clean up any private data associated with the CustomScanState. This method is required, but it

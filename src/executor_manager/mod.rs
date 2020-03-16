@@ -40,34 +40,28 @@ impl ExecutorManager {
     }
 
     fn finalize_bulk_requests(&mut self) {
-        match self.bulk_requests.take() {
-            Some(bulk_requests) => {
-                // finish any of the bulk requests we have going on
-                for (_, mut bulk) in bulk_requests.into_iter() {
-                    bulk.bulk
-                        .transaction_committed(unsafe { pg_sys::GetCurrentTransactionId() })
-                        .expect("failed to mark transaction as committed");
-                    match bulk.bulk.finish() {
-                        Ok((ntuples, nrequests)) => {
-                            info!("indexed {} tuples in {} requests", ntuples, nrequests)
-                        }
-                        Err(e) => panic!(e),
+        if let Some(bulk_requests) = self.bulk_requests.take() {
+            // finish any of the bulk requests we have going on
+            for (_, mut bulk) in bulk_requests.into_iter() {
+                bulk.bulk
+                    .transaction_committed(unsafe { pg_sys::GetCurrentTransactionId() })
+                    .expect("failed to mark transaction as committed");
+                match bulk.bulk.finish() {
+                    Ok((ntuples, nrequests)) => {
+                        info!("indexed {} tuples in {} requests", ntuples, nrequests)
                     }
+                    Err(e) => panic!(e),
                 }
             }
-            None => {}
         }
     }
 
     fn terminate_bulk_requests(&mut self) {
         // forcefully terminate any of the bulk requests we have going on
-        match self.bulk_requests.take() {
-            Some(bulk_requests) => {
-                for (_, bulk) in bulk_requests.into_iter() {
-                    bulk.bulk.terminate_now();
-                }
+        if let Some(bulk_requests) = self.bulk_requests.take() {
+            for (_, bulk) in bulk_requests.into_iter() {
+                bulk.bulk.terminate_now();
             }
-            None => {}
         }
     }
 

@@ -33,7 +33,6 @@ pub fn categorize_tupdesc<'a>(
 
         let conversion_func: Box<ConversionFunc> = if let Some(custom_converter) = conversion_func {
             // use a configured zdb.type_conversion
-            let typoid = typoid.clone();
             Box::new(move |builder, name, datum, _oid| {
                 let datum = unsafe {
                     pg_sys::OidFunctionCall1Coll(custom_converter, pg_sys::InvalidOid, datum)
@@ -356,7 +355,7 @@ pub fn categorize_tupdesc<'a>(
         if mapping.is_some() {
             let definition = match user_mappings.as_ref().unwrap().get(attname).cloned() {
                 Some(json) => json,
-                None => match lookup_type_mapping(&typoid) {
+                None => match lookup_type_mapping(typoid) {
                     Some(json) => json,
                     None => {
                         info!(
@@ -493,7 +492,7 @@ pub fn lookup_analysis_thing(table_name: &str) -> Value {
     }
 }
 
-fn lookup_type_mapping(typoid: &PgOid) -> Option<serde_json::Value> {
+fn lookup_type_mapping(typoid: PgOid) -> Option<serde_json::Value> {
     match Spi::get_one_with_args::<JsonB>(
         "SELECT definition FROM zdb.type_mappings WHERE type_name = $1;",
         vec![(

@@ -1,4 +1,9 @@
 #![recursion_limit = "256"]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::cast_ptr_alignment)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::redundant_closure)]
 use pgx::*;
 
 mod access_method;
@@ -24,7 +29,9 @@ pub unsafe extern "C" fn _PG_init() {
 
 #[allow(non_snake_case)]
 #[pg_guard]
-pub extern "C" fn _PG_fini() {}
+pub extern "C" fn _PG_fini() {
+    // noop
+}
 
 #[pg_extern]
 fn version() -> &'static str {

@@ -89,8 +89,7 @@ where
             let agg_resp: AggregateResponse =
                 serde_json::from_str(&body).expect("received invalid aggregate json response");
             let the_agg = agg_resp.aggregations.the_agg;
-            let foo: ReturnType = serde_json::from_value(the_agg).unwrap();
-            Ok(foo)
+            Ok(serde_json::from_value::<ReturnType>(the_agg).unwrap())
         })
     }
 }

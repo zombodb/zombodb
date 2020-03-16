@@ -14,8 +14,8 @@ pub enum ZDBLogLevel {
 }
 
 impl ZDBLogLevel {
-    pub fn log_level(&self) -> PgLogLevel {
-        match *self {
+    pub fn log_level(self) -> PgLogLevel {
+        match self {
             ZDBLogLevel::Debug => PgLogLevel::DEBUG2,
             ZDBLogLevel::Debug1 => PgLogLevel::DEBUG1,
             ZDBLogLevel::Debug3 => PgLogLevel::DEBUG3,

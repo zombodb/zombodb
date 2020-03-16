@@ -631,7 +631,7 @@ impl Handler {
     }
 
     fn create_thread(&self, _thread_id: usize) -> JoinHandle<usize> {
-        let base_url = self.elasticsearch.base_url().clone();
+        let base_url = self.elasticsearch.base_url();
         let rx = self.bulk_receiver.clone();
         let in_flight = self.in_flight.clone();
         let error = self.error_sender.clone();

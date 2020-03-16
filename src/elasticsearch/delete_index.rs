@@ -22,6 +22,6 @@ impl ElasticsearchDeleteIndexRequest {
             // any other error, however, is worthy of reporting back to the caller
             return Err(e);
         }
-        return Ok(());
+        Ok(())
     }
 }

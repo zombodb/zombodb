@@ -203,7 +203,7 @@ unsafe extern "C" fn build_callback(
 unsafe fn row_to_json<'a>(
     row: pg_sys::Datum,
     tupdesc: &PgTupleDesc,
-    attributes: &Vec<CategorizedAttribute<'a>>,
+    attributes: &[CategorizedAttribute<'a>],
 ) -> JsonBuilder<'a> {
     let mut builder = JsonBuilder::new(attributes.len());
 

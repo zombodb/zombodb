@@ -251,6 +251,7 @@ extern "C" fn validate_translog_durability(value: *const std::os::raw::c_char) {
     }
 }
 
+#[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
     reloptions: pg_sys::Datum,
@@ -370,9 +371,10 @@ pub unsafe fn init() {
         CStr::from_bytes_with_nul_unchecked(b"doc\0").as_ptr(),
         None,
     );
+    let default_refresh_interval = CString::new(DEFAULT_REFRESH_INTERVAL).unwrap();
     pg_sys::add_string_reloption(RELOPT_KIND_ZDB, CStr::from_bytes_with_nul_unchecked(b"refresh_interval\0").as_ptr(),
                                  CStr::from_bytes_with_nul_unchecked(b"Frequency in which Elasticsearch indexes are refreshed.  Related to ES' index.refresh_interval setting\0").as_ptr(),
-                                 CString::new(DEFAULT_REFRESH_INTERVAL).unwrap().as_ptr(), None);
+                                 default_refresh_interval.as_ptr(), None);
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
         CStr::from_bytes_with_nul_unchecked(b"shards\0").as_ptr(),

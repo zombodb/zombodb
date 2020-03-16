@@ -96,7 +96,7 @@ pub extern "C" fn amgettuple(
             u64_to_item_pointer(ctid, tid);
 
             if !item_pointer_is_valid(tid) {
-                panic!("invalid item pointer: {:?}", item_pointer_get_both(&tid));
+                panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
             }
             true
         }

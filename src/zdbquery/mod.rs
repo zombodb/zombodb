@@ -205,8 +205,7 @@ impl ZDBQuery {
         // collect all non-None (NULL) sort descriptors
         let mut v = Vec::new();
         for descriptor in descriptors {
-            if descriptor.is_some() {
-                let descriptor = descriptor.unwrap();
+            if let Some(descriptor) = descriptor {
                 v.push(json! {
                     {
                         &descriptor.field: descriptor.options

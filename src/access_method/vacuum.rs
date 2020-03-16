@@ -151,7 +151,7 @@ fn remove_aborted_xids(
 
 fn vacuum_xmax(
     elasticsearch: &Elasticsearch,
-    es_index_name: &String,
+    es_index_name: &str,
     oldest_xmin: u32,
     bulk: &mut ElasticsearchBulkRequest,
 ) -> usize {
@@ -187,7 +187,7 @@ fn vacuum_xmax(
 
 fn delete_by_xmax(
     elasticsearch: &Elasticsearch,
-    es_index_name: &String,
+    es_index_name: &str,
     oldest_xmin: u32,
     bulk: &mut ElasticsearchBulkRequest,
 ) -> usize {
@@ -223,7 +223,7 @@ fn delete_by_xmax(
 
 fn delete_by_xmin(
     elasticsearch: &Elasticsearch,
-    es_index_name: &String,
+    es_index_name: &str,
     oldest_xmin: u32,
     bulk: &mut ElasticsearchBulkRequest,
 ) -> usize {
