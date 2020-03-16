@@ -17,7 +17,7 @@ fn significant_terms_two_level(
         name!(term_one, Option<String>),
         name!(term_two, Option<String>),
         name!(doc_count, i64),
-        name!(score, f64), //todo Need to change later to numeric
+        name!(score, f64),
         name!(bg_count, i64),
         name!(doc_count_error_upper_bound, i64),
         name!(sum_other_doc_count, i64),
@@ -32,7 +32,7 @@ fn significant_terms_two_level(
     struct BucketEntry {
         doc_count: i64,
         key: serde_json::Value,
-        score: Option<f64>, //todo Need to change later to numeric
+        score: Option<f64>,
         bg_count: Option<i64>,
         sub_agg: Option<SubAgg>,
     }

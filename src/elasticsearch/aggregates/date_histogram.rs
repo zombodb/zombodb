@@ -35,7 +35,7 @@ fn date_histogram(
 ) -> impl std::iter::Iterator<
     Item = (
         name!(key_as_string, String),
-        name!(term, Option<String>),
+        name!(term, i64),
         name!(doc_count, i64),
     ),
 > {
@@ -43,7 +43,7 @@ fn date_histogram(
     struct BucketEntry {
         key_as_string: String,
         doc_count: i64,
-        key: serde_json::Value,
+        key: i64,
     }
 
     #[derive(Serialize)]
@@ -90,11 +90,8 @@ fn date_histogram(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result.buckets.into_iter().map(|entry| {
-        (
-            entry.key_as_string,
-            json_to_string(entry.key),
-            entry.doc_count,
-        )
-    })
+    result
+        .buckets
+        .into_iter()
+        .map(|entry| (entry.key_as_string, entry.key, entry.doc_count))
 }

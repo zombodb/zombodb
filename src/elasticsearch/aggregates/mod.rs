@@ -5,6 +5,7 @@ mod date_histogram;
 mod filters;
 mod histogram;
 mod matrix_stats;
+mod metrics;
 mod percentile_ranks;
 mod percentiles;
 mod significant_terms;

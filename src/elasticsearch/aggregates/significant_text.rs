@@ -16,7 +16,7 @@ fn significant_text(
     Item = (
         name!(term, Option<String>),
         name!(doc_count, i64),
-        name!(score, f32),
+        name!(score, f64),
         name!(bg_count, i64),
     ),
 > {
@@ -24,7 +24,7 @@ fn significant_text(
     struct BucketEntry {
         doc_count: i64,
         key: serde_json::Value,
-        score: f32,
+        score: f64,
         bg_count: i64,
     }
 

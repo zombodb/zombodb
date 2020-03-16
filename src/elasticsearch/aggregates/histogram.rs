@@ -12,11 +12,11 @@ fn histogram(
     query: ZDBQuery,
     interval: f64,
     min_doc_count: default!(i32, 0),
-) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(doc_count, i64))> {
+) -> impl std::iter::Iterator<Item = (name!(term, Numeric), name!(doc_count, i64))> {
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         doc_count: i64,
-        key: serde_json::Value,
+        key: Numeric,
     }
 
     #[derive(Deserialize, Serialize)]
@@ -46,5 +46,5 @@ fn histogram(
     result
         .buckets
         .into_iter()
-        .map(|entry| (json_to_string(entry.key), entry.doc_count))
+        .map(|entry| (entry.key, entry.doc_count))
 }

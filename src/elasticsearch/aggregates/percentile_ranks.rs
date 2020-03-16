@@ -10,11 +10,11 @@ fn percentile_ranks(
     field: &str,
     query: ZDBQuery,
     values: Json,
-) -> impl std::iter::Iterator<Item = (name!(key, f64), name!(value, f64))> {
+) -> impl std::iter::Iterator<Item = (name!(key, f64), name!(value, Numeric))> {
     #[derive(Deserialize, Serialize)]
     struct Entry {
         key: f64,
-        value: f64,
+        value: Numeric,
     }
 
     #[derive(Deserialize, Serialize)]
