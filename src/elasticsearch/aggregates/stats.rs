@@ -3,7 +3,6 @@ use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde::*;
 use serde_json::*;
-use std::slice::IterMut;
 
 #[pg_extern(immutable, parallel_safe)]
 fn stats(
