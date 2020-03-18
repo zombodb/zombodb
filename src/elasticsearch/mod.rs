@@ -22,6 +22,7 @@ use crate::elasticsearch::get_document::ElasticsearchGetDocumentRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
+use crate::executor_manager::get_executor_manager;
 use crate::zdbquery::ZDBQuery;
 pub use bulk::*;
 pub use create_index::*;
@@ -125,6 +126,7 @@ impl Elasticsearch {
     }
 
     pub fn open_search(&self, query: ZDBQuery) -> ElasticsearchSearchRequest {
+        get_executor_manager().wait_for_completion();
         ElasticsearchSearchRequest::new(self, query)
     }
 
@@ -133,6 +135,7 @@ impl Elasticsearch {
         query: ZDBQuery,
         agg_request: serde_json::Value,
     ) -> ElasticsearchAggregateSearchRequest<T> {
+        get_executor_manager().wait_for_completion();
         ElasticsearchAggregateSearchRequest::new(self, query, agg_request)
     }
 
@@ -140,14 +143,17 @@ impl Elasticsearch {
         &self,
         agg_request: serde_json::Value,
     ) -> ElasticsearchAggregateSearchRequest<T> {
+        get_executor_manager().wait_for_completion();
         ElasticsearchAggregateSearchRequest::from_raw(self, agg_request)
     }
 
     pub fn count(&self, query: ZDBQuery) -> ElasticsearchCountRequest {
+        get_executor_manager().wait_for_completion();
         ElasticsearchCountRequest::new(self, query, false)
     }
 
     pub fn raw_count(&self, query: ZDBQuery) -> ElasticsearchCountRequest {
+        get_executor_manager().wait_for_completion();
         ElasticsearchCountRequest::new(self, query, true)
     }
 

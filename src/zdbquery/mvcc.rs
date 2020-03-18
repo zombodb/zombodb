@@ -1,4 +1,5 @@
 use crate::elasticsearch::Elasticsearch;
+use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_IGNORE_VISIBILITY;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
@@ -37,7 +38,7 @@ pub fn apply_visibility_clause(
         PgBox::from_pg(unsafe { pg_sys::GetTransactionSnapshot() });
     let command_id = unsafe { pg_sys::GetCurrentCommandId(false) };
     let xmax = xid_to_64bit(snapshot.xmax);
-    let used_xids = Vec::<u64>::new(); // TODO: need subtransaction tracking for this
+    let used_xids = get_executor_manager().used_xids();
     let active_xids = {
         let xips = unsafe { std::slice::from_raw_parts(snapshot.xip, snapshot.xcnt as usize) };
         xips.iter()

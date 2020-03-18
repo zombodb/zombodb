@@ -48,3 +48,7 @@ elasticsearch_aggregates_metrics.generated.sql
 elasticsearch_aggregates_stats.generated.sql
 elasticsearch_aggregates_range.generated.sql
 elasticsearch_aggregates_date_range.generated.sql
+access_method_build.generated.sql
+elasticsearch_search.generated.sql
+gucs_mod.generated.sql
+mapping_mod.generated.sql
