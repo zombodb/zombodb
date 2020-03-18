@@ -77,3 +77,29 @@ fn terms(
         .into_iter()
         .map(|entry| (json_to_string(entry.key), entry.doc_count))
 }
+
+// need to hand-write the DDL for this b/c naming this function "terms_array"
+// conflicts with the function of the same name in the 'dsl' module
+/// ```sql
+/// CREATE OR REPLACE FUNCTION zdb."terms_array"(
+///     "index" regclass,
+///     "field_name" text,
+///     "query" ZDBQuery,
+///     "size_limit" integer DEFAULT '2147483647',
+///     "order_by" TermsOrderBy DEFAULT NULL)
+/// RETURNS text[]
+/// IMMUTABLE PARALLEL SAFE
+/// LANGUAGE c AS 'MODULE_PATHNAME', 'terms_array_agg_wrapper';
+/// ```
+#[pg_extern(imutable, parallel_safe)]
+fn terms_array_agg(
+    index: PgRelation,
+    field: &str,
+    query: ZDBQuery,
+    size_limit: Option<default!(i32, 2147483647)>,
+    order_by: Option<default!(TermsOrderBy, NULL)>,
+) -> Vec<Option<String>> {
+    terms(index, field, query, size_limit, order_by)
+        .map(|(term, _)| term)
+        .collect::<Vec<Option<String>>>()
+}
