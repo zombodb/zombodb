@@ -14,9 +14,9 @@ fn date_range(
 ) -> impl std::iter::Iterator<
     Item = (
         name!(key, String),
-        name!(from, Option<f32>),
+        name!(from, Option<Numeric>),
         name!(from_as_string, Option<String>),
-        name!(to, Option<f32>),
+        name!(to, Option<Numeric>),
         name!(to_as_string, Option<String>),
         name!(doc_count, i64),
     ),
@@ -29,9 +29,9 @@ fn date_range(
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         key: serde_json::Value,
-        from: Option<f32>,
+        from: Option<Numeric>,
         from_as_string: Option<String>,
-        to: Option<f32>,
+        to: Option<Numeric>,
         to_as_string: Option<String>,
         doc_count: i64,
     }

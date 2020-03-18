@@ -14,8 +14,8 @@ fn range(
 ) -> impl std::iter::Iterator<
     Item = (
         name!(key, String),
-        name!(from, Option<f32>),
-        name!(to, Option<f32>),
+        name!(from, Option<Numeric>),
+        name!(to, Option<Numeric>),
         name!(doc_count, i64),
     ),
 > {
@@ -27,8 +27,8 @@ fn range(
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         key: serde_json::Value,
-        from: Option<f32>,
-        to: Option<f32>,
+        from: Option<Numeric>,
+        to: Option<Numeric>,
         doc_count: i64,
     }
 
