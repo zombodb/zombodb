@@ -1,5 +1,6 @@
 use crate::access_method::options::RefreshInterval;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
+use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use pgx::*;
@@ -48,8 +49,6 @@ pub enum BulkRequestCommand<'a> {
     RemoveAbortedTransactions {
         xids: Vec<u64>,
     },
-    Interrupt,
-    Done,
 }
 
 #[derive(Debug)]
@@ -131,6 +130,13 @@ impl ElasticsearchBulkRequest {
 
     pub fn terminate_now(&self) {
         (self.terminate())();
+    }
+
+    pub fn totals(&self) -> (usize, usize) {
+        (
+            self.handler.total_docs,
+            self.handler.successful_requests.load(Ordering::SeqCst),
+        )
     }
 
     pub fn insert(
@@ -550,8 +556,6 @@ impl<'a> BulkReceiver<'a> {
                 .expect("failed to serialize script line for remove aborted transactions");
                 self.buffer.push(b'\n');
             }
-            BulkRequestCommand::Interrupt => panic!("unsupported"),
-            BulkRequestCommand::Done => panic!("unsupported"),
         }
     }
 }
@@ -596,6 +600,20 @@ impl Handler {
         &mut self,
         command: BulkRequestCommand<'static>,
     ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
+        match &command {
+            BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
+                let current_xid = unsafe { pg_sys::GetCurrentTransactionIdIfAny() };
+                if current_xid != pg_sys::InvalidTransactionId {
+                    get_executor_manager().push_xid(current_xid);
+                }
+            }
+            _ => {}
+        }
+
+        // send the command
+        self.bulk_sender.as_ref().unwrap().send(command)?;
+
+        // now determine if we need to start a new thread to handle what's in the queue
         let nthreads = self.active_threads.load(Ordering::SeqCst);
         if self.total_docs > 0 && self.total_docs % 10_000 == 0 {
             elog(
@@ -610,18 +628,14 @@ impl Handler {
                 ),
             );
         }
-
-        // send the command
-        self.bulk_sender.as_ref().unwrap().send(command)?;
-
-        // now determine if we need to start a new thread to handle what's in the queue
         if nthreads == 0
             || (nthreads < self.concurrency && self.total_docs % (10_000 / self.concurrency) == 0)
         {
             info!(
-                "creating thread:  queue={}, total_docs={}",
+                "creating thread:  queue={}, total_docs={}, nthreads={}",
                 self.bulk_receiver.len(),
-                self.total_docs
+                self.total_docs,
+                nthreads
             );
             self.threads.push(Some(self.create_thread(nthreads)));
         }

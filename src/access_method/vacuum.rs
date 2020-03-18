@@ -73,9 +73,13 @@ pub extern "C" fn ambulkdelete(
 #[pg_guard]
 pub extern "C" fn amvacuumcleanup(
     info: *mut pg_sys::IndexVacuumInfo,
-    _stats: *mut pg_sys::IndexBulkDeleteResult,
+    stats: *mut pg_sys::IndexBulkDeleteResult,
 ) -> *mut pg_sys::IndexBulkDeleteResult {
     let result = PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0();
+
+    if stats.is_null() {
+        ambulkdelete(info, result.as_ptr(), None, std::ptr::null_mut());
+    }
 
     let info = PgBox::from_pg(info);
     let index_relation = unsafe { PgRelation::from_pg(info.index) };

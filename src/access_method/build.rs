@@ -9,7 +9,7 @@ use pgx::*;
 
 struct BuildState<'a> {
     table_name: &'a str,
-    bulk: ElasticsearchBulkRequest,
+    bulk: &'a mut ElasticsearchBulkRequest,
     tupdesc: &'a PgTupleDesc<'a>,
     attributes: Vec<CategorizedAttribute<'a>>,
 }
@@ -17,7 +17,7 @@ struct BuildState<'a> {
 impl<'a> BuildState<'a> {
     fn new(
         table_name: &'a str,
-        bulk: ElasticsearchBulkRequest,
+        bulk: &'a mut ElasticsearchBulkRequest,
         tupdesc: &'a PgTupleDesc,
         attributes: Vec<CategorizedAttribute<'a>>,
     ) -> Self {
@@ -100,13 +100,13 @@ fn do_heap_scan<'a>(
 ) -> usize {
     let mut state = BuildState::new(
         heap_relation.name(),
-        elasticsearch.start_bulk(),
+        &mut get_executor_manager()
+            .checkout_bulk_context(index_relation.oid())
+            .bulk,
         &tupdesc,
         attributes,
     );
 
-    // register an Abort callback so we can terminate early if there's an error
-    let callback = register_xact_callback(PgXactCallbackEvent::Abort, state.bulk.terminate());
     unsafe {
         pg_sys::IndexBuildHeapScan(
             heap_relation.as_ptr(),
@@ -117,10 +117,7 @@ fn do_heap_scan<'a>(
         );
     }
 
-    let (ntuples, nrequests) = state.bulk.finish().expect("Failed to finalize indexing");
-
-    // our work with Elasticsearch is done, so we can unregister our Abort callback
-    callback.unregister_callback();
+    let (ntuples, nrequests) = state.bulk.totals();
 
     elog(
         ZDB_LOG_LEVEL.get().log_level(),
