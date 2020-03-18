@@ -3,6 +3,7 @@ mod arbitrary_agg;
 mod count;
 mod date_histogram;
 mod date_range;
+mod extended_stats;
 mod filters;
 mod histogram;
 mod matrix_stats;
