@@ -243,6 +243,14 @@ impl ZDBQuery {
     }
 }
 
+#[pg_extern(immutable, parallel_safe)]
+fn to_query_dsl(query: ZDBQuery) -> Option<JsonB> {
+    match query.query_dsl() {
+        Some(json) => Some(JsonB(json.clone())),
+        None => None,
+    }
+}
+
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::zdbquery::*;
