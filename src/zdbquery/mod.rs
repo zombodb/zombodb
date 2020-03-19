@@ -251,6 +251,22 @@ fn to_query_dsl(query: ZDBQuery) -> Option<JsonB> {
     }
 }
 
+#[pg_extern(immutable, parallel_safe)]
+fn to_queries_dsl(queries: Array<ZDBQuery>) -> Vec<Option<JsonB>> {
+    let mut result = Vec::new();
+    for query in queries.iter() {
+        match query {
+            Some(query) => result.push(match query.query_dsl() {
+                Some(json) => Some(JsonB(json.clone())),
+                None => None,
+            }),
+            None => result.push(None),
+        }
+    }
+
+    result
+}
+
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::zdbquery::*;
