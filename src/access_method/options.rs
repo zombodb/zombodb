@@ -1,3 +1,4 @@
+use crate::elasticsearch::Elasticsearch;
 use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
 use lazy_static::*;
 use memoffset::*;
@@ -195,7 +196,7 @@ impl ZDBIndexOptions {
     }
 }
 
-#[pg_extern]
+#[pg_extern(immutable, parallel_safe)]
 fn index_name(index_relation: PgRelation) -> String {
     let heap_relation = index_relation
         .heap_relation()
@@ -203,14 +204,24 @@ fn index_name(index_relation: PgRelation) -> String {
     ZDBIndexOptions::from(&index_relation).index_name(&heap_relation, &index_relation)
 }
 
-#[pg_extern]
+#[pg_extern(immutable, parallel_safe)]
 fn index_url(index_relation: PgRelation) -> String {
     ZDBIndexOptions::from(&index_relation).url()
 }
 
-#[pg_extern]
+#[pg_extern(immutable, parallel_safe)]
 fn index_type_name(index_relation: PgRelation) -> String {
     ZDBIndexOptions::from(&index_relation).type_name()
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn index_mapping(index_relation: PgRelation) -> JsonB {
+    JsonB(
+        Elasticsearch::new(&index_relation)
+            .get_mapping()
+            .execute()
+            .expect("failed to get index mapping"),
+    )
 }
 
 static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind = 0;

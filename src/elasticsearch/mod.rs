@@ -7,6 +7,7 @@ mod create_index;
 mod delete_index;
 mod expunge_deletes;
 mod get_document;
+mod get_mapping;
 mod refresh_index;
 mod update_settings;
 
@@ -19,6 +20,7 @@ use crate::elasticsearch::count::ElasticsearchCountRequest;
 use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 use crate::elasticsearch::expunge_deletes::ElasticsearchExpungeDeletesRequest;
 use crate::elasticsearch::get_document::ElasticsearchGetDocumentRequest;
+use crate::elasticsearch::get_mapping::ElasticsearchGetMappingRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
@@ -163,6 +165,10 @@ impl Elasticsearch {
         realtime: bool,
     ) -> ElasticsearchGetDocumentRequest<'a, T> {
         ElasticsearchGetDocumentRequest::<T>::new(self, id, realtime)
+    }
+
+    pub fn get_mapping(&self) -> ElasticsearchGetMappingRequest {
+        ElasticsearchGetMappingRequest::new(self)
     }
 
     pub fn base_url(&self) -> String {
