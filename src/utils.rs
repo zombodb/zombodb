@@ -1,5 +1,41 @@
-use pgx::{pg_sys, PgMemoryContexts, PgRelation, PgTupleDesc};
+use crate::access_method::amvalidate;
+use pgx::*;
 use serde_json::Value;
+
+pub fn find_zdb_index(heap_relation: &PgRelation) -> PgRelation {
+    let index_list = PgList::<pg_sys::Oid>::from_pg(unsafe {
+        pg_sys::RelationGetIndexList(heap_relation.as_ptr())
+    });
+
+    for i in 0..index_list.len() {
+        let oid = index_list.get_oid(i).unwrap();
+        let index_relation: *mut pg_sys::RelationData =
+            unsafe { pg_sys::RelationIdGetRelation(oid) };
+
+        if !index_relation.is_null() {
+            if !unsafe { index_relation.as_ref() }
+                .unwrap()
+                .rd_amroutine
+                .is_null()
+                && unsafe { index_relation.as_ref().unwrap().rd_amroutine.as_ref() }
+                    .unwrap()
+                    .amvalidate
+                    == Some(amvalidate)
+            {
+                unsafe {
+                    pg_sys::RelationClose(index_relation);
+                    return PgRelation::open(oid);
+                }
+            }
+
+            unsafe {
+                pg_sys::RelationClose(index_relation);
+            }
+        }
+    }
+
+    panic!("no zombodb index on {}", heap_relation.name())
+}
 
 pub fn lookup_zdb_index_tupdesc(indexrel: &PgRelation) -> PgTupleDesc<'static> {
     let tupdesc = indexrel.tuple_desc();

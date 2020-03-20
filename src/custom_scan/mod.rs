@@ -102,7 +102,7 @@ unsafe extern "C" fn pathlist_hook(
     let restrict_info_list = PgList::<pg_sys::RestrictInfo>::from_pg(rel.baserestrictinfo);
 
     for i in 0..restrict_info_list.len() {
-        let ri = PgBox::<pg_sys::RestrictInfo>::from_pg(restrict_info_list.get(i).unwrap());
+        let ri = PgBox::<pg_sys::RestrictInfo>::from_pg(restrict_info_list.get_ptr(i).unwrap());
 
         info!(
             "ri={}",

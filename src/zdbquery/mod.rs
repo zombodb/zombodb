@@ -5,6 +5,7 @@ mod cast;
 pub mod mvcc;
 mod opclass;
 
+use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 pub use pg_catalog::*;
 
 mod pg_catalog {
@@ -19,7 +20,7 @@ mod pg_catalog {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) want_score: Option<()>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub(super) row_estimate: Option<u64>,
+        pub(super) row_estimate: Option<i64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) limit: Option<u64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -158,11 +159,14 @@ impl ZDBQuery {
         self
     }
 
-    pub fn row_estimate(&self) -> Option<u64> {
-        self.row_estimate
+    pub fn row_estimate(&self) -> i64 {
+        match self.row_estimate {
+            Some(estimate) => estimate,
+            None => ZDB_DEFAULT_ROW_ESTIMATE.get() as i64,
+        }
     }
 
-    pub fn set_row_estimate(mut self, row_estimate: Option<u64>) -> Self {
+    pub fn set_row_estimate(mut self, row_estimate: Option<i64>) -> Self {
         self.row_estimate = row_estimate;
         self
     }

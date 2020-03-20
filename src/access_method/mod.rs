@@ -40,6 +40,6 @@ fn amhandler() -> PgBox<pg_sys::IndexAmRoutine> {
 }
 
 #[pg_guard]
-extern "C" fn amvalidate(_opclassoid: pg_sys::Oid) -> bool {
+pub extern "C" fn amvalidate(_opclassoid: pg_sys::Oid) -> bool {
     true
 }

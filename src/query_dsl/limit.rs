@@ -30,8 +30,8 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    pub fn row_estimate(row_estimate: f64, query: ZDBQuery) -> ZDBQuery {
-        query.set_row_estimate(Some(row_estimate as u64))
+    pub fn row_estimate(row_estimate: i64, query: ZDBQuery) -> ZDBQuery {
+        query.set_row_estimate(Some(row_estimate))
     }
 }
 
@@ -92,7 +92,7 @@ mod tests {
 
     #[pg_test]
     fn test_row_estimate() {
-        let zdbquery = row_estimate(200.0, ZDBQuery::new_with_query_string("test"));
+        let zdbquery = row_estimate(200, ZDBQuery::new_with_query_string("test"));
 
         assert_eq!(
             zdbquery.into_value(),
