@@ -95,69 +95,6 @@ fn restrict(
     (count_estimate as f64 / reltuples.max(1f64)).max(0f64)
 }
 
-/*
-    PlannerInfo      *root         = (PlannerInfo *) PG_GETARG_POINTER(0);
-//	Oid              operator    = PG_GETARG_OID(1);
-    List             *args         = (List *) PG_GETARG_POINTER(2);
-    int              varRelid      = PG_GETARG_INT32(3);
-    float8           selectivity   = 0.0;
-    Node             *left         = (Node *) linitial(args);
-    Node             *right        = (Node *) lsecond(args);
-    Oid              heapRelId     = InvalidOid;
-    VariableStatData ldata;
-    Relation         heapRel;
-    uint64           countEstimate = 1;
-
-    if (IsA(left, Var)) {
-        examine_variable(root, left, varRelid, &ldata);
-
-        if (ldata.vartype == TIDOID && ldata.rel != NULL) {
-            RangeTblEntry *rentry = planner_rt_fetch(ldata.rel->relid, root);
-
-            heapRelId = rentry->relid;
-        }
-    }
-
-    if (heapRelId != InvalidOid) {
-        heapRel = RelationIdGetRelation(heapRelId);
-
-        /* if 'right' is a Const we can estimate the selectivity of the query to be executed */
-        if (IsA(right, Const)) {
-            Const *rconst = (Const *) right;
-
-            if (type_is_array(rconst->consttype)) {
-                countEstimate = (uint64) zdb_default_row_estimation_guc;
-            } else {
-                ZDBQueryType *zdbquery = (ZDBQueryType *) DatumGetPointer(rconst->constvalue);
-                uint64       estimate  = zdbquery_get_row_estimate(zdbquery);
-
-                if (estimate < 1) {
-                    /* we need to ask Elasticsearch to estimate our selectivity */
-                    Relation indexRel;
-
-                    /*lint -esym 644,ldata  ldata is defined above in the if (IsA(Var)) block */
-                    indexRel      = find_zombodb_index(heapRel);
-                    countEstimate = ElasticsearchEstimateSelectivity(indexRel, zdbquery);
-                    relation_close(indexRel, AccessShareLock);
-                } else {
-                    /* we'll just use the hardcoded value in the query */
-                    if (estimate > 1)
-                        countEstimate = estimate;
-                }
-            }
-        }
-
-        /* Assume we'll always return at least 1 row */
-        selectivity = (float8) countEstimate / (float8) Max(heapRel->rd_rel->reltuples, 1.0);
-        RelationClose(heapRel);
-    }
-
-    /* keep selectivity in bounds */
-    selectivity = Max(0, Min(1, selectivity));
-
-    PG_RETURN_FLOAT8(selectivity);
-*/
-
 extension_sql! {r#"
 CREATE OPERATOR pg_catalog.==> (
     PROCEDURE = anyelement_cmpfunc,
