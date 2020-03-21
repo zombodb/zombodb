@@ -105,13 +105,6 @@ pub extern "C" fn amgettuple(
 }
 
 #[pg_guard]
-pub extern "C" fn amgetbitmap(_scan: pg_sys::IndexScanDesc, _tbm: *mut pg_sys::TIDBitmap) -> i64 {
-    info!("amgetbitmap");
-
-    0
-}
-
-#[pg_guard]
 pub extern "C" fn amendscan(_scan: pg_sys::IndexScanDesc) {
     // nothing to do here
 }

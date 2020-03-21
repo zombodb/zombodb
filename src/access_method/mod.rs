@@ -33,7 +33,7 @@ fn amhandler() -> PgBox<pg_sys::IndexAmRoutine> {
     amroutine.ambeginscan = Some(scan::ambeginscan);
     amroutine.amrescan = Some(scan::amrescan);
     amroutine.amgettuple = Some(scan::amgettuple);
-    amroutine.amgetbitmap = Some(scan::amgetbitmap);
+    amroutine.amgetbitmap = None;
     amroutine.amendscan = Some(scan::amendscan);
 
     amroutine
