@@ -4,7 +4,7 @@ use crate::utils::find_zdb_index;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 
-#[pg_extern(immutable)]
+#[pg_extern(immutable, parallel_safe)]
 fn anyelement_cmpfunc(_element: AnyElement, _query: ZDBQuery) -> bool {
     ereport(
         PgLogLevel::ERROR,
@@ -17,7 +17,7 @@ fn anyelement_cmpfunc(_element: AnyElement, _query: ZDBQuery) -> bool {
     false
 }
 
-#[pg_extern(immutable)]
+#[pg_extern(immutable, parallel_safe)]
 fn restrict(
     root: Internal<pg_sys::PlannerInfo>,
     _operator_oid: pg_sys::Oid,
@@ -70,7 +70,9 @@ fn restrict(
                     )
                     .expect("rhs of ==> is NULL");
 
-                    let estimate = zdbquery.row_estimate();
+                    let estimate = zdbquery
+                        .row_estimate()
+                        .min(zdbquery.limit().unwrap_or(std::u64::MAX) as i64);
 
                     if estimate >= 1 {
                         // just the estimate assigned to the query
@@ -92,7 +94,10 @@ fn restrict(
         reltuples = heap_relation.reltuples().unwrap_or(1f32) as f64;
     }
 
-    (count_estimate as f64 / reltuples.max(1f64)).max(0f64)
+    let reltuples = reltuples.max(count_estimate as f64).max(1f64);
+    let selectivity = count_estimate as f64 / reltuples;
+
+    selectivity
 }
 
 extension_sql! {r#"
