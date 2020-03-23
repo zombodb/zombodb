@@ -17,3 +17,5 @@ mod significant_text;
 mod stats;
 mod terms;
 mod terms_two_level;
+mod top_hits;
+mod top_hits_with_id;
