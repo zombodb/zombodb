@@ -52,8 +52,6 @@ fn matrix_stats(
         },
     );
 
-    info!("got here before request was executed");
-
     let result = request
         .execute()
         .expect("failed to execute aggregate search");
