@@ -11,6 +11,7 @@ mod matrix_stats;
 mod metrics;
 mod percentile_ranks;
 mod percentiles;
+mod query;
 mod range;
 mod significant_terms;
 mod significant_terms_two_level;
