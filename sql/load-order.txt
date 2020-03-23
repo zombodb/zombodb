@@ -51,3 +51,4 @@ elasticsearch_aggregates_date_range.generated.sql
 elasticsearch_aggregates_extended_stats.generated.sql
 elasticsearch_aggregates_top_hits.generated.sql
 elasticsearch_aggregates_top_hits_with_id.generated.sql
+elasticsearch_aggregates_ip_range.generated.sql

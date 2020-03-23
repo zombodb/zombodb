@@ -6,6 +6,7 @@ mod date_range;
 mod extended_stats;
 mod filters;
 mod histogram;
+mod ip_range;
 mod matrix_stats;
 mod metrics;
 mod percentile_ranks;
