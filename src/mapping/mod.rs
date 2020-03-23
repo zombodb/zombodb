@@ -401,7 +401,10 @@ fn handle_unsupported_type<'a>(
     Box::new(move |builder, name, datum, _oid| {
         let result =
             unsafe { std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(output_func, datum)) };
-        let json = json!(result);
+        let result_str = result
+            .to_str()
+            .expect("failed to convert unsupported type to a string");
+        let json = json!(result_str);
         builder.add_json_value(name, json);
 
         unsafe {
