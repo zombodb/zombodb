@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod aggregates;
+mod analyze;
 mod bulk;
 mod count;
 mod create_index;
@@ -16,6 +17,7 @@ pub mod search;
 
 use crate::access_method::options::{RefreshInterval, ZDBIndexOptions};
 use crate::elasticsearch::aggregate_search::ElasticsearchAggregateSearchRequest;
+use crate::elasticsearch::analyze::ElasticsearchAnalyzerRequest;
 use crate::elasticsearch::count::ElasticsearchCountRequest;
 use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 use crate::elasticsearch::expunge_deletes::ElasticsearchExpungeDeletesRequest;
@@ -29,7 +31,7 @@ use crate::zdbquery::ZDBQuery;
 pub use bulk::*;
 pub use create_index::*;
 use lazy_static::*;
-use pgx::PgRelation;
+use pgx::*;
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -101,6 +103,34 @@ impl Elasticsearch {
         }
     }
 
+    pub fn analyze_text(&self, analyzer: &str, text: &str) -> ElasticsearchAnalyzerRequest {
+        ElasticsearchAnalyzerRequest::new_with_text(self, analyzer, text)
+    }
+
+    pub fn analyze_with_field(&self, field: &str, text: &str) -> ElasticsearchAnalyzerRequest {
+        ElasticsearchAnalyzerRequest::new_with_field(self, field, text)
+    }
+
+    pub fn analyze_custom(
+        &self,
+        field: Option<default!(&str, NULL)>,
+        text: Option<default!(&str, NULL)>,
+        tokenizer: Option<default!(&str, NULL)>,
+        normalizer: Option<default!(&str, NULL)>,
+        filter: Option<default!(Array<&str>, NULL)>,
+        char_filter: Option<default!(Array<&str>, NULL)>,
+    ) -> ElasticsearchAnalyzerRequest {
+        ElasticsearchAnalyzerRequest::new_custom(
+            self,
+            field,
+            text,
+            tokenizer,
+            normalizer,
+            filter,
+            char_filter,
+        )
+    }
+
     pub fn create_index(&self, mapping: Value) -> ElasticsearchCreateIndexRequest {
         ElasticsearchCreateIndexRequest::new(self, mapping)
     }
@@ -169,6 +199,10 @@ impl Elasticsearch {
 
     pub fn get_mapping(&self) -> ElasticsearchGetMappingRequest {
         ElasticsearchGetMappingRequest::new(self)
+    }
+
+    pub fn url(&self) -> String {
+        self.options.url.clone()
     }
 
     pub fn base_url(&self) -> String {
