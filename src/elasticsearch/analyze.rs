@@ -210,3 +210,146 @@ fn elasticsearch_request_return(
             )
         })
 }
+
+#[cfg(any(test, feature = "pg_test"))]
+mod tests {
+    use pgx::*;
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_analyze_text() {
+        Spi::run("CREATE TABLE test_analyze_text AS SELECT * FROM generate_series(1, 100);");
+        Spi::run("CREATE INDEX idxtest_analyze_text ON test_analyze_text USING zombodb ((test_analyze_text.*));");
+        Spi::connect(|client| {
+            let mut table = client.select(
+                " SELECT * FROM zdb.analyze_text('idxtest_analyze_text', 'standard', 'this is a test');",
+                None,
+                None,
+            );
+
+            //    type        | token | position | start_offset | end_offset
+            //    ------------+-------+----------+--------------+------------
+            //     <ALPHANUM> | this  |        0 |            0 |          4
+            //     <ALPHANUM> | is    |        1 |            5 |          7
+            //     <ALPHANUM> | a     |        2 |            8 |          9
+            //     <ALPHANUM> | test  |        3 |           10 |         14
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "a", 2, 8, 9),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+            ];
+
+            let mut i = 0;
+            while let Some(_) = table.next() {
+                let ttype = table.get_datum::<&str>(1).unwrap();
+                let token = table.get_datum::<&str>(2).unwrap();
+                let pos = table.get_datum::<i32>(3).unwrap();
+                let start_offset = table.get_datum::<i32>(4).unwrap();
+                let end_offset = table.get_datum::<i32>(5).unwrap();
+
+                let row_tuple = (ttype, token, pos, start_offset, end_offset);
+
+                assert_eq!(expect[i], row_tuple);
+
+                i += 1;
+            }
+
+            assert_eq!(expect.len(), i);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_analyze_with_field() {
+        Spi::run("CREATE TABLE test_analyze_with_field AS SELECT * FROM generate_series(1, 100);");
+        Spi::run("CREATE INDEX idxtest_analyze_with_field ON test_analyze_with_field USING zombodb ((test_analyze_with_field.*));");
+        Spi::connect(|client| {
+            let mut table = client.select(
+                " SELECT * FROM zdb.analyze_with_field('idxtest_analyze_with_field', 'column', 'this is a test');",
+                None,
+                None,
+            );
+
+            //    type        | token | position | start_offset | end_offset
+            //    ------------+-------+----------+--------------+------------
+            //     <ALPHANUM> | this  |        0 |            0 |          4
+            //     <ALPHANUM> | is    |        1 |            5 |          7
+            //     <ALPHANUM> | a     |        2 |            8 |          9
+            //     <ALPHANUM> | test  |        3 |           10 |         14
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "a", 2, 8, 9),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+            ];
+
+            let mut i = 0;
+            while let Some(_) = table.next() {
+                let ttype = table.get_datum::<&str>(1).unwrap();
+                let token = table.get_datum::<&str>(2).unwrap();
+                let pos = table.get_datum::<i32>(3).unwrap();
+                let start_offset = table.get_datum::<i32>(4).unwrap();
+                let end_offset = table.get_datum::<i32>(5).unwrap();
+
+                let row_tuple = (ttype, token, pos, start_offset, end_offset);
+
+                assert_eq!(expect[i], row_tuple);
+
+                i += 1;
+            }
+
+            assert_eq!(expect.len(), i);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_analyze_custom() {
+        Spi::run("CREATE TABLE test_analyze_custom AS SELECT * FROM generate_series(1, 100);");
+        Spi::run("CREATE INDEX idxtest_analyze_custom ON test_analyze_custom USING zombodb ((test_analyze_custom.*));");
+        Spi::connect(|client| {
+            let mut table = client.select(
+                " SELECT * FROM zdb.analyze_custom(index=>'idxtest_analyze_custom',text=> 'this is a test', tokenizer =>'standard');",
+                None,
+                None,
+            );
+
+            //    type        | token | position | start_offset | end_offset
+            //    ------------+-------+----------+--------------+------------
+            //     <ALPHANUM> | this  |        0 |            0 |          4
+            //     <ALPHANUM> | is    |        1 |            5 |          7
+            //     <ALPHANUM> | a     |        2 |            8 |          9
+            //     <ALPHANUM> | test  |        3 |           10 |         14
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "a", 2, 8, 9),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+            ];
+
+            let mut i = 0;
+            while let Some(_) = table.next() {
+                let ttype = table.get_datum::<&str>(1).unwrap();
+                let token = table.get_datum::<&str>(2).unwrap();
+                let pos = table.get_datum::<i32>(3).unwrap();
+                let start_offset = table.get_datum::<i32>(4).unwrap();
+                let end_offset = table.get_datum::<i32>(5).unwrap();
+
+                let row_tuple = (ttype, token, pos, start_offset, end_offset);
+
+                assert_eq!(expect[i], row_tuple);
+
+                i += 1;
+            }
+
+            assert_eq!(expect.len(), i);
+
+            Ok(Some(()))
+        });
+    }
+}
