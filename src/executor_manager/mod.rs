@@ -1,8 +1,10 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::mapping::{categorize_tupdesc, CategorizedAttribute};
 use crate::utils::lookup_zdb_index_tupdesc;
-pub use pgx::*;
+use pgx::*;
 use std::collections::{HashMap, HashSet};
+
+pub mod hooks;
 
 static mut EXECUTOR_MANAGER: ExecutorManager = ExecutorManager::new();
 
@@ -17,10 +19,41 @@ pub struct BulkContext {
     pub tupdesc: &'static PgTupleDesc<'static>,
 }
 
+pub struct QueryState {
+    scores: HashMap<(pg_sys::Oid, (pg_sys::BlockNumber, pg_sys::OffsetNumber)), f64>,
+}
+
+impl Default for QueryState {
+    fn default() -> Self {
+        QueryState {
+            scores: HashMap::new(),
+        }
+    }
+}
+
+impl QueryState {
+    pub fn add_score(&mut self, heap_oid: pg_sys::Oid, ctid64: u64, score: f64) {
+        let key = (heap_oid, u64_to_item_pointer_parts(ctid64));
+        let scores = &mut self.scores;
+
+        // scores are additive for any given key,
+        // so we start with zero and simply add this score to it
+        *scores.entry(key).or_insert(0.0f64) += score;
+    }
+
+    pub fn get_score(&self, heap_oid: pg_sys::Oid, ctid: pg_sys::ItemPointerData) -> f64 {
+        *self
+            .scores
+            .get(&(heap_oid, item_pointer_get_both(ctid)))
+            .unwrap_or(&0.0f64)
+    }
+}
+
 pub struct ExecutorManager {
     tuple_descriptors: Option<HashMap<pg_sys::Oid, PgTupleDesc<'static>>>,
     bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext>>,
     xids: Option<HashSet<pg_sys::TransactionId>>,
+    query_stack: Option<Vec<(*mut pg_sys::QueryDesc, QueryState)>>,
     hooks_registered: bool,
 }
 
@@ -30,8 +63,32 @@ impl ExecutorManager {
             tuple_descriptors: None,
             bulk_requests: None,
             xids: None,
+            query_stack: None,
             hooks_registered: false,
         }
+    }
+
+    pub fn push_query(&mut self, query_desc: &PgBox<pg_sys::QueryDesc>) {
+        info!("push query");
+        if self.query_stack.is_none() {
+            self.query_stack.replace(Vec::new());
+        }
+
+        self.query_stack
+            .as_mut()
+            .unwrap()
+            .push((query_desc.as_ptr(), QueryState::default()));
+    }
+
+    pub fn peek_query_state(&mut self) -> Option<&mut (*mut pg_sys::QueryDesc, QueryState)> {
+        let stack = self.query_stack.as_mut().unwrap();
+        let len = stack.len() - 1;
+        stack.get_mut(len)
+    }
+
+    pub fn pop_query(&mut self) {
+        info!("pop query");
+        self.query_stack.as_mut().unwrap().pop();
     }
 
     pub fn push_xid(&mut self, xid: pg_sys::TransactionId) {
@@ -141,6 +198,7 @@ impl ExecutorManager {
         self.tuple_descriptors.take();
         self.bulk_requests.take();
         self.xids.take();
+        self.query_stack.take();
         self.hooks_registered = false;
     }
 

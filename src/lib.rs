@@ -14,6 +14,7 @@ mod gucs;
 mod json;
 mod mapping;
 pub mod query_dsl;
+pub mod scoring;
 mod utils;
 mod zdbquery;
 
@@ -23,6 +24,7 @@ pg_module_magic!();
 #[pg_guard]
 pub unsafe extern "C" fn _PG_init() {
     gucs::init();
+    executor_manager::hooks::init_hooks();
     access_method::options::init();
     custom_scan::init();
 }

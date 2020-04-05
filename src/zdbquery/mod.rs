@@ -18,7 +18,7 @@ mod pg_catalog {
     #[inoutfuncs = "Custom"]
     pub struct ZDBQuery {
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub(super) want_score: Option<()>,
+        pub(super) want_score: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) row_estimate: Option<i64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -151,11 +151,11 @@ impl ZDBQuery {
     }
 
     pub fn want_score(&self) -> bool {
-        self.want_score == Some(())
+        self.want_score == Some(true)
     }
 
     pub fn set_want_score(mut self, value: bool) -> Self {
-        self.want_score = if value { Some(()) } else { None };
+        self.want_score = if value { Some(true) } else { None };
         self
     }
 

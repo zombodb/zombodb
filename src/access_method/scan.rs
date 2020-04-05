@@ -1,5 +1,6 @@
 use crate::elasticsearch::search::SearchResponseIntoIter;
 use crate::elasticsearch::Elasticsearch;
+use crate::executor_manager::get_executor_manager;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 
@@ -79,6 +80,7 @@ pub extern "C" fn amgettuple(
     _direction: pg_sys::ScanDirection,
 ) -> bool {
     let mut scan: PgBox<pg_sys::IndexScanDescData> = PgBox::from_pg(scan);
+    let heap_relation = unsafe { PgRelation::from_pg(scan.heapRelation) };
     let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
 
     // no need to recheck the returned tuples as ZomboDB indices are not lossy
@@ -86,7 +88,7 @@ pub extern "C" fn amgettuple(
 
     let iter = unsafe { state.iterator.as_mut() }.expect("no iterator in state");
     match iter.next() {
-        Some((_score, ctid, _)) => {
+        Some((score, ctid, _)) => {
             #[cfg(any(feature = "pg10", feature = "pg11"))]
             let tid = &mut scan.xs_ctup.t_self;
 
@@ -94,6 +96,9 @@ pub extern "C" fn amgettuple(
             let tid = &mut scan.xs_heaptid;
 
             u64_to_item_pointer(ctid, tid);
+
+            let (_query, qstate) = get_executor_manager().peek_query_state().unwrap();
+            qstate.add_score(heap_relation.oid(), ctid, score);
 
             if !item_pointer_is_valid(tid) {
                 panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
