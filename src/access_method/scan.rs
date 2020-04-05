@@ -15,7 +15,6 @@ pub extern "C" fn ambeginscan(
     nkeys: ::std::os::raw::c_int,
     norderbys: ::std::os::raw::c_int,
 ) -> pg_sys::IndexScanDesc {
-    info!("ambeginscan");
     let mut scandesc: PgBox<pg_sys::IndexScanDescData> =
         PgBox::from_pg(unsafe { pg_sys::RelationGetIndexScan(index_relation, nkeys, norderbys) });
     let state = ZDBScanState {
@@ -43,7 +42,6 @@ pub extern "C" fn amrescan(
     _orderbys: pg_sys::ScanKey,
     _norderbys: ::std::os::raw::c_int,
 ) {
-    info!("amrescan");
     if nkeys == 0 {
         panic!("No ScanKeys provided");
     }

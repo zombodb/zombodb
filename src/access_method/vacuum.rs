@@ -85,7 +85,6 @@ pub extern "C" fn amvacuumcleanup(
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
     let elasticsearch = Elasticsearch::new(&index_relation);
 
-    info!("expunging deletes");
     elasticsearch
         .expunge_deletes()
         .execute()

@@ -69,7 +69,6 @@ impl ExecutorManager {
     }
 
     pub fn push_query(&mut self, query_desc: &PgBox<pg_sys::QueryDesc>) {
-        info!("push query");
         if self.query_stack.is_none() {
             self.query_stack.replace(Vec::new());
         }
@@ -87,7 +86,6 @@ impl ExecutorManager {
     }
 
     pub fn pop_query(&mut self) {
-        info!("pop query");
         self.query_stack.as_mut().unwrap().pop();
     }
 
@@ -98,7 +96,6 @@ impl ExecutorManager {
 
             if let Some(bulk_requests) = self.bulk_requests.as_mut() {
                 for (_, bulk) in bulk_requests.iter_mut() {
-                    info!("pushing xid={}", xid);
                     bulk.bulk
                         .transaction_in_progress(xid)
                         .expect("Failed to mark transaction as in progress for existing bulk");
@@ -142,11 +139,8 @@ impl ExecutorManager {
                 let attributes = bulk.attributes;
                 let tupdesc = bulk.tupdesc;
 
-                match bulk.bulk.finish() {
-                    Ok((ntuples, nrequests)) => {
-                        info!("indexed {} tuples in {} requests", ntuples, nrequests)
-                    }
-                    Err(e) => panic!(e),
+                if let Err(e) = bulk.bulk.finish() {
+                    panic!(e)
                 }
 
                 let bulk = elasticsearch.start_bulk();
@@ -175,11 +169,8 @@ impl ExecutorManager {
                         .expect("failed to mark transaction as committed");
                 }
 
-                match bulk.bulk.finish() {
-                    Ok((ntuples, nrequests)) => {
-                        info!("indexed {} tuples in {} requests", ntuples, nrequests)
-                    }
-                    Err(e) => panic!(e),
+                if let Err(e) = bulk.bulk.finish() {
+                    panic!(e);
                 }
             }
         }
@@ -242,7 +233,6 @@ impl ExecutorManager {
                         let current_xid = unsafe { pg_sys::GetCurrentTransactionIdIfAny() };
                         if current_xid != pg_sys::InvalidTransactionId {
                             get_executor_manager().pop_xid(current_xid);
-                            info!("got aborted subtransaction: {}", current_xid);
                         }
                     },
                 );
@@ -250,7 +240,6 @@ impl ExecutorManager {
                 get_executor_manager().hooks_registered = true;
             }
 
-            info!("creating bulk context for {}", relid);
             let bulk = elasticsearch.start_bulk();
             BulkContext {
                 elasticsearch,

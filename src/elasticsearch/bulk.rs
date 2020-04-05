@@ -201,7 +201,6 @@ impl ElasticsearchBulkRequest {
             std::thread::yield_now();
         }
 
-        info!("send commit");
         self.handler
             .queue_command(BulkRequestCommand::TransactionCommitted {
                 xid: xid_to_64bit(xid),
@@ -631,12 +630,6 @@ impl Handler {
         if nthreads == 0
             || (nthreads < self.concurrency && self.total_docs % (10_000 / self.concurrency) == 0)
         {
-            info!(
-                "creating thread:  queue={}, total_docs={}, nthreads={}",
-                self.bulk_receiver.len(),
-                self.total_docs,
-                nthreads
-            );
             self.threads.push(Some(self.create_thread(nthreads)));
         }
 
@@ -775,7 +768,6 @@ impl Handler {
             let jh = self.threads.get_mut(i).unwrap().take().unwrap();
             match jh.join() {
                 Ok(many) => {
-                    info!("thread finished");
                     self.check_for_error();
                     cnt += many;
                 }
