@@ -56,3 +56,4 @@ elasticsearch_aggregates_ip_range.generated.sql
 elasticsearch_aggregates_query.generated.sql
 elasticsearch_analyze.generated.sql
 scoring_mod.generated.sql
+highlighting_document_highlighter.generated.sql

@@ -11,6 +11,7 @@ mod custom_scan;
 mod elasticsearch;
 mod executor_manager;
 mod gucs;
+mod highlighting;
 mod json;
 mod mapping;
 pub mod query_dsl;

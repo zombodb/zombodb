@@ -5,17 +5,17 @@ use serde_json::*;
 
 #[derive(Deserialize, Serialize)]
 pub struct AnalyzedData {
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct Token {
     #[serde(rename = "type")]
-    type_: String,
-    token: String,
-    position: i64,
-    start_offset: i64,
-    end_offset: i64,
+    pub type_: String,
+    pub token: String,
+    pub position: i32,
+    pub start_offset: i64,
+    pub end_offset: i64,
 }
 
 pub struct ElasticsearchAnalyzerRequest {
@@ -125,7 +125,7 @@ fn analyze_text(
     Item = (
         name!(type, String),
         name!(token, String),
-        name!(position, i64),
+        name!(position, i32),
         name!(start_offset, i64),
         name!(end_offset, i64),
     ),
@@ -144,7 +144,7 @@ fn analyze_with_field(
     Item = (
         name!(type, String),
         name!(token, String),
-        name!(position, i64),
+        name!(position, i32),
         name!(start_offset, i64),
         name!(end_offset, i64),
     ),
@@ -167,7 +167,7 @@ fn analyze_custom(
     Item = (
         name!(type, String),
         name!(token, String),
-        name!(position, i64),
+        name!(position, i32),
         name!(start_offset, i64),
         name!(end_offset, i64),
     ),
@@ -190,7 +190,7 @@ fn elasticsearch_request_return(
     Item = (
         name!(type, String),
         name!(token, String),
-        name!(position, i64),
+        name!(position, i32),
         name!(start_offset, i64),
         name!(end_offset, i64),
     ),
@@ -245,8 +245,8 @@ mod tests {
                 let ttype = table.get_datum::<&str>(1).unwrap();
                 let token = table.get_datum::<&str>(2).unwrap();
                 let pos = table.get_datum::<i32>(3).unwrap();
-                let start_offset = table.get_datum::<i32>(4).unwrap();
-                let end_offset = table.get_datum::<i32>(5).unwrap();
+                let start_offset = table.get_datum::<i64>(4).unwrap();
+                let end_offset = table.get_datum::<i64>(5).unwrap();
 
                 let row_tuple = (ttype, token, pos, start_offset, end_offset);
 
@@ -291,8 +291,8 @@ mod tests {
                 let ttype = table.get_datum::<&str>(1).unwrap();
                 let token = table.get_datum::<&str>(2).unwrap();
                 let pos = table.get_datum::<i32>(3).unwrap();
-                let start_offset = table.get_datum::<i32>(4).unwrap();
-                let end_offset = table.get_datum::<i32>(5).unwrap();
+                let start_offset = table.get_datum::<i64>(4).unwrap();
+                let end_offset = table.get_datum::<i64>(5).unwrap();
 
                 let row_tuple = (ttype, token, pos, start_offset, end_offset);
 
@@ -337,8 +337,8 @@ mod tests {
                 let ttype = table.get_datum::<&str>(1).unwrap();
                 let token = table.get_datum::<&str>(2).unwrap();
                 let pos = table.get_datum::<i32>(3).unwrap();
-                let start_offset = table.get_datum::<i32>(4).unwrap();
-                let end_offset = table.get_datum::<i32>(5).unwrap();
+                let start_offset = table.get_datum::<i64>(4).unwrap();
+                let end_offset = table.get_datum::<i64>(5).unwrap();
 
                 let row_tuple = (ttype, token, pos, start_offset, end_offset);
 
