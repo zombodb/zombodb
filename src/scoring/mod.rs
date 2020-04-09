@@ -1,36 +1,16 @@
 use crate::executor_manager::get_executor_manager;
+use crate::utils::lookup_function;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 
 #[pg_extern(immutable, parallel_safe)]
-fn score(ctid: Option<pg_sys::ItemPointerData>, fcinfo: pg_sys::FunctionCallInfo) -> f64 {
-    if let Some(ctid) = ctid {
-        if let Some((query_desc, state)) = get_executor_manager().peek_query_state() {
-            let fcinfo = PgBox::from_pg(fcinfo);
-            let flinfo = PgBox::from_pg(fcinfo.flinfo);
-            let func_expr = PgBox::from_pg(flinfo.fn_expr as *mut pg_sys::FuncExpr);
-            let arg_list = PgList::<pg_sys::Node>::from_pg(func_expr.args);
-            let first_arg = arg_list
-                .get_ptr(0)
-                .expect("no arguments provided to zdb.score()");
-
-            if is_a(first_arg, pg_sys::NodeTag_T_Var) {
-                // lookup the table from which the 'ctid' value comes, so we can get its oid
-                let rtable = unsafe {
-                    query_desc
-                        .as_ref()
-                        .unwrap()
-                        .plannedstmt
-                        .as_ref()
-                        .unwrap()
-                        .rtable
-                };
-                let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
-                let rentry = pg_sys::rt_fetch(var.varnoold, rtable);
-                let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
-
-                return state.get_score(heap_oid, ctid);
-            } else {
+fn score(ctid: pg_sys::ItemPointerData, fcinfo: pg_sys::FunctionCallInfo) -> f64 {
+    if let Some((query_desc, query_state)) = get_executor_manager().peek_query_state() {
+        match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
+            Some(heap_oid) => {
+                return query_state.get_score(heap_oid, ctid);
+            }
+            None => {
                 panic!("zdb.score()'s argument is not a direct table ctid column reference");
             }
         }
@@ -62,18 +42,18 @@ impl WantScoresWalker {
 
         WantScoresWalker {
             zdbquery_oid,
-            zdb_score_oid: WantScoresWalker::lookup_function(
-                vec!["zdb", "score"],
-                vec![pg_sys::TIDOID],
-            ),
-            zdb_anyelement_cmp_func_oid: WantScoresWalker::lookup_function(
+            zdb_score_oid: lookup_function(vec!["zdb", "score"], Some(vec![pg_sys::TIDOID]))
+                .unwrap_or(pg_sys::InvalidOid),
+            zdb_anyelement_cmp_func_oid: lookup_function(
                 vec!["zdb", "anyelement_cmpfunc"],
-                vec![pg_sys::ANYELEMENTOID, zdbquery_oid],
-            ),
-            zdb_want_score_oid: WantScoresWalker::lookup_function(
+                Some(vec![pg_sys::ANYELEMENTOID, zdbquery_oid]),
+            )
+            .unwrap_or(pg_sys::InvalidOid),
+            zdb_want_score_oid: lookup_function(
                 vec!["zdb", "want_scores"],
-                vec![zdbquery_oid],
-            ),
+                Some(vec![zdbquery_oid]),
+            )
+            .unwrap_or(pg_sys::InvalidOid),
             in_te: 0,
             in_sort: 0,
             want_scores: false,
@@ -114,24 +94,6 @@ impl WantScoresWalker {
                 self as *mut WantScoresWalker as void_mut_ptr,
                 pg_sys::QTW_EXAMINE_RTES as i32,
             );
-        }
-    }
-
-    fn lookup_function(name_parts: Vec<&str>, arg_oids: Vec<pg_sys::Oid>) -> pg_sys::Oid {
-        let mut list = PgList::new();
-        for part in name_parts {
-            list.push(
-                PgNodeFactory::makeString(PgMemoryContexts::CurrentMemoryContext, part).into_pg(),
-            );
-        }
-
-        unsafe {
-            pg_sys::LookupFuncName(
-                list.as_ptr(),
-                arg_oids.len() as i32,
-                arg_oids.as_ptr(),
-                true,
-            )
         }
     }
 }

@@ -273,6 +273,19 @@ impl ElasticsearchSearchRequest {
     }
 }
 
+impl ElasticsearchSearchResponse {
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn len(&self) -> usize {
+        match self.hits.as_ref() {
+            Some(hits) => hits.total.value as usize,
+            None => 0,
+        }
+    }
+}
+
 pub struct Scroller {
     receiver: crossbeam_channel::Receiver<(f64, u64, Fields)>,
 }

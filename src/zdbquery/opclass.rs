@@ -1,20 +1,85 @@
 use crate::elasticsearch::Elasticsearch;
+use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 use crate::utils::find_zdb_index;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
+use std::collections::HashSet;
 
 #[pg_extern(immutable, parallel_safe)]
-fn anyelement_cmpfunc(_element: AnyElement, _query: ZDBQuery) -> bool {
-    ereport(
-        PgLogLevel::ERROR,
-        PgSqlErrorCode::ERRCODE_INTERNAL_ERROR,
-        "anyelement_cmpfunc called in invalid context",
-        file!(),
-        line!(),
-        column!(),
-    );
-    false
+fn anyelement_cmpfunc(
+    element: AnyElement,
+    query: ZDBQuery,
+    fcinfo: pg_sys::FunctionCallInfo,
+) -> bool {
+    let (query_desc, query_state) = match get_executor_manager().peek_query_state() {
+        Some((query_desc, query_state)) => (query_desc, query_state),
+        None => return false,
+    };
+    let heap_oid = match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
+        Some(oid) => oid,
+        None => return false,
+    };
+
+    let tid = if element.oid() == pg_sys::TIDOID {
+        // use the ItemPointerData passed into us as the first argument
+        Some(item_pointer_to_u64(
+            unsafe { pg_sys::ItemPointerData::from_datum(element.datum(), false, element.oid()) }
+                .unwrap(),
+        ))
+    } else {
+        // find the ItemPointerData being processed by looking through the TupleTable
+        let estate: &pg_sys::EState =
+            unsafe { query_desc.as_ref().unwrap().estate.as_ref().unwrap() };
+        let slots = PgList::<pg_sys::TupleTableSlot>::from_pg(estate.es_tupleTable);
+
+        let mut i = 0;
+        loop {
+            if i == slots.len() {
+                break None;
+            }
+            match slots.get_ptr(i) {
+                Some(slot) => {
+                    let slot = unsafe { slot.as_ref().unwrap() };
+                    if slot.tts_tableOid == heap_oid {
+                        let tid = slot.tts_tid;
+                        if !item_pointer_is_valid(&tid as *const pg_sys::ItemPointerData) {
+                            return false;
+                        }
+
+                        break Some(item_pointer_to_u64(tid));
+                    }
+                }
+                None => return false,
+            }
+            i = i + 1;
+        }
+    };
+
+    match tid {
+        Some(tid) => {
+            let lookup = pg_func_extra(fcinfo, || {
+                info!("querying ES with: {:?}", query);
+                let heap_relation = PgRelation::with_lock(heap_oid, pg_sys::AccessShareLock as i32);
+                let index = find_zdb_index(&heap_relation);
+                let es = Elasticsearch::new(&index);
+                let search = es
+                    .open_search(query)
+                    .execute()
+                    .expect("failed to execute search");
+
+                let mut lookup = HashSet::with_capacity(search.len());
+                for (_, ctid, _) in search.into_iter() {
+                    check_for_interrupts!();
+                    lookup.insert(ctid);
+                }
+                lookup
+            });
+
+            lookup.contains(&tid)
+        }
+        None => false,
+    }
 }
 
 #[pg_extern(immutable, parallel_safe)]
@@ -51,7 +116,11 @@ fn restrict(
                 PgBox::from_pg(pg_sys::lookup_type_cache(type_oid, 0));
             let heaprel_id = tce.typrelid;
 
-            heap_relation = Some(PgRelation::open(heaprel_id));
+            if heaprel_id == pg_sys::InvalidOid {
+                heap_relation = None;
+            } else {
+                heap_relation = Some(PgRelation::open(heaprel_id));
+            }
         }
     }
 

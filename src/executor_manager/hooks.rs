@@ -19,8 +19,9 @@ impl PgHooks for ZDBHooks {
         query_desc: PgBox<pg_sys::QueryDesc>,
         prev_hook: fn(PgBox<pg_sys::QueryDesc>) -> HookResult<()>,
     ) -> HookResult<()> {
+        let result = prev_hook(query_desc);
         get_executor_manager().pop_query();
-        prev_hook(query_desc)
+        result
     }
 
     fn planner(
