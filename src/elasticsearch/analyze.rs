@@ -136,7 +136,7 @@ fn analyze_text(
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn analyze_with_field(
+pub(crate) fn analyze_with_field(
     index: PgRelation,
     field: &str,
     text: &str,

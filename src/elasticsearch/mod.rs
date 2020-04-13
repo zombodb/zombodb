@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 mod aggregates;
-mod analyze;
+pub(crate) mod analyze;
 mod bulk;
 mod count;
 mod create_index;
