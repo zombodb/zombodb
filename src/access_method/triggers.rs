@@ -174,52 +174,20 @@ fn create_trigger(
     tgstmt.timing = pg_sys::TRIGGER_TYPE_BEFORE as i16;
     tgstmt.events = events as i16;
 
-    let object_address = if cfg!(feature = "pg10") {
-        unsafe {
-            pg_sys::pg10_specific::CreateTrigger(
-                tgstmt.into_pg(),
-                std::ptr::null_mut(),
-                index_relation.heap_relation().unwrap().oid(),
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                true,
-            )
-        }
-    } else if cfg!(feature = "pg11") {
-        unsafe {
-            pg_sys::pg11_specific::CreateTrigger(
-                tgstmt.into_pg(),
-                std::ptr::null_mut(),
-                index_relation.heap_relation().unwrap().oid(),
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                std::ptr::null_mut(),
-                true,
-                false,
-            )
-        }
-    } else if cfg!(feature = "pg12") {
-        unsafe {
-            pg_sys::pg12_specific::CreateTrigger(
-                tgstmt.into_pg(),
-                std::ptr::null_mut(),
-                index_relation.heap_relation().unwrap().oid(),
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                pg_sys::InvalidOid,
-                std::ptr::null_mut(),
-                true,
-                false,
-            )
-        }
-    } else {
-        panic!("no 'pgXX' feature flag defined")
+    let object_address = unsafe {
+        pg_sys::pg12_specific::CreateTrigger(
+            tgstmt.into_pg(),
+            std::ptr::null_mut(),
+            index_relation.heap_relation().unwrap().oid(),
+            pg_sys::InvalidOid,
+            pg_sys::InvalidOid,
+            pg_sys::InvalidOid,
+            pg_sys::InvalidOid,
+            pg_sys::InvalidOid,
+            std::ptr::null_mut(),
+            true,
+            false,
+        )
     };
 
     // Make the new trigger visible within this session

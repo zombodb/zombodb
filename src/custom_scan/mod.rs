@@ -10,13 +10,6 @@ static mut GLOBAL_STATE: CustomScanGlobalState = CustomScanGlobalState {
     prev_set_rel_pathlist_hook: None,
 };
 
-#[cfg(feature = "pg10")]
-const CUSTOM_PATH_METHODS: pg_sys::CustomPathMethods = pg_sys::CustomPathMethods {
-    CustomName: b"ZomboDB Custom Path\0".as_ptr() as *const i8,
-    PlanCustomPath: Some(PlanCustomPath),
-};
-
-#[cfg(any(feature = "pg11", feature = "pg12"))]
 const CUSTOM_PATH_METHODS: pg_sys::CustomPathMethods = pg_sys::CustomPathMethods {
     CustomName: b"ZomboDB Custom Path\0".as_ptr() as *const i8,
     PlanCustomPath: Some(PlanCustomPath),

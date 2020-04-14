@@ -47,6 +47,40 @@ impl QueryState {
             .get(&(heap_oid, item_pointer_get_both(ctid)))
             .unwrap_or(&0.0f64)
     }
+
+    pub fn lookup_heap_oid_for_first_field(
+        &self,
+        query_desc: *mut pg_sys::QueryDesc,
+        fcinfo: pg_sys::FunctionCallInfo,
+    ) -> Option<pg_sys::Oid> {
+        let fcinfo = PgBox::from_pg(fcinfo);
+        let flinfo = PgBox::from_pg(fcinfo.flinfo);
+        let func_expr = PgBox::from_pg(flinfo.fn_expr as *mut pg_sys::FuncExpr);
+        let arg_list = PgList::<pg_sys::Node>::from_pg(func_expr.args);
+        let first_arg = arg_list
+            .get_ptr(0)
+            .expect("no arguments provided to zdb.score()");
+
+        if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+            // lookup the table from which the 'ctid' value comes, so we can get its oid
+            let rtable = unsafe {
+                query_desc
+                    .as_ref()
+                    .unwrap()
+                    .plannedstmt
+                    .as_ref()
+                    .unwrap()
+                    .rtable
+            };
+            let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
+            let rentry = pg_sys::rt_fetch(var.varnoold, rtable);
+            let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
+
+            return Some(heap_oid);
+        } else {
+            return None;
+        }
+    }
 }
 
 pub struct ExecutorManager {
@@ -80,9 +114,17 @@ impl ExecutorManager {
     }
 
     pub fn peek_query_state(&mut self) -> Option<&mut (*mut pg_sys::QueryDesc, QueryState)> {
-        let stack = self.query_stack.as_mut().unwrap();
-        let len = stack.len() - 1;
-        stack.get_mut(len)
+        match self.query_stack.as_mut() {
+            Some(stack) => {
+                let len = stack.len();
+                if len == 0 {
+                    None
+                } else {
+                    stack.get_mut(len - 1)
+                }
+            }
+            None => None,
+        }
     }
 
     pub fn pop_query(&mut self) {
