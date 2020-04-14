@@ -10,6 +10,7 @@ mod delete_index;
 mod expunge_deletes;
 mod get_document;
 mod get_mapping;
+mod profile_query;
 mod refresh_index;
 mod update_settings;
 
@@ -26,6 +27,7 @@ use crate::elasticsearch::expunge_deletes::ElasticsearchExpungeDeletesRequest;
 use crate::elasticsearch::get_document::ElasticsearchGetDocumentRequest;
 use crate::elasticsearch::get_mapping::ElasticsearchGetMappingRequest;
 use crate::elasticsearch::pg_catalog::ArbitraryRequestType;
+use crate::elasticsearch::profile_query::ElasticsearchProfileQueryRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
@@ -145,7 +147,9 @@ impl Elasticsearch {
         };
 
         if post_data.is_some() {
-            builder = builder.body(post_data.unwrap());
+            builder = builder
+                .header("content-type", "application/json")
+                .body(post_data.unwrap());
         }
 
         Elasticsearch::execute_request(builder, |_, body| Ok(body))
@@ -201,6 +205,10 @@ impl Elasticsearch {
 
     pub fn cat(&self, endpoint: &str) -> ElasticsearchCatRequest {
         ElasticsearchCatRequest::new(self, endpoint)
+    }
+
+    pub fn profile_query(&self, query: ZDBQuery) -> ElasticsearchProfileQueryRequest {
+        ElasticsearchProfileQueryRequest::new(self, query)
     }
 
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
