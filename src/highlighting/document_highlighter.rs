@@ -2,9 +2,9 @@ use crate::elasticsearch::analyze::*;
 use crate::elasticsearch::Elasticsearch;
 use pgx::PgRelation;
 use pgx::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TokenEntry {
     type_: String,
     position: u32,
@@ -58,12 +58,6 @@ impl DocumentHighlighter {
     //     unimplemented!()
     // }
 
-    // 'drinking green beer is better than drinking yellow beer which wine is worse than drinking yellow wine'
-    //                                     ^^^^^^^^^^^^^^^                          ^^^^^^^^^^^^^^^
-    // [ "drinking", "yellow" ]   query= drinking wo/1 yellow
-    //
-    // query= than w/2 wine
-    // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
     pub fn highlight_phrase(
         &self,
         index: PgRelation,
@@ -79,6 +73,19 @@ impl DocumentHighlighter {
             .map(|parts| parts.1)
             .collect::<Vec<String>>();
 
+        self.highlight_phrase_vector(phrase)
+    }
+
+    // 'drinking green beer is better than drinking yellow beer which wine is worse than drinking yellow wine'
+    //                                     ^^^^^^^^^^^^^^^                          ^^^^^^^^^^^^^^^
+    // [ "drinking", "yellow" ]   query= drinking wo/1 yellow
+    //
+    // query= than w/2 wine
+    // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
+    pub fn highlight_phrase_vector(
+        &self,
+        phrase: Vec<String>,
+    ) -> Option<Vec<(String, &TokenEntry)>> {
         if phrase.len() == 1 {
             let token = phrase.get(0).unwrap();
             let result = self.highlight_token(token);
@@ -109,7 +116,7 @@ impl DocumentHighlighter {
             }
         }
 
-        let mut filtered_pool = HashMap::<&str, Vec<&TokenEntry>>::new();
+        let mut filtered_pool = HashMap::<&str, HashSet<&TokenEntry>>::new();
         let mut itr = phrase.iter().peekable();
         loop {
             let first = itr.next();
@@ -125,16 +132,16 @@ impl DocumentHighlighter {
             let second_vec = pool.get(second.as_str()).unwrap().iter();
             for token_entry_one in first_vec {
                 for token_entry_two in second_vec.clone() {
-                    if token_entry_one.position + 1 == token_entry_two.position {
-                        let entry_list = filtered_pool.entry(first).or_insert_with(|| Vec::new());
-                        if !entry_list.contains(&token_entry_one) {
-                            entry_list.push(token_entry_one);
-                        }
+                    if token_entry_two.position as i32 - token_entry_one.position as i32 == 1 {
+                        let entry_list =
+                            filtered_pool.entry(first).or_insert_with(|| HashSet::new());
+                        entry_list.insert(token_entry_one);
 
-                        let entry_list = filtered_pool.entry(*second).or_insert_with(|| Vec::new());
-                        if !entry_list.contains(&token_entry_two) {
-                            entry_list.push(token_entry_two);
-                        }
+                        let entry_list = filtered_pool
+                            .entry(*second)
+                            .or_insert_with(|| HashSet::new());
+                        entry_list.insert(token_entry_two);
+
                         break;
                     }
                 }
@@ -362,7 +369,7 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_phrase_with_Phrase_not_in_text() {
+    fn test_highlighter_phrase_with_phrase_not_in_text() {
         Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
         Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
         Spi::connect(|client| {

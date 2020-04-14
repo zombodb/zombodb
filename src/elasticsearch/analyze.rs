@@ -221,7 +221,7 @@ mod tests {
         Spi::run("CREATE TABLE test_analyze_text AS SELECT * FROM generate_series(1, 100);");
         Spi::run("CREATE INDEX idxtest_analyze_text ON test_analyze_text USING zombodb ((test_analyze_text.*));");
         Spi::connect(|client| {
-            let mut table = client.select(
+            let table = client.select(
                 " SELECT * FROM zdb.analyze_text('idxtest_analyze_text', 'standard', 'this is a test');",
                 None,
                 None,
@@ -252,7 +252,7 @@ mod tests {
         Spi::run("CREATE TABLE test_analyze_with_field AS SELECT * FROM generate_series(1, 100);");
         Spi::run("CREATE INDEX idxtest_analyze_with_field ON test_analyze_with_field USING zombodb ((test_analyze_with_field.*));");
         Spi::connect(|client| {
-            let mut table = client.select(
+            let table = client.select(
                 " SELECT * FROM zdb.analyze_with_field('idxtest_analyze_with_field', 'column', 'this is a test');",
                 None,
                 None,
@@ -283,7 +283,7 @@ mod tests {
         Spi::run("CREATE TABLE test_analyze_custom AS SELECT * FROM generate_series(1, 100);");
         Spi::run("CREATE INDEX idxtest_analyze_custom ON test_analyze_custom USING zombodb ((test_analyze_custom.*));");
         Spi::connect(|client| {
-            let mut table = client.select(
+            let table = client.select(
                 " SELECT * FROM zdb.analyze_custom(index=>'idxtest_analyze_custom',text=> 'this is a test', tokenizer =>'standard');",
                 None,
                 None,
