@@ -240,22 +240,7 @@ mod tests {
                 ("<ALPHANUM>", "test", 3, 10, 14),
             ];
 
-            let mut i = 0;
-            while let Some(_) = table.next() {
-                let ttype = table.get_datum::<&str>(1).unwrap();
-                let token = table.get_datum::<&str>(2).unwrap();
-                let pos = table.get_datum::<i32>(3).unwrap();
-                let start_offset = table.get_datum::<i64>(4).unwrap();
-                let end_offset = table.get_datum::<i64>(5).unwrap();
-
-                let row_tuple = (ttype, token, pos, start_offset, end_offset);
-
-                assert_eq!(expect[i], row_tuple);
-
-                i += 1;
-            }
-
-            assert_eq!(expect.len(), i);
+            test_table(table, expect);
 
             Ok(Some(()))
         });
@@ -286,22 +271,7 @@ mod tests {
                 ("<ALPHANUM>", "test", 3, 10, 14),
             ];
 
-            let mut i = 0;
-            while let Some(_) = table.next() {
-                let ttype = table.get_datum::<&str>(1).unwrap();
-                let token = table.get_datum::<&str>(2).unwrap();
-                let pos = table.get_datum::<i32>(3).unwrap();
-                let start_offset = table.get_datum::<i64>(4).unwrap();
-                let end_offset = table.get_datum::<i64>(5).unwrap();
-
-                let row_tuple = (ttype, token, pos, start_offset, end_offset);
-
-                assert_eq!(expect[i], row_tuple);
-
-                i += 1;
-            }
-
-            assert_eq!(expect.len(), i);
+            test_table(table, expect);
 
             Ok(Some(()))
         });
@@ -332,24 +302,27 @@ mod tests {
                 ("<ALPHANUM>", "test", 3, 10, 14),
             ];
 
-            let mut i = 0;
-            while let Some(_) = table.next() {
-                let ttype = table.get_datum::<&str>(1).unwrap();
-                let token = table.get_datum::<&str>(2).unwrap();
-                let pos = table.get_datum::<i32>(3).unwrap();
-                let start_offset = table.get_datum::<i64>(4).unwrap();
-                let end_offset = table.get_datum::<i64>(5).unwrap();
-
-                let row_tuple = (ttype, token, pos, start_offset, end_offset);
-
-                assert_eq!(expect[i], row_tuple);
-
-                i += 1;
-            }
-
-            assert_eq!(expect.len(), i);
+            test_table(table, expect);
 
             Ok(Some(()))
         });
+    }
+
+    fn test_table(mut table: SpiTupleTable, expect: Vec<(&str, &str, i32, i64, i64)>) {
+        let mut i = 0;
+        while let Some(_) = table.next() {
+            let ttype = table.get_datum::<&str>(1).unwrap();
+            let token = table.get_datum::<&str>(2).unwrap();
+            let pos = table.get_datum::<i32>(3).unwrap();
+            let start_offset = table.get_datum::<i64>(4).unwrap();
+            let end_offset = table.get_datum::<i64>(5).unwrap();
+
+            let row_tuple = (ttype, token, pos, start_offset, end_offset);
+
+            assert_eq!(expect[i], row_tuple);
+
+            i += 1;
+        }
+        assert_eq!(expect.len(), i);
     }
 }
