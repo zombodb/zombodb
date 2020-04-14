@@ -7,6 +7,7 @@
 use pgx::*;
 
 mod access_method;
+mod cat;
 mod custom_scan;
 mod elasticsearch;
 mod executor_manager;

@@ -3,6 +3,7 @@
 mod aggregates;
 pub(crate) mod analyze;
 mod bulk;
+mod cat;
 mod count;
 mod create_index;
 mod delete_index;
@@ -18,6 +19,7 @@ pub mod search;
 use crate::access_method::options::{RefreshInterval, ZDBIndexOptions};
 use crate::elasticsearch::aggregate_search::ElasticsearchAggregateSearchRequest;
 use crate::elasticsearch::analyze::ElasticsearchAnalyzerRequest;
+use crate::elasticsearch::cat::ElasticsearchCatRequest;
 use crate::elasticsearch::count::ElasticsearchCountRequest;
 use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 use crate::elasticsearch::expunge_deletes::ElasticsearchExpungeDeletesRequest;
@@ -149,6 +151,10 @@ impl Elasticsearch {
 
     pub fn update_settings(&self) -> ElasticsearchUpdateSettingsRequest {
         ElasticsearchUpdateSettingsRequest::new(self)
+    }
+
+    pub fn cat(&self, endpoint: &str) -> ElasticsearchCatRequest {
+        ElasticsearchCatRequest::new(self, endpoint)
     }
 
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
