@@ -266,3 +266,137 @@ fn highlight_phrase(
         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
     }
 }
+
+#[cfg(any(test, feature = "pg_test"))]
+mod tests {
+    use pgx::*;
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_term() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_term('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it');",
+                None,
+                None,
+            );
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            // name       | it   | <ALPHANUM> |        0 |            0 |          2
+            // name       | it   | <ALPHANUM> |        5 |           17 |         19
+            let expect = vec![
+                ("<ALPHANUM>", "it", 0, 0, 2),
+                ("<ALPHANUM>", "it", 5, 17, 19),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_phrase() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it is a');",
+                None,
+                None,
+            );
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            // test_field | it   | <ALPHANUM> |        0 |            0 |          2
+            // test_field | is   | <ALPHANUM> |        1 |            3 |          5
+            // test_field | a    | <ALPHANUM> |        2 |            6 |          7
+            // test_field | it   | <ALPHANUM> |        5 |           17 |         19
+            // test_field | is   | <ALPHANUM> |        6 |           20 |         22
+            // test_field | a    | <ALPHANUM> |        7 |           23 |         24
+            let expect = vec![
+                ("<ALPHANUM>", "it", 0, 0, 2),
+                ("<ALPHANUM>", "is", 1, 3, 5),
+                ("<ALPHANUM>", "a", 2, 6, 7),
+                ("<ALPHANUM>", "it", 5, 17, 19),
+                ("<ALPHANUM>", "is", 6, 20, 22),
+                ("<ALPHANUM>", "a", 7, 23, 24),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_phrase_as_one_word() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it');",
+                None,
+                None,
+            );
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            // test_field | it   | <ALPHANUM> |        0 |            0 |          2
+            // test_field | it   | <ALPHANUM> |        5 |           17 |         19
+            let expect = vec![
+                ("<ALPHANUM>", "it", 0, 0, 2),
+                ("<ALPHANUM>", "it", 5, 17, 19),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_phrase_with_Phrase_not_in_text() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'banana');",
+                None,
+                None,
+            );
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            let expect = vec![];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    fn test_table(mut table: SpiTupleTable, expect: Vec<(&str, &str, i32, i64, i64)>) {
+        let mut i = 0;
+        while let Some(_) = table.next() {
+            let token = table.get_datum::<&str>(2).unwrap();
+            let ttype = table.get_datum::<&str>(3).unwrap();
+            let pos = table.get_datum::<i32>(4).unwrap();
+            let start_offset = table.get_datum::<i64>(5).unwrap();
+            let end_offset = table.get_datum::<i64>(6).unwrap();
+
+            let row_tuple = (ttype, token, pos, start_offset, end_offset);
+
+            assert_eq!(expect[i], row_tuple);
+
+            i += 1;
+        }
+        assert_eq!(expect.len(), i);
+    }
+}
