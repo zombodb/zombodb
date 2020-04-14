@@ -25,6 +25,7 @@ use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 use crate::elasticsearch::expunge_deletes::ElasticsearchExpungeDeletesRequest;
 use crate::elasticsearch::get_document::ElasticsearchGetDocumentRequest;
 use crate::elasticsearch::get_mapping::ElasticsearchGetMappingRequest;
+use crate::elasticsearch::pg_catalog::ArbitraryRequestType;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
@@ -41,6 +42,20 @@ use std::io::Read;
 
 lazy_static! {
     static ref NUM_CPUS: usize = num_cpus::get();
+}
+
+pub mod pg_catalog {
+    use pgx::*;
+    use serde::Serialize;
+
+    #[allow(non_camel_case_types)]
+    #[derive(PostgresEnum, Serialize)]
+    pub enum ArbitraryRequestType {
+        GET,
+        POST,
+        PUT,
+        DELETE,
+    }
 }
 
 #[derive(Clone)]
@@ -103,6 +118,37 @@ impl Elasticsearch {
                 llapi: zdboptions.llapi(),
             },
         }
+    }
+
+    pub fn arbitrary_request(
+        &self,
+        method: ArbitraryRequestType,
+        endpoint: &str,
+        post_data: Option<&'static str>,
+    ) -> Result<String, ElasticsearchError> {
+        let mut url = String::new();
+
+        if endpoint.starts_with('/') {
+            url.push_str(&self.url());
+        } else {
+            url.push_str(&self.base_url());
+            url.push('/');
+        }
+
+        url.push_str(endpoint);
+
+        let mut builder = match method {
+            ArbitraryRequestType::GET => reqwest::Client::new().get(&url),
+            ArbitraryRequestType::POST => reqwest::Client::new().post(&url),
+            ArbitraryRequestType::PUT => reqwest::Client::new().put(&url),
+            ArbitraryRequestType::DELETE => reqwest::Client::new().delete(&url),
+        };
+
+        if post_data.is_some() {
+            builder = builder.body(post_data.unwrap());
+        }
+
+        Elasticsearch::execute_request(builder, |_, body| Ok(body))
     }
 
     pub fn analyze_text(&self, analyzer: &str, text: &str) -> ElasticsearchAnalyzerRequest {
@@ -251,4 +297,16 @@ impl Elasticsearch {
             Err(e) => Err(ElasticsearchError(e.status(), e.to_string())),
         }
     }
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn request(
+    index: PgRelation,
+    endpoint: &str,
+    method: default!(ArbitraryRequestType, "'GET'"),
+    post_data: Option<default!(&'static str, "NULL")>,
+) -> String {
+    let es = Elasticsearch::new(&index);
+    es.arbitrary_request(method, endpoint, post_data)
+        .expect("failed to execute arbitrary request")
 }

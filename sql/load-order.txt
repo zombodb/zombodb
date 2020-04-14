@@ -27,6 +27,7 @@ query_dsl_nested.generated.sql
 query_dsl_datetime_range.generated.sql
 query_dsl_query_string.generated.sql
 query_dsl_more_like_this.generated.sql
+elasticsearch_mod.generated.sql
 elasticsearch_aggregates_terms.generated.sql
 elasticsearch_aggregates_significant_terms.generated.sql
 elasticsearch_aggregates_significant_text.generated.sql
@@ -59,3 +60,4 @@ scoring_mod.generated.sql
 highlighting_document_highlighter.generated.sql
 cat_mod.generated.sql
 _cat-api.sql
+_support-views.sql
