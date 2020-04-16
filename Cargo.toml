@@ -4,28 +4,28 @@ version = "5.0.0"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = [ "cdylib" ]
 
 [features]
-default = ["pg12"]
-pg12 = ["pgx/pg12"]
-pg_test = []
+default = [ "pg12" ]
+pg12 = [ "pgx/pg12" ]
+pg_test = [ ]
 
 [dependencies]
-pgx = { path = "../pgx/pgx/", features = ["pg12"], default-features = false }
-pgx-macros = { path = "../pgx/pgx-macros" }
+crossbeam-channel = "0.4.2"
 lazy_static = "1.4.0"
 libc = "0.2.66"
-serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0.46"
-serde_cbor = "0.11.1"
-url = "2.1.1"
-crossbeam-channel = "0.4.2"
-num_cpus = "1.12.0"
 memoffset = "0.5.3"
+num_cpus = "1.12.0"
+pgx = { path = "../pgx/pgx/", features = [ "pg12" ], default-features = false }
+pgx-macros = { path = "../pgx/pgx-macros" }
 rand = "0.7.3"
 reqwest = "0.9.24"
+serde = { version = "1.0.104", features = [ "derive" ] }
+serde_cbor = "0.11.1"
+serde_json = "1.0.46"
 time = "0.2.7"
+url = "2.1.1"
 
 [dev-dependencies]
 pgx-tests = { path = "../pgx/pgx-tests" }
