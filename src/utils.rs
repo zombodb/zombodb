@@ -2,40 +2,32 @@ use pgx::*;
 use serde_json::Value;
 
 pub fn find_zdb_index(heap_relation: &PgRelation) -> PgRelation {
-    let index_list = PgList::<pg_sys::Oid>::from_pg(unsafe {
-        pg_sys::RelationGetIndexList(heap_relation.as_ptr())
-    });
+    for oid in heap_relation.indicies().iter_oid() {
+        let index_relation =
+            PgRelation::with_lock(oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
 
-    let zdb_amhandler_oid = lookup_zdb_amhandler_oid();
-    for i in 0..index_list.len() {
-        let oid = index_list.get_oid(i).unwrap();
-        let index_relation: *mut pg_sys::RelationData =
-            unsafe { pg_sys::RelationIdGetRelation(oid) };
-
-        if !index_relation.is_null() {
-            let amhandler_oid = unsafe { index_relation.as_ref().unwrap().rd_amhandler };
-            if amhandler_oid == zdb_amhandler_oid {
-                unsafe {
-                    return PgRelation::from_pg_owned(index_relation);
-                }
-            }
-
-            unsafe {
-                pg_sys::RelationClose(index_relation);
-            }
+        if is_zdb_index(&index_relation) {
+            return index_relation.to_owned();
         }
     }
 
     panic!("no zombodb index on {}", heap_relation.name())
 }
 
-fn lookup_zdb_amhandler_oid() -> pg_sys::Oid {
-    match Spi::get_one::<pg_sys::Oid>("SELECT 'zdb.amhandler'::regproc::oid") {
-        Some(oid) => oid,
-        None => panic!("no zombodb pg_am entry.  Is ZomboDB installed?"),
+pub fn is_zdb_index(index: &PgRelation) -> bool {
+    if index.rd_indam.is_null() {
+        false
+    } else {
+        let indam = PgBox::from_pg(index.rd_indam);
+        indam.amvalidate == Some(crate::access_method::amvalidate)
     }
-    // NB:  lookup_function() doesn't seem to work when running in a parallel worker
-    // lookup_function(vec!["zdb", "amhandler"], Some(vec![pg_sys::INTERNALOID]))
+}
+
+pub fn lookup_zdb_extension_oid() -> pg_sys::Oid {
+    match Spi::get_one::<pg_sys::Oid>("SELECT oid FROM pg_extension WHERE extname = 'zombodb';") {
+        Some(oid) => oid,
+        None => panic!("no zombodb pg_extension entry.  Is ZomboDB installed?"),
+    }
 }
 
 pub fn lookup_zdb_index_tupdesc(indexrel: &PgRelation) -> PgTupleDesc<'static> {

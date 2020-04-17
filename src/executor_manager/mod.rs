@@ -4,6 +4,7 @@ use crate::utils::lookup_zdb_index_tupdesc;
 use pgx::*;
 use std::collections::{HashMap, HashSet};
 
+pub mod drop;
 pub mod hooks;
 
 static mut EXECUTOR_MANAGER: ExecutorManager = ExecutorManager::new();
@@ -76,9 +77,9 @@ impl QueryState {
             let rentry = pg_sys::rt_fetch(var.varnoold, rtable);
             let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
 
-            return Some(heap_oid);
+            Some(heap_oid)
         } else {
-            return None;
+            None
         }
     }
 }

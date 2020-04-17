@@ -59,7 +59,8 @@ fn anyelement_cmpfunc(
     match tid {
         Some(tid) => {
             let lookup = pg_func_extra(fcinfo, || {
-                let heap_relation = PgRelation::with_lock(heap_oid, pg_sys::AccessShareLock as i32);
+                let heap_relation =
+                    PgRelation::with_lock(heap_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
                 let index = find_zdb_index(&heap_relation);
                 let es = Elasticsearch::new(&index);
                 let search = es
