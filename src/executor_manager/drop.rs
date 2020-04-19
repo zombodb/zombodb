@@ -1,5 +1,5 @@
 use pgx::{
-    elog, pg_sys, register_xact_callback, IntoDatum, PgOid, PgRelation, PgXactCallbackEvent, Spi,
+    pg_sys, register_xact_callback, IntoDatum, PgOid, PgRelation, PgXactCallbackEvent, Spi,
     SpiTupleTable,
 };
 
@@ -14,10 +14,10 @@ pub fn drop_index(index: &PgRelation) {
         // from its remote Elasticsearch server
         let es = Elasticsearch::new(index);
         register_xact_callback(PgXactCallbackEvent::Commit, move || {
-            elog(
-                ZDB_LOG_LEVEL.get().log_level(),
-                &format!("[zombodb] Deleting remote index: {}", es.base_url()),
-            );
+            ZDB_LOG_LEVEL.get().log(&format!(
+                "[zombodb] Deleting remote index: {}",
+                es.base_url()
+            ));
 
             // we're just going to assume it worked, throwing away any error
             // because raising an elog(ERROR) here would cause Postgres to panic

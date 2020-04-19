@@ -60,13 +60,14 @@ pub extern "C" fn ambulkdelete(
 
     bulk.finish().expect("failed to finish vacuum");
 
-    elog(
-        ZDB_LOG_LEVEL.get().log_level(),
-        &format!(
-            "[zombodb] vacuum:  index={}, by_xmin={}, by_xmax={}, vacuumed={}, aborted_xids_removed={}",
-            elasticsearch.base_url(), by_xmin, by_xmax, vacuumed, aborted
-        ),
-    );
+    ZDB_LOG_LEVEL.get().log(&format!(
+        "[zombodb] vacuum:  index={}, by_xmin={}, by_xmax={}, vacuumed={}, aborted_xids_removed={}",
+        elasticsearch.base_url(),
+        by_xmin,
+        by_xmax,
+        vacuumed,
+        aborted
+    ));
     result.into_pg()
 }
 

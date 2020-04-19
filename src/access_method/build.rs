@@ -119,15 +119,12 @@ fn do_heap_scan<'a>(
 
     let (ntuples, nrequests) = state.bulk.totals();
 
-    elog(
-        ZDB_LOG_LEVEL.get().log_level(),
-        &format!(
-            "[zombodb] indexed {} rows to {} in {} requests",
-            ntuples,
-            elasticsearch.base_url(),
-            nrequests
-        ),
-    );
+    ZDB_LOG_LEVEL.get().log(&format!(
+        "[zombodb] indexed {} rows to {} in {} requests",
+        ntuples,
+        elasticsearch.base_url(),
+        nrequests
+    ));
 
     ntuples
 }

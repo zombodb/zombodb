@@ -615,17 +615,14 @@ impl Handler {
         // now determine if we need to start a new thread to handle what's in the queue
         let nthreads = self.active_threads.load(Ordering::SeqCst);
         if self.total_docs > 0 && self.total_docs % 10_000 == 0 {
-            elog(
-                ZDB_LOG_LEVEL.get().log_level(),
-                &format!(
-                    "[zombodb] total={}, in_flight={}, queued={}, active_threads={}, index={}",
-                    self.total_docs,
-                    self.in_flight.load(Ordering::SeqCst),
-                    self.bulk_receiver.len(),
-                    nthreads,
-                    self.elasticsearch.base_url()
-                ),
-            );
+            ZDB_LOG_LEVEL.get().log(&format!(
+                "[zombodb] total={}, in_flight={}, queued={}, active_threads={}, index={}",
+                self.total_docs,
+                self.in_flight.load(Ordering::SeqCst),
+                self.bulk_receiver.len(),
+                nthreads,
+                self.elasticsearch.base_url()
+            ));
         }
         if nthreads == 0
             || (nthreads < self.concurrency && self.total_docs % (10_000 / self.concurrency) == 0)
