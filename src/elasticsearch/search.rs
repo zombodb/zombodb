@@ -218,7 +218,7 @@ impl ElasticsearchSearchRequest {
         scroll_id: &str,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
-        url.push_str(&elasticsearch.options.url);
+        url.push_str(elasticsearch.options.url());
         url.push_str("_search/scroll");
         url.push_str("?filter_path=");
         url.push_str(SEARCH_FILTER_PATH);
@@ -507,10 +507,8 @@ mod tests {
             let mut table = client.select("SELECT * FROM test_sort WHERE test_sort ==> dsl.sort('generate_series', 'desc', dsl.match_all());", None, None).first();
 
             let mut previous = table.get_one::<i64>().unwrap();
-            while let Some(row) = table.next() {
-                let col = row.get(0).unwrap().unwrap();
-                let current =
-                    unsafe { i64::from_datum(col, false, PgBuiltInOids::INT8OID.value()) }.unwrap();
+            while table.next().is_some() {
+                let current = table.get_datum::<i64>(1).expect("value was NULL");
 
                 assert!(current < previous);
                 previous = current;
