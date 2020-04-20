@@ -133,7 +133,7 @@ impl JsonString for pgx::JsonString {
 
 impl<T> JsonString for Vec<Option<T>>
 where
-    T: FromDatum<T> + JsonString,
+    T: FromDatum + JsonString,
 {
     #[inline]
     fn push_json(&self, string: &mut String) {
