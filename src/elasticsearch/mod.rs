@@ -17,7 +17,7 @@ mod update_settings;
 pub mod aggregate_search;
 pub mod search;
 
-use crate::access_method::options::{RefreshInterval, ZDBIndexOptions};
+use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::aggregate_search::ElasticsearchAggregateSearchRequest;
 use crate::elasticsearch::analyze::ElasticsearchAnalyzerRequest;
 use crate::elasticsearch::cat::ElasticsearchCatRequest;
@@ -61,27 +61,8 @@ pub mod pg_catalog {
 }
 
 #[derive(Clone)]
-struct InternalOptions {
-    url: String,
-    type_name: String,
-    refresh_interval: RefreshInterval,
-    alias: String,
-    uuid: String,
-    index_name: String,
-    translog_durability: String,
-
-    optimize_after: i32,
-    compression_level: i32,
-    shards: i32,
-    replicas: i32,
-    bulk_concurrency: i32,
-    batch_size: i32,
-    llapi: bool,
-}
-
-#[derive(Clone)]
 pub struct Elasticsearch {
-    options: InternalOptions,
+    options: ZDBIndexOptions,
 }
 
 #[derive(Debug)]
@@ -99,27 +80,13 @@ impl ElasticsearchError {
 
 impl Elasticsearch {
     pub fn new(indexrel: &PgRelation) -> Self {
-        let heaprel = indexrel.heap_relation().expect("index is not an index");
-        let zdboptions = ZDBIndexOptions::from(indexrel);
         Elasticsearch {
-            options: InternalOptions {
-                url: zdboptions.url(),
-                type_name: zdboptions.type_name(),
-                refresh_interval: zdboptions.refresh_interval(),
-                alias: zdboptions.alias(&heaprel, indexrel),
-                uuid: zdboptions.uuid(&heaprel, indexrel),
-                index_name: zdboptions.index_name(&heaprel, indexrel),
-                translog_durability: zdboptions.translog_durability(),
-
-                optimize_after: zdboptions.optimize_after(),
-                compression_level: zdboptions.compression_level(),
-                shards: zdboptions.shards(),
-                replicas: zdboptions.replicas(),
-                bulk_concurrency: zdboptions.bulk_concurrency(),
-                batch_size: zdboptions.batch_size(),
-                llapi: zdboptions.llapi(),
-            },
+            options: ZDBIndexOptions::from(indexrel),
         }
+    }
+
+    pub fn from_options(options: ZDBIndexOptions) -> Self {
+        Elasticsearch { options }
     }
 
     pub fn arbitrary_request(
@@ -199,8 +166,8 @@ impl Elasticsearch {
         ElasticsearchExpungeDeletesRequest::new(self)
     }
 
-    pub fn update_settings(&self) -> ElasticsearchUpdateSettingsRequest {
-        ElasticsearchUpdateSettingsRequest::new(self)
+    pub fn update_settings(&self, old_alias: Option<&str>) -> ElasticsearchUpdateSettingsRequest {
+        ElasticsearchUpdateSettingsRequest::new(self, old_alias)
     }
 
     pub fn cat(&self, endpoint: &str) -> ElasticsearchCatRequest {
@@ -212,9 +179,14 @@ impl Elasticsearch {
     }
 
     pub fn start_bulk(&self) -> ElasticsearchBulkRequest {
-        let concurrency = (self.options.shards as usize)
-            .min(NUM_CPUS.min(self.options.bulk_concurrency as usize));
-        ElasticsearchBulkRequest::new(self, 10_000, concurrency, self.options.batch_size as usize)
+        let concurrency = (self.options.shards() as usize)
+            .min(NUM_CPUS.min(self.options.bulk_concurrency() as usize));
+        ElasticsearchBulkRequest::new(
+            self,
+            10_000,
+            concurrency,
+            self.options.batch_size() as usize,
+        )
     }
 
     pub fn open_search(&self, query: ZDBQuery) -> ElasticsearchSearchRequest {
@@ -261,20 +233,20 @@ impl Elasticsearch {
         ElasticsearchGetMappingRequest::new(self)
     }
 
-    pub fn url(&self) -> String {
-        self.options.url.clone()
+    pub fn url(&self) -> &str {
+        self.options.url()
     }
 
     pub fn base_url(&self) -> String {
-        format!("{}{}", self.options.url, self.options.index_name)
+        format!("{}{}", self.options.url(), self.options.index_name())
     }
 
     pub fn index_name(&self) -> &str {
-        &self.options.index_name
+        self.options.index_name()
     }
 
     pub fn type_name(&self) -> &str {
-        &self.options.type_name
+        self.options.type_name()
     }
 
     pub fn execute_request<F, R>(

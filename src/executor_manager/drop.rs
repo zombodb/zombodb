@@ -27,8 +27,7 @@ pub fn drop_index(index: &PgRelation) {
 }
 
 pub fn drop_table(table: &PgRelation) {
-    for index in table.indicies().iter_oid() {
-        let index = PgRelation::with_lock(index, pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE);
+    for index in table.indicies(pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE) {
         drop_index(&index);
     }
 }

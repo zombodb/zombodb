@@ -4,6 +4,7 @@ use lazy_static::*;
 use memoffset::*;
 use pgx::*;
 use std::ffi::{CStr, CString};
+use std::fmt::Debug;
 
 const DEFAULT_BATCH_SIZE: i32 = 8 * 1024 * 1024;
 const DEFAULT_COMPRESSION_LEVEL: i32 = 1;
@@ -36,7 +37,7 @@ impl RefreshInterval {
 }
 
 #[repr(C)]
-pub struct ZDBIndexOptions {
+struct ZDBIndexOptionsInternal {
     /* varlena header (do not touch directly!) */
     #[allow(dead_code)]
     vl_len_: i32,
@@ -58,13 +59,13 @@ pub struct ZDBIndexOptions {
 }
 
 #[allow(dead_code)]
-impl ZDBIndexOptions {
-    pub fn from(relation: &PgRelation) -> PgBox<ZDBIndexOptions> {
+impl ZDBIndexOptionsInternal {
+    fn from(relation: &PgRelation) -> PgBox<ZDBIndexOptionsInternal> {
         if relation.rd_index.is_null() {
             panic!("relation doesn't represent an index")
         } else if relation.rd_options.is_null() {
             // use defaults
-            let mut ops = PgBox::<ZDBIndexOptions>::alloc0();
+            let mut ops = PgBox::<ZDBIndexOptionsInternal>::alloc0();
             ops.compression_level = DEFAULT_COMPRESSION_LEVEL;
             ops.shards = DEFAULT_SHARDS;
             ops.replicas = ZDB_DEFAULT_REPLICAS.get();
@@ -73,8 +74,145 @@ impl ZDBIndexOptions {
             ops.optimize_after = DEFAULT_OPTIMIZE_AFTER;
             ops
         } else {
-            PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptions)
+            PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal)
         }
+    }
+
+    fn url(&self) -> String {
+        let url = self.get_str(self.url_offset, || DEFAULT_URL.to_owned());
+
+        if url == DEFAULT_URL {
+            // the url option on the index could also be the string 'default', so
+            // in either case above, lets use the setting from postgresql.conf
+            if ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_some() {
+                ZDB_DEFAULT_ELASTICSEARCH_URL.get().unwrap()
+            } else {
+                // the user hasn't provided one
+                panic!("Must set zdb.default_elasticsearch_url");
+            }
+        } else {
+            // the index itself has a valid url
+            url
+        }
+    }
+
+    fn type_name(&self) -> String {
+        self.get_str(self.type_name_offset, || DEFAULT_TYPE_NAME.to_owned())
+    }
+
+    fn refresh_interval(&self) -> RefreshInterval {
+        match self
+            .get_str(self.refresh_interval_offset, || {
+                DEFAULT_REFRESH_INTERVAL.to_owned()
+            })
+            .as_str()
+        {
+            "-1" | "immediate" => RefreshInterval::Immediate,
+            "async" => RefreshInterval::ImmediateAsync,
+            other => RefreshInterval::Background(other.to_owned()),
+        }
+    }
+
+    fn alias(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
+        self.get_str(self.alias_offset, || {
+            format!(
+                "{}.{}.{}.{}-{}",
+                unsafe {
+                    std::ffi::CStr::from_ptr(pg_sys::get_database_name(pg_sys::MyDatabaseId))
+                }
+                .to_str()
+                .unwrap(),
+                unsafe {
+                    std::ffi::CStr::from_ptr(pg_sys::get_namespace_name(indexrel.namespace_oid()))
+                }
+                .to_str()
+                .unwrap(),
+                heaprel.name(),
+                indexrel.name(),
+                indexrel.oid()
+            )
+        })
+    }
+
+    fn uuid(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
+        self.get_str(self.uuid_offset, || {
+            format!(
+                "{}.{}.{}.{}",
+                unsafe { pg_sys::MyDatabaseId },
+                indexrel.namespace_oid(),
+                heaprel.oid(),
+                indexrel.oid(),
+            )
+        })
+    }
+
+    fn index_name(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
+        self.uuid(heaprel, indexrel)
+    }
+
+    fn translog_durability(&self) -> String {
+        self.get_str(self.translog_durability_offset, || {
+            DEFAULT_TRANSLOG_DURABILITY.to_owned()
+        })
+    }
+
+    fn get_str<F: FnOnce() -> String>(&self, offset: i32, default: F) -> String {
+        if offset == 0 {
+            default()
+        } else {
+            let opts = self as *const _ as void_ptr as usize;
+            let value =
+                unsafe { CStr::from_ptr((opts + offset as usize) as *const std::os::raw::c_char) };
+
+            value.to_str().unwrap().to_owned()
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ZDBIndexOptions {
+    oid: pg_sys::Oid,
+    url: String,
+    type_name: String,
+    refresh_interval: RefreshInterval,
+    alias: String,
+    uuid: String,
+    translog_durability: String,
+
+    optimize_after: i32,
+    compression_level: i32,
+    shards: i32,
+    replicas: i32,
+    bulk_concurrency: i32,
+    batch_size: i32,
+    llapi: bool,
+}
+
+#[allow(dead_code)]
+impl ZDBIndexOptions {
+    pub fn from(relation: &PgRelation) -> ZDBIndexOptions {
+        let internal = ZDBIndexOptionsInternal::from(relation);
+        let heap_relation = relation.heap_relation().expect("not an index");
+        ZDBIndexOptions {
+            oid: relation.oid(),
+            url: internal.url(),
+            type_name: internal.type_name(),
+            refresh_interval: internal.refresh_interval(),
+            alias: internal.alias(&heap_relation, relation),
+            uuid: internal.uuid(&heap_relation, relation),
+            compression_level: internal.compression_level,
+            shards: internal.shards,
+            replicas: internal.replicas,
+            bulk_concurrency: internal.bulk_concurrency,
+            batch_size: internal.batch_size,
+            optimize_after: internal.optimize_after,
+            translog_durability: internal.translog_durability(),
+            llapi: internal.llapi,
+        }
+    }
+
+    pub fn oid(&self) -> pg_sys::Oid {
+        self.oid
     }
 
     pub fn optimize_after(&self) -> i32 {
@@ -105,113 +243,52 @@ impl ZDBIndexOptions {
         self.llapi
     }
 
-    pub fn url(&self) -> String {
-        let url = self.get_str(self.url_offset, || DEFAULT_URL.to_owned());
-
-        if url == DEFAULT_URL {
-            // the url option on the index could also be the string 'default', so
-            // in either case above, lets use the setting from postgresql.conf
-            if ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_some() {
-                ZDB_DEFAULT_ELASTICSEARCH_URL.get().unwrap()
-            } else {
-                // the user hasn't provided one
-                panic!("Must set zdb.default_elasticsearch_url");
-            }
-        } else {
-            // the index itself has a valid url
-            url
-        }
+    pub fn url(&self) -> &str {
+        &self.url
     }
 
-    pub fn type_name(&self) -> String {
-        self.get_str(self.type_name_offset, || DEFAULT_TYPE_NAME.to_owned())
+    pub fn type_name(&self) -> &str {
+        &self.type_name
     }
 
     pub fn refresh_interval(&self) -> RefreshInterval {
-        match self
-            .get_str(self.refresh_interval_offset, || {
-                DEFAULT_REFRESH_INTERVAL.to_owned()
-            })
-            .as_str()
-        {
-            "-1" | "immediate" => RefreshInterval::Immediate,
-            "async" => RefreshInterval::ImmediateAsync,
-            other => RefreshInterval::Background(other.to_owned()),
-        }
+        self.refresh_interval.clone()
     }
 
-    pub fn alias(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
-        self.get_str(self.alias_offset, || {
-            format!(
-                "{}.{}.{}.{}-{}",
-                unsafe {
-                    std::ffi::CStr::from_ptr(pg_sys::get_database_name(pg_sys::MyDatabaseId))
-                }
-                .to_str()
-                .unwrap(),
-                unsafe {
-                    std::ffi::CStr::from_ptr(pg_sys::get_namespace_name(indexrel.namespace_oid()))
-                }
-                .to_str()
-                .unwrap(),
-                heaprel.name(),
-                indexrel.name(),
-                indexrel.oid()
-            )
-        })
+    pub fn alias(&self) -> &str {
+        &self.alias
     }
 
-    pub fn uuid(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
-        self.get_str(self.uuid_offset, || {
-            format!(
-                "{}.{}.{}.{}",
-                unsafe { pg_sys::MyDatabaseId },
-                indexrel.namespace_oid(),
-                heaprel.oid(),
-                indexrel.oid(),
-            )
-        })
+    pub fn uuid(&self) -> &str {
+        &self.uuid
     }
 
-    pub fn index_name(&self, heaprel: &PgRelation, indexrel: &PgRelation) -> String {
-        self.uuid(heaprel, indexrel)
+    pub fn index_name(&self) -> &str {
+        &self.uuid
     }
 
-    pub fn translog_durability(&self) -> String {
-        self.get_str(self.translog_durability_offset, || {
-            DEFAULT_TRANSLOG_DURABILITY.to_owned()
-        })
-    }
-
-    fn get_str<F: FnOnce() -> String>(&self, offset: i32, default: F) -> String {
-        if offset == 0 {
-            default()
-        } else {
-            let opts = self as *const _ as void_ptr as usize;
-            let value =
-                unsafe { CStr::from_ptr((opts + offset as usize) as *const std::os::raw::c_char) };
-
-            value.to_str().unwrap().to_owned()
-        }
+    pub fn translog_durability(&self) -> &str {
+        &self.translog_durability
     }
 }
 
 #[pg_extern(immutable, parallel_safe)]
 fn index_name(index_relation: PgRelation) -> String {
-    let heap_relation = index_relation
-        .heap_relation()
-        .expect("relation is not an index relation");
-    ZDBIndexOptions::from(&index_relation).index_name(&heap_relation, &index_relation)
+    ZDBIndexOptions::from(&index_relation)
+        .index_name()
+        .to_owned()
 }
 
 #[pg_extern(immutable, parallel_safe)]
 fn index_url(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation).url()
+    ZDBIndexOptions::from(&index_relation).url().to_owned()
 }
 
 #[pg_extern(immutable, parallel_safe)]
 fn index_type_name(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation).type_name()
+    ZDBIndexOptions::from(&index_relation)
+        .type_name()
+        .to_owned()
 }
 
 #[pg_extern(immutable, parallel_safe)]
@@ -273,67 +350,67 @@ pub unsafe extern "C" fn amoptions(
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"url\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
-            offset: offset_of!(ZDBIndexOptions, url_offset) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, url_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"type_name\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
-            offset: offset_of!(ZDBIndexOptions, type_name_offset) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, type_name_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"refresh_interval\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
-            offset: offset_of!(ZDBIndexOptions, refresh_interval_offset) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, refresh_interval_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"shards\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
-            offset: offset_of!(ZDBIndexOptions, shards) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, shards) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"replicas\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
-            offset: offset_of!(ZDBIndexOptions, replicas) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, replicas) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"bulk_concurrency\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
-            offset: offset_of!(ZDBIndexOptions, bulk_concurrency) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, bulk_concurrency) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"batch_size\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
-            offset: offset_of!(ZDBIndexOptions, batch_size) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, batch_size) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"compression_level\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
-            offset: offset_of!(ZDBIndexOptions, compression_level) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, compression_level) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"alias\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
-            offset: offset_of!(ZDBIndexOptions, alias_offset) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, alias_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"optimize_after\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
-            offset: offset_of!(ZDBIndexOptions, optimize_after) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, optimize_after) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"llapi\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
-            offset: offset_of!(ZDBIndexOptions, llapi) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, llapi) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"uuid\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
-            offset: offset_of!(ZDBIndexOptions, uuid_offset) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, uuid_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"translog_durability\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
-            offset: offset_of!(ZDBIndexOptions, translog_durability_offset) as i32,
+            offset: offset_of!(ZDBIndexOptionsInternal, translog_durability_offset) as i32,
         },
     ];
 
@@ -347,11 +424,14 @@ pub unsafe extern "C" fn amoptions(
         relopt.gen.as_mut().unwrap().lockmode = pg_sys::AccessShareLock as pg_sys::LOCKMODE;
     }
 
-    let rdopts =
-        pg_sys::allocateReloptStruct(std::mem::size_of::<ZDBIndexOptions>(), options, noptions);
+    let rdopts = pg_sys::allocateReloptStruct(
+        std::mem::size_of::<ZDBIndexOptionsInternal>(),
+        options,
+        noptions,
+    );
     pg_sys::fillRelOptions(
         rdopts,
-        std::mem::size_of::<ZDBIndexOptions>(),
+        std::mem::size_of::<ZDBIndexOptionsInternal>(),
         options,
         noptions,
         validate,
@@ -543,17 +623,14 @@ mod tests {
             uuid
         ));
 
-        let heap_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'test'::regclass::oid")
-            .expect("failed to get SPI result");
         let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
             .expect("failed to get SPI result");
-        let heaprel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
-        assert_eq!(&options.url(), "http://localhost:19200/");
-        assert_eq!(&options.type_name(), "test_type_name");
-        assert_eq!(&options.alias(&heaprel, &indexrel), "test_alias");
-        assert_eq!(&options.uuid(&heaprel, &indexrel), &uuid.to_string());
+        assert_eq!(options.url(), "http://localhost:19200/");
+        assert_eq!(options.type_name(), "test_type_name");
+        assert_eq!(options.alias(), "test_alias");
+        assert_eq!(options.uuid(), &uuid.to_string());
         assert_eq!(
             options.refresh_interval(),
             RefreshInterval::Background("5s".to_owned())
@@ -585,13 +662,13 @@ mod tests {
         let heaprel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from(&indexrel);
-        assert_eq!(&options.type_name(), DEFAULT_TYPE_NAME);
+        assert_eq!(options.type_name(), DEFAULT_TYPE_NAME);
         assert_eq!(
-            &options.alias(&heaprel, &indexrel),
+            &options.alias(),
             &format!("pgx_tests.public.test.idxtest-{}", indexrel.oid())
         );
         assert_eq!(
-            &options.uuid(&heaprel, &indexrel),
+            &options.uuid(),
             &format!(
                 "{}.{}.{}.{}",
                 pg_sys::MyDatabaseId,
@@ -622,13 +699,9 @@ mod tests {
         );
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
-        let heap_relation = index_relation.heap_relation().unwrap();
         let options = ZDBIndexOptions::from(&index_relation);
 
-        assert_eq!(
-            options.index_name(&heap_relation, &index_relation),
-            options.uuid(&heap_relation, &index_relation)
-        );
+        assert_eq!(options.index_name(), options.uuid());
     }
 
     #[pg_test]

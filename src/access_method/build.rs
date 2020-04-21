@@ -76,7 +76,7 @@ pub extern "C" fn ambuild(
 
     // update the index settings, such as refresh_interval and number of replicas
     elasticsearch
-        .update_settings()
+        .update_settings(None)
         .execute()
         .expect("failed to update index settings after build");
 

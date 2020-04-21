@@ -98,7 +98,7 @@ impl ElasticsearchBulkRequest {
         let nrequests = successful_requests.load(Ordering::SeqCst);
 
         // now refresh the index
-        match elasticsearch.options.refresh_interval {
+        match elasticsearch.options.refresh_interval() {
             RefreshInterval::Immediate => ElasticsearchBulkRequest::refresh_index(elasticsearch)?,
             RefreshInterval::ImmediateAsync => {
                 std::thread::spawn(|| ElasticsearchBulkRequest::refresh_index(elasticsearch).ok());

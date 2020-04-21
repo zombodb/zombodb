@@ -18,12 +18,9 @@ pub extern "C" fn ambulkdelete(
     let result = PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0();
     let info = PgBox::from_pg(info);
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
-    let heap_relation = index_relation
-        .heap_relation()
-        .expect("not an index relation");
     let elasticsearch = Elasticsearch::new(&index_relation);
     let options = ZDBIndexOptions::from(&index_relation);
-    let es_index_name = options.index_name(&heap_relation, &index_relation);
+    let es_index_name = options.index_name();
     let oldest_xmin = unsafe {
         pg_sys::TransactionIdLimitedForOldSnapshots(
             pg_sys::GetOldestXmin(info.index, pg_sys::PROCARRAY_FLAGS_VACUUM as i32),

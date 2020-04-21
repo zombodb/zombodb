@@ -29,11 +29,11 @@ impl ElasticsearchCreateIndexRequest {
         json! {
             {
                "settings": {
-                  "number_of_shards": self.elasticsearch.options.shards,
+                  "number_of_shards": self.elasticsearch.options.shards(),
                   "index.number_of_replicas": 0,
                   "index.refresh_interval": "-1",
                   "index.query.default_field": "zdb_all",
-                  "index.translog.durability": self.elasticsearch.options.translog_durability,
+                  "index.translog.durability": self.elasticsearch.options.translog_durability(),
                   "analysis": {
                      "filter": lookup_analysis_thing("filters"),
                      "char_filter" : lookup_analysis_thing("char_filters"),
@@ -70,7 +70,7 @@ impl ElasticsearchCreateIndexRequest {
                      "properties": self.mapping
                },
                "aliases": {
-                  &self.elasticsearch.options.alias: {}
+                  self.elasticsearch.options.alias(): {}
                }
             }
         }

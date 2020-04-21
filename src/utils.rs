@@ -2,12 +2,9 @@ use pgx::*;
 use serde_json::Value;
 
 pub fn find_zdb_index(heap_relation: &PgRelation) -> PgRelation {
-    for oid in heap_relation.indicies().iter_oid() {
-        let index_relation =
-            PgRelation::with_lock(oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-
-        if is_zdb_index(&index_relation) {
-            return index_relation.to_owned();
+    for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+        if is_zdb_index(&index) {
+            return index.to_owned();
         }
     }
 

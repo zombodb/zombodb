@@ -4,6 +4,7 @@ use crate::utils::lookup_zdb_index_tupdesc;
 use pgx::*;
 use std::collections::{HashMap, HashSet};
 
+pub mod alter;
 pub mod drop;
 pub mod hooks;
 

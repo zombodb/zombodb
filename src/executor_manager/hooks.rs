@@ -1,3 +1,6 @@
+use crate::executor_manager::alter::{
+    alter_indices, get_index_options_for_relation, get_index_options_for_schema,
+};
 use crate::executor_manager::drop::{drop_extension, drop_index, drop_schema, drop_table};
 use crate::executor_manager::get_executor_manager;
 use crate::scoring::WantScoresWalker;
@@ -45,7 +48,81 @@ impl PgHooks for ZDBHooks {
         ) -> HookResult<()>,
     ) -> HookResult<()> {
         let utility_statement = PgBox::from_pg(pstmt.utilityStmt);
-        if is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_DropStmt) {
+
+        let is_alter = is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_AlterTableStmt);
+        let is_rename = is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_RenameStmt);
+        let is_drop = is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_DropStmt);
+
+        if is_alter {
+            let alter = PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::AlterTableStmt);
+            let relid = unsafe {
+                pg_sys::AlterTableLookupRelation(
+                    alter.as_ptr(),
+                    pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                )
+            };
+            let rel = unsafe { PgRelation::open(relid) };
+            let prev_options = get_index_options_for_relation(&rel);
+            drop(rel);
+
+            // call the prev hook to go ahead and apply the ALTER statement to the index
+            let result = prev_hook(
+                pstmt,
+                query_string,
+                context,
+                params,
+                query_env,
+                dest,
+                completion_tag,
+            );
+
+            alter_indices(Some(prev_options));
+            return result;
+        } else if is_rename {
+            let rename = PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::RenameStmt);
+
+            let prev_options = match rename.renameType {
+                pg_sys::ObjectType_OBJECT_SCHEMA => {
+                    let name = unsafe { std::ffi::CStr::from_ptr(rename.subname) };
+                    Some(get_index_options_for_schema(
+                        name.to_str().expect("invalid schema name"),
+                    ))
+                }
+                pg_sys::ObjectType_OBJECT_TABLE
+                | pg_sys::ObjectType_OBJECT_MATVIEW
+                | pg_sys::ObjectType_OBJECT_INDEX => unsafe {
+                    let relid = pg_sys::RangeVarGetRelidExtended(
+                        rename.relation,
+                        pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                        pg_sys::RVROption_RVR_MISSING_OK,
+                        None,
+                        std::ptr::null_mut(),
+                    );
+
+                    if relid != pg_sys::InvalidOid {
+                        let rel = PgRelation::open(relid);
+                        Some(get_index_options_for_relation(&rel))
+                    } else {
+                        None
+                    }
+                },
+                _ => None,
+            };
+
+            // call the prev hook to go ahead and apply the ALTER statement to the index
+            let result = prev_hook(
+                pstmt,
+                query_string,
+                context,
+                params,
+                query_env,
+                dest,
+                completion_tag,
+            );
+
+            alter_indices(prev_options);
+            return result;
+        } else if is_drop {
             let drop = PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::DropStmt);
 
             match drop.removeType {
