@@ -49,10 +49,11 @@ struct Custom<'a> {
 
 impl ElasticsearchAnalyzerRequest {
     pub fn execute(&self) -> std::result::Result<AnalyzedData, ElasticsearchError> {
+        let body = serde_json::to_string(&self.analyze_json).unwrap();
         let client = reqwest::Client::new()
             .post(&self.url)
             .header("content-type", "application/json")
-            .body(serde_json::to_string(&self.analyze_json).unwrap());
+            .body(body);
 
         Elasticsearch::execute_request(client, |_, body| Ok(serde_json::from_str(&body).unwrap()))
     }
@@ -93,12 +94,12 @@ impl ElasticsearchAnalyzerRequest {
 
     pub fn new_custom(
         elasticsearch: &Elasticsearch,
-        field: Option<default!(&str, NULL)>,
-        text: Option<default!(&str, NULL)>,
-        tokenizer: Option<default!(&str, NULL)>,
-        normalizer: Option<default!(&str, NULL)>,
-        filter: Option<default!(Array<&str>, NULL)>,
-        char_filter: Option<default!(Array<&str>, NULL)>,
+        field: Option<&str>,
+        text: Option<&str>,
+        tokenizer: Option<&str>,
+        normalizer: Option<&str>,
+        filter: Option<Array<&str>>,
+        char_filter: Option<Array<&str>>,
     ) -> ElasticsearchAnalyzerRequest {
         let custom = Custom {
             field,
