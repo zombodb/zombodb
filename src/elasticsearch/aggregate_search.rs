@@ -57,7 +57,7 @@ where
     }
 
     pub fn execute(self) -> std::result::Result<ReturnType, ElasticsearchError> {
-        let mut url = self.elasticsearch.base_url();
+        let mut url = self.elasticsearch.alias_url();
         url.push_str("/_search");
         url.push_str("?size=0");
         let client = reqwest::Client::new()

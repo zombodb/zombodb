@@ -68,15 +68,32 @@ pub fn alter_indices(prev_options: Option<Vec<ZDBIndexOptions>>) {
             }
 
             let es = Elasticsearch::new(&index);
-            es.update_settings(Some(old_options.alias()))
+            es.update_settings()
                 .execute()
                 .expect("failed to update index settings");
 
+            es.add_alias(new_options.alias())
+                .execute()
+                .expect("failed to add index to new alias");
+
+            let old_options_for_commit = old_options.clone();
+            register_xact_callback(PgXactCallbackEvent::PreCommit, move || {
+                let alias = old_options_for_commit.alias().to_owned();
+                let es = Elasticsearch::from_options(old_options_for_commit);
+                es.remove_alias(&alias)
+                    .execute()
+                    .expect("failed to remove index from old alias");
+            });
+
             register_xact_callback(PgXactCallbackEvent::Abort, move || {
                 let es = Elasticsearch::from_options(old_options);
-                es.update_settings(Some(new_options.alias()))
+                es.update_settings()
                     .execute()
                     .expect("failed to restore index settings");
+
+                es.remove_alias(new_options.alias())
+                    .execute()
+                    .expect("failed to remove index from new alias");
             });
         }
     }
