@@ -2,7 +2,9 @@ use crate::elasticsearch::analyze::*;
 use crate::elasticsearch::Elasticsearch;
 use pgx::PgRelation;
 use pgx::*;
+use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TokenEntry {
@@ -45,14 +47,46 @@ impl DocumentHighlighter {
         }
     }
 
+    pub fn highlight_wildcard(&self, token: &str) -> Option<Vec<(String, &TokenEntry)>> {
+        let _char_looking_for_asterisk = '*';
+        let _char_looking_for_question = '?';
+        let mut new_regex = String::from("^");
+        for char in token.chars() {
+            if char == _char_looking_for_question {
+                new_regex.push('.')
+            } else if char == _char_looking_for_asterisk {
+                new_regex.push('.');
+                new_regex.push(char);
+            } else {
+                new_regex.push(char);
+            }
+        }
+        new_regex.push_str("$");
+        //make a regex that takes the token given that has a wildcard marker in it
+        //   token*     => ^token.*$
+        //   *token     => ^.*token$
+        //   to*en      => ^to.*en$
+        //   *to*en*    => ^.*to.*en.*$
+        //   *t*o*e*n*  => ^.*t.*o.*e.*n.*$
+        let regex = Regex::new(new_regex.deref()).unwrap();
+        let mut result = Vec::new();
+        for (key, token_entries) in self.lookup.iter() {
+            if regex.is_match(key.as_str()) {
+                for token_entry in token_entries {
+                    result.push((key.clone(), token_entry));
+                }
+            }
+        }
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
+    }
+
     pub fn highlight_token(&self, token: &str) -> Option<&Vec<TokenEntry>> {
         self.lookup.get(token)
     }
-
-    // todo: implement these two functions
-    // pub fn highlight_wildcard(&self, token: &str) -> Option<&Vec<TokenEntry>> {
-    //     unimplemented!()
-    // }
     //
     // pub fn highlight_regex(&self, token: &str) -> Option<&Vec<TokenEntry>> {
     //     unimplemented!()
@@ -68,7 +102,6 @@ impl DocumentHighlighter {
             return None;
         }
 
-        //0) change phrase from a Vec<&str> to a &str and parse to a Vec<&str>
         let phrase = analyze_with_field(index, field, phrase_str)
             .map(|parts| parts.1)
             .collect::<Vec<String>>();
@@ -99,9 +132,6 @@ impl DocumentHighlighter {
                 None => None,
             };
         }
-
-        //make run off the elasticsearch analyze
-        //bug: does not work with one word:
 
         let mut pool = HashMap::<&str, &Vec<TokenEntry>>::new();
         for token in &phrase {
@@ -196,7 +226,7 @@ impl DocumentHighlighter {
     }
 }
 
-#[pg_extern]
+#[pg_extern(imutable, parallel_safe)]
 fn highlight_term(
     index: PgRelation,
     field_name: &str,
@@ -235,7 +265,7 @@ fn highlight_term(
     }
 }
 
-#[pg_extern]
+#[pg_extern(imutable, parallel_safe)]
 fn highlight_phrase(
     index: PgRelation,
     field_name: &str,
@@ -254,6 +284,45 @@ fn highlight_phrase(
     let mut highlighter = DocumentHighlighter::new();
     highlighter.analyze_document(&index, field_name, text);
     let highlights = highlighter.highlight_phrase(index, field_name, tokens_to_highlight);
+
+    match highlights {
+        Some(vec) => vec
+            .iter()
+            .map(|e| {
+                (
+                    field_name.clone().to_owned(),
+                    String::from(e.0.clone()),
+                    String::from(e.1.type_.clone()),
+                    e.1.position as i32,
+                    e.1.start_offset as i64,
+                    e.1.end_offset as i64,
+                )
+            })
+            .collect::<Vec<(String, String, String, i32, i64, i64)>>()
+            .into_iter(),
+        None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
+    }
+}
+
+#[pg_extern(imutable, parallel_safe)]
+fn highlight_wildcard(
+    index: PgRelation,
+    field_name: &str,
+    text: &str,
+    token_to_highlight: &str,
+) -> impl std::iter::Iterator<
+    Item = (
+        name!(field_name, String),
+        name!(term, String),
+        name!(type, String),
+        name!(position, i32),
+        name!(start_offset, i64),
+        name!(end_offset, i64),
+    ),
+> {
+    let mut highlighter = DocumentHighlighter::new();
+    highlighter.analyze_document(&index, field_name, text);
+    let highlights = highlighter.highlight_wildcard(token_to_highlight);
 
     match highlights {
         Some(vec) => vec
@@ -380,6 +449,78 @@ mod tests {
             );
 
             // field_name | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            let expect = vec![];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_wildcard_with_asterisk() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm*n');",
+                None,
+                None,
+            );
+
+            // field_name  | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            //  test_field | man  | <ALPHANUM> |        3 |           13 |         16
+            //  test_field | moon | <ALPHANUM> |        6 |           24 |         28
+            let expect = vec![
+                ("<ALPHANUM>", "man", 3, 13, 16),
+                ("<ALPHANUM>", "moon", 6, 24, 28),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_wildcard_with_question_mark() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm?n');",
+                None,
+                None,
+            );
+
+            // field_name  | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            //  test_field | man  | <ALPHANUM> |        3 |           13 |         16
+            let expect = vec![("<ALPHANUM>", "man", 3, 13, 16)];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_wildcard_with_no_match() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'n*n');",
+                None,
+                None,
+            );
+
+            // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
             let expect = vec![];
 
