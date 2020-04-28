@@ -76,9 +76,15 @@ pub extern "C" fn ambuild(
 
     // update the index settings, such as refresh_interval and number of replicas
     elasticsearch
-        .update_settings(None)
+        .update_settings()
         .execute()
         .expect("failed to update index settings after build");
+
+    // ensure the index is added to its alias defined during CREATE INDEX
+    elasticsearch
+        .add_alias(elasticsearch.alias_name())
+        .execute()
+        .expect("failed to add index to alias during CREATE INDEX");
 
     // create the triggers we need on the table to which this index is attached
     create_triggers(&index_relation);
@@ -205,7 +211,7 @@ unsafe fn row_to_json<'a>(
     for (attr, datum) in attributes
         .iter()
         .zip(datums.iter())
-        .filter(|(attr, datum)| !attr.dropped && datum.is_some())
+        .filter(|(_, datum)| datum.is_some())
     {
         let datum = datum.expect("found NULL datum"); // shouldn't happen b/c None datums are filtered above
 

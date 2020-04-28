@@ -34,9 +34,11 @@ impl ElasticsearchCountRequest {
             }
         };
 
+        let mut url = self.elasticsearch.alias_url();
+        url.push_str("/_count");
         Elasticsearch::execute_request(
             reqwest::Client::new()
-                .post(&format!("{}/_count", self.elasticsearch.base_url()))
+                .post(&url)
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&body).unwrap()),
             |_, body| {

@@ -280,6 +280,11 @@ fn index_name(index_relation: PgRelation) -> String {
 }
 
 #[pg_extern(immutable, parallel_safe)]
+fn index_alias(index_relation: PgRelation) -> String {
+    ZDBIndexOptions::from(&index_relation).alias().to_owned()
+}
+
+#[pg_extern(immutable, parallel_safe)]
 fn index_url(index_relation: PgRelation) -> String {
     ZDBIndexOptions::from(&index_relation).url().to_owned()
 }

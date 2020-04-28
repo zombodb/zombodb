@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod aggregates;
+mod aliases;
 pub(crate) mod analyze;
 mod bulk;
 mod cat;
@@ -11,6 +12,7 @@ mod expunge_deletes;
 mod get_document;
 mod get_mapping;
 mod profile_query;
+mod put_mapping;
 mod refresh_index;
 mod update_settings;
 
@@ -19,6 +21,7 @@ pub mod search;
 
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::aggregate_search::ElasticsearchAggregateSearchRequest;
+use crate::elasticsearch::aliases::ElasticsearchAliasRequest;
 use crate::elasticsearch::analyze::ElasticsearchAnalyzerRequest;
 use crate::elasticsearch::cat::ElasticsearchCatRequest;
 use crate::elasticsearch::count::ElasticsearchCountRequest;
@@ -28,6 +31,7 @@ use crate::elasticsearch::get_document::ElasticsearchGetDocumentRequest;
 use crate::elasticsearch::get_mapping::ElasticsearchGetMappingRequest;
 use crate::elasticsearch::pg_catalog::ArbitraryRequestType;
 use crate::elasticsearch::profile_query::ElasticsearchProfileQueryRequest;
+use crate::elasticsearch::put_mapping::ElasticsearchPutMappingRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
@@ -162,12 +166,24 @@ impl Elasticsearch {
         ElasticsearchRefreshIndexRequest::new(self)
     }
 
+    pub fn add_alias(&self, alias_name: &str) -> ElasticsearchAliasRequest {
+        ElasticsearchAliasRequest::add(self, alias_name)
+    }
+
+    pub fn remove_alias(&self, alias_name: &str) -> ElasticsearchAliasRequest {
+        ElasticsearchAliasRequest::remove(self, alias_name)
+    }
+
     pub fn expunge_deletes(&self) -> ElasticsearchExpungeDeletesRequest {
         ElasticsearchExpungeDeletesRequest::new(self)
     }
 
-    pub fn update_settings(&self, old_alias: Option<&str>) -> ElasticsearchUpdateSettingsRequest {
-        ElasticsearchUpdateSettingsRequest::new(self, old_alias)
+    pub fn update_settings(&self) -> ElasticsearchUpdateSettingsRequest {
+        ElasticsearchUpdateSettingsRequest::new(self)
+    }
+
+    pub fn put_mapping(&self, mapping: serde_json::Value) -> ElasticsearchPutMappingRequest {
+        ElasticsearchPutMappingRequest::new(self, mapping)
     }
 
     pub fn cat(&self, endpoint: &str) -> ElasticsearchCatRequest {
@@ -241,8 +257,16 @@ impl Elasticsearch {
         format!("{}{}", self.options.url(), self.options.index_name())
     }
 
+    pub fn alias_url(&self) -> String {
+        format!("{}{}", self.options.url(), self.options.alias())
+    }
+
     pub fn index_name(&self) -> &str {
         self.options.index_name()
+    }
+
+    pub fn alias_name(&self) -> &str {
+        self.options.alias()
     }
 
     pub fn type_name(&self) -> &str {
