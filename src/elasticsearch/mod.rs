@@ -12,6 +12,7 @@ mod expunge_deletes;
 mod get_document;
 mod get_mapping;
 mod profile_query;
+mod put_mapping;
 mod refresh_index;
 mod update_settings;
 
@@ -30,6 +31,7 @@ use crate::elasticsearch::get_document::ElasticsearchGetDocumentRequest;
 use crate::elasticsearch::get_mapping::ElasticsearchGetMappingRequest;
 use crate::elasticsearch::pg_catalog::ArbitraryRequestType;
 use crate::elasticsearch::profile_query::ElasticsearchProfileQueryRequest;
+use crate::elasticsearch::put_mapping::ElasticsearchPutMappingRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
@@ -178,6 +180,10 @@ impl Elasticsearch {
 
     pub fn update_settings(&self) -> ElasticsearchUpdateSettingsRequest {
         ElasticsearchUpdateSettingsRequest::new(self)
+    }
+
+    pub fn put_mapping(&self, mapping: serde_json::Value) -> ElasticsearchPutMappingRequest {
+        ElasticsearchPutMappingRequest::new(self, mapping)
     }
 
     pub fn cat(&self, endpoint: &str) -> ElasticsearchCatRequest {

@@ -211,7 +211,7 @@ unsafe fn row_to_json<'a>(
     for (attr, datum) in attributes
         .iter()
         .zip(datums.iter())
-        .filter(|(attr, datum)| !attr.dropped && datum.is_some())
+        .filter(|(_, datum)| datum.is_some())
     {
         let datum = datum.expect("found NULL datum"); // shouldn't happen b/c None datums are filtered above
 

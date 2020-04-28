@@ -6,7 +6,6 @@ use std::collections::HashMap;
 type ConversionFunc<'a> = dyn Fn(&mut JsonBuilder<'a>, &'a str, pg_sys::Datum, pg_sys::Oid);
 pub struct CategorizedAttribute<'a> {
     pub attname: &'a str,
-    pub dropped: bool,
     pub typoid: pg_sys::Oid,
     pub conversion_func: Box<ConversionFunc<'a>>,
 }
@@ -25,8 +24,10 @@ pub fn categorize_tupdesc<'a>(
     };
 
     for attribute in tupdesc.iter() {
+        if attribute.is_dropped() {
+            continue;
+        }
         let attname = attribute.name();
-        let dropped = attribute.is_dropped();
         let mut typoid = attribute.type_oid();
 
         let conversion_func = type_conversion_cache.get(&typoid.value()).cloned();
@@ -375,7 +376,6 @@ pub fn categorize_tupdesc<'a>(
 
         categorized_attributes.push(CategorizedAttribute {
             attname,
-            dropped,
             typoid: typoid.value(),
             conversion_func,
         });
