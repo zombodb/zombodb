@@ -67,15 +67,11 @@ impl DocumentHighlighter {
             }
         }
         new_regex.push_str("$");
-        //make a regex that takes the token given that has a wildcard marker in it
-        //   token*     => ^token.*$
-        //   *token     => ^.*token$
-        //   to*en      => ^to.*en$
-        //   *to*en*    => ^.*to.*en.*$
-        //   *t*o*e*n*  => ^.*t.*o.*e.*n.*$
+        self.highlight_regex(new_regex.deref())
+    }
 
-        // self.highlight_regex(new_regex.deref())
-        let regex = Regex::new(new_regex.deref()).unwrap();
+    pub fn highlight_regex(&self, regex: &str) -> Option<Vec<(String, &TokenEntry)>> {
+        let regex = Regex::new(regex).unwrap();
         let mut result = Vec::new();
         for (key, token_entries) in self.lookup.iter() {
             if regex.is_match(key.as_str()) {
@@ -91,53 +87,17 @@ impl DocumentHighlighter {
         }
     }
 
-    // pub fn highlight_regex(&self, regex: &str) -> Option<Vec<(String, &TokenEntry)>> {
-    //     let regex = Regex::new(regex).unwrap();
-    //     let mut result = Vec::new();
-    //     for (key, token_entries) in self.lookup.iter() {
-    //         if regex.is_match(key.as_str()) {
-    //             for token_entry in token_entries {
-    //                 result.push((key.clone(), token_entry));
-    //             }
-    //         }
-    //     }
-    //     if result.is_empty() {
-    //         None
-    //     } else {
-    //         Some(result)
-    //     }
-    // }
-
     pub fn highlight_fuzzy(
         &self,
-        key: &str,
+        fuzzy_key: &str,
         prefix: i32,
         fuzzy: i32,
     ) -> Option<Vec<(&String, &TokenEntry)>> {
         let mut result = Vec::new();
-        let mut key_prefix = String::new();
-        let mut i = 0;
-        let mut key_char_vec = Vec::new();
-        key_char_vec = key.chars().collect();
-        for char in key_char_vec {
-            if i < prefix {
-                key_prefix.push(char);
-            }
-            i = i + 1;
-        }
+        let prefix = &fuzzy_key[0..prefix as usize];
         for (token, token_entries) in self.lookup.iter() {
-            let mut token_prefix = String::new();
-            let mut i = 0;
-            let mut token_char_vec = Vec::new();
-            token_char_vec = token.chars().collect();
-            for char in token_char_vec {
-                if i < prefix {
-                    token_prefix.push(char);
-                }
-                i = i + 1;
-            }
-            if token_prefix.eq(key_prefix.deref()) {
-                if fuzzy > levenshtein(token, key) as i32 {
+            if token.starts_with(prefix.deref()) {
+                if fuzzy > levenshtein(token, fuzzy_key) as i32 {
                     for token_entry in token_entries {
                         result.push((token, token_entry));
                     }
@@ -403,6 +363,45 @@ fn highlight_wildcard(
 }
 
 #[pg_extern(imutable, parallel_safe)]
+fn highlight_regex(
+    index: PgRelation,
+    field_name: &str,
+    text: &str,
+    token_to_highlight: &str,
+) -> impl std::iter::Iterator<
+    Item = (
+        name!(field_name, String),
+        name!(term, String),
+        name!(type, String),
+        name!(position, i32),
+        name!(start_offset, i64),
+        name!(end_offset, i64),
+    ),
+> {
+    let mut highlighter = DocumentHighlighter::new();
+    highlighter.analyze_document(&index, field_name, text);
+    let highlights = highlighter.highlight_regex(token_to_highlight);
+
+    match highlights {
+        Some(vec) => vec
+            .iter()
+            .map(|e| {
+                (
+                    field_name.clone().to_owned(),
+                    String::from(e.0.clone()),
+                    String::from(e.1.type_.clone()),
+                    e.1.position as i32,
+                    e.1.start_offset as i64,
+                    e.1.end_offset as i64,
+                )
+            })
+            .collect::<Vec<(String, String, String, i32, i64, i64)>>()
+            .into_iter(),
+        None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
+    }
+}
+
+#[pg_extern(imutable, parallel_safe)]
 fn highlight_fuzzy(
     index: PgRelation,
     field_name: &str,
@@ -454,7 +453,7 @@ mod tests {
         Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_term('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it');",
+                "select * from zdb.highlight_term('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it') order by position;",
                 None,
                 None,
             );
@@ -481,7 +480,7 @@ mod tests {
         Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it is a');",
+                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it is a') order by position;",
                 None,
                 None,
             );
@@ -516,7 +515,7 @@ mod tests {
         Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it');",
+                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it') order by position;",
                 None,
                 None,
             );
@@ -543,7 +542,7 @@ mod tests {
         Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'banana');",
+                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'banana') order by position;",
                 None,
                 None,
             );
@@ -565,7 +564,7 @@ mod tests {
         Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm*n');",
+                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm*n') order by position;",
                 None,
                 None,
             );
@@ -592,7 +591,7 @@ mod tests {
         Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm?n');",
+                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm?n') order by position;",
                 None,
                 None,
             );
@@ -615,7 +614,7 @@ mod tests {
         Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'n*n');",
+                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'n*n') order by position;",
                 None,
                 None,
             );
@@ -623,6 +622,68 @@ mod tests {
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
             let expect = vec![];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_regex() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', '^m.*$') order by position;",
+                None,
+                None,
+            );
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | mom  | <ALPHANUM> |        0 |            0 |          3
+            // test_field | man  | <ALPHANUM> |        3 |           13 |         16
+            // test_field | moon | <ALPHANUM> |        6 |           24 |         28
+            let expect = vec![
+                ("<ALPHANUM>", "mom", 0, 0, 3),
+                ("<ALPHANUM>", "man", 3, 13, 16),
+                ("<ALPHANUM>", "moon", 6, 24, 28),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_fuzzy() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 1,3) order by position;",
+                None,
+                None,
+            );
+
+            // field_name  | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            // test_field | coal | <ALPHANUM> |        0 |            0 |          4
+            // test_field | colt | <ALPHANUM> |        1 |            5 |          9
+            // test_field | cot  | <ALPHANUM> |        2 |           10 |         13
+            // test_field | co   | <ALPHANUM> |        5 |           26 |         28
+            // test_field | cat  | <ALPHANUM> |        8 |           41 |         44
+            let expect = vec![
+                ("<ALPHANUM>", "coal", 0, 0, 4),
+                ("<ALPHANUM>", "colt", 1, 5, 9),
+                ("<ALPHANUM>", "cot", 2, 10, 13),
+                ("<ALPHANUM>", "co", 5, 26, 28),
+                ("<ALPHANUM>", "cat", 8, 41, 44),
+            ];
 
             test_table(table, expect);
 
