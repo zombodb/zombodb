@@ -1,5 +1,6 @@
 use crate::elasticsearch::analyze::*;
 use crate::elasticsearch::Elasticsearch;
+use levenshtein::*;
 use pgx::PgRelation;
 use pgx::*;
 use regex::Regex;
@@ -47,6 +48,10 @@ impl DocumentHighlighter {
         }
     }
 
+    pub fn highlight_token(&self, token: &str) -> Option<&Vec<TokenEntry>> {
+        self.lookup.get(token)
+    }
+
     pub fn highlight_wildcard(&self, token: &str) -> Option<Vec<(String, &TokenEntry)>> {
         let _char_looking_for_asterisk = '*';
         let _char_looking_for_question = '?';
@@ -68,6 +73,8 @@ impl DocumentHighlighter {
         //   to*en      => ^to.*en$
         //   *to*en*    => ^.*to.*en.*$
         //   *t*o*e*n*  => ^.*t.*o.*e.*n.*$
+
+        // self.highlight_regex(new_regex.deref())
         let regex = Regex::new(new_regex.deref()).unwrap();
         let mut result = Vec::new();
         for (key, token_entries) in self.lookup.iter() {
@@ -84,13 +91,65 @@ impl DocumentHighlighter {
         }
     }
 
-    pub fn highlight_token(&self, token: &str) -> Option<&Vec<TokenEntry>> {
-        self.lookup.get(token)
-    }
-    //
-    // pub fn highlight_regex(&self, token: &str) -> Option<&Vec<TokenEntry>> {
-    //     unimplemented!()
+    // pub fn highlight_regex(&self, regex: &str) -> Option<Vec<(String, &TokenEntry)>> {
+    //     let regex = Regex::new(regex).unwrap();
+    //     let mut result = Vec::new();
+    //     for (key, token_entries) in self.lookup.iter() {
+    //         if regex.is_match(key.as_str()) {
+    //             for token_entry in token_entries {
+    //                 result.push((key.clone(), token_entry));
+    //             }
+    //         }
+    //     }
+    //     if result.is_empty() {
+    //         None
+    //     } else {
+    //         Some(result)
+    //     }
     // }
+
+    pub fn highlight_fuzzy(
+        &self,
+        key: &str,
+        prefix: i32,
+        fuzzy: i32,
+    ) -> Option<Vec<(&String, &TokenEntry)>> {
+        let mut result = Vec::new();
+        let mut key_prefix = String::new();
+        let mut i = 0;
+        let mut key_char_vec = Vec::new();
+        key_char_vec = key.chars().collect();
+        for char in key_char_vec {
+            if i < prefix {
+                key_prefix.push(char);
+            }
+            i = i + 1;
+        }
+        for (token, token_entries) in self.lookup.iter() {
+            let mut token_prefix = String::new();
+            let mut i = 0;
+            let mut token_char_vec = Vec::new();
+            token_char_vec = token.chars().collect();
+            for char in token_char_vec {
+                if i < prefix {
+                    token_prefix.push(char);
+                }
+                i = i + 1;
+            }
+            if token_prefix.eq(key_prefix.deref()) {
+                if fuzzy > levenshtein(token, key) as i32 {
+                    for token_entry in token_entries {
+                        result.push((token, token_entry));
+                    }
+                }
+            };
+        }
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
+    }
 
     pub fn highlight_phrase(
         &self,
@@ -323,6 +382,47 @@ fn highlight_wildcard(
     let mut highlighter = DocumentHighlighter::new();
     highlighter.analyze_document(&index, field_name, text);
     let highlights = highlighter.highlight_wildcard(token_to_highlight);
+
+    match highlights {
+        Some(vec) => vec
+            .iter()
+            .map(|e| {
+                (
+                    field_name.clone().to_owned(),
+                    String::from(e.0.clone()),
+                    String::from(e.1.type_.clone()),
+                    e.1.position as i32,
+                    e.1.start_offset as i64,
+                    e.1.end_offset as i64,
+                )
+            })
+            .collect::<Vec<(String, String, String, i32, i64, i64)>>()
+            .into_iter(),
+        None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
+    }
+}
+
+#[pg_extern(imutable, parallel_safe)]
+fn highlight_fuzzy(
+    index: PgRelation,
+    field_name: &str,
+    text: &str,
+    token_to_highlight: &str,
+    prefix: i32,
+    fuzzy: i32,
+) -> impl std::iter::Iterator<
+    Item = (
+        name!(field_name, String),
+        name!(term, String),
+        name!(type, String),
+        name!(position, i32),
+        name!(start_offset, i64),
+        name!(end_offset, i64),
+    ),
+> {
+    let mut highlighter = DocumentHighlighter::new();
+    highlighter.analyze_document(&index, field_name, text);
+    let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix, fuzzy);
 
     match highlights {
         Some(vec) => vec
