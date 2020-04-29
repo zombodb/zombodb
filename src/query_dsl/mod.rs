@@ -4,6 +4,7 @@ mod datetime_range;
 mod field_exists;
 mod field_missing;
 mod fuzzy;
+mod geo;
 mod limit;
 mod match_all;
 mod matches;

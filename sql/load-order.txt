@@ -1,9 +1,11 @@
 _bootstrap.sql
 _mappings.sql
-_type-conversions.sql
 lib.generated.sql
 zdbquery_mod.generated.sql
 zdbquery_cast.generated.sql
+query_dsl_geo.generated.sql
+_postgis-support.sql
+_type-conversions.sql
 access_method_mod.generated.sql
 zdbquery_opclass.generated.sql
 query_dsl_term.generated.sql
@@ -62,7 +64,3 @@ highlighting_document_highlighter.generated.sql
 cat_mod.generated.sql
 _cat-api.sql
 _support-views.sql
-access_method_build.generated.sql
-elasticsearch_search.generated.sql
-gucs_mod.generated.sql
-mapping_mod.generated.sql
