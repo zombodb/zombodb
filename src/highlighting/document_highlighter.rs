@@ -449,8 +449,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_term() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_term('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it') order by position;",
@@ -476,8 +475,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_phrase() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it is a') order by position;",
@@ -511,8 +509,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_phrase_as_one_word() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it') order by position;",
@@ -538,8 +535,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_phrase_with_phrase_not_in_text() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'banana') order by position;",
@@ -560,8 +556,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_wildcard_with_asterisk() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm*n') order by position;",
@@ -587,8 +582,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_wildcard_with_question_mark() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm?n') order by position;",
@@ -610,8 +604,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_wildcard_with_no_match() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'n*n') order by position;",
@@ -632,8 +625,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_regex() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', '^m.*$') order by position;",
@@ -660,9 +652,8 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_fuzzy() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+    fn test_highlighter_fuzzy_correct() {
+        start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 1,3) order by position;",
@@ -689,6 +680,31 @@ mod tests {
 
             Ok(Some(()))
         });
+    }
+
+    #[pg_test(error = "byte index 4 is out of bounds of `cot`")]
+    #[initialize(es = true)]
+    fn test_highlighter_fuzzy_with_prefix_wrong() {
+        start_table_and_index();
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4,3) order by position;",
+                None,
+                None,
+            );
+
+            let expect = vec![];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[initialize(es = true)]
+    fn start_table_and_index() {
+        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
+        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
     }
 
     fn test_table(mut table: SpiTupleTable, expect: Vec<(&str, &str, i32, i64, i64)>) {
