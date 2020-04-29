@@ -58,6 +58,13 @@ CREATE TABLE zdb.tokenizers
     is_default boolean DEFAULT false NOT NULL
 );
 
+CREATE TABLE zdb.type_conversions
+(
+    typeoid    regtype NOT NULL PRIMARY KEY,
+    funcoid    regproc NOT NULL,
+    is_default boolean DEFAULT false
+);
+
 SELECT pg_catalog.pg_extension_config_dump('zdb.filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.char_filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.analyzers', 'WHERE NOT is_default');
@@ -65,6 +72,8 @@ SELECT pg_catalog.pg_extension_config_dump('zdb.normalizers', 'WHERE NOT is_defa
 SELECT pg_catalog.pg_extension_config_dump('zdb.mappings', '');
 SELECT pg_catalog.pg_extension_config_dump('zdb.tokenizers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.type_mappings', 'WHERE NOT is_default');
+SELECT pg_catalog.pg_extension_config_dump('zdb.type_conversions', 'WHERE NOT is_default');
+
 
 CREATE OR REPLACE FUNCTION zdb.define_filter(name text, definition json) RETURNS void
     LANGUAGE sql
@@ -424,6 +433,16 @@ VALUES ('emoji', '{
   "tokenizer": "emoji"
 }', true);
 
+CREATE OR REPLACE FUNCTION zdb.define_type_conversion(typeoid regtype, funcoid regproc) RETURNS void
+    VOLATILE STRICT
+    LANGUAGE sql AS
+$$
+DELETE
+FROM zdb.type_conversions
+WHERE typeoid = $1;
+INSERT INTO zdb.type_conversions(typeoid, funcoid)
+VALUES ($1, $2);
+$$;
 
 --
 -- permissions to do all the things to the tables defined here
@@ -436,3 +455,4 @@ GRANT ALL ON zdb.mappings TO PUBLIC;
 GRANT ALL ON zdb.tokenizers TO PUBLIC;
 GRANT ALL ON zdb.type_mappings TO PUBLIC;
 GRANT ALL ON zdb.normalizers TO PUBLIC;
+GRANT ALL ON zdb.type_conversions TO PUBLIC;

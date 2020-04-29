@@ -29,6 +29,7 @@ pub fn categorize_tupdesc<'a>(
         }
         let attname = attribute.name();
         let mut typoid = attribute.type_oid();
+        let typmod = attribute.type_mod();
 
         let conversion_func = type_conversion_cache.get(&typoid.value()).cloned();
 
@@ -36,7 +37,12 @@ pub fn categorize_tupdesc<'a>(
             // use a configured zdb.type_conversion
             Box::new(move |builder, name, datum, _oid| {
                 let datum = unsafe {
-                    pg_sys::OidFunctionCall1Coll(custom_converter, pg_sys::InvalidOid, datum)
+                    pg_sys::OidFunctionCall2Coll(
+                        custom_converter,
+                        pg_sys::InvalidOid,
+                        datum,
+                        typmod.into_datum().unwrap(),
+                    )
                 };
                 let json = unsafe { Json::from_datum(datum, false, typoid.value()) }
                     .expect("failed to version a type to json");
@@ -357,7 +363,23 @@ pub fn categorize_tupdesc<'a>(
             let definition = match user_mappings.as_ref().unwrap().get(attname).cloned() {
                 Some(json) => json,
                 None => match lookup_type_mapping(typoid) {
-                    Some(json) => json,
+                    Some((mapping, regproc)) => {
+                        if mapping.is_some() {
+                            mapping.unwrap()
+                        } else {
+                            let regproc: pg_sys::Oid = regproc.unwrap();
+                            unsafe {
+                                info!("regproc={}", regproc);
+                                let datum = pg_sys::OidFunctionCall2Coll(
+                                    regproc,
+                                    pg_sys::InvalidOid,
+                                    typoid.into_datum().unwrap(),
+                                    typmod.into_datum().unwrap(),
+                                );
+                                JsonB::from_datum(datum, false, pg_sys::JSONBOID).unwrap().0
+                            }
+                        }
+                    }
                     None => {
                         info!(
                             "Unrecognized type {:?} for {}, generating mapping as 'keyword'",
@@ -495,16 +517,37 @@ pub fn lookup_analysis_thing(table_name: &str) -> Value {
     }
 }
 
-fn lookup_type_mapping(typoid: PgOid) -> Option<serde_json::Value> {
-    match Spi::get_one_with_args::<JsonB>(
-        "SELECT definition FROM zdb.type_mappings WHERE type_name = $1;",
-        vec![(
-            PgOid::BuiltIn(PgBuiltInOids::OIDOID),
-            typoid.clone().into_datum(),
-        )],
-    ) {
-        Some(jsonb) => Some(jsonb.0),
-        None => None,
+fn lookup_type_mapping(typoid: PgOid) -> Option<(Option<serde_json::Value>, Option<pg_sys::Oid>)> {
+    let mut json = None;
+    let mut regproc = None;
+    info!("HERE: type={}", typoid.value());
+    Spi::connect(|client| {
+        let table = client
+            .select(
+                "SELECT definition, funcid FROM zdb.type_mappings WHERE type_name = $1;",
+                None,
+                Some(vec![(
+                    PgOid::BuiltIn(PgBuiltInOids::REGPROCOID),
+                    typoid.clone().into_datum(),
+                )]),
+            )
+            .first();
+
+        let values = table.get_two::<JsonB, pg_sys::Oid>();
+        json = if values.0.is_some() {
+            Some(values.0.unwrap().0)
+        } else {
+            None
+        };
+        regproc = if values.1.is_some() { values.1 } else { None };
+
+        Ok(Some(()))
+    });
+
+    if json.is_none() && regproc.is_none() {
+        None
+    } else {
+        Some((json, regproc))
     }
 }
 
