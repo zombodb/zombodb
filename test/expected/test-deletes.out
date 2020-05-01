@@ -60,7 +60,7 @@ SELECT zdb.count('idxevents', match_all());
 
 VACUUM events;
 -- shouldn't have any aborted xids now
-SELECT (zdb.request('idxevents', 'doc/zdb.aborted_xids?pretty')::jsonb)->'_source'->'zdb.aborted_xids';
+SELECT (zdb.request('idxevents', '_doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb.aborted_xids';
  ?column? 
 ----------
  
