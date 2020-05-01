@@ -160,7 +160,7 @@ mod dsl {
     ) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
-                "datetime_range": {
+                "range": {
                     field: datetime_range
                 }
             }
@@ -195,7 +195,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "datetime_range": {
+                    "range": {
                         "fieldname": {
                             "lt": "2001-05-09",
                             "gt": "2002-06-10",
@@ -231,12 +231,12 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "datetime_range": {
+                    "range": {
                         "fieldname": {
-                            "lt": "12:34:56Z",
-                            "gt": "21:43:54Z",
-                            "lte": "10:34:24Z",
-                            "gte": "9:45:30Z",
+                            "lt": "12:34:56",
+                            "gt": "21:43:54",
+                            "lte": "10:34:24",
+                            "gte": "09:45:30",
                             "boost": 5.0 as f32,
                             "relation": "contains"
                         }
@@ -267,12 +267,12 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "datetime_range": {
+                    "range": {
                         "fieldname": {
-                            "lt": "19:34:56Z",
-                            "gt": "4:43:54Z",
-                            "lte": "17:34:24Z",
-                            "gte": "16:45:30Z",
+                            "lt": "19:34:56-00",
+                            "gt": "04:43:54-00",
+                            "lte": "17:34:24-00",
+                            "gte": "16:45:30-00",
                             "boost": 5.0 as f32,
                             "relation": "contains"
                         }
@@ -303,12 +303,12 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "datetime_range": {
+                    "range": {
                         "fieldname": {
-                            "lt": "2003-01-02T12:34:56Z",
-                            "gt": "2006-04-05T21:43:54Z",
-                            "lte": "2009-07-08T10:34:24Z",
-                            "gte": "2012-10-11T9:45:30Z",
+                            "lt": "2003-01-02T12:34:56-00",
+                            "gt": "2006-04-05T21:43:54-00",
+                            "lte": "2009-07-08T10:34:24-00",
+                            "gte": "2012-10-11T09:45:30-00",
                             "boost": 5.0 as f32,
                             "relation": "contains"
                         }
@@ -339,12 +339,12 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "datetime_range": {
+                    "range": {
                         "fieldname": {
-                            "lt": "2003-01-02T19:34:56Z",
-                            "gt": "2006-04-06T4:43:54Z",
-                            "lte": "2009-07-08T17:34:24Z",
-                            "gte": "2012-10-11T16:45:30Z",
+                            "lt": "2003-01-02T19:34:56-00",
+                            "gt": "2006-04-06T04:43:54-00",
+                            "lte": "2009-07-08T17:34:24-00",
+                            "gte": "2012-10-11T16:45:30-00",
                             "boost": 5.0 as f32,
                             "relation": "contains"
                         }

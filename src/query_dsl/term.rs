@@ -730,7 +730,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "13:15:35Z"}}
+                    "term": {"fieldname": { "value": "13:15:35"}}
                 }
             }
         );
@@ -749,7 +749,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "12:59:35Z" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "12:59:35" , "boost": 42.0 as f32 }}
                 }
             }
         );
@@ -768,7 +768,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "12:59:35.567Z" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "12:59:35.567" , "boost": 42.0 as f32 }}
                 }
             }
         );
@@ -787,7 +787,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "13:15:35Z"}}
+                    "term": {"fieldname": { "value": "13:15:35"}}
                 }
             }
         );
@@ -806,7 +806,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "12:59:35Z" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "12:59:35" , "boost": 42.0 as f32 }}
                 }
             }
         );
@@ -825,7 +825,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "12:59:35.567Z" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "12:59:35.567" , "boost": 42.0 as f32 }}
                 }
             }
         );
@@ -844,7 +844,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "2012-12-12T13:15:35Z"}}
+                    "term": {"fieldname": { "value": "2012-12-12T13:15:35-00"}}
                 }
             }
         );
@@ -863,7 +863,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "2013-04-10T12:59:35Z" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2013-04-10T12:59:35-00" , "boost": 42.0 as f32 }}
                 }
             }
         );
@@ -882,7 +882,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567Z" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567-00" , "boost": 42.0 as f32 }}
                 }
             }
         );
@@ -901,7 +901,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "2012-12-12T13:15:35Z"}}
+                    "term": {"fieldname": { "value": "2012-12-12T13:15:35-00"}}
                 }
             }
         );
@@ -920,7 +920,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "2013-04-10T12:59:35Z" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2013-04-10T12:59:35-00" , "boost": 42.0 as f32 }}
                 }
             }
         );
@@ -939,7 +939,7 @@ mod tests {
             dsl.unwrap(),
             &json! {
                 {
-                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567Z" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567-00" , "boost": 42.0 as f32 }}
                 }
             }
         );
