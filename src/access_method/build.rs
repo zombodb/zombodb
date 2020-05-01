@@ -87,7 +87,9 @@ pub extern "C" fn ambuild(
         .expect("failed to add index to alias during CREATE INDEX");
 
     // create the triggers we need on the table to which this index is attached
-    create_triggers(&index_relation);
+    if !heap_relation.is_matview() {
+        create_triggers(&index_relation);
+    }
 
     let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
     result.heap_tuples = ntuples as f64;
