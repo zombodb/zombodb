@@ -369,7 +369,6 @@ pub fn categorize_tupdesc<'a>(
                         } else {
                             let regproc: pg_sys::Oid = regproc.unwrap();
                             unsafe {
-                                info!("regproc={}", regproc);
                                 let datum = pg_sys::OidFunctionCall2Coll(
                                     regproc,
                                     pg_sys::InvalidOid,
@@ -520,7 +519,7 @@ pub fn lookup_analysis_thing(table_name: &str) -> Value {
 fn lookup_type_mapping(typoid: PgOid) -> Option<(Option<serde_json::Value>, Option<pg_sys::Oid>)> {
     let mut json = None;
     let mut regproc = None;
-    info!("HERE: type={}", typoid.value());
+
     Spi::connect(|client| {
         let table = client
             .select(
