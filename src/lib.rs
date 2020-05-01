@@ -15,6 +15,7 @@ mod gucs;
 mod highlighting;
 mod json;
 mod mapping;
+mod misc;
 pub mod query_dsl;
 pub mod scoring;
 mod utils;

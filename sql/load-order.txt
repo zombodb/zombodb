@@ -8,6 +8,7 @@ _postgis-support.sql
 _type-conversions.sql
 access_method_mod.generated.sql
 zdbquery_opclass.generated.sql
+misc_mod.generated.sql
 query_dsl_term.generated.sql
 query_dsl_terms.generated.sql
 query_dsl_prefix.generated.sql
