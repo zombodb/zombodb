@@ -20,6 +20,7 @@ if [ $? == 1 ]; then
   # load data if we don't have the regression database
   ${REGRESS} --dbname=${DBNAME} --inputdir=${TESTDIR} $PRETESTS
 fi
-${REGRESS} --use-existing --dbname=${DBNAME} --inputdir=${TESTDIR} $TESTS
+#${REGRESS} --use-existing --dbname=${DBNAME} --inputdir=${TESTDIR} --launcher="psql --set=VERBOSITY=terse contrib_regression" $TESTS
+${REGRESS} --use-existing --dbname=${DBNAME} --inputdir=${TESTDIR} --launcher="/Users/e_ridge/_work/zombodb/testlauncher.sh" $TESTS
 
 
