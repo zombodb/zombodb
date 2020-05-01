@@ -601,7 +601,7 @@ impl Handler {
     ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
         match &command {
             BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
-                let current_xid = unsafe { pg_sys::GetCurrentTransactionIdIfAny() };
+                let current_xid = unsafe { pg_sys::GetCurrentTransactionId() };
                 if current_xid != pg_sys::InvalidTransactionId {
                     get_executor_manager().push_xid(current_xid);
                 }

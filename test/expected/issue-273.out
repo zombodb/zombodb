@@ -83,14 +83,14 @@ select * from zdb.terms('idxissue273', 'id', dsl.match_all(), 1000, 'term');
  4    |         1
 (3 rows)
 
-SELECT jsonb_array_length((zdb.request('idxissue273', 'doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
+SELECT jsonb_array_length((zdb.request('idxissue273', '_doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
  jsonb_array_length 
 --------------------
                   1
 (1 row)
 
 VACUUM issue273;
-SELECT jsonb_array_length((zdb.request('idxissue273', 'doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
+SELECT jsonb_array_length((zdb.request('idxissue273', '_doc/zdb_aborted_xids?pretty')::jsonb)->'_source'->'zdb_aborted_xids');
  jsonb_array_length 
 --------------------
                   0
