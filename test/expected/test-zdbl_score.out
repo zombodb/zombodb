@@ -17,7 +17,6 @@ SELECT zdb.score(ctid) FROM events LIMIT 10;
 -- with a random tid value... should raise an ERROR
 SELECT zdb.score('(1,1)'::tid);
 ERROR:  zdb_score()'s argument is not a direct table ctid column reference
-CONTEXT:  src/scoring/mod.rs:20:17
 SET enable_seqscan TO OFF;
 SET enable_indexscan TO OFF;
 SET enable_bitmapscan TO OFF;
