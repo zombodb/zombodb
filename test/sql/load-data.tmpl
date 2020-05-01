@@ -1,0 +1,2 @@
+COPY events FROM PROGRAM 'gunzip --stdout @PWD/test/data/events.csv.gz' CSV;
+COPY users FROM PROGRAM 'gunzip --stdout @PWD/test/data/users.csv.gz' CSV;

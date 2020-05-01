@@ -121,6 +121,11 @@ fn restrict(
             } else {
                 heap_relation = Some(PgRelation::open(heaprel_id));
             }
+
+            // free the ldata struct
+            if ldata.statsTuple != std::ptr::null_mut() {
+                (ldata.freefunc.unwrap())(ldata.statsTuple);
+            }
         }
     }
 
@@ -144,7 +149,7 @@ fn restrict(
                         .min(zdbquery.limit().unwrap_or(std::i64::MAX as u64) as i64);
 
                     if estimate >= 1 {
-                        // just the estimate assigned to the query
+                        // use the estimate assigned to the query
                         count_estimate = estimate as u64;
                     } else {
                         // ask Elasticsearch to estimate our selectivity

@@ -12,7 +12,7 @@ mod vacuum;
 /// CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER amhandler;
 /// ```
 #[pg_extern]
-fn amhandler() -> PgBox<pg_sys::IndexAmRoutine> {
+fn amhandler(_fcinfo: pg_sys::FunctionCallInfo) -> PgBox<pg_sys::IndexAmRoutine> {
     let mut amroutine = PgNodeFactory::makeIndexAmRoutine();
 
     amroutine.amstrategies = 4;

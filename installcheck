@@ -1,0 +1,25 @@
+#! /bin/bash
+
+PGXS=$(dirname `pg_config --pgxs`)
+REGRESS="${PGXS}/../test/regress/pg_regress"
+TESTDIR=test
+DBNAME=contrib_regression
+PRETESTS="setup create-tables load-data index-data"
+if [ "x$TEST" = "x" ] ; then
+  TESTS=$(ls ${TESTDIR}/sql/test-*.sql ${TESTDIR}/sql/issue-*.sql | cut -f3 -d/ | cut -f1 -d . | sort | grep -v concurrently)
+else
+  TESTS=${TEST}
+fi
+
+cat ${TESTDIR}/sql/load-data.tmpl | sed -e "s:@PWD:`pwd`:g" > ${TESTDIR}/sql/load-data.sql
+cat ${TESTDIR}/sql/load-data.tmpl | sed -e "s:@PWD:`pwd`:g" > ${TESTDIR}/expected/load-data.out
+
+
+psql -l | grep ${DBNAME} > /dev/null
+if [ $? == 1 ]; then
+  # load data if we don't have the regression database
+  ${REGRESS} --dbname=${DBNAME} --inputdir=${TESTDIR} $PRETESTS
+fi
+${REGRESS} --use-existing --dbname=${DBNAME} --inputdir=${TESTDIR} $TESTS
+
+
