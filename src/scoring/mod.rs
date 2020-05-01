@@ -5,18 +5,20 @@ use pgx::*;
 
 #[pg_extern(immutable, parallel_safe)]
 fn score(ctid: pg_sys::ItemPointerData, fcinfo: pg_sys::FunctionCallInfo) -> f64 {
-    if let Some((query_desc, query_state)) = get_executor_manager().peek_query_state() {
-        match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
-            Some(heap_oid) => {
-                return query_state.get_score(heap_oid, ctid);
-            }
-            None => {
-                panic!("zdb.score()'s argument is not a direct table ctid column reference");
+    let score = match get_executor_manager().peek_query_state() {
+        Some((query_desc, query_state)) => {
+            match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
+                Some(heap_oid) => Some(query_state.get_score(heap_oid, ctid)),
+                None => None,
             }
         }
-    }
+        None => None,
+    };
 
-    0.0f64
+    match score {
+        Some(score) => score,
+        None => panic!("zdb_score()'s argument is not a direct table ctid column reference"),
+    }
 }
 
 #[pg_extern(immutable, parallel_safe)]
