@@ -69,7 +69,7 @@ mod tests {
             dls.unwrap(),
             &json! {
                 {
-                    "match_all": { "boost": 1.0}
+                    "match_all": { }
                 }
             }
         );
