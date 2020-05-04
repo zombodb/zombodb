@@ -91,15 +91,40 @@ impl DocumentHighlighter {
         &self,
         fuzzy_key: &str,
         prefix: i32,
-        fuzzy: i32,
-    ) -> Option<Vec<(&String, &TokenEntry)>> {
+    ) -> Option<Vec<(String, &TokenEntry)>> {
         let mut result = Vec::new();
-        let prefix = &fuzzy_key[0..prefix as usize];
+        let fuzzy_low = 3;
+        let fuzzy_high = 6;
+        if prefix >= fuzzy_key.len() as i32 {
+            for tokens in self.highlight_token(fuzzy_key).unwrap() {
+                result.push((String::from(fuzzy_key), tokens))
+            }
+            if result.is_empty() {
+                return None;
+            } else {
+                return Some(result);
+            }
+        }
+        let prefix_string = &fuzzy_key[0..prefix as usize];
         for (token, token_entries) in self.lookup.iter() {
-            if token.starts_with(prefix.deref()) {
-                if fuzzy > levenshtein(token, fuzzy_key) as i32 {
-                    for token_entry in token_entries {
-                        result.push((token, token_entry));
+            if token.starts_with(prefix_string.deref()) {
+                if fuzzy_key.len() < fuzzy_low {
+                    if levenshtein(token, fuzzy_key) as i32 == 0 {
+                        for token_entry in token_entries {
+                            result.push((String::from(token), token_entry));
+                        }
+                    }
+                } else if fuzzy_key.len() >= fuzzy_low && fuzzy_key.len() < fuzzy_high {
+                    if levenshtein(token, fuzzy_key) as i32 <= 1 {
+                        for token_entry in token_entries {
+                            result.push((String::from(token), token_entry));
+                        }
+                    }
+                } else {
+                    if levenshtein(token, fuzzy_key) as i32 <= 2 {
+                        for token_entry in token_entries {
+                            result.push((String::from(token), token_entry));
+                        }
                     }
                 }
             };
@@ -408,7 +433,6 @@ fn highlight_fuzzy(
     text: &str,
     token_to_highlight: &str,
     prefix: i32,
-    fuzzy: i32,
 ) -> impl std::iter::Iterator<
     Item = (
         name!(field_name, String),
@@ -421,7 +445,7 @@ fn highlight_fuzzy(
 > {
     let mut highlighter = DocumentHighlighter::new();
     highlighter.analyze_document(&index, field_name, text);
-    let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix, fuzzy);
+    let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix);
 
     match highlights {
         Some(vec) => vec
@@ -652,11 +676,11 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_fuzzy_correct() {
+    fn test_highlighter_fuzzy_correct_three_char_term() {
         start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 1,3) order by position;",
+                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'cot', 1) order by position;",
                 None,
                 None,
             );
@@ -667,9 +691,7 @@ mod tests {
             // test_field | colt | <ALPHANUM> |        1 |            5 |          9
             // test_field | cot  | <ALPHANUM> |        2 |           10 |         13
             // test_field | co   | <ALPHANUM> |        5 |           26 |         28
-            // test_field | cat  | <ALPHANUM> |        8 |           41 |         44
             let expect = vec![
-                ("<ALPHANUM>", "coal", 0, 0, 4),
                 ("<ALPHANUM>", "colt", 1, 5, 9),
                 ("<ALPHANUM>", "cot", 2, 10, 13),
                 ("<ALPHANUM>", "co", 5, 26, 28),
@@ -682,18 +704,73 @@ mod tests {
         });
     }
 
-    #[pg_test(error = "byte index 4 is out of bounds of `cot`")]
+    #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_fuzzy_with_prefix_wrong() {
+    fn test_highlighter_fuzzy_correct_two_char_string() {
         start_table_and_index();
         Spi::connect(|client| {
             let table = client.select(
-                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4,3) order by position;",
+                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'co', 1) order by position;",
                 None,
                 None,
             );
 
-            let expect = vec![];
+            // field_name  | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            // test_field | co   | <ALPHANUM> |        5 |           26 |         28
+            let expect = vec![("<ALPHANUM>", "co", 5, 26, 28)];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_fuzzy_6_char_string() {
+        start_table_and_index();
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c cott cooler', 'colter', 2) order by position;",
+                None,
+                None,
+            );
+
+            // field_name | term   |    type    | position | start_offset | end_offset
+            // -----------+--------+------------+----------+--------------+------------
+            // test_field | colt   | <ALPHANUM> |        1 |            5 |          9
+            // test_field | colter | <ALPHANUM> |        7 |           34 |         40
+            // test_field | cooler | <ALPHANUM> |       12 |           57 |         63
+
+            let expect = vec![
+                ("<ALPHANUM>", "colt", 1, 5, 9),
+                ("<ALPHANUM>", "colter", 7, 34, 40),
+                ("<ALPHANUM>", "cooler", 12, 57, 63),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string() {
+        start_table_and_index();
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;",
+                None,
+                None,
+            );
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | cot  | <ALPHANUM> |        2 |           10 |         13
+
+            let expect = vec![("<ALPHANUM>", "cot", 2, 10, 13)];
 
             test_table(table, expect);
 
