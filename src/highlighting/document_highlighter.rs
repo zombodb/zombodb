@@ -48,8 +48,18 @@ impl DocumentHighlighter {
         }
     }
 
-    pub fn highlight_token(&self, token: &str) -> Option<&Vec<TokenEntry>> {
-        self.lookup.get(token)
+    pub fn highlight_token(&self, token: &str) -> Option<Vec<(String, &TokenEntry)>> {
+        let mut result = Vec::new();
+        let token_entries_vec = self.lookup.get(token);
+        match token_entries_vec {
+            Some(vec) => {
+                for token_entry in vec {
+                    result.push((String::from(token), token_entry))
+                }
+                Some(result)
+            }
+            None => None,
+        }
     }
 
     pub fn highlight_wildcard(&self, token: &str) -> Option<Vec<(String, &TokenEntry)>> {
@@ -90,22 +100,15 @@ impl DocumentHighlighter {
     pub fn highlight_fuzzy(
         &self,
         fuzzy_key: &str,
-        prefix: i32,
+        prefix: usize,
     ) -> Option<Vec<(String, &TokenEntry)>> {
         let mut result = Vec::new();
         let fuzzy_low = 3;
         let fuzzy_high = 6;
-        if prefix >= fuzzy_key.len() as i32 {
-            for tokens in self.highlight_token(fuzzy_key).unwrap() {
-                result.push((String::from(fuzzy_key), tokens))
-            }
-            if result.is_empty() {
-                return None;
-            } else {
-                return Some(result);
-            }
+        if prefix >= fuzzy_key.len() {
+            return self.highlight_token(fuzzy_key);
         }
-        let prefix_string = &fuzzy_key[0..prefix as usize];
+        let prefix_string = &fuzzy_key[0..prefix];
         for (token, token_entries) in self.lookup.iter() {
             if token.starts_with(prefix_string.deref()) {
                 if fuzzy_key.len() < fuzzy_low {
@@ -165,24 +168,19 @@ impl DocumentHighlighter {
     ) -> Option<Vec<(String, &TokenEntry)>> {
         if phrase.len() == 1 {
             let token = phrase.get(0).unwrap();
-            let result = self.highlight_token(token);
-            return match result {
-                Some(result) => Some(
-                    result
-                        .iter()
-                        .map(|entry| (token.clone(), entry))
-                        .collect::<Vec<(String, &TokenEntry)>>(),
-                ),
-                None => None,
-            };
+            return self.highlight_token(token);
         }
 
-        let mut pool = HashMap::<&str, &Vec<TokenEntry>>::new();
+        let mut pool = HashMap::<&str, Vec<&TokenEntry>>::new();
         for token in &phrase {
-            let token_entry = self.highlight_token(token);
-            match token_entry {
+            let token_entries = self.highlight_token(token);
+            match token_entries {
                 Some(vec) => {
-                    pool.insert(token, vec);
+                    let mut token_entry = Vec::new();
+                    for tuples in vec {
+                        token_entry.push(tuples.1)
+                    }
+                    pool.insert(token, token_entry);
                 }
                 None => {
                     return None;
@@ -296,11 +294,11 @@ fn highlight_term(
             .map(|e| {
                 (
                     field_name.clone().to_owned(),
-                    token_to_highlight.clone(),
-                    e.type_.clone(),
-                    e.position as i32,
-                    e.start_offset as i64,
-                    e.end_offset as i64,
+                    String::from(e.0.clone()),
+                    String::from(e.1.type_.clone()),
+                    e.1.position as i32,
+                    e.1.start_offset as i64,
+                    e.1.end_offset as i64,
                 )
             })
             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
@@ -445,7 +443,7 @@ fn highlight_fuzzy(
 > {
     let mut highlighter = DocumentHighlighter::new();
     highlighter.analyze_document(&index, field_name, text);
-    let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix);
+    let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix as usize);
 
     match highlights {
         Some(vec) => vec
@@ -771,6 +769,28 @@ mod tests {
             // test_field | cot  | <ALPHANUM> |        2 |           10 |         13
 
             let expect = vec![("<ALPHANUM>", "cot", 2, 10, 13)];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string_with_non_return() {
+        start_table_and_index();
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;",
+                None,
+                None,
+            );
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+
+            let expect = vec![];
 
             test_table(table, expect);
 
