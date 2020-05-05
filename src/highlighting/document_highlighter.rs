@@ -441,6 +441,9 @@ fn highlight_fuzzy(
         name!(end_offset, i64),
     ),
 > {
+    if prefix < 0 {
+        panic!("negative prefixes not allowed");
+    }
     let mut highlighter = DocumentHighlighter::new();
     highlighter.analyze_document(&index, field_name, text);
     let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix as usize);
@@ -783,6 +786,28 @@ mod tests {
         Spi::connect(|client| {
             let table = client.select(
                 "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;",
+                None,
+                None,
+            );
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+
+            let expect = vec![];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test(error = "negative prefixes not allowed")]
+    #[initialize(es = true)]
+    fn test_highlighter_fuzzy_with_negative_prefix() {
+        start_table_and_index();
+        Spi::connect(|client| {
+            let table = client.select(
+                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', -4) order by position;",
                 None,
                 None,
             );
