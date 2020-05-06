@@ -8,7 +8,7 @@ insert into points(point) values ('0,0');
 insert into points(point) values ('1,1');
 insert into points(point) values ('2,2');
 
-select * from points where points ==> dsl.geo_polygon('point', '0,0', '1,1', '2,2');
-select * from points where points ==> dsl.geo_bounding_box('point', '0,0,2,2');
+select * from points where points ==> dsl.geo_polygon('point', '0,0', '1,1', '2,2') order by id;
+select * from points where points ==> dsl.geo_bounding_box('point', '0,0,2,2') order by id;
 
 drop table points;
