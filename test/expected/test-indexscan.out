@@ -3,8 +3,8 @@ SET enable_indexscan TO OFF;
 SET enable_bitmapscan TO OFF;
 SET enable_indexscan TO ON;
 EXPLAIN (COSTS OFF) SELECT id FROM events WHERE events ==> 'beer' LIMIT 10;
-                                    QUERY PLAN                                    
-----------------------------------------------------------------------------------
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
  Limit
    ->  Index Scan using idxevents on events
          Index Cond: (ctid ==> '{"query_string":{"query":"beer"}}'::zdbquery)
