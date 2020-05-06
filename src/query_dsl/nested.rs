@@ -105,7 +105,7 @@ mod tests {
                     "nested":
                         {
                             "path": "path_test",
-                            "query":{ "query_dsl": { "query_string":{ "query": "test" }}},
+                            "query":{ "query_string":{ "query": "test" }},
                             "score_mode": "sum",
                             "ignore_unmapped": false,
                         }
