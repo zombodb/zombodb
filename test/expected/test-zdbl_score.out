@@ -23,10 +23,10 @@ SET enable_bitmapscan TO OFF;
 -- with a seqscan
 SET enable_seqscan TO ON;
 EXPLAIN (COSTS OFF) SELECT zdb.score(ctid) > 0.0 FROM events WHERE events ==> 'beer';
-                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
+                                             QUERY PLAN                                             
+----------------------------------------------------------------------------------------------------
  Seq Scan on events
-   Filter: (events.* ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
+   Filter: (ctid ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
 (2 rows)
 
 SELECT zdb.score(ctid) > 0.0 FROM events WHERE events ==> 'beer';
@@ -60,10 +60,10 @@ SET enable_seqscan TO OFF;
 -- with an indexscan
 SET enable_indexscan TO ON;
 EXPLAIN (COSTS OFF) SELECT zdb.score(ctid) > 0.0 FROM events WHERE events ==> 'beer';
-                                                 QUERY PLAN                                                 
-------------------------------------------------------------------------------------------------------------
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
  Index Scan using idxevents on events
-   Index Cond: (events.* ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
+   Index Cond: (ctid ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
 (2 rows)
 
 SELECT zdb.score(ctid) > 0.0 FROM events WHERE events ==> 'beer';
@@ -97,10 +97,10 @@ SET enable_indexscan TO OFF;
 -- with a bitmap index scan
 SET enable_bitmapscan TO ON;
 EXPLAIN (COSTS OFF) SELECT zdb.score(ctid) > 0.0 FROM events WHERE events ==> 'beer';
-                                                 QUERY PLAN                                                 
-------------------------------------------------------------------------------------------------------------
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
  Index Scan using idxevents on events
-   Index Cond: (events.* ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
+   Index Cond: (ctid ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
 (2 rows)
 
 SELECT zdb.score(ctid) > 0.0 FROM events WHERE events ==> 'beer';

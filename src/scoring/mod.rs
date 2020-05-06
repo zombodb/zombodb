@@ -4,20 +4,27 @@ use crate::zdbquery::ZDBQuery;
 use pgx::*;
 
 #[pg_extern(immutable, parallel_safe)]
-fn score(ctid: pg_sys::ItemPointerData, fcinfo: pg_sys::FunctionCallInfo) -> f64 {
-    let score = match get_executor_manager().peek_query_state() {
-        Some((query_desc, query_state)) => {
-            match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
-                Some(heap_oid) => Some(query_state.get_score(heap_oid, ctid)),
+fn score(ctid: Option<pg_sys::ItemPointerData>, fcinfo: pg_sys::FunctionCallInfo) -> f64 {
+    match ctid {
+        Some(ctid) => {
+            let score = match get_executor_manager().peek_query_state() {
+                Some((query_desc, query_state)) => {
+                    match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
+                        Some(heap_oid) => Some(query_state.get_score(heap_oid, ctid)),
+                        None => None,
+                    }
+                }
                 None => None,
+            };
+
+            match score {
+                Some(score) => score,
+                None => {
+                    panic!("zdb_score()'s argument is not a direct table ctid column reference")
+                }
             }
         }
-        None => None,
-    };
-
-    match score {
-        Some(score) => score,
-        None => panic!("zdb_score()'s argument is not a direct table ctid column reference"),
+        None => 0.0f64,
     }
 }
 

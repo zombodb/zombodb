@@ -1,3 +1,4 @@
+use crate::access_method::rewriter::rewrite_opexrs;
 use crate::executor_manager::alter::{
     alter_indices, get_index_options_for_relation, get_index_options_for_schema,
 };
@@ -192,8 +193,13 @@ impl PgHooks for ZDBHooks {
         ) -> HookResult<*mut pg_sys::PlannedStmt>,
     ) -> HookResult<*mut pg_sys::PlannedStmt> {
         WantScoresWalker::new().perform(&parse);
+        let result = prev_hook(parse, cursor_options, bound_params);
 
-        prev_hook(parse, cursor_options, bound_params)
+        unsafe {
+            rewrite_opexrs(result.inner.as_mut().unwrap());
+        }
+
+        result
     }
 }
 

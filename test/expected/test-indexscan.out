@@ -7,7 +7,7 @@ EXPLAIN (COSTS OFF) SELECT id FROM events WHERE events ==> 'beer' LIMIT 10;
 ----------------------------------------------------------------------------------
  Limit
    ->  Index Scan using idxevents on events
-         Index Cond: (events.* ==> '{"query_string":{"query":"beer"}}'::zdbquery)
+         Index Cond: (ctid ==> '{"query_string":{"query":"beer"}}'::zdbquery)
 (3 rows)
 
 SELECT 1 FROM events WHERE events ==> 'beer' LIMIT 10;

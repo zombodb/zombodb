@@ -83,18 +83,17 @@ explain(costs off)   select zdb.score(e.ctid) > 0, zdb.score(u.ctid) > 0, (zdb.s
 left join users u on e.user_id = u.id
     where e ==> 'beer' or u ==> 'vicjoecs'
  order by e.id, u.id;
-                                                                                                       QUERY PLAN                                                                                                       
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Result
-   ->  Sort
-         Sort Key: e.id, u.id
-         ->  Hash Left Join
-               Hash Cond: (e.user_id = u.id)
-               Filter: ((e.ctid ==> '{"query_dsl":{"query_string":{"query":"beer"}},"wants_score":true}'::zdbquery) OR (u.ctid ==> '{"query_dsl":{"query_string":{"query":"vicjoecs"}},"wants_score":true}'::zdbquery))
-               ->  Seq Scan on events e
-               ->  Hash
-                     ->  Seq Scan on users u
-(9 rows)
+                                                                                                   QUERY PLAN                                                                                                   
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort
+   Sort Key: e.id, u.id
+   ->  Hash Left Join
+         Hash Cond: (e.user_id = u.id)
+         Filter: ((e.ctid ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery) OR (u.ctid ==> '{"query_dsl":{"query_string":{"query":"vicjoecs"}},"want_score":true}'::zdbquery))
+         ->  Seq Scan on events e
+         ->  Hash
+               ->  Seq Scan on users u
+(8 rows)
 
    select zdb.score(e.ctid) > 0, zdb.score(u.ctid) > 0, (zdb.score(e.ctid) + zdb.score(u.ctid)) > 0, e.id, u.id
      from events e

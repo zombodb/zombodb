@@ -1,5 +1,5 @@
 CREATE TABLE foo AS SELECT 'bar' AS name;
-CREATE INDEX foo_idx ON foo USING zombodb((foo.*)) WITH (url='localhost:9200/');
+CREATE INDEX foo_idx ON foo USING zombodb((foo.*)) WITH (url='http://localhost:9200/');
 
 BEGIN;
 SAVEPOINT a;

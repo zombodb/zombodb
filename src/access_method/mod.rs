@@ -3,6 +3,7 @@ use pgx::*;
 mod build;
 mod cost_estimate;
 pub mod options;
+pub mod rewriter;
 mod scan;
 mod triggers;
 mod vacuum;

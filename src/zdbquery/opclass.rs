@@ -28,32 +28,7 @@ fn anyelement_cmpfunc(
                 .unwrap(),
         ))
     } else {
-        // find the ItemPointerData being processed by looking through the TupleTable
-        let estate: &pg_sys::EState =
-            unsafe { query_desc.as_ref().unwrap().estate.as_ref().unwrap() };
-        let slots = PgList::<pg_sys::TupleTableSlot>::from_pg(estate.es_tupleTable);
-
-        let mut i = 0;
-        loop {
-            if i == slots.len() {
-                break None;
-            }
-            match slots.get_ptr(i) {
-                Some(slot) => {
-                    let slot = unsafe { slot.as_ref().unwrap() };
-                    if slot.tts_tableOid == heap_oid {
-                        let tid = slot.tts_tid;
-                        if !item_pointer_is_valid(&tid as *const pg_sys::ItemPointerData) {
-                            return false;
-                        }
-
-                        break Some(item_pointer_to_u64(tid));
-                    }
-                }
-                None => return false,
-            }
-            i = i + 1;
-        }
+        panic!("lhs of anyelement_cmpfunc is not a tid");
     };
 
     match tid {
