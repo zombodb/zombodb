@@ -4,6 +4,8 @@ use crate::zdbquery::ZDBQuery;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 const SEARCH_FILTER_PATH:&str = "_scroll_id,_shards.*,hits.total,hits.max_score,hits.hits._score,hits.hits.fields.*,hits.hits.highlight.*";
 
@@ -98,7 +100,7 @@ impl ElasticsearchSearchRequest {
     }
 
     pub fn execute(self) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
-        ElasticsearchSearchRequest::initial_search(self.elasticsearch, self.query, None)
+        ElasticsearchSearchRequest::initial_search(&self.elasticsearch, self.query, None)
     }
 
     pub fn execute_with_fields(
@@ -106,14 +108,14 @@ impl ElasticsearchSearchRequest {
         extra_fields: Vec<&str>,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         ElasticsearchSearchRequest::initial_search(
-            self.elasticsearch,
+            &self.elasticsearch,
             self.query,
             Some(extra_fields),
         )
     }
 
     fn initial_search(
-        elasticsearch: Elasticsearch,
+        elasticsearch: &Elasticsearch,
         query: ZDBQuery,
         extra_fields: Option<Vec<&str>>,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
@@ -214,7 +216,7 @@ impl ElasticsearchSearchRequest {
     }
 
     fn scroll(
-        elasticsearch: Elasticsearch,
+        elasticsearch: &Elasticsearch,
         scroll_id: &str,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
@@ -241,7 +243,7 @@ impl ElasticsearchSearchRequest {
         url: String,
         limit: Option<u64>,
         offset: Option<u64>,
-        elasticsearch: Elasticsearch,
+        elasticsearch: &Elasticsearch,
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         Elasticsearch::execute_request(
@@ -263,7 +265,7 @@ impl ElasticsearchSearchRequest {
 
                 // assign a clone of our ES client to the response too,
                 // for future use during iteration
-                response.elasticsearch = Some(elasticsearch);
+                response.elasticsearch = Some(elasticsearch.clone());
                 response.limit = limit;
                 response.offset = offset;
 
@@ -288,16 +290,18 @@ impl ElasticsearchSearchResponse {
 
 pub struct Scroller {
     receiver: crossbeam_channel::Receiver<(f64, u64, Fields)>,
+    terminate: Arc<AtomicBool>,
 }
 
 impl Scroller {
     fn new(
-        elasticsearch: Elasticsearch,
-        mut scroll_id: Option<String>,
+        orig_elasticsearch: Elasticsearch,
+        orig_scroll_id: Option<String>,
         iter: std::vec::IntoIter<InnerHit>,
     ) -> Self {
         let (sender, receiver) = crossbeam_channel::unbounded();
         let (scroll_sender, scroll_receiver) = crossbeam_channel::unbounded();
+        let terminate_arc = Arc::new(AtomicBool::new(false));
 
         // go ahead and queue up the results we currently have from the initial search
         scroll_sender
@@ -306,10 +310,17 @@ impl Scroller {
 
         // spawn a thread to continually get the next scroll chunk from Elasticsearch
         // until there's no more to get
+        let mut scroll_id = orig_scroll_id.clone();
+        let elasticsearch = orig_elasticsearch.clone();
+        let terminate = terminate_arc.clone();
         std::thread::spawn(move || {
             std::panic::catch_unwind(|| {
                 while let Some(sid) = scroll_id {
-                    match ElasticsearchSearchRequest::scroll(elasticsearch.clone(), &sid) {
+                    if terminate.load(Ordering::SeqCst) {
+                        break;
+                    }
+
+                    match ElasticsearchSearchRequest::scroll(&elasticsearch, &sid) {
                         Ok(response) => {
                             scroll_id = response.scroll_id;
 
@@ -337,6 +348,23 @@ impl Scroller {
                 }
             })
             .ok();
+
+            // we're done scrolling, so drop the sender
+            // which will cause the receiver to terminate as soon
+            // as it's drained
+            drop(scroll_sender);
+
+            if let Some(scroll_id) = orig_scroll_id {
+                Elasticsearch::execute_request(
+                    reqwest::Client::new().delete(&format!(
+                        "{}_search/scroll/{}",
+                        elasticsearch.url(),
+                        scroll_id
+                    )),
+                    |_, _| Ok(()),
+                )
+                .expect("failed to delete scroll");
+            }
         });
 
         // this thread sends the hits back to the main thread across the 'sender/receiver' channel
@@ -363,7 +391,10 @@ impl Scroller {
             .ok();
         });
 
-        Scroller { receiver }
+        Scroller {
+            receiver,
+            terminate: terminate_arc,
+        }
     }
 
     fn next(&self) -> Option<(f64, u64, Fields)> {
@@ -378,6 +409,14 @@ pub struct SearchResponseIntoIter {
     scroller: Option<Scroller>,
     limit: Option<u64>,
     cnt: u64,
+}
+
+impl Drop for SearchResponseIntoIter {
+    fn drop(&mut self) {
+        if let Some(scroller) = &self.scroller {
+            scroller.terminate.store(true, Ordering::SeqCst);
+        }
+    }
 }
 
 impl Iterator for SearchResponseIntoIter {
