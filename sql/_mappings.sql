@@ -409,7 +409,7 @@ CREATE DOMAIN zdb.portuguese AS text;
 CREATE DOMAIN zdb.romanian AS text;
 CREATE DOMAIN zdb.russian AS text;
 CREATE DOMAIN zdb.sorani AS text;
-CREATE DOMAIN zdb.panish AS text;
+CREATE DOMAIN zdb.spanish AS text;
 CREATE DOMAIN zdb.simple AS text;
 CREATE DOMAIN zdb.standard AS text;
 CREATE DOMAIN zdb.swedish AS text;

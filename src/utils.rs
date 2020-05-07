@@ -86,3 +86,16 @@ pub fn json_to_string(key: serde_json::Value) -> Option<String> {
         _ => panic!("unsupported value type"),
     }
 }
+
+pub fn type_is_domain(typoid: pg_sys::Oid) -> Option<(pg_sys::Oid, String)> {
+    let (is_domain, base_type, name) = Spi::get_three_with_args::<bool, pg_sys::Oid, String>(
+        "SELECT typtype = 'd', typbasetype, typname::text FROM pg_type WHERE oid = $1",
+        vec![(PgBuiltInOids::OIDOID.oid(), typoid.into_datum())],
+    );
+
+    if is_domain.unwrap_or(false) {
+        Some((base_type.unwrap(), name.unwrap()))
+    } else {
+        None
+    }
+}
