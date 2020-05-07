@@ -65,7 +65,3 @@ highlighting_document_highlighter.generated.sql
 cat_mod.generated.sql
 _cat-api.sql
 _support-views.sql
-access_method_build.generated.sql
-elasticsearch_search.generated.sql
-gucs_mod.generated.sql
-mapping_mod.generated.sql
