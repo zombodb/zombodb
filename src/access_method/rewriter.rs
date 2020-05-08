@@ -89,7 +89,6 @@ unsafe fn walk_node(node: *mut pg_sys::Node, context: &mut WalkContext) {
         walk_node(scan.indexorderby as NodePtr, context);
         walk_node(scan.indexorderby as NodePtr, context);
         walk_node(scan.indexorderbyorig as NodePtr, context);
-    // do nothing as we don't want to rewrite index scans
     } else if is_a(node, pg_sys::NodeTag_T_IndexOnlyScan) {
         // do nothing as we don't want to rewrite index scans
     } else if is_a(node, pg_sys::NodeTag_T_FuncExpr) {
