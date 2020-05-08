@@ -9,7 +9,8 @@ use pgx::*;
 
 struct BuildState<'a> {
     table_name: &'a str,
-    bulk: &'a mut ElasticsearchBulkRequest,
+    index_oid: pg_sys::Oid,
+    bulk: Option<&'a mut ElasticsearchBulkRequest>,
     tupdesc: &'a PgTupleDesc<'a>,
     attributes: Vec<CategorizedAttribute<'a>>,
 }
@@ -17,12 +18,14 @@ struct BuildState<'a> {
 impl<'a> BuildState<'a> {
     fn new(
         table_name: &'a str,
-        bulk: &'a mut ElasticsearchBulkRequest,
+        index_oid: pg_sys::Oid,
+        bulk: Option<&'a mut ElasticsearchBulkRequest>,
         tupdesc: &'a PgTupleDesc,
         attributes: Vec<CategorizedAttribute<'a>>,
     ) -> Self {
         BuildState {
             table_name,
+            index_oid,
             bulk,
             tupdesc,
             attributes,
@@ -108,9 +111,8 @@ fn do_heap_scan<'a>(
 ) -> usize {
     let mut state = BuildState::new(
         heap_relation.name(),
-        &mut get_executor_manager()
-            .checkout_bulk_context(index_relation.oid())
-            .bulk,
+        index_relation.oid(),
+        None,
         &tupdesc,
         attributes,
     );
@@ -125,7 +127,10 @@ fn do_heap_scan<'a>(
         );
     }
 
-    let (ntuples, nrequests) = state.bulk.totals();
+    let (ntuples, nrequests) = match state.bulk {
+        Some(bulk) => bulk.totals(),
+        None => (0, 0),
+    };
 
     ZDB_LOG_LEVEL.get().log(&format!(
         "[zombodb] indexed {} rows to {} in {} requests",
@@ -196,8 +201,17 @@ unsafe extern "C" fn build_callback(
     let xmin = xid_to_64bit(pg_sys::HeapTupleHeaderGetXmin(htup.t_data).unwrap());
     let xmax = pg_sys::InvalidTransactionId;
 
+    if state.bulk.is_none() {
+        let index_oid = state.index_oid;
+        state
+            .bulk
+            .replace(&mut get_executor_manager().checkout_bulk_context(index_oid).bulk);
+    }
+
     state
         .bulk
+        .as_mut()
+        .unwrap()
         .insert(htup.t_self, cmin, cmax, xmin, xmax as u64, builder)
         .expect("Unable to send tuple for insert");
 }
