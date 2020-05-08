@@ -42,7 +42,7 @@ pub fn lookup_zdb_index_tupdesc(indexrel: &PgRelation) -> PgTupleDesc<'static> {
 
     // lookup the tuple descriptor for the rowtype we're *indexing*, rather than
     // using the tuple descriptor for the index definition itself
-    PgMemoryContexts::TopTransactionContext.switch_to(|| unsafe {
+    PgMemoryContexts::TopTransactionContext.switch_to(|_| unsafe {
         PgTupleDesc::from_pg_is_copy(pg_sys::lookup_rowtype_tupdesc_copy(typid, typmod))
     })
 }
