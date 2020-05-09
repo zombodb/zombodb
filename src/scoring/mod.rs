@@ -107,6 +107,7 @@ impl WantScoresWalker {
     }
 }
 
+#[pg_guard]
 unsafe extern "C" fn want_scores_walker(
     node: *mut pg_sys::Node,
     context_ptr: void_mut_ptr,
@@ -153,6 +154,7 @@ unsafe extern "C" fn want_scores_walker(
     return pg_sys::expression_tree_walker(node, Some(want_scores_walker), context_ptr);
 }
 
+#[pg_guard]
 unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_mut_ptr) -> bool {
     if node.is_null() {
         return false;
