@@ -176,8 +176,8 @@ unsafe extern "C" fn build_callback(
 ) {
     check_for_interrupts!();
 
-    let htup = PgBox::from_pg(htup);
-    let mut state = PgBox::from_pg(state as *mut BuildState);
+    let htup = htup.as_ref().unwrap();
+    let state = (state as *mut BuildState).as_mut().unwrap();
 
     if pg_sys::HeapTupleHeaderIsHeapOnly(htup.t_data) {
         ereport(PgLogLevel::ERROR,
@@ -191,7 +191,7 @@ unsafe extern "C" fn build_callback(
     let builder = row_to_json(values[0], &state.tupdesc, &state.attributes);
 
     let cmin = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
-    let cmax = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
+    let cmax = cmin;
 
     let xmin = xid_to_64bit(pg_sys::HeapTupleHeaderGetXmin(htup.t_data).unwrap());
     let xmax = pg_sys::InvalidTransactionId;
