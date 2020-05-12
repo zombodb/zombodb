@@ -1,19 +1,19 @@
 SELECT dsl.sort('field', 'asc', dsl.match_all());
-                                   sort                                   
---------------------------------------------------------------------------
- {"sort_json":[{"field": {"order": "asc"}}],"query_dsl":{"match_all":{}}}
+                                  sort                                  
+------------------------------------------------------------------------
+ {"sort_json":[{"field":{"order":"asc"}}],"query_dsl":{"match_all":{}}}
 (1 row)
 
 SELECT dsl.sort_many(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('field2', 'desc'), dsl.sd('field3', 'asc', 'avg'));
-                                                                      sort_many                                                                       
-------------------------------------------------------------------------------------------------------------------------------------------------------
- {"sort_json":[{"field": {"order": "asc"}}, {"field2": {"order": "desc"}}, {"field3": {"mode": "avg", "order": "asc"}}],"query_dsl":{"match_all":{}}}
+                                                                 sort_many                                                                  
+--------------------------------------------------------------------------------------------------------------------------------------------
+ {"sort_json":[{"field":{"order":"asc"}},{"field2":{"order":"desc"}},{"field3":{"mode":"avg","order":"asc"}}],"query_dsl":{"match_all":{}}}
 (1 row)
 
 SELECT dsl.sort_many(dsl.match_all(), dsl.sd_nested('nested.field', 'asc', 'nested', dsl.match_all(), 'min'), dsl.sd('field2', 'desc'), dsl.sd('field3', 'asc', 'avg'));
-                                                                                                                sort_many                                                                                                                
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- {"sort_json":[{"nested.field": {"mode": "min", "order": "asc", "nested_path": "nested", "nested_filter": {"match_all": {}}}}, {"field2": {"order": "desc"}}, {"field3": {"mode": "avg", "order": "asc"}}],"query_dsl":{"match_all":{}}}
+                                                                                                       sort_many                                                                                                        
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"sort_json":[{"nested.field":{"mode":"min","nested_filter":{"match_all":{}},"nested_path":"nested","order":"asc"}},{"field2":{"order":"desc"}},{"field3":{"mode":"avg","order":"asc"}}],"query_dsl":{"match_all":{}}}
 (1 row)
 
 SELECT dsl.sort_direct('{
@@ -29,8 +29,8 @@ SELECT dsl.sort_direct('{
             "order" : "asc"
         }
     }', dsl.match_all());
-                                                                                                sort_direct                                                                                                 
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- {"sort_json":{"_script": {"type": "number", "order": "asc", "script": {"lang": "painless", "params": {"factor": 1.1}, "source": "doc['field_name'].value * params.factor"}}},"query_dsl":{"match_all":{}}}
+                                                                                          sort_direct                                                                                           
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"sort_json":{"_script":{"order":"asc","script":{"lang":"painless","params":{"factor":1.1},"source":"doc['field_name'].value * params.factor"},"type":"number"}},"query_dsl":{"match_all":{}}}
 (1 row)
 

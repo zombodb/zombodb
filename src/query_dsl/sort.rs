@@ -10,7 +10,11 @@ mod dsl {
     use pgx::*;
 
     #[pg_extern(immutable, parallel_safe)]
-    fn sd(field: &str, order: SortDirection, mode: Option<SortMode>) -> SortDescriptor {
+    fn sd(
+        field: &str,
+        order: SortDirection,
+        mode: Option<default!(SortMode, NULL)>,
+    ) -> SortDescriptor {
         SortDescriptor {
             field: field.to_string(),
             options: SortDescriptorOptions {
@@ -27,16 +31,20 @@ mod dsl {
         field: &str,
         order: SortDirection,
         nested_path: &str,
-        nested_filter: ZDBQuery,
-        mode: Option<SortMode>,
+        nested_filter: Option<default!(ZDBQuery, NULL)>,
+        mode: Option<default!(SortMode, NULL)>,
     ) -> SortDescriptor {
+        let nested_filter = match nested_filter {
+            Some(query) => query.query_dsl().cloned(),
+            None => None,
+        };
         SortDescriptor {
             field: field.to_string(),
             options: SortDescriptorOptions {
                 order,
                 mode,
                 nested_path: Some(nested_path.to_string()),
-                nested_filter: nested_filter.query_dsl().cloned(),
+                nested_filter,
             },
         }
     }
