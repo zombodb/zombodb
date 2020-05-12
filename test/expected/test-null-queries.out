@@ -1,18 +1,14 @@
 select dsl.geo_shape('field', null, 'INTERSECTS');
-                     geo_shape                     
----------------------------------------------------
- {"geo_shape":{"field":{"relation":"INTERSECTS"}}}
+ geo_shape 
+-----------
+ 
 (1 row)
 
 select dsl.geo_polygon('field', null);
-                 geo_polygon                 
----------------------------------------------
- {"geo_polygon":{"field":{"points":[null]}}}
-(1 row)
-
+ERROR:  null points are not allowed
 select dsl.geo_bounding_box('field', null);
-                 geo_bounding_box                  
----------------------------------------------------
- {"geo_bounding_box":{"type":"memory","field":{}}}
+ geo_bounding_box 
+------------------
+ 
 (1 row)
 
