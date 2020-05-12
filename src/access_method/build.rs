@@ -166,6 +166,7 @@ pub unsafe extern "C" fn aminsert(
     true
 }
 
+#[pg_guard]
 unsafe extern "C" fn build_callback(
     _index: pg_sys::Relation,
     htup: pg_sys::HeapTuple,
