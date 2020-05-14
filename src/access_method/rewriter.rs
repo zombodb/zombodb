@@ -219,7 +219,6 @@ unsafe fn walk_node(node: *mut pg_sys::Node, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Agg) {
         let mut agg = PgBox::from_pg(node as *mut pg_sys::Agg);
         walk_plan(&mut agg.plan, context);
-        walk_node(agg.aggsplit as NodePtr, context);
         walk_node(agg.chain as NodePtr, context);
         walk_node(agg.groupingSets as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_Material) {
