@@ -107,3 +107,31 @@ pub extern "C" fn amgettuple(
 pub extern "C" fn amendscan(_scan: pg_sys::IndexScanDesc) {
     // nothing to do here
 }
+
+#[pg_guard]
+pub extern "C" fn ambitmapscan(scan: pg_sys::IndexScanDesc, tbm: *mut pg_sys::TIDBitmap) -> i64 {
+    let scan = PgBox::from_pg(scan);
+    let index_relation = unsafe { PgRelation::from_pg(scan.indexRelation) };
+    let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
+    let heap_oid = index_relation
+        .heap_relation()
+        .expect("no heap relation for index")
+        .oid();
+    let (_query, qstate) = get_executor_manager().peek_query_state().unwrap();
+
+    let mut cnt = 0i64;
+    let itr = unsafe { state.iterator.as_mut() }.expect("no iterator in state");
+    for (score, ctid_u64, _) in itr {
+        let mut tid = pg_sys::ItemPointerData::default();
+        u64_to_item_pointer(ctid_u64, &mut tid);
+
+        unsafe {
+            pg_sys::tbm_add_tuples(tbm, &mut tid, 1, false);
+        }
+
+        qstate.add_score(heap_oid, ctid_u64, score);
+        cnt += 1;
+    }
+
+    cnt
+}
