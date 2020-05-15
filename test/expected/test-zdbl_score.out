@@ -97,11 +97,13 @@ SET enable_indexscan TO OFF;
 -- with a bitmap index scan
 SET enable_bitmapscan TO ON;
 EXPLAIN (COSTS OFF) SELECT zdb.score(ctid) > 0.0 FROM events WHERE events ==> 'beer';
-                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
- Index Scan using idxevents on events
-   Index Cond: (ctid ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
-(2 rows)
+                                                  QUERY PLAN                                                  
+--------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on events
+   Recheck Cond: (ctid ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
+   ->  Bitmap Index Scan on idxevents
+         Index Cond: (ctid ==> '{"query_dsl":{"query_string":{"query":"beer"}},"want_score":true}'::zdbquery)
+(4 rows)
 
 SELECT zdb.score(ctid) > 0.0 FROM events WHERE events ==> 'beer';
  ?column? 
