@@ -163,8 +163,9 @@ unsafe fn walk_node(node: *mut pg_sys::Node, context: &mut WalkContext) {
         walk_node(mergeappend.mergeplans as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_MergeJoin) {
         let mut mergejoin = PgBox::from_pg(node as *mut pg_sys::MergeJoin);
-        walk_node((&mut mergejoin.join) as *mut _ as NodePtr, context);
+        walk_plan(&mut mergejoin.join.plan, context);
         walk_node(mergejoin.mergeclauses as NodePtr, context);
+        walk_node(mergejoin.join.joinqual as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_NamedTuplestoreScan) {
         let mut scan = PgBox::from_pg(node as *mut pg_sys::NamedTuplestoreScan);
         walk_plan(&mut scan.scan.plan, context);
