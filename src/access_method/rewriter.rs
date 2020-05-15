@@ -214,9 +214,31 @@ unsafe fn walk_node(node: *mut pg_sys::Node, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Sort) {
         let mut sort: PgBox<pg_sys::Sort> = PgBox::from_pg(node as *mut pg_sys::Sort);
         walk_plan(&mut sort.plan, context);
+    } else if is_a(node, pg_sys::NodeTag_T_SortGroupClause) {
+        // nothing to walk
     } else if is_a(node, pg_sys::NodeTag_T_Limit) {
         let mut limit = PgBox::from_pg(node as *mut pg_sys::Limit);
         walk_plan(&mut limit.plan, context);
+    } else if is_a(node, pg_sys::NodeTag_T_CoalesceExpr) {
+        let expr = PgBox::from_pg(node as *mut pg_sys::CoalesceExpr);
+        walk_node(expr.args as NodePtr, context);
+    } else if is_a(node, pg_sys::NodeTag_T_RowExpr) {
+        let expr = PgBox::from_pg(node as *mut pg_sys::RowExpr);
+        walk_node(expr.args as NodePtr, context);
+    } else if is_a(node, pg_sys::NodeTag_T_SQLValueFunction) {
+        // nothing to walk
+    } else if is_a(node, pg_sys::NodeTag_T_SubscriptingRef) {
+        let subscript = PgBox::from_pg(node as *mut pg_sys::SubscriptingRef);
+        walk_node(subscript.refupperindexpr as NodePtr, context);
+        walk_node(subscript.reflowerindexpr as NodePtr, context);
+        walk_node(subscript.refexpr as NodePtr, context);
+        walk_node(subscript.refassgnexpr as NodePtr, context);
+    } else if is_a(node, pg_sys::NodeTag_T_MinMaxExpr) {
+        let minmax = PgBox::from_pg(node as *mut pg_sys::MinMaxExpr);
+        walk_node(minmax.args as NodePtr, context);
+    } else if is_a(node, pg_sys::NodeTag_T_ArrayExpr) {
+        let array = PgBox::from_pg(node as *mut pg_sys::ArrayExpr);
+        walk_node(array.elements as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_Agg) {
         let mut agg = PgBox::from_pg(node as *mut pg_sys::Agg);
         walk_plan(&mut agg.plan, context);
@@ -317,6 +339,7 @@ unsafe fn walk_node(node: *mut pg_sys::Node, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Param) {
     } else if is_a(node, pg_sys::NodeTag_T_CaseTestExpr) {
     } else {
-        warning!("unrecognized tag: {}", node.as_ref().unwrap().type_)
+        warning!("unrecognized tag: {}", node.as_ref().unwrap().type_);
+        eprintln!("unrecognized tag: {}", node.as_ref().unwrap().type_);
     }
 }
