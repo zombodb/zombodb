@@ -65,3 +65,4 @@ highlighting_document_highlighter.generated.sql
 cat_mod.generated.sql
 _cat-api.sql
 _support-views.sql
+_join-support.sql
