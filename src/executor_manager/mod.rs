@@ -254,6 +254,7 @@ impl ExecutorManager {
         });
 
         let bulk_map = self.bulk_requests.as_mut().unwrap();
+        let xids = &self.xids;
         bulk_map.entry(relid).or_insert_with(move || {
             let indexrel = unsafe { PgRelation::open(relid) };
             let elasticsearch = Elasticsearch::new(&indexrel);
@@ -284,7 +285,16 @@ impl ExecutorManager {
                 get_executor_manager().hooks_registered = true;
             }
 
-            let bulk = elasticsearch.start_bulk();
+            // mark xids that are already known to be in progress as
+            // also in progress for this new bulk context too
+            let mut bulk = elasticsearch.start_bulk();
+            if let Some(xids) = xids.as_ref() {
+                for xid in xids {
+                    bulk.transaction_in_progress(*xid)
+                        .expect("Failed to mark transaction as in progress for new bulk");
+                }
+            }
+
             BulkContext {
                 elasticsearch,
                 bulk,
