@@ -3,11 +3,11 @@ CREATE TABLE bad_index (
     title text
 );
 CREATE INDEX idxbad_index ON bad_index USING zombodb (id, title);
-ERROR:  ZomboDB index definitions must index two columns where the first is the 'ctid' system column and the second is of a record type or whole-row reference, i.e., (table_name.*)
+ERROR:  type integer is not composite
 CREATE INDEX idxbad_index ON bad_index USING zombodb (id);
-ERROR:  ZomboDB index definitions must index two columns where the first is the 'ctid' system column and the second is of a record type or whole-row reference, i.e., (table_name.*)
+ERROR:  type integer is not composite
 CREATE INDEX idxbad_index ON bad_index USING zombodb (to_ascii(title));
-ERROR:  ZomboDB index definitions that use a function must use one that returns a composite type
+ERROR:  type text is not composite
 CREATE INDEX idxbad_index ON bad_index USING zombodb((bad_index.*)) WHERE id > 0;
 ERROR:  ZomboDB indices cannot contain WHERE clauses
 CREATE INDEX idxgood_index ON bad_index USING zombodb((bad_index.*));

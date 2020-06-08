@@ -1,6 +1,16 @@
 use pgx::*;
 use serde_json::Value;
 
+pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> bool {
+    for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+        if index.oid() != current_index.oid() && is_zdb_index(&index) {
+            return true;
+        }
+    }
+
+    false
+}
+
 pub fn find_zdb_index(heap_relation: &PgRelation) -> PgRelation {
     for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
         if is_zdb_index(&index) {

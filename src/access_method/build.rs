@@ -4,7 +4,7 @@ use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crate::mapping::{categorize_tupdesc, generate_default_mapping, CategorizedAttribute};
-use crate::utils::lookup_zdb_index_tupdesc;
+use crate::utils::{has_zdb_index, lookup_zdb_index_tupdesc};
 use pgx::*;
 
 struct BuildState<'a> {
@@ -38,6 +38,19 @@ pub extern "C" fn ambuild(
 ) -> *mut pg_sys::IndexBuildResult {
     let heap_relation = unsafe { PgRelation::from_pg(heaprel) };
     let index_relation = unsafe { PgRelation::from_pg(indexrel) };
+
+    unsafe {
+        if has_zdb_index(&heap_relation, &index_relation) {
+            panic!("Relations can only have one ZomboDB index");
+        } else if !index_info
+            .as_ref()
+            .expect("index_info is null")
+            .ii_Predicate
+            .is_null()
+        {
+            panic!("ZomboDB indices cannot contain WHERE clauses");
+        }
+    }
 
     let elasticsearch = Elasticsearch::new(&index_relation);
     let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
