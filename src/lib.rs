@@ -19,6 +19,7 @@ mod misc;
 pub mod query_dsl;
 pub mod scoring;
 mod utils;
+mod walker;
 mod zdbquery;
 
 pg_module_magic!();
