@@ -66,3 +66,4 @@ cat_mod.generated.sql
 _cat-api.sql
 _support-views.sql
 _join-support.sql
+highlighting_es_highlighting.generated.sql
