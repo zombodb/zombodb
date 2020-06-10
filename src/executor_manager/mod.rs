@@ -67,7 +67,26 @@ impl QueryState {
             let key = (heap_oid, u64_to_item_pointer_parts(ctid64));
             let highlights = &mut self.highlights;
 
-            highlights.insert(key, highlight.unwrap());
+            match highlights.get_mut(&key) {
+                Some(per_field) => {
+                    for (k, mut v) in highlight.unwrap().into_iter() {
+                        let mut existing = per_field.get_mut(&k);
+
+                        match existing.as_mut() {
+                            Some(existing) => {
+                                existing.append(&mut v);
+                            }
+
+                            None => {
+                                per_field.insert(k, v);
+                            }
+                        }
+                    }
+                }
+                None => {
+                    highlights.insert(key, highlight.unwrap());
+                }
+            }
         }
     }
 
