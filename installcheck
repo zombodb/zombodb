@@ -6,7 +6,7 @@ TESTDIR=test
 DBNAME=contrib_regression
 PRETESTS="setup create-tables load-data index-data"
 if [ "x$TEST" = "x" ] ; then
-  TESTS=$(ls ${TESTDIR}/sql/test-*.sql ${TESTDIR}/sql/issue-*.sql | cut -f3 -d/ | cut -f1 -d . | sort | grep -v concurrently)
+  TESTS=$(ls ${TESTDIR}/sql/test-*.sql ${TESTDIR}/sql/issue-*.sql | cut -f3 -d/ | cut -f1 -d . | sort)
 else
   TESTS=${TEST}
 fi
