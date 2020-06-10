@@ -4,7 +4,7 @@ use crate::executor_manager::alter::{
 };
 use crate::executor_manager::drop::{drop_extension, drop_index, drop_schema, drop_table};
 use crate::executor_manager::get_executor_manager;
-use crate::walker::WantScoresWalker;
+use crate::walker::PlanWalker;
 use pgx::*;
 
 struct ZDBHooks;
@@ -192,7 +192,7 @@ impl PgHooks for ZDBHooks {
             PgBox<pg_sys::ParamListInfoData>,
         ) -> HookResult<*mut pg_sys::PlannedStmt>,
     ) -> HookResult<*mut pg_sys::PlannedStmt> {
-        WantScoresWalker::new().perform(&parse);
+        PlanWalker::new().perform(&parse);
         let result = prev_hook(parse, cursor_options, bound_params);
 
         unsafe {

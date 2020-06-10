@@ -7,12 +7,14 @@ mod opclass;
 
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 pub use pg_catalog::*;
+use std::collections::HashMap;
 
 mod pg_catalog {
     #![allow(non_camel_case_types)]
     use pgx::*;
     use serde::{Deserialize, Serialize};
     use serde_json::Value;
+    use std::collections::HashMap;
 
     #[derive(Debug, Serialize, Deserialize, PostgresType)]
     #[inoutfuncs = "Custom"]
@@ -31,6 +33,9 @@ mod pg_catalog {
         pub(super) query_dsl: Option<Value>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) want_score: Option<bool>,
+        #[serde(skip_serializing_if = "HashMap::is_empty")]
+        #[serde(default = "HashMap::new")]
+        pub(super) highlights: HashMap<String, Value>,
     }
 
     #[derive(PostgresEnum, Serialize, Deserialize)]
@@ -114,6 +119,7 @@ impl Default for ZDBQuery {
             min_score: None,
             sort_json: None,
             query_dsl: None,
+            highlights: HashMap::new(),
         }
     }
 }
@@ -129,6 +135,7 @@ impl ZDBQuery {
             min_score: None,
             sort_json: None,
             query_dsl: Some(query_dsl),
+            highlights: HashMap::new(),
         }
     }
 
@@ -149,6 +156,7 @@ impl ZDBQuery {
             min_score: None,
             sort_json: None,
             query_dsl: Some(query_json),
+            highlights: HashMap::new(),
         }
     }
 
@@ -160,6 +168,7 @@ impl ZDBQuery {
             && self.min_score.is_none()
             && self.sort_json.is_none()
             && self.query_dsl.is_none()
+            && self.highlights.is_empty()
     }
 
     pub fn only_query_dsl(&self) -> bool {
@@ -170,6 +179,7 @@ impl ZDBQuery {
             && self.offset.is_none()
             && self.min_score.is_none()
             && self.sort_json.is_none()
+            && self.highlights.is_empty()
     }
 
     pub fn want_score(&self) -> bool {
@@ -179,6 +189,10 @@ impl ZDBQuery {
     pub fn set_want_score(mut self, value: bool) -> Self {
         self.want_score = if value { Some(true) } else { None };
         self
+    }
+
+    pub fn highlights(&mut self) -> &mut HashMap<String, Value> {
+        &mut self.highlights
     }
 
     pub fn row_estimate(&self) -> i64 {

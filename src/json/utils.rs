@@ -1,7 +1,7 @@
 #[inline]
 pub fn escape_json(input: &str, target: &mut String) {
-    for c in input.bytes() {
-        match c {
+    for c in input.chars() {
+        match c as u8 {
             b'\n' => {
                 target.push('\\');
                 target.push('n');
@@ -30,16 +30,7 @@ pub fn escape_json(input: &str, target: &mut String) {
                 target.push('\\');
                 target.push('f');
             }
-            low if low < b' ' => {
-                static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
-
-                target.push_str(&format!(
-                    "\\u00{}{}",
-                    HEX_DIGITS[(low as u8 >> 4) as usize],
-                    HEX_DIGITS[(low as u8 & 0xF) as usize]
-                ))
-            }
-            _ => target.push(c as char),
+            _ => target.push(c),
         }
     }
 }

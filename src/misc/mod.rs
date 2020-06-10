@@ -10,7 +10,7 @@ fn query_tids(index: PgRelation, query: ZDBQuery) -> Vec<pg_sys::ItemPointerData
         .execute()
         .expect("failed to execute search");
     let mut tids = Vec::new();
-    for (_, tid, _) in scroll.into_iter() {
+    for (_, tid, _, _) in scroll.into_iter() {
         let mut ipd = pg_sys::ItemPointerData::default();
         u64_to_item_pointer(tid, &mut ipd);
 

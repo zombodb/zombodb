@@ -64,6 +64,8 @@ pub struct InnerHit {
     id: Option<String>,
 
     fields: Option<Fields>,
+
+    highlight: Option<HashMap<String, Vec<String>>>,
 }
 
 #[derive(Deserialize)]
@@ -116,7 +118,7 @@ impl ElasticsearchSearchRequest {
 
     fn initial_search(
         elasticsearch: &Elasticsearch,
-        query: ZDBQuery,
+        mut query: ZDBQuery,
         extra_fields: Option<Vec<&str>>,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
@@ -178,7 +180,7 @@ impl ElasticsearchSearchRequest {
         }
 
         #[derive(Serialize)]
-        struct Body {
+        struct Body<'a> {
             track_scores: bool,
 
             #[serde(skip_serializing_if = "Option::is_none")]
@@ -188,6 +190,9 @@ impl ElasticsearchSearchRequest {
             sort: Option<Value>,
 
             query: Value,
+
+            #[serde(skip_serializing_if = "Option::is_none")]
+            highlight: Option<HashMap<&'a str, &'a mut HashMap<String, Value>>>,
         }
 
         // we only need to apply the visibility clause for searching if the query has a limit
@@ -199,20 +204,27 @@ impl ElasticsearchSearchRequest {
             query.query_dsl().expect("zdbquery has no QueryDSL").clone()
         };
 
-        let body = Body {
-            track_scores,
-            min_score: query.min_score(),
-            sort: sort_json,
-            query: query_dsl,
+        let limit = query.limit();
+        let offset = query.offset();
+        let min_score = query.min_score();
+
+        let highlight = if query.highlights().is_empty() {
+            None
+        } else {
+            let mut map = HashMap::new();
+            map.insert("fields", query.highlights());
+            Some(map)
         };
 
-        ElasticsearchSearchRequest::get_hits(
-            url,
-            query.limit(),
-            query.offset(),
-            elasticsearch,
-            json! { body },
-        )
+        let body = Body {
+            track_scores,
+            min_score,
+            sort: sort_json,
+            query: query_dsl,
+            highlight,
+        };
+
+        ElasticsearchSearchRequest::get_hits(url, limit, offset, elasticsearch, json! { body })
     }
 
     fn scroll(
@@ -289,7 +301,7 @@ impl ElasticsearchSearchResponse {
 }
 
 pub struct Scroller {
-    receiver: crossbeam_channel::Receiver<(f64, u64, Fields)>,
+    receiver: crossbeam_channel::Receiver<(f64, u64, Fields, Option<HashMap<String, Vec<String>>>)>,
     terminate: Arc<AtomicBool>,
 }
 
@@ -374,6 +386,7 @@ impl Scroller {
                 for itr in scroll_receiver {
                     for hit in itr {
                         let fields = hit.fields.unwrap_or_default();
+                        let highlight = hit.highlight;
                         let ctid = fields.zdb_ctid.unwrap_or([0])[0];
 
                         if ctid == 0 {
@@ -383,7 +396,7 @@ impl Scroller {
                         }
 
                         sender
-                            .send((hit.score.unwrap_or_default(), ctid, fields))
+                            .send((hit.score.unwrap_or_default(), ctid, fields, highlight))
                             .expect("failed to send hit over sender");
                     }
                 }
@@ -397,7 +410,7 @@ impl Scroller {
         }
     }
 
-    fn next(&self) -> Option<(f64, u64, Fields)> {
+    fn next(&self) -> Option<(f64, u64, Fields, Option<HashMap<String, Vec<String>>>)> {
         match self.receiver.recv() {
             Ok(tuple) => Some(tuple),
             Err(_) => None,
@@ -420,7 +433,7 @@ impl Drop for SearchResponseIntoIter {
 }
 
 impl Iterator for SearchResponseIntoIter {
-    type Item = (f64, u64, Fields);
+    type Item = (f64, u64, Fields, Option<HashMap<String, Vec<String>>>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(limit) = self.limit {
@@ -438,7 +451,7 @@ impl Iterator for SearchResponseIntoIter {
 }
 
 impl IntoIterator for ElasticsearchSearchResponse {
-    type Item = (f64, u64, Fields);
+    type Item = (f64, u64, Fields, Option<HashMap<String, Vec<String>>>);
     type IntoIter = SearchResponseIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {

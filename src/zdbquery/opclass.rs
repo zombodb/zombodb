@@ -44,12 +44,13 @@ fn anyelement_cmpfunc(
                     .expect("failed to execute search");
 
                 let mut lookup = HashSet::with_capacity(search.len());
-                for (score, ctid, _) in search.into_iter() {
+                for (score, ctid, _, highlights) in search.into_iter() {
                     check_for_interrupts!();
 
                     // remember the score, globaly
                     let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
                     qstate.add_score(heap_oid, ctid, score);
+                    qstate.add_highlight(heap_oid, ctid, highlights);
 
                     // remember this ctid for this function context
                     lookup.insert(ctid);

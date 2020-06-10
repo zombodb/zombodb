@@ -164,7 +164,7 @@ fn vacuum_xmax(
         ))
         .execute_with_fields(vec!["zdb_xmax"])
         .expect("failed to search by xmax");
-    for (_, ctid, fields) in vacuum_xmax_docs.into_iter() {
+    for (_, ctid, fields, _) in vacuum_xmax_docs.into_iter() {
         check_for_interrupts!();
 
         if let Some(xmax) = fields.zdb_xmax {
@@ -200,7 +200,7 @@ fn delete_by_xmax(
         ))
         .execute_with_fields(vec!["zdb_xmax"])
         .expect("failed to search by xmax");
-    for (_, ctid, fields) in delete_by_xmax_docs.into_iter() {
+    for (_, ctid, fields, _) in delete_by_xmax_docs.into_iter() {
         check_for_interrupts!();
 
         if let Some(xmax) = fields.zdb_xmax {
@@ -236,7 +236,7 @@ fn delete_by_xmin(
         ))
         .execute_with_fields(vec!["zdb_xmin"])
         .expect("failed to search by xmin");
-    for (_, ctid, fields) in delete_by_xmin_docs.into_iter() {
+    for (_, ctid, fields, _) in delete_by_xmin_docs.into_iter() {
         check_for_interrupts!();
 
         if let Some(xmin) = fields.zdb_xmin {
