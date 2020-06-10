@@ -49,6 +49,12 @@ pub extern "C" fn ambuild(
             .is_null()
         {
             panic!("ZomboDB indices cannot contain WHERE clauses");
+        } else if index_info
+            .as_ref()
+            .expect("index_info is null")
+            .ii_Concurrent
+        {
+            panic!("ZomboDB indices cannot be created CONCURRENTLY");
         }
     }
 
