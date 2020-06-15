@@ -24,18 +24,17 @@ set enable_bitmapscan to off;
 set enable_seqscan to on;
 explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
 
--- and this an index scan
 set enable_seqscan to off;
 set enable_bitmapscan to off;
 set enable_indexscan to on;
+-- but this still a sequential scan
 explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
+-- and this an index scan
 explain (costs off) select * from xform_test where xform(xform_test) ==> 'login:falcao5';
 
--- these can't be queried because they don't directly reference "xform_test"
 select id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
 select zdb.score(ctid) > 0.0 as score, id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
 
--- but these can
 select id from xform_test where xform_test ==> 'login:falcao5' order by id;
 select zdb.score(ctid) > 0.0 as score, id from xform_test where xform_test ==> 'login:falcao5' order by id;
 

@@ -161,7 +161,9 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
 
             match first_arg {
                 Some(first_arg) => {
-                    if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+                    if is_a(first_arg, pg_sys::NodeTag_T_Var)
+                        || is_a(first_arg, pg_sys::NodeTag_T_FuncExpr)
+                    {
                         if context.want_scores {
                             // wrap the right-hand-side of the ==> operator in zdb.want_score(...)
                             let second_arg = args_list.get_ptr(1).expect("no RHS to ==>");
@@ -212,7 +214,7 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
                             }
                         }
                     } else {
-                        panic!("Left-hand side of ==> must be a table reference")
+                        panic!("Left-hand side of ==> must be a table reference or function")
                     }
                 }
                 None => {

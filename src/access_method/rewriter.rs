@@ -67,7 +67,7 @@ unsafe fn walk_plan(plan: *mut pg_sys::Plan, context: &mut WalkContext) {
     walk_node(plan.qual as NodePtr, context);
 }
 
-unsafe fn walk_node(node: *mut pg_sys::Node, context: &mut WalkContext) {
+unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     check_for_interrupts!();
 
     if node.is_null() {
@@ -131,7 +131,7 @@ unsafe fn walk_node(node: *mut pg_sys::Node, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_BitmapHeapScan) {
         let mut scan = PgBox::from_pg(node as *mut pg_sys::BitmapHeapScan);
         walk_plan(&mut scan.scan.plan, context);
-        walk_node(scan.bitmapqualorig as *mut pg_sys::Node, context);
+        walk_node(scan.bitmapqualorig as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_BitmapIndexScan) {
         let mut scan = PgBox::from_pg(node as *mut pg_sys::BitmapIndexScan);
         walk_plan(&mut scan.scan.plan, context);
@@ -288,17 +288,29 @@ unsafe fn walk_node(node: *mut pg_sys::Node, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_OpExpr) {
         let opexpr = PgBox::from_pg(node as *mut pg_sys::OpExpr);
         if opexpr.opfuncid == context.funcoid {
-            let args = PgList::<pg_sys::Var>::from_pg(opexpr.args);
+            let mut args = PgList::<pg_sys::Node>::from_pg(opexpr.args);
             if let Some(first_arg) = args.get_ptr(0) {
-                let mut first_arg = PgBox::from_pg(first_arg);
-
-                if first_arg.vartype != pg_sys::TIDOID {
-                    context.replacements.insert(first_arg.vartype);
-                    first_arg.vartype = pg_sys::TIDOID;
-                    first_arg.varoattno = -1;
-                    if first_arg.varattno == 0 {
-                        first_arg.varattno = -1;
+                if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+                    let mut first_arg = PgBox::from_pg(first_arg as *mut pg_sys::Var);
+                    if first_arg.vartype != pg_sys::TIDOID {
+                        context.replacements.insert(first_arg.vartype);
+                        first_arg.vartype = pg_sys::TIDOID;
+                        first_arg.varoattno = pg_sys::SelfItemPointerAttributeNumber as i16;
+                        if first_arg.varattno == 0 {
+                            first_arg.varattno = pg_sys::SelfItemPointerAttributeNumber as i16;
+                        }
                     }
+                } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
+                    let first_arg = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
+                    let mut var = PgNodeFactory::makeVar();
+                    context.replacements.insert(first_arg.funcresulttype);
+                    var.vartype = pg_sys::TIDOID;
+                    var.varno = 1;
+                    var.varattno = pg_sys::SelfItemPointerAttributeNumber as i16;
+                    var.varoattno = pg_sys::SelfItemPointerAttributeNumber as i16;
+                    var.location = first_arg.location;
+
+                    args.replace_ptr(0, var.into_pg() as NodePtr);
                 }
             }
         } else {
