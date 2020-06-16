@@ -188,7 +188,6 @@ impl DocumentHighlighter {
         phrase: Vec<Option<ProximityPart>>,
     ) -> Option<Vec<(String, &TokenEntry)>> {
         if phrase.len() == 1 {
-            info!("phrase length is 1");
             let token = phrase.get(0).unwrap();
             return self.highlight_token(token.as_ref().unwrap().word.as_str());
         }
@@ -230,7 +229,7 @@ impl DocumentHighlighter {
             let mut string_bool = true;
 
             if entry.0.eq(&phrase.first().unwrap().as_ref().unwrap().word) {
-                let mut comparing_too = (entry.0, entry.1);
+                let comparing_too = (entry.0, entry.1);
 
                 let mut phrase_iter = phrase.iter().peekable();
 
