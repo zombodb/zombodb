@@ -1,18 +1,30 @@
+use self::pg_catalog::*;
 use crate::elasticsearch::analyze::*;
 use crate::elasticsearch::Elasticsearch;
 use levenshtein::*;
 use pgx::PgRelation;
 use pgx::*;
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::Deref;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TokenEntry {
     type_: String,
     position: u32,
     start_offset: u64,
     end_offset: u64,
+}
+
+mod pg_catalog {
+    use pgx::*;
+    use serde::*;
+    #[derive(Debug, Serialize, Deserialize, PostgresType)]
+    pub struct ProximityPart {
+        pub word: String,
+        pub distance: u32,
+        pub in_order: bool,
+    }
 }
 
 pub struct DocumentHighlighter {
@@ -150,10 +162,19 @@ impl DocumentHighlighter {
         }
 
         let phrase = analyze_with_field(index, field, phrase_str)
-            .map(|parts| parts.1)
-            .collect::<Vec<String>>();
-
-        self.highlight_phrase_vector(phrase)
+            .map(|parts| {
+                Some(ProximityPart {
+                    word: parts.1,
+                    distance: 0,
+                    in_order: true,
+                })
+            })
+            .collect::<Vec<_>>();
+        if phrase.is_empty() {
+            None
+        } else {
+            self.highlight_proximity(phrase)
+        }
     }
 
     // 'drinking green beer is better than drinking yellow beer which wine is worse than drinking yellow wine'
@@ -162,25 +183,27 @@ impl DocumentHighlighter {
     //
     // query= than w/2 wine
     // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
-    pub fn highlight_phrase_vector(
+    pub fn highlight_proximity(
         &self,
-        phrase: Vec<String>,
+        phrase: Vec<Option<ProximityPart>>,
     ) -> Option<Vec<(String, &TokenEntry)>> {
         if phrase.len() == 1 {
+            info!("phrase length is 1");
             let token = phrase.get(0).unwrap();
-            return self.highlight_token(token);
+            return self.highlight_token(token.as_ref().unwrap().word.as_str());
         }
 
+        //Find the Token Entry Data for all cases of each part of the phrase
         let mut pool = HashMap::<&str, Vec<&TokenEntry>>::new();
         for token in &phrase {
-            let token_entries = self.highlight_token(token);
+            let token_entries = self.highlight_token(token.as_ref().unwrap().word.as_str());
             match token_entries {
                 Some(vec) => {
                     let mut token_entry = Vec::new();
                     for tuples in vec {
                         token_entry.push(tuples.1)
                     }
-                    pool.insert(token, token_entry);
+                    pool.insert(token.as_ref().unwrap().word.as_str(), token_entry);
                 }
                 None => {
                     return None;
@@ -188,82 +211,101 @@ impl DocumentHighlighter {
             }
         }
 
-        let mut filtered_pool = HashMap::<&str, HashSet<&TokenEntry>>::new();
-        let mut itr = phrase.iter().peekable();
-        loop {
-            let first = itr.next();
-            let second = itr.peek();
-
-            if second.is_none() {
-                break;
-            }
-
-            let first = first.unwrap();
-            let second = second.unwrap();
-            let first_vec = pool.get(first.as_str()).unwrap().iter();
-            let second_vec = pool.get(second.as_str()).unwrap().iter();
-            for token_entry_one in first_vec {
-                for token_entry_two in second_vec.clone() {
-                    if token_entry_two.position as i32 - token_entry_one.position as i32 == 1 {
-                        let entry_list =
-                            filtered_pool.entry(first).or_insert_with(|| HashSet::new());
-                        entry_list.insert(token_entry_one);
-
-                        let entry_list = filtered_pool
-                            .entry(*second)
-                            .or_insert_with(|| HashSet::new());
-                        entry_list.insert(token_entry_two);
-
-                        break;
-                    }
-                }
-            }
-        }
-
         let mut all_entries = Vec::new();
-        for (token, entries) in filtered_pool {
+        for (token, entries) in pool {
             for entry in entries {
                 all_entries.push((token.to_owned(), entry));
             }
         }
+
         all_entries.sort_by(|a, b| a.1.position.cmp(&b.1.position));
-        let mut i = 0;
-        loop {
-            let entry = all_entries.get(i);
-            if entry.is_none() {
-                break;
-            }
-            let mut good_cnt = 0;
-            let mut entry = entry.unwrap();
-            if entry.0 == *phrase.get(0).unwrap() {
-                good_cnt += 1;
-                let mut k = 1;
-                for j in i + 1..i + phrase.len() {
-                    if all_entries.get(j).is_none() {
-                        break;
-                    }
-                    let next = all_entries.get(j).unwrap();
-                    if entry.1.position + 1 == next.1.position && next.0 == *phrase.get(k).unwrap()
-                    {
-                        good_cnt += 1;
-                        entry = next;
+        let mut final_entries = Vec::new();
+        let mut c = 0;
+        let mut temp_entry = Vec::new();
+        let mut temp_string_checker = Vec::new();
+
+        for entry in all_entries.clone() {
+            temp_entry.clear();
+            temp_string_checker.clear();
+            let mut string_bool = true;
+
+            if entry.0.eq(&phrase.first().unwrap().as_ref().unwrap().word) {
+                let mut comparing_too = (entry.0, entry.1);
+
+                let mut phrase_iter = phrase.iter().peekable();
+
+                temp_entry.push((String::from(&comparing_too.0), comparing_too.1));
+                temp_string_checker.push(String::from(&comparing_too.0));
+
+                let mut phrase_part = phrase_iter.next().unwrap().as_ref().unwrap();
+
+                loop {
+                    check_for_interrupts!();
+
+                    let searching_for = (
+                        phrase_iter.peek().unwrap().as_ref().unwrap().word.clone(),
+                        phrase_part.distance,
+                        phrase_part.in_order,
+                    );
+
+                    let last_point = temp_entry.last().unwrap().1.position;
+
+                    if searching_for.2 {
+                        for inner_entry in &all_entries {
+                            if last_point < inner_entry.1.position {
+                                if searching_for.0.eq(&inner_entry.0)
+                                    && (inner_entry.1.position - last_point) <= searching_for.1 + 1
+                                {
+                                    temp_entry.push((String::from(&inner_entry.0), inner_entry.1));
+                                    temp_string_checker.push(String::from(&inner_entry.0));
+                                }
+                            }
+                        }
                     } else {
+                        for inner_entry in &all_entries {
+                            if searching_for.0.eq(&inner_entry.0)
+                                && (last_point as i32 - inner_entry.1.position as i32).abs()
+                                    <= searching_for.1 as i32 + 1
+                            {
+                                temp_entry.push((String::from(&inner_entry.0), inner_entry.1));
+                                temp_string_checker.push(String::from(&inner_entry.0));
+                            }
+                        }
+                    }
+
+                    phrase_part = phrase_iter.next().unwrap().as_ref().unwrap();
+
+                    if phrase_iter.peek().is_none() {
                         break;
                     }
-                    k += 1;
                 }
             }
-            if good_cnt == phrase.len() {
-                i += phrase.len();
-            } else {
-                all_entries.remove(i);
+
+            let mut p = 0;
+            loop {
+                check_for_interrupts!();
+                if p == phrase.len() {
+                    break;
+                }
+                if !temp_string_checker.contains(&phrase.get(p).unwrap().as_ref().unwrap().word) {
+                    string_bool = false;
+                    break;
+                }
+                p = p + 1;
             }
+
+            if string_bool {
+                for temp in &temp_entry {
+                    final_entries.push((String::from(&temp.0), temp.1));
+                }
+            }
+            c = c + 1;
         }
 
-        if all_entries.is_empty() {
+        if final_entries.is_empty() {
             None
         } else {
-            Some(all_entries)
+            Some(final_entries)
         }
     }
 }
@@ -467,6 +509,46 @@ fn highlight_fuzzy(
     }
 }
 
+//  select zdb.highlight_proximity('idx_test','test','this is a test', ARRAY['{"word": "this", distance:2, in_order: false}'::proximitypart, '{"word": "test", distance: 0, in_order: false}'::proximitypart]);
+#[pg_extern(immutable, parallel_safe)]
+fn highlight_proximity(
+    index: PgRelation,
+    field_name: &str,
+    text: &str,
+    prox_clause: Vec<Option<ProximityPart>>,
+) -> impl std::iter::Iterator<
+    Item = (
+        name!(field_name, String),
+        name!(term, String),
+        name!(type, String),
+        name!(position, i32),
+        name!(start_offset, i64),
+        name!(end_offset, i64),
+    ),
+> {
+    let mut highlighter = DocumentHighlighter::new();
+    highlighter.analyze_document(&index, field_name, text);
+    let highlights = highlighter.highlight_proximity(prox_clause);
+
+    match highlights {
+        Some(vec) => vec
+            .iter()
+            .map(|e| {
+                (
+                    field_name.clone().to_owned(),
+                    String::from(e.0.clone()),
+                    String::from(e.1.type_.clone()),
+                    e.1.position as i32,
+                    e.1.start_offset as i64,
+                    e.1.end_offset as i64,
+                )
+            })
+            .collect::<Vec<(String, String, String, i32, i64, i64)>>()
+            .into_iter(),
+        None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
+    }
+}
+
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use pgx::*;
@@ -474,13 +556,13 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_term() {
-        start_table_and_index();
+        let title = "term";
+        start_table_and_index(title);
+        let select: String = format!(
+            "select * from zdb.highlight_term('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;",title
+        );
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_term('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it') order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -500,13 +582,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_phrase() {
-        start_table_and_index();
+        let title = "phrase";
+        start_table_and_index(title);
+        let select:String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it is a') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it is a') order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -534,13 +614,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_phrase_as_one_word() {
-        start_table_and_index();
+        let title = "phrase_one_word";
+        start_table_and_index(title);
+        let select:String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'it') order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -560,13 +638,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_phrase_with_phrase_not_in_text() {
-        start_table_and_index();
+        let title = "phrase_not_in_text";
+        start_table_and_index(title);
+        let select :String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'banana') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_phrase('idxtest_highlighting', 'test_field', 'it is a test and it is a good one', 'banana') order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -581,13 +657,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_wildcard_with_asterisk() {
-        start_table_and_index();
+        let title = "wildcard_ast";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm*n') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm*n') order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -607,13 +681,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_wildcard_with_question_mark() {
-        start_table_and_index();
+        let title = "wildcard_question";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm?n') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'm?n') order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -629,13 +701,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_wildcard_with_no_match() {
-        start_table_and_index();
+        let title = "wildcard_no_match";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'n*n') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', 'n*n') order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -650,13 +720,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_regex() {
-        start_table_and_index();
+        let title = "regex";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', '^m.*$') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_wildcard('idxtest_highlighting', 'test_field', 'Mom landed a man on the moon', '^m.*$') order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -678,13 +746,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_fuzzy_correct_three_char_term() {
-        start_table_and_index();
+        let title = "fuzzy_three";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'cot', 1) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'cot', 1) order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -708,13 +774,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_fuzzy_correct_two_char_string() {
-        start_table_and_index();
+        let title = "fuzzy_two";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'co', 1) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'co', 1) order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -730,13 +794,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_fuzzy_6_char_string() {
-        start_table_and_index();
+        let title = "fuzzy_six";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c cott cooler', 'colter', 2) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c cott cooler', 'colter', 2) order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term   |    type    | position | start_offset | end_offset
             // -----------+--------+------------+----------+--------------+------------
@@ -759,13 +821,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string() {
-        start_table_and_index();
+        let title = "fuzzy_long_prefix";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -782,13 +842,11 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string_with_non_return() {
-        start_table_and_index();
+        let title = "fuzzy_long_prefix_no_return";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -804,13 +862,11 @@ mod tests {
     #[pg_test(error = "negative prefixes not allowed")]
     #[initialize(es = true)]
     fn test_highlighter_fuzzy_with_negative_prefix() {
-        start_table_and_index();
+        let title = "fuzzy_neg_prefix";
+        start_table_and_index(title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', -4) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(
-                "select * from zdb.highlight_fuzzy('idxtest_highlighting', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', -4) order by position;",
-                None,
-                None,
-            );
+            let table = client.select(select.as_str(), None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -823,10 +879,169 @@ mod tests {
         });
     }
 
+    #[pg_test]
     #[initialize(es = true)]
-    fn start_table_and_index() {
-        Spi::run("CREATE TABLE test_highlighting AS SELECT * FROM generate_series(1, 10);");
-        Spi::run("CREATE INDEX idxtest_highlighting ON test_highlighting USING zombodb ((test_highlighting.*));");
+    fn test_highlighter_proximity_two_term() {
+        let title = "highlight_proximity_two_term";
+        start_table_and_index(title);
+        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"word\": \"test\", \"distance\": 0, \"in_order\": false}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','this is a test that is longer and has a second this near test a second time and a third this that is not' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(select.as_str(), None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            // test_field | this | <ALPHANUM> |       11 |           47 |         51
+            // test_field | test | <ALPHANUM> |       13 |           57 |         61
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "this", 11, 47, 51),
+                ("<ALPHANUM>", "test", 13, 57, 61),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_three_term() {
+        let title = "highlight_proximity_three_term";
+        start_table_and_index(title);
+        let search_string = "this is a test that is longer and has a second this near test a second time and a third this that is not";
+        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"word\": \"test\", \"distance\": 0, \"in_order\": false}";
+        let array_three = "{\"word\": \"that\", \"distance\": 2, \"in_order\": false}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        Spi::connect(|client| {
+            let table = client.select(select.as_str(), None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // ------------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            // test_field | that | <ALPHANUM> |        4 |           15 |         19
+
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "that", 4, 15, 19),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_one_term() {
+        let title = "highlight_proximity_one_term";
+        start_table_and_index(title);
+        let search_string = "this is a test that is longer and has a second this near test a second time and a third this that is not";
+        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart]) order by position;", title,search_string, array_one);
+        Spi::connect(|client| {
+            let table = client.select(select.as_str(), None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | this | <ALPHANUM> |       11 |           47 |         51
+            // test_field | this | <ALPHANUM> |       21 |           88 |         92
+
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "this", 11, 47, 51),
+                ("<ALPHANUM>", "this", 20, 88, 92),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_three_term_found_twice() {
+        let title = "highlight_proximity_three_term_twice";
+        start_table_and_index(title);
+        let search_string = "this is a test that is longer and has a second this near test a second time and a third that is not this test that whatever ";
+        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"word\": \"test\", \"distance\": 0, \"in_order\": false}";
+        let array_three = "{\"word\": \"that\", \"distance\": 2, \"in_order\": false}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        Spi::connect(|client| {
+            let table = client.select(select.as_str(), None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            // test_field | that | <ALPHANUM> |        4 |           15 |         19
+            // test_field | this | <ALPHANUM> |       23 |          100 |        104
+            // test_field | test | <ALPHANUM> |       24 |          105 |        109
+            // test_field | that | <ALPHANUM> |       25 |          110 |        114
+
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "that", 4, 15, 19),
+                ("<ALPHANUM>", "this", 23, 100, 104),
+                ("<ALPHANUM>", "test", 24, 105, 109),
+                ("<ALPHANUM>", "that", 25, 110, 114),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_long_test() {
+        let title = "highlight_proximity_long_test";
+        start_table_and_index(title);
+        let search_string = test_blurb();
+        let array_one = "{\"word\": \"energy\", \"distance\": 3, \"in_order\": false}";
+        let array_two = "{\"word\": \"enron\", \"distance\": 3, \"in_order\": false}";
+        let array_three = "{\"word\": \"lay\", \"distance\": 3, \"in_order\": false}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two,array_three);
+        Spi::connect(|client| {
+            let table = client.select(select.as_str(), None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+-----------
+
+            let expect = vec![
+                ("<ALPHANUM>", "energy", 223, 1597, 1603),
+                ("<ALPHANUM>", "lay", 226, 1631, 1634),
+                ("<ALPHANUM>", "enron", 227, 1648, 1653),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    fn start_table_and_index(title: &str) {
+        let create_table: String = format!(
+            "CREATE TABLE test_highlighting_{} AS SELECT * FROM generate_series(1, 10);",
+            title,
+        );
+        Spi::run(create_table.as_str());
+        let create_index:String = format!("CREATE INDEX idxtest_highlighting_{} ON test_highlighting_{} USING zombodb ((test_highlighting_{}.*))",title,title,title,);
+        Spi::run(create_index.as_str());
     }
 
     fn test_table(mut table: SpiTupleTable, expect: Vec<(&str, &str, i32, i64, i64)>) {
@@ -845,5 +1060,158 @@ mod tests {
             i += 1;
         }
         assert_eq!(expect.len(), i);
+    }
+
+    fn test_blurb() -> String {
+        let blurb = "Enron
+
+        P.O.Box 1188
+        Houston, TX 77251-1188
+
+        Mark Palmer
+        713-853-4738
+
+        ENRON REPORTS RECURRING THIRD QUARTER EARNINGS OF $0.43 PER
+        DILUTED SHARE; REPORTS NON-RECURRING CHARGES OF $1.01 BILLION
+        AFTER-TAX; REAFFIRMS RECURRING EARNINGS ESTIMATES OF $1.80 FOR
+        2001 AND $2.15 FOR 2002; AND EXPANDS FINANCIAL REPORTING
+
+        FOR IMMEDIATE RELEASE:  Tuesday, Oct. 16, 2001
+
+        HOUSTON - Enron Corp. (NYSE - ENE) announced today recurring earnings per
+        diluted share of $0.43 for the third quarter of 2001, compared to $0.34 a year ago.  Total
+        recurring net income increased to $393 million, versus $292 million a year ago.
+            Our 26 percent increase in recurring earnings per diluted share shows the very strong
+        results of our core wholesale and retail energy businesses and our natural gas pipelines,   said
+        Kenneth L. Lay, Enron chairman and CEO.   The continued excellent prospects in these
+        businesses and Enron ''s leading market position make us very confident in our strong earnings
+        outlook.
+            Non-recurring charges totaling $1.01 billion after-tax, or $(1.11) loss per diluted share,
+        were recognized for the third quarter of 2001.  The total net loss for the quarter, including non-
+            recurring items, was $(618) million, or $(0.84) per diluted share.
+            After a thorough review of our businesses, we have decided to take these charges to
+        clear away issues that have clouded the performance and earnings potential of our core energy
+        businesses,   said Lay.
+            Enron also reaffirmed today it is on track to continue strong earnings growth and achieve
+        its previously stated targets of recurring earnings per diluted share of  $0.45 for the fourth
+        quarter 2001, $1.80 for 2001 and $2.15 for 2002.
+        PERFORMANCE SUMMARY
+        Enron has recently expanded the reporting of its financial results by both providing
+        additional segments and expanding financial and operating information in the attached tables.
+            Enron ''s business segments are as follows:
+        ?  Wholesale Services
+        o Americas
+        o Europe and Other Commodity Markets
+            ?  Retail Services
+            ?  Transportation and Distribution
+        o Natural Gas Pipelines
+        o Portland General
+        o Global Assets
+            ?  Broadband Services
+            ?  Corporate and Other
+
+        Wholesale Services:  Total income before interest, minority interests and taxes (IBIT)
+        increased 28 percent to $754 million in the third quarter of 2001, compared to $589 million in
+        the third quarter of last year.  Total wholesale physical volumes increased 65 percent to 88.2
+        trillion British thermal units equivalent per day (Tbtue/d) in the recent quarter.
+            Americas  - This segment consists of Enron ''s gas and power market-making operations
+        and merchant energy activities in North and South America.  IBIT from this segment grew 31
+        percent to $701 million in the recent quarter from $536 million a year ago, driven by strong
+        results from the North America natural gas and power businesses.  Natural gas volumes
+        increased 6 percent to 26.7 Tbtu/d, and power volumes increased 77 percent to 290 million
+        megawatt-hours (MWh).
+            Europe and Other Commodity Markets - This segment includes Enron ''s European gas
+        and power operations and Enron ''s other commodity businesses, such as metals, coal, crude and
+        liquids, weather, forest products and steel.  For the third quarter of 2001, IBIT for the segment
+        remained unchanged at $53 million as compared to last year.  Although physical volumes
+        increased for each commodity in the segment, the low level of volatility in the gas and power
+        markets caused profitability to remain flat.
+
+            Retail Services:  Enron ''s Retail Services product offerings include pricing and delivery
+        of natural gas and power, as well as demand side management services to minimize energy costs
+        for business consumers in North America and Europe.  In the third quarter of 2001, Retail
+        Services generated IBIT of $71 million, compared to $27 million a year ago.  Retail Services
+        continues to successfully penetrate markets with standard, scalable products to reduce
+        consumers '' total energy costs.  Enron recently added new business with large consumers,
+        including Wal-Mart, Northrop Grumman, the City of Chicago, Equity Office Properties and
+        Wendy ''s in the U.S. and Sainsbury and Guinness Brewery in the U.K.  To date in 2001, Enron
+        has completed over 50 transactions with large consumers.  Enron is also successfully extending
+        its retail energy products to small business customers, completing over 95,000 transactions in the
+        first nine months of this year.
+            Transportation and Distribution:  The Transportation and Distribution group includes
+        Natural Gas Pipelines, Portland General and Global Assets.
+            Natural Gas Pipelines - This segment provided $85 million of IBIT in the current
+        quarter, up slightly from the same quarter last year.  Pipeline expansions are underway in high
+        growth areas and include a 428 million cubic feet per day (MMcf/d) expansion by Florida Gas
+        Transmission and a 150 MMcf/d expansion by Transwestern.
+            Portland General - Portland General Electric, an electric utility in the northwestern U.S.,
+        reported an IBIT loss of $(17) million compared to IBIT of $74 million in the same quarter a
+        year ago.  Portland General entered into power contracts in prior periods to ensure adequate
+        supply for the recent quarter at prices that were significantly higher than actual settled prices
+        during the third quarter of 2001.  Although the rate mechanism in place anticipated and
+        substantially mitigated the effect of the higher purchased power costs, only the amount in excess
+        of a defined baseline was recoverable from ratepayers.  Increased power cost recovery was
+        incorporated into Portland General ''s new fifteen-month rate structure, which became effective
+        October 1, 2001 and included an average 40 percent rate increase.
+            Last week, Enron announced a definitive agreement to sell Portland General to Northwest
+        Natural Gas for approximately $1.9 billion and the assumption of approximately $1.1 billion in
+        Portland General debt.  The proposed transaction, which is subject to customary regulatory
+        approvals, is expected to close by late 2002.
+
+        Global Assets - The Global Assets segment includes assets not part of Enron ''s wholesale
+        or retail energy operations.  Major assets included in this segment are Elektro, an electric utility
+        in Brazil; Dabhol, a power plant in India; TGS, a natural gas pipeline in Argentina; Azurix; and
+        the Enron Wind operations.  For the third quarter of 2001, IBIT for the segment remained
+        unchanged at $19 million as compared to last year.
+            Broadband Services:  Enron makes markets for bandwidth, IP and storage products and
+        bundles such products for comprehensive network management services.  IBIT losses were $(80)
+        million in the current quarter compared to a $(20) million loss in the third quarter of last year.
+            This quarter ''s results include significantly lower investment-related income and lower operating
+        costs.
+            Corporate and Other:  Corporate and Other reported an IBIT loss of $(59) million for
+        the quarter compared to $(106) million loss a year ago.  Corporate and Other represents the
+        unallocated portion of expenses related to general corporate functions.
+
+            NON-RECURRING ITEMS
+        Enron ''s results in the third quarter of 2001 include after-tax non-recurring charges of
+        $1.01 billion, or $(1.11) per diluted share, consisting of:
+        ?  $287 million related to asset impairments recorded by Azurix Corp.  These
+        impairments primarily reflect Azurix ''s planned disposition of its North American
+        and certain South American service-related businesses;
+        ?  $180 million associated with the restructuring of Broadband Services, including
+        severance costs, loss on the sale of inventory and an impairment to reflect the
+        reduced value of Enron ''s content services business; and
+            ?  $544 million related to losses associated with certain investments, principally
+        Enron ''s interest in The New Power Company, broadband and technology
+        investments, and early termination during the third quarter of certain structured
+        finance arrangements with a previously disclosed entity.
+
+
+            OTHER INFORMATION
+        A conference call with Enron management regarding third quarter results will be
+        conducted live today at 10:00 a.m. EDT and may be accessed through the Investor Relations
+        page at www.enron.com
+            .
+                Enron is one of the world ''s leading energy, commodities and service companies.  The
+        company makes markets in electricity and natural gas, delivers energy and other physical
+        commodities, and provides financial and risk management services to customers around the
+        world.  The stock is traded under the ticker symbol   ENE.
+            ______________________________________________________________________________
+        Please see attached tables for additional financial information.
+
+            This press release includes forward-looking statements within the meaning of Section 27A of the Securities Act of 1933 and Section
+        21E of the Securities Exchange Act of 1934.  The Private Securities Litigation Reform Act of 1995 provides a safe harbor for forward-looking
+        statements made by Enron or on its behalf.  These forward-looking statements are not historical facts, but reflect Enron ''s curr ent expectations,
+        estimates and projections.  All statements contained in the press release which address future operating performance, events or developments that
+        are expected to occur in the future (including statements relating to earnings expectations, sales of assets, or statements expressing general
+        optimism about future operating results) are forward-looking statements.  Although Enron believes that its expectations are bas ed on reasonable
+        assumptions, it can give no assurance that its goals will be achieved.  Important factors that could cause actual results to di ffer materially from
+        those in the forward-looking statements herein include success in marketing natural gas and power to wholesale customers; the ability to
+        penetrate new retail natural gas and electricity markets, including the energy outsource market, in the United States and Europe; the timing, extent
+        and market effects of deregulation of energy markets in the United States and in foreign jurisdictions; development of Enron ''s broadband
+        network and customer demand for intermediation and content services; political developments in foreign countries; receipt of re gulatory
+        approvals and satisfaction of customary closing conditions to the sale of Portland General; and conditions of the capital markets and equity
+        markets during the periods covered by the forward-looking statements.";
+        return String::from(blurb);
     }
 }
