@@ -18,12 +18,26 @@ fn zdbquery_from_jsonb(input: JsonB) -> ZDBQuery {
 
 #[pg_extern(immutable)]
 fn zdbquery_to_json(input: ZDBQuery) -> Json {
-    Json(serde_json::to_value(input).expect("failed to serialize zdbquery to json"))
+    if input.only_query_dsl() {
+        Json(
+            serde_json::to_value(input.query_dsl().unwrap())
+                .expect("failed to serialize zdbquery to json"),
+        )
+    } else {
+        Json(serde_json::to_value(input).expect("failed to serialize zdbquery to json"))
+    }
 }
 
 #[pg_extern(immutable)]
 fn zdbquery_to_jsonb(input: ZDBQuery) -> JsonB {
-    JsonB(serde_json::to_value(input).expect("failed to serialize zdbquery to jsonb"))
+    if input.only_query_dsl() {
+        JsonB(
+            serde_json::to_value(input.query_dsl().unwrap())
+                .expect("failed to serialize zdbquery to jsonb"),
+        )
+    } else {
+        JsonB(serde_json::to_value(input).expect("failed to serialize zdbquery to jsonb"))
+    }
 }
 
 extension_sql! {r#"

@@ -1,0 +1,71 @@
+CREATE TABLE xform_test AS SELECT * FROM events WHERE events ==> 'beer wine cheese';
+CREATE VIEW xform_test_view AS
+    SELECT xform_test.*,
+           users.url,
+           users.login,
+           users.avatar_url,
+           users.gravatar_id,
+           users.display_login
+      FROM xform_test
+      LEFT JOIN users ON xform_test.user_id = users.id;
+CREATE OR REPLACE FUNCTION xform(data xform_test) RETURNS xform_test_view IMMUTABLE STRICT LANGUAGE sql AS $$
+    SELECT *
+      FROM xform_test_view
+     WHERE id = data.id;
+$$;
+CREATE INDEX idxxform_test ON xform_test USING zombodb (xform(xform_test));
+-- this should be a sequential scan
+set enable_indexscan to off;
+set enable_bitmapscan to off;
+set enable_seqscan to on;
+explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Seq Scan on xform_test
+   Filter: (ctid ==> '{"query_string":{"query":"login:falcao5"}}'::zdbquery)
+(2 rows)
+
+set enable_seqscan to off;
+set enable_bitmapscan to off;
+set enable_indexscan to on;
+-- but this still a sequential scan
+explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5';
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Seq Scan on xform_test
+   Filter: (ctid ==> '{"query_string":{"query":"login:falcao5"}}'::zdbquery)
+(2 rows)
+
+-- and this an index scan
+explain (costs off) select * from xform_test where xform(xform_test) ==> 'login:falcao5';
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
+ Index Scan using idxxform_test on xform_test
+   Index Cond: (ctid ==> '{"query_string":{"query":"login:falcao5"}}'::zdbquery)
+(2 rows)
+
+select id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
+  id   
+-------
+ 67151
+(1 row)
+
+select zdb.score(ctid) > 0.0 as score, id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;
+ score |  id   
+-------+-------
+ t     | 67151
+(1 row)
+
+select id from xform_test where xform_test ==> 'login:falcao5' order by id;
+  id   
+-------
+ 67151
+(1 row)
+
+select zdb.score(ctid) > 0.0 as score, id from xform_test where xform_test ==> 'login:falcao5' order by id;
+ score |  id   
+-------+-------
+ t     | 67151
+(1 row)
+
+DROP TABLE xform_test CASCADE;

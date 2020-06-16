@@ -8,3 +8,8 @@ sql/*.generated.sql
 **/cmake-build*
 foo.*
 /elasticsearch-*
+/results
+/test/expected/load-data.out
+/test/sql/load-data.sql
+/regression.diffs
+/regression.out

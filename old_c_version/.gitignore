@@ -1,0 +1,3 @@
+*.o
+zombodb.so
+zombodb--4.0.sql

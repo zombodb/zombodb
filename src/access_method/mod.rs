@@ -3,6 +3,7 @@ use pgx::*;
 mod build;
 mod cost_estimate;
 pub mod options;
+pub mod rewriter;
 mod scan;
 mod triggers;
 mod vacuum;
@@ -12,7 +13,7 @@ mod vacuum;
 /// CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER amhandler;
 /// ```
 #[pg_extern]
-fn amhandler() -> PgBox<pg_sys::IndexAmRoutine> {
+fn amhandler(_fcinfo: pg_sys::FunctionCallInfo) -> PgBox<pg_sys::IndexAmRoutine> {
     let mut amroutine = PgNodeFactory::makeIndexAmRoutine();
 
     amroutine.amstrategies = 4;
@@ -33,7 +34,7 @@ fn amhandler() -> PgBox<pg_sys::IndexAmRoutine> {
     amroutine.ambeginscan = Some(scan::ambeginscan);
     amroutine.amrescan = Some(scan::amrescan);
     amroutine.amgettuple = Some(scan::amgettuple);
-    amroutine.amgetbitmap = None;
+    amroutine.amgetbitmap = Some(scan::ambitmapscan);
     amroutine.amendscan = Some(scan::amendscan);
 
     amroutine

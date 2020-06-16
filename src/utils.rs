@@ -1,6 +1,16 @@
 use pgx::*;
 use serde_json::Value;
 
+pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> bool {
+    for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+        if index.oid() != current_index.oid() && is_zdb_index(&index) {
+            return true;
+        }
+    }
+
+    false
+}
+
 pub fn find_zdb_index(heap_relation: &PgRelation) -> PgRelation {
     for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
         if is_zdb_index(&index) {
@@ -42,7 +52,7 @@ pub fn lookup_zdb_index_tupdesc(indexrel: &PgRelation) -> PgTupleDesc<'static> {
 
     // lookup the tuple descriptor for the rowtype we're *indexing*, rather than
     // using the tuple descriptor for the index definition itself
-    PgMemoryContexts::TopTransactionContext.switch_to(|| unsafe {
+    PgMemoryContexts::TopTransactionContext.switch_to(|_| unsafe {
         PgTupleDesc::from_pg_is_copy(pg_sys::lookup_rowtype_tupdesc_copy(typid, typmod))
     })
 }
@@ -84,5 +94,18 @@ pub fn json_to_string(key: serde_json::Value) -> Option<String> {
         Value::Number(n) => Some(n.to_string()),
         Value::String(s) => Some(s),
         _ => panic!("unsupported value type"),
+    }
+}
+
+pub fn type_is_domain(typoid: pg_sys::Oid) -> Option<(pg_sys::Oid, String)> {
+    let (is_domain, base_type, name) = Spi::get_three_with_args::<bool, pg_sys::Oid, String>(
+        "SELECT typtype = 'd', typbasetype, typname::text FROM pg_type WHERE oid = $1",
+        vec![(PgBuiltInOids::OIDOID.oid(), typoid.into_datum())],
+    );
+
+    if is_domain.unwrap_or(false) {
+        Some((base_type.unwrap(), name.unwrap()))
+    } else {
+        None
     }
 }

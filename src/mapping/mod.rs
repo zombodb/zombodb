@@ -1,4 +1,5 @@
 use crate::json::builder::JsonBuilder;
+use crate::utils::type_is_domain;
 use pgx::*;
 use serde_json::*;
 use std::collections::HashMap;
@@ -380,11 +381,36 @@ pub fn categorize_tupdesc<'a>(
                         }
                     }
                     None => {
-                        info!(
-                            "Unrecognized type {:?} for {}, generating mapping as 'keyword'",
-                            typoid, attname
-                        );
-                        json!({"type": "keyword"})
+                        match type_is_domain(typoid.value()) {
+                            Some((basetypeoid, name)) => {
+                                if basetypeoid == pg_sys::VARCHAROID {
+                                    // varchar types are considered keywords and the domain name
+                                    // becomes the "normalizer"
+
+                                    if name == "keyword" {
+                                        // unless the base type is "keyword"
+                                        json!( {"type": "keyword", "ignore_above": 10922 })
+                                    } else {
+                                        json!( {"type": "keyword", "ignore_above": 10922, "normalizer": name })
+                                    }
+                                } else if basetypeoid == pg_sys::TEXTOID {
+                                    // text types are mapped as "text" with the "analyzer" set to the name
+                                    json!( {"type": "text", "analyzer": name })
+                                } else {
+                                    panic!(
+                                        "Unsupported base domain type for {}: {}",
+                                        name, basetypeoid
+                                    );
+                                }
+                            }
+                            None => {
+                                info!(
+                                    "Unrecognized type {:?} for {}, generating mapping as 'keyword'",
+                                    typoid, attname
+                                );
+                                json!({ "type": "keyword" })
+                            }
+                        }
                     }
                 },
             };

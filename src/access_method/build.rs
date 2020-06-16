@@ -4,7 +4,7 @@ use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crate::mapping::{categorize_tupdesc, generate_default_mapping, CategorizedAttribute};
-use crate::utils::lookup_zdb_index_tupdesc;
+use crate::utils::{has_zdb_index, lookup_zdb_index_tupdesc};
 use pgx::*;
 
 struct BuildState<'a> {
@@ -38,6 +38,25 @@ pub extern "C" fn ambuild(
 ) -> *mut pg_sys::IndexBuildResult {
     let heap_relation = unsafe { PgRelation::from_pg(heaprel) };
     let index_relation = unsafe { PgRelation::from_pg(indexrel) };
+
+    unsafe {
+        if has_zdb_index(&heap_relation, &index_relation) {
+            panic!("Relations can only have one ZomboDB index");
+        } else if !index_info
+            .as_ref()
+            .expect("index_info is null")
+            .ii_Predicate
+            .is_null()
+        {
+            panic!("ZomboDB indices cannot contain WHERE clauses");
+        } else if index_info
+            .as_ref()
+            .expect("index_info is null")
+            .ii_Concurrent
+        {
+            panic!("ZomboDB indices cannot be created CONCURRENTLY");
+        }
+    }
 
     let elasticsearch = Elasticsearch::new(&index_relation);
     let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
@@ -87,7 +106,9 @@ pub extern "C" fn ambuild(
         .expect("failed to add index to alias during CREATE INDEX");
 
     // create the triggers we need on the table to which this index is attached
-    create_triggers(&index_relation);
+    if !heap_relation.is_matview() {
+        create_triggers(&index_relation);
+    }
 
     let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
     result.heap_tuples = ntuples as f64;
@@ -164,6 +185,7 @@ pub unsafe extern "C" fn aminsert(
     true
 }
 
+#[pg_guard]
 unsafe extern "C" fn build_callback(
     _index: pg_sys::Relation,
     htup: pg_sys::HeapTuple,
@@ -174,8 +196,8 @@ unsafe extern "C" fn build_callback(
 ) {
     check_for_interrupts!();
 
-    let htup = PgBox::from_pg(htup);
-    let mut state = PgBox::from_pg(state as *mut BuildState);
+    let htup = htup.as_ref().unwrap();
+    let state = (state as *mut BuildState).as_mut().unwrap();
 
     if pg_sys::HeapTupleHeaderIsHeapOnly(htup.t_data) {
         ereport(PgLogLevel::ERROR,
@@ -189,7 +211,7 @@ unsafe extern "C" fn build_callback(
     let builder = row_to_json(values[0], &state.tupdesc, &state.attributes);
 
     let cmin = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
-    let cmax = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
+    let cmax = cmin;
 
     let xmin = xid_to_64bit(pg_sys::HeapTupleHeaderGetXmin(htup.t_data).unwrap());
     let xmax = pg_sys::InvalidTransactionId;

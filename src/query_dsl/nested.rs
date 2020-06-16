@@ -23,7 +23,8 @@ mod dsl {
     #[derive(Serialize)]
     struct Nested<'a> {
         path: &'a str,
-        query: ZDBQuery,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        query: Option<serde_json::Value>,
         score_mode: ScoreMode,
         #[serde(skip_serializing_if = "Option::is_none")]
         ignore_unmapped: Option<bool>,
@@ -38,7 +39,7 @@ mod dsl {
     ) -> ZDBQuery {
         let nest = Nested {
             path,
-            query,
+            query: query.query_dsl().cloned(),
             score_mode,
             ignore_unmapped,
         };
@@ -75,7 +76,7 @@ mod tests {
                     "nested":
                         {
                             "path": "path_test",
-                            "query":{ "query_dsl": { "query_string":{ "query": "test" }}},
+                            "query":{ "query_string":{ "query": "test" }},
                             "score_mode": "avg",
                         }
                 }
@@ -104,7 +105,7 @@ mod tests {
                     "nested":
                         {
                             "path": "path_test",
-                            "query":{ "query_dsl": { "query_string":{ "query": "test" }}},
+                            "query":{ "query_string":{ "query": "test" }},
                             "score_mode": "sum",
                             "ignore_unmapped": false,
                         }

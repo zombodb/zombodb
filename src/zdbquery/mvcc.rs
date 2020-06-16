@@ -48,7 +48,6 @@ pub fn apply_visibility_clause(
 
     let clause = build_visibility_clause(
         elasticsearch.index_name(),
-        elasticsearch.type_name(),
         command_id,
         xmax,
         used_xids,
@@ -73,7 +72,6 @@ pub fn apply_visibility_clause(
 
 fn build_visibility_clause(
     index_name: &str,
-    type_name: &str,
     command_id: pg_sys::CommandId,
     xmax: u64,
     used_xids: Vec<u64>,
@@ -164,7 +162,6 @@ fn build_visibility_clause(
                                         "terms": {
                                           "zdb_xmin": {
                                             "index": index_name,
-                                            "type": type_name,
                                             "path": "zdb_aborted_xids",
                                             "id": "zdb_aborted_xids"
                                           }
@@ -250,7 +247,6 @@ fn build_visibility_clause(
                                                     "terms": {
                                                       "zdb_xmax": {
                                                         "index": index_name,
-                                                        "type": type_name,
                                                         "path": "zdb_aborted_xids",
                                                         "id": "zdb_aborted_xids"
                                                       }

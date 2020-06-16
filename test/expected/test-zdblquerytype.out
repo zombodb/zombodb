@@ -1,0 +1,78 @@
+SELECT NULL::zdbquery;
+ zdbquery 
+----------
+ 
+(1 row)
+
+SELECT ''::zdbquery;
+     zdbquery     
+------------------
+ {"match_all":{}}
+(1 row)
+
+SELECT 'beer'::zdbquery;
+             zdbquery              
+-----------------------------------
+ {"query_string":{"query":"beer"}}
+(1 row)
+
+SELECT '{"terms":{"subject":"beer"}}'::zdbquery;
+           zdbquery           
+------------------------------
+ {"terms":{"subject":"beer"}}
+(1 row)
+
+SELECT '{"limit":42,"query_dsl":{"terms":{"subject":"beer"}}}'::zdbquery;
+                       zdbquery                        
+-------------------------------------------------------
+ {"limit":42,"query_dsl":{"terms":{"subject":"beer"}}}
+(1 row)
+
+SELECT '{"query_dsl":{"terms":{"subject":"beer"}}}'::zdbquery;
+           zdbquery           
+------------------------------
+ {"terms":{"subject":"beer"}}
+(1 row)
+
+SELECT zdb.to_query_dsl(NULL::zdbquery);
+ to_query_dsl 
+--------------
+ 
+(1 row)
+
+SELECT zdb.to_query_dsl(''::zdbquery);
+   to_query_dsl   
+------------------
+ {"match_all":{}}
+(1 row)
+
+SELECT zdb.to_query_dsl('beer'::zdbquery);
+           to_query_dsl            
+-----------------------------------
+ {"query_string":{"query":"beer"}}
+(1 row)
+
+SELECT zdb.to_query_dsl('{"terms":{"subject":"beer"}}'::zdbquery);
+         to_query_dsl         
+------------------------------
+ {"terms":{"subject":"beer"}}
+(1 row)
+
+SELECT zdb.to_query_dsl('{"limit":42,"query_dsl":{"terms":{"subject":"beer"}}}'::zdbquery);
+         to_query_dsl         
+------------------------------
+ {"terms":{"subject":"beer"}}
+(1 row)
+
+SELECT zdb.to_query_dsl('{"query_dsl":{"terms":{"subject":"beer"}}}'::zdbquery);
+         to_query_dsl         
+------------------------------
+ {"terms":{"subject":"beer"}}
+(1 row)
+
+select dsl.row_estimate(88, dsl.min_score(42, dsl.sort('title', 'asc', dsl.offset_limit(10, 42, 'beer'))));
+                                                                   row_estimate                                                                    
+---------------------------------------------------------------------------------------------------------------------------------------------------
+ {"limit":42,"offset":10,"min_score":42.0,"sort_json":[{"title":{"order":"asc"}}],"row_estimate":88,"query_dsl":{"query_string":{"query":"beer"}}}
+(1 row)
+

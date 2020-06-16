@@ -61,7 +61,7 @@ impl ElasticsearchCreateIndexRequest {
                                 "match_mapping_type": "date",
                                 "mapping": {
                                    "type": "date",
-                                   "format": "strict_date_optional_time||epoch_millis||HH:mm:ss.SSSSSS||HH:mm:ss.SSSSSSZZ",
+                                   "format": "strict_date_optional_time||epoch_millis||HH:mm:ss.S||HH:mm:ss.SX||HH:mm:ss.SS||HH:mm:ss.SSX||HH:mm:ss.SSS||HH:mm:ss.SSSX||HH:mm:ss.SSSS||HH:mm:ss.SSSSX||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSS||HH:mm:ss.SSSSSSX",
                                    "copy_to": "zdb_all"
                                  }
                               }

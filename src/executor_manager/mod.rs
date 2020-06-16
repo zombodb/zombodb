@@ -23,24 +23,31 @@ pub struct BulkContext {
 
 pub struct QueryState {
     scores: HashMap<(pg_sys::Oid, (pg_sys::BlockNumber, pg_sys::OffsetNumber)), f64>,
+    highlights: HashMap<
+        (pg_sys::Oid, (pg_sys::BlockNumber, pg_sys::OffsetNumber)),
+        HashMap<String, Vec<String>>,
+    >,
 }
 
 impl Default for QueryState {
     fn default() -> Self {
         QueryState {
             scores: HashMap::new(),
+            highlights: HashMap::new(),
         }
     }
 }
 
 impl QueryState {
     pub fn add_score(&mut self, heap_oid: pg_sys::Oid, ctid64: u64, score: f64) {
-        let key = (heap_oid, u64_to_item_pointer_parts(ctid64));
-        let scores = &mut self.scores;
+        if score > 0.0f64 {
+            let key = (heap_oid, u64_to_item_pointer_parts(ctid64));
+            let scores = &mut self.scores;
 
-        // scores are additive for any given key,
-        // so we start with zero and simply add this score to it
-        *scores.entry(key).or_insert(0.0f64) += score;
+            // scores are additive for any given key,
+            // so we start with zero and simply add this score to it
+            *scores.entry(key).or_insert(0.0f64) += score;
+        }
     }
 
     pub fn get_score(&self, heap_oid: pg_sys::Oid, ctid: pg_sys::ItemPointerData) -> f64 {
@@ -48,6 +55,55 @@ impl QueryState {
             .scores
             .get(&(heap_oid, item_pointer_get_both(ctid)))
             .unwrap_or(&0.0f64)
+    }
+
+    pub fn add_highlight(
+        &mut self,
+        heap_oid: pg_sys::Oid,
+        ctid64: u64,
+        highlight: Option<HashMap<String, Vec<String>>>,
+    ) {
+        if highlight.is_some() {
+            let key = (heap_oid, u64_to_item_pointer_parts(ctid64));
+            let highlights = &mut self.highlights;
+
+            match highlights.get_mut(&key) {
+                Some(per_field) => {
+                    for (k, mut v) in highlight.unwrap().into_iter() {
+                        let mut existing = per_field.get_mut(&k);
+
+                        match existing.as_mut() {
+                            Some(existing) => {
+                                existing.append(&mut v);
+                            }
+
+                            None => {
+                                per_field.insert(k, v);
+                            }
+                        }
+                    }
+                }
+                None => {
+                    highlights.insert(key, highlight.unwrap());
+                }
+            }
+        }
+    }
+
+    pub fn get_highlight(
+        &self,
+        heap_oid: pg_sys::Oid,
+        ctid: pg_sys::ItemPointerData,
+        field: &str,
+    ) -> Option<&Vec<String>> {
+        if let Some(map) = self
+            .highlights
+            .get(&(heap_oid, item_pointer_get_both(ctid)))
+        {
+            map.get(field)
+        } else {
+            None
+        }
     }
 
     pub fn lookup_heap_oid_for_first_field(
@@ -254,6 +310,7 @@ impl ExecutorManager {
         });
 
         let bulk_map = self.bulk_requests.as_mut().unwrap();
+        let xids = &self.xids;
         bulk_map.entry(relid).or_insert_with(move || {
             let indexrel = unsafe { PgRelation::open(relid) };
             let elasticsearch = Elasticsearch::new(&indexrel);
@@ -284,7 +341,16 @@ impl ExecutorManager {
                 get_executor_manager().hooks_registered = true;
             }
 
-            let bulk = elasticsearch.start_bulk();
+            // mark xids that are already known to be in progress as
+            // also in progress for this new bulk context too
+            let mut bulk = elasticsearch.start_bulk();
+            if let Some(xids) = xids.as_ref() {
+                for xid in xids {
+                    bulk.transaction_in_progress(*xid)
+                        .expect("Failed to mark transaction as in progress for new bulk");
+                }
+            }
+
             BulkContext {
                 elasticsearch,
                 bulk,

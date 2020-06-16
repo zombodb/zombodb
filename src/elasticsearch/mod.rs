@@ -96,13 +96,16 @@ impl Elasticsearch {
     pub fn arbitrary_request(
         &self,
         method: ArbitraryRequestType,
-        endpoint: &str,
+        mut endpoint: &str,
         post_data: Option<&'static str>,
     ) -> Result<String, ElasticsearchError> {
         let mut url = String::new();
 
         if endpoint.starts_with('/') {
             url.push_str(&self.url());
+            // strip the leading slash from the endpoint
+            // as self.url() is required to have a trailing slash
+            endpoint = &endpoint[1..];
         } else {
             url.push_str(&self.base_url());
             url.push('/');

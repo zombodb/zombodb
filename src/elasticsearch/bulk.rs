@@ -97,14 +97,20 @@ impl ElasticsearchBulkRequest {
         let total_docs = self.handler.wait_for_completion()?;
         let nrequests = successful_requests.load(Ordering::SeqCst);
 
-        // now refresh the index
-        match elasticsearch.options.refresh_interval() {
-            RefreshInterval::Immediate => ElasticsearchBulkRequest::refresh_index(elasticsearch)?,
-            RefreshInterval::ImmediateAsync => {
-                std::thread::spawn(|| ElasticsearchBulkRequest::refresh_index(elasticsearch).ok());
-            }
-            RefreshInterval::Background(_) => {
-                // Elasticsearch will do it for us in the future
+        // now refresh the index if we actually modified it
+        if total_docs != 0 && nrequests != 0 {
+            match elasticsearch.options.refresh_interval() {
+                RefreshInterval::Immediate => {
+                    ElasticsearchBulkRequest::refresh_index(elasticsearch)?
+                }
+                RefreshInterval::ImmediateAsync => {
+                    std::thread::spawn(|| {
+                        ElasticsearchBulkRequest::refresh_index(elasticsearch).ok()
+                    });
+                }
+                RefreshInterval::Background(_) => {
+                    // Elasticsearch will do it for us in the future
+                }
             }
         }
 
@@ -601,7 +607,7 @@ impl Handler {
     ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
         match &command {
             BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
-                let current_xid = unsafe { pg_sys::GetCurrentTransactionIdIfAny() };
+                let current_xid = unsafe { pg_sys::GetCurrentTransactionId() };
                 if current_xid != pg_sys::InvalidTransactionId {
                     get_executor_manager().push_xid(current_xid);
                 }

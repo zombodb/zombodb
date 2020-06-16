@@ -312,14 +312,14 @@ INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('time without time zone', '{
   "type": "date",
   "copy_to": "zdb_all",
-  "format": "HH:mm:ss.SSSSSS"
+  "format": "HH:mm:ss.S||HH:mm:ss.SS||HH:mm:ss.SSS||HH:mm:ss.SSSS||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSS"
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('time with time zone', '{
   "type": "date",
   "copy_to": "zdb_all",
-  "format": "HH:mm:ss.SSSSSSZZ"
+  "format": "HH:mm:ss.SX||HH:mm:ss.SSX||HH:mm:ss.SSSX||HH:mm:ss.SSSSX||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSSX"
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
@@ -409,7 +409,7 @@ CREATE DOMAIN zdb.portuguese AS text;
 CREATE DOMAIN zdb.romanian AS text;
 CREATE DOMAIN zdb.russian AS text;
 CREATE DOMAIN zdb.sorani AS text;
-CREATE DOMAIN zdb.panish AS text;
+CREATE DOMAIN zdb.spanish AS text;
 CREATE DOMAIN zdb.simple AS text;
 CREATE DOMAIN zdb.standard AS text;
 CREATE DOMAIN zdb.swedish AS text;

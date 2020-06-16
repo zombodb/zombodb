@@ -62,7 +62,7 @@ struct ZDBIndexOptionsInternal {
 impl ZDBIndexOptionsInternal {
     fn from(relation: &PgRelation) -> PgBox<ZDBIndexOptionsInternal> {
         if relation.rd_index.is_null() {
-            panic!("relation doesn't represent an index")
+            panic!("'{}' is not a ZomboDB index", relation.name())
         } else if relation.rd_options.is_null() {
             // use defaults
             let mut ops = PgBox::<ZDBIndexOptionsInternal>::alloc0();

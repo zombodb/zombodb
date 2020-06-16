@@ -10,11 +10,19 @@ mod dsl {
 
     #[pg_extern(immutable, parallel_safe)]
     pub(super) fn match_all(boost: default!(f32, 1.0)) -> ZDBQuery {
-        ZDBQuery::new_with_query_dsl(json! {
-             {
-                  "match_all": { "boost" : boost }
-             }
-        })
+        if boost == 1.0 {
+            ZDBQuery::new_with_query_dsl(json! {
+                {
+                    "match_all": { }
+                }
+            })
+        } else {
+            ZDBQuery::new_with_query_dsl(json! {
+                {
+                    "match_all": { "boost" : boost }
+                }
+            })
+        }
     }
 
     #[pg_extern(immutable, parallel_safe)]
@@ -61,7 +69,7 @@ mod tests {
             dls.unwrap(),
             &json! {
                 {
-                    "match_all": { "boost": 1.0}
+                    "match_all": { }
                 }
             }
         );

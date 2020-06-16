@@ -10,11 +10,13 @@ fn query(index: PgRelation, query: ZDBQuery) -> impl Iterator<Item = pg_sys::Ite
         .execute()
         .expect("failed to execute search");
 
-    result.into_iter().map(|(_score, ctid, _fields)| {
-        let mut tid = pg_sys::ItemPointerData::default();
-        u64_to_item_pointer(ctid, &mut tid);
-        tid
-    })
+    result
+        .into_iter()
+        .map(|(_score, ctid, _fields, _highlights)| {
+            let mut tid = pg_sys::ItemPointerData::default();
+            u64_to_item_pointer(ctid, &mut tid);
+            tid
+        })
 }
 
 /// ```sql

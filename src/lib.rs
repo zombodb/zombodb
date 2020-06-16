@@ -15,9 +15,11 @@ mod gucs;
 mod highlighting;
 mod json;
 mod mapping;
+mod misc;
 pub mod query_dsl;
 pub mod scoring;
 mod utils;
+mod walker;
 mod zdbquery;
 
 pg_module_magic!();
@@ -40,6 +42,11 @@ pub extern "C" fn _PG_fini() {
 #[pg_extern]
 fn version() -> &'static str {
     "5.0"
+}
+
+#[pg_extern]
+fn echo(s: &str) -> &str {
+    s
 }
 
 #[cfg(any(test, feature = "pg_test"))]
