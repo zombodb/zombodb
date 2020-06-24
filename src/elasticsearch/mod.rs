@@ -120,10 +120,10 @@ impl Elasticsearch {
             ArbitraryRequestType::DELETE => reqwest::Client::new().delete(&url),
         };
 
-        if post_data.is_some() {
+        if let Some(post_data) = post_data {
             builder = builder
                 .header("content-type", "application/json")
-                .body(post_data.unwrap());
+                .body(post_data);
         }
 
         Elasticsearch::execute_request(builder, |_, body| Ok(body))

@@ -11,8 +11,13 @@ struct WalkContext {
 type NodePtr = *mut pg_sys::Node;
 
 pub fn rewrite_opexrs(plan: *mut pg_sys::PlannedStmt) {
-    let zdbquery_oid =
-        unsafe { pg_sys::TypenameGetTypid(std::ffi::CString::new("zdbquery").unwrap().as_ptr()) };
+    let zdbquery_oid = unsafe {
+        pg_sys::TypenameGetTypid(
+            std::ffi::CStr::from_bytes_with_nul(b"zdbquery\0")
+                .unwrap()
+                .as_ptr(),
+        )
+    };
     let funcoid = lookup_function(
         vec!["zdb", "anyelement_cmpfunc"],
         Some(vec![pg_sys::ANYELEMENTOID, zdbquery_oid]),
@@ -67,6 +72,8 @@ unsafe fn walk_plan(plan: *mut pg_sys::Plan, context: &mut WalkContext) {
     walk_node(plan.qual as NodePtr, context);
 }
 
+#[allow(clippy::cognitive_complexity)]
+#[allow(clippy::if_same_then_else)]
 unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     check_for_interrupts!();
 

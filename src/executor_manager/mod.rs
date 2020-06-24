@@ -63,13 +63,13 @@ impl QueryState {
         ctid64: u64,
         highlight: Option<HashMap<String, Vec<String>>>,
     ) {
-        if highlight.is_some() {
+        if let Some(highlight) = highlight {
             let key = (heap_oid, u64_to_item_pointer_parts(ctid64));
             let highlights = &mut self.highlights;
 
             match highlights.get_mut(&key) {
                 Some(per_field) => {
-                    for (k, mut v) in highlight.unwrap().into_iter() {
+                    for (k, mut v) in highlight.into_iter() {
                         let mut existing = per_field.get_mut(&k);
 
                         match existing.as_mut() {
@@ -84,7 +84,7 @@ impl QueryState {
                     }
                 }
                 None => {
-                    highlights.insert(key, highlight.unwrap());
+                    highlights.insert(key, highlight);
                 }
             }
         }
@@ -131,7 +131,7 @@ impl QueryState {
                     .rtable
             };
             let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
-            let rentry = pg_sys::rt_fetch(var.varnoold, rtable);
+            let rentry = unsafe { pg_sys::rt_fetch(var.varnoold, rtable) };
             let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
 
             Some(heap_oid)

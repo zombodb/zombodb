@@ -16,10 +16,8 @@ pub fn get_index_options_for_relation(relation: &PgRelation) -> Vec<ZDBIndexOpti
                 options.push(ZDBIndexOptions::from(&index));
             }
         }
-    } else if relation.is_index() {
-        if is_zdb_index(relation) {
-            options.push(ZDBIndexOptions::from(relation))
-        }
+    } else if relation.is_index() && is_zdb_index(relation) {
+        options.push(ZDBIndexOptions::from(relation))
     }
 
     options
@@ -48,12 +46,12 @@ pub fn alter_indices(prev_options: Option<Vec<ZDBIndexOptions>>) {
         for (old_options, new_options, index) in prev_options.into_iter().map(|option| {
             let index =
                 PgRelation::with_lock(option.oid(), pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-            (option.clone(), ZDBIndexOptions::from(&index), index)
+            (option, ZDBIndexOptions::from(&index), index)
         }) {
-            if old_options.url() != new_options.url() {
-                if !unsafe { pg_sys::session_auth_is_superuser } {
-                    panic!("You must be a superuser to change the 'url' parameter")
-                }
+            if old_options.url() != new_options.url()
+                && !unsafe { pg_sys::session_auth_is_superuser }
+            {
+                panic!("You must be a superuser to change the 'url' parameter")
             }
 
             if old_options.type_name() != new_options.type_name() {

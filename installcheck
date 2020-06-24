@@ -24,7 +24,7 @@ cat ${TESTDIR}/sql/load-data.tmpl | sed -e "s:@PWD:`pwd`:g" > ${TESTDIR}/expecte
 psql -l | grep ${DBNAME} > /dev/null
 if [ $? == 1 ]; then
   # load data if we don't have the regression database
-  ${REGRESS} --dbname=${DBNAME} --inputdir=${TESTDIR} $PRETESTS
+  ${REGRESS} --dbname=${DBNAME} --inputdir=${TESTDIR} $PRETESTS || exit $?
 fi
 #${REGRESS} --use-existing --dbname=${DBNAME} --inputdir=${TESTDIR} --launcher="psql --set=VERBOSITY=terse contrib_regression" $TESTS
 ${REGRESS} --use-existing --dbname=${DBNAME} --inputdir=${TESTDIR} --launcher="./testlauncher.sh" $TESTS
