@@ -5,7 +5,7 @@ use levenshtein::*;
 use pgx::PgRelation;
 use pgx::*;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -96,7 +96,7 @@ impl DocumentHighlighter {
         let regex = Regex::new(regex).unwrap();
         let mut result = Vec::new();
         for (key, token_entries) in self.lookup.iter() {
-            if regex.is_match(key.as_str()) {
+            if regex.is_match(key) {
                 for token_entry in token_entries {
                     result.push((key.clone(), token_entry));
                 }
@@ -162,12 +162,10 @@ impl DocumentHighlighter {
         }
 
         let phrase = analyze_with_field(index, field, phrase_str)
-            .map(|parts| {
-                Some(ProximityPart {
-                    word: parts.1,
-                    distance: 0,
-                    in_order: true,
-                })
+            .map(|parts| ProximityPart {
+                word: parts.1,
+                distance: 0,
+                in_order: true,
             })
             .collect::<Vec<_>>();
         if phrase.is_empty() {
@@ -185,126 +183,106 @@ impl DocumentHighlighter {
     // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
     pub fn highlight_proximity(
         &self,
-        phrase: Vec<Option<ProximityPart>>,
+        phrase: Vec<ProximityPart>,
     ) -> Option<Vec<(String, &TokenEntry)>> {
-        if phrase.len() == 1 {
-            let token = phrase.get(0).unwrap();
-            return self.highlight_token(token.as_ref().unwrap().word.as_str());
+        if phrase.len() == 0 {
+            return None;
         }
 
-        //Find the Token Entry Data for all cases of each part of the phrase
-        let mut pool = HashMap::<&str, Vec<&TokenEntry>>::new();
-        for token in &phrase {
-            let token_entries = self.highlight_token(token.as_ref().unwrap().word.as_str());
-            match token_entries {
-                Some(vec) => {
-                    let mut token_entry = Vec::new();
-                    for tuples in vec {
-                        token_entry.push(tuples.1)
-                    }
-                    pool.insert(token.as_ref().unwrap().word.as_str(), token_entry);
+        let first_word = phrase.get(0).unwrap();
+        let first_word_entries = self.highlight_token(&first_word.word);
+
+        if phrase.len() == 1 || first_word_entries.is_none() {
+            return first_word_entries;
+        }
+
+        let first_word_entries = first_word_entries.unwrap().into_iter();
+        let mut final_matches = HashSet::new();
+        for e in first_word_entries {
+            let mut start = vec![e.1.position]; // 0
+            let mut possibilities = Vec::new();
+            let mut is_valid = true;
+
+            possibilities.push(e);
+
+            let mut iter = phrase.iter().peekable();
+            while let Some(current) = iter.next() {
+                let next = iter.peek();
+                if next.is_none() {
+                    break;
                 }
-                None => {
-                    return None;
-                }
-            }
-        }
+                let next = next.unwrap();
 
-        let mut all_entries = Vec::new();
-        for (token, entries) in pool {
-            for entry in entries {
-                all_entries.push((token.to_owned(), entry));
-            }
-        }
+                let distance = current.distance;
+                let order = current.in_order;
+                let word = &next.word;
 
-        all_entries.sort_by(|a, b| a.1.position.cmp(&b.1.position));
-        let mut final_entries = Vec::new();
-        let mut c = 0;
-        let mut temp_entry = Vec::new();
-        let mut temp_string_checker = Vec::new();
-
-        for entry in all_entries.clone() {
-            temp_entry.clear();
-            temp_string_checker.clear();
-            let mut string_bool = true;
-
-            if entry.0.eq(&phrase.first().unwrap().as_ref().unwrap().word) {
-                let comparing_too = (entry.0, entry.1);
-
-                let mut phrase_iter = phrase.iter().peekable();
-
-                temp_entry.push((String::from(&comparing_too.0), comparing_too.1));
-                temp_string_checker.push(String::from(&comparing_too.0));
-
-                let mut phrase_part = phrase_iter.next().unwrap().as_ref().unwrap();
-
-                loop {
-                    check_for_interrupts!();
-
-                    let searching_for = (
-                        phrase_iter.peek().unwrap().as_ref().unwrap().word.clone(),
-                        phrase_part.distance,
-                        phrase_part.in_order,
-                    );
-
-                    let last_point = temp_entry.last().unwrap().1.position;
-
-                    if searching_for.2 {
-                        for inner_entry in &all_entries {
-                            if last_point < inner_entry.1.position {
-                                if searching_for.0.eq(&inner_entry.0)
-                                    && (inner_entry.1.position - last_point) <= searching_for.1 + 1
-                                {
-                                    temp_entry.push((String::from(&inner_entry.0), inner_entry.1));
-                                    temp_string_checker.push(String::from(&inner_entry.0));
-                                }
-                            }
-                        }
-                    } else {
-                        for inner_entry in &all_entries {
-                            if searching_for.0.eq(&inner_entry.0)
-                                && (last_point as i32 - inner_entry.1.position as i32).abs()
-                                    <= searching_for.1 as i32 + 1
-                            {
-                                temp_entry.push((String::from(&inner_entry.0), inner_entry.1));
-                                temp_string_checker.push(String::from(&inner_entry.0));
-                            }
-                        }
-                    }
-
-                    phrase_part = phrase_iter.next().unwrap().as_ref().unwrap();
-
-                    if phrase_iter.peek().is_none() {
+                match self.look_for_match(word, distance, order, start) {
+                    None => {
+                        is_valid = false;
                         break;
                     }
+                    Some(next_entries) => {
+                        start = next_entries
+                            .iter()
+                            .map(|e| e.1.position)
+                            .collect::<Vec<u32>>();
+                        next_entries.into_iter().for_each(|e| possibilities.push(e));
+                    }
                 }
             }
 
-            let mut p = 0;
-            loop {
-                check_for_interrupts!();
-                if p == phrase.len() {
-                    break;
-                }
-                if !temp_string_checker.contains(&phrase.get(p).unwrap().as_ref().unwrap().word) {
-                    string_bool = false;
-                    break;
-                }
-                p = p + 1;
+            if is_valid {
+                possibilities.into_iter().for_each(|e| {
+                    final_matches.insert(e);
+                });
             }
-
-            if string_bool {
-                for temp in &temp_entry {
-                    final_entries.push((String::from(&temp.0), temp.1));
-                }
-            }
-            c = c + 1;
         }
 
-        if final_entries.is_empty() {
+        if final_matches.is_empty() {
             None
         } else {
-            Some(final_entries)
+            Some(
+                final_matches
+                    .into_iter()
+                    .collect::<Vec<(String, &TokenEntry)>>(),
+            )
+        }
+    }
+
+    fn look_for_match(
+        &self,
+        word: &str,
+        distance: u32,
+        order: bool,
+        starting_point: Vec<u32>,
+    ) -> Option<HashSet<(String, &TokenEntry)>> {
+        match self.highlight_token(word) {
+            None => None,
+            Some(entries) => {
+                //need another check within here...
+                //it is finding something from the .highlight_token
+                //then it does not pass the if loops and returns a empty hashset
+                let mut matches = HashSet::new();
+
+                for e in entries {
+                    for point in &starting_point {
+                        if order {
+                            if *point < e.1.position && e.1.position - point <= distance + 1 {
+                                matches.insert(e.clone());
+                            }
+                        } else {
+                            if (*point as i32 - e.1.position as i32).abs() <= distance as i32 + 1 {
+                                matches.insert(e.clone());
+                            }
+                        }
+                    }
+                }
+                if matches.is_empty() {
+                    return None;
+                }
+                Some(matches)
+            }
         }
     }
 }
@@ -525,6 +503,10 @@ fn highlight_proximity(
         name!(end_offset, i64),
     ),
 > {
+    let prox_clause = prox_clause
+        .into_iter()
+        .map(|e| e.unwrap())
+        .collect::<Vec<ProximityPart>>();
     let mut highlighter = DocumentHighlighter::new();
     highlighter.analyze_document(&index, field_name, text);
     let highlights = highlighter.highlight_proximity(prox_clause);
@@ -550,7 +532,257 @@ fn highlight_proximity(
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
+    use crate::highlighting::document_highlighter::{DocumentHighlighter, TokenEntry};
     use pgx::*;
+    use std::collections::HashSet;
+
+    #[pg_test(error = "no matches found")]
+    #[initialize(es = true)]
+    fn test_look_for_match_none() {
+        let title = "look_for_match_none";
+        start_table_and_index(title);
+        let mut dh = DocumentHighlighter::new();
+
+        let index = unsafe {
+            PgRelation::open_with_name("idxtest_highlighting_look_for_match_none").unwrap()
+        };
+        dh.analyze_document(&index, "test_field", "this is a test");
+
+        let matches = dh
+            .look_for_match("test", 1, true, vec![0])
+            .expect("no matches found");
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_look_for_match_in_order_one() {
+        let title = "look_for_match_in_order";
+        start_table_and_index(title);
+        let mut dh = DocumentHighlighter::new();
+
+        let index = unsafe {
+            PgRelation::open_with_name("idxtest_highlighting_look_for_match_in_order").unwrap()
+        };
+        dh.analyze_document(&index, "test_field", "this is a test");
+
+        let matches = dh
+            .look_for_match("is", 0, true, vec![0])
+            .expect("no matches found");
+        let mut expected = HashSet::new();
+        let value = (
+            "is".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 1,
+                start_offset: 5,
+                end_offset: 7,
+            },
+        );
+        expected.insert(value);
+        assert_eq!(matches, expected)
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_look_for_match_out_of_order_one() {
+        let title = "look_for_match_out_of_order";
+        start_table_and_index(title);
+        let mut dh = DocumentHighlighter::new();
+        let index = unsafe {
+            PgRelation::open_with_name("idxtest_highlighting_look_for_match_out_of_order").unwrap()
+        };
+        dh.analyze_document(&index, "test_field", "this is a test");
+
+        let matches = dh
+            .look_for_match("this", 0, false, vec![1])
+            .expect("no matches found");
+        let mut expected = HashSet::new();
+        let value_one = (
+            "this".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 0,
+                start_offset: 0,
+                end_offset: 4,
+            },
+        );
+        expected.insert(value_one);
+        assert_eq!(matches, expected)
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_look_for_match_in_order_two() {
+        let title = "look_for_match_out_of_order_two";
+        start_table_and_index(title);
+        let mut dh = DocumentHighlighter::new();
+        let index = unsafe {
+            PgRelation::open_with_name("idxtest_highlighting_look_for_match_out_of_order_two")
+                .unwrap()
+        };
+        dh.analyze_document(
+            &index,
+            "test_field",
+            "this is a test and this is also a test",
+        );
+
+        let matches = dh
+            .look_for_match("is", 0, false, vec![0, 5])
+            .expect("no matches found");
+        let mut expect = HashSet::new();
+        let value_one = (
+            "is".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 1,
+                start_offset: 5,
+                end_offset: 7,
+            },
+        );
+        let value_two = (
+            "is".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 6,
+                start_offset: 24,
+                end_offset: 26,
+            },
+        );
+        expect.insert(value_one);
+        expect.insert(value_two);
+        assert_eq!(matches, expect)
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_look_for_match_out_of_order_two() {
+        let title = "look_for_match_out_of_order_two";
+        start_table_and_index(title);
+        let mut dh = DocumentHighlighter::new();
+        let index = unsafe {
+            PgRelation::open_with_name("idxtest_highlighting_look_for_match_out_of_order_two")
+                .unwrap()
+        };
+        dh.analyze_document(
+            &index,
+            "test_field",
+            "this is a test and this is also a test",
+        );
+
+        let matches = dh
+            .look_for_match("this", 0, false, vec![1, 6])
+            .expect("no matches found");
+        let mut expect = HashSet::new();
+        let value_one = (
+            "this".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 0,
+                start_offset: 0,
+                end_offset: 4,
+            },
+        );
+        let value_two = (
+            "this".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 5,
+                start_offset: 19,
+                end_offset: 23,
+            },
+        );
+        expect.insert(value_one);
+        expect.insert(value_two);
+        assert_eq!(matches, expect)
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_look_for_match_in_order_two_different_dist() {
+        let title = "look_for_match_in_order_two_diff_dist";
+        start_table_and_index(title);
+        let mut dh = DocumentHighlighter::new();
+        let index = unsafe {
+            PgRelation::open_with_name("idxtest_highlighting_look_for_match_in_order_two_diff_dist")
+                .unwrap()
+        };
+        dh.analyze_document(
+            &index,
+            "test_field",
+            "this is a test and this is also a test",
+        );
+
+        let matches = dh
+            .look_for_match("test", 3, true, vec![0, 5])
+            .expect("no matches found");
+        let mut expect = HashSet::new();
+        let value_one = (
+            "test".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 3,
+                start_offset: 10,
+                end_offset: 14,
+            },
+        );
+        let value_two = (
+            "test".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 9,
+                start_offset: 34,
+                end_offset: 38,
+            },
+        );
+        expect.insert(value_one);
+        expect.insert(value_two);
+        assert_eq!(matches, expect)
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_look_for_match_out_of_order_two_diff_dist() {
+        let title = "look_for_match_out_of_order_two_diff_dist";
+        start_table_and_index(title);
+        let mut dh = DocumentHighlighter::new();
+        let index = unsafe {
+            PgRelation::open_with_name(
+                "idxtest_highlighting_look_for_match_out_of_order_two_diff_dist",
+            )
+            .unwrap()
+        };
+        dh.analyze_document(
+            &index,
+            "test_field",
+            "this is a test and this is also a test",
+        );
+
+        let matches = dh
+            .look_for_match("this", 3, false, vec![3, 9])
+            .expect("no matches found");
+        let mut expect = HashSet::new();
+        let value_one = (
+            "this".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 0,
+                start_offset: 0,
+                end_offset: 4,
+            },
+        );
+        let value_two = (
+            "this".to_string(),
+            &TokenEntry {
+                type_: "<ALPHANUM>".to_string(),
+                position: 5,
+                start_offset: 19,
+                end_offset: 23,
+            },
+        );
+        expect.insert(value_one);
+        expect.insert(value_two);
+        assert_eq!(matches, expect)
+    }
 
     #[pg_test]
     #[initialize(es = true)]
@@ -561,7 +793,7 @@ mod tests {
             "select * from zdb.highlight_term('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;",title
         );
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -585,7 +817,7 @@ mod tests {
         start_table_and_index(title);
         let select:String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it is a') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -617,7 +849,7 @@ mod tests {
         start_table_and_index(title);
         let select:String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -641,7 +873,7 @@ mod tests {
         start_table_and_index(title);
         let select :String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'banana') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -660,7 +892,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm*n') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -684,7 +916,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm?n') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -704,7 +936,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'n*n') order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -723,7 +955,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', '^m.*$') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -749,7 +981,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'cot', 1) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -777,7 +1009,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'co', 1) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -797,7 +1029,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c cott cooler', 'colter', 2) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term   |    type    | position | start_offset | end_offset
             // -----------+--------+------------+----------+--------------+------------
@@ -824,7 +1056,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -845,7 +1077,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -865,7 +1097,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', -4) order by position;",title);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -887,7 +1119,7 @@ mod tests {
         let array_two = "{\"word\": \"test\", \"distance\": 0, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','this is a test that is longer and has a second this near test a second time and a third this that is not' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -919,7 +1151,7 @@ mod tests {
         let array_three = "{\"word\": \"that\", \"distance\": 2, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -948,7 +1180,7 @@ mod tests {
         let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart]) order by position;", title,search_string, array_one);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -979,7 +1211,7 @@ mod tests {
         let array_three = "{\"word\": \"that\", \"distance\": 2, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1007,6 +1239,134 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
+    fn test_highlighter_proximity_simple_in_order_test() {
+        let title = "highlight_proximity_simple_in_order_test";
+        start_table_and_index(title);
+        let search_string = "this is this";
+        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"word\": \"is\", \"distance\": 0, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
+
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_simple_without_order_test() {
+        let title = "highlight_proximity_simple_without_order_test";
+        start_table_and_index(title);
+        let search_string = "this is this";
+        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"word\": \"is\", \"distance\": 0, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
+            // test_field | this | <ALPHANUM> |        2 |            8 |         12
+
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "this", 2, 8, 12),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_four_with_inorder_and_not_inorder() {
+        let title = "highlight_proximity_four_with_inorder_and_not_inorder";
+        start_table_and_index(title);
+        let search_string = "now is the time for all good men to come to the aid of their country.";
+        let array_one = "{\"word\": \"for\", \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"word\": \"men\", \"distance\": 2, \"in_order\": true}";
+        let array_three = "{\"word\": \"to\", \"distance\": 12, \"in_order\": false}";
+        let array_four = "{\"word\": \"now\", \"distance\": 2, \"in_order\": false}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three, array_four);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | now  | <ALPHANUM> |        0 |            0 |          3
+            // test_field | for  | <ALPHANUM> |        4 |           16 |         19
+            // test_field | men  | <ALPHANUM> |        7 |           29 |         32
+            // test_field | to   | <ALPHANUM> |        8 |           33 |         35
+            // test_field | to   | <ALPHANUM> |       10 |           41 |         43
+            let expect = vec![
+                ("<ALPHANUM>", "now", 0, 0, 3),
+                ("<ALPHANUM>", "for", 4, 16, 19),
+                ("<ALPHANUM>", "men", 7, 29, 32),
+                ("<ALPHANUM>", "to", 8, 33, 35),
+                ("<ALPHANUM>", "to", 10, 41, 43),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_four_with_inorder_and_not_inorder_doubles_far_apart() {
+        let title = "highlight_proximity_four_with_inorder_and_not_inorder_double";
+        start_table_and_index(title);
+        let search_string = "now is the time of the year for all good men to rise up and come to the aid of their country.";
+        let array_one = "{\"word\": \"for\", \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"word\": \"men\", \"distance\": 5, \"in_order\": true}";
+        let array_three = "{\"word\": \"to\", \"distance\": 11, \"in_order\": false}";
+        let array_four = "{\"word\": \"now\", \"distance\": 2, \"in_order\": false}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three, array_four);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | now  | <ALPHANUM> |        0 |            0 |          3
+            // test_field | for  | <ALPHANUM> |        7 |           28 |         31
+            // test_field | men  | <ALPHANUM> |       10 |           41 |         44
+            // test_field | to   | <ALPHANUM> |       11 |           45 |         47
+            // test_field | to   | <ALPHANUM> |       16 |           65 |         67
+            let expect = vec![
+                ("<ALPHANUM>", "now", 0, 0, 3),
+                ("<ALPHANUM>", "for", 7, 28, 31),
+                ("<ALPHANUM>", "men", 10, 41, 44),
+                ("<ALPHANUM>", "to", 11, 45, 47),
+                ("<ALPHANUM>", "to", 16, 65, 67),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
     fn test_highlighter_proximity_long_test() {
         let title = "highlight_proximity_long_test";
         start_table_and_index(title);
@@ -1016,7 +1376,7 @@ mod tests {
         let array_three = "{\"word\": \"lay\", \"distance\": 3, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two,array_three);
         Spi::connect(|client| {
-            let table = client.select(select.as_str(), None, None);
+            let table = client.select(&select, None, None);
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+-----------
@@ -1034,13 +1394,13 @@ mod tests {
     }
 
     fn start_table_and_index(title: &str) {
-        let create_table: String = format!(
+        let create_table = &format!(
             "CREATE TABLE test_highlighting_{} AS SELECT * FROM generate_series(1, 10);",
             title,
         );
-        Spi::run(create_table.as_str());
-        let create_index:String = format!("CREATE INDEX idxtest_highlighting_{} ON test_highlighting_{} USING zombodb ((test_highlighting_{}.*))",title,title,title,);
-        Spi::run(create_index.as_str());
+        Spi::run(create_table);
+        let create_index = &format!("CREATE INDEX idxtest_highlighting_{} ON test_highlighting_{} USING zombodb ((test_highlighting_{}.*))",title,title,title,);
+        Spi::run(create_index);
     }
 
     fn test_table(mut table: SpiTupleTable, expect: Vec<(&str, &str, i32, i64, i64)>) {
