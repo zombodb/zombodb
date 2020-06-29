@@ -11,6 +11,7 @@ pub struct CategorizedAttribute<'a> {
     pub conversion_func: Box<ConversionFunc<'a>>,
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub fn categorize_tupdesc<'a>(
     tupdesc: &'a PgTupleDesc,
     heap_relation: &PgRelation,
@@ -364,10 +365,9 @@ pub fn categorize_tupdesc<'a>(
             let definition = match user_mappings.as_ref().unwrap().get(attname).cloned() {
                 Some(json) => json,
                 None => match lookup_type_mapping(typoid) {
-                    Some((mapping, regproc)) => {
-                        if mapping.is_some() {
-                            mapping.unwrap()
-                        } else {
+                    Some((mapping, regproc)) => match mapping {
+                        Some(mapping) => mapping,
+                        None => {
                             let regproc: pg_sys::Oid = regproc.unwrap();
                             unsafe {
                                 let datum = pg_sys::OidFunctionCall2Coll(
@@ -379,7 +379,7 @@ pub fn categorize_tupdesc<'a>(
                                 JsonB::from_datum(datum, false, pg_sys::JSONBOID).unwrap().0
                             }
                         }
-                    }
+                    },
                     None => {
                         match type_is_domain(typoid.value()) {
                             Some((basetypeoid, name)) => {

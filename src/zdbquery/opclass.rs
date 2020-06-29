@@ -105,7 +105,7 @@ fn restrict(
             }
 
             // free the ldata struct
-            if ldata.statsTuple != std::ptr::null_mut() {
+            if !ldata.statsTuple.is_null() {
                 (ldata.freefunc.unwrap())(ldata.statsTuple);
             }
         }
@@ -151,9 +151,8 @@ fn restrict(
     }
 
     let reltuples = reltuples.max(count_estimate as f64).max(1f64);
-    let selectivity = count_estimate as f64 / reltuples;
 
-    selectivity
+    count_estimate as f64 / reltuples
 }
 
 extension_sql! {r#"

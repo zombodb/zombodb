@@ -44,11 +44,6 @@ fn version() -> &'static str {
     "5.0"
 }
 
-#[pg_extern]
-fn echo(s: &str) -> &str {
-    s
-}
-
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use pgx::*;

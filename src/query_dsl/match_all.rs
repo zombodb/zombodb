@@ -10,7 +10,7 @@ mod dsl {
 
     #[pg_extern(immutable, parallel_safe)]
     pub(super) fn match_all(boost: default!(f32, 1.0)) -> ZDBQuery {
-        if boost == 1.0 {
+        if (boost - 1.0).abs() < std::f32::EPSILON {
             ZDBQuery::new_with_query_dsl(json! {
                 {
                     "match_all": { }

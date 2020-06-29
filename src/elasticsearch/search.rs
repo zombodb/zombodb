@@ -323,7 +323,7 @@ impl Scroller {
         // spawn a thread to continually get the next scroll chunk from Elasticsearch
         // until there's no more to get
         let mut scroll_id = orig_scroll_id.clone();
-        let elasticsearch = orig_elasticsearch.clone();
+        let elasticsearch = orig_elasticsearch;
         let terminate = terminate_arc.clone();
         std::thread::spawn(move || {
             std::panic::catch_unwind(|| {

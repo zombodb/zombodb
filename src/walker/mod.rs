@@ -140,7 +140,7 @@ unsafe extern "C" fn plan_walker(node: *mut pg_sys::Node, context_ptr: void_mut_
         );
     }
 
-    return pg_sys::expression_tree_walker(node, Some(plan_walker), context_ptr);
+    pg_sys::expression_tree_walker(node, Some(plan_walker), context_ptr)
 }
 
 #[pg_guard]
@@ -159,66 +159,61 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
             let mut args_list = PgList::<pg_sys::Node>::from_pg(opexpr.args);
             let first_arg = args_list.get_ptr(0);
 
-            match first_arg {
-                Some(first_arg) => {
-                    if is_a(first_arg, pg_sys::NodeTag_T_Var)
-                        || is_a(first_arg, pg_sys::NodeTag_T_FuncExpr)
-                    {
-                        if context.want_scores {
-                            // wrap the right-hand-side of the ==> operator in zdb.want_score(...)
+            if let Some(first_arg) = first_arg {
+                if is_a(first_arg, pg_sys::NodeTag_T_Var)
+                    || is_a(first_arg, pg_sys::NodeTag_T_FuncExpr)
+                {
+                    if context.want_scores {
+                        // wrap the right-hand-side of the ==> operator in zdb.want_score(...)
+                        let second_arg = args_list.get_ptr(1).expect("no RHS to ==>");
+                        let mut want_score_func = PgNodeFactory::makeFuncExpr();
+                        let mut func_args = PgList::<pg_sys::Node>::new();
+                        func_args.push(second_arg);
+
+                        want_score_func.funcid = context.zdb_want_score_oid;
+                        want_score_func.args = func_args.into_pg();
+                        want_score_func.funcresulttype = context.zdbquery_oid;
+
+                        // replace the second argument with our new want_score_func expression
+                        args_list.pop();
+                        args_list.push(want_score_func.into_pg() as *mut pg_sys::Node);
+                    }
+
+                    if !context.highlight_definitions.is_empty() {
+                        for definition in context.highlight_definitions.iter() {
+                            // wrap the right-hand-side of the ==> operator in zdb.want_highlight
                             let second_arg = args_list.get_ptr(1).expect("no RHS to ==>");
-                            let mut want_score_func = PgNodeFactory::makeFuncExpr();
+                            let mut want_highlight_func = PgNodeFactory::makeFuncExpr();
                             let mut func_args = PgList::<pg_sys::Node>::new();
                             func_args.push(second_arg);
 
-                            want_score_func.funcid = context.zdb_want_score_oid;
-                            want_score_func.args = func_args.into_pg();
-                            want_score_func.funcresulttype = context.zdbquery_oid;
+                            let definition = PgBox::from_pg(*definition);
+                            let definition_args = PgList::from_pg(definition.args);
+
+                            func_args.push(
+                                definition_args
+                                    .get_ptr(1)
+                                    .expect("no field name for zdb.highlight()")
+                                    as *mut pg_sys::Node,
+                            );
+
+                            // if we have a highlight definition we'll use it, if not, that's
+                            // okay too as "want_highlight()" has a default for that argument
+                            if let Some(definition_json) = definition_args.get_ptr(2) {
+                                func_args.push(definition_json as *mut pg_sys::Node);
+                            }
+
+                            want_highlight_func.funcid = context.zdb_want_highlight_oid;
+                            want_highlight_func.args = func_args.into_pg();
+                            want_highlight_func.funcresulttype = context.zdbquery_oid;
 
                             // replace the second argument with our new want_score_func expression
                             args_list.pop();
-                            args_list.push(want_score_func.into_pg() as *mut pg_sys::Node);
+                            args_list.push(want_highlight_func.into_pg() as *mut pg_sys::Node);
                         }
-
-                        if !context.highlight_definitions.is_empty() {
-                            for definition in context.highlight_definitions.iter() {
-                                // wrap the right-hand-side of the ==> operator in zdb.want_highlight
-                                let second_arg = args_list.get_ptr(1).expect("no RHS to ==>");
-                                let mut want_highlight_func = PgNodeFactory::makeFuncExpr();
-                                let mut func_args = PgList::<pg_sys::Node>::new();
-                                func_args.push(second_arg);
-
-                                let definition = PgBox::from_pg(*definition);
-                                let definition_args = PgList::from_pg(definition.args);
-
-                                func_args.push(
-                                    definition_args
-                                        .get_ptr(1)
-                                        .expect("no field name for zdb.highlight()")
-                                        as *mut pg_sys::Node,
-                                );
-
-                                // if we have a highlight definition we'll use it, if not, that's
-                                // okay too as "want_highlight()" has a default for that argument
-                                if let Some(definition_json) = definition_args.get_ptr(2) {
-                                    func_args.push(definition_json as *mut pg_sys::Node);
-                                }
-
-                                want_highlight_func.funcid = context.zdb_want_highlight_oid;
-                                want_highlight_func.args = func_args.into_pg();
-                                want_highlight_func.funcresulttype = context.zdbquery_oid;
-
-                                // replace the second argument with our new want_score_func expression
-                                args_list.pop();
-                                args_list.push(want_highlight_func.into_pg() as *mut pg_sys::Node);
-                            }
-                        }
-                    } else {
-                        panic!("Left-hand side of ==> must be a table reference or function")
                     }
-                }
-                None => {
-                    // noop
+                } else {
+                    panic!("Left-hand side of ==> must be a table reference or function")
                 }
             }
         }
@@ -234,5 +229,5 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
         );
     }
 
-    return pg_sys::expression_tree_walker(node, Some(rewrite_walker), context_ptr);
+    pg_sys::expression_tree_walker(node, Some(rewrite_walker), context_ptr)
 }
