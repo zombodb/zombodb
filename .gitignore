@@ -13,3 +13,4 @@ foo.*
 /test/sql/load-data.sql
 /regression.diffs
 /regression.out
+/src/query_parser/parser.rs

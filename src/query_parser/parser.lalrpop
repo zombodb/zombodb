@@ -1,0 +1,102 @@
+use crate::query_parser::ast::*;
+
+grammar;
+
+pub Expr: Box<Expr<'input>> = {
+    Expr OrOp BinaryOperand => Box::new(Expr::Op(<>)),
+    BinaryOperand,
+};
+
+OrOp: Opcode = {
+    "or" => Opcode::Or,
+    "," => Opcode::Or,
+};
+
+BinaryOperand: Box<Expr<'input>> = {
+    BinaryOperand AndOp WithOperand => Box::new(Expr::Op(<>)),
+    WithOperand,
+};
+
+AndOp: Opcode = {
+    "and" => Opcode::And,
+    "&" => Opcode::And,
+    "not" => Opcode::AndNot,
+    "!" => Opcode::AndNot,
+};
+
+WithOperand: Box<Expr<'input>> = {
+    WithOperand WithOp UnaryOperand => Box::new(Expr::Op(<>)),
+    UnaryOperand
+};
+
+WithOp: Opcode = {
+    "with" => Opcode::With,
+    "%" => Opcode::With
+}
+
+UnaryOperand: Box<Expr<'input>> = {
+    UnaryOp Comparison => Box::new(Expr::UnaryOp(<>)),
+    Comparison,
+};
+
+UnaryOp: Opcode = {
+    "not" => Opcode::Not,
+    "!" => Opcode::Not,
+};
+
+Comparison: Box<Expr<'input>> = {
+    SimpleValue ComparisonOp Term => Box::new(Expr::Cmp(<>)),
+    Term
+};
+
+ComparisonOp: ComparisonOpcode = {
+    ":" => ComparisonOpcode::Contains,
+    "=" => ComparisonOpcode::Eq,
+    ">" => ComparisonOpcode::Gt,
+    "<" => ComparisonOpcode::Lt,
+    ">=" => ComparisonOpcode::Gte,
+    "<=" => ComparisonOpcode::Lte,
+    "<>" => ComparisonOpcode::Ne,
+    "!=" => ComparisonOpcode::DoesNotContain,
+    ":~" => ComparisonOpcode::Regex,
+    ":@" => ComparisonOpcode::MoreLikeThis,
+    ":@!" => ComparisonOpcode::FuzzyLikeThis,
+};
+
+Term: Box<Expr<'input>> = {
+    SimpleValue => Box::new(Expr::Value(<>)),
+    QuotedValue => {
+        let s = <>;
+        let s = &s[1..s.len()-1];
+        Box::new(Expr::Value(s))
+    },
+    DoubleQuotedValue => {
+        let s = <>;
+        let s = &s[1..s.len()-1];
+        Box::new(Expr::Value(s))
+    },
+    "[" <v:(Term ","?)*> "]" => Box::new(Expr::ParsedArray(v)),
+    UnparsedArray => Box::new(Expr::UnparsedArray(<>)),
+    "true" => Box::new(Expr::Boolean(true)),
+    "false" => Box::new(Expr::Boolean(false)),
+    "null" => Box::new(Expr::Null),
+    "(" <Expr> ")"
+};
+
+SimpleValue: &'input str = {
+    r#"(([[:word:]]|(\\.))+\.?)+"# => <>
+};
+
+QuotedValue: &'input str = {
+  r#"'(?:\\.|[^'\\])*'"# => <>
+}
+
+DoubleQuotedValue: &'input str = {
+  r#""(?:\\.|[^"\\])*""# => <>
+}
+
+UnparsedArray: &'input str = {
+    r#"\[\[[^\]]*\]\]"# => <>
+}
+
+
