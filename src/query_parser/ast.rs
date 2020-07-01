@@ -6,6 +6,7 @@ pub enum Expr<'input> {
     Value(&'input str),
     ParsedArray(Vec<(Box<Expr<'input>>, Option<&'input str>)>),
     UnparsedArray(&'input str),
+    Range(Box<Expr<'input>>, Box<Expr<'input>>),
     Op(Box<Expr<'input>>, Opcode, Box<Expr<'input>>),
     UnaryOp(Opcode, Box<Expr<'input>>),
     Cmp(&'input str, ComparisonOpcode, Box<Expr<'input>>),
@@ -39,6 +40,7 @@ impl<'input> ToString for Expr<'input> {
                 s.push(']');
                 s
             }
+            Expr::Range(start, end) => format!("{} /TO/ {}", start.to_string(), end.to_string()),
             Expr::UnparsedArray(s) => s.to_string(),
             Expr::Op(_, _, _) => panic!("cannot convert Expr::Op to a String"),
             Expr::UnaryOp(_, _) => panic!("cannot convert Expr::UnaryOp to a String"),
@@ -74,12 +76,13 @@ pub enum ComparisonOpcode {
 impl<'input> Debug for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Expr::*;
-        match *self {
+        match self {
             Boolean(_) => write!(fmt, "{}", self.to_string()),
             Null => write!(fmt, "{}", self.to_string()),
             Value(_) => write!(fmt, "'{}'", self.to_string().replace('\'', "\\'")),
             ParsedArray(_) => write!(fmt, "{}", self.to_string()),
             UnparsedArray(s) => write!(fmt, "{}", s),
+            Range(_, _) => write!(fmt, "{}", self.to_string()),
             Op(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
             UnaryOp(op, ref r) => write!(fmt, "({:?} ({:?}))", op, r),
             Cmp(fieldname, op, ref r) => write!(fmt, "{:}{:?}{:?}", fieldname, op, r),

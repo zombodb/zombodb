@@ -2,14 +2,60 @@ use crate::query_parser::ast::*;
 
 grammar;
 
+match {
+    // top precedence tokens
+    ":" => CONTAINS,
+    "=" => EQ,
+    ">" => GT,
+    "<" => LT,
+    ">=" => GTE,
+    "<=" => LTE,
+    "<>" => NE,
+    "!=" => DOES_NOT_CONTAIN,
+    ":~" => REGEX,
+    ":@" => MORE_LIKE_THIS,
+    ":@!" => FUZZY_LIKE_THIS,
+
+    "[" => O_BRACKET,
+    "]" => C_BRACKET,
+
+    "(" => O_PAREN,
+    ")" => C_PAREN,
+
+    "," => COMMA,
+
+} else {
+    // lower precedence operator keyword tokens
+    r#"(?i)(not|\\!)+"# => NOT,
+    r#"(?i)(with|%)+"# => WITH,
+    r#"(?i)(and|&)+"# => AND,
+    r#"(?i)(or|,)+"# => OR,
+
+    r#"(?i)true"# => TRUE,
+    r#"(?i)false"# => FALSE,
+    r#"(?i)null"# => NULL,
+
+    r#"(?i)/to/"# => TO,
+} else {
+    // a field name looks a lot like a "simple value", so it needs to be defined
+    // with a higher matching precedence
+    r#"([a-z0-9_]+(\\.[a-z0-9_]+)*)+"# => FIELD_NAME,
+} else {
+    // even lower precedence values
+    r#"(([[:word:]]|(\\.))+\.?)+"# => SIMPLE_VALUE,
+    r#"'(?:\\.|[^'\\])*'"# => QUOTED_VALUE,
+    r#""(?:\\.|[^"\\])*""# => DOUBLE_QUOTED_VALUE,
+    r#"\[\[[^\]]*\]\]"# => UNPARSED_ARRAY,
+}
+
 pub Expr: Box<Expr<'input>> = {
     Expr OrOp BinaryOperand => Box::new(Expr::Op(<>)),
     BinaryOperand,
 };
 
 OrOp: Opcode = {
-    "or" => Opcode::Or,
-    "," => Opcode::Or,
+    OR => Opcode::Or,
+    COMMA => Opcode::Or,
 };
 
 BinaryOperand: Box<Expr<'input>> = {
@@ -18,10 +64,8 @@ BinaryOperand: Box<Expr<'input>> = {
 };
 
 AndOp: Opcode = {
-    "and" => Opcode::And,
-    "&" => Opcode::And,
-    "not" => Opcode::AndNot,
-    "!" => Opcode::AndNot,
+    AND => Opcode::And,
+    NOT => Opcode::AndNot,
 };
 
 WithOperand: Box<Expr<'input>> = {
@@ -30,8 +74,7 @@ WithOperand: Box<Expr<'input>> = {
 };
 
 WithOp: Opcode = {
-    "with" => Opcode::With,
-    "%" => Opcode::With
+    WITH => Opcode::With,
 }
 
 UnaryOperand: Box<Expr<'input>> = {
@@ -40,63 +83,50 @@ UnaryOperand: Box<Expr<'input>> = {
 };
 
 UnaryOp: Opcode = {
-    "not" => Opcode::Not,
-    "!" => Opcode::Not,
+    NOT => Opcode::Not,
 };
 
 Comparison: Box<Expr<'input>> = {
-    SimpleValue ComparisonOp Term => Box::new(Expr::Cmp(<>)),
+    FIELD_NAME ComparisonOp Term => Box::new(Expr::Cmp(<>)),
     Term
 };
 
 ComparisonOp: ComparisonOpcode = {
-    ":" => ComparisonOpcode::Contains,
-    "=" => ComparisonOpcode::Eq,
-    ">" => ComparisonOpcode::Gt,
-    "<" => ComparisonOpcode::Lt,
-    ">=" => ComparisonOpcode::Gte,
-    "<=" => ComparisonOpcode::Lte,
-    "<>" => ComparisonOpcode::Ne,
-    "!=" => ComparisonOpcode::DoesNotContain,
-    ":~" => ComparisonOpcode::Regex,
-    ":@" => ComparisonOpcode::MoreLikeThis,
-    ":@!" => ComparisonOpcode::FuzzyLikeThis,
+    CONTAINS => ComparisonOpcode::Contains,
+    EQ => ComparisonOpcode::Eq,
+    GT => ComparisonOpcode::Gt,
+    LT => ComparisonOpcode::Lt,
+    GTE => ComparisonOpcode::Gte,
+    LTE => ComparisonOpcode::Lte,
+    NE => ComparisonOpcode::Ne,
+    DOES_NOT_CONTAIN => ComparisonOpcode::DoesNotContain,
+    REGEX => ComparisonOpcode::Regex,
+    MORE_LIKE_THIS => ComparisonOpcode::MoreLikeThis,
+    FUZZY_LIKE_THIS => ComparisonOpcode::FuzzyLikeThis,
 };
 
 Term: Box<Expr<'input>> = {
-    SimpleValue => Box::new(Expr::Value(<>)),
-    QuotedValue => {
+    Value => <>,
+    O_BRACKET <v:(Value COMMA?)*> C_BRACKET => Box::new(Expr::ParsedArray(v)),
+    UNPARSED_ARRAY => Box::new(Expr::UnparsedArray(<>)),
+    <start:Value> TO <end:Value> => Box::new(Expr::Range(start, end)),
+    O_PAREN <Expr> C_PAREN
+};
+
+Value: Box<Expr<'input>> = {
+    SIMPLE_VALUE => Box::new(Expr::Value(<>)),
+    FIELD_NAME => Box::new(Expr::Value(<>)),
+    QUOTED_VALUE => {
         let s = <>;
         let s = &s[1..s.len()-1];
         Box::new(Expr::Value(s))
     },
-    DoubleQuotedValue => {
+    DOUBLE_QUOTED_VALUE => {
         let s = <>;
         let s = &s[1..s.len()-1];
         Box::new(Expr::Value(s))
     },
-    "[" <v:(Term ","?)*> "]" => Box::new(Expr::ParsedArray(v)),
-    UnparsedArray => Box::new(Expr::UnparsedArray(<>)),
-    "true" => Box::new(Expr::Boolean(true)),
-    "false" => Box::new(Expr::Boolean(false)),
-    "null" => Box::new(Expr::Null),
-    "(" <Expr> ")"
+    TRUE => Box::new(Expr::Boolean(true)),
+    FALSE => Box::new(Expr::Boolean(false)),
+    NULL => Box::new(Expr::Null),
 };
-
-SimpleValue: &'input str = {
-    r#"(([[:word:]]|(\\.))+\.?)+"# => <>
-};
-
-QuotedValue: &'input str = {
-  r#"'(?:\\.|[^'\\])*'"# => <>
-}
-
-DoubleQuotedValue: &'input str = {
-  r#""(?:\\.|[^"\\])*""# => <>
-}
-
-UnparsedArray: &'input str = {
-    r#"\[\[[^\]]*\]\]"# => <>
-}
-
-
