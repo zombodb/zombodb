@@ -31,13 +31,11 @@ match {
 
 } else {
     // lower precedence operator keyword tokens
-    r#"(?i)(not|\\!)+"# => NOT,
-    r#"(?i)(with|%)+"# => WITH,
-    r#"(?i)(and|&)+"# => AND,
-    r#"(?i)(or|,)+"# => OR,
+    r#"(?i)not|[!]"# => NOT,
+    r#"(?i)((with|%)\s*)+"# => WITH,
+    r#"(?i)((and|&)\s*)+"# => AND,
+    r#"(?i)((or|,)\s*)+"# => OR,
 
-    r#"(?i)true"# => TRUE,
-    r#"(?i)false"# => FALSE,
     r#"(?i)null"# => NULL,
 
     r#"(?i)/to/"# => TO,
@@ -47,7 +45,7 @@ match {
     r#"([a-z0-9_]+(\\.[a-z0-9_]+)*)+"# => FIELD_NAME,
 } else {
     // even lower precedence values
-    r#"(([[:word:]]|(\\.))+\.?)+"# => SIMPLE_VALUE,
+    r#"(([[:word:]]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
     r#"'(?:\\.|[^'\\])*'"# => QUOTED_VALUE,
     r#""(?:\\.|[^"\\])*""# => DOUBLE_QUOTED_VALUE,
     r#"\[\[[^\]]*\]\]"# => UNPARSED_ARRAY,
@@ -111,16 +109,16 @@ ComparisonOp: ComparisonOpcode = {
 };
 
 Term: Box<Expr<'input>> = {
-    Value => <>,
-    O_BRACKET <v:(Value COMMA?)*> C_BRACKET => Box::new(Expr::ParsedArray(v)),
+    StringExpr => Box::new(<>),
+    O_BRACKET <v:(String COMMA?)*> C_BRACKET => Box::new(Expr::ParsedArray(v)),
     UNPARSED_ARRAY => Box::new(Expr::UnparsedArray(<>)),
-    <start:Value> TO <end:Value> => Box::new(Expr::Range(start, end)),
+    <start:String> TO <end:String> => Box::new(Expr::Range(start, end)),
     ProximityChain => <>,
     O_PAREN <Expr> C_PAREN
 };
 
 ProximityChain: Box<Expr<'input>> = {
-    <mut chain:(ProximityPart)+> <final_word: StringValue> => {
+    <mut chain:(ProximityPart)+> <final_word: String> => {
         chain.push(ProximityPart {
             word: final_word,
             distance: 0,
@@ -131,34 +129,19 @@ ProximityChain: Box<Expr<'input>> = {
 }
 
 ProximityPart: ProximityPart<'input> = {
-    <word:StringValue> WITHIN <distance:NUMBER> => ProximityPart { word, distance: u32::from_str(distance).unwrap(), in_order: false },
-    <word:StringValue> WITHIN_ORDER <distance:NUMBER> => ProximityPart { word, distance: u32::from_str(distance).unwrap(), in_order: true },
+    <word:String> WITHIN <distance:NUMBER> => ProximityPart { word, distance: u32::from_str(distance).unwrap(), in_order: false },
+    <word:String> WITHIN_ORDER <distance:NUMBER> => ProximityPart { word, distance: u32::from_str(distance).unwrap(), in_order: true },
 };
 
+StringExpr: Expr<'input> = {
+    NULL => Expr::Null,
+    String => Expr::String(<>)
+}
 
-Value: Box<Expr<'input>> = {
-    NUMBER => Box::new(Expr::Value(<>)),
-    SIMPLE_VALUE => Box::new(Expr::Value(<>)),
-    FIELD_NAME => Box::new(Expr::Value(<>)),
-    QUOTED_VALUE => {
-        let s = <>;
-        let s = &s[1..s.len()-1];
-        Box::new(Expr::Value(s))
-    },
-    DOUBLE_QUOTED_VALUE => {
-        let s = <>;
-        let s = &s[1..s.len()-1];
-        Box::new(Expr::Value(s))
-    },
-    TRUE => Box::new(Expr::Boolean(true)),
-    FALSE => Box::new(Expr::Boolean(false)),
-    NULL => Box::new(Expr::Null),
-};
-
-StringValue: &'input str = {
+String: &'input str = {
     NUMBER => <>,
-    SIMPLE_VALUE => <>,
     FIELD_NAME => <>,
+    UNQUOTED_VALUE => <>,
     QUOTED_VALUE => {
         let s = <>;
         let s = &s[1..s.len()-1];
@@ -169,7 +152,4 @@ StringValue: &'input str = {
         let s = &s[1..s.len()-1];
         s
     },
-    TRUE => <>,
-    FALSE => <>,
-    NULL => <>
 };

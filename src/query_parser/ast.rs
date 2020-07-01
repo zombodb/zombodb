@@ -1,84 +1,13 @@
-use std::fmt::{Debug, Error, Formatter};
+use std::fmt::{Debug, Display, Error, Formatter};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct ProximityPart<'input> {
     pub word: &'input str,
     pub distance: u32,
     pub in_order: bool,
 }
 
-pub enum Expr<'input> {
-    Boolean(bool),
-    Null,
-    Value(&'input str),
-    ParsedArray(Vec<(Box<Expr<'input>>, Option<&'input str>)>),
-    UnparsedArray(&'input str),
-    Range(Box<Expr<'input>>, Box<Expr<'input>>),
-    ProximityChain(Vec<ProximityPart<'input>>),
-    Op(Box<Expr<'input>>, Opcode, Box<Expr<'input>>),
-    UnaryOp(Opcode, Box<Expr<'input>>),
-    Cmp(&'input str, ComparisonOpcode, Box<Expr<'input>>),
-}
-
-impl<'input> ToString for Expr<'input> {
-    fn to_string(&self) -> String {
-        match self {
-            Expr::Boolean(b) => {
-                if *b {
-                    "true".to_string()
-                } else {
-                    "false".to_string()
-                }
-            }
-            Expr::Null => "NULL".to_string(),
-            Expr::Value(s) => {
-                let mut s = s.to_string();
-                s.retain(|c| c != '\\');
-                s
-            }
-            Expr::ParsedArray(v) => {
-                let mut s = String::new();
-                s.push('[');
-                for (i, (elem, _)) in v.iter().enumerate() {
-                    if i > 0 {
-                        s.push(',');
-                    }
-                    s.push_str(&elem.to_string());
-                }
-                s.push(']');
-                s
-            }
-            Expr::UnparsedArray(s) => s.to_string(),
-            Expr::Range(start, end) => format!("{} /TO/ {}", start.to_string(), end.to_string()),
-            Expr::ProximityChain(parts) => {
-                let mut s = String::new();
-                s.push('(');
-                let mut iter = parts.iter().peekable();
-                while let Some(part) = iter.next() {
-                    let next = iter.peek();
-
-                    match next {
-                        Some(_) => s.push_str(&format!(
-                            "{} {}/{} ",
-                            part.word,
-                            if part.in_order { "WO" } else { "W" },
-                            part.distance
-                        )),
-                        None => s.push_str(&format!("{}", part.word)),
-                    }
-                }
-                s.push(')');
-
-                s
-            }
-            Expr::Op(_, _, _) => panic!("cannot convert Expr::Op to a String"),
-            Expr::UnaryOp(_, _) => panic!("cannot convert Expr::UnaryOp to a String"),
-            Expr::Cmp(_, _, _) => panic!("cannot convert Expr::Cmp to a String"),
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum Opcode {
     Not,
     With,
@@ -87,7 +16,7 @@ pub enum Opcode {
     Or,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum ComparisonOpcode {
     Contains,
     Eq,
@@ -102,25 +31,70 @@ pub enum ComparisonOpcode {
     FuzzyLikeThis,
 }
 
-impl<'input> Debug for Expr<'input> {
+#[derive(Debug, Clone)]
+pub enum Expr<'input> {
+    Null,
+    String(&'input str),
+    ParsedArray(Vec<(&'input str, Option<&'input str>)>),
+    UnparsedArray(&'input str),
+    Range(&'input str, &'input str),
+    ProximityChain(Vec<ProximityPart<'input>>),
+    Op(Box<Expr<'input>>, Opcode, Box<Expr<'input>>),
+    UnaryOp(Opcode, Box<Expr<'input>>),
+    Cmp(&'input str, ComparisonOpcode, Box<Expr<'input>>),
+}
+
+impl<'input> Display for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Expr::*;
         match self {
-            Boolean(_) => write!(fmt, "{}", self.to_string()),
-            Null => write!(fmt, "{}", self.to_string()),
-            Value(_) => write!(fmt, "'{}'", self.to_string().replace('\'', "\\'")),
-            ParsedArray(_) => write!(fmt, "{}", self.to_string()),
-            UnparsedArray(s) => write!(fmt, "{}", s),
-            Range(_, _) => write!(fmt, "{}", self.to_string()),
-            ProximityChain(_) => write!(fmt, "{}", self.to_string()),
-            Op(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
-            UnaryOp(op, ref r) => write!(fmt, "({:?} ({:?}))", op, r),
-            Cmp(fieldname, op, ref r) => write!(fmt, "{:}{:?}{:?}", fieldname, op, r),
+            Expr::Null => write!(fmt, "NULL"),
+            Expr::String(s) => write!(fmt, "{}", s),
+            Expr::ParsedArray(v) => {
+                write!(fmt, "[")?;
+                for (i, (elem, _)) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(fmt, ",")?;
+                    }
+                    write!(fmt, "\"")?;
+                    write!(fmt, "{}", elem.replace('"', "\\\""))?;
+                    write!(fmt, "\"")?;
+                }
+                write!(fmt, "]")
+            }
+            Expr::UnparsedArray(s) => write!(fmt, "{}", s),
+            Expr::Range(start, end) => write!(
+                fmt,
+                "\"{}\" /TO/ \"{}\"",
+                start.replace('"', "\\\""),
+                end.replace('"', "\\\"")
+            ),
+            Expr::ProximityChain(parts) => {
+                write!(fmt, "(")?;
+                let mut iter = parts.iter().peekable();
+                while let Some(part) = iter.next() {
+                    let next = iter.peek();
+
+                    match next {
+                        Some(_) => write!(
+                            fmt,
+                            "\"{}\" {}/{} ",
+                            part.word.replace('"', "\\\""),
+                            if part.in_order { "WO" } else { "W" },
+                            part.distance
+                        )?,
+                        None => write!(fmt, "\"{}\"", part.word.replace('"', "\\\""))?,
+                    };
+                }
+                write!(fmt, ")")
+            }
+            Expr::Op(ref l, op, ref r) => write!(fmt, "({:#} {} {:#})", l, op, r),
+            Expr::UnaryOp(op, ref r) => write!(fmt, "({} ({}))", op, r),
+            Expr::Cmp(fieldname, op, ref r) => write!(fmt, "{}{}{}", fieldname, op, r),
         }
     }
 }
 
-impl Debug for Opcode {
+impl Display for Opcode {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Opcode::*;
         match *self {
@@ -133,7 +107,7 @@ impl Debug for Opcode {
     }
 }
 
-impl Debug for ComparisonOpcode {
+impl Display for ComparisonOpcode {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result<(), Error> {
         use self::ComparisonOpcode::*;
         match *self {
