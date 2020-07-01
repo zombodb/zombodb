@@ -15,7 +15,7 @@ match {
     "!=" => DOES_NOT_CONTAIN,
     ":~" => REGEX,
     ":@" => MORE_LIKE_THIS,
-    ":@!" => FUZZY_LIKE_THIS,
+    ":@~" => FUZZY_LIKE_THIS,
 
     "[" => O_BRACKET,
     "]" => C_BRACKET,
