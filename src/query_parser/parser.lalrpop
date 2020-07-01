@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use crate::query_parser::ast::*;
 
 grammar;
@@ -22,7 +23,11 @@ match {
     "(" => O_PAREN,
     ")" => C_PAREN,
 
+    "w/" => WITHIN,
+    "wo/" => WITHIN_ORDER,
+
     "," => COMMA,
+    r#"[0-9]+"# => NUMBER,
 
 } else {
     // lower precedence operator keyword tokens
@@ -110,10 +115,29 @@ Term: Box<Expr<'input>> = {
     O_BRACKET <v:(Value COMMA?)*> C_BRACKET => Box::new(Expr::ParsedArray(v)),
     UNPARSED_ARRAY => Box::new(Expr::UnparsedArray(<>)),
     <start:Value> TO <end:Value> => Box::new(Expr::Range(start, end)),
+    ProximityChain => <>,
     O_PAREN <Expr> C_PAREN
 };
 
+ProximityChain: Box<Expr<'input>> = {
+    <mut chain:(ProximityPart)+> <final_word: StringValue> => {
+        chain.push(ProximityPart {
+            word: final_word,
+            distance: 0,
+            in_order: true
+        });
+        Box::new(Expr::ProximityChain(chain))
+    },
+}
+
+ProximityPart: ProximityPart<'input> = {
+    <word:StringValue> WITHIN <distance:NUMBER> => ProximityPart { word, distance: u32::from_str(distance).unwrap(), in_order: false },
+    <word:StringValue> WITHIN_ORDER <distance:NUMBER> => ProximityPart { word, distance: u32::from_str(distance).unwrap(), in_order: true },
+};
+
+
 Value: Box<Expr<'input>> = {
+    NUMBER => Box::new(Expr::Value(<>)),
     SIMPLE_VALUE => Box::new(Expr::Value(<>)),
     FIELD_NAME => Box::new(Expr::Value(<>)),
     QUOTED_VALUE => {
@@ -129,4 +153,23 @@ Value: Box<Expr<'input>> = {
     TRUE => Box::new(Expr::Boolean(true)),
     FALSE => Box::new(Expr::Boolean(false)),
     NULL => Box::new(Expr::Null),
+};
+
+StringValue: &'input str = {
+    NUMBER => <>,
+    SIMPLE_VALUE => <>,
+    FIELD_NAME => <>,
+    QUOTED_VALUE => {
+        let s = <>;
+        let s = &s[1..s.len()-1];
+        s
+    },
+    DOUBLE_QUOTED_VALUE => {
+        let s = <>;
+        let s = &s[1..s.len()-1];
+        s
+    },
+    TRUE => <>,
+    FALSE => <>,
+    NULL => <>
 };

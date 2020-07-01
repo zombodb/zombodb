@@ -1,5 +1,12 @@
 use std::fmt::{Debug, Error, Formatter};
 
+#[derive(Debug, Copy, Clone)]
+pub struct ProximityPart<'input> {
+    pub word: &'input str,
+    pub distance: u32,
+    pub in_order: bool,
+}
+
 pub enum Expr<'input> {
     Boolean(bool),
     Null,
@@ -7,6 +14,7 @@ pub enum Expr<'input> {
     ParsedArray(Vec<(Box<Expr<'input>>, Option<&'input str>)>),
     UnparsedArray(&'input str),
     Range(Box<Expr<'input>>, Box<Expr<'input>>),
+    ProximityChain(Vec<ProximityPart<'input>>),
     Op(Box<Expr<'input>>, Opcode, Box<Expr<'input>>),
     UnaryOp(Opcode, Box<Expr<'input>>),
     Cmp(&'input str, ComparisonOpcode, Box<Expr<'input>>),
@@ -40,8 +48,29 @@ impl<'input> ToString for Expr<'input> {
                 s.push(']');
                 s
             }
-            Expr::Range(start, end) => format!("{} /TO/ {}", start.to_string(), end.to_string()),
             Expr::UnparsedArray(s) => s.to_string(),
+            Expr::Range(start, end) => format!("{} /TO/ {}", start.to_string(), end.to_string()),
+            Expr::ProximityChain(parts) => {
+                let mut s = String::new();
+                s.push('(');
+                let mut iter = parts.iter().peekable();
+                while let Some(part) = iter.next() {
+                    let next = iter.peek();
+
+                    match next {
+                        Some(_) => s.push_str(&format!(
+                            "{} {}/{} ",
+                            part.word,
+                            if part.in_order { "WO" } else { "W" },
+                            part.distance
+                        )),
+                        None => s.push_str(&format!("{}", part.word)),
+                    }
+                }
+                s.push(')');
+
+                s
+            }
             Expr::Op(_, _, _) => panic!("cannot convert Expr::Op to a String"),
             Expr::UnaryOp(_, _) => panic!("cannot convert Expr::UnaryOp to a String"),
             Expr::Cmp(_, _, _) => panic!("cannot convert Expr::Cmp to a String"),
@@ -83,6 +112,7 @@ impl<'input> Debug for Expr<'input> {
             ParsedArray(_) => write!(fmt, "{}", self.to_string()),
             UnparsedArray(s) => write!(fmt, "{}", s),
             Range(_, _) => write!(fmt, "{}", self.to_string()),
+            ProximityChain(_) => write!(fmt, "{}", self.to_string()),
             Op(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
             UnaryOp(op, ref r) => write!(fmt, "({:?} ({:?}))", op, r),
             Cmp(fieldname, op, ref r) => write!(fmt, "{:}{:?}{:?}", fieldname, op, r),
