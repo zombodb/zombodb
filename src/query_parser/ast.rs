@@ -39,8 +39,10 @@ pub enum Expr<'input> {
     UnparsedArray(&'input str),
     Range(&'input str, &'input str),
     ProximityChain(Vec<ProximityPart<'input>>),
-    Op(Box<Expr<'input>>, Opcode, Box<Expr<'input>>),
-    UnaryOp(Opcode, Box<Expr<'input>>),
+    Not(Box<Expr<'input>>),
+    With(Box<Expr<'input>>, Box<Expr<'input>>),
+    And(Box<Expr<'input>>, Box<Expr<'input>>),
+    Or(Box<Expr<'input>>, Box<Expr<'input>>),
     Cmp(&'input str, ComparisonOpcode, Box<Expr<'input>>),
 }
 
@@ -87,8 +89,10 @@ impl<'input> Display for Expr<'input> {
                 }
                 write!(fmt, ")")
             }
-            Expr::Op(ref l, op, ref r) => write!(fmt, "({:#} {} {:#})", l, op, r),
-            Expr::UnaryOp(op, ref r) => write!(fmt, "({} ({}))", op, r),
+            Expr::Not(ref r) => write!(fmt, "NOT ({})", r),
+            Expr::With(ref l, ref r) => write!(fmt, "({} WITH {})", l, r),
+            Expr::And(ref l, ref r) => write!(fmt, "({} AND {})", l, r),
+            Expr::Or(ref l, ref r) => write!(fmt, "({} OR {})", l, r),
             Expr::Cmp(fieldname, op, ref r) => write!(fmt, "{}{}{}", fieldname, op, r),
         }
     }

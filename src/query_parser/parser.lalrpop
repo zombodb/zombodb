@@ -52,7 +52,7 @@ match {
 }
 
 pub Expr: Box<Expr<'input>> = {
-    Expr OrOp BinaryOperand => Box::new(Expr::Op(<>)),
+    <l:Expr> OrOp <r:BinaryOperand> => Box::new(Expr::Or(l, r)),
     BinaryOperand,
 };
 
@@ -62,7 +62,7 @@ OrOp: Opcode = {
 };
 
 BinaryOperand: Box<Expr<'input>> = {
-    BinaryOperand AndOp WithOperand => Box::new(Expr::Op(<>)),
+    <l:BinaryOperand> AndOp <r:WithOperand> => Box::new(Expr::And(l, r)),
     WithOperand,
 };
 
@@ -72,7 +72,7 @@ AndOp: Opcode = {
 };
 
 WithOperand: Box<Expr<'input>> = {
-    WithOperand WithOp UnaryOperand => Box::new(Expr::Op(<>)),
+    <l:WithOperand> WithOp <r:UnaryOperand> => Box::new(Expr::With(l, r)),
     UnaryOperand
 };
 
@@ -81,7 +81,12 @@ WithOp: Opcode = {
 }
 
 UnaryOperand: Box<Expr<'input>> = {
-    UnaryOp Comparison => Box::new(Expr::UnaryOp(<>)),
+    <op:UnaryOp> <r:Comparison> => {
+        match op {
+            Opcode::Not => Box::new(Expr::Not(r)),
+            _ => panic!("{:?} is not a Unary operation", op)
+        }
+    },
     Comparison,
 };
 
