@@ -9,7 +9,6 @@ pub struct ProximityPart<'input> {
 
 #[derive(Debug, Clone)]
 pub enum Opcode {
-    Not,
     With,
     AndNot,
     And,
@@ -156,7 +155,6 @@ impl Display for Opcode {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Opcode::*;
         match *self {
-            Not => write!(fmt, "NOT"),
             With => write!(fmt, "WITH"),
             AndNot => write!(fmt, "AND NOT"),
             And => write!(fmt, "AND"),

@@ -86,20 +86,6 @@ WithOp: Opcode = {
     WITH => Opcode::With,
 }
 
-UnaryOperand: Box<Expr<'input>> = {
-    <op:UnaryOp> <r:Comparison> => {
-        match op {
-            Opcode::Not => Box::new(Expr::Not(r)),
-            _ => panic!("{:?} is not a Unary operation", op)
-        }
-    },
-    Comparison,
-};
-
-UnaryOp: Opcode = {
-    NOT => Opcode::Not,
-};
-
 Comparison: Box<Expr<'input>> = {
     FIELD_NAME ComparisonOp Term => Box::new(Expr::from_opcode(<>)),
     NOT <t:Comparison> => Box::new(Expr::Not(t)),
