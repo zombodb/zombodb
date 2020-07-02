@@ -33,17 +33,54 @@ pub enum ComparisonOpcode {
 
 #[derive(Debug, Clone)]
 pub enum Expr<'input> {
+    // types of values
     Null,
     String(&'input str),
     ParsedArray(Vec<(&'input str, Option<&'input str>)>),
     UnparsedArray(&'input str),
     Range(&'input str, &'input str),
     ProximityChain(Vec<ProximityPart<'input>>),
+
+    // types of connectors
     Not(Box<Expr<'input>>),
     With(Box<Expr<'input>>, Box<Expr<'input>>),
     And(Box<Expr<'input>>, Box<Expr<'input>>),
     Or(Box<Expr<'input>>, Box<Expr<'input>>),
-    Cmp(&'input str, ComparisonOpcode, Box<Expr<'input>>),
+
+    // types of comparisons
+    Contains(&'input str, Box<Expr<'input>>),
+    Eq(&'input str, Box<Expr<'input>>),
+    Gt(&'input str, Box<Expr<'input>>),
+    Lt(&'input str, Box<Expr<'input>>),
+    Gte(&'input str, Box<Expr<'input>>),
+    Lte(&'input str, Box<Expr<'input>>),
+    Ne(&'input str, Box<Expr<'input>>),
+    DoesNotContain(&'input str, Box<Expr<'input>>),
+    Regex(&'input str, Box<Expr<'input>>),
+    MoreLikeThis(&'input str, Box<Expr<'input>>),
+    FuzzyLikeThis(&'input str, Box<Expr<'input>>),
+}
+
+impl<'input> Expr<'input> {
+    pub fn from_opcode(
+        field_name: &'input str,
+        opcode: ComparisonOpcode,
+        right: Box<Expr<'input>>,
+    ) -> Expr<'input> {
+        match opcode {
+            ComparisonOpcode::Contains => Expr::Contains(field_name, right),
+            ComparisonOpcode::Eq => Expr::Eq(field_name, right),
+            ComparisonOpcode::Gt => Expr::Gt(field_name, right),
+            ComparisonOpcode::Lt => Expr::Lt(field_name, right),
+            ComparisonOpcode::Gte => Expr::Gte(field_name, right),
+            ComparisonOpcode::Lte => Expr::Lte(field_name, right),
+            ComparisonOpcode::Ne => Expr::Ne(field_name, right),
+            ComparisonOpcode::DoesNotContain => Expr::DoesNotContain(field_name, right),
+            ComparisonOpcode::Regex => Expr::Regex(field_name, right),
+            ComparisonOpcode::MoreLikeThis => Expr::MoreLikeThis(field_name, right),
+            ComparisonOpcode::FuzzyLikeThis => Expr::FuzzyLikeThis(field_name, right),
+        }
+    }
 }
 
 impl<'input> Display for Expr<'input> {
@@ -93,7 +130,26 @@ impl<'input> Display for Expr<'input> {
             Expr::With(ref l, ref r) => write!(fmt, "({} WITH {})", l, r),
             Expr::And(ref l, ref r) => write!(fmt, "({} AND {})", l, r),
             Expr::Or(ref l, ref r) => write!(fmt, "({} OR {})", l, r),
-            Expr::Cmp(fieldname, op, ref r) => write!(fmt, "{}{}{}", fieldname, op, r),
+
+            Expr::Contains(ref l, ref r) => {
+                write!(fmt, "{} {} {}", l, ComparisonOpcode::Contains, r)
+            }
+            Expr::Eq(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Eq, r),
+            Expr::Gt(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Gt, r),
+            Expr::Lt(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Lt, r),
+            Expr::Gte(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Gte, r),
+            Expr::Lte(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Lte, r),
+            Expr::Ne(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Ne, r),
+            Expr::DoesNotContain(ref l, ref r) => {
+                write!(fmt, "{} {} {}", l, ComparisonOpcode::DoesNotContain, r)
+            }
+            Expr::Regex(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Regex, r),
+            Expr::MoreLikeThis(ref l, ref r) => {
+                write!(fmt, "{} {} {}", l, ComparisonOpcode::MoreLikeThis, r)
+            }
+            Expr::FuzzyLikeThis(ref l, ref r) => {
+                write!(fmt, "{} {} {}", l, ComparisonOpcode::FuzzyLikeThis, r)
+            }
         }
     }
 }

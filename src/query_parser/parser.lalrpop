@@ -95,7 +95,7 @@ UnaryOp: Opcode = {
 };
 
 Comparison: Box<Expr<'input>> = {
-    FIELD_NAME ComparisonOp Term => Box::new(Expr::Cmp(<>)),
+    FIELD_NAME ComparisonOp Term => Box::new(Expr::from_opcode(<>)),
     Term
 };
 
