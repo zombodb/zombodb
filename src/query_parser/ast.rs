@@ -87,7 +87,7 @@ impl<'input> Display for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
             Expr::Null => write!(fmt, "NULL"),
-            Expr::String(s) => write!(fmt, "{}", s),
+            Expr::String(s) => write!(fmt, "\"{}\"", s.replace('"', "\\\"")),
             Expr::ParsedArray(v) => {
                 write!(fmt, "[")?;
                 for (i, (elem, _)) in v.iter().enumerate() {
@@ -131,24 +131,22 @@ impl<'input> Display for Expr<'input> {
             Expr::And(ref l, ref r) => write!(fmt, "({} AND {})", l, r),
             Expr::Or(ref l, ref r) => write!(fmt, "({} OR {})", l, r),
 
-            Expr::Contains(ref l, ref r) => {
-                write!(fmt, "{} {} {}", l, ComparisonOpcode::Contains, r)
-            }
-            Expr::Eq(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Eq, r),
-            Expr::Gt(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Gt, r),
-            Expr::Lt(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Lt, r),
-            Expr::Gte(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Gte, r),
-            Expr::Lte(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Lte, r),
-            Expr::Ne(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Ne, r),
+            Expr::Contains(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Contains, r),
+            Expr::Eq(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Eq, r),
+            Expr::Gt(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Gt, r),
+            Expr::Lt(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Lt, r),
+            Expr::Gte(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Gte, r),
+            Expr::Lte(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Lte, r),
+            Expr::Ne(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Ne, r),
             Expr::DoesNotContain(ref l, ref r) => {
-                write!(fmt, "{} {} {}", l, ComparisonOpcode::DoesNotContain, r)
+                write!(fmt, "{}{}{}", l, ComparisonOpcode::DoesNotContain, r)
             }
-            Expr::Regex(ref l, ref r) => write!(fmt, "{} {} {}", l, ComparisonOpcode::Regex, r),
+            Expr::Regex(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Regex, r),
             Expr::MoreLikeThis(ref l, ref r) => {
-                write!(fmt, "{} {} {}", l, ComparisonOpcode::MoreLikeThis, r)
+                write!(fmt, "{}{}{}", l, ComparisonOpcode::MoreLikeThis, r)
             }
             Expr::FuzzyLikeThis(ref l, ref r) => {
-                write!(fmt, "{} {} {}", l, ComparisonOpcode::FuzzyLikeThis, r)
+                write!(fmt, "{}{}{}", l, ComparisonOpcode::FuzzyLikeThis, r)
             }
         }
     }

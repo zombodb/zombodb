@@ -62,7 +62,13 @@ OrOp: Opcode = {
 };
 
 BinaryOperand: Box<Expr<'input>> = {
-    <l:BinaryOperand> AndOp <r:WithOperand> => Box::new(Expr::And(l, r)),
+    <l:BinaryOperand> <op:AndOp> <r:WithOperand> => {
+        match op {
+            Opcode::And => Box::new(Expr::And(l, r)),
+            Opcode::AndNot => Box::new(Expr::And(l, Box::new(Expr::Not(r)))),
+            _ => panic!("{:?} is not an AndOp", op)
+        }
+    },
     WithOperand,
 };
 
@@ -72,8 +78,8 @@ AndOp: Opcode = {
 };
 
 WithOperand: Box<Expr<'input>> = {
-    <l:WithOperand> WithOp <r:UnaryOperand> => Box::new(Expr::With(l, r)),
-    UnaryOperand
+    <l:WithOperand> WithOp <r:Comparison> => Box::new(Expr::With(l, r)),
+    Comparison
 };
 
 WithOp: Opcode = {
@@ -96,6 +102,7 @@ UnaryOp: Opcode = {
 
 Comparison: Box<Expr<'input>> = {
     FIELD_NAME ComparisonOp Term => Box::new(Expr::from_opcode(<>)),
+    NOT <t:Comparison> => Box::new(Expr::Not(t)),
     Term
 };
 
@@ -119,7 +126,7 @@ Term: Box<Expr<'input>> = {
     UNPARSED_ARRAY => Box::new(Expr::UnparsedArray(<>)),
     <start:String> TO <end:String> => Box::new(Expr::Range(start, end)),
     ProximityChain => <>,
-    O_PAREN <Expr> C_PAREN
+    O_PAREN <Expr> C_PAREN,
 };
 
 ProximityChain: Box<Expr<'input>> = {
