@@ -78,12 +78,48 @@ AndOp: Opcode = {
 };
 
 WithOperand: Box<Expr<'input>> = {
-    <l:WithOperand> WithOp <r:Comparison> => Box::new(Expr::With(l, r)),
-    Comparison
+    <l:WithOperand> WithOp <r:ProximityOperand> => Box::new(Expr::With(l, r)),
+    ProximityOperand
 };
 
 WithOp: Opcode = {
     WITH => Opcode::With,
+}
+
+ProximityOperand: Box<Expr<'input>> = {
+    <mut parts:ProximityPart+> <last:Term> => {
+        let mut words = Vec::new();
+        last.extract_prox_terms(&mut words);
+        parts.push(ProximityPart {
+            words,
+            distance:0,
+            in_order:false
+        });
+
+        Box::new(Expr::ProximityChain(parts))
+    },
+    Comparison
+};
+
+ProximityPart: ProximityPart<'input> = {
+    <l:Term> WITHIN <distance:NUMBER> => {
+        let mut words = Vec::new();
+        l.extract_prox_terms(&mut words);
+        ProximityPart {
+            words,
+            distance: u32::from_str(distance).unwrap(),
+            in_order:false
+        }
+    },
+    <l:Term> WITHIN_ORDER <distance:NUMBER> => {
+        let mut words = Vec::new();
+        l.extract_prox_terms(&mut words);
+        ProximityPart {
+            words,
+            distance: u32::from_str(distance).unwrap(),
+            in_order:true
+        }
+    }
 }
 
 Comparison: Box<Expr<'input>> = {
@@ -111,24 +147,7 @@ Term: Box<Expr<'input>> = {
     O_BRACKET <v:(String COMMA?)*> C_BRACKET => Box::new(Expr::ParsedArray(v)),
     UNPARSED_ARRAY => Box::new(Expr::UnparsedArray(<>)),
     <start:String> TO <end:String> => Box::new(Expr::Range(start, end)),
-    ProximityChain => <>,
     O_PAREN <Expr> C_PAREN,
-};
-
-ProximityChain: Box<Expr<'input>> = {
-    <mut chain:(ProximityPart)+> <final_word: String> => {
-        chain.push(ProximityPart {
-            word: final_word,
-            distance: 0,
-            in_order: true
-        });
-        Box::new(Expr::ProximityChain(chain))
-    },
-}
-
-ProximityPart: ProximityPart<'input> = {
-    <word:String> WITHIN <distance:NUMBER> => ProximityPart { word, distance: u32::from_str(distance).unwrap(), in_order: false },
-    <word:String> WITHIN_ORDER <distance:NUMBER> => ProximityPart { word, distance: u32::from_str(distance).unwrap(), in_order: true },
 };
 
 StringExpr: Expr<'input> = {

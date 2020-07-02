@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Clone)]
 pub struct ProximityPart<'input> {
-    pub word: &'input str,
+    pub words: Vec<&'input str>,
     pub distance: u32,
     pub in_order: bool,
 }
@@ -80,6 +80,19 @@ impl<'input> Expr<'input> {
             ComparisonOpcode::FuzzyLikeThis => Expr::FuzzyLikeThis(field_name, right),
         }
     }
+
+    pub fn extract_prox_terms(&self, flat: &mut Vec<&'input str>) {
+        match self {
+            Expr::Or(ref l, ref r) => {
+                l.extract_prox_terms(flat);
+                r.extract_prox_terms(flat);
+            }
+            Expr::String(s) => {
+                flat.push(s);
+            }
+            _ => panic!("Unsupported proximity group value: {}", self),
+        }
+    }
 }
 
 impl<'input> Display for Expr<'input> {
@@ -112,16 +125,39 @@ impl<'input> Display for Expr<'input> {
                 while let Some(part) = iter.next() {
                     let next = iter.peek();
 
-                    match next {
-                        Some(_) => write!(
-                            fmt,
-                            "\"{}\" {}/{} ",
-                            part.word.replace('"', "\\\""),
-                            if part.in_order { "WO" } else { "W" },
-                            part.distance
-                        )?,
-                        None => write!(fmt, "\"{}\"", part.word.replace('"', "\\\""))?,
-                    };
+                    if part.words.len() == 1 {
+                        let word = part.words.get(0).unwrap();
+                        match next {
+                            Some(_) => write!(
+                                fmt,
+                                "\"{}\" {}/{} ",
+                                word.replace('"', "\\\""),
+                                if part.in_order { "WO" } else { "W" },
+                                part.distance
+                            )?,
+                            None => write!(fmt, "\"{}\"", word.replace('"', "\\\""))?,
+                        };
+                    } else {
+                        write!(fmt, "(")?;
+                        for (idx, word) in part.words.iter().enumerate() {
+                            if idx > 0 {
+                                write!(fmt, ",")?;
+                            }
+                            write!(fmt, "\"{}\"", word.replace('"', "\\\""))?;
+                        }
+                        write!(fmt, ") ")?;
+                        match next {
+                            Some(_) => {
+                                write!(
+                                    fmt,
+                                    "{}/{} ",
+                                    if part.in_order { "WO" } else { "W" },
+                                    part.distance
+                                )?;
+                            }
+                            None => {}
+                        }
+                    }
                 }
                 write!(fmt, ")")
             }
