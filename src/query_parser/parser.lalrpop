@@ -105,7 +105,7 @@ ProximityOperand: Box<Expr<'input>> = {
 
         Box::new(Expr::ProximityChain(parts))
     },
-    Comparison
+    UnaryOperand
 };
 
 ProximityPart: ProximityPart<'input> = {
@@ -127,12 +127,20 @@ ProximityPart: ProximityPart<'input> = {
             in_order:true
         }
     }
-}
+};
+
+UnaryOperand: Box<Expr<'input>> = {
+    NotOp <t:UnaryOperand> => Box::new(Expr::Not(t)),
+    Comparison,
+};
+
+NotOp: Opcode = {
+    NOT => Opcode::Not,
+    EXCLAMATION => Opcode::Not
+};
 
 Comparison: Box<Expr<'input>> = {
     FIELD_NAME ComparisonOp Term => Box::new(Expr::from_opcode(<>)),
-    NOT <t:Comparison> => Box::new(Expr::Not(t)),
-    EXCLAMATION <t:Comparison> => Box::new(Expr::Not(t)),
     Term
 };
 
