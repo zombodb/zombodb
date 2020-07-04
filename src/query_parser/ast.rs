@@ -35,10 +35,12 @@ pub enum ComparisonOpcode {
 pub enum Expr<'input> {
     // types of values
     Null,
-    String(&'input str),
-    ParsedArray(Vec<&'input str>),
-    UnparsedArray(&'input str),
-    Range(&'input str, &'input str),
+
+    String(&'input str, Option<f32>),
+    ParsedArray(Vec<&'input str>, Option<f32>),
+    UnparsedArray(&'input str, Option<f32>),
+    Range(&'input str, &'input str, Option<f32>),
+
     ProximityChain(Vec<ProximityPart<'input>>),
 
     // types of connectors
@@ -88,7 +90,7 @@ impl<'input> Expr<'input> {
                 l.extract_prox_terms(flat);
                 r.extract_prox_terms(flat);
             }
-            Expr::String(s) => {
+            Expr::String(s, _) => {
                 flat.push(s);
             }
             _ => panic!("Unsupported proximity group value: {}", self),
@@ -100,10 +102,18 @@ impl<'input> Display for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
             Expr::Null => write!(fmt, "NULL"),
-            Expr::String(s) => write!(fmt, "\"{}\"", s.replace('"', "\\\"")),
-            Expr::ParsedArray(v) => {
+
+            Expr::String(s, b) => {
+                write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
+                if let Some(boost) = b {
+                    write!(fmt, "^{}", boost)?;
+                }
+                Ok(())
+            }
+
+            Expr::ParsedArray(a, b) => {
                 write!(fmt, "[")?;
-                for (i, elem) in v.iter().enumerate() {
+                for (i, elem) in a.iter().enumerate() {
                     if i > 0 {
                         write!(fmt, ",")?;
                     }
@@ -111,15 +121,36 @@ impl<'input> Display for Expr<'input> {
                     write!(fmt, "{}", elem.replace('"', "\\\""))?;
                     write!(fmt, "\"")?;
                 }
-                write!(fmt, "]")
+                write!(fmt, "]")?;
+
+                if let Some(boost) = b {
+                    write!(fmt, "^{}", boost)?;
+                }
+                Ok(())
             }
-            Expr::UnparsedArray(s) => write!(fmt, "{}", s),
-            Expr::Range(start, end) => write!(
-                fmt,
-                "\"{}\" /TO/ \"{}\"",
-                start.replace('"', "\\\""),
-                end.replace('"', "\\\"")
-            ),
+
+            Expr::UnparsedArray(a, b) => {
+                write!(fmt, "{}", a)?;
+                if let Some(boost) = b {
+                    write!(fmt, "^{}", boost)?;
+                }
+                Ok(())
+            }
+
+            Expr::Range(start, end, b) => {
+                write!(
+                    fmt,
+                    "\"{}\" /TO/ \"{}\"",
+                    start.replace('"', "\\\""),
+                    end.replace('"', "\\\"")
+                )?;
+
+                if let Some(boost) = b {
+                    write!(fmt, "^{}", boost)?;
+                }
+                Ok(())
+            }
+
             Expr::ProximityChain(parts) => {
                 write!(fmt, "(")?;
                 let mut iter = parts.iter().peekable();
@@ -162,6 +193,7 @@ impl<'input> Display for Expr<'input> {
                 }
                 write!(fmt, ")")
             }
+
             Expr::Not(ref r) => write!(fmt, "NOT ({})", r),
             Expr::With(ref l, ref r) => write!(fmt, "({} WITH {})", l, r),
             Expr::And(ref l, ref r) => write!(fmt, "({} AND {})", l, r),
