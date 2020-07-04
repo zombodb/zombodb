@@ -26,15 +26,19 @@ match {
     "w/" => WITHIN,
     "wo/" => WITHIN_ORDER,
 
-    "," => COMMA,
     r#"[0-9]+"# => NUMBER,
 
 } else {
     // lower precedence operator keyword tokens
-    r#"(?i)not|[!]"# => NOT,
-    r#"(?i)((with|%)\s*)+"# => WITH,
-    r#"(?i)((and|&)\s*)+"# => AND,
-    r#"(?i)((or|,)\s*)+"# => OR,
+    r"(?i)not" => NOT,
+    r"(?i)with" => WITH,
+    r"(?i)and" => AND,
+    r"(?i)or" => OR,
+
+    "!" => EXCLAMATION,
+    "%" => PERCENT,
+    "&" => AMPERSAND,
+    "," => COMMA,
 
     r#"(?i)null"# => NULL,
 
@@ -73,8 +77,10 @@ BinaryOperand: Box<Expr<'input>> = {
 };
 
 AndOp: Opcode = {
-    AND => Opcode::And,
     NOT => Opcode::AndNot,
+    EXCLAMATION => Opcode::AndNot,
+    AND => Opcode::And,
+    AMPERSAND => Opcode::And,
 };
 
 WithOperand: Box<Expr<'input>> = {
@@ -84,6 +90,7 @@ WithOperand: Box<Expr<'input>> = {
 
 WithOp: Opcode = {
     WITH => Opcode::With,
+    PERCENT => Opcode::With,
 }
 
 ProximityOperand: Box<Expr<'input>> = {
@@ -125,6 +132,7 @@ ProximityPart: ProximityPart<'input> = {
 Comparison: Box<Expr<'input>> = {
     FIELD_NAME ComparisonOp Term => Box::new(Expr::from_opcode(<>)),
     NOT <t:Comparison> => Box::new(Expr::Not(t)),
+    EXCLAMATION <t:Comparison> => Box::new(Expr::Not(t)),
     Term
 };
 
@@ -144,7 +152,7 @@ ComparisonOp: ComparisonOpcode = {
 
 Term: Box<Expr<'input>> = {
     StringExpr => Box::new(<>),
-    O_BRACKET <v:(String COMMA?)*> C_BRACKET => Box::new(Expr::ParsedArray(v)),
+    O_BRACKET <v:(<String> COMMA?)*> C_BRACKET => Box::new(Expr::ParsedArray(v)),
     UNPARSED_ARRAY => Box::new(Expr::UnparsedArray(<>)),
     <start:String> TO <end:String> => Box::new(Expr::Range(start, end)),
     O_PAREN <Expr> C_PAREN,

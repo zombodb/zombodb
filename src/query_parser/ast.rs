@@ -35,7 +35,7 @@ pub enum Expr<'input> {
     // types of values
     Null,
     String(&'input str),
-    ParsedArray(Vec<(&'input str, Option<&'input str>)>),
+    ParsedArray(Vec<&'input str>),
     UnparsedArray(&'input str),
     Range(&'input str, &'input str),
     ProximityChain(Vec<ProximityPart<'input>>),
@@ -102,7 +102,7 @@ impl<'input> Display for Expr<'input> {
             Expr::String(s) => write!(fmt, "\"{}\"", s.replace('"', "\\\"")),
             Expr::ParsedArray(v) => {
                 write!(fmt, "[")?;
-                for (i, (elem, _)) in v.iter().enumerate() {
+                for (i, elem) in v.iter().enumerate() {
                     if i > 0 {
                         write!(fmt, ",")?;
                     }
