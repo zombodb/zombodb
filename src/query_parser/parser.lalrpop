@@ -59,7 +59,7 @@ match {
 }
 
 pub Expr: Box<Expr<'input>> = {
-    <l:Expr> OrOp <r:BinaryOperand> => Box::new(Expr::Or(l, r)),
+    <l:Expr> OrOp+ <r:BinaryOperand> => Box::new(Expr::Or(l, r)),
     BinaryOperand,
 };
 
@@ -69,21 +69,19 @@ OrOp: Opcode = {
 };
 
 BinaryOperand: Box<Expr<'input>> = {
-    <l:BinaryOperand> <op:AndOp> <r:WithOperand> => {
-        match op {
-            Opcode::And => Box::new(Expr::And(l, r)),
-            Opcode::AndNot => Box::new(Expr::And(l, Box::new(Expr::Not(r)))),
-            _ => panic!("{:?} is not an AndOp", op)
-        }
-    },
+    <l:BinaryOperand> <op:AndOp+> <r:WithOperand> => Box::new(Expr::And(l, r)),
+    <l:BinaryOperand> <op:AndNotOp> <r:WithOperand> => Box::new(Expr::And(l, Box::new(Expr::Not(r)))),
     WithOperand,
 };
 
 AndOp: Opcode = {
-    NOT => Opcode::AndNot,
-    EXCLAMATION => Opcode::AndNot,
     AND => Opcode::And,
     AMPERSAND => Opcode::And,
+};
+
+AndNotOp: Opcode = {
+    NOT => Opcode::AndNot,
+    EXCLAMATION => Opcode::AndNot,
 };
 
 WithOperand: Box<Expr<'input>> = {
