@@ -59,8 +59,12 @@ match {
 }
 
 pub Expr: Box<Expr<'input>> = {
-    <l:Expr> OrOp+ <r:BinaryOperand> => Box::new(Expr::Or(l, r)),
-    BinaryOperand,
+    <OrExpression>,
+};
+
+OrExpression: Box<Expr<'input>> = {
+    <l:OrExpression> OrOp+ <r:AndExpression> => Box::new(Expr::Or(l, r)),
+    AndExpression,
 };
 
 OrOp: Opcode = {
@@ -68,10 +72,10 @@ OrOp: Opcode = {
     COMMA => Opcode::Or,
 };
 
-BinaryOperand: Box<Expr<'input>> = {
-    <l:BinaryOperand> <op:AndOp+> <r:WithOperand> => Box::new(Expr::And(l, r)),
-    <l:BinaryOperand> <op:AndNotOp> <r:WithOperand> => Box::new(Expr::And(l, Box::new(Expr::Not(r)))),
-    WithOperand,
+AndExpression: Box<Expr<'input>> = {
+    <l:AndExpression> <op:AndOp+> <r:WithExpression> => Box::new(Expr::And(l, r)),
+    <l:AndExpression> <op:AndNotOp> <r:WithExpression> => Box::new(Expr::And(l, Box::new(Expr::Not(r)))),
+    WithExpression,
 };
 
 AndOp: Opcode = {
@@ -84,9 +88,9 @@ AndNotOp: Opcode = {
     EXCLAMATION => Opcode::AndNot,
 };
 
-WithOperand: Box<Expr<'input>> = {
-    <l:WithOperand> WithOp <r:ProximityOperand> => Box::new(Expr::With(l, r)),
-    ProximityOperand
+WithExpression: Box<Expr<'input>> = {
+    <l:WithExpression> WithOp <r:ProximityExpression> => Box::new(Expr::With(l, r)),
+    ProximityExpression
 };
 
 WithOp: Opcode = {
@@ -94,7 +98,7 @@ WithOp: Opcode = {
     PERCENT => Opcode::With,
 }
 
-ProximityOperand: Box<Expr<'input>> = {
+ProximityExpression: Box<Expr<'input>> = {
     <mut parts:ProximityPart+> <last:Term> => {
         let mut words = Vec::new();
         last.extract_prox_terms(&mut words);
@@ -106,7 +110,7 @@ ProximityOperand: Box<Expr<'input>> = {
 
         Box::new(Expr::ProximityChain(parts))
     },
-    UnaryOperand
+    UnaryExpression
 };
 
 ProximityPart: ProximityPart<'input> = {
@@ -130,8 +134,8 @@ ProximityPart: ProximityPart<'input> = {
     }
 };
 
-UnaryOperand: Box<Expr<'input>> = {
-    NotOp <t:UnaryOperand> => Box::new(Expr::Not(t)),
+UnaryExpression: Box<Expr<'input>> = {
+    NotOp <t:UnaryExpression> => Box::new(Expr::Not(t)),
     Comparison,
 };
 
