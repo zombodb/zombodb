@@ -527,14 +527,32 @@ mod expr_tests {
 
     #[test]
     fn paresd_array() {
-        assert_expr("[a,b,c]", ParsedArray!(Contains, "_", "a", "b", "c"))
+        assert_expr(
+            "[a,b,c]",
+            ParsedArray!(Contains, "_", String!("a"), String!("b"), String!("c")),
+        )
+    }
+
+    #[test]
+    fn paresd_with_wildcard() {
+        assert_expr(
+            "[a,b,c*]",
+            ParsedArray!(Contains, "_", String!("a"), String!("b"), Wildcard!("c*")),
+        )
     }
 
     #[test]
     fn paresd_array_with_boost() {
         assert_expr(
             "[a,b,c]^42",
-            ParsedArrayWithBoost!(Contains, "_", 42.0, "a", "b", "c"),
+            ParsedArrayWithBoost!(
+                Contains,
+                "_",
+                42.0,
+                String!(r#"a"#),
+                String!(r#"b"#),
+                String!(r#"c"#)
+            ),
         )
     }
 

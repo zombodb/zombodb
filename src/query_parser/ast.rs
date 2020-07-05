@@ -57,7 +57,7 @@ pub enum Expr<'input> {
     String(&'input str, Option<f32>),
     Wildcard(&'input str, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
-    ParsedArray(Vec<&'input str>, Option<f32>),
+    ParsedArray(Vec<Expr<'input>>, Option<f32>),
     UnparsedArray(&'input str, Option<f32>),
     Range(&'input str, &'input str, Option<f32>),
 
@@ -230,9 +230,7 @@ impl<'input> Display for Expr<'input> {
                     if i > 0 {
                         write!(fmt, ",")?;
                     }
-                    write!(fmt, "\"")?;
-                    write!(fmt, "{}", elem.replace('"', "\\\""))?;
-                    write!(fmt, "\"")?;
+                    write!(fmt, "{}", elem)?;
                 }
                 write!(fmt, "]")?;
 

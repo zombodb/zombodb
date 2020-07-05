@@ -221,7 +221,7 @@ ComparisonOp: ComparisonOpcode = {
 Term: Box<Expr<'input>> = {
     StringExpr => Box::new(<>),
     O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
-    O_BRACKET <v:(<String> COMMA?)*> C_BRACKET <b:Boost?> => Box::new(Expr::ParsedArray(v, b)),
+    O_BRACKET <v:(<StringExpr> COMMA?)*> C_BRACKET <b:Boost?> => Box::new(Expr::ParsedArray(v, b)),
     <a:UnparsedArray> <b:Boost?> => Box::new(Expr::UnparsedArray(a, b)),
     <start:String> TO <end:String> <b:Boost?> => Box::new(Expr::Range(start, end, b)),
 };
