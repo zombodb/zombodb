@@ -42,6 +42,7 @@ match {
     "," => COMMA,
 
     "^" => CARET,
+    "~" => TILDE,
 
     r#"(?i)null"# => NULL,
 
@@ -52,7 +53,7 @@ match {
     r#"([a-z0-9_]+(\.[a-z0-9_]+)*)+"# => FIELD_NAME,
 } else {
     // even lower precedence values
-    r#"(([[:word:]]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
+    r#"(([a-zA-Z0-9_*?]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
     r#"'(?:\\.|[^'\\])*'"# => QUOTED_VALUE,
     r#""(?:\\.|[^"\\])*""# => DOUBLE_QUOTED_VALUE,
     r#"\[\[[^\]]*\]\]"# => UNPARSED_ARRAY,
@@ -173,12 +174,17 @@ Term: Box<Expr<'input>> = {
 
 StringExpr: Expr<'input> = {
     NULL => Expr::Null,
-    <s:String> <b:Boost?> => Expr::String(s, b)
+    <s:String> <b:Boost?> => Expr::maybe_make_wildcard(Expr::String(s, b)),
+    <s:String> <f:Fuzzy> <b:Boost?> => Expr::Fuzzy(s, f, b)
 };
 
 Boost: f32 = {
     CARET <FLOAT> => f32::from_str(<>).unwrap(),
     CARET <NUMBER> => f32::from_str(<>).unwrap(),
+};
+
+Fuzzy: u8 = {
+    TILDE <NUMBER> => u8::from_str(<>).unwrap(),
 };
 
 String: &'input str = {

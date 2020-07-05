@@ -35,8 +35,9 @@ pub enum ComparisonOpcode {
 pub enum Expr<'input> {
     // types of values
     Null,
-
     String(&'input str, Option<f32>),
+    Wildcard(&'input str, Option<f32>),
+    Fuzzy(&'input str, u8, Option<f32>),
     ParsedArray(Vec<&'input str>, Option<f32>),
     UnparsedArray(&'input str, Option<f32>),
     Range(&'input str, &'input str, Option<f32>),
@@ -84,6 +85,22 @@ impl<'input> Expr<'input> {
         }
     }
 
+    pub fn maybe_make_wildcard(expr: Expr<'input>) -> Expr<'input> {
+        match expr {
+            Expr::String(s, b) => {
+                let mut prev = 0 as char;
+                for c in s.chars() {
+                    if (c == '*' || c == '?') && prev != '\\' {
+                        return Expr::Wildcard(s, b);
+                    }
+                    prev = c;
+                }
+                expr
+            }
+            _ => expr,
+        }
+    }
+
     pub fn extract_prox_terms(&self, flat: &mut Vec<&'input str>) {
         match self {
             Expr::Or(ref l, ref r) => {
@@ -103,8 +120,16 @@ impl<'input> Display for Expr<'input> {
         match self {
             Expr::Null => write!(fmt, "NULL"),
 
-            Expr::String(s, b) => {
+            Expr::String(s, b) | Expr::Wildcard(s, b) => {
                 write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
+                if let Some(boost) = b {
+                    write!(fmt, "^{}", boost)?;
+                }
+                Ok(())
+            }
+
+            Expr::Fuzzy(s, f, b) => {
+                write!(fmt, "\"{}\"~{}", s.replace('"', "\\\""), f)?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;
                 }
