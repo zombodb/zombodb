@@ -2,22 +2,22 @@ use crate::query_parser::parser::Token;
 use lalrpop_util::ParseError;
 use std::fmt::{Debug, Display, Error, Formatter};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProximityDistance {
     pub distance: u32,
     pub in_order: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ProximityPart<'input> {
     pub words: Vec<Expr<'input>>,
     pub distance: Option<ProximityDistance>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct QualifiedIndex<'input>(pub Option<&'input str>, pub &'input str, pub &'input str);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IndexLink<'input> {
     pub name: Option<&'input str>,
     pub left_field: &'input str,
@@ -25,7 +25,7 @@ pub struct IndexLink<'input> {
     pub right_field: &'input str,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Opcode {
     Not,
     With,
@@ -34,7 +34,7 @@ pub enum Opcode {
     Or,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ComparisonOpcode {
     Contains,
     Eq,
@@ -49,7 +49,7 @@ pub enum ComparisonOpcode {
     FuzzyLikeThis,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'input> {
     // types of values
     Null,
@@ -86,11 +86,13 @@ pub enum Expr<'input> {
     FuzzyLikeThis(&'input str, Box<Expr<'input>>),
 }
 
+pub type ParserError<'input> = ParseError<usize, Token<'input>, &'static str>;
+
 impl<'input> Expr<'input> {
     pub fn from_str(
         default_fieldname: &'input str,
         input: &'input str,
-    ) -> Result<Box<Expr<'input>>, ParseError<usize, Token<'input>, &'static str>> {
+    ) -> Result<Box<Expr<'input>>, ParserError<'input>> {
         let parser = crate::query_parser::parser::ExprParser::new();
         let mut fieldname_stack = vec![default_fieldname];
         let mut operator_stack = vec![ComparisonOpcode::Contains];
@@ -345,8 +347,8 @@ impl Display for ComparisonOpcode {
             Lt => write!(fmt, "<"),
             Gte => write!(fmt, ">="),
             Lte => write!(fmt, "<="),
-            Ne => write!(fmt, "<>"),
-            DoesNotContain => write!(fmt, "!="),
+            Ne => write!(fmt, "!="),
+            DoesNotContain => write!(fmt, "<>"),
             Regex => write!(fmt, ":~"),
             MoreLikeThis => write!(fmt, ":@"),
             FuzzyLikeThis => write!(fmt, ":@~"),
