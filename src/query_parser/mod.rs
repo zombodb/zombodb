@@ -141,13 +141,6 @@ macro_rules! And {
 }
 
 #[allow(non_snake_case)]
-macro_rules! AndNot {
-    ($left:expr, $right:expr) => {
-        Box!(crate::query_parser::ast::Expr::And($left, Not!($right)))
-    };
-}
-
-#[allow(non_snake_case)]
 macro_rules! Or {
     ($left:expr, $right:expr) => {
         Box!(crate::query_parser::ast::Expr::Or($left, $right))
@@ -410,7 +403,10 @@ mod expr_tests {
     fn and_not() {
         assert_expr(
             "foo and not bar",
-            AndNot!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
+            And!(
+                String!(Contains, "_", "foo"),
+                Not!(String!(Contains, "_", "bar"))
+            ),
         )
     }
 
@@ -418,7 +414,10 @@ mod expr_tests {
     fn and_bang() {
         assert_expr(
             "foo&!bar",
-            AndNot!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
+            And!(
+                String!(Contains, "_", "foo"),
+                Not!(String!(Contains, "_", "bar"))
+            ),
         )
     }
 
@@ -444,15 +443,15 @@ mod expr_tests {
             "a or b with c and d and not not (e or f)",
             Or!(
                 String!(Contains, "_", "a"),
-                AndNot!(
+                And!(
                     And!(
                         With!(String!(Contains, "_", "b"), String!(Contains, "_", "c")),
                         String!(Contains, "_", "d")
                     ),
-                    Not!(Or!(
+                    Not!(Not!(Or!(
                         String!(Contains, "_", "e"),
                         String!(Contains, "_", "f")
-                    ))
+                    )))
                 )
             ),
         )
