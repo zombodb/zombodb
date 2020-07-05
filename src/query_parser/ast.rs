@@ -98,6 +98,7 @@ impl<'input> Expr<'input> {
         let mut operator_stack = vec![ComparisonOpcode::Contains];
         parser.parse(&mut fieldname_stack, &mut operator_stack, input)
     }
+
     pub(in crate::query_parser) fn from_opcode(
         field_name: &'input str,
         opcode: ComparisonOpcode,
