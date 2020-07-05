@@ -242,7 +242,7 @@ impl<'input> Display for Expr<'input> {
             }
 
             Expr::UnparsedArray(a, b) => {
-                write!(fmt, "{}", a)?;
+                write!(fmt, "[[{}]]", a)?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;
                 }

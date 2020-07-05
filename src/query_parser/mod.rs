@@ -72,6 +72,54 @@ macro_rules! Fuzzy {
 }
 
 #[allow(non_snake_case)]
+macro_rules! UnparsedArray {
+    ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
+        Box!(crate::query_parser::ast::Expr::$operator(
+            $field,
+            Box!(crate::query_parser::ast::Expr::UnparsedArray(
+                $val,
+                Some($boost)
+            ))
+        ))
+    };
+    ($operator:tt, $field:literal, $val:expr) => {
+        Box!(crate::query_parser::ast::Expr::$operator(
+            $field,
+            Box!(crate::query_parser::ast::Expr::UnparsedArray($val, None))
+        ))
+    };
+    ($val:expr) => {
+        crate::query_parser::ast::Expr::UnparsedArray($val, None)
+    };
+}
+
+#[allow(non_snake_case)]
+macro_rules! ParsedArray {
+    ($operator:tt, $field:literal, $($elements:expr),*) => {
+        Box!(crate::query_parser::ast::Expr::$operator(
+            $field,
+            Box!(crate::query_parser::ast::Expr::ParsedArray(
+                vec![$($elements),*],
+                None
+            ))
+        ))
+    };
+}
+
+#[allow(non_snake_case)]
+macro_rules! ParsedArrayWithBoost {
+    ($operator:tt, $field:literal, $boost:expr, $($elements:expr),*) => {
+        Box!(crate::query_parser::ast::Expr::$operator(
+            $field,
+            Box!(crate::query_parser::ast::Expr::ParsedArray(
+                vec![$($elements),*],
+                Some($boost)
+            ))
+        ))
+    };
+}
+
+#[allow(non_snake_case)]
 macro_rules! Not {
     ($e:expr) => {
         Box!(crate::query_parser::ast::Expr::Not($e))
@@ -244,6 +292,15 @@ mod string_tests {
             "field:(a, b, c)",
             r#"((field:"a" OR field:"b") OR field:"c")"#,
         )
+    }
+
+    #[test]
+    fn parsed_array() {
+        assert_str("[a,b,c]", r#"_:["a","b","c"]"#)
+    }
+    #[test]
+    fn unparsed_array() {
+        assert_str("[[1,2,3]]", "_:[[1,2,3]]")
     }
 }
 
@@ -467,5 +524,23 @@ mod expr_tests {
                 Within!(vec![String!("x"), String!("y"), String!("z")])
             ),
         )
+    }
+
+    #[test]
+    fn paresd_array() {
+        assert_expr("[a,b,c]", ParsedArray!(Contains, "_", "a", "b", "c"))
+    }
+
+    #[test]
+    fn paresd_array_with_boost() {
+        assert_expr(
+            "[a,b,c]^42",
+            ParsedArrayWithBoost!(Contains, "_", 42.0, "a", "b", "c"),
+        )
+    }
+
+    #[test]
+    fn unparsed_array() {
+        assert_expr("[[a, b,   c]]", UnparsedArray!(Contains, "_", "a, b,   c"))
     }
 }

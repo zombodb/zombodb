@@ -222,9 +222,15 @@ Term: Box<Expr<'input>> = {
     StringExpr => Box::new(<>),
     O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
     O_BRACKET <v:(<String> COMMA?)*> C_BRACKET <b:Boost?> => Box::new(Expr::ParsedArray(v, b)),
-    <a:UNPARSED_ARRAY> <b:Boost?> => Box::new(Expr::UnparsedArray(a, b)),
+    <a:UnparsedArray> <b:Boost?> => Box::new(Expr::UnparsedArray(a, b)),
     <start:String> TO <end:String> <b:Boost?> => Box::new(Expr::Range(start, end, b)),
 };
+
+UnparsedArray: &'input str = {
+    UNPARSED_ARRAY => {
+        &<>[2..<>.len()-2]
+    }
+}
 
 StringExpr: Expr<'input> = {
     NULL => Expr::Null,
