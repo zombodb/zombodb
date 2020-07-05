@@ -12,39 +12,45 @@ macro_rules! Box {
 
 #[allow(non_snake_case)]
 macro_rules! String {
-    ($operator:tt, $field:expr, $val:expr, $boost:expr) => {
+    ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
             Box!(crate::query_parser::ast::Expr::String($val, Some($boost)))
         ))
     };
-    ($operator:tt, $field:expr, $val:expr) => {
+    ($operator:tt, $field:literal, $val:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
             Box!(crate::query_parser::ast::Expr::String($val, None))
         ))
     };
+    ($val:expr) => {
+        crate::query_parser::ast::Expr::String($val, None)
+    };
 }
 
 #[allow(non_snake_case)]
 macro_rules! Wildcard {
-    ($operator:tt, $field:expr, $val:expr, $boost:expr) => {
+    ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
             Box!(crate::query_parser::ast::Expr::Wildcard($val, Some($boost)))
         ))
     };
-    ($operator:tt, $field:expr, $val:expr) => {
+    ($operator:tt, $field:literal, $val:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
             Box!(crate::query_parser::ast::Expr::Wildcard($val, None))
         ))
     };
+    ($val:expr) => {
+        crate::query_parser::ast::Expr::Wildcard($val, None)
+    };
 }
 
 #[allow(non_snake_case)]
 macro_rules! Fuzzy {
-    ($operator:tt, $field:expr, $val:expr, $slop:expr, $boost:expr) => {
+    ($operator:tt, $field:literal, $val:expr, $slop:expr, $boost:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
             Box!(crate::query_parser::ast::Expr::Fuzzy(
@@ -54,11 +60,14 @@ macro_rules! Fuzzy {
             ))
         ))
     };
-    ($operator:tt, $field:expr, $val:expr, $slop:expr) => {
+    ($operator:tt, $field:literal, $val:expr, $slop:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
             Box!(crate::query_parser::ast::Expr::Fuzzy($val, $slop, None))
         ))
+    };
+    ($val:expr, $slop:expr) => {
+        crate::query_parser::ast::Expr::Fuzzy($val, $slop, None)
     };
 }
 
@@ -94,6 +103,35 @@ macro_rules! AndNot {
 macro_rules! Or {
     ($left:expr, $right:expr) => {
         Box!(crate::query_parser::ast::Expr::Or($left, $right))
+    };
+}
+
+#[allow(non_snake_case)]
+macro_rules! Within {
+    ($left:expr, $distance:literal, $in_order:literal) => {
+        crate::query_parser::ast::ProximityPart {
+            words: $left,
+            distance: Some(crate::query_parser::ast::ProximityDistance {
+                distance: $distance,
+                in_order: $in_order,
+            }),
+        }
+    };
+    ($left:expr) => {
+        crate::query_parser::ast::ProximityPart {
+            words: $left,
+            distance: None,
+        }
+    };
+}
+
+#[allow(non_snake_case)]
+macro_rules! ProximityChain {
+    ($operator:tt, $field:literal, $($parts:expr),*) => {
+        Box!(crate::query_parser::ast::Expr::$operator(
+            $field,
+            Box!(crate::query_parser::ast::Expr::ProximityChain(vec![$($parts),*]))
+        ))
     };
 }
 
@@ -346,7 +384,7 @@ mod expr_tests {
     #[test]
     fn precedence() {
         assert_expr(
-            "a or b with c and d and not not e",
+            "a or b with c and d and not not (e or f)",
             Or!(
                 String!(Contains, "_", "a"),
                 AndNot!(
@@ -354,7 +392,10 @@ mod expr_tests {
                         With!(String!(Contains, "_", "b"), String!(Contains, "_", "c")),
                         String!(Contains, "_", "d")
                     ),
-                    Not!(String!(Contains, "_", "e"))
+                    Not!(Or!(
+                        String!(Contains, "_", "e"),
+                        String!(Contains, "_", "f")
+                    ))
                 )
             ),
         )
@@ -373,5 +414,58 @@ mod expr_tests {
         assert_expr("a:~b", String!(Regex, "a", "b"));
         assert_expr("a:@b", String!(MoreLikeThis, "a", "b"));
         assert_expr("a:@~b", String!(FuzzyLikeThis, "a", "b"));
+    }
+
+    #[test]
+    fn prox() {
+        assert_expr(
+            "a w/2 b",
+            ProximityChain!(
+                Contains,
+                "_",
+                Within!(vec![String!("a")], 2, false),
+                Within!(vec![String!("b")])
+            ),
+        )
+    }
+
+    #[test]
+    fn prox_groups() {
+        assert_expr(
+            "(a, b, c) wo/2 (x, y, z)",
+            ProximityChain!(
+                Contains,
+                "_",
+                Within!(vec![String!("a"), String!("b"), String!("c")], 2, true),
+                Within!(vec![String!("x"), String!("y"), String!("z")])
+            ),
+        )
+    }
+
+    #[test]
+    fn prox_mixed_groups() {
+        assert_expr(
+            "(a, b, c) w/8 foo wo/2 (x, y, z)",
+            ProximityChain!(
+                Contains,
+                "_",
+                Within!(vec![String!("a"), String!("b"), String!("c")], 8, false),
+                Within!(vec![String!("foo")], 2, true),
+                Within!(vec![String!("x"), String!("y"), String!("z")])
+            ),
+        )
+    }
+
+    #[test]
+    fn prox_groups_field() {
+        assert_expr(
+            "field:((a, b, c) wo/2 (x, y, z))",
+            ProximityChain!(
+                Contains,
+                "field",
+                Within!(vec![String!("a"), String!("b"), String!("c")], 2, true),
+                Within!(vec![String!("x"), String!("y"), String!("z")])
+            ),
+        )
     }
 }
