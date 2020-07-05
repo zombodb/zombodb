@@ -30,6 +30,7 @@ match {
     "wo/" => WITHIN_ORDER,
 
     r#"(?i)#subselect"# => SUBSELECT,
+    r#"(?i)#expand"# => EXPAND,
 
     r#"[-+]?[0-9]+"# => NUMBER,
     r#"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?"# => FLOAT,
@@ -146,6 +147,8 @@ WithinOperator: bool = {
 
 UnaryExpression: Box<Expr<'input>> = {
     NotOp <t:UnaryExpression> => Box::new(Expr::Not(t)),
+    Subselect => Box::new(<>),
+    Expand => Box::new(<>),
     Comparison,
 };
 
@@ -189,6 +192,11 @@ FieldName: &'input str = {
     }
 };
 
+UntrackedFieldName: &'input str = {
+    FIELD_NAME,
+    DOTTED_FIELD_NAME,
+};
+
 TableIndexName: &'input str = {
     DOTTED_FIELD_NAME
 };
@@ -216,7 +224,6 @@ ComparisonOp: ComparisonOpcode = {
 
 Term: Box<Expr<'input>> = {
     StringExpr => Box::new(<>),
-    Subselect => Box::new(<>),
     O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
     O_BRACKET <v:(<String> COMMA?)*> C_BRACKET <b:Boost?> => Box::new(Expr::ParsedArray(v, b)),
     <a:UNPARSED_ARRAY> <b:Boost?> => Box::new(Expr::UnparsedArray(a, b)),
@@ -259,9 +266,12 @@ String: &'input str = {
 };
 
 Subselect: Expr<'input> = {
-    SUBSELECT LT <lfn:FieldName> EQ LT <i:TableIndexName> GT <rfn:FieldName> GT <q:ParentheticalGroup> => Expr::Subselect(lfn, i, rfn, q)
+    SUBSELECT LT <lfn:UntrackedFieldName> EQ LT <i:TableIndexName> GT <rfn:UntrackedFieldName> GT <q:ParentheticalGroup> => Expr::Subselect(lfn, i, rfn, q)
 };
 
+Expand: Expr<'input> = {
+    EXPAND LT <lfn:UntrackedFieldName> EQ LT <i:TableIndexName> GT <rfn:UntrackedFieldName> GT <q:ParentheticalGroup> => Expr::Expand(lfn, i, rfn, q)
+};
 
 JsonObject: String = {
     O_BRACE <v:(<JsonProperty> COMMA)*> <e:JsonProperty?> C_BRACE => {
