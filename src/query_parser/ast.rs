@@ -52,6 +52,8 @@ pub enum Expr<'input> {
 
     ProximityChain(Vec<ProximityPart<'input>>),
 
+    Subselect(&'input str, &'input str, &'input str, Box<Expr<'input>>),
+
     // types of connectors
     Not(Box<Expr<'input>>),
     With(Box<Expr<'input>>, Box<Expr<'input>>),
@@ -247,6 +249,10 @@ impl<'input> Display for Expr<'input> {
                     }
                 }
                 write!(fmt, ")")
+            }
+
+            Expr::Subselect(ref lfn, ref i, ref rfn, ref q) => {
+                write!(fmt, "#subselect<{}=<{}>{}>({})", lfn, i, rfn, q)
             }
 
             Expr::Not(ref r) => write!(fmt, "NOT ({})", r),

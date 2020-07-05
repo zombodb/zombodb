@@ -29,6 +29,8 @@ match {
     "w/" => WITHIN,
     "wo/" => WITHIN_ORDER,
 
+    r#"(?i)#subselect"# => SUBSELECT,
+
     r#"[-+]?[0-9]+"# => NUMBER,
     r#"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?"# => FLOAT,
 
@@ -55,7 +57,9 @@ match {
 } else {
     // a field name looks a lot like a "simple value", so it needs to be defined
     // with a higher matching precedence
-    r#"([a-z0-9_]+(\.[a-z0-9_]+)*)+"# => FIELD_NAME,
+    r#"[a-z0-9_]"# => FIELD_NAME,
+    r#"([a-z0-9_]+(\.[a-z0-9_]+))+"# => DOTTED_FIELD_NAME,
+} else {
 } else {
     // even lower precedence values
     r#"(([a-zA-Z0-9_*?]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
@@ -178,7 +182,15 @@ FieldName: &'input str = {
     FIELD_NAME => {
         fieldname_stack.push(<>);
         <>
+    },
+    DOTTED_FIELD_NAME => {
+        fieldname_stack.push(<>);
+        <>
     }
+};
+
+TableIndexName: &'input str = {
+    DOTTED_FIELD_NAME
 };
 
 ComparisonOperator: ComparisonOpcode = {
@@ -204,6 +216,7 @@ ComparisonOp: ComparisonOpcode = {
 
 Term: Box<Expr<'input>> = {
     StringExpr => Box::new(<>),
+    Subselect => Box::new(<>),
     O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
     O_BRACKET <v:(<String> COMMA?)*> C_BRACKET <b:Boost?> => Box::new(Expr::ParsedArray(v, b)),
     <a:UNPARSED_ARRAY> <b:Boost?> => Box::new(Expr::UnparsedArray(a, b)),
@@ -231,6 +244,7 @@ String: &'input str = {
     TRUE => <>,
     FALSE => <>,
     FIELD_NAME => <>,
+    DOTTED_FIELD_NAME => <>,
     UNQUOTED_VALUE => <>,
     QUOTED_VALUE => {
         let s = <>;
@@ -243,6 +257,11 @@ String: &'input str = {
         s
     },
 };
+
+Subselect: Expr<'input> = {
+    SUBSELECT LT <lfn:FieldName> EQ LT <i:TableIndexName> GT <rfn:FieldName> GT <q:ParentheticalGroup> => Expr::Subselect(lfn, i, rfn, q)
+};
+
 
 JsonObject: String = {
     O_BRACE <v:(<JsonProperty> COMMA)*> <e:JsonProperty?> C_BRACE => {
