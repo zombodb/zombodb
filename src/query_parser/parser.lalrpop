@@ -105,7 +105,7 @@ WithOp: Opcode = {
 }
 
 ProximityExpression: Box<Expr<'input>> = {
-    <mut parts:ProximityPart+> <last:Term> => {
+    <mut parts:ProximityPart+> <last:StringExpr> => {
         let mut words = Vec::new();
         last.extract_prox_terms(&mut words);
         parts.push(ProximityPart {
@@ -122,24 +122,20 @@ ProximityExpression: Box<Expr<'input>> = {
 };
 
 ProximityPart: ProximityPart<'input> = {
-    <l:Term> WITHIN <distance:NUMBER> => {
+    <l:StringExpr> <in_order:WithinOperator> <distance:NUMBER> => {
         let mut words = Vec::new();
         l.extract_prox_terms(&mut words);
         ProximityPart {
             words,
             distance: u32::from_str(distance).unwrap(),
-            in_order:false
-        }
-    },
-    <l:Term> WITHIN_ORDER <distance:NUMBER> => {
-        let mut words = Vec::new();
-        l.extract_prox_terms(&mut words);
-        ProximityPart {
-            words,
-            distance: u32::from_str(distance).unwrap(),
-            in_order:true
+            in_order
         }
     }
+};
+
+WithinOperator: bool = {
+    WITHIN => false,
+    WITHIN_ORDER => true
 };
 
 UnaryExpression: Box<Expr<'input>> = {
