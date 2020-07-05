@@ -4,7 +4,7 @@ use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Clone)]
 pub struct ProximityPart<'input> {
-    pub words: Vec<&'input str>,
+    pub words: Vec<Expr<'input>>,
     pub distance: u32,
     pub in_order: bool,
 }
@@ -113,14 +113,16 @@ impl<'input> Expr<'input> {
         }
     }
 
-    pub fn extract_prox_terms(&self, flat: &mut Vec<&'input str>) {
+    pub fn extract_prox_terms(&self, flat: &mut Vec<Expr<'input>>) {
         match self {
-            Expr::Or(ref l, ref r) => {
-                l.extract_prox_terms(flat);
-                r.extract_prox_terms(flat);
+            Expr::String(s, b) => {
+                flat.push(Expr::String(s, *b));
             }
-            Expr::String(s, _) => {
-                flat.push(s);
+            Expr::Wildcard(s, b) => {
+                flat.push(Expr::Wildcard(s, *b));
+            }
+            Expr::Fuzzy(s, d, b) => {
+                flat.push(Expr::Fuzzy(s, *d, *b));
             }
             _ => panic!("Unsupported proximity group value: {}", self),
         }
@@ -201,12 +203,12 @@ impl<'input> Display for Expr<'input> {
                         match next {
                             Some(_) => write!(
                                 fmt,
-                                "\"{}\" {}/{} ",
-                                word.replace('"', "\\\""),
+                                "{} {}/{} ",
+                                word,
                                 if part.in_order { "WO" } else { "W" },
                                 part.distance
                             )?,
-                            None => write!(fmt, "\"{}\"", word.replace('"', "\\\""))?,
+                            None => write!(fmt, "{}", word)?,
                         };
                     } else {
                         write!(fmt, "(")?;
@@ -214,7 +216,7 @@ impl<'input> Display for Expr<'input> {
                             if idx > 0 {
                                 write!(fmt, ",")?;
                             }
-                            write!(fmt, "\"{}\"", word.replace('"', "\\\""))?;
+                            write!(fmt, "{}", word)?;
                         }
                         write!(fmt, ") ")?;
                         match next {

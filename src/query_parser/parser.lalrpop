@@ -114,7 +114,9 @@ ProximityExpression: Box<Expr<'input>> = {
             in_order:false
         });
 
-        Box::new(Expr::ProximityChain(parts))
+        let field_name = fieldname_stack.last().unwrap();
+        let operator = operator_stack.last().unwrap();
+        Box::new(Expr::from_opcode(field_name, *operator, Box::new(Expr::ProximityChain(parts))))
     },
     UnaryExpression
 };
@@ -158,21 +160,16 @@ Comparison: Box<Expr<'input>> = {
     },
     Term => {
         let field_name = fieldname_stack.last().unwrap();
+        let operator = operator_stack.last().unwrap();
         let right = <>;
-        Box::new(match operator_stack.last().unwrap() {
-            ComparisonOpcode::Contains => Expr::Contains(field_name, right),
-            ComparisonOpcode::Eq => Expr::Eq(field_name, right),
-            ComparisonOpcode::Gt => Expr::Gt(field_name, right),
-            ComparisonOpcode::Lt => Expr::Lt(field_name, right),
-            ComparisonOpcode::Gte => Expr::Gte(field_name, right),
-            ComparisonOpcode::Lte => Expr::Lte(field_name, right),
-            ComparisonOpcode::Ne => Expr::Ne(field_name, right),
-            ComparisonOpcode::DoesNotContain => Expr::DoesNotContain(field_name, right),
-            ComparisonOpcode::Regex => Expr::Regex(field_name, right),
-            ComparisonOpcode::MoreLikeThis => Expr::MoreLikeThis(field_name, right),
-            ComparisonOpcode::FuzzyLikeThis => Expr::FuzzyLikeThis(field_name, right),
-        })
-    }
+        Box::new(Expr::from_opcode(field_name, *operator, right))
+    },
+    FieldName ComparisonOperator O_PAREN <Expr> C_PAREN => {
+        fieldname_stack.pop();
+        operator_stack.pop();
+        <>
+    },
+    O_PAREN <Expr> C_PAREN,
 };
 
 FieldName: &'input str = {
@@ -209,7 +206,6 @@ Term: Box<Expr<'input>> = {
     O_BRACKET <v:(<String> COMMA?)*> C_BRACKET <b:Boost?> => Box::new(Expr::ParsedArray(v, b)),
     <a:UNPARSED_ARRAY> <b:Boost?> => Box::new(Expr::UnparsedArray(a, b)),
     <start:String> TO <end:String> <b:Boost?> => Box::new(Expr::Range(start, end, b)),
-    O_PAREN <Expr> C_PAREN,
 };
 
 StringExpr: Expr<'input> = {
