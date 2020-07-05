@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use crate::query_parser::ast::*;
 
-grammar(fieldname_stack: &mut Vec<&'input str>);
+grammar(fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>);
 
 match {
     // top precedence tokens
@@ -151,11 +151,28 @@ NotOp: Opcode = {
 };
 
 Comparison: Box<Expr<'input>> = {
-    FieldName ComparisonOp Term => {
+    FieldName ComparisonOperator Term => {
         fieldname_stack.pop();
+        operator_stack.pop();
         Box::new(Expr::from_opcode(<>))
     },
-    Term => Box::new(Expr::Contains(fieldname_stack.last().unwrap(), <>)),
+    Term => {
+        let field_name = fieldname_stack.last().unwrap();
+        let right = <>;
+        Box::new(match operator_stack.last().unwrap() {
+            ComparisonOpcode::Contains => Expr::Contains(field_name, right),
+            ComparisonOpcode::Eq => Expr::Eq(field_name, right),
+            ComparisonOpcode::Gt => Expr::Gt(field_name, right),
+            ComparisonOpcode::Lt => Expr::Lt(field_name, right),
+            ComparisonOpcode::Gte => Expr::Gte(field_name, right),
+            ComparisonOpcode::Lte => Expr::Lte(field_name, right),
+            ComparisonOpcode::Ne => Expr::Ne(field_name, right),
+            ComparisonOpcode::DoesNotContain => Expr::DoesNotContain(field_name, right),
+            ComparisonOpcode::Regex => Expr::Regex(field_name, right),
+            ComparisonOpcode::MoreLikeThis => Expr::MoreLikeThis(field_name, right),
+            ComparisonOpcode::FuzzyLikeThis => Expr::FuzzyLikeThis(field_name, right),
+        })
+    }
 };
 
 FieldName: &'input str = {
@@ -164,6 +181,13 @@ FieldName: &'input str = {
         <>
     }
 };
+
+ComparisonOperator: ComparisonOpcode = {
+    ComparisonOp => {
+        operator_stack.push(<>);
+        <>
+    }
+}
 
 ComparisonOp: ComparisonOpcode = {
     COLON => ComparisonOpcode::Contains,

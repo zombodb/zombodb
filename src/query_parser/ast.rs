@@ -18,7 +18,7 @@ pub enum Opcode {
     Or,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ComparisonOpcode {
     Contains,
     Eq,
@@ -73,8 +73,9 @@ impl<'input> Expr<'input> {
         input: &'input str,
     ) -> Result<Box<Expr<'input>>, ParseError<usize, Token<'input>, &'static str>> {
         let parser = crate::query_parser::parser::ExprParser::new();
-        let mut stack = vec![default_fieldname];
-        parser.parse(&mut stack, input)
+        let mut fieldname_stack = vec![default_fieldname];
+        let mut operator_stack = vec![ComparisonOpcode::Contains];
+        parser.parse(&mut fieldname_stack, &mut operator_stack, input)
     }
     pub fn from_opcode(
         field_name: &'input str,
