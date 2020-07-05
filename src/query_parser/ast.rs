@@ -15,6 +15,17 @@ pub struct ProximityPart<'input> {
 }
 
 #[derive(Debug, Clone)]
+pub struct QualifiedIndex<'input>(pub Option<&'input str>, pub &'input str, pub &'input str);
+
+#[derive(Debug, Clone)]
+pub struct IndexLink<'input> {
+    pub name: Option<&'input str>,
+    pub left_field: &'input str,
+    pub qualified_index: QualifiedIndex<'input>,
+    pub right_field: &'input str,
+}
+
+#[derive(Debug, Clone)]
 pub enum Opcode {
     Not,
     With,
@@ -52,8 +63,8 @@ pub enum Expr<'input> {
 
     ProximityChain(Vec<ProximityPart<'input>>),
 
-    Subselect(&'input str, &'input str, &'input str, Box<Expr<'input>>),
-    Expand(&'input str, &'input str, &'input str, Box<Expr<'input>>),
+    Subselect(IndexLink<'input>, Box<Expr<'input>>),
+    Expand(IndexLink<'input>, Box<Expr<'input>>),
 
     // types of connectors
     Not(Box<Expr<'input>>),
@@ -157,6 +168,36 @@ impl Display for ProximityDistance {
     }
 }
 
+impl<'input> Display for QualifiedIndex<'input> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        if let Some(schema) = self.0 {
+            write!(fmt, "{}.{}.{}", schema, self.1, self.2)
+        } else {
+            write!(fmt, "{}.{}", self.1, self.2)
+        }
+    }
+}
+
+impl<'input> Display for IndexLink<'input> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        if let Some(name) = self.name {
+            write!(fmt, "{}:(", name)?;
+        }
+
+        write!(
+            fmt,
+            "{}=<{}>{}",
+            self.left_field, self.qualified_index, self.right_field
+        )?;
+
+        if let Some(_) = self.name {
+            write!(fmt, ")")?;
+        }
+
+        Ok(())
+    }
+}
+
 impl<'input> Display for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
@@ -252,13 +293,8 @@ impl<'input> Display for Expr<'input> {
                 write!(fmt, ")")
             }
 
-            Expr::Subselect(ref lfn, ref i, ref rfn, ref q) => {
-                write!(fmt, "#subselect<{}=<{}>{}>({})", lfn, i, rfn, q)
-            }
-
-            Expr::Expand(ref lfn, ref i, ref rfn, ref q) => {
-                write!(fmt, "#expand<{}=<{}>{}>({})", lfn, i, rfn, q)
-            }
+            Expr::Subselect(ref link, ref q) => write!(fmt, "#subselect<{}>({})", link, q),
+            Expr::Expand(ref link, ref q) => write!(fmt, "#expand<{}>({})", link, q),
 
             Expr::Not(ref r) => write!(fmt, "NOT ({})", r),
             Expr::With(ref l, ref r) => write!(fmt, "({} WITH {})", l, r),

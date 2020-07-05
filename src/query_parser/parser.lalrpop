@@ -49,6 +49,7 @@ match {
 
     "^" => CARET,
     "~" => TILDE,
+    "." => DOT,
 
     r#"(?i)null"# => NULL,
     r#"(?i)true"# => TRUE,
@@ -58,9 +59,8 @@ match {
 } else {
     // a field name looks a lot like a "simple value", so it needs to be defined
     // with a higher matching precedence
-    r#"[a-z0-9_]"# => FIELD_NAME,
-    r#"([a-z0-9_]+(\.[a-z0-9_]+))+"# => DOTTED_FIELD_NAME,
-} else {
+    r#"[a-z0-9_]+"# => IDENTIFIER,
+    r#"([a-z0-9_]+(\.[a-z0-9_]+)+)"# => DOTTED_IDENTIFIER,
 } else {
     // even lower precedence values
     r#"(([a-zA-Z0-9_*?]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
@@ -182,23 +182,19 @@ ParentheticalGroup: Box<Expr<'input>> = {
 }
 
 FieldName: &'input str = {
-    FIELD_NAME => {
+    IDENTIFIER => {
         fieldname_stack.push(<>);
         <>
     },
-    DOTTED_FIELD_NAME => {
+    DOTTED_IDENTIFIER => {
         fieldname_stack.push(<>);
         <>
     }
 };
 
 UntrackedFieldName: &'input str = {
-    FIELD_NAME,
-    DOTTED_FIELD_NAME,
-};
-
-TableIndexName: &'input str = {
-    DOTTED_FIELD_NAME
+    IDENTIFIER,
+    DOTTED_IDENTIFIER,
 };
 
 ComparisonOperator: ComparisonOpcode = {
@@ -250,8 +246,8 @@ String: &'input str = {
     FLOAT => <>,
     TRUE => <>,
     FALSE => <>,
-    FIELD_NAME => <>,
-    DOTTED_FIELD_NAME => <>,
+    IDENTIFIER => <>,
+    DOTTED_IDENTIFIER => <>,
     UNQUOTED_VALUE => <>,
     QUOTED_VALUE => {
         let s = <>;
@@ -265,12 +261,40 @@ String: &'input str = {
     },
 };
 
+TableIndexName: QualifiedIndex<'input> = {
+    <(<IDENTIFIER> DOT)?> <IDENTIFIER> DOT <IDENTIFIER> => QualifiedIndex(<>),
+    <DOTTED_IDENTIFIER> => {
+        let mut parts = <>.split_terminator('.');
+        let schema = parts.next();
+        let table = parts.next();
+        let index = parts.next();
+
+        if index.is_some() {
+            if parts.next().is_some() {
+                panic!("index link schema.table.index is too long: {}", <>);
+            }
+            QualifiedIndex(schema, table.unwrap(), index.unwrap())
+        } else {
+            let index = table;
+            let table = schema;
+            QualifiedIndex(None, table.unwrap(), index.unwrap())
+        }
+    }
+};
+
+IndexLink: IndexLink<'input> = {
+    LT <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName> GT
+        => IndexLink { name: None, left_field, qualified_index, right_field },
+    LT <name:IDENTIFIER> COLON O_PAREN <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName> C_PAREN GT
+        => IndexLink { name: Some(name), left_field, qualified_index, right_field },
+};
+
 Subselect: Expr<'input> = {
-    SUBSELECT LT <lfn:UntrackedFieldName> EQ LT <i:TableIndexName> GT <rfn:UntrackedFieldName> GT <q:ParentheticalGroup> => Expr::Subselect(lfn, i, rfn, q)
+    SUBSELECT <link:IndexLink> <q:ParentheticalGroup> => Expr::Subselect(<>)
 };
 
 Expand: Expr<'input> = {
-    EXPAND LT <lfn:UntrackedFieldName> EQ LT <i:TableIndexName> GT <rfn:UntrackedFieldName> GT <q:ParentheticalGroup> => Expr::Expand(lfn, i, rfn, q)
+    EXPAND <link:IndexLink> <q:ParentheticalGroup> => Expr::Expand(<>)
 };
 
 JsonObject: String = {
