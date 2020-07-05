@@ -96,7 +96,7 @@ impl<'input> Expr<'input> {
         let mut operator_stack = vec![ComparisonOpcode::Contains];
         parser.parse(&mut fieldname_stack, &mut operator_stack, input)
     }
-    pub fn from_opcode(
+    pub(in crate::query_parser) fn from_opcode(
         field_name: &'input str,
         opcode: ComparisonOpcode,
         right: Box<Expr<'input>>,
@@ -116,7 +116,7 @@ impl<'input> Expr<'input> {
         }
     }
 
-    pub fn maybe_make_wildcard(expr: Expr<'input>) -> Expr<'input> {
+    pub(in crate::query_parser) fn maybe_make_wildcard(expr: Expr<'input>) -> Expr<'input> {
         match expr {
             Expr::String(s, b) => {
                 let mut prev = 0 as char;
@@ -132,7 +132,7 @@ impl<'input> Expr<'input> {
         }
     }
 
-    pub fn extract_prox_terms(&self) -> Vec<Expr<'input>> {
+    pub(in crate::query_parser) fn extract_prox_terms(&self) -> Vec<Expr<'input>> {
         let mut flat = Vec::new();
         match self {
             Expr::Or(l, r) => {
