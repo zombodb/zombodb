@@ -105,13 +105,10 @@ WithOp: Opcode = {
 }
 
 ProximityExpression: Box<Expr<'input>> = {
-    <mut parts:ProximityPart+> <last:StringExpr> => {
-        let mut words = Vec::new();
-        last.extract_prox_terms(&mut words);
+    <mut parts:ProximityPart+> <words:ProximityGroup> => {
         parts.push(ProximityPart {
             words,
-            distance:0,
-            in_order:false
+            distance: None
         });
 
         let field_name = fieldname_stack.last().unwrap();
@@ -122,15 +119,20 @@ ProximityExpression: Box<Expr<'input>> = {
 };
 
 ProximityPart: ProximityPart<'input> = {
-    <l:StringExpr> <in_order:WithinOperator> <distance:NUMBER> => {
-        let mut words = Vec::new();
-        l.extract_prox_terms(&mut words);
+    <words:ProximityGroup> <in_order:WithinOperator> <distance:NUMBER> => {
         ProximityPart {
             words,
-            distance: u32::from_str(distance).unwrap(),
-            in_order
+            distance: Some(ProximityDistance {
+                distance: u32::from_str(distance).unwrap(),
+                in_order
+                })
         }
     }
+};
+
+ProximityGroup: Vec<Expr<'input>> = {
+    ParentheticalGroup => <>.extract_prox_terms(),
+    StringExpr => vec![<>]
 };
 
 WithinOperator: bool = {
@@ -165,8 +167,12 @@ Comparison: Box<Expr<'input>> = {
         operator_stack.pop();
         <>
     },
-    O_PAREN <Expr> C_PAREN,
+    ParentheticalGroup
 };
+
+ParentheticalGroup: Box<Expr<'input>> = {
+    O_PAREN <Expr> C_PAREN
+}
 
 FieldName: &'input str = {
     FIELD_NAME => {

@@ -3,10 +3,15 @@ use lalrpop_util::ParseError;
 use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Clone)]
-pub struct ProximityPart<'input> {
-    pub words: Vec<Expr<'input>>,
+pub struct ProximityDistance {
     pub distance: u32,
     pub in_order: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProximityPart<'input> {
+    pub words: Vec<Expr<'input>>,
+    pub distance: Option<ProximityDistance>,
 }
 
 #[derive(Debug, Clone)]
@@ -113,8 +118,16 @@ impl<'input> Expr<'input> {
         }
     }
 
-    pub fn extract_prox_terms(&self, flat: &mut Vec<Expr<'input>>) {
+    pub fn extract_prox_terms(&self) -> Vec<Expr<'input>> {
+        let mut flat = Vec::new();
         match self {
+            Expr::Or(l, r) => {
+                flat.append(&mut l.extract_prox_terms());
+                flat.append(&mut r.extract_prox_terms());
+            }
+            Expr::Contains(_, v) | Expr::Eq(_, v) | Expr::DoesNotContain(_, v) | Expr::Ne(_, v) => {
+                flat.append(&mut v.extract_prox_terms());
+            }
             Expr::String(s, b) => {
                 flat.push(Expr::String(s, *b));
             }
@@ -126,6 +139,18 @@ impl<'input> Expr<'input> {
             }
             _ => panic!("Unsupported proximity group value: {}", self),
         }
+        flat
+    }
+}
+
+impl Display for ProximityDistance {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(
+            fmt,
+            " {}/{}",
+            if self.in_order { "WO" } else { "W" },
+            self.distance
+        )
     }
 }
 
@@ -201,13 +226,7 @@ impl<'input> Display for Expr<'input> {
                     if part.words.len() == 1 {
                         let word = part.words.get(0).unwrap();
                         match next {
-                            Some(_) => write!(
-                                fmt,
-                                "{} {}/{} ",
-                                word,
-                                if part.in_order { "WO" } else { "W" },
-                                part.distance
-                            )?,
+                            Some(_) => write!(fmt, "{}{} ", word, part.distance.as_ref().unwrap())?,
                             None => write!(fmt, "{}", word)?,
                         };
                     } else {
@@ -218,15 +237,10 @@ impl<'input> Display for Expr<'input> {
                             }
                             write!(fmt, "{}", word)?;
                         }
-                        write!(fmt, ") ")?;
+                        write!(fmt, ")")?;
                         match next {
                             Some(_) => {
-                                write!(
-                                    fmt,
-                                    "{}/{} ",
-                                    if part.in_order { "WO" } else { "W" },
-                                    part.distance
-                                )?;
+                                write!(fmt, "{} ", part.distance.as_ref().unwrap())?;
                             }
                             None => {}
                         }
