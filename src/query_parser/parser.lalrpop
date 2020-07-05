@@ -5,7 +5,7 @@ grammar;
 
 match {
     // top precedence tokens
-    ":" => CONTAINS,
+    ":" => COLON,
     "=" => EQ,
     ">" => GT,
     "<" => LT,
@@ -23,11 +23,14 @@ match {
     "(" => O_PAREN,
     ")" => C_PAREN,
 
+    "{" => O_BRACE,
+    "}" => C_BRACE,
+
     "w/" => WITHIN,
     "wo/" => WITHIN_ORDER,
 
-    r#"[0-9]+"# => NUMBER,
-    r#"[0-9]+\.[0-9]+"# => FLOAT,
+    r#"[-+]?[0-9]+"# => NUMBER,
+    r#"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?"# => FLOAT,
 
 } else {
     // lower precedence operator keyword tokens
@@ -45,6 +48,8 @@ match {
     "~" => TILDE,
 
     r#"(?i)null"# => NULL,
+    r#"(?i)true"# => TRUE,
+    r#"(?i)false"# => FALSE,
 
     r#"(?i)/to/"# => TO,
 } else {
@@ -151,7 +156,7 @@ Comparison: Box<Expr<'input>> = {
 };
 
 ComparisonOp: ComparisonOpcode = {
-    CONTAINS => ComparisonOpcode::Contains,
+    COLON => ComparisonOpcode::Contains,
     EQ => ComparisonOpcode::Eq,
     GT => ComparisonOpcode::Gt,
     LT => ComparisonOpcode::Lt,
@@ -166,6 +171,7 @@ ComparisonOp: ComparisonOpcode = {
 
 Term: Box<Expr<'input>> = {
     StringExpr => Box::new(<>),
+    O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
     O_BRACKET <v:(<String> COMMA?)*> C_BRACKET <b:Boost?> => Box::new(Expr::ParsedArray(v, b)),
     <a:UNPARSED_ARRAY> <b:Boost?> => Box::new(Expr::UnparsedArray(a, b)),
     <start:String> TO <end:String> <b:Boost?> => Box::new(Expr::Range(start, end, b)),
@@ -190,6 +196,8 @@ Fuzzy: u8 = {
 String: &'input str = {
     NUMBER => <>,
     FLOAT => <>,
+    TRUE => <>,
+    FALSE => <>,
     FIELD_NAME => <>,
     UNQUOTED_VALUE => <>,
     QUOTED_VALUE => {
@@ -202,4 +210,67 @@ String: &'input str = {
         let s = &s[1..s.len()-1];
         s
     },
+};
+
+JsonObject: String = {
+    O_BRACE <v:(<JsonProperty> COMMA)*> <e:JsonProperty?> C_BRACE => {
+        let props = match e {
+            None => v,
+            Some(e) => {
+                let mut v = v;
+                v.push(e);
+                v
+            }
+        };
+
+        let mut json = String::new();
+        json.push('{');
+        for (i, p) in props.iter().enumerate() {
+            if i > 0 { json.push(',') }
+            json.push_str(p);
+        }
+        json.push('}');
+        json
+    }
+};
+
+JsonProperty: String = {
+    <k:DOUBLE_QUOTED_VALUE> COLON <v:JsonValue> => format!("{}:{}", k, v),
+};
+
+JsonValue: String = {
+    JsonObject,
+    JsonArray,
+    JsonLiteral => <>.to_string()
+}
+
+JsonArray: String = {
+    O_BRACKET <v:(<JsonValue> COMMA)*> <e:JsonValue?> C_BRACKET => {
+        let v = match e {
+            None => v,
+            Some(e) => {
+                let mut v = v;
+                v.push(e);
+                v
+            }
+        };
+
+        let mut array = String::new();
+        array.push('[');
+        for (i, v) in v.iter().enumerate() {
+            if i > 0 { array.push(','); }
+            array.push_str(&v);
+        }
+        array.push(']');
+        array
+    }
+}
+
+JsonLiteral: &'input str = {
+    TRUE,
+    FALSE,
+    NULL,
+    NUMBER,
+    FLOAT,
+    DOUBLE_QUOTED_VALUE,
 };

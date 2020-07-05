@@ -35,6 +35,7 @@ pub enum ComparisonOpcode {
 pub enum Expr<'input> {
     // types of values
     Null,
+    Json(String),
     String(&'input str, Option<f32>),
     Wildcard(&'input str, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
@@ -119,6 +120,8 @@ impl<'input> Display for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
             Expr::Null => write!(fmt, "NULL"),
+
+            Expr::Json(s) => write!(fmt, "{}", s),
 
             Expr::String(s, b) | Expr::Wildcard(s, b) => {
                 write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
