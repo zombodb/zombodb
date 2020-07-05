@@ -4,7 +4,6 @@ mod parser;
 
 #[pg_extern]
 fn test_parser(input: &str) -> String {
-    let parser = parser::ExprParser::new();
-    let expr = parser.parse(input).expect("failed to parse");
+    let expr = ast::Expr::from_str("_zdb_all", input).expect("failed to parse");
     format!("{:#}\n{:#?}", expr, expr)
 }

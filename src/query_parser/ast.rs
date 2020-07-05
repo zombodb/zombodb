@@ -1,3 +1,5 @@
+use crate::query_parser::parser::Token;
+use lalrpop_util::ParseError;
 use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Clone)]
@@ -66,6 +68,14 @@ pub enum Expr<'input> {
 }
 
 impl<'input> Expr<'input> {
+    pub fn from_str(
+        default_fieldname: &'input str,
+        input: &'input str,
+    ) -> Result<Box<Expr<'input>>, ParseError<usize, Token<'input>, &'static str>> {
+        let parser = crate::query_parser::parser::ExprParser::new();
+        let mut stack = vec![default_fieldname];
+        parser.parse(&mut stack, input)
+    }
     pub fn from_opcode(
         field_name: &'input str,
         opcode: ComparisonOpcode,

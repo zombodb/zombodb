@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use crate::query_parser::ast::*;
 
-grammar;
+grammar(fieldname_stack: &mut Vec<&'input str>);
 
 match {
     // top precedence tokens
@@ -151,8 +151,18 @@ NotOp: Opcode = {
 };
 
 Comparison: Box<Expr<'input>> = {
-    FIELD_NAME ComparisonOp Term => Box::new(Expr::from_opcode(<>)),
-    Term
+    FieldName ComparisonOp Term => {
+        fieldname_stack.pop();
+        Box::new(Expr::from_opcode(<>))
+    },
+    Term => Box::new(Expr::Contains(fieldname_stack.last().unwrap(), <>)),
+};
+
+FieldName: &'input str = {
+    FIELD_NAME => {
+        fieldname_stack.push(<>);
+        <>
+    }
 };
 
 ComparisonOp: ComparisonOpcode = {
