@@ -368,6 +368,8 @@ mod expr_tests {
         assert_expr("a<>b", String!(DoesNotContain, "a", "b"));
         assert_expr("a<b", String!(Lt, "a", "b"));
         assert_expr("a>b", String!(Gt, "a", "b"));
+        assert_expr("a<=b", String!(Lte, "a", "b"));
+        assert_expr("a>=b", String!(Gte, "a", "b"));
         assert_expr("a:~b", String!(Regex, "a", "b"));
         assert_expr("a:@b", String!(MoreLikeThis, "a", "b"));
         assert_expr("a:@~b", String!(FuzzyLikeThis, "a", "b"));
