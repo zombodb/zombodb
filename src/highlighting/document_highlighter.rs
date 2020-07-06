@@ -10,10 +10,10 @@ use std::ops::Deref;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TokenEntry {
-    type_: String,
-    position: u32,
-    start_offset: u64,
-    end_offset: u64,
+    pub type_: String,
+    pub position: u32,
+    pub start_offset: u64,
+    pub end_offset: u64,
 }
 
 mod pg_catalog {

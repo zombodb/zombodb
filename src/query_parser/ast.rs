@@ -14,14 +14,14 @@ pub struct ProximityPart<'input> {
     pub distance: Option<ProximityDistance>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct QualifiedIndex {
     pub schema: Option<String>,
     pub table: String,
     pub index: String,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct QualifiedField {
     pub index: QualifiedIndex,
     pub field: String,

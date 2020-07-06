@@ -2,7 +2,7 @@
 use crate::query_parser::ast::QualifiedIndex;
 use pgx::*;
 
-mod ast;
+pub mod ast;
 mod parser;
 
 #[pg_extern]
