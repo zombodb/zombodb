@@ -21,7 +21,7 @@ mod pg_catalog {
     use serde::*;
     #[derive(Debug, Serialize, Deserialize, PostgresType)]
     pub struct ProximityPart {
-        pub word: String,
+        pub words: Vec<String>,
         pub distance: u32,
         pub in_order: bool,
     }
@@ -163,7 +163,7 @@ impl DocumentHighlighter {
 
         let phrase = analyze_with_field(index, field, phrase_str)
             .map(|parts| ProximityPart {
-                word: parts.1,
+                words: vec![parts.1],
                 distance: 0,
                 in_order: true,
             })
@@ -189,53 +189,56 @@ impl DocumentHighlighter {
             return None;
         }
 
-        let first_word = phrase.get(0).unwrap();
-        let first_word_entries = self.highlight_token(&first_word.word);
-
-        if phrase.len() == 1 || first_word_entries.is_none() {
-            return first_word_entries;
-        }
-
-        let first_word_entries = first_word_entries.unwrap().into_iter();
+        let first_words = phrase.get(0).unwrap();
         let mut final_matches = HashSet::new();
-        for e in first_word_entries {
-            let mut start = vec![e.1.position]; // 0
-            let mut possibilities = Vec::new();
-            let mut is_valid = true;
 
-            possibilities.push(e);
+        for word in &first_words.words {
+            let first_word_entries = self.highlight_token(&word);
 
-            let mut iter = phrase.iter().peekable();
-            while let Some(current) = iter.next() {
-                let next = iter.peek();
-                if next.is_none() {
-                    break;
-                }
-                let next = next.unwrap();
-
-                let distance = current.distance;
-                let order = current.in_order;
-                let word = &next.word;
-
-                match self.look_for_match(word, distance, order, start) {
-                    None => {
-                        is_valid = false;
-                        break;
-                    }
-                    Some(next_entries) => {
-                        start = next_entries
-                            .iter()
-                            .map(|e| e.1.position)
-                            .collect::<Vec<u32>>();
-                        next_entries.into_iter().for_each(|e| possibilities.push(e));
-                    }
-                }
+            if phrase.len() == 1 || first_word_entries.is_none() {
+                return first_word_entries;
             }
 
-            if is_valid {
-                possibilities.into_iter().for_each(|e| {
-                    final_matches.insert(e);
-                });
+            let first_word_entries = first_word_entries.unwrap().into_iter();
+            for e in first_word_entries {
+                let mut start = vec![e.1.position]; // 0
+                let mut possibilities = Vec::new();
+                let mut is_valid = true;
+
+                possibilities.push(e);
+
+                let mut iter = phrase.iter().peekable();
+                while let Some(current) = iter.next() {
+                    let next = iter.peek();
+                    if next.is_none() {
+                        break;
+                    }
+                    let next = next.unwrap();
+
+                    let distance = current.distance;
+                    let order = current.in_order;
+                    let word = &next.words;
+
+                    match self.look_for_match(word, distance, order, start) {
+                        None => {
+                            is_valid = false;
+                            break;
+                        }
+                        Some(next_entries) => {
+                            start = next_entries
+                                .iter()
+                                .map(|e| e.1.position)
+                                .collect::<Vec<u32>>();
+                            next_entries.into_iter().for_each(|e| possibilities.push(e));
+                        }
+                    }
+                }
+
+                if is_valid {
+                    possibilities.into_iter().for_each(|e| {
+                        final_matches.insert(e);
+                    });
+                }
             }
         }
 
@@ -252,38 +255,39 @@ impl DocumentHighlighter {
 
     fn look_for_match(
         &self,
-        word: &str,
+        words: &Vec<String>,
         distance: u32,
         order: bool,
         starting_point: Vec<u32>,
     ) -> Option<HashSet<(String, &TokenEntry)>> {
-        match self.highlight_token(word) {
-            None => None,
-            Some(entries) => {
-                //need another check within here...
-                //it is finding something from the .highlight_token
-                //then it does not pass the if loops and returns a empty hashset
-                let mut matches = HashSet::new();
-
-                for e in entries {
-                    for point in &starting_point {
-                        if order {
-                            if *point < e.1.position && e.1.position - point <= distance + 1 {
-                                matches.insert(e.clone());
-                            }
-                        } else {
-                            if (*point as i32 - e.1.position as i32).abs() <= distance as i32 + 1 {
-                                matches.insert(e.clone());
+        let mut matches = HashSet::new();
+        for word in words {
+            match self.highlight_token(word) {
+                None => {}
+                Some(entries) => {
+                    for e in entries {
+                        for point in &starting_point {
+                            if order {
+                                if *point < e.1.position && e.1.position - point <= distance + 1 {
+                                    matches.insert(e.clone());
+                                }
+                            } else {
+                                if (*point as i32 - e.1.position as i32).abs()
+                                    <= distance as i32 + 1
+                                {
+                                    matches.insert(e.clone());
+                                }
                             }
                         }
                     }
                 }
-                if matches.is_empty() {
-                    return None;
-                }
-                Some(matches)
             }
         }
+        return if matches.is_empty() {
+            None
+        } else {
+            Some(matches)
+        };
     }
 }
 
@@ -549,8 +553,9 @@ mod tests {
         dh.analyze_document(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match("test", 1, true, vec![0])
+            .look_for_match(&vec![String::from("test")], 1, true, vec![0])
             .expect("no matches found");
+        matches.is_empty();
     }
 
     #[pg_test]
@@ -566,7 +571,7 @@ mod tests {
         dh.analyze_document(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match("is", 0, true, vec![0])
+            .look_for_match(&vec![String::from("is")], 0, true, vec![0])
             .expect("no matches found");
         let mut expected = HashSet::new();
         let value = (
@@ -594,7 +599,7 @@ mod tests {
         dh.analyze_document(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match("this", 0, false, vec![1])
+            .look_for_match(&vec![String::from("this")], 0, false, vec![1])
             .expect("no matches found");
         let mut expected = HashSet::new();
         let value_one = (
@@ -627,7 +632,7 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match("is", 0, false, vec![0, 5])
+            .look_for_match(&vec![String::from("is")], 0, false, vec![0, 5])
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
@@ -670,7 +675,7 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match("this", 0, false, vec![1, 6])
+            .look_for_match(&vec![String::from("this")], 0, false, vec![1, 6])
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
@@ -713,7 +718,7 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match("test", 3, true, vec![0, 5])
+            .look_for_match(&vec![String::from("test")], 3, true, vec![0, 5])
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
@@ -758,7 +763,7 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match("this", 3, false, vec![3, 9])
+            .look_for_match(&vec![String::from("this")], 3, false, vec![3, 9])
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
@@ -1115,8 +1120,8 @@ mod tests {
     fn test_highlighter_proximity_two_term() {
         let title = "highlight_proximity_two_term";
         start_table_and_index(title);
-        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"word\": \"test\", \"distance\": 0, \"in_order\": false}";
+        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"words\": [\"test\"], \"distance\": 0, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','this is a test that is longer and has a second this near test a second time and a third this that is not' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1146,9 +1151,9 @@ mod tests {
         let title = "highlight_proximity_three_term";
         start_table_and_index(title);
         let search_string = "this is a test that is longer and has a second this near test a second time and a third this that is not";
-        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"word\": \"test\", \"distance\": 0, \"in_order\": false}";
-        let array_three = "{\"word\": \"that\", \"distance\": 2, \"in_order\": false}";
+        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"words\": [\"test\"], \"distance\": 0, \"in_order\": false}";
+        let array_three = "{\"words\": [\"that\"], \"distance\": 2, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1177,7 +1182,7 @@ mod tests {
         let title = "highlight_proximity_one_term";
         start_table_and_index(title);
         let search_string = "this is a test that is longer and has a second this near test a second time and a third this that is not";
-        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
+        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart]) order by position;", title,search_string, array_one);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1206,9 +1211,9 @@ mod tests {
         let title = "highlight_proximity_three_term_twice";
         start_table_and_index(title);
         let search_string = "this is a test that is longer and has a second this near test a second time and a third that is not this test that whatever ";
-        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"word\": \"test\", \"distance\": 0, \"in_order\": false}";
-        let array_three = "{\"word\": \"that\", \"distance\": 2, \"in_order\": false}";
+        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"words\": [\"test\"], \"distance\": 0, \"in_order\": false}";
+        let array_three = "{\"words\": [\"that\"], \"distance\": 2, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1243,8 +1248,8 @@ mod tests {
         let title = "highlight_proximity_simple_in_order_test";
         start_table_and_index(title);
         let search_string = "this is this";
-        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": true}";
-        let array_two = "{\"word\": \"is\", \"distance\": 0, \"in_order\": true}";
+        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"words\": [\"is\"], \"distance\": 0, \"in_order\": true}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1271,8 +1276,8 @@ mod tests {
         let title = "highlight_proximity_simple_without_order_test";
         start_table_and_index(title);
         let search_string = "this is this";
-        let array_one = "{\"word\": \"this\", \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"word\": \"is\", \"distance\": 0, \"in_order\": true}";
+        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"words\": [\"is\"], \"distance\": 0, \"in_order\": true}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1301,10 +1306,10 @@ mod tests {
         let title = "highlight_proximity_four_with_inorder_and_not_inorder";
         start_table_and_index(title);
         let search_string = "now is the time for all good men to come to the aid of their country.";
-        let array_one = "{\"word\": \"for\", \"distance\": 2, \"in_order\": true}";
-        let array_two = "{\"word\": \"men\", \"distance\": 2, \"in_order\": true}";
-        let array_three = "{\"word\": \"to\", \"distance\": 12, \"in_order\": false}";
-        let array_four = "{\"word\": \"now\", \"distance\": 2, \"in_order\": false}";
+        let array_one = "{\"words\": [\"for\"], \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"words\": [\"men\"], \"distance\": 2, \"in_order\": true}";
+        let array_three = "{\"words\": [\"to\"], \"distance\": 12, \"in_order\": false}";
+        let array_four = "{\"words\": [\"now\"], \"distance\": 2, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three, array_four);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1336,10 +1341,10 @@ mod tests {
         let title = "highlight_proximity_four_with_inorder_and_not_inorder_double";
         start_table_and_index(title);
         let search_string = "now is the time of the year for all good men to rise up and come to the aid of their country.";
-        let array_one = "{\"word\": \"for\", \"distance\": 2, \"in_order\": true}";
-        let array_two = "{\"word\": \"men\", \"distance\": 5, \"in_order\": true}";
-        let array_three = "{\"word\": \"to\", \"distance\": 11, \"in_order\": false}";
-        let array_four = "{\"word\": \"now\", \"distance\": 2, \"in_order\": false}";
+        let array_one = "{\"words\": [\"for\"], \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"words\": [\"men\"], \"distance\": 5, \"in_order\": true}";
+        let array_three = "{\"words\": [\"to\"], \"distance\": 11, \"in_order\": false}";
+        let array_four = "{\"words\": [\"now\"], \"distance\": 2, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three, array_four);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1371,9 +1376,9 @@ mod tests {
         let title = "highlight_proximity_long_test";
         start_table_and_index(title);
         let search_string = test_blurb();
-        let array_one = "{\"word\": \"energy\", \"distance\": 3, \"in_order\": false}";
-        let array_two = "{\"word\": \"enron\", \"distance\": 3, \"in_order\": false}";
-        let array_three = "{\"word\": \"lay\", \"distance\": 3, \"in_order\": false}";
+        let array_one = "{\"words\": [\"energy\"], \"distance\": 3, \"in_order\": false}";
+        let array_two = "{\"words\": [\"enron\"], \"distance\": 3, \"in_order\": false}";
+        let array_three = "{\"words\": [\"lay\"], \"distance\": 3, \"in_order\": false}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two,array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1385,6 +1390,393 @@ mod tests {
                 ("<ALPHANUM>", "energy", 223, 1597, 1603),
                 ("<ALPHANUM>", "lay", 226, 1631, 1634),
                 ("<ALPHANUM>", "enron", 227, 1648, 1653),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_two_then_one_in_order() {
+        let title = "highlight_proximity_array_two_then_one_in_order";
+        start_table_and_index(title);
+        let search_string = "This is a test";
+        let array_one = "{\"words\": [\"this\", \"is\" ], \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"words\": [\"test\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
+            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_one_then_two_in_order() {
+        let title = "highlight_proximity_array_two_then_one_in_order";
+        start_table_and_index(title);
+        let search_string = "This is a test";
+        let array_one = "{\"words\": [\"this\" ], \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"words\": [\"test\", \"is\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
+            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_two_then_one_without_order() {
+        let title = "highlight_proximity_array_two_then_one_without_order";
+        start_table_and_index(title);
+        let search_string = "This is a test";
+        let array_one = "{\"words\": [\"test\", \"is\" ], \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"words\": [\"this\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
+            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_one_then_two_without_order() {
+        let title = "highlight_proximity_array_two_then_one_without_order";
+        start_table_and_index(title);
+        let search_string = "This is a test";
+        let array_one = "{\"words\": [\"test\" ], \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"words\": [\"this\", \"is\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
+            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_two_then_two_in_order() {
+        let title = "highlight_proximity_array_two_then_two_in_order";
+        start_table_and_index(title);
+        let search_string = "This is a test that is a bit longer";
+        let array_one = "{\"words\": [\"this\", \"is\" ], \"distance\": 2, \"in_order\": true}";
+        let array_two = "{\"words\": [\"test\", \"longer\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this   | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is     | <ALPHANUM> |        1 |            5 |          7
+            // test_field | test   | <ALPHANUM> |        3 |           10 |         14
+            // test_field | is     | <ALPHANUM> |        5 |           20 |         22
+            // test_field | longer | <ALPHANUM> |        8 |           29 |         35
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "is", 5, 20, 22),
+                ("<ALPHANUM>", "longer", 8, 29, 35),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_two_then_two_without_order() {
+        let title = "highlight_proximity_array_two_then_two_without_order";
+        start_table_and_index(title);
+        let search_string = "This is a test that is a bit longer";
+        let array_one =
+            "{\"words\": [\"that\", \"longer\" ], \"distance\": 2, \"in_order\": false}";
+        let array_two = "{\"words\": [\"test\", \"is\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            //  test_field | is     | <ALPHANUM> |        1 |            5 |          7
+            //  test_field | test   | <ALPHANUM> |        3 |           10 |         14
+            //  test_field | that   | <ALPHANUM> |        4 |           15 |         19
+            //  test_field | is     | <ALPHANUM> |        5 |           20 |         22
+            //  test_field | longer | <ALPHANUM> |        8 |           29 |         35
+            let expect = vec![
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "that", 4, 15, 19),
+                ("<ALPHANUM>", "is", 5, 20, 22),
+                ("<ALPHANUM>", "longer", 8, 29, 35),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_three_then_three_in_order() {
+        let title = "highlight_proximity_array_three_then_three_in_order";
+        start_table_and_index(title);
+        let search_string =
+            "This is a test that is a bit longer. I have also added another sentence to test.";
+        let array_one =
+            "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": true}";
+        let array_two =
+            "{\"words\": [\"test\", \"is\", \"to\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this     | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is       | <ALPHANUM> |        1 |            5 |          7
+            // test_field | test     | <ALPHANUM> |        3 |           10 |         14
+            // test_field | sentence | <ALPHANUM> |       13 |           58 |         66
+            // test_field | to       | <ALPHANUM> |       14 |           67 |         69
+            // test_field | test     | <ALPHANUM> |       15 |           70 |         74
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "sentence", 14, 63, 71),
+                ("<ALPHANUM>", "to", 15, 72, 74),
+                ("<ALPHANUM>", "test", 16, 75, 79),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_three_then_three_without_order() {
+        let title = "highlight_proximity_array_three_then_three_without_order";
+        start_table_and_index(title);
+        let search_string =
+            "This is a test that is a bit longer. I have also added another sentence to test.";
+        let array_one =
+            "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": false}";
+        let array_two =
+            "{\"words\": [\"test\", \"is\", \"to\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | this     | <ALPHANUM> |        0 |            0 |          4
+            // test_field | is       | <ALPHANUM> |        1 |            5 |          7
+            // test_field | test     | <ALPHANUM> |        3 |           10 |         14
+            // test_field | is       | <ALPHANUM> |        5 |           20 |         22
+            // test_field | longer   | <ALPHANUM> |        8 |           29 |         35
+            // test_field | sentence | <ALPHANUM> |       14 |           63 |         71
+            // test_field | to       | <ALPHANUM> |       15 |           72 |         74
+            // test_field | test     | <ALPHANUM> |       16 |           75 |         79
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "is", 5, 20, 22),
+                ("<ALPHANUM>", "longer", 8, 29, 35),
+                ("<ALPHANUM>", "sentence", 14, 63, 71),
+                ("<ALPHANUM>", "to", 15, 72, 74),
+                ("<ALPHANUM>", "test", 16, 75, 79),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_three_then_three() {
+        let title = "highlight_proximity_array_three_then_three_then_three";
+        start_table_and_index(title);
+        let search_string =
+            "This is a test that is a bit longer. I have also added another sentence to test.";
+        let array_one =
+            "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": true}";
+        let array_two =
+            "{\"words\": [\"is\", \"have\", \"to\"], \"distance\": 0, \"in_order\": true}";
+        let array_three =
+            "{\"words\": [\"a\", \"test\", \"also\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            //  field_name | term |    type    | position | start_offset | end_offset
+            //  -----------+------+------------+----------+--------------+------------
+            //  test_field | this     | <ALPHANUM> |        0 |            0 |          4
+            //  test_field | is       | <ALPHANUM> |        1 |            5 |          7
+            //  test_field | a        | <ALPHANUM> |        2 |            8 |          9
+            //  test_field | longer   | <ALPHANUM> |        8 |           29 |         35
+            //  test_field | have     | <ALPHANUM> |       10 |           39 |         43
+            //  test_field | also     | <ALPHANUM> |       11 |           44 |         48
+            //  test_field | sentence | <ALPHANUM> |       14 |           63 |         71
+            //  test_field | to       | <ALPHANUM> |       15 |           72 |         74
+            //  test_field | test     | <ALPHANUM> |       16 |           75 |         79
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "a", 2, 8, 9),
+                ("<ALPHANUM>", "longer", 8, 29, 35),
+                ("<ALPHANUM>", "have", 10, 39, 43),
+                ("<ALPHANUM>", "also", 11, 44, 48),
+                ("<ALPHANUM>", "sentence", 14, 63, 71),
+                ("<ALPHANUM>", "to", 15, 72, 74),
+                ("<ALPHANUM>", "test", 16, 75, 79),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_three_then_three_no_order() {
+        let title = "highlight_proximity_array_three_then_three_then_three_no_order";
+        start_table_and_index(title);
+        let search_string =
+            "This is a test that is a bit longer. I have also added another sentence to test.";
+        let array_one =
+            "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 0, \"in_order\": false}";
+        let array_two =
+            "{\"words\": [\"is\", \"have\", \"another\"], \"distance\": 0, \"in_order\": false}";
+        let array_three =
+            "{\"words\": [\"a\", \"test\", \"added\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            //  field_name | term |    type    | position | start_offset | end_offset
+            //  -----------+------+------------+----------+--------------+------------
+            //  test_field | this     | <ALPHANUM> |        0 |            0 |          4
+            //  test_field | is       | <ALPHANUM> |        1 |            5 |          7
+            //  test_field | a        | <ALPHANUM> |        2 |            8 |          9
+            //  test_field | added    | <ALPHANUM> |       12 |           49 |         54
+            //  test_field | another  | <ALPHANUM> |       13 |           55 |         62
+            //  test_field | sentence | <ALPHANUM> |       14 |           63 |         71
+            let expect = vec![
+                ("<ALPHANUM>", "this", 0, 0, 4),
+                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "a", 2, 8, 9),
+                ("<ALPHANUM>", "added", 12, 49, 54),
+                ("<ALPHANUM>", "another", 13, 55, 62),
+                ("<ALPHANUM>", "sentence", 14, 63, 71),
+            ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_proximity_array_two_then_three_no_order() {
+        let title = "highlight_proximity_array_three_then_three_then_three_no_order";
+        start_table_and_index(title);
+        let search_string =
+            "Okay sure, I think this sentence is about fifteen words long Maybe less I dunno";
+        let array_one = "{\"words\": [\"okay\", \"sure\" ], \"distance\": 15, \"in_order\": false}";
+        let array_two =
+            "{\"words\": [\"is\", \"fifteen\", \"words\"], \"distance\": 15, \"in_order\": false}";
+        let array_three = "{\"words\": [\"dunno\"], \"distance\": 5, \"in_order\": true}";
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            // test_field | okay    | <ALPHANUM> |        0 |            0 |          4
+            // test_field | sure    | <ALPHANUM> |        1 |            5 |          9
+            // test_field | is      | <ALPHANUM> |        6 |           33 |         35
+            // test_field | fifteen | <ALPHANUM> |        8 |           42 |         49
+            // test_field | words   | <ALPHANUM> |        9 |           50 |         55
+            // test_field | dunno   | <ALPHANUM> |       14 |           74 |         79
+            let expect = vec![
+                ("<ALPHANUM>", "okay", 0, 0, 4),
+                ("<ALPHANUM>", "sure", 1, 5, 9),
+                ("<ALPHANUM>", "is", 6, 33, 35),
+                ("<ALPHANUM>", "fifteen", 8, 42, 49),
+                ("<ALPHANUM>", "words", 9, 50, 55),
+                ("<ALPHANUM>", "dunno", 14, 74, 79),
             ];
 
             test_table(table, expect);
