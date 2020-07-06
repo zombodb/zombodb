@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use crate::query_parser::ast::*;
 
-grammar(fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>);
+grammar(fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>, index_stack: &mut Vec<QualifiedIndex>);
 
 match {
     // top precedence tokens
@@ -118,7 +118,7 @@ ProximityExpression: Box<Expr<'input>> = {
 
         let field_name = fieldname_stack.last().unwrap();
         let operator = operator_stack.last().unwrap();
-        Box::new(Expr::from_opcode(field_name, *operator, Term::ProximityChain(parts)))
+        Box::new(Expr::from_opcode(index_stack, field_name, *operator, Term::ProximityChain(parts)))
     },
     UnaryExpression
 };
@@ -161,13 +161,13 @@ Comparison: Box<Expr<'input>> = {
     FieldName ComparisonOperator Term => {
         fieldname_stack.pop();
         operator_stack.pop();
-        Box::new(Expr::from_opcode(<>))
+        Box::new(Expr::from_opcode(index_stack, <>))
     },
     Term => {
         let field_name = fieldname_stack.last().unwrap();
         let operator = operator_stack.last().unwrap();
         let right = <>;
-        Box::new(Expr::from_opcode(field_name, *operator, right))
+        Box::new(Expr::from_opcode(index_stack, field_name, *operator, right))
     },
     FieldName ComparisonOperator O_PAREN <Expr> C_PAREN => {
         fieldname_stack.pop();
@@ -267,24 +267,37 @@ String: &'input str = {
     },
 };
 
-TableIndexName: QualifiedIndex<'input> = {
-    <(<IDENTIFIER> DOT)?> <IDENTIFIER> DOT <IDENTIFIER> => QualifiedIndex(<>),
+TableIndexName: QualifiedIndex = {
+    <schema:(<IDENTIFIER> DOT)?> <table:IDENTIFIER> DOT <index:IDENTIFIER> => {
+        let index = match schema {
+            Some(schema) => QualifiedIndex(Some(schema.to_string()), table.to_string(), index.to_string()),
+            None => QualifiedIndex(None, table.to_string(), index.to_string()),
+        };
+
+        index_stack.push(index.clone());
+        index
+    },
+
     <DOTTED_IDENTIFIER> => {
+        eprintln!("parts={}", <>);
         let mut parts = <>.split_terminator('.');
         let schema = parts.next();
         let table = parts.next();
         let index = parts.next();
 
-        if index.is_some() {
+        let index = if index.is_some() {
             if parts.next().is_some() {
                 panic!("index link schema.table.index is too long: {}", <>);
             }
-            QualifiedIndex(schema, table.unwrap(), index.unwrap())
+            QualifiedIndex(Some(schema.unwrap().to_string()), table.unwrap().to_string(), index.unwrap().to_string())
         } else {
             let index = table;
             let table = schema;
-            QualifiedIndex(None, table.unwrap(), index.unwrap())
-        }
+            QualifiedIndex(None, table.unwrap().to_string(), index.unwrap().to_string())
+        };
+
+        index_stack.push(index.clone());
+        index
     }
 };
 
@@ -296,11 +309,17 @@ IndexLink: IndexLink<'input> = {
 };
 
 Subselect: Expr<'input> = {
-    SUBSELECT <link:IndexLink> <q:ParentheticalGroup> => Expr::Subselect(<>)
+    SUBSELECT <link:IndexLink> <q:ParentheticalGroup> => {
+        index_stack.pop();
+        Expr::Subselect(<>)
+    }
 };
 
 Expand: Expr<'input> = {
-    EXPAND <link:IndexLink> <q:ParentheticalGroup> => Expr::Expand(<>)
+    EXPAND <link:IndexLink> <q:ParentheticalGroup> => {
+        index_stack.pop();
+        Expr::Expand(<>)
+    }
 };
 
 JsonObject: String = {

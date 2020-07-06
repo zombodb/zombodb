@@ -15,13 +15,16 @@ pub struct ProximityPart<'input> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct QualifiedIndex<'input>(pub Option<&'input str>, pub &'input str, pub &'input str);
+pub struct QualifiedIndex(pub Option<String>, pub String, pub String);
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct QualifiedField(pub QualifiedIndex, pub String);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IndexLink<'input> {
     pub name: Option<&'input str>,
     pub left_field: &'input str,
-    pub qualified_index: QualifiedIndex<'input>,
+    pub qualified_index: QualifiedIndex,
     pub right_field: &'input str,
 }
 
@@ -75,17 +78,17 @@ pub enum Expr<'input> {
     Or(Box<Expr<'input>>, Box<Expr<'input>>),
 
     // types of comparisons
-    Contains(&'input str, Term<'input>),
-    Eq(&'input str, Term<'input>),
-    Gt(&'input str, Term<'input>),
-    Lt(&'input str, Term<'input>),
-    Gte(&'input str, Term<'input>),
-    Lte(&'input str, Term<'input>),
-    Ne(&'input str, Term<'input>),
-    DoesNotContain(&'input str, Term<'input>),
-    Regex(&'input str, Term<'input>),
-    MoreLikeThis(&'input str, Term<'input>),
-    FuzzyLikeThis(&'input str, Term<'input>),
+    Contains(QualifiedField, Term<'input>),
+    Eq(QualifiedField, Term<'input>),
+    Gt(QualifiedField, Term<'input>),
+    Lt(QualifiedField, Term<'input>),
+    Gte(QualifiedField, Term<'input>),
+    Lte(QualifiedField, Term<'input>),
+    Ne(QualifiedField, Term<'input>),
+    DoesNotContain(QualifiedField, Term<'input>),
+    Regex(QualifiedField, Term<'input>),
+    MoreLikeThis(QualifiedField, Term<'input>),
+    FuzzyLikeThis(QualifiedField, Term<'input>),
 }
 
 impl<'input> Term<'input> {
@@ -110,20 +113,33 @@ pub type ParserError<'input> = ParseError<usize, Token<'input>, &'static str>;
 
 impl<'input> Expr<'input> {
     pub fn from_str(
+        default_index: QualifiedIndex,
         default_fieldname: &'input str,
         input: &'input str,
     ) -> Result<Box<Expr<'input>>, ParserError<'input>> {
+        let input = input.clone();
         let parser = crate::query_parser::parser::ExprParser::new();
-        let mut fieldname_stack = vec![default_fieldname];
+        let mut index_stack = vec![default_index];
         let mut operator_stack = vec![ComparisonOpcode::Contains];
-        parser.parse(&mut fieldname_stack, &mut operator_stack, input)
+        let mut fieldname_stack = vec![default_fieldname];
+
+        parser.parse(
+            &mut fieldname_stack,
+            &mut operator_stack,
+            &mut index_stack,
+            input,
+        )
     }
 
     pub(in crate::query_parser) fn from_opcode(
+        index_stack: &Vec<QualifiedIndex>,
         field_name: &'input str,
         opcode: ComparisonOpcode,
         right: Term<'input>,
     ) -> Expr<'input> {
+        let index = *index_stack.last().as_ref().unwrap();
+        let field_name = QualifiedField(index.clone(), field_name.to_string());
+
         match opcode {
             ComparisonOpcode::Contains => Expr::Contains(field_name, right),
             ComparisonOpcode::Eq => Expr::Eq(field_name, right),
@@ -177,13 +193,19 @@ impl Display for ProximityDistance {
     }
 }
 
-impl<'input> Display for QualifiedIndex<'input> {
+impl Display for QualifiedIndex {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        if let Some(schema) = self.0 {
+        if let Some(schema) = self.0.as_ref() {
             write!(fmt, "{}.{}.{}", schema, self.1, self.2)
         } else {
             write!(fmt, "{}.{}", self.1, self.2)
         }
+    }
+}
+
+impl Display for QualifiedField {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{}", self.1)
     }
 }
 

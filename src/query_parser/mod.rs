@@ -1,96 +1,184 @@
 #![allow(unused_macros)]
+use crate::query_parser::ast::QualifiedIndex;
 use pgx::*;
+
 mod ast;
 mod parser;
 
-#[allow(non_snake_case)]
-macro_rules! Box {
-    ($val:expr) => {
-        Box::new($val)
-    };
+#[pg_extern]
+fn test_parser(input: &str) -> String {
+    let expr = ast::Expr::from_str(
+        QualifiedIndex(None, "table".to_string(), "index".to_string()),
+        "_zdb_all",
+        input,
+    )
+    .expect("failed to parse");
+    format!("{:#}\n{:#?}", expr, expr)
 }
 
-#[allow(non_snake_case)]
-macro_rules! String {
-    ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
-            crate::query_parser::ast::Term::String($val, Some($boost))
-        ))
-    };
-    ($operator:tt, $field:literal, $val:expr) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
+#[cfg(test)]
+#[macro_use]
+mod macros {
+    #[allow(non_snake_case)]
+    macro_rules! Box {
+        ($val:expr) => {
+            Box::new($val)
+        };
+    }
+
+    #[allow(non_snake_case)]
+    macro_rules! String {
+        ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        "table".to_string(),
+                        "index".to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::String($val, Some($boost))
+            ))
+        };
+        ($operator:tt, $table:literal, $index:literal, $field:literal, $val:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        $table.to_string(),
+                        $index.to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::String($val, None)
+            ))
+        };
+        ($operator:tt, $field:literal, $val:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        "table".to_string(),
+                        "index".to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::String($val, None)
+            ))
+        };
+        ($val:expr) => {
             crate::query_parser::ast::Term::String($val, None)
-        ))
-    };
-    ($val:expr) => {
-        crate::query_parser::ast::Term::String($val, None)
-    };
-}
+        };
+    }
 
-#[allow(non_snake_case)]
-macro_rules! Wildcard {
-    ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
-            crate::query_parser::ast::Term::Wildcard($val, Some($boost))
-        ))
-    };
-    ($operator:tt, $field:literal, $val:expr) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
+    #[allow(non_snake_case)]
+    macro_rules! Wildcard {
+        ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        "table".to_string(),
+                        "index".to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::Wildcard($val, Some($boost))
+            ))
+        };
+        ($operator:tt, $field:literal, $val:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        "table".to_string(),
+                        "index".to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::Wildcard($val, None)
+            ))
+        };
+        ($val:expr) => {
             crate::query_parser::ast::Term::Wildcard($val, None)
-        ))
-    };
-    ($val:expr) => {
-        crate::query_parser::ast::Term::Wildcard($val, None)
-    };
-}
+        };
+    }
 
-#[allow(non_snake_case)]
-macro_rules! Fuzzy {
-    ($operator:tt, $field:literal, $val:expr, $slop:expr, $boost:expr) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
-            crate::query_parser::ast::Term::Fuzzy($val, $slop, Some($boost))
-        ))
-    };
-    ($operator:tt, $field:literal, $val:expr, $slop:expr) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
+    #[allow(non_snake_case)]
+    macro_rules! Fuzzy {
+        ($operator:tt, $field:literal, $val:expr, $slop:expr, $boost:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        "table".to_string(),
+                        "index".to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::Fuzzy($val, $slop, Some($boost))
+            ))
+        };
+        ($operator:tt, $field:literal, $val:expr, $slop:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        "table".to_string(),
+                        "index".to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
+            ))
+        };
+        ($val:expr, $slop:expr) => {
             crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
-        ))
-    };
-    ($val:expr, $slop:expr) => {
-        crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
-    };
-}
+        };
+    }
 
-#[allow(non_snake_case)]
-macro_rules! UnparsedArray {
-    ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
-            crate::query_parser::ast::Term::UnparsedArray($val, Some($boost))
-        ))
-    };
-    ($operator:tt, $field:literal, $val:expr) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
+    #[allow(non_snake_case)]
+    macro_rules! UnparsedArray {
+        ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        "table".to_string(),
+                        "index".to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::UnparsedArray($val, Some($boost))
+            ))
+        };
+        ($operator:tt, $field:literal, $val:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField(
+                    crate::query_parser::ast::QualifiedIndex(
+                        None,
+                        "table".to_string(),
+                        "index".to_string()
+                    ),
+                    $field.to_string()
+                ),
+                crate::query_parser::ast::Term::UnparsedArray($val, None)
+            ))
+        };
+        ($val:expr) => {
             crate::query_parser::ast::Term::UnparsedArray($val, None)
-        ))
-    };
-    ($val:expr) => {
-        crate::query_parser::ast::Term::UnparsedArray($val, None)
-    };
-}
+        };
+    }
 
-#[allow(non_snake_case)]
-macro_rules! ParsedArray {
+    #[allow(non_snake_case)]
+    macro_rules! ParsedArray {
     ($operator:tt, $field:literal, $($elements:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
+            crate::query_parser::ast::QualifiedField(
+                crate::query_parser::ast::QualifiedIndex(None, "table".to_string(), "index".to_string()),
+                $field.to_string()
+            ),
             crate::query_parser::ast::Term::ParsedArray(
                 vec![$($elements),*],
                 None
@@ -99,11 +187,14 @@ macro_rules! ParsedArray {
     };
 }
 
-#[allow(non_snake_case)]
-macro_rules! ParsedArrayWithBoost {
+    #[allow(non_snake_case)]
+    macro_rules! ParsedArrayWithBoost {
     ($operator:tt, $field:literal, $boost:expr, $($elements:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
+            crate::query_parser::ast::QualifiedField(
+                crate::query_parser::ast::QualifiedIndex(None, "table".to_string(), "index".to_string()),
+                $field.to_string()
+            ),
             crate::query_parser::ast::Term::ParsedArray(
                 vec![$($elements),*],
                 Some($boost)
@@ -112,75 +203,77 @@ macro_rules! ParsedArrayWithBoost {
     };
 }
 
-#[allow(non_snake_case)]
-macro_rules! Not {
-    ($e:expr) => {
-        Box!(crate::query_parser::ast::Expr::Not($e))
-    };
-}
-
-#[allow(non_snake_case)]
-macro_rules! With {
-    ($left:expr, $right:expr) => {
-        Box!(crate::query_parser::ast::Expr::With($left, $right))
-    };
-}
-
-#[allow(non_snake_case)]
-macro_rules! And {
-    ($left:expr, $right:expr) => {
-        Box!(crate::query_parser::ast::Expr::And($left, $right))
-    };
-}
-
-#[allow(non_snake_case)]
-macro_rules! Or {
-    ($left:expr, $right:expr) => {
-        Box!(crate::query_parser::ast::Expr::Or($left, $right))
-    };
-}
-
-#[allow(non_snake_case)]
-macro_rules! Within {
-    ($left:expr, $distance:literal, $in_order:literal) => {
-        crate::query_parser::ast::ProximityPart {
-            words: $left,
-            distance: Some(crate::query_parser::ast::ProximityDistance {
-                distance: $distance,
-                in_order: $in_order,
-            }),
-        }
-    };
-    ($left:expr) => {
-        crate::query_parser::ast::ProximityPart {
-            words: $left,
-            distance: None,
-        }
-    };
-}
-
-#[allow(non_snake_case)]
-macro_rules! ProximityChain {
+    #[allow(non_snake_case)]
+    macro_rules! ProximityChain {
     ($operator:tt, $field:literal, $($parts:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
-            $field,
+            crate::query_parser::ast::QualifiedField(
+                crate::query_parser::ast::QualifiedIndex(None, "table".to_string(), "index".to_string()),
+                $field.to_string()
+            ),
             crate::query_parser::ast::Term::ProximityChain(vec![$($parts),*])
         ))
     };
 }
 
-#[pg_extern]
-fn test_parser(input: &str) -> String {
-    let expr = ast::Expr::from_str("_zdb_all", input).expect("failed to parse");
-    format!("{:#}\n{:#?}", expr, expr)
+    #[allow(non_snake_case)]
+    macro_rules! Within {
+        ($left:expr, $distance:literal, $in_order:literal) => {
+            crate::query_parser::ast::ProximityPart {
+                words: $left,
+                distance: Some(crate::query_parser::ast::ProximityDistance {
+                    distance: $distance,
+                    in_order: $in_order,
+                }),
+            }
+        };
+        ($left:expr) => {
+            crate::query_parser::ast::ProximityPart {
+                words: $left,
+                distance: None,
+            }
+        };
+    }
+
+    #[allow(non_snake_case)]
+    macro_rules! Not {
+        ($e:expr) => {
+            Box!(crate::query_parser::ast::Expr::Not($e))
+        };
+    }
+
+    #[allow(non_snake_case)]
+    macro_rules! With {
+        ($left:expr, $right:expr) => {
+            Box!(crate::query_parser::ast::Expr::With($left, $right))
+        };
+    }
+
+    #[allow(non_snake_case)]
+    macro_rules! And {
+        ($left:expr, $right:expr) => {
+            Box!(crate::query_parser::ast::Expr::And($left, $right))
+        };
+    }
+
+    #[allow(non_snake_case)]
+    macro_rules! Or {
+        ($left:expr, $right:expr) => {
+            Box!(crate::query_parser::ast::Expr::Or($left, $right))
+        };
+    }
 }
 
 #[cfg(test)]
 mod string_tests {
-    use crate::query_parser::ast::{Expr, ParserError};
+    use crate::query_parser::ast::{Expr, ParserError, QualifiedIndex};
 
     pub(super) fn parse(input: &str) -> Result<Box<Expr>, ParserError> {
-        Expr::from_str("_", input)
+        Expr::from_str(
+            QualifiedIndex(None, "table".to_string(), "index".to_string()),
+            "_",
+            input,
+        )
     }
 
     fn assert_str(input: &str, expected: &str) {
@@ -292,7 +385,7 @@ mod string_tests {
 
 #[cfg(test)]
 mod expr_tests {
-    use crate::query_parser::ast::Expr;
+    use crate::query_parser::ast::{Expr, IndexLink, QualifiedIndex};
     use crate::query_parser::string_tests::parse;
 
     fn assert_expr<'input>(input: &'input str, expected: Box<Expr<'input>>) {
@@ -552,5 +645,28 @@ mod expr_tests {
     #[test]
     fn unparsed_array() {
         assert_expr("[[a, b,   c]]", UnparsedArray!(Contains, "_", "a, b,   c"))
+    }
+
+    #[test]
+    fn subselect() {
+        assert_expr(
+            "#subselect<id=<other.table>o_id>(value), outer",
+            Or!(
+                Box::new(Expr::Subselect(
+                    IndexLink {
+                        name: None,
+                        left_field: "id",
+                        qualified_index: QualifiedIndex(
+                            None,
+                            "other".to_string(),
+                            "table".to_string()
+                        ),
+                        right_field: "o_id",
+                    },
+                    String!(Contains, "other", "table", "_", "value"),
+                )),
+                String!(Contains, "_", "outer")
+            ),
+        )
     }
 }
