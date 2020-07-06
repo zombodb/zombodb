@@ -1,0 +1,402 @@
+use std::str::FromStr;
+use crate::query_parser::ast::*;
+
+grammar(fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>, index_stack: &mut Vec<QualifiedIndex>);
+
+match {
+    // top precedence tokens
+    ":" => COLON,
+    "=" => EQ,
+    ">" => GT,
+    "<" => LT,
+    ">=" => GTE,
+    "<=" => LTE,
+    "<>" => DOES_NOT_CONTAIN,
+    "!=" => NE,
+    ":~" => REGEX,
+    ":@" => MORE_LIKE_THIS,
+    ":@~" => FUZZY_LIKE_THIS,
+
+    "[" => O_BRACKET,
+    "]" => C_BRACKET,
+
+    "(" => O_PAREN,
+    ")" => C_PAREN,
+
+    "{" => O_BRACE,
+    "}" => C_BRACE,
+
+    "w/" => WITHIN,
+    "wo/" => WITHIN_ORDER,
+
+    r#"(?i)#subselect"# => SUBSELECT,
+    r#"(?i)#expand"# => EXPAND,
+
+    r#"[-+]?[0-9]+"# => NUMBER,
+    r#"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?"# => FLOAT,
+
+} else {
+    // lower precedence operator keyword tokens
+    r"(?i)not" => NOT,
+    r"(?i)with" => WITH,
+    r"(?i)and" => AND,
+    r"(?i)or" => OR,
+
+    "!" => EXCLAMATION,
+    "%" => PERCENT,
+    "&" => AMPERSAND,
+    "," => COMMA,
+
+    "^" => CARET,
+    "~" => TILDE,
+    "." => DOT,
+
+    r#"(?i)null"# => NULL,
+    r#"(?i)true"# => TRUE,
+    r#"(?i)false"# => FALSE,
+
+    r#"(?i)/to/"# => TO,
+} else {
+    // a field name looks a lot like a "simple value", so it needs to be defined
+    // with a higher matching precedence
+    r#"[a-z0-9_]+"# => IDENTIFIER,
+    r#"([a-z0-9_]+(\.[a-z0-9_]+)+)"# => DOTTED_IDENTIFIER,
+} else {
+    // even lower precedence values
+    r#"(([a-zA-Z0-9_*?]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
+    r#"'(?:\\.|[^'\\])*'"# => QUOTED_VALUE,
+    r#""(?:\\.|[^"\\])*""# => DOUBLE_QUOTED_VALUE,
+    r#"\[\[[^\]]*\]\]"# => UNPARSED_ARRAY,
+}
+
+pub Expr: Box<Expr<'input>> = {
+    <OrExpression>,
+};
+
+OrExpression: Box<Expr<'input>> = {
+    <l:OrExpression> OrOp+ <r:AndExpression> => Box::new(Expr::Or(l, r)),
+    AndExpression,
+};
+
+OrOp: Opcode = {
+    OR => Opcode::Or,
+    COMMA => Opcode::Or,
+};
+
+AndExpression: Box<Expr<'input>> = {
+    <l:AndExpression> <op:AndOp+> <r:WithExpression> => Box::new(Expr::And(l, r)),
+    <l:AndExpression> <op:AndNotOp> <r:WithExpression> => Box::new(Expr::And(l, Box::new(Expr::Not(r)))),
+    WithExpression,
+};
+
+AndOp: Opcode = {
+    AND => Opcode::And,
+    AMPERSAND => Opcode::And,
+};
+
+AndNotOp: Opcode = {
+    NOT => Opcode::AndNot,
+    EXCLAMATION => Opcode::AndNot,
+};
+
+WithExpression: Box<Expr<'input>> = {
+    <l:WithExpression> WithOp <r:ProximityExpression> => Box::new(Expr::With(l, r)),
+    ProximityExpression
+};
+
+WithOp: Opcode = {
+    WITH => Opcode::With,
+    PERCENT => Opcode::With,
+}
+
+ProximityExpression: Box<Expr<'input>> = {
+    <mut parts:ProximityPart+> <words:ProximityGroup> => {
+        parts.push(ProximityPart {
+            words,
+            distance: None
+        });
+
+        let field_name = fieldname_stack.last().unwrap();
+        let operator = operator_stack.last().unwrap();
+        Box::new(Expr::from_opcode(index_stack, field_name, *operator, Term::ProximityChain(parts)))
+    },
+    UnaryExpression
+};
+
+ProximityPart: ProximityPart<'input> = {
+    <words:ProximityGroup> <in_order:WithinOperator> <distance:NUMBER> => {
+        ProximityPart {
+            words,
+            distance: Some(ProximityDistance {
+                distance: u32::from_str(distance).unwrap(),
+                in_order
+                })
+        }
+    }
+};
+
+ProximityGroup: Vec<Term<'input>> = {
+    ParentheticalGroup => <>.extract_prox_terms(),
+    StringExpr => vec![<>]
+};
+
+WithinOperator: bool = {
+    WITHIN => false,
+    WITHIN_ORDER => true
+};
+
+UnaryExpression: Box<Expr<'input>> = {
+    NotOp <t:UnaryExpression> => Box::new(Expr::Not(t)),
+    Subselect => Box::new(<>),
+    Expand => Box::new(<>),
+    Comparison,
+};
+
+NotOp: Opcode = {
+    NOT => Opcode::Not,
+    EXCLAMATION => Opcode::Not
+};
+
+Comparison: Box<Expr<'input>> = {
+    FieldName ComparisonOperator Term => {
+        fieldname_stack.pop();
+        operator_stack.pop();
+        Box::new(Expr::from_opcode(index_stack, <>))
+    },
+    Term => {
+        let field_name = fieldname_stack.last().unwrap();
+        let operator = operator_stack.last().unwrap();
+        let right = <>;
+        Box::new(Expr::from_opcode(index_stack, field_name, *operator, right))
+    },
+    FieldName ComparisonOperator O_PAREN <Expr> C_PAREN => {
+        fieldname_stack.pop();
+        operator_stack.pop();
+        <>
+    },
+    O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
+    ParentheticalGroup
+};
+
+ParentheticalGroup: Box<Expr<'input>> = {
+    O_PAREN <Expr> C_PAREN
+}
+
+FieldName: &'input str = {
+    IDENTIFIER => {
+        fieldname_stack.push(<>);
+        <>
+    },
+    DOTTED_IDENTIFIER => {
+        fieldname_stack.push(<>);
+        <>
+    }
+};
+
+UntrackedFieldName: &'input str = {
+    IDENTIFIER,
+    DOTTED_IDENTIFIER,
+};
+
+ComparisonOperator: ComparisonOpcode = {
+    ComparisonOp => {
+        operator_stack.push(<>);
+        <>
+    }
+}
+
+ComparisonOp: ComparisonOpcode = {
+    COLON => ComparisonOpcode::Contains,
+    EQ => ComparisonOpcode::Eq,
+    GT => ComparisonOpcode::Gt,
+    LT => ComparisonOpcode::Lt,
+    GTE => ComparisonOpcode::Gte,
+    LTE => ComparisonOpcode::Lte,
+    NE => ComparisonOpcode::Ne,
+    DOES_NOT_CONTAIN => ComparisonOpcode::DoesNotContain,
+    REGEX => ComparisonOpcode::Regex,
+    MORE_LIKE_THIS => ComparisonOpcode::MoreLikeThis,
+    FUZZY_LIKE_THIS => ComparisonOpcode::FuzzyLikeThis,
+};
+
+Term: Term<'input> = {
+    StringExpr => <>,
+    O_BRACKET <v:(<StringExpr> COMMA?)*> C_BRACKET <b:Boost?> => Term::ParsedArray(v, b),
+    <a:UnparsedArray> <b:Boost?> => Term::UnparsedArray(a, b),
+    <start:String> TO <end:String> <b:Boost?> => Term::Range(start, end, b),
+};
+
+UnparsedArray: &'input str = {
+    UNPARSED_ARRAY => {
+        &<>[2..<>.len()-2]
+    }
+}
+
+StringExpr: Term<'input> = {
+    NULL => Term::Null,
+    <s:String> <b:Boost?> => Term::maybe_make_wildcard(Term::String(s, b)),
+    <s:String> <f:Fuzzy> <b:Boost?> => Term::Fuzzy(s, f, b)
+};
+
+Boost: f32 = {
+    CARET <FLOAT> => f32::from_str(<>).unwrap(),
+    CARET <NUMBER> => f32::from_str(<>).unwrap(),
+};
+
+Fuzzy: u8 = {
+    TILDE <NUMBER> => u8::from_str(<>).unwrap(),
+};
+
+String: &'input str = {
+    NUMBER => <>,
+    FLOAT => <>,
+    TRUE => <>,
+    FALSE => <>,
+    IDENTIFIER => <>,
+    DOTTED_IDENTIFIER => <>,
+    UNQUOTED_VALUE => <>,
+    QUOTED_VALUE => {
+        let s = <>;
+        let s = &s[1..s.len()-1];
+        s
+    },
+    DOUBLE_QUOTED_VALUE => {
+        let s = <>;
+        let s = &s[1..s.len()-1];
+        s
+    },
+};
+
+TableIndexName: QualifiedIndex = {
+    <schema:(<IDENTIFIER> DOT)?> <table:IDENTIFIER> DOT <index:IDENTIFIER> => {
+        let index = match schema {
+            Some(schema) => QualifiedIndex {
+                schema: Some(schema.to_string()),
+                table: table.to_string(),
+                index: index.to_string(),
+            },
+            None => QualifiedIndex {
+                schema: None,
+                table: table.to_string(),
+                index: index.to_string(),
+            },
+        };
+
+        index_stack.push(index.clone());
+        index
+    },
+
+    <DOTTED_IDENTIFIER> => {
+        eprintln!("parts={}", <>);
+        let mut parts = <>.split_terminator('.');
+        let schema = parts.next();
+        let table = parts.next();
+        let index = parts.next();
+
+        let index = if index.is_some() {
+            if parts.next().is_some() {
+                panic!("index link schema.table.index is too long: {}", <>);
+            }
+            QualifiedIndex {
+                schema: Some(schema.unwrap().to_string()),
+                table: table.unwrap().to_string(),
+                index: index.unwrap().to_string(),
+            }
+        } else {
+            let index = table;
+            let table = schema;
+            QualifiedIndex {
+                schema: None,
+                table: table.unwrap().to_string(),
+                index: index.unwrap().to_string(),
+            }
+        };
+
+        index_stack.push(index.clone());
+        index
+    }
+};
+
+IndexLink: IndexLink<'input> = {
+    LT <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName> GT
+        => IndexLink { name: None, left_field, qualified_index, right_field },
+    LT <name:IDENTIFIER> COLON O_PAREN <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName> C_PAREN GT
+        => IndexLink { name: Some(name), left_field, qualified_index, right_field },
+};
+
+Subselect: Expr<'input> = {
+    SUBSELECT <link:IndexLink> <q:ParentheticalGroup> => {
+        index_stack.pop();
+        Expr::Subselect(<>)
+    }
+};
+
+Expand: Expr<'input> = {
+    EXPAND <link:IndexLink> <q:ParentheticalGroup> => {
+        index_stack.pop();
+        Expr::Expand(<>)
+    }
+};
+
+JsonObject: String = {
+    O_BRACE <v:(<JsonProperty> COMMA)*> <e:JsonProperty?> C_BRACE => {
+        let props = match e {
+            None => v,
+            Some(e) => {
+                let mut v = v;
+                v.push(e);
+                v
+            }
+        };
+
+        let mut json = String::new();
+        json.push('{');
+        for (i, p) in props.iter().enumerate() {
+            if i > 0 { json.push(',') }
+            json.push_str(p);
+        }
+        json.push('}');
+        json
+    }
+};
+
+JsonProperty: String = {
+    <k:DOUBLE_QUOTED_VALUE> COLON <v:JsonValue> => format!("{}:{}", k, v),
+};
+
+JsonValue: String = {
+    JsonObject,
+    JsonArray,
+    JsonLiteral => <>.to_string()
+}
+
+JsonArray: String = {
+    O_BRACKET <v:(<JsonValue> COMMA)*> <e:JsonValue?> C_BRACKET => {
+        let v = match e {
+            None => v,
+            Some(e) => {
+                let mut v = v;
+                v.push(e);
+                v
+            }
+        };
+
+        let mut array = String::new();
+        array.push('[');
+        for (i, v) in v.iter().enumerate() {
+            if i > 0 { array.push(','); }
+            array.push_str(&v);
+        }
+        array.push(']');
+        array
+    }
+}
+
+JsonLiteral: &'input str = {
+    TRUE,
+    FALSE,
+    NULL,
+    NUMBER,
+    FLOAT,
+    DOUBLE_QUOTED_VALUE,
+};

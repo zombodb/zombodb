@@ -17,6 +17,7 @@ mod json;
 mod mapping;
 mod misc;
 pub mod query_dsl;
+pub mod query_parser;
 pub mod scoring;
 mod utils;
 mod walker;
