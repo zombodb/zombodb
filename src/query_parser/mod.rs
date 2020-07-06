@@ -17,7 +17,7 @@ fn test_parser(input: &str) -> String {
         input,
     )
     .expect("failed to parse");
-    format!("{:#}\n{:#?}", expr, expr)
+    format!("{}\n{:#?}", expr, expr)
 }
 
 #[cfg(test)]
@@ -665,6 +665,14 @@ mod expr_tests {
     #[test]
     fn unparsed_array() {
         assert_expr("[[a, b,   c]]", UnparsedArray!(Contains, "_", "a, b,   c"))
+    }
+
+    #[test]
+    fn json() {
+        assert_expr(
+            r#"({"field":    "value"})"#,
+            Box::new(Expr::Json(r#"{"field":"value"}"#.to_string())),
+        )
     }
 
     #[test]

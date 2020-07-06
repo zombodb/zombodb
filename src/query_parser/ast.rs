@@ -62,7 +62,6 @@ pub enum ComparisonOpcode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term<'input> {
     Null,
-    Json(String),
     String(&'input str, Option<f32>),
     Wildcard(&'input str, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
@@ -85,6 +84,7 @@ pub enum Expr<'input> {
     Or(Box<Expr<'input>>, Box<Expr<'input>>),
 
     // types of comparisons
+    Json(String),
     Contains(QualifiedField, Term<'input>),
     Eq(QualifiedField, Term<'input>),
     Gt(QualifiedField, Term<'input>),
@@ -244,8 +244,6 @@ impl<'input> Display for Term<'input> {
         match self {
             Term::Null => write!(fmt, "NULL"),
 
-            Term::Json(s) => write!(fmt, "{}", s),
-
             Term::String(s, b) | Term::Wildcard(s, b) => {
                 write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
                 if let Some(boost) = b {
@@ -345,6 +343,8 @@ impl<'input> Display for Expr<'input> {
             Expr::With(ref l, ref r) => write!(fmt, "({} WITH {})", l, r),
             Expr::And(ref l, ref r) => write!(fmt, "({} AND {})", l, r),
             Expr::Or(ref l, ref r) => write!(fmt, "({} OR {})", l, r),
+
+            Expr::Json(s) => write!(fmt, "({})", s),
 
             Expr::Contains(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Contains, r),
             Expr::Eq(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Eq, r),
