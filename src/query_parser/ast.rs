@@ -10,7 +10,7 @@ pub struct ProximityDistance {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProximityPart<'input> {
-    pub words: Vec<Expr<'input>>,
+    pub words: Vec<Term<'input>>,
     pub distance: Option<ProximityDistance>,
 }
 
@@ -50,19 +50,21 @@ pub enum ComparisonOpcode {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Expr<'input> {
-    // types of values
+pub enum Term<'input> {
     Null,
     Json(String),
     String(&'input str, Option<f32>),
     Wildcard(&'input str, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
-    ParsedArray(Vec<Expr<'input>>, Option<f32>),
+    ParsedArray(Vec<Term<'input>>, Option<f32>),
     UnparsedArray(&'input str, Option<f32>),
     Range(&'input str, &'input str, Option<f32>),
 
     ProximityChain(Vec<ProximityPart<'input>>),
+}
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expr<'input> {
     Subselect(IndexLink<'input>, Box<Expr<'input>>),
     Expand(IndexLink<'input>, Box<Expr<'input>>),
 
@@ -73,17 +75,35 @@ pub enum Expr<'input> {
     Or(Box<Expr<'input>>, Box<Expr<'input>>),
 
     // types of comparisons
-    Contains(&'input str, Box<Expr<'input>>),
-    Eq(&'input str, Box<Expr<'input>>),
-    Gt(&'input str, Box<Expr<'input>>),
-    Lt(&'input str, Box<Expr<'input>>),
-    Gte(&'input str, Box<Expr<'input>>),
-    Lte(&'input str, Box<Expr<'input>>),
-    Ne(&'input str, Box<Expr<'input>>),
-    DoesNotContain(&'input str, Box<Expr<'input>>),
-    Regex(&'input str, Box<Expr<'input>>),
-    MoreLikeThis(&'input str, Box<Expr<'input>>),
-    FuzzyLikeThis(&'input str, Box<Expr<'input>>),
+    Contains(&'input str, Term<'input>),
+    Eq(&'input str, Term<'input>),
+    Gt(&'input str, Term<'input>),
+    Lt(&'input str, Term<'input>),
+    Gte(&'input str, Term<'input>),
+    Lte(&'input str, Term<'input>),
+    Ne(&'input str, Term<'input>),
+    DoesNotContain(&'input str, Term<'input>),
+    Regex(&'input str, Term<'input>),
+    MoreLikeThis(&'input str, Term<'input>),
+    FuzzyLikeThis(&'input str, Term<'input>),
+}
+
+impl<'input> Term<'input> {
+    pub(in crate::query_parser) fn maybe_make_wildcard(expr: Term<'input>) -> Term<'input> {
+        match expr {
+            Term::String(s, b) => {
+                let mut prev = 0 as char;
+                for c in s.chars() {
+                    if (c == '*' || c == '?') && prev != '\\' {
+                        return Term::Wildcard(s, b);
+                    }
+                    prev = c;
+                }
+                expr
+            }
+            _ => expr,
+        }
+    }
 }
 
 pub type ParserError<'input> = ParseError<usize, Token<'input>, &'static str>;
@@ -102,7 +122,7 @@ impl<'input> Expr<'input> {
     pub(in crate::query_parser) fn from_opcode(
         field_name: &'input str,
         opcode: ComparisonOpcode,
-        right: Box<Expr<'input>>,
+        right: Term<'input>,
     ) -> Expr<'input> {
         match opcode {
             ComparisonOpcode::Contains => Expr::Contains(field_name, right),
@@ -119,23 +139,7 @@ impl<'input> Expr<'input> {
         }
     }
 
-    pub(in crate::query_parser) fn maybe_make_wildcard(expr: Expr<'input>) -> Expr<'input> {
-        match expr {
-            Expr::String(s, b) => {
-                let mut prev = 0 as char;
-                for c in s.chars() {
-                    if (c == '*' || c == '?') && prev != '\\' {
-                        return Expr::Wildcard(s, b);
-                    }
-                    prev = c;
-                }
-                expr
-            }
-            _ => expr,
-        }
-    }
-
-    pub(in crate::query_parser) fn extract_prox_terms(&self) -> Vec<Expr<'input>> {
+    pub(in crate::query_parser) fn extract_prox_terms(&self) -> Vec<Term<'input>> {
         let mut flat = Vec::new();
         match self {
             Expr::Or(l, r) => {
@@ -143,16 +147,18 @@ impl<'input> Expr<'input> {
                 flat.append(&mut r.extract_prox_terms());
             }
             Expr::Contains(_, v) | Expr::Eq(_, v) | Expr::DoesNotContain(_, v) | Expr::Ne(_, v) => {
-                flat.append(&mut v.extract_prox_terms());
-            }
-            Expr::String(s, b) => {
-                flat.push(Expr::String(s, *b));
-            }
-            Expr::Wildcard(s, b) => {
-                flat.push(Expr::Wildcard(s, *b));
-            }
-            Expr::Fuzzy(s, d, b) => {
-                flat.push(Expr::Fuzzy(s, *d, *b));
+                match v {
+                    Term::String(s, b) => {
+                        flat.push(Term::String(s, *b));
+                    }
+                    Term::Wildcard(s, b) => {
+                        flat.push(Term::Wildcard(s, *b));
+                    }
+                    Term::Fuzzy(s, d, b) => {
+                        flat.push(Term::Fuzzy(s, *d, *b));
+                    }
+                    _ => panic!("Unsupported proximity group value: {}", self),
+                }
             }
             _ => panic!("Unsupported proximity group value: {}", self),
         }
@@ -201,14 +207,14 @@ impl<'input> Display for IndexLink<'input> {
     }
 }
 
-impl<'input> Display for Expr<'input> {
+impl<'input> Display for Term<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
-            Expr::Null => write!(fmt, "NULL"),
+            Term::Null => write!(fmt, "NULL"),
 
-            Expr::Json(s) => write!(fmt, "{}", s),
+            Term::Json(s) => write!(fmt, "{}", s),
 
-            Expr::String(s, b) | Expr::Wildcard(s, b) => {
+            Term::String(s, b) | Term::Wildcard(s, b) => {
                 write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;
@@ -216,7 +222,7 @@ impl<'input> Display for Expr<'input> {
                 Ok(())
             }
 
-            Expr::Fuzzy(s, f, b) => {
+            Term::Fuzzy(s, f, b) => {
                 write!(fmt, "\"{}\"~{}", s.replace('"', "\\\""), f)?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;
@@ -224,7 +230,7 @@ impl<'input> Display for Expr<'input> {
                 Ok(())
             }
 
-            Expr::ParsedArray(a, b) => {
+            Term::ParsedArray(a, b) => {
                 write!(fmt, "[")?;
                 for (i, elem) in a.iter().enumerate() {
                     if i > 0 {
@@ -240,7 +246,7 @@ impl<'input> Display for Expr<'input> {
                 Ok(())
             }
 
-            Expr::UnparsedArray(a, b) => {
+            Term::UnparsedArray(a, b) => {
                 write!(fmt, "[[{}]]", a)?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;
@@ -248,7 +254,7 @@ impl<'input> Display for Expr<'input> {
                 Ok(())
             }
 
-            Expr::Range(start, end, b) => {
+            Term::Range(start, end, b) => {
                 write!(
                     fmt,
                     "\"{}\" /TO/ \"{}\"",
@@ -262,7 +268,7 @@ impl<'input> Display for Expr<'input> {
                 Ok(())
             }
 
-            Expr::ProximityChain(parts) => {
+            Term::ProximityChain(parts) => {
                 write!(fmt, "(")?;
                 let mut iter = parts.iter().peekable();
                 while let Some(part) = iter.next() {
@@ -293,7 +299,13 @@ impl<'input> Display for Expr<'input> {
                 }
                 write!(fmt, ")")
             }
+        }
+    }
+}
 
+impl<'input> Display for Expr<'input> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        match self {
             Expr::Subselect(ref link, ref q) => write!(fmt, "#subselect<{}>({})", link, q),
             Expr::Expand(ref link, ref q) => write!(fmt, "#expand<{}>({})", link, q),
 

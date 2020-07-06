@@ -118,7 +118,7 @@ ProximityExpression: Box<Expr<'input>> = {
 
         let field_name = fieldname_stack.last().unwrap();
         let operator = operator_stack.last().unwrap();
-        Box::new(Expr::from_opcode(field_name, *operator, Box::new(Expr::ProximityChain(parts))))
+        Box::new(Expr::from_opcode(field_name, *operator, Term::ProximityChain(parts)))
     },
     UnaryExpression
 };
@@ -135,7 +135,7 @@ ProximityPart: ProximityPart<'input> = {
     }
 };
 
-ProximityGroup: Vec<Expr<'input>> = {
+ProximityGroup: Vec<Term<'input>> = {
     ParentheticalGroup => <>.extract_prox_terms(),
     StringExpr => vec![<>]
 };
@@ -218,12 +218,12 @@ ComparisonOp: ComparisonOpcode = {
     FUZZY_LIKE_THIS => ComparisonOpcode::FuzzyLikeThis,
 };
 
-Term: Box<Expr<'input>> = {
-    StringExpr => Box::new(<>),
-    O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
-    O_BRACKET <v:(<StringExpr> COMMA?)*> C_BRACKET <b:Boost?> => Box::new(Expr::ParsedArray(v, b)),
-    <a:UnparsedArray> <b:Boost?> => Box::new(Expr::UnparsedArray(a, b)),
-    <start:String> TO <end:String> <b:Boost?> => Box::new(Expr::Range(start, end, b)),
+Term: Term<'input> = {
+    StringExpr => <>,
+    O_PAREN <JsonObject> C_PAREN => Term::Json(<>),
+    O_BRACKET <v:(<StringExpr> COMMA?)*> C_BRACKET <b:Boost?> => Term::ParsedArray(v, b),
+    <a:UnparsedArray> <b:Boost?> => Term::UnparsedArray(a, b),
+    <start:String> TO <end:String> <b:Boost?> => Term::Range(start, end, b),
 };
 
 UnparsedArray: &'input str = {
@@ -232,10 +232,10 @@ UnparsedArray: &'input str = {
     }
 }
 
-StringExpr: Expr<'input> = {
-    NULL => Expr::Null,
-    <s:String> <b:Boost?> => Expr::maybe_make_wildcard(Expr::String(s, b)),
-    <s:String> <f:Fuzzy> <b:Boost?> => Expr::Fuzzy(s, f, b)
+StringExpr: Term<'input> = {
+    NULL => Term::Null,
+    <s:String> <b:Boost?> => Term::maybe_make_wildcard(Term::String(s, b)),
+    <s:String> <f:Fuzzy> <b:Boost?> => Term::Fuzzy(s, f, b)
 };
 
 Boost: f32 = {

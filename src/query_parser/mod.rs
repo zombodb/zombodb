@@ -15,17 +15,17 @@ macro_rules! String {
     ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::String($val, Some($boost)))
+            crate::query_parser::ast::Term::String($val, Some($boost))
         ))
     };
     ($operator:tt, $field:literal, $val:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::String($val, None))
+            crate::query_parser::ast::Term::String($val, None)
         ))
     };
     ($val:expr) => {
-        crate::query_parser::ast::Expr::String($val, None)
+        crate::query_parser::ast::Term::String($val, None)
     };
 }
 
@@ -34,17 +34,17 @@ macro_rules! Wildcard {
     ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::Wildcard($val, Some($boost)))
+            crate::query_parser::ast::Term::Wildcard($val, Some($boost))
         ))
     };
     ($operator:tt, $field:literal, $val:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::Wildcard($val, None))
+            crate::query_parser::ast::Term::Wildcard($val, None)
         ))
     };
     ($val:expr) => {
-        crate::query_parser::ast::Expr::Wildcard($val, None)
+        crate::query_parser::ast::Term::Wildcard($val, None)
     };
 }
 
@@ -53,21 +53,17 @@ macro_rules! Fuzzy {
     ($operator:tt, $field:literal, $val:expr, $slop:expr, $boost:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::Fuzzy(
-                $val,
-                $slop,
-                Some($boost)
-            ))
+            crate::query_parser::ast::Term::Fuzzy($val, $slop, Some($boost))
         ))
     };
     ($operator:tt, $field:literal, $val:expr, $slop:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::Fuzzy($val, $slop, None))
+            crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
         ))
     };
     ($val:expr, $slop:expr) => {
-        crate::query_parser::ast::Expr::Fuzzy($val, $slop, None)
+        crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
     };
 }
 
@@ -76,20 +72,17 @@ macro_rules! UnparsedArray {
     ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::UnparsedArray(
-                $val,
-                Some($boost)
-            ))
+            crate::query_parser::ast::Term::UnparsedArray($val, Some($boost))
         ))
     };
     ($operator:tt, $field:literal, $val:expr) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::UnparsedArray($val, None))
+            crate::query_parser::ast::Term::UnparsedArray($val, None)
         ))
     };
     ($val:expr) => {
-        crate::query_parser::ast::Expr::UnparsedArray($val, None)
+        crate::query_parser::ast::Term::UnparsedArray($val, None)
     };
 }
 
@@ -98,10 +91,10 @@ macro_rules! ParsedArray {
     ($operator:tt, $field:literal, $($elements:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::ParsedArray(
+            crate::query_parser::ast::Term::ParsedArray(
                 vec![$($elements),*],
                 None
-            ))
+            )
         ))
     };
 }
@@ -111,10 +104,10 @@ macro_rules! ParsedArrayWithBoost {
     ($operator:tt, $field:literal, $boost:expr, $($elements:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::ParsedArray(
+            crate::query_parser::ast::Term::ParsedArray(
                 vec![$($elements),*],
                 Some($boost)
-            ))
+            )
         ))
     };
 }
@@ -171,7 +164,7 @@ macro_rules! ProximityChain {
     ($operator:tt, $field:literal, $($parts:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
             $field,
-            Box!(crate::query_parser::ast::Expr::ProximityChain(vec![$($parts),*]))
+            crate::query_parser::ast::Term::ProximityChain(vec![$($parts),*])
         ))
     };
 }
