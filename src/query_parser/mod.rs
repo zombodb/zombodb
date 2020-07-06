@@ -542,9 +542,9 @@ mod expr_tests {
                 Contains,
                 "_",
                 42.0,
-                String!(r#"a"#),
-                String!(r#"b"#),
-                String!(r#"c"#)
+                String!("a"),
+                String!("b"),
+                String!("c")
             ),
         )
     }
