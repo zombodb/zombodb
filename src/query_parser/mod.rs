@@ -8,7 +8,11 @@ mod parser;
 #[pg_extern]
 fn test_parser(input: &str) -> String {
     let expr = ast::Expr::from_str(
-        QualifiedIndex(None, "table".to_string(), "index".to_string()),
+        QualifiedIndex {
+            schema: None,
+            table: "table".to_string(),
+            index: "index".to_string(),
+        },
         "_zdb_all",
         input,
     )
@@ -30,40 +34,40 @@ mod macros {
     macro_rules! String {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        "table".to_string(),
-                        "index".to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::String($val, Some($boost))
             ))
         };
         ($operator:tt, $table:literal, $index:literal, $field:literal, $val:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        $table.to_string(),
-                        $index.to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: $table.to_string(),
+                        index: $index.to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::String($val, None)
             ))
         };
         ($operator:tt, $field:literal, $val:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        "table".to_string(),
-                        "index".to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::String($val, None)
             ))
         };
@@ -76,27 +80,27 @@ mod macros {
     macro_rules! Wildcard {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        "table".to_string(),
-                        "index".to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::Wildcard($val, Some($boost))
             ))
         };
         ($operator:tt, $field:literal, $val:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        "table".to_string(),
-                        "index".to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::Wildcard($val, None)
             ))
         };
@@ -109,27 +113,27 @@ mod macros {
     macro_rules! Fuzzy {
         ($operator:tt, $field:literal, $val:expr, $slop:expr, $boost:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        "table".to_string(),
-                        "index".to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::Fuzzy($val, $slop, Some($boost))
             ))
         };
         ($operator:tt, $field:literal, $val:expr, $slop:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        "table".to_string(),
-                        "index".to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
             ))
         };
@@ -142,27 +146,27 @@ mod macros {
     macro_rules! UnparsedArray {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        "table".to_string(),
-                        "index".to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::UnparsedArray($val, Some($boost))
             ))
         };
         ($operator:tt, $field:literal, $val:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField(
-                    crate::query_parser::ast::QualifiedIndex(
-                        None,
-                        "table".to_string(),
-                        "index".to_string()
-                    ),
-                    $field.to_string()
-                ),
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
                 crate::query_parser::ast::Term::UnparsedArray($val, None)
             ))
         };
@@ -175,10 +179,14 @@ mod macros {
     macro_rules! ParsedArray {
     ($operator:tt, $field:literal, $($elements:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
-            crate::query_parser::ast::QualifiedField(
-                crate::query_parser::ast::QualifiedIndex(None, "table".to_string(), "index".to_string()),
-                $field.to_string()
-            ),
+            crate::query_parser::ast::QualifiedField{
+                index: crate::query_parser::ast::QualifiedIndex {
+                    schema: None,
+                    table: "table".to_string(),
+                    index: "index".to_string()
+                },
+                field: $field.to_string()
+            },
             crate::query_parser::ast::Term::ParsedArray(
                 vec![$($elements),*],
                 None
@@ -191,10 +199,14 @@ mod macros {
     macro_rules! ParsedArrayWithBoost {
     ($operator:tt, $field:literal, $boost:expr, $($elements:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
-            crate::query_parser::ast::QualifiedField(
-                crate::query_parser::ast::QualifiedIndex(None, "table".to_string(), "index".to_string()),
-                $field.to_string()
-            ),
+            crate::query_parser::ast::QualifiedField{
+                index: crate::query_parser::ast::QualifiedIndex {
+                    schema: None,
+                    table: "table".to_string(),
+                    index: "index".to_string()
+                },
+                field: $field.to_string()
+            },
             crate::query_parser::ast::Term::ParsedArray(
                 vec![$($elements),*],
                 Some($boost)
@@ -207,10 +219,14 @@ mod macros {
     macro_rules! ProximityChain {
     ($operator:tt, $field:literal, $($parts:expr),*) => {
         Box!(crate::query_parser::ast::Expr::$operator(
-            crate::query_parser::ast::QualifiedField(
-                crate::query_parser::ast::QualifiedIndex(None, "table".to_string(), "index".to_string()),
-                $field.to_string()
-            ),
+            crate::query_parser::ast::QualifiedField{
+                index: crate::query_parser::ast::QualifiedIndex {
+                    schema: None,
+                    table: "table".to_string(),
+                    index: "index".to_string()
+                },
+                field: $field.to_string()
+            },
             crate::query_parser::ast::Term::ProximityChain(vec![$($parts),*])
         ))
     };
@@ -270,7 +286,11 @@ mod string_tests {
 
     pub(super) fn parse(input: &str) -> Result<Box<Expr>, ParserError> {
         Expr::from_str(
-            QualifiedIndex(None, "table".to_string(), "index".to_string()),
+            QualifiedIndex {
+                schema: None,
+                table: "table".to_string(),
+                index: "index".to_string(),
+            },
             "_",
             input,
         )
@@ -650,20 +670,20 @@ mod expr_tests {
     #[test]
     fn subselect() {
         assert_expr(
-            "#subselect<id=<other.table>o_id>(value), outer",
+            "#subselect<id=<other.index>o_id>(value), outer",
             Or!(
                 Box::new(Expr::Subselect(
                     IndexLink {
                         name: None,
                         left_field: "id",
-                        qualified_index: QualifiedIndex(
-                            None,
-                            "other".to_string(),
-                            "table".to_string()
-                        ),
+                        qualified_index: QualifiedIndex {
+                            schema: None,
+                            table: "other".to_string(),
+                            index: "index".to_string()
+                        },
                         right_field: "o_id",
                     },
-                    String!(Contains, "other", "table", "_", "value"),
+                    String!(Contains, "other", "index", "_", "value"),
                 )),
                 String!(Contains, "_", "outer")
             ),

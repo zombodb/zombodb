@@ -15,10 +15,17 @@ pub struct ProximityPart<'input> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct QualifiedIndex(pub Option<String>, pub String, pub String);
+pub struct QualifiedIndex {
+    pub schema: Option<String>,
+    pub table: String,
+    pub index: String,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct QualifiedField(pub QualifiedIndex, pub String);
+pub struct QualifiedField {
+    pub index: QualifiedIndex,
+    pub field: String,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IndexLink<'input> {
@@ -133,12 +140,15 @@ impl<'input> Expr<'input> {
 
     pub(in crate::query_parser) fn from_opcode(
         index_stack: &Vec<QualifiedIndex>,
-        field_name: &'input str,
+        field: &'input str,
         opcode: ComparisonOpcode,
         right: Term<'input>,
     ) -> Expr<'input> {
         let index = *index_stack.last().as_ref().unwrap();
-        let field_name = QualifiedField(index.clone(), field_name.to_string());
+        let field_name = QualifiedField {
+            index: index.clone(),
+            field: field.to_string(),
+        };
 
         match opcode {
             ComparisonOpcode::Contains => Expr::Contains(field_name, right),
@@ -195,17 +205,17 @@ impl Display for ProximityDistance {
 
 impl Display for QualifiedIndex {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        if let Some(schema) = self.0.as_ref() {
-            write!(fmt, "{}.{}.{}", schema, self.1, self.2)
+        if let Some(schema) = self.schema.as_ref() {
+            write!(fmt, "{}.{}.{}", schema, self.table, self.index)
         } else {
-            write!(fmt, "{}.{}", self.1, self.2)
+            write!(fmt, "{}.{}", self.table, self.index)
         }
     }
 }
 
 impl Display for QualifiedField {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{}", self.1)
+        write!(fmt, "{}", self.field)
     }
 }
 
