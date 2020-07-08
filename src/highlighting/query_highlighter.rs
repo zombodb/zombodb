@@ -41,7 +41,7 @@ impl<'a> QueryHighligther<'a> {
         }
     }
 
-    pub fn highlight(&'a self) -> HashMap<QualifiedField, Vec<(String, &'a TokenEntry)>> {
+    pub fn highlight(&'a self) -> HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>> {
         let mut highlights = HashMap::new();
         self.walk_expression(&self.query, &mut highlights);
         highlights
@@ -50,21 +50,36 @@ impl<'a> QueryHighligther<'a> {
     fn walk_expression(
         &'a self,
         expr: &'a Box<Expr<'a>>,
-        highlights: &mut HashMap<QualifiedField, Vec<(String, &'a TokenEntry)>>,
-    ) {
+        highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
+    ) -> bool {
         match expr.as_ref() {
-            Expr::Not(e) => self.walk_expression(e, highlights),
-            Expr::With(l, r) => {
-                self.walk_expression(l, highlights);
-                self.walk_expression(r, highlights);
+            Expr::Not(e) => {
+                let mut tmp_highlights = HashMap::new();
+                !self.walk_expression(e, &mut tmp_highlights)
             }
-            Expr::And(l, r) => {
-                self.walk_expression(l, highlights);
-                self.walk_expression(r, highlights);
+
+            Expr::With(l, r) | Expr::And(l, r) => {
+                let mut did_highlight = false;
+                let mut tmp_highlights = HashMap::new();
+
+                did_highlight = self.walk_expression(l, &mut tmp_highlights);
+                if did_highlight {
+                    did_highlight &= self.walk_expression(r, &mut tmp_highlights);
+                }
+
+                if did_highlight {
+                    tmp_highlights.into_iter().for_each(|(k, v)| {
+                        highlights.insert(k, v);
+                    });
+                }
+                did_highlight
             }
+
             Expr::Or(l, r) => {
-                self.walk_expression(l, highlights);
-                self.walk_expression(r, highlights);
+                let mut did_highlight = false;
+                did_highlight |= self.walk_expression(l, highlights);
+                did_highlight |= self.walk_expression(r, highlights);
+                did_highlight
             }
 
             Expr::Subselect(_, _) => panic!("subselect not supported yet"),
@@ -72,14 +87,16 @@ impl<'a> QueryHighligther<'a> {
             Expr::Json(_) => panic!("json not supported yet"),
 
             Expr::Contains(f, t) | Expr::Eq(f, t) => {
+                let mut did_highlight = false;
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    self.highlight_term(dh, f.clone(), t, highlights);
+                    did_highlight = self.highlight_term(dh, f.clone(), expr, t, highlights);
                 }
+                did_highlight
             }
 
             Expr::Regex(_, _) => unimplemented!(),
 
-            Expr::DoesNotContain(_, _) | Expr::Ne(_, _) => {}
+            Expr::DoesNotContain(_, _) | Expr::Ne(_, _) => unimplemented!(),
 
             Expr::Gt(_, _) => unimplemented!(),
             Expr::Lt(_, _) => unimplemented!(),
@@ -94,30 +111,36 @@ impl<'a> QueryHighligther<'a> {
         &'a self,
         highlighter: &'a DocumentHighlighter,
         field: QualifiedField,
+        expr: &'a Box<Expr<'a>>,
         term: &Term,
-        highlights: &mut HashMap<QualifiedField, Vec<(String, &'a TokenEntry)>>,
-    ) {
-        let process_entries =
-            |field,
-             mut entries: Vec<(String, &'a TokenEntry)>,
-             highlights: &mut HashMap<QualifiedField, Vec<(String, &'a TokenEntry)>>| {
-                highlights
-                    // fir this field in our map of highlights
-                    .entry(field)
-                    // add to existing entries
-                    .and_modify(|v| v.append(&mut entries))
-                    // or insert brand new entries
-                    .or_insert(entries);
-            };
+        highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
+    ) -> bool {
+        let process_entries = |field,
+                               mut entries: Vec<(String, &'a TokenEntry)>,
+                               highlights: &mut HashMap<
+            (QualifiedField, String),
+            Vec<(String, &'a TokenEntry)>,
+        >| {
+            highlights
+                // fir this field in our map of highlights
+                .entry((field, format!("{}", expr)))
+                // add to existing entries
+                .and_modify(|v| v.append(&mut entries))
+                // or insert brand new entries
+                .or_insert(entries);
+        };
 
+        let mut cnt = 0;
         match term {
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token(s) {
+                    cnt = entries.len();
                     process_entries(field, entries, highlights);
                 }
             }
             Term::Wildcard(s, _) => {
                 if let Some(entries) = highlighter.highlight_wildcard(s) {
+                    cnt = entries.len();
                     process_entries(field, entries, highlights);
                 }
             }
@@ -129,6 +152,8 @@ impl<'a> QueryHighligther<'a> {
             Term::Range(_, _, _) => {}
             Term::Null => {}
         }
+
+        cnt > 0
     }
 }
 
@@ -145,6 +170,7 @@ fn highlight_document(
         name!(position, i32),
         name!(start_offset, i64),
         name!(end_offset, i64),
+        name!(query_clause, String),
     ),
 > {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
@@ -169,15 +195,16 @@ fn highlight_document(
 
     highlights
         .into_iter()
-        .map(|(k, entries)| {
+        .map(|((field, expr), entries)| {
             entries.into_iter().map(move |(term, entry)| {
                 (
-                    k.field.clone(),
+                    field.field.clone(),
                     term,
                     entry.type_.clone(),
                     entry.position as i32,
                     entry.start_offset as i64,
                     entry.end_offset as i64,
+                    expr.clone(),
                 )
             })
         })
