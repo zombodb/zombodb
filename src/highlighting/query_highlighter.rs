@@ -5,9 +5,8 @@ use pgx::{JsonB, PgRelation};
 use std::collections::HashMap;
 
 struct QueryHighligther<'a> {
-    document: serde_json::Value,
     query: Box<Expr<'a>>,
-    highlighters: HashMap<&'a str, DocumentHighlighter>,
+    highlighters: HashMap<&'a str, DocumentHighlighter<'a>>,
 }
 
 impl<'a> QueryHighligther<'a> {
@@ -37,22 +36,21 @@ impl<'a> QueryHighligther<'a> {
         });
 
         QueryHighligther {
-            document,
             highlighters,
             query,
         }
     }
 
-    pub fn highlight(&self) -> HashMap<QualifiedField, Vec<(String, TokenEntry)>> {
+    pub fn highlight(&'a self) -> HashMap<QualifiedField, Vec<(String, &'a TokenEntry)>> {
         let mut highlights = HashMap::new();
         self.walk_expression(&self.query, &mut highlights);
         highlights
     }
 
     fn walk_expression(
-        &self,
+        &'a self,
         expr: &'a Box<Expr<'a>>,
-        highlights: &mut HashMap<QualifiedField, Vec<(String, TokenEntry)>>,
+        highlights: &mut HashMap<QualifiedField, Vec<(String, &'a TokenEntry)>>,
     ) {
         match expr.as_ref() {
             Expr::Not(e) => self.walk_expression(e, highlights),
@@ -74,7 +72,7 @@ impl<'a> QueryHighligther<'a> {
             Expr::Json(_) => panic!("json not supported yet"),
 
             Expr::Contains(f, t) | Expr::Eq(f, t) => {
-                if let Some(dh) = self.highlighters.get(&f.field.as_str()) {
+                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
                     self.highlight_term(dh, f.clone(), t, highlights);
                 }
             }
@@ -93,23 +91,16 @@ impl<'a> QueryHighligther<'a> {
     }
 
     fn highlight_term(
-        &self,
+        &'a self,
         highlighter: &'a DocumentHighlighter,
         field: QualifiedField,
         term: &Term,
-        highlights: &mut HashMap<QualifiedField, Vec<(String, TokenEntry)>>,
+        highlights: &mut HashMap<QualifiedField, Vec<(String, &'a TokenEntry)>>,
     ) {
         let process_entries =
             |field,
-             term,
-             entries: Vec<(String, &TokenEntry)>,
-             highlights: &mut HashMap<QualifiedField, Vec<(String, TokenEntry)>>| {
-                // convert entries into owned TokenEntry values
-                let mut entries = entries
-                    .into_iter()
-                    .map(|(term, entry)| (term, entry.clone()))
-                    .collect();
-
+             mut entries: Vec<(String, &'a TokenEntry)>,
+             highlights: &mut HashMap<QualifiedField, Vec<(String, &'a TokenEntry)>>| {
                 highlights
                     // fir this field in our map of highlights
                     .entry(field)
@@ -121,13 +112,13 @@ impl<'a> QueryHighligther<'a> {
 
         match term {
             Term::String(s, _) => {
-                if let Some(mut entries) = highlighter.highlight_token(s) {
-                    process_entries(field, term, entries, highlights);
+                if let Some(entries) = highlighter.highlight_token(s) {
+                    process_entries(field, entries, highlights);
                 }
             }
             Term::Wildcard(s, _) => {
-                if let Some(mut entries) = highlighter.highlight_wildcard(s) {
-                    process_entries(field, term, entries, highlights);
+                if let Some(entries) = highlighter.highlight_wildcard(s) {
+                    process_entries(field, entries, highlights);
                 }
             }
             Term::Fuzzy(s, d, _) => {}
@@ -173,24 +164,22 @@ fn highlight_document(
     )
     .expect("failed to parse query");
 
-    let mut qh = QueryHighligther::new(&index, document.0, fields, query);
+    let qh = QueryHighligther::new(&index, document.0, fields, query);
     let highlights = qh.highlight();
 
     highlights
         .into_iter()
-        .map(|(k, v)| {
-            v.into_iter()
-                .map(|(term, entry)| {
-                    (
-                        k.field.clone(),
-                        term.clone(),
-                        entry.type_.clone(),
-                        entry.position as i32,
-                        entry.start_offset as i64,
-                        entry.end_offset as i64,
-                    )
-                })
-                .collect::<Vec<_>>()
+        .map(|(k, entries)| {
+            entries.into_iter().map(move |(term, entry)| {
+                (
+                    k.field.clone(),
+                    term,
+                    entry.type_.clone(),
+                    entry.position as i32,
+                    entry.start_offset as i64,
+                    entry.end_offset as i64,
+                )
+            })
         })
         .flatten()
         .collect::<Vec<_>>()

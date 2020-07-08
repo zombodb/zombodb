@@ -6,6 +6,7 @@ use pgx::PgRelation;
 use pgx::*;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -27,14 +28,16 @@ mod pg_catalog {
     }
 }
 
-pub struct DocumentHighlighter {
+pub struct DocumentHighlighter<'a> {
     lookup: HashMap<String, Vec<TokenEntry>>,
+    __marker: PhantomData<&'a TokenEntry>,
 }
 
-impl DocumentHighlighter {
+impl<'a> DocumentHighlighter<'a> {
     pub fn new() -> Self {
         DocumentHighlighter {
             lookup: HashMap::with_capacity(150),
+            __marker: PhantomData,
         }
     }
 
@@ -60,7 +63,7 @@ impl DocumentHighlighter {
         }
     }
 
-    pub fn highlight_token(&self, token: &str) -> Option<Vec<(String, &TokenEntry)>> {
+    pub fn highlight_token(&'a self, token: &str) -> Option<Vec<(String, &'a TokenEntry)>> {
         let mut result = Vec::new();
         let token_entries_vec = self.lookup.get(token);
         match token_entries_vec {
@@ -74,7 +77,7 @@ impl DocumentHighlighter {
         }
     }
 
-    pub fn highlight_wildcard(&self, token: &str) -> Option<Vec<(String, &TokenEntry)>> {
+    pub fn highlight_wildcard(&'a self, token: &str) -> Option<Vec<(String, &'a TokenEntry)>> {
         let _char_looking_for_asterisk = '*';
         let _char_looking_for_question = '?';
         let mut new_regex = String::from("^");
@@ -92,7 +95,7 @@ impl DocumentHighlighter {
         self.highlight_regex(new_regex.deref())
     }
 
-    pub fn highlight_regex(&self, regex: &str) -> Option<Vec<(String, &TokenEntry)>> {
+    pub fn highlight_regex(&'a self, regex: &str) -> Option<Vec<(String, &'a TokenEntry)>> {
         let regex = Regex::new(regex).unwrap();
         let mut result = Vec::new();
         for (key, token_entries) in self.lookup.iter() {
@@ -110,10 +113,10 @@ impl DocumentHighlighter {
     }
 
     pub fn highlight_fuzzy(
-        &self,
+        &'a self,
         fuzzy_key: &str,
         prefix: usize,
-    ) -> Option<Vec<(String, &TokenEntry)>> {
+    ) -> Option<Vec<(String, &'a TokenEntry)>> {
         let mut result = Vec::new();
         let fuzzy_low = 3;
         let fuzzy_high = 6;
@@ -152,11 +155,11 @@ impl DocumentHighlighter {
     }
 
     pub fn highlight_phrase(
-        &self,
+        &'a self,
         index: PgRelation,
         field: &str,
         phrase_str: &str,
-    ) -> Option<Vec<(String, &TokenEntry)>> {
+    ) -> Option<Vec<(String, &'a TokenEntry)>> {
         if phrase_str.is_empty() {
             return None;
         }
@@ -182,9 +185,9 @@ impl DocumentHighlighter {
     // query= than w/2 wine
     // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
     pub fn highlight_proximity(
-        &self,
+        &'a self,
         phrase: Vec<ProximityPart>,
-    ) -> Option<Vec<(String, &TokenEntry)>> {
+    ) -> Option<Vec<(String, &'a TokenEntry)>> {
         if phrase.len() == 0 {
             return None;
         }
