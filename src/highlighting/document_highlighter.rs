@@ -77,6 +77,27 @@ impl<'a> DocumentHighlighter<'a> {
         }
     }
 
+    pub fn highlight_token_scan<F: Fn(&str, &str) -> bool>(
+        &'a self,
+        term: &str,
+        eval: F,
+    ) -> Option<Vec<(String, &'a TokenEntry)>> {
+        let mut result = Vec::new();
+        for (token, entries) in &self.lookup {
+            if eval(token, term) {
+                for entry in entries {
+                    result.push((token.clone(), entry))
+                }
+            }
+        }
+
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
+    }
+
     pub fn highlight_wildcard(&'a self, token: &str) -> Option<Vec<(String, &'a TokenEntry)>> {
         let _char_looking_for_asterisk = '*';
         let _char_looking_for_question = '?';

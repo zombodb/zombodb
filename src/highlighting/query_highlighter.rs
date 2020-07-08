@@ -28,7 +28,6 @@ impl<'a> QueryHighligther<'a> {
                 let value = value.as_str().expect("field value not a string");
 
                 let mut dh = DocumentHighlighter::new();
-                info!("analyzing field={}, value={}", field, value);
                 dh.analyze_document(index, field, value);
 
                 highlighters.insert(field, dh);
@@ -41,10 +40,15 @@ impl<'a> QueryHighligther<'a> {
         }
     }
 
-    pub fn highlight(&'a self) -> HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>> {
+    pub fn highlight(
+        &'a self,
+    ) -> Option<HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>> {
         let mut highlights = HashMap::new();
-        self.walk_expression(&self.query, &mut highlights);
-        highlights
+        if self.walk_expression(&self.query, &mut highlights) {
+            Some(highlights)
+        } else {
+            None
+        }
     }
 
     fn walk_expression(
@@ -53,10 +57,7 @@ impl<'a> QueryHighligther<'a> {
         highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
     ) -> bool {
         match expr.as_ref() {
-            Expr::Not(e) => {
-                let mut tmp_highlights = HashMap::new();
-                !self.walk_expression(e, &mut tmp_highlights)
-            }
+            Expr::Not(e) => !self.walk_expression(e, highlights),
 
             Expr::With(l, r) | Expr::And(l, r) => {
                 let mut did_highlight = false;
@@ -68,17 +69,25 @@ impl<'a> QueryHighligther<'a> {
                 }
 
                 if did_highlight {
-                    tmp_highlights.into_iter().for_each(|(k, v)| {
-                        highlights.insert(k, v);
-                    });
+                    highlights.extend(tmp_highlights);
                 }
                 did_highlight
             }
 
             Expr::Or(l, r) => {
                 let mut did_highlight = false;
-                did_highlight |= self.walk_expression(l, highlights);
-                did_highlight |= self.walk_expression(r, highlights);
+
+                let mut tmp_highlights = HashMap::new();
+                if self.walk_expression(l, &mut tmp_highlights) {
+                    highlights.extend(tmp_highlights);
+                    did_highlight = true;
+                }
+
+                let mut tmp_highlights = HashMap::new();
+                if self.walk_expression(r, &mut tmp_highlights) {
+                    highlights.extend(tmp_highlights);
+                    did_highlight = true;
+                }
                 did_highlight
             }
 
@@ -87,24 +96,63 @@ impl<'a> QueryHighligther<'a> {
             Expr::Json(_) => panic!("json not supported yet"),
 
             Expr::Contains(f, t) | Expr::Eq(f, t) => {
-                let mut did_highlight = false;
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    did_highlight = self.highlight_term(dh, f.clone(), expr, t, highlights);
+                    return self.highlight_term(dh, f.clone(), expr, t, highlights);
                 }
-                did_highlight
+                false
+            }
+            Expr::DoesNotContain(f, t) | Expr::Ne(f, t) => {
+                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                    return !self.highlight_term(dh, f.clone(), expr, t, highlights);
+                }
+                false
             }
 
-            Expr::Regex(_, _) => unimplemented!(),
-
-            Expr::DoesNotContain(_, _) | Expr::Ne(_, _) => unimplemented!(),
-
-            Expr::Gt(_, _) => unimplemented!(),
+            Expr::Gt(f, t) => {
+                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                    return self.highlight_term_scan(
+                        dh,
+                        f.clone(),
+                        expr,
+                        t,
+                        highlights,
+                        |token: &str, term: &str| token > term,
+                    );
+                }
+                false
+            }
             Expr::Lt(_, _) => unimplemented!(),
             Expr::Gte(_, _) => unimplemented!(),
             Expr::Lte(_, _) => unimplemented!(),
+
+            Expr::Regex(_, _) => unimplemented!(),
             Expr::MoreLikeThis(_, _) => unimplemented!(),
             Expr::FuzzyLikeThis(_, _) => unimplemented!(),
         }
+    }
+
+    fn highlight_term_scan<F: Fn(&str, &str) -> bool>(
+        &'a self,
+        highlighter: &'a DocumentHighlighter,
+        field: QualifiedField,
+        expr: &'a Box<Expr<'a>>,
+        term: &Term,
+        highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
+        eval: F,
+    ) -> bool {
+        let mut cnt = 0;
+
+        match term {
+            Term::String(s, _) => {
+                if let Some(entries) = highlighter.highlight_token_scan(s, eval) {
+                    cnt = entries.len();
+                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                }
+            }
+            _ => panic!("cannot highlight using scans for {}", expr),
+        }
+
+        cnt > 0
     }
 
     fn highlight_term(
@@ -115,33 +163,18 @@ impl<'a> QueryHighligther<'a> {
         term: &Term,
         highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
     ) -> bool {
-        let process_entries = |field,
-                               mut entries: Vec<(String, &'a TokenEntry)>,
-                               highlights: &mut HashMap<
-            (QualifiedField, String),
-            Vec<(String, &'a TokenEntry)>,
-        >| {
-            highlights
-                // fir this field in our map of highlights
-                .entry((field, format!("{}", expr)))
-                // add to existing entries
-                .and_modify(|v| v.append(&mut entries))
-                // or insert brand new entries
-                .or_insert(entries);
-        };
-
         let mut cnt = 0;
         match term {
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token(s) {
                     cnt = entries.len();
-                    process_entries(field, entries, highlights);
+                    QueryHighligther::process_entries(expr, field, entries, highlights);
                 }
             }
             Term::Wildcard(s, _) => {
                 if let Some(entries) = highlighter.highlight_wildcard(s) {
                     cnt = entries.len();
-                    process_entries(field, entries, highlights);
+                    QueryHighligther::process_entries(expr, field, entries, highlights);
                 }
             }
             Term::Fuzzy(s, d, _) => {}
@@ -154,6 +187,21 @@ impl<'a> QueryHighligther<'a> {
         }
 
         cnt > 0
+    }
+
+    fn process_entries(
+        expr: &'a Box<Expr<'a>>,
+        field: QualifiedField,
+        mut entries: Vec<(String, &'a TokenEntry)>,
+        highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
+    ) {
+        highlights
+            // fir this field in our map of highlights
+            .entry((field, format!("{}", expr)))
+            // add to existing entries
+            .and_modify(|v| v.append(&mut entries))
+            // or insert brand new entries
+            .or_insert(entries);
     }
 }
 
@@ -194,6 +242,7 @@ fn highlight_document(
     let highlights = qh.highlight();
 
     highlights
+        .unwrap_or_default()
         .into_iter()
         .map(|((field, expr), entries)| {
             entries.into_iter().map(move |(term, entry)| {
