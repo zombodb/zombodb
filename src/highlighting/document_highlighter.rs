@@ -87,8 +87,6 @@ impl<'a> DocumentHighlighter<'a> {
     pub fn analyze_document(&mut self, index: &PgRelation, field: &str, text: &str) {
         let data_type = DocumentHighlighter::categorize_data_type(index, field);
 
-        info!("field={}, type={:?}, value={}", field, data_type, text);
-
         match &data_type {
             DataType::Float => {
                 self.lookup
