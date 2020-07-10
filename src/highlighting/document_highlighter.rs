@@ -8,6 +8,7 @@ use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::Deref;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TokenEntry {
@@ -28,38 +29,163 @@ mod pg_catalog {
     }
 }
 
+#[derive(Debug)]
+enum DataType {
+    String,
+    Integer,
+    Float,
+}
+
 pub struct DocumentHighlighter<'a> {
     lookup: HashMap<String, Vec<TokenEntry>>,
+    data_type: Option<DataType>,
     __marker: PhantomData<&'a TokenEntry>,
+}
+
+macro_rules! compare_float {
+    ($left:tt, $cmp:tt, $right:tt) => {{
+        let token = f64::from_str($left);
+        let term = f64::from_str($right);
+        if token.is_err() || term.is_err() {
+            return false;
+        }
+
+        token.unwrap().$cmp(&term.unwrap())
+    }};
+}
+
+macro_rules! compare_integer {
+    ($left:tt, $cmp:tt, $right:tt) => {{
+        let token = i64::from_str($left);
+        if token.is_err() {
+            return false;
+        }
+
+        let term = match i64::from_str($right) {
+            Ok(i) => i,
+            Err(_) => match f64::from_str($right) {
+                Ok(f) => f as i64,
+                Err(_) => {
+                    return false;
+                }
+            },
+        };
+
+        token.unwrap().$cmp(&term)
+    }};
 }
 
 impl<'a> DocumentHighlighter<'a> {
     pub fn new() -> Self {
         DocumentHighlighter {
             lookup: HashMap::with_capacity(150),
+            data_type: None,
             __marker: PhantomData,
         }
     }
 
     pub fn analyze_document(&mut self, index: &PgRelation, field: &str, text: &str) {
-        let es = Elasticsearch::new(index);
-        let results = es
-            .analyze_with_field(field, text)
-            .execute()
-            .expect("failed to analyze text for highlighting");
+        let data_type = DocumentHighlighter::categorize_data_type(index, field);
 
-        for token in results.tokens {
-            let entry = self
-                .lookup
-                .entry(token.token)
-                .or_insert(Vec::with_capacity(5));
+        info!("field={}, type={:?}, value={}", field, data_type, text);
 
-            entry.push(TokenEntry {
-                type_: token.type_,
-                position: token.position as u32,
-                start_offset: token.start_offset as u64,
-                end_offset: token.end_offset as u64,
-            });
+        match &data_type {
+            DataType::Float => {
+                self.lookup
+                    .entry(text.to_string())
+                    .or_insert(vec![TokenEntry {
+                        type_: "FLOAT".to_string(),
+                        position: 0,
+                        start_offset: 0,
+                        end_offset: 0,
+                    }]);
+            }
+
+            DataType::Integer => {
+                self.lookup
+                    .entry(text.to_string())
+                    .or_insert(vec![TokenEntry {
+                        type_: "INTEGER".to_string(),
+                        position: 0,
+                        start_offset: 0,
+                        end_offset: 0,
+                    }]);
+            }
+
+            DataType::String => {
+                let es = Elasticsearch::new(index);
+                let results = es
+                    .analyze_with_field(field, text)
+                    .execute()
+                    .expect("failed to analyze text for highlighting");
+
+                for token in results.tokens {
+                    let entry = self
+                        .lookup
+                        .entry(token.token)
+                        .or_insert(Vec::with_capacity(5));
+
+                    entry.push(TokenEntry {
+                        type_: token.type_,
+                        position: token.position as u32,
+                        start_offset: token.start_offset as u64,
+                        end_offset: token.end_offset as u64,
+                    });
+                }
+            }
+        }
+
+        self.data_type = Some(data_type);
+    }
+
+    fn categorize_data_type(index: &PgRelation, field: &str) -> DataType {
+        for att in index.heap_relation().unwrap().tuple_desc() {
+            if att.name() == field {
+                return match att.type_oid() {
+                    PgOid::BuiltIn(PgBuiltInOids::FLOAT4OID)
+                    | PgOid::BuiltIn(PgBuiltInOids::FLOAT8OID) => DataType::Float,
+
+                    PgOid::BuiltIn(PgBuiltInOids::INT2OID)
+                    | PgOid::BuiltIn(PgBuiltInOids::INT4OID)
+                    | PgOid::BuiltIn(PgBuiltInOids::INT8OID) => DataType::Integer,
+
+                    _ => DataType::String,
+                };
+            }
+        }
+
+        DataType::String
+    }
+
+    pub fn gt_func(&self) -> fn(&str, &str) -> bool {
+        match self.data_type.as_ref().unwrap() {
+            DataType::String => str::gt,
+            DataType::Float => |token: &str, term: &str| compare_float!(token, gt, term),
+            DataType::Integer => |token: &str, term: &str| compare_integer!(token, gt, term),
+        }
+    }
+
+    pub fn lt_func(&self) -> fn(&str, &str) -> bool {
+        match self.data_type.as_ref().unwrap() {
+            DataType::String => str::lt,
+            DataType::Float => |token: &str, term: &str| compare_float!(token, lt, term),
+            DataType::Integer => |token: &str, term: &str| compare_integer!(token, lt, term),
+        }
+    }
+
+    pub fn ge_func(&self) -> fn(&str, &str) -> bool {
+        match self.data_type.as_ref().unwrap() {
+            DataType::String => str::ge,
+            DataType::Float => |token: &str, term: &str| compare_float!(token, ge, term),
+            DataType::Integer => |token: &str, term: &str| compare_integer!(token, ge, term),
+        }
+    }
+
+    pub fn le_func(&self) -> fn(&str, &str) -> bool {
+        match self.data_type.as_ref().unwrap() {
+            DataType::String => str::le,
+            DataType::Float => |token: &str, term: &str| compare_float!(token, le, term),
+            DataType::Integer => |token: &str, term: &str| compare_integer!(token, le, term),
         }
     }
 

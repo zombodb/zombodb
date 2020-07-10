@@ -25,10 +25,11 @@ impl<'a> QueryHighligther<'a> {
                 .get(field)
             {
                 // for now, assume field value is a string and that it exists
-                let value = value.as_str().expect("field value not a string");
+                let value =
+                    serde_json::to_string(value).expect("unable to convert value to a string");
 
                 let mut dh = DocumentHighlighter::new();
-                dh.analyze_document(index, field, value);
+                dh.analyze_document(index, field, &value);
 
                 highlighters.insert(field, dh);
             }
@@ -222,7 +223,7 @@ fn highlight_document(
     ),
 > {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
-    let fields = vec!["subject", "authoremail"];
+    let fields = vec!["subject", "authoremail", "id"];
     let query = Expr::from_str(
         QualifiedIndex {
             schema: Some(index.namespace().to_string()),
