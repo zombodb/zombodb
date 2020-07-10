@@ -67,7 +67,6 @@ pub enum Term<'input> {
     Fuzzy(&'input str, u8, Option<f32>),
     ParsedArray(Vec<Term<'input>>, Option<f32>),
     UnparsedArray(&'input str, Option<f32>),
-    Range(&'input str, &'input str, Option<f32>),
 
     ProximityChain(Vec<ProximityPart<'input>>),
 }
@@ -85,6 +84,7 @@ pub enum Expr<'input> {
 
     // types of comparisons
     Json(String),
+    Range(&'input str, &'input str, Option<f32>),
     Contains(QualifiedField, Term<'input>),
     Eq(QualifiedField, Term<'input>),
     Gt(QualifiedField, Term<'input>),
@@ -284,20 +284,6 @@ impl<'input> Display for Term<'input> {
                 Ok(())
             }
 
-            Term::Range(start, end, b) => {
-                write!(
-                    fmt,
-                    "\"{}\" /TO/ \"{}\"",
-                    start.replace('"', "\\\""),
-                    end.replace('"', "\\\"")
-                )?;
-
-                if let Some(boost) = b {
-                    write!(fmt, "^{}", boost)?;
-                }
-                Ok(())
-            }
-
             Term::ProximityChain(parts) => {
                 write!(fmt, "(")?;
                 let mut iter = parts.iter().peekable();
@@ -345,6 +331,14 @@ impl<'input> Display for Expr<'input> {
             Expr::Or(ref l, ref r) => write!(fmt, "({} OR {})", l, r),
 
             Expr::Json(s) => write!(fmt, "({})", s),
+            Expr::Range(start, end, b) => {
+                write!(fmt, "{} /TO/ {}", start, end)?;
+
+                if let Some(boost) = b {
+                    write!(fmt, "^{}", boost)?;
+                }
+                Ok(())
+            }
 
             Expr::Contains(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Contains, r),
             Expr::Eq(ref l, ref r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Eq, r),

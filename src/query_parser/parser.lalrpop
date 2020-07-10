@@ -175,6 +175,7 @@ Comparison: Box<Expr<'input>> = {
         <>
     },
     O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
+    <start:String> TO <end:String> <b:Boost?> => Box::new(Expr::Range(start, end, b)),
     ParentheticalGroup
 };
 
@@ -223,7 +224,6 @@ Term: Term<'input> = {
     StringExpr => <>,
     O_BRACKET <v:(<StringExpr> COMMA?)*> C_BRACKET <b:Boost?> => Term::ParsedArray(v, b),
     <a:UnparsedArray> <b:Boost?> => Term::UnparsedArray(a, b),
-    <start:String> TO <end:String> <b:Boost?> => Term::Range(start, end, b),
 };
 
 UnparsedArray: &'input str = {

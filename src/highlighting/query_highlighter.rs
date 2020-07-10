@@ -125,6 +125,7 @@ impl<'a> QueryHighligther<'a> {
             Expr::Lt(_, _) => unimplemented!(),
             Expr::Gte(_, _) => unimplemented!(),
             Expr::Lte(_, _) => unimplemented!(),
+            Expr::Range(_, _, _) => unimplemented!(),
 
             Expr::Regex(_, _) => unimplemented!(),
             Expr::MoreLikeThis(_, _) => unimplemented!(),
@@ -183,7 +184,6 @@ impl<'a> QueryHighligther<'a> {
 
             Term::ParsedArray(_, _) => {}
             Term::UnparsedArray(_, _) => {}
-            Term::Range(_, _, _) => {}
             Term::Null => {}
         }
 
