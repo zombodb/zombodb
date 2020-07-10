@@ -1,5 +1,6 @@
 use crate::query_parser::parser::Token;
 use lalrpop_util::ParseError;
+use std::collections::HashSet;
 use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -123,6 +124,7 @@ impl<'input> Expr<'input> {
         default_index: QualifiedIndex,
         default_fieldname: &'input str,
         input: &'input str,
+        used_fields: &mut HashSet<&'input str>,
     ) -> Result<Box<Expr<'input>>, ParserError<'input>> {
         let input = input.clone();
         let parser = crate::query_parser::parser::ExprParser::new();
@@ -131,6 +133,7 @@ impl<'input> Expr<'input> {
         let mut fieldname_stack = vec![default_fieldname];
 
         parser.parse(
+            used_fields,
             &mut fieldname_stack,
             &mut operator_stack,
             &mut index_stack,

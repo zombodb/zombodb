@@ -1,12 +1,14 @@
 #![allow(unused_macros)]
 use crate::query_parser::ast::QualifiedIndex;
 use pgx::*;
+use std::collections::HashSet;
 
 pub mod ast;
 mod parser;
 
 #[pg_extern]
 fn test_parser(input: &str) -> String {
+    let mut used_fields = HashSet::new();
     let expr = ast::Expr::from_str(
         QualifiedIndex {
             schema: None,
@@ -15,6 +17,7 @@ fn test_parser(input: &str) -> String {
         },
         "_zdb_all",
         input,
+        &mut used_fields,
     )
     .expect("failed to parse");
     format!("{}\n{:#?}", expr, expr)
@@ -283,8 +286,10 @@ mod macros {
 #[cfg(test)]
 mod string_tests {
     use crate::query_parser::ast::{Expr, ParserError, QualifiedIndex};
+    use std::collections::HashSet;
 
     pub(super) fn parse(input: &str) -> Result<Box<Expr>, ParserError> {
+        let mut used_fields = HashSet::new();
         Expr::from_str(
             QualifiedIndex {
                 schema: None,
@@ -293,6 +298,7 @@ mod string_tests {
             },
             "_",
             input,
+            &mut used_fields,
         )
     }
 

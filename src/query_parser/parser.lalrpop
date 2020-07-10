@@ -1,7 +1,8 @@
 use std::str::FromStr;
+use std::collections::HashSet;
 use crate::query_parser::ast::*;
 
-grammar(fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>, index_stack: &mut Vec<QualifiedIndex>);
+grammar(used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>, index_stack: &mut Vec<QualifiedIndex>);
 
 match {
     // top precedence tokens
@@ -186,10 +187,12 @@ ParentheticalGroup: Box<Expr<'input>> = {
 FieldName: &'input str = {
     IDENTIFIER => {
         fieldname_stack.push(<>);
+        used_fields.insert(<>);
         <>
     },
     DOTTED_IDENTIFIER => {
         fieldname_stack.push(<>);
+        used_fields.insert(<>);
         <>
     }
 };

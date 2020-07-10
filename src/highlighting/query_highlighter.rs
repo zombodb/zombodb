@@ -2,7 +2,7 @@ use crate::highlighting::document_highlighter::*;
 use crate::query_parser::ast::*;
 use pgx::*;
 use pgx::{JsonB, PgRelation};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 struct QueryHighligther<'a> {
     query: Box<Expr<'a>>,
@@ -13,16 +13,16 @@ impl<'a> QueryHighligther<'a> {
     pub fn new(
         index: &PgRelation,
         document: serde_json::Value,
-        fields: Vec<&'a str>,
+        fields: &HashSet<&'a str>,
         query: Box<Expr<'a>>,
     ) -> Self {
         let mut highlighters = HashMap::new();
 
-        fields.into_iter().for_each(|field| {
+        fields.iter().for_each(|field| {
             if let Some(value) = document
                 .as_object()
                 .expect("document not an object")
-                .get(field)
+                .get(*field)
             {
                 // for now, assume field value is a string and that it exists
                 let value =
@@ -31,7 +31,7 @@ impl<'a> QueryHighligther<'a> {
                 let mut dh = DocumentHighlighter::new();
                 dh.analyze_document(index, field, &value);
 
-                highlighters.insert(field, dh);
+                highlighters.insert(*field, dh);
             }
         });
 
@@ -61,7 +61,7 @@ impl<'a> QueryHighligther<'a> {
             Expr::Not(e) => !self.walk_expression(e, highlights),
 
             Expr::With(l, r) | Expr::And(l, r) => {
-                let mut did_highlight = false;
+                let mut did_highlight;
                 let mut tmp_highlights = HashMap::new();
 
                 did_highlight = self.walk_expression(l, &mut tmp_highlights);
@@ -111,25 +111,53 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::Gt(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(dh, f.clone(), expr, t, highlights, str::gt);
+                    return self.highlight_term_scan(
+                        dh,
+                        f.clone(),
+                        expr,
+                        t,
+                        highlights,
+                        dh.gt_func(),
+                    );
                 }
                 false
             }
             Expr::Lt(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(dh, f.clone(), expr, t, highlights, str::lt);
+                    return self.highlight_term_scan(
+                        dh,
+                        f.clone(),
+                        expr,
+                        t,
+                        highlights,
+                        dh.lt_func(),
+                    );
                 }
                 false
             }
             Expr::Gte(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(dh, f.clone(), expr, t, highlights, str::ge);
+                    return self.highlight_term_scan(
+                        dh,
+                        f.clone(),
+                        expr,
+                        t,
+                        highlights,
+                        dh.ge_func(),
+                    );
                 }
                 false
             }
             Expr::Lte(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(dh, f.clone(), expr, t, highlights, str::le);
+                    return self.highlight_term_scan(
+                        dh,
+                        f.clone(),
+                        expr,
+                        t,
+                        highlights,
+                        dh.le_func(),
+                    );
                 }
                 false
             }
@@ -237,7 +265,7 @@ fn highlight_document(
     ),
 > {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
-    let fields = vec!["subject", "authoremail", "id"];
+    let mut used_fields = HashSet::new();
     let query = Expr::from_str(
         QualifiedIndex {
             schema: Some(index.namespace().to_string()),
@@ -250,10 +278,11 @@ fn highlight_document(
         },
         "_zdb_all",
         query_string,
+        &mut used_fields,
     )
     .expect("failed to parse query");
 
-    let qh = QueryHighligther::new(&index, document.0, fields, query);
+    let qh = QueryHighligther::new(&index, document.0, &used_fields, query);
     let highlights = qh.highlight();
 
     highlights
