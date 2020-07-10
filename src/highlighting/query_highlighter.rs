@@ -111,20 +111,29 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::Gt(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(
-                        dh,
-                        f.clone(),
-                        expr,
-                        t,
-                        highlights,
-                        |token: &str, term: &str| token > term,
-                    );
+                    return self.highlight_term_scan(dh, f.clone(), expr, t, highlights, str::gt);
                 }
                 false
             }
-            Expr::Lt(_, _) => unimplemented!(),
-            Expr::Gte(_, _) => unimplemented!(),
-            Expr::Lte(_, _) => unimplemented!(),
+            Expr::Lt(f, t) => {
+                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                    return self.highlight_term_scan(dh, f.clone(), expr, t, highlights, str::lt);
+                }
+                false
+            }
+            Expr::Gte(f, t) => {
+                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                    return self.highlight_term_scan(dh, f.clone(), expr, t, highlights, str::ge);
+                }
+                false
+            }
+            Expr::Lte(f, t) => {
+                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                    return self.highlight_term_scan(dh, f.clone(), expr, t, highlights, str::le);
+                }
+                false
+            }
+
             Expr::Range(_, _, _) => unimplemented!(),
 
             Expr::Regex(_, _) => unimplemented!(),
@@ -179,14 +188,19 @@ impl<'a> QueryHighligther<'a> {
                     QueryHighligther::process_entries(expr, field, entries, highlights);
                 }
             }
-            Term::Fuzzy(s, d, _) => {}
+            Term::Fuzzy(s, d, _) => {
+                //todo ask if we want to make fuzzy take a usize or a u8
+                if let Some(entries) = highlighter.highlight_fuzzy(s, *d as usize) {
+                    cnt = entries.len();
+                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                }
+            }
             Term::ProximityChain(v) => {}
 
             Term::ParsedArray(_, _) => {}
             Term::UnparsedArray(_, _) => {}
             Term::Null => {}
         }
-
         cnt > 0
     }
 
