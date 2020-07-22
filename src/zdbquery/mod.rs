@@ -71,7 +71,7 @@ mod pg_catalog {
     }
 }
 
-impl InOutFuncs for ZDBQuery {
+impl InOutFuncs<'_> for ZDBQuery {
     fn input(input: &str) -> Result<Self, String> {
         let value: Value = match serde_json::from_str(input) {
             Ok(value) => value,
@@ -314,8 +314,8 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_query_string() {
-        let zdbquery =
-            pg_catalog::zdbquery_in(std::ffi::CString::new("this is a test").unwrap().as_c_str());
+        let input = std::ffi::CStr::from_bytes_with_nul(b"this is a test\0").unwrap();
+        let zdbquery = pg_catalog::zdbquery_in(input);
         let json = serde_json::to_value(&zdbquery).unwrap();
 
         assert_eq!(
@@ -326,11 +326,8 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_query_dsl() {
-        let zdbquery = pg_catalog::zdbquery_in(
-            std::ffi::CString::new(r#" {"match_all":{}} "#)
-                .unwrap()
-                .as_c_str(),
-        );
+        let input = std::ffi::CStr::from_bytes_with_nul(b" {\"match_all\":{}} \0").unwrap();
+        let zdbquery = pg_catalog::zdbquery_in(input);
         let json = serde_json::to_value(&zdbquery).unwrap();
 
         assert_eq!(json, json!( {"query_dsl":{"match_all":{}}} ));
@@ -338,13 +335,11 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_full_query() {
-        let zdbquery = pg_catalog::zdbquery_in(
-            std::ffi::CString::new(
-                r#" {"query_dsl":{"query_string":{"query":"this is a test"}}} "#,
-            )
-            .unwrap()
-            .as_c_str(),
-        );
+        let input = std::ffi::CStr::from_bytes_with_nul(
+            b" {\"query_dsl\":{\"query_string\":{\"query\":\"this is a test\"}}} \0",
+        )
+        .unwrap();
+        let zdbquery = pg_catalog::zdbquery_in(input);
         let json = serde_json::to_value(&zdbquery).unwrap();
 
         assert_eq!(
