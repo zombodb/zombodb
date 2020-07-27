@@ -1,6 +1,7 @@
-use self::pg_catalog::*;
 use crate::elasticsearch::analyze::*;
 use crate::elasticsearch::Elasticsearch;
+use crate::query_parser::ast::Term;
+use crate::query_parser::ast::{ProximityDistance, ProximityPart};
 use levenshtein::*;
 use pgx::PgRelation;
 use pgx::*;
@@ -16,17 +17,6 @@ pub struct TokenEntry {
     pub position: u32,
     pub start_offset: u64,
     pub end_offset: u64,
-}
-
-mod pg_catalog {
-    use pgx::*;
-    use serde::*;
-    #[derive(Debug, Serialize, Deserialize, PostgresType)]
-    pub struct ProximityPart {
-        pub words: Vec<String>,
-        pub distance: u32,
-        pub in_order: bool,
-    }
 }
 
 #[derive(Debug)]
@@ -187,6 +177,19 @@ impl<'a> DocumentHighlighter<'a> {
         }
     }
 
+    pub fn highlight_term(&'a self, term: &Term) -> Option<Vec<(String, &'a TokenEntry)>> {
+        match term {
+            Term::String(s, _) => self.highlight_token(s),
+            Term::Wildcard(w, _) => self.highlight_wildcard(w),
+            Term::Fuzzy(f, p, _) => self.highlight_fuzzy(f, *p),
+
+            Term::Null => unimplemented!(),
+            Term::ParsedArray(_, _) => unimplemented!(),
+            Term::UnparsedArray(_, _) => unimplemented!(),
+            Term::ProximityChain(_) => unimplemented!(),
+        }
+    }
+
     pub fn highlight_token(&'a self, token: &str) -> Option<Vec<(String, &'a TokenEntry)>> {
         let mut result = Vec::new();
         let token_entries_vec = self.lookup.get(token);
@@ -260,15 +263,15 @@ impl<'a> DocumentHighlighter<'a> {
     pub fn highlight_fuzzy(
         &'a self,
         fuzzy_key: &str,
-        prefix: usize,
+        prefix: u8,
     ) -> Option<Vec<(String, &'a TokenEntry)>> {
         let mut result = Vec::new();
         let fuzzy_low = 3;
         let fuzzy_high = 6;
-        if prefix >= fuzzy_key.len() {
+        if prefix >= fuzzy_key.len() as u8 {
             return self.highlight_token(fuzzy_key);
         }
-        let prefix_string = &fuzzy_key[0..prefix];
+        let prefix_string = &fuzzy_key[0..prefix as usize];
         for (token, token_entries) in self.lookup.iter() {
             if token.starts_with(prefix_string.deref()) {
                 if fuzzy_key.len() < fuzzy_low {
@@ -310,16 +313,22 @@ impl<'a> DocumentHighlighter<'a> {
         }
 
         let phrase = analyze_with_field(index, field, phrase_str)
-            .map(|parts| ProximityPart {
-                words: vec![parts.1],
-                distance: 0,
-                in_order: true,
+            .map(|parts| {
+                let term = Term::String(parts.1, None);
+
+                ProximityPart {
+                    words: vec![term],
+                    distance: Some(ProximityDistance {
+                        distance: 0,
+                        in_order: true,
+                    }),
+                }
             })
             .collect::<Vec<_>>();
         if phrase.is_empty() {
             None
         } else {
-            self.highlight_proximity(phrase)
+            self.highlight_proximity(&phrase)
         }
     }
 
@@ -331,7 +340,7 @@ impl<'a> DocumentHighlighter<'a> {
     // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
     pub fn highlight_proximity(
         &'a self,
-        phrase: Vec<ProximityPart>,
+        phrase: &Vec<ProximityPart>,
     ) -> Option<Vec<(String, &'a TokenEntry)>> {
         if phrase.len() == 0 {
             return None;
@@ -341,7 +350,7 @@ impl<'a> DocumentHighlighter<'a> {
         let mut final_matches = HashSet::new();
 
         for word in &first_words.words {
-            let first_word_entries = self.highlight_token(&word);
+            let first_word_entries = self.highlight_term(word);
 
             if phrase.len() == 1 || first_word_entries.is_none() {
                 return first_word_entries;
@@ -363,8 +372,8 @@ impl<'a> DocumentHighlighter<'a> {
                     }
                     let next = next.unwrap();
 
-                    let distance = current.distance;
-                    let order = current.in_order;
+                    let distance = current.distance.as_ref().map_or(0, |v| v.distance);
+                    let order = current.distance.as_ref().map_or(false, |v| v.in_order);
                     let word = &next.words;
 
                     match self.look_for_match(word, distance, order, start) {
@@ -403,14 +412,14 @@ impl<'a> DocumentHighlighter<'a> {
 
     fn look_for_match(
         &self,
-        words: &Vec<String>,
+        words: &Vec<Term>,
         distance: u32,
         order: bool,
         starting_point: Vec<u32>,
     ) -> Option<HashSet<(String, &TokenEntry)>> {
         let mut matches = HashSet::new();
         for word in words {
-            match self.highlight_token(word) {
+            match self.highlight_term(word) {
                 None => {}
                 Some(entries) => {
                     for e in entries {
@@ -617,7 +626,7 @@ fn highlight_fuzzy(
     }
     let mut highlighter = DocumentHighlighter::new();
     highlighter.analyze_document(&index, field_name, text);
-    let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix as usize);
+    let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix as u8);
 
     match highlights {
         Some(vec) => vec
@@ -639,52 +648,53 @@ fn highlight_fuzzy(
 }
 
 //  select zdb.highlight_proximity('idx_test','test','this is a test', ARRAY['{"word": "this", distance:2, in_order: false}'::proximitypart, '{"word": "test", distance: 0, in_order: false}'::proximitypart]);
-#[pg_extern(immutable, parallel_safe)]
-fn highlight_proximity(
-    index: PgRelation,
-    field_name: &str,
-    text: &str,
-    prox_clause: Vec<Option<ProximityPart>>,
-) -> impl std::iter::Iterator<
-    Item = (
-        name!(field_name, String),
-        name!(term, String),
-        name!(type, String),
-        name!(position, i32),
-        name!(start_offset, i64),
-        name!(end_offset, i64),
-    ),
-> {
-    let prox_clause = prox_clause
-        .into_iter()
-        .map(|e| e.unwrap())
-        .collect::<Vec<ProximityPart>>();
-    let mut highlighter = DocumentHighlighter::new();
-    highlighter.analyze_document(&index, field_name, text);
-    let highlights = highlighter.highlight_proximity(prox_clause);
-
-    match highlights {
-        Some(vec) => vec
-            .iter()
-            .map(|e| {
-                (
-                    field_name.clone().to_owned(),
-                    String::from(e.0.clone()),
-                    String::from(e.1.type_.clone()),
-                    e.1.position as i32,
-                    e.1.start_offset as i64,
-                    e.1.end_offset as i64,
-                )
-            })
-            .collect::<Vec<(String, String, String, i32, i64, i64)>>()
-            .into_iter(),
-        None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
-    }
-}
+// #[pg_extern(immutable, parallel_safe)]
+// fn highlight_proximity(
+//     index: PgRelation,
+//     field_name: &str,
+//     text: &str,
+//     prox_clause: Vec<Option<ProximityPart>>,
+// ) -> impl std::iter::Iterator<
+//     Item = (
+//         name!(field_name, String),
+//         name!(term, String),
+//         name!(type, String),
+//         name!(position, i32),
+//         name!(start_offset, i64),
+//         name!(end_offset, i64),
+//     ),
+// > {
+//     let prox_clause = prox_clause
+//         .into_iter()
+//         .map(|e| e.unwrap())
+//         .collect::<Vec<ProximityPart>>();
+//     let mut highlighter = DocumentHighlighter::new();
+//     highlighter.analyze_document(&index, field_name, text);
+//     let highlights = highlighter.highlight_proximity(&prox_clause);
+//
+//     match highlights {
+//         Some(vec) => vec
+//             .iter()
+//             .map(|e| {
+//                 (
+//                     field_name.clone().to_owned(),
+//                     String::from(e.0.clone()),
+//                     String::from(e.1.type_.clone()),
+//                     e.1.position as i32,
+//                     e.1.start_offset as i64,
+//                     e.1.end_offset as i64,
+//                 )
+//             })
+//             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
+//             .into_iter(),
+//         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
+//     }
+// }
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::highlighting::document_highlighter::{DocumentHighlighter, TokenEntry};
+    use crate::query_parser::ast::Term;
     use pgx::*;
     use std::collections::HashSet;
 
@@ -701,7 +711,7 @@ mod tests {
         dh.analyze_document(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match(&vec![String::from("test")], 1, true, vec![0])
+            .look_for_match(&vec![Term::String("test".into(), None)], 1, true, vec![0])
             .expect("no matches found");
         matches.is_empty();
     }
@@ -719,7 +729,7 @@ mod tests {
         dh.analyze_document(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match(&vec![String::from("is")], 0, true, vec![0])
+            .look_for_match(&vec![Term::String("is".into(), None)], 0, true, vec![0])
             .expect("no matches found");
         let mut expected = HashSet::new();
         let value = (
@@ -747,7 +757,7 @@ mod tests {
         dh.analyze_document(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match(&vec![String::from("this")], 0, false, vec![1])
+            .look_for_match(&vec![Term::String("this".into(), None)], 0, false, vec![1])
             .expect("no matches found");
         let mut expected = HashSet::new();
         let value_one = (
@@ -780,7 +790,7 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match(&vec![String::from("is")], 0, false, vec![0, 5])
+            .look_for_match(&vec![Term::String("is".into(), None)], 0, false, vec![0, 5])
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
@@ -823,7 +833,12 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match(&vec![String::from("this")], 0, false, vec![1, 6])
+            .look_for_match(
+                &vec![Term::String("this".into(), None)],
+                0,
+                false,
+                vec![1, 6],
+            )
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
@@ -866,7 +881,12 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match(&vec![String::from("test")], 3, true, vec![0, 5])
+            .look_for_match(
+                &vec![Term::String("test".into(), None)],
+                3,
+                true,
+                vec![0, 5],
+            )
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
@@ -911,7 +931,12 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match(&vec![String::from("this")], 3, false, vec![3, 9])
+            .look_for_match(
+                &vec![Term::String("this".into(), None)],
+                3,
+                false,
+                vec![3, 9],
+            )
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (

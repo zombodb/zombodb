@@ -3,16 +3,22 @@ use lalrpop_util::ParseError;
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Error, Formatter};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ProximityDistance {
     pub distance: u32,
     pub in_order: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ProximityPart<'input> {
-    pub words: Vec<Term<'input>>,
-    pub distance: Option<ProximityDistance>,
+pub use pg_catalog::ProximityPart;
+
+pub mod pg_catalog {
+    use crate::query_parser::ast::{ProximityDistance, Term};
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct ProximityPart<'input> {
+        pub words: Vec<Term<'input>>,
+        pub distance: Option<ProximityDistance>,
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -63,8 +69,8 @@ pub enum ComparisonOpcode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term<'input> {
     Null,
-    String(&'input str, Option<f32>),
-    Wildcard(&'input str, Option<f32>),
+    String(String, Option<f32>),
+    Wildcard(String, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
     ParsedArray(Vec<Term<'input>>, Option<f32>),
     UnparsedArray(&'input str, Option<f32>),
@@ -101,12 +107,12 @@ pub enum Expr<'input> {
 
 impl<'input> Term<'input> {
     pub(in crate::query_parser) fn maybe_make_wildcard(expr: Term<'input>) -> Term<'input> {
-        match expr {
+        match &expr {
             Term::String(s, b) => {
                 let mut prev = 0 as char;
                 for c in s.chars() {
                     if (c == '*' || c == '?') && prev != '\\' {
-                        return Term::Wildcard(s, b);
+                        return Term::Wildcard(s.clone(), *b);
                     }
                     prev = c;
                 }
@@ -178,10 +184,10 @@ impl<'input> Expr<'input> {
             Expr::Contains(_, v) | Expr::Eq(_, v) | Expr::DoesNotContain(_, v) | Expr::Ne(_, v) => {
                 match v {
                     Term::String(s, b) => {
-                        flat.push(Term::String(s, *b));
+                        flat.push(Term::String(s.clone(), *b));
                     }
                     Term::Wildcard(s, b) => {
-                        flat.push(Term::Wildcard(s, *b));
+                        flat.push(Term::Wildcard(s.clone(), *b));
                     }
                     Term::Fuzzy(s, d, b) => {
                         flat.push(Term::Fuzzy(s, *d, *b));
@@ -247,7 +253,15 @@ impl<'input> Display for Term<'input> {
         match self {
             Term::Null => write!(fmt, "NULL"),
 
-            Term::String(s, b) | Term::Wildcard(s, b) => {
+            Term::String(s, b) => {
+                write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
+                if let Some(boost) = b {
+                    write!(fmt, "^{}", boost)?;
+                }
+                Ok(())
+            }
+
+            Term::Wildcard(s, b) => {
                 write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;

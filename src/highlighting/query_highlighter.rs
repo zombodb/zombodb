@@ -41,14 +41,30 @@ impl<'a> QueryHighligther<'a> {
         }
     }
 
-    pub fn highlight(
-        &'a self,
-    ) -> Option<HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>> {
+    pub fn highlight(&'a self) -> Vec<(String, String, String, i32, i64, i64, String)> {
         let mut highlights = HashMap::new();
         if self.walk_expression(&self.query, &mut highlights) {
-            Some(highlights)
+            pgx::info!("{:?}", highlights);
+            highlights
+                .into_iter()
+                .map(|((field, expr), entries)| {
+                    entries.into_iter().map(move |(term, entry)| {
+                        (
+                            field.field.clone(),
+                            term,
+                            entry.type_.clone(),
+                            entry.position as i32,
+                            entry.start_offset as i64,
+                            entry.end_offset as i64,
+                            expr.clone(),
+                        )
+                    })
+                })
+                .flatten()
+                .collect::<Vec<_>>()
         } else {
-            None
+            pgx::info!("walk_exprssion returned false");
+            vec![]
         }
     }
 
@@ -164,7 +180,14 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::Range(_, _, _) => unimplemented!(),
 
-            Expr::Regex(_, _) => unimplemented!(),
+            Expr::Regex(_f, _t) =>
+            // if let some(dh) = self.highlighters.get(f.field.as_str()) {
+            //     return self.highlight_regex();
+            // }
+            {
+                unimplemented!()
+            }
+
             Expr::MoreLikeThis(_, _) => unimplemented!(),
             Expr::FuzzyLikeThis(_, _) => unimplemented!(),
         }
@@ -217,13 +240,17 @@ impl<'a> QueryHighligther<'a> {
                 }
             }
             Term::Fuzzy(s, d, _) => {
-                //todo ask if we want to make fuzzy take a usize or a u8
-                if let Some(entries) = highlighter.highlight_fuzzy(s, *d as usize) {
+                if let Some(entries) = highlighter.highlight_fuzzy(s, *d) {
                     cnt = entries.len();
                     QueryHighligther::process_entries(expr, field, entries, highlights);
                 }
             }
-            Term::ProximityChain(v) => {}
+            Term::ProximityChain(v) => {
+                if let Some(entries) = highlighter.highlight_proximity(v) {
+                    cnt = entries.len();
+                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                }
+            }
 
             Term::ParsedArray(_, _) => {}
             Term::UnparsedArray(_, _) => {}
@@ -283,25 +310,152 @@ fn highlight_document(
     .expect("failed to parse query");
 
     let qh = QueryHighligther::new(&index, document.0, &used_fields, query);
-    let highlights = qh.highlight();
+    qh.highlight().into_iter()
+}
 
-    highlights
-        .unwrap_or_default()
-        .into_iter()
-        .map(|((field, expr), entries)| {
-            entries.into_iter().map(move |(term, entry)| {
-                (
-                    field.field.clone(),
-                    term,
-                    entry.type_.clone(),
-                    entry.position as i32,
-                    entry.start_offset as i64,
-                    entry.end_offset as i64,
-                    expr.clone(),
-                )
-            })
-        })
-        .flatten()
-        .collect::<Vec<_>>()
-        .into_iter()
+#[cfg(any(test, feature = "pg_test"))]
+mod tests {
+    use crate::highlighting::query_highlighter::QueryHighligther;
+    use crate::query_parser::ast::{Expr, QualifiedIndex};
+    use pgx::*;
+    use serde_json::*;
+    use std::collections::HashSet;
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn varchar() {
+        let highlights = make_query_highlighter(
+            "varchar",
+            json! {{
+                "varchar": "beer"
+            }},
+            "varchar:beer",
+        )
+        .highlight();
+
+        assert_vec(
+            highlights,
+            vec![("varchar", "beer", "<ALPHANUM>", 0, 0, 4, "varchar:\"beer\"")],
+        )
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn text() {
+        let highlights = make_query_highlighter(
+            "text",
+            json! {{
+                "text": "beer"
+            }},
+            "text:beer",
+        )
+        .highlight();
+
+        assert_vec(
+            highlights,
+            vec![("text", "beer", "<ALPHANUM>", 0, 1, 5, "text:\"beer\"")],
+        )
+    }
+
+    fn assert_vec(
+        left: Vec<(String, String, String, i32, i64, i64, String)>,
+        right: Vec<(&str, &str, &str, i32, i64, i64, &str)>,
+    ) {
+        assert_eq!(left.len(), right.len(), "left/right lengths are not equal");
+        for (i, (left, right)) in left.into_iter().zip(right).enumerate() {
+            assert_eq!(
+                left.0, right.0,
+                "fieldname mismatch at #{}\n    left={:?}\n   right={:?}",
+                i, left, right
+            );
+            assert_eq!(
+                left.1, right.1,
+                "term mismatch at #{}\n    left={:?}\n   right={:?}",
+                i, left, right
+            );
+            assert_eq!(
+                left.2, right.2,
+                "type mismatch at #{}\n    left={:?}\n   right={:?}",
+                i, left, right
+            );
+            assert_eq!(
+                left.3, right.3,
+                "position mismatch at #{}\n    left={:?}\n   right={:?}",
+                i, left, right
+            );
+            assert_eq!(
+                left.4, right.4,
+                "start_offset mismatch at #{}\n    left={:?}\n   right={:?}",
+                i, left, right
+            );
+            assert_eq!(
+                left.5, right.5,
+                "end_offset mismatch at #{}\n    left={:?}\n   right={:?}",
+                i, left, right
+            );
+            assert_eq!(
+                left.6, right.6,
+                "query_clause mismatch at #{}\n    left={:?}\n   right={:?}",
+                i, left, right
+            );
+        }
+    }
+
+    fn make_query_highlighter<'a>(
+        table: &'a str,
+        document: serde_json::Value,
+        query_string: &'a str,
+    ) -> QueryHighligther<'a> {
+        let (relation, table, index) = start_table_and_index(table);
+        let (query, used_fields) = make_query(table, index, query_string);
+        pgx::info!("used_fields={:?}", used_fields);
+        pgx::info!("query={:?}", query);
+        QueryHighligther::new(&relation, document, &used_fields, query)
+    }
+
+    fn make_query(table: String, index: String, input: &str) -> (Box<Expr>, HashSet<&str>) {
+        let mut used_fields = HashSet::new();
+        let query = Expr::from_str(
+            QualifiedIndex {
+                schema: None,
+                table,
+                index,
+            },
+            "_zdb_all",
+            input,
+            &mut used_fields,
+        )
+        .expect("failed to parse ZDB Query");
+
+        (query, used_fields)
+    }
+
+    fn start_table_and_index(title: &str) -> (PgRelation, String, String) {
+        let tablename = format!("test_highlighting_{}", title);
+        let indexname = format!("idxtest_highlighting_{}", title);
+        let create_table = &format!(
+            r#"CREATE TABLE {} (
+                "bigint" bigint,      -- maps to Elasticsearch 'long' type
+                "varchar" varchar,  -- maps to Elasticserach 'keyword' type
+                "text" text,      -- maps to Elasticsearch 'text' type
+                "integer" integer  -- maps to Elasticsdarch 'int' type
+            )"#,
+            tablename,
+        );
+        Spi::run(create_table);
+        let create_index = &format!(
+            "CREATE INDEX {index} ON {table} USING zombodb (({table}.*))",
+            index = indexname,
+            table = tablename
+        );
+        Spi::run(create_index);
+
+        (
+            unsafe {
+                PgRelation::open_with_name(&indexname).expect("failed to open index relation")
+            },
+            tablename,
+            indexname,
+        )
+    }
 }

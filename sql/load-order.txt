@@ -69,3 +69,7 @@ _join-support.sql
 highlighting_es_highlighting.generated.sql
 query_parser_mod.generated.sql
 highlighting_query_highlighter.generated.sql
+access_method_build.generated.sql
+elasticsearch_search.generated.sql
+gucs_mod.generated.sql
+mapping_mod.generated.sql

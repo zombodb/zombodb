@@ -45,7 +45,7 @@ mod macros {
                     },
                     field: $field.to_string()
                 },
-                crate::query_parser::ast::Term::String($val, Some($boost))
+                crate::query_parser::ast::Term::String($val.into(), Some($boost))
             ))
         };
         ($operator:tt, $table:literal, $index:literal, $field:literal, $val:expr) => {
@@ -58,7 +58,7 @@ mod macros {
                     },
                     field: $field.to_string()
                 },
-                crate::query_parser::ast::Term::String($val, None)
+                crate::query_parser::ast::Term::String($val.into(), None)
             ))
         };
         ($operator:tt, $field:literal, $val:expr) => {
@@ -71,11 +71,11 @@ mod macros {
                     },
                     field: $field.to_string()
                 },
-                crate::query_parser::ast::Term::String($val, None)
+                crate::query_parser::ast::Term::String($val.into(), None)
             ))
         };
         ($val:expr) => {
-            crate::query_parser::ast::Term::String($val, None)
+            crate::query_parser::ast::Term::String($val.into(), None)
         };
     }
 
@@ -91,7 +91,7 @@ mod macros {
                     },
                     field: $field.to_string()
                 },
-                crate::query_parser::ast::Term::Wildcard($val, Some($boost))
+                crate::query_parser::ast::Term::Wildcard($val.into(), Some($boost))
             ))
         };
         ($operator:tt, $field:literal, $val:expr) => {
@@ -104,11 +104,11 @@ mod macros {
                     },
                     field: $field.to_string()
                 },
-                crate::query_parser::ast::Term::Wildcard($val, None)
+                crate::query_parser::ast::Term::Wildcard($val.into(), None)
             ))
         };
         ($val:expr) => {
-            crate::query_parser::ast::Term::Wildcard($val, None)
+            crate::query_parser::ast::Term::Wildcard($val.into(), None)
         };
     }
 

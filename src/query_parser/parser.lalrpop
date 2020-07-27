@@ -237,7 +237,7 @@ UnparsedArray: &'input str = {
 
 StringExpr: Term<'input> = {
     NULL => Term::Null,
-    <s:String> <b:Boost?> => Term::maybe_make_wildcard(Term::String(s, b)),
+    <s:String> <b:Boost?> => Term::maybe_make_wildcard(Term::String(s.into(), b)),
     <s:String> <f:Fuzzy> <b:Boost?> => Term::Fuzzy(s, f, b)
 };
 
