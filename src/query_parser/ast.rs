@@ -1,9 +1,10 @@
 use crate::query_parser::parser::Token;
 use lalrpop_util::ParseError;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Error, Formatter};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProximityDistance {
     pub distance: u32,
     pub in_order: bool,
@@ -13,9 +14,12 @@ pub use pg_catalog::ProximityPart;
 
 pub mod pg_catalog {
     use crate::query_parser::ast::{ProximityDistance, Term};
+    use pgx::*;
+    use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, PostgresType, Serialize, Deserialize)]
     pub struct ProximityPart<'input> {
+        #[serde(borrow)]
         pub words: Vec<Term<'input>>,
         pub distance: Option<ProximityDistance>,
     }
@@ -66,11 +70,11 @@ pub enum ComparisonOpcode {
     FuzzyLikeThis,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Term<'input> {
     Null,
-    String(String, Option<f32>),
-    Wildcard(String, Option<f32>),
+    String(&'input str, Option<f32>),
+    Wildcard(&'input str, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
     ParsedArray(Vec<Term<'input>>, Option<f32>),
     UnparsedArray(&'input str, Option<f32>),

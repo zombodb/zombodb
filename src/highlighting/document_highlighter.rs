@@ -1,4 +1,3 @@
-use crate::elasticsearch::analyze::*;
 use crate::elasticsearch::Elasticsearch;
 use crate::query_parser::ast::Term;
 use crate::query_parser::ast::{ProximityDistance, ProximityPart};
@@ -312,23 +311,31 @@ impl<'a> DocumentHighlighter<'a> {
             return None;
         }
 
-        let phrase = analyze_with_field(index, field, phrase_str)
-            .map(|parts| {
-                let term = Term::String(parts.1, None);
+        let elasticsearch = Elasticsearch::new(&index);
+        let result = elasticsearch
+            .analyze_with_field(field, phrase_str)
+            .execute()
+            .expect("failed to analyze phrase");
 
-                ProximityPart {
-                    words: vec![term],
-                    distance: Some(ProximityDistance {
-                        distance: 0,
-                        in_order: true,
-                    }),
-                }
-            })
-            .collect::<Vec<_>>();
-        if phrase.is_empty() {
+        if result.tokens.is_empty() {
             None
         } else {
-            self.highlight_proximity(&phrase)
+            let proximity_parts = result
+                .tokens
+                .iter()
+                .map(|parts| {
+                    let term = Term::String(&parts.token, None);
+
+                    ProximityPart {
+                        words: vec![term],
+                        distance: Some(ProximityDistance {
+                            distance: 0,
+                            in_order: true,
+                        }),
+                    }
+                })
+                .collect::<Vec<_>>();
+            self.highlight_proximity(&proximity_parts)
         }
     }
 
@@ -338,9 +345,9 @@ impl<'a> DocumentHighlighter<'a> {
     //
     // query= than w/2 wine
     // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
-    pub fn highlight_proximity(
+    pub fn highlight_proximity<'b>(
         &'a self,
-        phrase: &Vec<ProximityPart>,
+        phrase: &Vec<ProximityPart<'b>>,
     ) -> Option<Vec<(String, &'a TokenEntry)>> {
         if phrase.len() == 0 {
             return None;
@@ -648,54 +655,55 @@ fn highlight_fuzzy(
 }
 
 //  select zdb.highlight_proximity('idx_test','test','this is a test', ARRAY['{"word": "this", distance:2, in_order: false}'::proximitypart, '{"word": "test", distance: 0, in_order: false}'::proximitypart]);
-// #[pg_extern(immutable, parallel_safe)]
-// fn highlight_proximity(
-//     index: PgRelation,
-//     field_name: &str,
-//     text: &str,
-//     prox_clause: Vec<Option<ProximityPart>>,
-// ) -> impl std::iter::Iterator<
-//     Item = (
-//         name!(field_name, String),
-//         name!(term, String),
-//         name!(type, String),
-//         name!(position, i32),
-//         name!(start_offset, i64),
-//         name!(end_offset, i64),
-//     ),
-// > {
-//     let prox_clause = prox_clause
-//         .into_iter()
-//         .map(|e| e.unwrap())
-//         .collect::<Vec<ProximityPart>>();
-//     let mut highlighter = DocumentHighlighter::new();
-//     highlighter.analyze_document(&index, field_name, text);
-//     let highlights = highlighter.highlight_proximity(&prox_clause);
-//
-//     match highlights {
-//         Some(vec) => vec
-//             .iter()
-//             .map(|e| {
-//                 (
-//                     field_name.clone().to_owned(),
-//                     String::from(e.0.clone()),
-//                     String::from(e.1.type_.clone()),
-//                     e.1.position as i32,
-//                     e.1.start_offset as i64,
-//                     e.1.end_offset as i64,
-//                 )
-//             })
-//             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
-//             .into_iter(),
-//         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
-//     }
-// }
+#[pg_extern(immutable, parallel_safe)]
+fn highlight_proximity<'a>(
+    index: PgRelation,
+    field_name: &str,
+    text: &'a str,
+    prox_clause: Vec<Option<ProximityPart<'a>>>,
+) -> impl std::iter::Iterator<
+    Item = (
+        name!(field_name, String),
+        name!(term, String),
+        name!(type, String),
+        name!(position, i32),
+        name!(start_offset, i64),
+        name!(end_offset, i64),
+    ),
+> {
+    let prox_clause = prox_clause
+        .into_iter()
+        .map(|e| e.unwrap())
+        .collect::<Vec<ProximityPart>>();
+    let mut highlighter = DocumentHighlighter::new();
+    highlighter.analyze_document(&index, field_name, text);
+    let highlights = highlighter.highlight_proximity(&prox_clause);
+
+    match highlights {
+        Some(vec) => vec
+            .iter()
+            .map(|e| {
+                (
+                    field_name.clone().to_owned(),
+                    String::from(e.0.clone()),
+                    String::from(e.1.type_.clone()),
+                    e.1.position as i32,
+                    e.1.start_offset as i64,
+                    e.1.end_offset as i64,
+                )
+            })
+            .collect::<Vec<(String, String, String, i32, i64, i64)>>()
+            .into_iter(),
+        None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
+    }
+}
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::highlighting::document_highlighter::{DocumentHighlighter, TokenEntry};
     use crate::query_parser::ast::Term;
     use pgx::*;
+    use serde_json::*;
     use std::collections::HashSet;
 
     #[pg_test(error = "no matches found")]
@@ -968,7 +976,7 @@ mod tests {
         let title = "term";
         start_table_and_index(title);
         let select: String = format!(
-            "select * from zdb.highlight_term('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;",title
+            "select * from zdb.highlight_term('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;", title
         );
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -993,7 +1001,7 @@ mod tests {
     fn test_highlighter_phrase() {
         let title = "phrase";
         start_table_and_index(title);
-        let select:String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it is a') order by position;",title);
+        let select: String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it is a') order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1025,7 +1033,7 @@ mod tests {
     fn test_highlighter_phrase_as_one_word() {
         let title = "phrase_one_word";
         start_table_and_index(title);
-        let select:String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;",title);
+        let select: String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1049,7 +1057,7 @@ mod tests {
     fn test_highlighter_phrase_with_phrase_not_in_text() {
         let title = "phrase_not_in_text";
         start_table_and_index(title);
-        let select :String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'banana') order by position;",title);
+        let select: String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'banana') order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1068,7 +1076,7 @@ mod tests {
     fn test_highlighter_wildcard_with_asterisk() {
         let title = "wildcard_ast";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm*n') order by position;",title);
+        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm*n') order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1092,7 +1100,7 @@ mod tests {
     fn test_highlighter_wildcard_with_question_mark() {
         let title = "wildcard_question";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm?n') order by position;",title);
+        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm?n') order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1112,7 +1120,7 @@ mod tests {
     fn test_highlighter_wildcard_with_no_match() {
         let title = "wildcard_no_match";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'n*n') order by position;",title);
+        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'n*n') order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1157,7 +1165,7 @@ mod tests {
     fn test_highlighter_fuzzy_correct_three_char_term() {
         let title = "fuzzy_three";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'cot', 1) order by position;",title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'cot', 1) order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1185,7 +1193,7 @@ mod tests {
     fn test_highlighter_fuzzy_correct_two_char_string() {
         let title = "fuzzy_two";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'co', 1) order by position;",title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'co', 1) order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1205,7 +1213,7 @@ mod tests {
     fn test_highlighter_fuzzy_6_char_string() {
         let title = "fuzzy_six";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c cott cooler', 'colter', 2) order by position;",title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c cott cooler', 'colter', 2) order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1232,7 +1240,7 @@ mod tests {
     fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string() {
         let title = "fuzzy_long_prefix";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;",title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1253,7 +1261,7 @@ mod tests {
     fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string_with_non_return() {
         let title = "fuzzy_long_prefix_no_return";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;",title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1273,7 +1281,7 @@ mod tests {
     fn test_highlighter_fuzzy_with_negative_prefix() {
         let title = "fuzzy_neg_prefix";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', -4) order by position;",title);
+        let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', -4) order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1327,7 +1335,7 @@ mod tests {
         let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
         let array_two = "{\"words\": [\"test\"], \"distance\": 0, \"in_order\": false}";
         let array_three = "{\"words\": [\"that\"], \"distance\": 2, \"in_order\": false}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1356,7 +1364,7 @@ mod tests {
         start_table_and_index(title);
         let search_string = "this is a test that is longer and has a second this near test a second time and a third this that is not";
         let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart]) order by position;", title,search_string, array_one);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart]) order by position;", title, search_string, array_one);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1387,7 +1395,7 @@ mod tests {
         let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
         let array_two = "{\"words\": [\"test\"], \"distance\": 0, \"in_order\": false}";
         let array_three = "{\"words\": [\"that\"], \"distance\": 2, \"in_order\": false}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1423,7 +1431,7 @@ mod tests {
         let search_string = "this is this";
         let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": true}";
         let array_two = "{\"words\": [\"is\"], \"distance\": 0, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1451,7 +1459,7 @@ mod tests {
         let search_string = "this is this";
         let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
         let array_two = "{\"words\": [\"is\"], \"distance\": 0, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1483,7 +1491,7 @@ mod tests {
         let array_two = "{\"words\": [\"men\"], \"distance\": 2, \"in_order\": true}";
         let array_three = "{\"words\": [\"to\"], \"distance\": 12, \"in_order\": false}";
         let array_four = "{\"words\": [\"now\"], \"distance\": 2, \"in_order\": false}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three, array_four);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three, array_four);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1518,7 +1526,7 @@ mod tests {
         let array_two = "{\"words\": [\"men\"], \"distance\": 5, \"in_order\": true}";
         let array_three = "{\"words\": [\"to\"], \"distance\": 11, \"in_order\": false}";
         let array_four = "{\"words\": [\"now\"], \"distance\": 2, \"in_order\": false}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three, array_four);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three, array_four);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1552,7 +1560,7 @@ mod tests {
         let array_one = "{\"words\": [\"energy\"], \"distance\": 3, \"in_order\": false}";
         let array_two = "{\"words\": [\"enron\"], \"distance\": 3, \"in_order\": false}";
         let array_three = "{\"words\": [\"lay\"], \"distance\": 3, \"in_order\": false}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two,array_three);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1579,7 +1587,7 @@ mod tests {
         let search_string = "This is a test";
         let array_one = "{\"words\": [\"this\", \"is\" ], \"distance\": 2, \"in_order\": true}";
         let array_two = "{\"words\": [\"test\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1606,7 +1614,23 @@ mod tests {
         let title = "highlight_proximity_array_two_then_one_in_order";
         start_table_and_index(title);
         let search_string = "This is a test";
-        let array_one = "{\"words\": [\"this\" ], \"distance\": 2, \"in_order\": true}";
+        // let array_one = serde_json::to_string(&json! {
+        //     {
+        //         "words": ["this"],
+        //         "distance": 2,
+        //         "in_order": true
+        //     }
+        // })
+        // .expect("failed to parse json");
+
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": ["this"],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+
         let array_two = "{\"words\": [\"test\", \"is\"], \"distance\": 5, \"in_order\": true}";
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
         Spi::connect(|client| {
@@ -1637,7 +1661,7 @@ mod tests {
         let search_string = "This is a test";
         let array_one = "{\"words\": [\"test\", \"is\" ], \"distance\": 2, \"in_order\": false}";
         let array_two = "{\"words\": [\"this\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1666,7 +1690,7 @@ mod tests {
         let search_string = "This is a test";
         let array_one = "{\"words\": [\"test\" ], \"distance\": 2, \"in_order\": false}";
         let array_two = "{\"words\": [\"this\", \"is\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1695,7 +1719,7 @@ mod tests {
         let search_string = "This is a test that is a bit longer";
         let array_one = "{\"words\": [\"this\", \"is\" ], \"distance\": 2, \"in_order\": true}";
         let array_two = "{\"words\": [\"test\", \"longer\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1729,7 +1753,7 @@ mod tests {
         let array_one =
             "{\"words\": [\"that\", \"longer\" ], \"distance\": 2, \"in_order\": false}";
         let array_two = "{\"words\": [\"test\", \"is\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1762,10 +1786,10 @@ mod tests {
         let search_string =
             "This is a test that is a bit longer. I have also added another sentence to test.";
         let array_one =
-            "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": true}";
+        "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": true}";
         let array_two =
             "{\"words\": [\"test\", \"is\", \"to\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1800,10 +1824,10 @@ mod tests {
         let search_string =
             "This is a test that is a bit longer. I have also added another sentence to test.";
         let array_one =
-            "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": false}";
+        "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": false}";
         let array_two =
             "{\"words\": [\"test\", \"is\", \"to\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1842,12 +1866,12 @@ mod tests {
         let search_string =
             "This is a test that is a bit longer. I have also added another sentence to test.";
         let array_one =
-            "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": true}";
+        "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": true}";
         let array_two =
             "{\"words\": [\"is\", \"have\", \"to\"], \"distance\": 0, \"in_order\": true}";
         let array_three =
             "{\"words\": [\"a\", \"test\", \"also\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1888,12 +1912,12 @@ mod tests {
         let search_string =
             "This is a test that is a bit longer. I have also added another sentence to test.";
         let array_one =
-            "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 0, \"in_order\": false}";
+        "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 0, \"in_order\": false}";
         let array_two =
             "{\"words\": [\"is\", \"have\", \"another\"], \"distance\": 0, \"in_order\": false}";
         let array_three =
             "{\"words\": [\"a\", \"test\", \"added\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1931,7 +1955,7 @@ mod tests {
         let array_two =
             "{\"words\": [\"is\", \"fifteen\", \"words\"], \"distance\": 15, \"in_order\": false}";
         let array_three = "{\"words\": [\"dunno\"], \"distance\": 5, \"in_order\": true}";
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two,array_three);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1964,7 +1988,7 @@ mod tests {
             title,
         );
         Spi::run(create_table);
-        let create_index = &format!("CREATE INDEX idxtest_highlighting_{} ON test_highlighting_{} USING zombodb ((test_highlighting_{}.*))",title,title,title,);
+        let create_index = &format!("CREATE INDEX idxtest_highlighting_{} ON test_highlighting_{} USING zombodb ((test_highlighting_{}.*))", title, title, title, );
         Spi::run(create_index);
     }
 
