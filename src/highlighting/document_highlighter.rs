@@ -1301,8 +1301,20 @@ mod tests {
     fn test_highlighter_proximity_two_term() {
         let title = "highlight_proximity_two_term";
         start_table_and_index(title);
-        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"words\": [\"test\"], \"distance\": 0, \"in_order\": false}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}],
+                "distance": { "distance": 0, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','this is a test that is longer and has a second this near test a second time and a third this that is not' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1332,9 +1344,27 @@ mod tests {
         let title = "highlight_proximity_three_term";
         start_table_and_index(title);
         let search_string = "this is a test that is longer and has a second this near test a second time and a third this that is not";
-        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"words\": [\"test\"], \"distance\": 0, \"in_order\": false}";
-        let array_three = "{\"words\": [\"that\"], \"distance\": 2, \"in_order\": false}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}],
+                "distance": { "distance": 0, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_three = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["that", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1363,7 +1393,13 @@ mod tests {
         let title = "highlight_proximity_one_term";
         start_table_and_index(title);
         let search_string = "this is a test that is longer and has a second this near test a second time and a third this that is not";
-        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart]) order by position;", title, search_string, array_one);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1392,9 +1428,27 @@ mod tests {
         let title = "highlight_proximity_three_term_twice";
         start_table_and_index(title);
         let search_string = "this is a test that is longer and has a second this near test a second time and a third that is not this test that whatever ";
-        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"words\": [\"test\"], \"distance\": 0, \"in_order\": false}";
-        let array_three = "{\"words\": [\"that\"], \"distance\": 2, \"in_order\": false}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}],
+                "distance": { "distance": 0, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_three = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["that", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1429,8 +1483,20 @@ mod tests {
         let title = "highlight_proximity_simple_in_order_test";
         start_table_and_index(title);
         let search_string = "this is this";
-        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": true}";
-        let array_two = "{\"words\": [\"is\"], \"distance\": 0, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["is", null]}],
+                "distance": { "distance": 0, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1457,8 +1523,20 @@ mod tests {
         let title = "highlight_proximity_simple_without_order_test";
         start_table_and_index(title);
         let search_string = "this is this";
-        let array_one = "{\"words\": [\"this\"], \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"words\": [\"is\"], \"distance\": 0, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["is", null]}],
+                "distance": { "distance": 0, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1487,10 +1565,34 @@ mod tests {
         let title = "highlight_proximity_four_with_inorder_and_not_inorder";
         start_table_and_index(title);
         let search_string = "now is the time for all good men to come to the aid of their country.";
-        let array_one = "{\"words\": [\"for\"], \"distance\": 2, \"in_order\": true}";
-        let array_two = "{\"words\": [\"men\"], \"distance\": 2, \"in_order\": true}";
-        let array_three = "{\"words\": [\"to\"], \"distance\": 12, \"in_order\": false}";
-        let array_four = "{\"words\": [\"now\"], \"distance\": 2, \"in_order\": false}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["for", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["men", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_three = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["to", null]}],
+                "distance": { "distance": 12, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_four = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["now", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three, array_four);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1522,10 +1624,34 @@ mod tests {
         let title = "highlight_proximity_four_with_inorder_and_not_inorder_double";
         start_table_and_index(title);
         let search_string = "now is the time of the year for all good men to rise up and come to the aid of their country.";
-        let array_one = "{\"words\": [\"for\"], \"distance\": 2, \"in_order\": true}";
-        let array_two = "{\"words\": [\"men\"], \"distance\": 5, \"in_order\": true}";
-        let array_three = "{\"words\": [\"to\"], \"distance\": 11, \"in_order\": false}";
-        let array_four = "{\"words\": [\"now\"], \"distance\": 2, \"in_order\": false}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["for", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["men", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_three = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["to", null]}],
+                "distance": { "distance": 11, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_four = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["now", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three, array_four);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1557,9 +1683,27 @@ mod tests {
         let title = "highlight_proximity_long_test";
         start_table_and_index(title);
         let search_string = test_blurb();
-        let array_one = "{\"words\": [\"energy\"], \"distance\": 3, \"in_order\": false}";
-        let array_two = "{\"words\": [\"enron\"], \"distance\": 3, \"in_order\": false}";
-        let array_three = "{\"words\": [\"lay\"], \"distance\": 3, \"in_order\": false}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["energy", null]}],
+                "distance": { "distance": 3, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["enron", null]}],
+                "distance": { "distance": 3, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_three = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["lay", null]}],
+                "distance": { "distance": 3, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1585,8 +1729,20 @@ mod tests {
         let title = "highlight_proximity_array_two_then_one_in_order";
         start_table_and_index(title);
         let search_string = "This is a test";
-        let array_one = "{\"words\": [\"this\", \"is\" ], \"distance\": 2, \"in_order\": true}";
-        let array_two = "{\"words\": [\"test\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}, {"String":["is", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1614,24 +1770,20 @@ mod tests {
         let title = "highlight_proximity_array_two_then_one_in_order";
         start_table_and_index(title);
         let search_string = "This is a test";
-        // let array_one = serde_json::to_string(&json! {
-        //     {
-        //         "words": ["this"],
-        //         "distance": 2,
-        //         "in_order": true
-        //     }
-        // })
-        // .expect("failed to parse json");
-
         let array_one = serde_json::to_string(&json! {
             {
-                "words": ["this"],
+                "words": [{"String":["this", null]}],
                 "distance": { "distance": 2, "in_order": true }
             }
         })
         .expect("failed to parse json");
-
-        let array_two = "{\"words\": [\"test\", \"is\"], \"distance\": 5, \"in_order\": true}";
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}, {"String":["is", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1659,8 +1811,20 @@ mod tests {
         let title = "highlight_proximity_array_two_then_one_without_order";
         start_table_and_index(title);
         let search_string = "This is a test";
-        let array_one = "{\"words\": [\"test\", \"is\" ], \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"words\": [\"this\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}, {"String":["is", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1688,8 +1852,20 @@ mod tests {
         let title = "highlight_proximity_array_two_then_one_without_order";
         start_table_and_index(title);
         let search_string = "This is a test";
-        let array_one = "{\"words\": [\"test\" ], \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"words\": [\"this\", \"is\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}, {"String":["is", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1717,8 +1893,20 @@ mod tests {
         let title = "highlight_proximity_array_two_then_two_in_order";
         start_table_and_index(title);
         let search_string = "This is a test that is a bit longer";
-        let array_one = "{\"words\": [\"this\", \"is\" ], \"distance\": 2, \"in_order\": true}";
-        let array_two = "{\"words\": [\"test\", \"longer\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}, {"String":["is", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}, {"String":["longer", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1750,9 +1938,20 @@ mod tests {
         let title = "highlight_proximity_array_two_then_two_without_order";
         start_table_and_index(title);
         let search_string = "This is a test that is a bit longer";
-        let array_one =
-            "{\"words\": [\"that\", \"longer\" ], \"distance\": 2, \"in_order\": false}";
-        let array_two = "{\"words\": [\"test\", \"is\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["that", null]}, {"String":["longer", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}, {"String":["is", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1785,10 +1984,20 @@ mod tests {
         start_table_and_index(title);
         let search_string =
             "This is a test that is a bit longer. I have also added another sentence to test.";
-        let array_one =
-        "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": true}";
-        let array_two =
-            "{\"words\": [\"test\", \"is\", \"to\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}, {"String":["longer", null]}, {"String": ["sentence", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}, {"String":["is", null]}, {"String": ["to", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1823,10 +2032,20 @@ mod tests {
         start_table_and_index(title);
         let search_string =
             "This is a test that is a bit longer. I have also added another sentence to test.";
-        let array_one =
-        "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": false}";
-        let array_two =
-            "{\"words\": [\"test\", \"is\", \"to\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}, {"String":["longer", null]}, {"String": ["sentence", null]}],
+                "distance": { "distance": 2, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["test", null]}, {"String":["is", null]}, {"String": ["to", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1865,12 +2084,27 @@ mod tests {
         start_table_and_index(title);
         let search_string =
             "This is a test that is a bit longer. I have also added another sentence to test.";
-        let array_one =
-        "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 2, \"in_order\": true}";
-        let array_two =
-            "{\"words\": [\"is\", \"have\", \"to\"], \"distance\": 0, \"in_order\": true}";
-        let array_three =
-            "{\"words\": [\"a\", \"test\", \"also\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}, {"String":["longer", null]}, {"String": ["sentence", null]}],
+                "distance": { "distance": 2, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["is", null]}, {"String":["have", null]}, {"String": ["to", null]}],
+                "distance": { "distance": 0, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
+        let array_three = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["a", null]}, {"String":["test", null]}, {"String": ["also", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1911,12 +2145,27 @@ mod tests {
         start_table_and_index(title);
         let search_string =
             "This is a test that is a bit longer. I have also added another sentence to test.";
-        let array_one =
-        "{\"words\": [\"this\", \"longer\", \"sentence\" ], \"distance\": 0, \"in_order\": false}";
-        let array_two =
-            "{\"words\": [\"is\", \"have\", \"another\"], \"distance\": 0, \"in_order\": false}";
-        let array_three =
-            "{\"words\": [\"a\", \"test\", \"added\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["this", null]}, {"String":["longer", null]}, {"String": ["sentence", null]}],
+                "distance": { "distance": 0, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["is", null]}, {"String":["have", null]}, {"String": ["another", null]}],
+                "distance": { "distance": 0, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_three = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["a", null]}, {"String":["test", null]}, {"String": ["added", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
@@ -1951,10 +2200,27 @@ mod tests {
         start_table_and_index(title);
         let search_string =
             "Okay sure, I think this sentence is about fifteen words long Maybe less I dunno";
-        let array_one = "{\"words\": [\"okay\", \"sure\" ], \"distance\": 15, \"in_order\": false}";
-        let array_two =
-            "{\"words\": [\"is\", \"fifteen\", \"words\"], \"distance\": 15, \"in_order\": false}";
-        let array_three = "{\"words\": [\"dunno\"], \"distance\": 5, \"in_order\": true}";
+        let array_one = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["okay", null]}, {"String":["sure", null]}],
+                "distance": { "distance": 15, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_two = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["is", null]}, {"String":["fifteen", null]}, {"String": ["words", null]}],
+                "distance": { "distance": 15, "in_order": false }
+            }
+        })
+        .expect("failed to parse json");
+        let array_three = serde_json::to_string(&json! {
+            {
+                "words": [{"String":["dunno", null]}],
+                "distance": { "distance": 5, "in_order": true }
+            }
+        })
+        .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
