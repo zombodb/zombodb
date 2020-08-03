@@ -703,6 +703,7 @@ mod tests {
     use crate::highlighting::document_highlighter::{DocumentHighlighter, TokenEntry};
     use crate::query_parser::ast::Term;
     use pgx::*;
+    use regex::Regex;
     use serde_json::*;
     use std::collections::HashSet;
 
@@ -1139,7 +1140,7 @@ mod tests {
     fn test_highlighter_regex() {
         let title = "regex";
         start_table_and_index(title);
-        let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', '^m.*$') order by position;", title);
+        let select = format!("select * from zdb.highlight_regex('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', '^m.*$') order by position;", title);
         Spi::connect(|client| {
             let table = client.select(&select, None, None);
 
@@ -1153,6 +1154,26 @@ mod tests {
                 ("<ALPHANUM>", "man", 3, 13, 16),
                 ("<ALPHANUM>", "moon", 6, 24, 28),
             ];
+
+            test_table(table, expect);
+
+            Ok(Some(()))
+        });
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn test_highlighter_regex_test_two() {
+        let title = "regex_test_two";
+        start_table_and_index(title);
+        let regex_ex = Regex::new("^m.?$").unwrap();
+        let select = format!("select * from zdb.highlight_regex('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', '{}') order by position;", title, regex_ex.as_str());
+        Spi::connect(|client| {
+            let table = client.select(&select, None, None);
+
+            // field_name | term |    type    | position | start_offset | end_offset
+            // -----------+------+------------+----------+--------------+------------
+            let expect = vec![];
 
             test_table(table, expect);
 
