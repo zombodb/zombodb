@@ -180,14 +180,12 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::Range(_, _, _) => unimplemented!(),
 
-            Expr::Regex(_f, _t) =>
-            // if let some(dh) = self.highlighters.get(f.field.as_str()) {
-            //     return self.highlight_regex();
-            // }
-            {
-                unimplemented!()
+            Expr::Regex(f, t) => {
+                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                    return self.highlight_term(dh, f.clone(), expr, t, highlights);
+                }
+                false
             }
-
             Expr::MoreLikeThis(_, _) => unimplemented!(),
             Expr::FuzzyLikeThis(_, _) => unimplemented!(),
         }
@@ -354,6 +352,24 @@ mod tests {
         assert_vec(
             highlights,
             vec![("text", "beer", "<ALPHANUM>", 0, 1, 5, "text:\"beer\"")],
+        )
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn regex() {
+        let highlights = make_query_highlighter(
+            "text",
+            json! {{
+                "regex": "man"
+            }},
+            "regex:~'^m.*$'",
+        )
+        .highlight();
+
+        assert_vec(
+            highlights,
+            vec![("regex", "man", "<ALPHANUM>", 0, 1, 4, "regex:~'^m.*$'")],
         )
     }
 
