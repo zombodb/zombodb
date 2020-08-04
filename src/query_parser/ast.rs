@@ -75,6 +75,7 @@ pub enum Term<'input> {
     Null,
     String(&'input str, Option<f32>),
     Wildcard(&'input str, Option<f32>),
+    Regex(&'input str, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
     ParsedArray(Vec<Term<'input>>, Option<f32>),
     UnparsedArray(&'input str, Option<f32>),
@@ -110,17 +111,24 @@ pub enum Expr<'input> {
 }
 
 impl<'input> Term<'input> {
-    pub(in crate::query_parser) fn maybe_make_wildcard(expr: Term<'input>) -> Term<'input> {
+    pub(in crate::query_parser) fn maybe_make_wildcard_or_regex(
+        opcode: Option<&ComparisonOpcode>,
+        expr: Term<'input>,
+    ) -> Term<'input> {
         match &expr {
             Term::String(s, b) => {
-                let mut prev = 0 as char;
-                for c in s.chars() {
-                    if (c == '*' || c == '?') && prev != '\\' {
-                        return Term::Wildcard(s.clone(), *b);
+                if let Some(&ComparisonOpcode::Regex) = opcode {
+                    Term::Regex(s.clone(), *b)
+                } else {
+                    let mut prev = 0 as char;
+                    for c in s.chars() {
+                        if (c == '*' || c == '?') && prev != '\\' {
+                            return Term::Wildcard(s.clone(), *b);
+                        }
+                        prev = c;
                     }
-                    prev = c;
+                    expr
                 }
-                expr
             }
             _ => expr,
         }
@@ -257,15 +265,7 @@ impl<'input> Display for Term<'input> {
         match self {
             Term::Null => write!(fmt, "NULL"),
 
-            Term::String(s, b) => {
-                write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
-                if let Some(boost) = b {
-                    write!(fmt, "^{}", boost)?;
-                }
-                Ok(())
-            }
-
-            Term::Wildcard(s, b) => {
+            Term::String(s, b) | Term::Wildcard(s, b) | Term::Regex(s, b) => {
                 write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;

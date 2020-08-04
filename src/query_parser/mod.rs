@@ -113,6 +113,39 @@ mod macros {
     }
 
     #[allow(non_snake_case)]
+    macro_rules! Regex {
+        ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
+                crate::query_parser::ast::Term::Regex($val.into(), Some($boost))
+            ))
+        };
+        ($operator:tt, $field:literal, $val:expr) => {
+            Box!(crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: crate::query_parser::ast::QualifiedIndex {
+                        schema: None,
+                        table: "table".to_string(),
+                        index: "index".to_string()
+                    },
+                    field: $field.to_string()
+                },
+                crate::query_parser::ast::Term::Regex($val.into(), None)
+            ))
+        };
+        ($val:expr) => {
+            crate::query_parser::ast::Term::Regex($val.into(), None)
+        };
+    }
+
+    #[allow(non_snake_case)]
     macro_rules! Fuzzy {
         ($operator:tt, $field:literal, $val:expr, $slop:expr, $boost:expr) => {
             Box!(crate::query_parser::ast::Expr::$operator(
@@ -356,7 +389,7 @@ mod string_tests {
 
     #[test]
     fn regex() {
-        assert_str("field:~'regex goes here'", r#"field:~"regex goes here""#)
+        assert_str("field:~'^m.*$'", r#"field:~"^m.*$""#)
     }
 
     #[test]
@@ -426,6 +459,11 @@ mod expr_tests {
             "{}",
             input
         );
+    }
+
+    #[test]
+    fn regex() {
+        assert_expr("field:~'^m.*$'", Regex!(Regex, "field", "^m.*$"))
     }
 
     #[test]
@@ -584,7 +622,8 @@ mod expr_tests {
         assert_expr("a>b", String!(Gt, "a", "b"));
         assert_expr("a<=b", String!(Lte, "a", "b"));
         assert_expr("a>=b", String!(Gte, "a", "b"));
-        assert_expr("a:~b", String!(Regex, "a", "b"));
+        assert_expr("a:~b", Regex!(Regex, "a", "b"));
+        assert_expr("a:~'.*'", Regex!(Regex, "a", ".*"));
         assert_expr("a:@b", String!(MoreLikeThis, "a", "b"));
         assert_expr("a:@~b", String!(FuzzyLikeThis, "a", "b"));
     }

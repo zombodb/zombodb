@@ -112,7 +112,7 @@ impl<'a> QueryHighligther<'a> {
             Expr::Expand(_, _) => panic!("expand not supported yet"),
             Expr::Json(_) => panic!("json not supported yet"),
 
-            Expr::Contains(f, t) | Expr::Eq(f, t) => {
+            Expr::Contains(f, t) | Expr::Eq(f, t) | Expr::Regex(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
                     return self.highlight_term(dh, f.clone(), expr, t, highlights);
                 }
@@ -180,12 +180,6 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::Range(_, _, _) => unimplemented!(),
 
-            Expr::Regex(f, t) => {
-                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term(dh, f.clone(), expr, t, highlights);
-                }
-                false
-            }
             Expr::MoreLikeThis(_, _) => unimplemented!(),
             Expr::FuzzyLikeThis(_, _) => unimplemented!(),
         }
@@ -233,6 +227,12 @@ impl<'a> QueryHighligther<'a> {
             }
             Term::Wildcard(s, _) => {
                 if let Some(entries) = highlighter.highlight_wildcard(s) {
+                    cnt = entries.len();
+                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                }
+            }
+            Term::Regex(r, _) => {
+                if let Some(entries) = highlighter.highlight_regex(r) {
                     cnt = entries.len();
                     QueryHighligther::process_entries(expr, field, entries, highlights);
                 }

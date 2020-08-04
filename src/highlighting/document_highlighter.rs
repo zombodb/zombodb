@@ -180,6 +180,7 @@ impl<'a> DocumentHighlighter<'a> {
         match term {
             Term::String(s, _) => self.highlight_token(s),
             Term::Wildcard(w, _) => self.highlight_wildcard(w),
+            Term::Regex(r, _) => self.highlight_regex(r),
             Term::Fuzzy(f, p, _) => self.highlight_fuzzy(f, *p),
 
             Term::Null => unimplemented!(),
