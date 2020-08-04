@@ -355,6 +355,11 @@ mod string_tests {
     }
 
     #[test]
+    fn regex() {
+        assert_str("field:~'regex goes here'", r#"field:~"regex goes here""#)
+    }
+
+    #[test]
     fn boost() {
         assert_str("foo^2.0", r#"_:"foo"^2"#)
     }
