@@ -250,7 +250,15 @@ impl<'a> QueryHighligther<'a> {
                 }
             }
 
-            Term::ParsedArray(_, _) => {}
+            //todo working on this one
+            Term::ParsedArray(v, _) => {
+                // for t in v {
+                //     if let Some(entries) = highlighter.highlight_term(t) {
+                //         let field = field.cnt = entries.len() + cnt;
+                //         QueryHighligther::process_entries(expr, field, entries, highlights);
+                //     }
+                // }
+            }
             Term::UnparsedArray(_, _) => {}
             Term::Null => {}
         }
@@ -369,7 +377,7 @@ mod tests {
 
         assert_vec(
             highlights,
-            vec![("regex", "man", "<ALPHANUM>", 0, 1, 4, "regex:~'^m.*$'")],
+            vec![("regex", "man", "<ALPHANUM>", 0, 1, 4, "regex:~\"^m.*$\"")],
         )
     }
 
