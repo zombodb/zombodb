@@ -6,7 +6,7 @@ on:
       - rust-rewrite
   pull_request:
     branches:
-      - rust-rewrite
+      - develop
 
 jobs:
   test:
