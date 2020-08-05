@@ -59,6 +59,10 @@ jobs:
       if: steps.cargo-pgx-init-cache.outputs.cache-hit != 'true'
       run: cargo pgx init
 
+    # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
+    - name: cargo update
+      run: cargo update
+      
     # test our code
     - name: cargo pgx test pg12
       run: RUST_BACKTRACE=1 CARGO_TARGET_DIR=~/.cargo/cargo-pgx cargo pgx test pg${{ matrix.version }}
