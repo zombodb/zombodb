@@ -63,4 +63,4 @@ jobs:
 
     # test our code
     - name: cargo pgx test test
-      run: RUST_BACKTRACE=1 CARGO_TARGET_DIR=~/.cargo/cargo-pgx cargo pgx test pg12
+      run: RUST_BACKTRACE=1 CARGO_TARGET_DIR=~/.cargo/cargo-pgx cargo pgx test pg${{ matrix.version }}
