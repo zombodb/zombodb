@@ -2,7 +2,7 @@ name: cargo pgx test pg12
 
 on:
   push:
-    branches: ["rust-rewrite", "master", "develop"]
+    branches: ["rust-rewrite"]
   pull_request:
     branches: ["rust-rewrite", "master", "develop"]
 
