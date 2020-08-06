@@ -252,12 +252,13 @@ impl<'a> QueryHighligther<'a> {
 
             //todo working on this one
             Term::ParsedArray(v, _) => {
-                // for t in v {
-                //     if let Some(entries) = highlighter.highlight_term(t) {
-                //         let field = field.cnt = entries.len() + cnt;
-                //         QueryHighligther::process_entries(expr, field, entries, highlights);
-                //     }
-                // }
+                for t in v {
+                    if let Some(entries) = highlighter.highlight_term(t) {
+                        let qf = field.clone();
+                        cnt = entries.len() + cnt;
+                        QueryHighligther::process_entries(expr, qf, entries, highlights);
+                    }
+                }
             }
             Term::UnparsedArray(_, _) => {}
             Term::Null => {}
@@ -378,6 +379,134 @@ mod tests {
         assert_vec(
             highlights,
             vec![("regex", "man", "<ALPHANUM>", 0, 1, 4, "regex:~\"^m.*$\"")],
+        )
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn parsed_array_without_quotes() {
+        let highlights = make_query_highlighter(
+            "text",
+            json! {{
+                "p_array": "a b c d e f g h i j]"
+            }},
+            "p_array:[a,c,e,g,i]",
+        )
+        .highlight();
+
+        assert_vec(
+            highlights,
+            vec![
+                (
+                    "p_array",
+                    "a",
+                    "<ALPHANUM>",
+                    0,
+                    1,
+                    2,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+                (
+                    "p_array",
+                    "c",
+                    "<ALPHANUM>",
+                    2,
+                    5,
+                    6,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+                (
+                    "p_array",
+                    "e",
+                    "<ALPHANUM>",
+                    4,
+                    9,
+                    10,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+                (
+                    "p_array",
+                    "g",
+                    "<ALPHANUM>",
+                    6,
+                    13,
+                    14,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+                (
+                    "p_array",
+                    "i",
+                    "<ALPHANUM>",
+                    8,
+                    17,
+                    18,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+            ],
+        )
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn parsed_array_with_quotes() {
+        let highlights = make_query_highlighter(
+            "text",
+            json! {{
+                "p_array": "a b c d e f g h i j]"
+            }},
+            "p_array:['a','c','e','g','i']",
+        )
+        .highlight();
+
+        assert_vec(
+            highlights,
+            vec![
+                (
+                    "p_array",
+                    "a",
+                    "<ALPHANUM>",
+                    0,
+                    1,
+                    2,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+                (
+                    "p_array",
+                    "c",
+                    "<ALPHANUM>",
+                    2,
+                    5,
+                    6,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+                (
+                    "p_array",
+                    "e",
+                    "<ALPHANUM>",
+                    4,
+                    9,
+                    10,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+                (
+                    "p_array",
+                    "g",
+                    "<ALPHANUM>",
+                    6,
+                    13,
+                    14,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+                (
+                    "p_array",
+                    "i",
+                    "<ALPHANUM>",
+                    8,
+                    17,
+                    18,
+                    "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+            ],
         )
     }
 
