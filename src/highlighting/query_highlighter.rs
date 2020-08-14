@@ -250,7 +250,6 @@ impl<'a> QueryHighligther<'a> {
                 }
             }
 
-            //todo working on this one
             Term::ParsedArray(v, _) => {
                 for t in v {
                     if let Some(entries) = highlighter.highlight_term(t) {
@@ -260,7 +259,22 @@ impl<'a> QueryHighligther<'a> {
                     }
                 }
             }
-            Term::UnparsedArray(_, _) => {}
+            Term::UnparsedArray(s, _) => {
+                let mut term_vec = Vec::new();
+                for t in s
+                    .split_terminator(|c: char| !(c.is_alphanumeric() || c == '_'))
+                    .into_iter()
+                {
+                    term_vec.push(Term::String(t, None))
+                }
+                for t in term_vec {
+                    if let Some(entries) = highlighter.highlight_term(&t) {
+                        let qf = field.clone();
+                        cnt = entries.len() + cnt;
+                        QueryHighligther::process_entries(expr, qf, entries, highlights);
+                    }
+                }
+            }
             Term::Null => {}
         }
         cnt > 0
@@ -388,7 +402,7 @@ mod tests {
         let highlights = make_query_highlighter(
             "text",
             json! {{
-                "p_array": "a b c d e f g h i j]"
+                "p_array": "a b c d e f g h i j"
             }},
             "p_array:[a,c,e,g,i]",
         )
@@ -452,7 +466,7 @@ mod tests {
         let highlights = make_query_highlighter(
             "text",
             json! {{
-                "p_array": "a b c d e f g h i j]"
+                "p_array": "a b c d e f g h i j"
             }},
             "p_array:['a','c','e','g','i']",
         )
@@ -505,6 +519,98 @@ mod tests {
                     17,
                     18,
                     "p_array:[\"a\",\"c\",\"e\",\"g\",\"i\"]",
+                ),
+            ],
+        )
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn unparsed_array() {
+        let highlights = make_query_highlighter(
+            "text",
+            json! {{
+                "unpar_array": "a, 1, \"bob\" ,b , 2, \"larry\",    c, 3, david selph"
+            }},
+            "unpar_array:[[a, b, c]]",
+        )
+        .highlight();
+
+        assert_vec(
+            highlights,
+            vec![
+                (
+                    "unpar_array",
+                    "a",
+                    "<ALPHANUM>",
+                    0,
+                    1,
+                    2,
+                    "unpar_array:[[a, b, c]]",
+                ),
+                (
+                    "unpar_array",
+                    "b",
+                    "<ALPHANUM>",
+                    3,
+                    16,
+                    17,
+                    "unpar_array:[[a, b, c]]",
+                ),
+                (
+                    "unpar_array",
+                    "c",
+                    "<ALPHANUM>",
+                    6,
+                    37,
+                    38,
+                    "unpar_array:[[a, b, c]]",
+                ),
+            ],
+        )
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    fn unparsed_array_more_complex() {
+        let highlights = make_query_highlighter(
+            "text",
+            json! {{
+                "unpar_array": "a, 1, \"bob\" ,b _ 2, \"larry\",    c~ 3, david selph"
+            }},
+            "unpar_array:[[a, b, c]]",
+        )
+        .highlight();
+
+        assert_vec(
+            highlights,
+            vec![
+                (
+                    "unpar_array",
+                    "a",
+                    "<ALPHANUM>",
+                    0,
+                    1,
+                    2,
+                    "unpar_array:[[a, b, c]]",
+                ),
+                (
+                    "unpar_array",
+                    "b",
+                    "<ALPHANUM>",
+                    3,
+                    16,
+                    17,
+                    "unpar_array:[[a, b, c]]",
+                ),
+                (
+                    "unpar_array",
+                    "c",
+                    "<ALPHANUM>",
+                    6,
+                    37,
+                    38,
+                    "unpar_array:[[a, b, c]]",
                 ),
             ],
         )
