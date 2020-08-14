@@ -8,6 +8,7 @@ mod opclass;
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 pub use pg_catalog::*;
 use std::collections::HashMap;
+use std::ffi::CStr;
 
 mod pg_catalog {
     #![allow(non_camel_case_types)]
@@ -17,7 +18,7 @@ mod pg_catalog {
     use std::collections::HashMap;
 
     #[derive(Debug, Serialize, Deserialize, PostgresType)]
-    #[inoutfuncs = "Custom"]
+    #[inoutfuncs]
     pub struct ZDBQuery {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) limit: Option<u64>,
@@ -71,13 +72,14 @@ mod pg_catalog {
     }
 }
 
-impl InOutFuncs<'_> for ZDBQuery {
-    fn input(input: &str) -> Result<Self, String> {
+impl InOutFuncs for ZDBQuery {
+    fn input(input: &CStr) -> Self {
+        let input = input.to_str().expect("zdbquery input is not valid UTF8");
         let value: Value = match serde_json::from_str(input) {
             Ok(value) => value,
             Err(_) => {
                 // it's not json so assume it's a query_string
-                return Ok(ZDBQuery::new_with_query_string(input));
+                return ZDBQuery::new_with_query_string(input);
             }
         };
 
@@ -86,13 +88,13 @@ impl InOutFuncs<'_> for ZDBQuery {
                 if zdbquery.all_none() {
                     // it parsed as valid json but didn't match any of our
                     // struct fields, so treat it as if it's query dsl
-                    Ok(ZDBQuery::new_with_query_dsl(value))
+                    ZDBQuery::new_with_query_dsl(value)
                 } else {
                     // it's a real ZDBQuery
-                    Ok(zdbquery)
+                    zdbquery
                 }
             }
-            Err(_) => Ok(ZDBQuery::new_with_query_string(input)),
+            Err(_) => ZDBQuery::new_with_query_string(input),
         }
     }
 
