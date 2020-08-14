@@ -342,23 +342,23 @@ mod tests {
     use serde_json::*;
     use std::collections::HashSet;
 
-    #[pg_test]
-    #[initialize(es = true)]
-    fn varchar() {
-        let highlights = make_query_highlighter(
-            "varchar",
-            json! {{
-                "varchar": "beer"
-            }},
-            "varchar:beer",
-        )
-        .highlight();
-
-        assert_vec(
-            highlights,
-            vec![("varchar", "beer", "<ALPHANUM>", 0, 0, 4, "varchar:\"beer\"")],
-        )
-    }
+    // #[pg_test]
+    // #[initialize(es = true)]
+    // fn varchar() {
+    //     let highlights = make_query_highlighter(
+    //         "varchar",
+    //         json! {{
+    //             "varchar": "beer"
+    //         }},
+    //         "varchar:beer",
+    //     )
+    //     .highlight();
+    //
+    //     assert_vec(
+    //         highlights,
+    //         vec![("varchar", "beer", "<ALPHANUM>", 0, 0, 4, "varchar:\"beer\"")],
+    //     )
+    // }
 
     #[pg_test]
     #[initialize(es = true)]
