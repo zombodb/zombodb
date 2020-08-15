@@ -53,7 +53,7 @@ jobs:
 
     # install cargo-pgx
     - name: install cargo-pgx
-      run: cargo install cargo-pgx --debug
+      run: cargo install cargo-pgx --debug --force
 
     # initialize pgx
     - name: cargo pgx init
