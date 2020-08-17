@@ -8,7 +8,6 @@ use pgx::*;
 
 mod access_method;
 mod cat;
-mod custom_scan;
 mod elasticsearch;
 mod executor_manager;
 mod gucs;
@@ -31,7 +30,6 @@ pub unsafe extern "C" fn _PG_init() {
     gucs::init();
     executor_manager::hooks::init_hooks();
     access_method::options::init();
-    custom_scan::init();
 }
 
 #[allow(non_snake_case)]

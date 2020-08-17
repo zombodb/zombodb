@@ -92,6 +92,17 @@ impl PgHooks for ZDBHooks {
                 pg_sys::ObjectType_OBJECT_TABLE
                 | pg_sys::ObjectType_OBJECT_MATVIEW
                 | pg_sys::ObjectType_OBJECT_INDEX => unsafe {
+                    #[cfg(feature = "pg10")]
+                    let relid = pg_sys::RangeVarGetRelidExtended(
+                        rename.relation,
+                        pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                        true,
+                        false,
+                        None,
+                        std::ptr::null_mut(),
+                    );
+
+                    #[cfg(any(feature = "pg11", feature = "pg12"))]
                     let relid = pg_sys::RangeVarGetRelidExtended(
                         rename.relation,
                         pg_sys::AccessShareLock as pg_sys::LOCKMODE,

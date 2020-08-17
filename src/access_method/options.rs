@@ -613,7 +613,7 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     unsafe fn test_index_options() {
-        let uuid = rand::random::<u64>();
+        let uuid = 42424242;
         Spi::run(&format!(
             "CREATE TABLE test();  
         CREATE INDEX idxtest 

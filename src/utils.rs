@@ -22,10 +22,15 @@ pub fn find_zdb_index(heap_relation: &PgRelation) -> PgRelation {
 }
 
 pub fn is_zdb_index(index: &PgRelation) -> bool {
-    if index.rd_indam.is_null() {
+    #[cfg(any(feature = "pg10", feature = "pg11"))]
+    let routine = index.rd_amroutine;
+    #[cfg(feature = "pg12")]
+    let routine = index.rd_indam;
+
+    if routine.is_null() {
         false
     } else {
-        let indam = PgBox::from_pg(index.rd_indam);
+        let indam = PgBox::from_pg(routine);
         indam.amvalidate == Some(crate::access_method::amvalidate)
     }
 }

@@ -9,6 +9,8 @@ crate-type = [ "cdylib" ]
 
 [features]
 default = [ "pg12" ]
+pg10 = [ "pgx/pg10" ]
+pg11 = [ "pgx/pg11" ]
 pg12 = [ "pgx/pg12" ]
 pg_test = [ ]
 
@@ -17,18 +19,14 @@ crossbeam-channel = "0.4.2"
 lalrpop-util = "0.19.0"
 lazy_static = "1.4.0"
 levenshtein = "1.0.4"
-libc = "0.2.66"
 memoffset = "0.5.3"
 num_cpus = "1.12.0"
-pgx = { git = "https://github.com/zombodb/pgx", features = [ "pg12" ], default-features = false }
+pgx = { git = "https://github.com/zombodb/pgx" }
 pgx-macros = { git = "https://github.com/zombodb/pgx" }
-rand = "0.7.3"
 regex = "1.3.9"
 reqwest = "0.9.24"
 serde = { version = "1.0.104", features = [ "derive" ] }
-serde_cbor = "0.11.1"
 serde_json = "1.0.46"
-time = "0.2.7"
 url = "2.1.1"
 
 [build-dependencies]
@@ -36,6 +34,7 @@ lalrpop = { version = "0.19.0", features = [ "lexer" ] }
 
 [dev-dependencies]
 pgx-tests = { git = "https://github.com/zombodb/pgx" }
+libc = "0.2.74"
 
 [profile.dev]
 panic = "unwind"

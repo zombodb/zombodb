@@ -234,12 +234,6 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         walk_node(expr.args as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_SQLValueFunction) {
         // nothing to walk
-    } else if is_a(node, pg_sys::NodeTag_T_SubscriptingRef) {
-        let subscript = PgBox::from_pg(node as *mut pg_sys::SubscriptingRef);
-        walk_node(subscript.refupperindexpr as NodePtr, context);
-        walk_node(subscript.reflowerindexpr as NodePtr, context);
-        walk_node(subscript.refexpr as NodePtr, context);
-        walk_node(subscript.refassgnexpr as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_MinMaxExpr) {
         let minmax = PgBox::from_pg(node as *mut pg_sys::MinMaxExpr);
         walk_node(minmax.args as NodePtr, context);
@@ -265,8 +259,12 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_HashJoin) {
         let mut join = PgBox::from_pg(node as *mut pg_sys::HashJoin);
         walk_node(join.hashclauses as NodePtr, context);
-        walk_node(join.hashcollations as NodePtr, context);
-        walk_node(join.hashkeys as NodePtr, context);
+
+        #[cfg(feature = "pg12")]
+        {
+            walk_node(join.hashcollations as NodePtr, context);
+            walk_node(join.hashkeys as NodePtr, context);
+        }
         walk_node(join.join.joinqual as NodePtr, context);
         walk_plan(&mut join.join.plan, context);
     } else if is_a(node, pg_sys::NodeTag_T_CteScan) {
@@ -275,6 +273,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Hash) {
         let mut hash = PgBox::from_pg(node as *mut pg_sys::Hash);
         walk_plan(&mut hash.plan, context);
+        #[cfg(feature = "pg12")]
         walk_node(hash.hashkeys as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_WindowFunc) {
         let windowfunc = PgBox::from_pg(node as *mut pg_sys::WindowFunc);
@@ -292,6 +291,9 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_NestLoopParam) {
         let param = PgBox::from_pg(node as *mut pg_sys::NestLoopParam);
         walk_node(param.paramval as NodePtr, context);
+    } else if is_a(node, pg_sys::NodeTag_T_CoerceToDomain) {
+        let coerce = PgBox::from_pg(node as *mut pg_sys::CoerceToDomain);
+        walk_node(coerce.arg as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_OpExpr) {
         let opexpr = PgBox::from_pg(node as *mut pg_sys::OpExpr);
         if opexpr.opfuncid == context.funcoid {
@@ -302,9 +304,9 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
                     if first_arg.vartype != pg_sys::TIDOID {
                         context.replacements.insert(first_arg.vartype);
                         first_arg.vartype = pg_sys::TIDOID;
-                        first_arg.varoattno = pg_sys::SelfItemPointerAttributeNumber as i16;
+                        first_arg.varoattno = -1;
                         if first_arg.varattno == 0 {
-                            first_arg.varattno = pg_sys::SelfItemPointerAttributeNumber as i16;
+                            first_arg.varattno = -1;
                         }
                     }
                 } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
@@ -313,8 +315,8 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
                     context.replacements.insert(first_arg.funcresulttype);
                     var.vartype = pg_sys::TIDOID;
                     var.varno = 1;
-                    var.varattno = pg_sys::SelfItemPointerAttributeNumber as i16;
-                    var.varoattno = pg_sys::SelfItemPointerAttributeNumber as i16;
+                    var.varattno = -1;
+                    var.varoattno = -1;
                     var.location = first_arg.location;
 
                     args.replace_ptr(0, var.into_pg() as NodePtr);
@@ -358,7 +360,29 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Param) {
     } else if is_a(node, pg_sys::NodeTag_T_CaseTestExpr) {
     } else {
-        warning!("unrecognized tag: {}", node.as_ref().unwrap().type_);
-        eprintln!("unrecognized tag: {}", node.as_ref().unwrap().type_);
+        let mut did_it = false;
+        #[cfg(feature = "pg12")]
+        if is_a(node, pg_sys::NodeTag_T_SubscriptingRef) {
+            let subscript = PgBox::from_pg(node as *mut pg_sys::SubscriptingRef);
+            walk_node(subscript.refupperindexpr as NodePtr, context);
+            walk_node(subscript.reflowerindexpr as NodePtr, context);
+            walk_node(subscript.refexpr as NodePtr, context);
+            walk_node(subscript.refassgnexpr as NodePtr, context);
+            did_it |= true;
+        }
+
+        #[cfg(any(feature = "pg10", feature = "pg11"))]
+        if is_a(node, pg_sys::NodeTag_T_ArrayRef) {
+            let arrayref = PgBox::from_pg(node as *mut pg_sys::ArrayRef);
+            walk_node(arrayref.refupperindexpr as NodePtr, context);
+            walk_node(arrayref.reflowerindexpr as NodePtr, context);
+            walk_node(arrayref.refexpr as NodePtr, context);
+            walk_node(arrayref.refassgnexpr as NodePtr, context);
+            did_it |= true;
+        }
+
+        if !did_it {
+            warning!("unrecognized tag: {}", node.as_ref().unwrap().type_);
+        }
     }
 }
