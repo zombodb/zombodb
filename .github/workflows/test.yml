@@ -1,4 +1,4 @@
-name: cargo pgx test pg12
+name: cargo pgx test pgXX
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        version: [12]
+        version: [10, 11, 12]
         os: ["ubuntu-latest"]
 
     steps:
@@ -65,5 +65,5 @@ jobs:
       run: cargo update
       
     # test our code
-    - name: cargo pgx test pg12
+    - name: cargo pgx test pgXX
       run: RUST_BACKTRACE=1 CARGO_TARGET_DIR=~/.cargo/cargo-pgx cargo pgx test pg${{ matrix.version }}
