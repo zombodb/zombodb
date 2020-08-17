@@ -48,6 +48,7 @@ struct ZDBIndexOptionsInternal {
     alias_offset: i32,
     uuid_offset: i32,
     translog_durability_offset: i32,
+    options_offset: i32,
 
     optimize_after: i32,
     compression_level: i32,
@@ -156,6 +157,15 @@ impl ZDBIndexOptionsInternal {
         })
     }
 
+    fn links(&self) -> Option<Vec<String>> {
+        let options = self.get_str(self.options_offset, || "".to_owned());
+        if options.is_empty() {
+            None
+        } else {
+            Some(options.split(',').map(|s| s.trim().to_owned()).collect())
+        }
+    }
+
     fn get_str<F: FnOnce() -> String>(&self, offset: i32, default: F) -> String {
         if offset == 0 {
             default()
@@ -178,6 +188,7 @@ pub struct ZDBIndexOptions {
     alias: String,
     uuid: String,
     translog_durability: String,
+    links: Option<Vec<String>>,
 
     optimize_after: i32,
     compression_level: i32,
@@ -200,6 +211,7 @@ impl ZDBIndexOptions {
             refresh_interval: internal.refresh_interval(),
             alias: internal.alias(&heap_relation, relation),
             uuid: internal.uuid(&heap_relation, relation),
+            links: internal.links(),
             compression_level: internal.compression_level,
             shards: internal.shards,
             replicas: internal.replicas,
@@ -270,6 +282,10 @@ impl ZDBIndexOptions {
     pub fn translog_durability(&self) -> &str {
         &self.translog_durability
     }
+
+    pub fn links(&self) -> &Option<Vec<String>> {
+        &self.links
+    }
 }
 
 #[pg_extern(immutable, parallel_safe)]
@@ -306,8 +322,14 @@ fn index_mapping(index_relation: PgRelation) -> JsonB {
     )
 }
 
+#[pg_extern(immutable, parallel_safe)]
+fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
+    ZDBIndexOptions::from(&index_relation).links().clone()
+}
+
 static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind = 0;
 
+#[pg_guard]
 extern "C" fn validate_url(url: *const std::os::raw::c_char) {
     let url = unsafe { CStr::from_ptr(url) }
         .to_str()
@@ -327,6 +349,7 @@ extern "C" fn validate_url(url: *const std::os::raw::c_char) {
     }
 }
 
+#[pg_guard]
 extern "C" fn validate_translog_durability(value: *const std::os::raw::c_char) {
     if value.is_null() {
         // null is fine -- we'll just use our default
@@ -344,6 +367,17 @@ extern "C" fn validate_translog_durability(value: *const std::os::raw::c_char) {
     }
 }
 
+#[pg_guard]
+extern "C" fn validate_options(value: *const std::os::raw::c_char) {
+    if value.is_null() {
+        // null is fine
+        return;
+    }
+
+    // TODO:  validate that the options are in the proper format
+    return;
+}
+
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -351,7 +385,7 @@ pub unsafe extern "C" fn amoptions(
     validate: bool,
 ) -> *mut pg_sys::bytea {
     // TODO:  how to make this const?  we can't use offset_of!() macro in const definitions, apparently
-    let tab: [pg_sys::relopt_parse_elt; 13] = [
+    let tab: [pg_sys::relopt_parse_elt; 14] = [
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"url\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
@@ -416,6 +450,11 @@ pub unsafe extern "C" fn amoptions(
             optname: CStr::from_bytes_with_nul_unchecked(b"translog_durability\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, translog_durability_offset) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: CStr::from_bytes_with_nul_unchecked(b"options\0").as_ptr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            offset: offset_of!(ZDBIndexOptionsInternal, options_offset) as i32,
         },
     ];
 
@@ -565,6 +604,13 @@ pub unsafe fn init() {
         .as_ptr(),
         false,
     );
+    pg_sys::add_string_reloption(
+        RELOPT_KIND_ZDB,
+        CStr::from_bytes_with_nul_unchecked(b"options\0").as_ptr(),
+        CStr::from_bytes_with_nul_unchecked(b"ZomboDB Index Linking options").as_ptr(),
+        std::ptr::null(),
+        Some(validate_options),
+    );
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -647,7 +693,8 @@ mod tests {
         assert_eq!(options.batch_size(), 8 * 1024 * 1024);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
         assert_eq!(options.llapi(), false);
-        assert_eq!(options.translog_durability(), "async")
+        assert_eq!(options.translog_durability(), "async");
+        assert_eq!(options.links, None);
     }
 
     #[pg_test]
@@ -739,5 +786,25 @@ mod tests {
         let options = ZDBIndexOptions::from(&index_relation);
 
         assert_eq!(options.type_name(), "doc");
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    unsafe fn test_index_link_options() {
+        Spi::run(
+            "CREATE TABLE test_link_options();  
+        CREATE INDEX idxtest_link_options
+                  ON test_link_options
+               USING zombodb ((test_link_options.*)) WITH (options='id=<table.index>other_id');",
+        );
+
+        let index_relation =
+            PgRelation::open_with_name("idxtest_link_options").expect("no such relation");
+        let options = ZDBIndexOptions::from(&index_relation);
+
+        assert_eq!(
+            options.links(),
+            &Some(vec!["id=<table.index>other_id".to_string()])
+        );
     }
 }
