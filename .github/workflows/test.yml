@@ -30,7 +30,7 @@ jobs:
           ~/.cargo/git
           ~/.cargo/cargo-pgx
           target
-        key: ${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+        key: ${{ matrix.os }}-pg${{ matrix.version }}-cargo-${{ hashFiles('**/Cargo.toml') }}
 
     - name: cache cargo pgx init
       id: cargo-pgx-init-cache
