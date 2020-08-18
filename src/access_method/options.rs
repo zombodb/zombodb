@@ -3,6 +3,7 @@ use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
 use lazy_static::*;
 use memoffset::*;
 use pgx::*;
+use std::collections::HashSet;
 use std::ffi::{CStr, CString};
 use std::fmt::Debug;
 
@@ -374,7 +375,24 @@ extern "C" fn validate_options(value: *const std::os::raw::c_char) {
         return;
     }
 
-    // TODO:  validate that the options are in the proper format
+    let parser = crate::query_parser::parser::IndexLinkParser::new();
+    let mut used_fields = HashSet::new();
+    let mut fieldname_stack = Vec::new();
+    let mut operator_stack = Vec::new();
+    let input = unsafe { CStr::from_ptr(value) };
+    let input = input.to_str().expect("options is not valid UTF8");
+
+    for option in input.split(',') {
+        parser
+            .parse(
+                &mut used_fields,
+                &mut fieldname_stack,
+                &mut operator_stack,
+                option,
+            )
+            .expect(&format!("failed to parse index option: /{}/", option));
+    }
+
     return;
 }
 

@@ -4,17 +4,20 @@ use pgx::*;
 use std::collections::HashSet;
 
 pub mod ast;
-mod parser;
+pub mod dsl;
+pub mod parser;
+
+pub(crate) mod optimizer;
 
 #[pg_extern]
 fn test_parser(input: &str) -> String {
     let mut used_fields = HashSet::new();
     let expr = ast::Expr::from_str(
-        QualifiedIndex {
+        vec![QualifiedIndex {
             schema: None,
             table: "table".to_string(),
             index: "index".to_string(),
-        },
+        }],
         "_zdb_all",
         input,
         &mut used_fields,
@@ -321,14 +324,14 @@ mod string_tests {
     use crate::query_parser::ast::{Expr, ParserError, QualifiedIndex};
     use std::collections::HashSet;
 
-    pub(super) fn parse(input: &str) -> Result<Box<Expr>, ParserError> {
+    pub(super) fn parse(input: &str) -> Result<Expr, ParserError> {
         let mut used_fields = HashSet::new();
         Expr::from_str(
-            QualifiedIndex {
+            vec![QualifiedIndex {
                 schema: None,
                 table: "table".to_string(),
                 index: "index".to_string(),
-            },
+            }],
             "_",
             input,
             &mut used_fields,

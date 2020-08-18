@@ -5,7 +5,7 @@ use pgx::{JsonB, PgRelation};
 use std::collections::{HashMap, HashSet};
 
 struct QueryHighligther<'a> {
-    query: Box<Expr<'a>>,
+    query: Expr<'a>,
     highlighters: HashMap<&'a str, DocumentHighlighter<'a>>,
 }
 
@@ -14,7 +14,7 @@ impl<'a> QueryHighligther<'a> {
         index: &PgRelation,
         document: serde_json::Value,
         fields: &HashSet<&'a str>,
-        query: Box<Expr<'a>>,
+        query: Expr<'a>,
     ) -> Self {
         let mut highlighters = HashMap::new();
 
@@ -50,7 +50,7 @@ impl<'a> QueryHighligther<'a> {
                 .map(|((field, expr), entries)| {
                     entries.into_iter().map(move |(term, entry)| {
                         (
-                            field.field.clone(),
+                            field.field.to_owned(),
                             term,
                             entry.type_.clone(),
                             entry.position as i32,
@@ -70,19 +70,19 @@ impl<'a> QueryHighligther<'a> {
 
     fn walk_expression(
         &'a self,
-        expr: &'a Box<Expr<'a>>,
-        highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
+        expr: &'a Expr<'a>,
+        highlights: &mut HashMap<(QualifiedField<'a>, String), Vec<(String, &'a TokenEntry)>>,
     ) -> bool {
-        match expr.as_ref() {
-            Expr::Not(e) => !self.walk_expression(e, highlights),
+        match expr {
+            Expr::Not(e) => !self.walk_expression(e.as_ref(), highlights),
 
             Expr::With(l, r) | Expr::And(l, r) => {
                 let mut did_highlight;
                 let mut tmp_highlights = HashMap::new();
 
-                did_highlight = self.walk_expression(l, &mut tmp_highlights);
+                did_highlight = self.walk_expression(l.as_ref(), &mut tmp_highlights);
                 if did_highlight {
-                    did_highlight &= self.walk_expression(r, &mut tmp_highlights);
+                    did_highlight &= self.walk_expression(r.as_ref(), &mut tmp_highlights);
                 }
 
                 if did_highlight {
@@ -95,38 +95,40 @@ impl<'a> QueryHighligther<'a> {
                 let mut did_highlight = false;
 
                 let mut tmp_highlights = HashMap::new();
-                if self.walk_expression(l, &mut tmp_highlights) {
+                if self.walk_expression(l.as_ref(), &mut tmp_highlights) {
                     highlights.extend(tmp_highlights);
                     did_highlight = true;
                 }
 
                 let mut tmp_highlights = HashMap::new();
-                if self.walk_expression(r, &mut tmp_highlights) {
+                if self.walk_expression(r.as_ref(), &mut tmp_highlights) {
                     highlights.extend(tmp_highlights);
                     did_highlight = true;
                 }
                 did_highlight
             }
 
+            Expr::Linked(_, _) => panic!("nested not supported yet"),
+
             Expr::Subselect(_, _) => panic!("subselect not supported yet"),
             Expr::Expand(_, _) => panic!("expand not supported yet"),
             Expr::Json(_) => panic!("json not supported yet"),
 
             Expr::Contains(f, t) | Expr::Eq(f, t) | Expr::Regex(f, t) => {
-                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                if let Some(dh) = self.highlighters.get(f.field) {
                     return self.highlight_term(dh, f.clone(), expr, t, highlights);
                 }
                 false
             }
             Expr::DoesNotContain(f, t) | Expr::Ne(f, t) => {
-                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                if let Some(dh) = self.highlighters.get(f.field) {
                     return !self.highlight_term(dh, f.clone(), expr, t, highlights);
                 }
                 false
             }
 
             Expr::Gt(f, t) => {
-                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                if let Some(dh) = self.highlighters.get(f.field) {
                     return self.highlight_term_scan(
                         dh,
                         f.clone(),
@@ -139,7 +141,7 @@ impl<'a> QueryHighligther<'a> {
                 false
             }
             Expr::Lt(f, t) => {
-                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                if let Some(dh) = self.highlighters.get(f.field) {
                     return self.highlight_term_scan(
                         dh,
                         f.clone(),
@@ -152,7 +154,7 @@ impl<'a> QueryHighligther<'a> {
                 false
             }
             Expr::Gte(f, t) => {
-                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                if let Some(dh) = self.highlighters.get(f.field) {
                     return self.highlight_term_scan(
                         dh,
                         f.clone(),
@@ -165,7 +167,7 @@ impl<'a> QueryHighligther<'a> {
                 false
             }
             Expr::Lte(f, t) => {
-                if let Some(dh) = self.highlighters.get(f.field.as_str()) {
+                if let Some(dh) = self.highlighters.get(f.field) {
                     return self.highlight_term_scan(
                         dh,
                         f.clone(),
@@ -178,8 +180,6 @@ impl<'a> QueryHighligther<'a> {
                 false
             }
 
-            Expr::Range(_, _, _) => unimplemented!(),
-
             Expr::MoreLikeThis(_, _) => unimplemented!(),
             Expr::FuzzyLikeThis(_, _) => unimplemented!(),
         }
@@ -188,10 +188,10 @@ impl<'a> QueryHighligther<'a> {
     fn highlight_term_scan<F: Fn(&str, &str) -> bool>(
         &'a self,
         highlighter: &'a DocumentHighlighter,
-        field: QualifiedField,
-        expr: &'a Box<Expr<'a>>,
+        field: QualifiedField<'a>,
+        expr: &'a Expr<'a>,
         term: &Term,
-        highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
+        highlights: &mut HashMap<(QualifiedField<'a>, String), Vec<(String, &'a TokenEntry)>>,
         eval: F,
     ) -> bool {
         let mut cnt = 0;
@@ -212,10 +212,10 @@ impl<'a> QueryHighligther<'a> {
     fn highlight_term(
         &'a self,
         highlighter: &'a DocumentHighlighter,
-        field: QualifiedField,
-        expr: &'a Box<Expr<'a>>,
+        field: QualifiedField<'a>,
+        expr: &'a Expr<'a>,
         term: &Term,
-        highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
+        highlights: &mut HashMap<(QualifiedField<'a>, String), Vec<(String, &'a TokenEntry)>>,
     ) -> bool {
         let mut cnt = 0;
         match term {
@@ -242,6 +242,10 @@ impl<'a> QueryHighligther<'a> {
                     cnt = entries.len();
                     QueryHighligther::process_entries(expr, field, entries, highlights);
                 }
+            }
+            Term::Range(_, _, _) => {
+                // TODO:  Do we support highlighting ranges, and then how do we deal with
+                //        various data types?
             }
             Term::ProximityChain(v) => {
                 if let Some(entries) = highlighter.highlight_proximity(v) {
@@ -281,10 +285,10 @@ impl<'a> QueryHighligther<'a> {
     }
 
     fn process_entries(
-        expr: &'a Box<Expr<'a>>,
-        field: QualifiedField,
+        expr: &'a Expr<'a>,
+        field: QualifiedField<'a>,
         mut entries: Vec<(String, &'a TokenEntry)>,
-        highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
+        highlights: &mut HashMap<(QualifiedField<'a>, String), Vec<(String, &'a TokenEntry)>>,
     ) {
         highlights
             // fir this field in our map of highlights
@@ -315,15 +319,7 @@ fn highlight_document(
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
     let query = Expr::from_str(
-        QualifiedIndex {
-            schema: Some(index.namespace().to_string()),
-            table: index
-                .heap_relation()
-                .expect("specified relation is not an index")
-                .name()
-                .to_string(),
-            index: index.name().to_string(),
-        },
+        QualifiedIndex::from_zdb(&index),
         "_zdb_all",
         query_string,
         &mut used_fields,
@@ -672,14 +668,14 @@ mod tests {
         QueryHighligther::new(&relation, document, &used_fields, query)
     }
 
-    fn make_query(table: String, index: String, input: &str) -> (Box<Expr>, HashSet<&str>) {
+    fn make_query(table: String, index: String, input: &str) -> (Expr, HashSet<&str>) {
         let mut used_fields = HashSet::new();
         let query = Expr::from_str(
-            QualifiedIndex {
+            vec![QualifiedIndex {
                 schema: None,
                 table,
                 index,
-            },
+            }],
             "_zdb_all",
             input,
             &mut used_fields,

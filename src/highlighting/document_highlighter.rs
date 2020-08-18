@@ -182,7 +182,7 @@ impl<'a> DocumentHighlighter<'a> {
             Term::Wildcard(w, _) => self.highlight_wildcard(w),
             Term::Regex(r, _) => self.highlight_regex(r),
             Term::Fuzzy(f, p, _) => self.highlight_fuzzy(f, *p),
-
+            Term::Range(_, _, _) => unimplemented!(),
             Term::Null => unimplemented!(),
             Term::ParsedArray(_, _) => unimplemented!(),
             Term::UnparsedArray(_, _) => unimplemented!(),

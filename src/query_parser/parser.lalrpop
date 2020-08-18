@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::collections::HashSet;
 use crate::query_parser::ast::*;
 
-grammar(used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>, index_stack: &mut Vec<QualifiedIndex>);
+grammar(used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>);
 
 match {
     // top precedence tokens
@@ -119,7 +119,10 @@ ProximityExpression: Box<Expr<'input>> = {
 
         let field_name = fieldname_stack.last().unwrap();
         let operator = operator_stack.last().unwrap();
-        Box::new(Expr::from_opcode(index_stack, field_name, *operator, Term::ProximityChain(parts)))
+
+        used_fields.insert(field_name);
+
+        Box::new(Expr::from_opcode(field_name, *operator, Term::ProximityChain(parts)))
     },
     UnaryExpression
 };
@@ -162,13 +165,22 @@ Comparison: Box<Expr<'input>> = {
     FieldName ComparisonOperator Term => {
         fieldname_stack.pop();
         operator_stack.pop();
-        Box::new(Expr::from_opcode(index_stack, <>))
+        Box::new(Expr::from_opcode(<>))
+    },
+    <field_name:FieldName> <operator:ComparisonOperator> <start:String> TO <end:String> <b:Boost?> => {
+        fieldname_stack.pop();
+        operator_stack.pop();
+
+        Box::new(Expr::range_from_opcode(<>))
     },
     Term => {
         let field_name = fieldname_stack.last().unwrap();
         let operator = operator_stack.last().unwrap();
         let right = <>;
-        Box::new(Expr::from_opcode(index_stack, field_name, *operator, right))
+
+        used_fields.insert(field_name);
+
+        Box::new(Expr::from_opcode(field_name, *operator, right))
     },
     FieldName ComparisonOperator O_PAREN <Expr> C_PAREN => {
         fieldname_stack.pop();
@@ -176,7 +188,6 @@ Comparison: Box<Expr<'input>> = {
         <>
     },
     O_PAREN <JsonObject> C_PAREN => Box::new(Expr::Json(<>)),
-    <start:String> TO <end:String> <b:Boost?> => Box::new(Expr::Range(start, end, b)),
     ParentheticalGroup
 };
 
@@ -285,12 +296,10 @@ TableIndexName: QualifiedIndex = {
             },
         };
 
-        index_stack.push(index.clone());
         index
     },
 
     <DOTTED_IDENTIFIER> => {
-        eprintln!("parts={}", <>);
         let mut parts = <>.split_terminator('.');
         let schema = parts.next();
         let table = parts.next();
@@ -315,30 +324,24 @@ TableIndexName: QualifiedIndex = {
             }
         };
 
-        index_stack.push(index.clone());
         index
     }
 };
 
-IndexLink: IndexLink<'input> = {
-    LT <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName> GT
+pub IndexLink: IndexLink<'input> = {
+    <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName>
         => IndexLink { name: None, left_field, qualified_index, right_field },
-    LT <name:IDENTIFIER> COLON O_PAREN <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName> C_PAREN GT
+    <name:IDENTIFIER> COLON O_PAREN <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName> C_PAREN
         => IndexLink { name: Some(name), left_field, qualified_index, right_field },
 };
 
 Subselect: Expr<'input> = {
-    SUBSELECT <link:IndexLink> <q:ParentheticalGroup> => {
-        index_stack.pop();
-        Expr::Subselect(<>)
-    }
+    SUBSELECT LT <link:IndexLink> GT <q:ParentheticalGroup> => Expr::Subselect(<>)
+
 };
 
 Expand: Expr<'input> = {
-    EXPAND <link:IndexLink> <q:ParentheticalGroup> => {
-        index_stack.pop();
-        Expr::Expand(<>)
-    }
+    EXPAND LT <link:IndexLink> GT <q:ParentheticalGroup> =>  Expr::Expand(<>)
 };
 
 JsonObject: String = {
