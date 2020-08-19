@@ -9,28 +9,30 @@ pub(crate) fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec
     match expr {
         Expr::Subselect(i, e) | Expr::Expand(i, e) => {
             if i.is_this_index() {
+                let (left, right) = (i.left_field.clone(), i.right_field.clone());
                 *i = root_index.clone();
+                i.left_field = left;
+                i.right_field = right;
             }
             find_fields(e.as_mut(), i, indexes)
         }
         Expr::Not(r) => find_fields(r.as_mut(), root_index, indexes),
-        Expr::With(l, r) | Expr::And(l, r) | Expr::Or(l, r) => {
-            find_fields(l.as_mut(), root_index, indexes);
-            find_fields(r.as_mut(), root_index, indexes);
-        }
+        Expr::WithList(v) | Expr::AndList(v) | Expr::OrList(v) => v
+            .iter_mut()
+            .for_each(|e| find_fields(e, root_index, indexes)),
         Expr::Linked(_, _) => {}
         Expr::Json(_) => {}
-        Expr::Contains(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::Eq(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::Gt(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::Lt(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::Gte(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::Lte(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::Ne(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::DoesNotContain(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::Regex(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::MoreLikeThis(f, _) => f.index = find_field(&f, root_index, indexes),
-        Expr::FuzzyLikeThis(f, _) => f.index = find_field(&f, root_index, indexes),
+        Expr::Contains(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Eq(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Gt(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Lt(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Gte(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Lte(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Ne(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::DoesNotContain(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Regex(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::MoreLikeThis(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::FuzzyLikeThis(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
     }
 }
 
@@ -39,7 +41,7 @@ pub(crate) fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec
 //     root_index: &'input IndexLink,
 //     indexes: &Vec<IndexLink<'input>>,
 // ) -> Option<IndexLink<'input>> {
-fn find_field(
+fn find_link_for_field(
     field_name: &QualifiedField,
     root_index: &IndexLink,
     indexes: &Vec<IndexLink>,

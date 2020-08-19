@@ -280,41 +280,53 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! With {
         ($left:expr, $right:expr) => {
-            Box!(crate::query_parser::ast::Expr::With($left, $right))
+            Box!(crate::query_parser::ast::Expr::WithList(vec![
+                *$left, *$right
+            ]))
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! And {
         ($left:expr, $right:expr) => {
-            Box!(crate::query_parser::ast::Expr::And($left, $right))
+            Box!(crate::query_parser::ast::Expr::AndList(vec![
+                *$left, *$right
+            ]))
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! Or {
         ($left:expr, $right:expr) => {
-            Box!(crate::query_parser::ast::Expr::Or($left, $right))
+            Box!(crate::query_parser::ast::Expr::OrList(vec![
+                *$left, *$right
+            ]))
         };
     }
 }
 
 #[cfg(test)]
 mod string_tests {
-    use crate::query_parser::ast::{Expr, ParserError, QualifiedIndex};
+    use crate::query_parser::ast::{Expr, IndexLink, ParserError, QualifiedIndex};
     use std::collections::HashSet;
 
     pub(super) fn parse(input: &str) -> Result<Expr, ParserError> {
         let mut used_fields = HashSet::new();
-        Expr::from_str(
-            vec![QualifiedIndex {
-                schema: None,
-                table: "table".to_string(),
-                index: "index".to_string(),
-            }],
+        Expr::from_str_disconnected(
             "_",
             input,
             &mut used_fields,
+            IndexLink {
+                name: None,
+                left_field: None,
+                qualified_index: QualifiedIndex {
+                    schema: None,
+                    table: "table".to_string(),
+                    index: "index".to_string(),
+                },
+                right_field: None,
+            },
+            Vec::new(),
         )
     }
 

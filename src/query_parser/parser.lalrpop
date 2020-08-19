@@ -75,7 +75,10 @@ pub Expr: Box<Expr<'input>> = {
 };
 
 OrExpression: Box<Expr<'input>> = {
-    <l:OrExpression> OrOp+ <r:AndExpression> => Box::new(Expr::Or(l, r)),
+    <mut v:(<AndExpression> OrOp+)+> <r:AndExpression> => {
+        v.push(r);
+        Box::new(Expr::OrList(v.into_iter().map(|b| *b).collect()))
+    },
     AndExpression,
 };
 
@@ -85,8 +88,11 @@ OrOp: Opcode = {
 };
 
 AndExpression: Box<Expr<'input>> = {
-    <l:AndExpression> <op:AndOp+> <r:WithExpression> => Box::new(Expr::And(l, r)),
-    <l:AndExpression> <op:AndNotOp> <r:WithExpression> => Box::new(Expr::And(l, Box::new(Expr::Not(r)))),
+    <mut v:(<WithExpression> AndOp+)+> <r:WithExpression> => {
+        v.push(r);
+        Box::new(Expr::AndList(v.into_iter().map(|b| *b).collect()))
+    },
+    <l:AndExpression> <op:AndNotOp> <r:WithExpression> => Box::new(Expr::AndList(vec![*l, Expr::Not(r)])),
     WithExpression,
 };
 
@@ -101,7 +107,10 @@ AndNotOp: Opcode = {
 };
 
 WithExpression: Box<Expr<'input>> = {
-    <l:WithExpression> WithOp <r:ProximityExpression> => Box::new(Expr::With(l, r)),
+    <mut v:(<ProximityExpression> WithOp+)+> <r:ProximityExpression> => {
+        v.push(r);
+        Box::new(Expr::WithList(v.into_iter().map(|b| *b).collect()))
+    },
     ProximityExpression
 };
 

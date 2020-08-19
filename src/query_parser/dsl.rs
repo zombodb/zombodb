@@ -28,20 +28,17 @@ fn debug_query(index: PgRelation, query: &str) -> String {
 
 pub fn expr_to_dsl(expr: &Expr) -> serde_json::Value {
     match expr {
-        Expr::With(l, r) => {
-            let _l = expr_to_dsl(l.as_ref());
-            let _r = expr_to_dsl(r.as_ref());
+        Expr::WithList(v) => {
+            let _dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(v)).collect();
             panic!("WITH clauses not supported yet")
         }
-        Expr::And(l, r) => {
-            let l = expr_to_dsl(l.as_ref());
-            let r = expr_to_dsl(r.as_ref());
-            json! { { "bool": { "must": [l, r] } } }
+        Expr::AndList(v) => {
+            let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(v)).collect();
+            json! { { "bool": { "must": dsl } } }
         }
-        Expr::Or(l, r) => {
-            let l = expr_to_dsl(l.as_ref());
-            let r = expr_to_dsl(r.as_ref());
-            json! { { "bool": { "should": [l, r] } } }
+        Expr::OrList(v) => {
+            let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(v)).collect();
+            json! { { "bool": { "should": dsl } } }
         }
         Expr::Not(r) => {
             let r = expr_to_dsl(r.as_ref());

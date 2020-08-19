@@ -76,37 +76,45 @@ impl<'a> QueryHighligther<'a> {
         match expr {
             Expr::Not(e) => !self.walk_expression(e.as_ref(), highlights),
 
-            Expr::With(l, r) | Expr::And(l, r) => {
-                let mut did_highlight;
-                let mut tmp_highlights = HashMap::new();
-
-                did_highlight = self.walk_expression(l.as_ref(), &mut tmp_highlights);
-                if did_highlight {
-                    did_highlight &= self.walk_expression(r.as_ref(), &mut tmp_highlights);
-                }
-
-                if did_highlight {
-                    highlights.extend(tmp_highlights);
-                }
-                did_highlight
-            }
-
-            Expr::Or(l, r) => {
+            Expr::WithList(v) | Expr::AndList(v) => {
                 let mut did_highlight = false;
 
-                let mut tmp_highlights = HashMap::new();
-                if self.walk_expression(l.as_ref(), &mut tmp_highlights) {
-                    highlights.extend(tmp_highlights);
-                    did_highlight = true;
+                for e in v {
+                    let mut tmp_highlights = HashMap::new();
+
+                    did_highlight = self.walk_expression(e, &mut tmp_highlights);
+                    if did_highlight {
+                        highlights.extend(tmp_highlights);
+                    } else {
+                        break;
+                    }
                 }
 
-                let mut tmp_highlights = HashMap::new();
-                if self.walk_expression(r.as_ref(), &mut tmp_highlights) {
-                    highlights.extend(tmp_highlights);
-                    did_highlight = true;
+                did_highlight
+            }
+
+            Expr::OrList(v) => {
+                let mut did_highlight = false;
+
+                for e in v {
+                    let mut tmp_highlights = HashMap::new();
+                    if self.walk_expression(e, &mut tmp_highlights) {
+                        highlights.extend(tmp_highlights);
+                        did_highlight = true;
+                    }
+
+                    let mut tmp_highlights = HashMap::new();
+                    if self.walk_expression(e, &mut tmp_highlights) {
+                        highlights.extend(tmp_highlights);
+                        did_highlight = true;
+                    }
                 }
                 did_highlight
             }
+
+            Expr::WithList(_) => unimplemented!(),
+            Expr::AndList(_) => unimplemented!(),
+            Expr::OrList(_) => unimplemented!(),
 
             Expr::Linked(_, _) => panic!("nested not supported yet"),
 
@@ -656,31 +664,22 @@ mod tests {
         document: serde_json::Value,
         query_string: &'a str,
     ) -> QueryHighligther<'a> {
-        let (relation, table, index) = start_table_and_index(table);
-        let (query, used_fields) = make_query(table, index, query_string);
+        let relation = start_table_and_index(table);
+        let (query, used_fields) = make_query(&relation, query_string);
         pgx::info!("used_fields={:?}", used_fields);
         pgx::info!("query={:?}", query);
         QueryHighligther::new(&relation, document, &used_fields, query)
     }
 
-    fn make_query(table: String, index: String, input: &str) -> (Expr, HashSet<&str>) {
+    fn make_query(relation: &PgRelation, input: &str) -> (Expr, HashSet<&str>) {
         let mut used_fields = HashSet::new();
-        let query = Expr::from_str(
-            vec![QualifiedIndex {
-                schema: None,
-                table,
-                index,
-            }],
-            "_zdb_all",
-            input,
-            &mut used_fields,
-        )
-        .expect("failed to parse ZDB Query");
+        let query = Expr::from_str(relation, "_zdb_all", input, &mut used_fields)
+            .expect("failed to parse ZDB Query");
 
         (query, used_fields)
     }
 
-    fn start_table_and_index(title: &str) -> (PgRelation, String, String) {
+    fn start_table_and_index(title: &str) -> PgRelation {
         let tablename = format!("test_highlighting_{}", title);
         let indexname = format!("idxtest_highlighting_{}", title);
         let create_table = &format!(
@@ -700,12 +699,6 @@ mod tests {
         );
         Spi::run(create_index);
 
-        (
-            unsafe {
-                PgRelation::open_with_name(&indexname).expect("failed to open index relation")
-            },
-            tablename,
-            indexname,
-        )
+        unsafe { PgRelation::open_with_name(&indexname).expect("failed to open index relation") }
     }
 }

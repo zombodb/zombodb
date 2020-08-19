@@ -95,9 +95,10 @@ pub enum Expr<'input> {
 
     // types of connectors
     Not(Box<Expr<'input>>),
-    With(Box<Expr<'input>>, Box<Expr<'input>>),
-    And(Box<Expr<'input>>, Box<Expr<'input>>),
-    Or(Box<Expr<'input>>, Box<Expr<'input>>),
+
+    WithList(Vec<Expr<'input>>),
+    AndList(Vec<Expr<'input>>),
+    OrList(Vec<Expr<'input>>),
 
     Linked(IndexLink, Box<Expr<'input>>),
 
@@ -150,6 +151,29 @@ impl<'input> Expr<'input> {
         input: &'input str,
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
+        let root_index = IndexLink {
+            name: None,
+            left_field: None,
+            qualified_index: QualifiedIndex::from_relation(index),
+            right_field: None,
+        };
+
+        Expr::from_str_disconnected(
+            default_fieldname,
+            input,
+            used_fields,
+            root_index,
+            IndexLink::from_zdb(index),
+        )
+    }
+
+    pub fn from_str_disconnected(
+        default_fieldname: &'input str,
+        input: &'input str,
+        used_fields: &mut HashSet<&'input str>,
+        root_index: IndexLink,
+        linked_indexes: Vec<IndexLink>,
+    ) -> Result<Expr<'input>, ParserError<'input>> {
         let input = input.clone();
         let parser = crate::query_parser::parser::ExprParser::new();
         let mut operator_stack = vec![ComparisonOpcode::Contains];
@@ -162,13 +186,6 @@ impl<'input> Expr<'input> {
             input,
         )?;
 
-        let linked_indexes = IndexLink::from_zdb(index);
-        let root_index = IndexLink {
-            name: None,
-            left_field: None,
-            qualified_index: QualifiedIndex::from_relation(index),
-            right_field: None,
-        };
         find_fields(expr.as_mut(), &root_index, &linked_indexes);
         assign_links(&root_index, expr.as_mut(), &linked_indexes);
         Ok(*expr)
@@ -218,9 +235,9 @@ impl<'input> Expr<'input> {
     pub(in crate::query_parser) fn extract_prox_terms(&self) -> Vec<Term<'input>> {
         let mut flat = Vec::new();
         match self {
-            Expr::Or(l, r) => {
-                flat.append(&mut l.extract_prox_terms());
-                flat.append(&mut r.extract_prox_terms());
+            Expr::OrList(v) => {
+                v.iter()
+                    .for_each(|e| flat.append(&mut e.extract_prox_terms()));
             }
             Expr::Contains(_, v) | Expr::Eq(_, v) | Expr::DoesNotContain(_, v) | Expr::Ne(_, v) => {
                 match v {
@@ -469,11 +486,41 @@ impl<'input> Display for Expr<'input> {
             Expr::Expand(link, q) => write!(fmt, "#expand<{}>({})", link, q),
 
             Expr::Not(r) => write!(fmt, "NOT ({})", r),
-            Expr::With(l, r) => write!(fmt, "({} WITH {})", l, r),
-            Expr::And(l, r) => write!(fmt, "({} AND {})", l, r),
-            Expr::Or(l, r) => write!(fmt, "({} OR {})", l, r),
 
-            Expr::Linked(_, e) => write!(fmt, "({})", e),
+            Expr::WithList(v) => {
+                write!(fmt, "(")?;
+                for (i, e) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(fmt, " WITH ")?;
+                    }
+                    write!(fmt, "{}", e)?;
+                }
+                write!(fmt, ")")
+            }
+
+            Expr::AndList(v) => {
+                write!(fmt, "(")?;
+                for (i, e) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(fmt, " AND ")?;
+                    }
+                    write!(fmt, "{}", e)?;
+                }
+                write!(fmt, ")")
+            }
+
+            Expr::OrList(v) => {
+                write!(fmt, "(")?;
+                for (i, e) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(fmt, " OR ")?;
+                    }
+                    write!(fmt, "{}", e)?;
+                }
+                write!(fmt, ")")
+            }
+
+            Expr::Linked(_, e) => write!(fmt, "<{}>", e),
 
             Expr::Json(s) => write!(fmt, "({})", s),
 
@@ -527,73 +574,3 @@ impl Display for ComparisonOpcode {
         }
     }
 }
-
-// fn group_links(expr: Expr, current_index: QualifiedIndex) -> (QualifiedIndex, Expr) {
-//     match expr {
-//         Expr::Subselect(i, e) => (i.qualified_index.clone(), Expr::Subselect(i, e)),
-//         Expr::Expand(i, e) => (i.qualified_index.clone(), Expr::Expand(i, e)),
-//
-//         Expr::Not(r) => {
-//             let (current_index, r) = group_links(*r, current_index.clone());
-//             (current_index, Expr::Not(Box::new(r)))
-//         }
-//         Expr::With(l, r) => {
-//             let (i, l, r) = maybe_link(*l, *r, current_index.clone());
-//             (i, Expr::With(Box::new(l), Box::new(r)))
-//         }
-//         Expr::And(l, r) => {
-//             let (i, l, r) = maybe_link(*l, *r, current_index.clone());
-//             (i, Expr::And(Box::new(l), Box::new(r)))
-//         }
-//         Expr::Or(l, r) => {
-//             let (i, l, r) = maybe_link(*l, *r, current_index.clone());
-//             (i, Expr::Or(Box::new(l), Box::new(r)))
-//         }
-//         Expr::Linked(i, v) => (i.qualified_index.clone(), Expr::Linked(i, v)),
-//
-//         Expr::Json(_) => (current_index, expr),
-//         Expr::Range(_, _, _) => (current_index, expr),
-//         Expr::Contains(f, t) => (f.index.clone(), Expr::Contains(f, t)),
-//         Expr::Eq(f, t) => (f.index.clone(), Expr::Eq(f, t)),
-//         Expr::Gt(f, t) => (f.index.clone(), Expr::Gt(f, t)),
-//         Expr::Lt(f, t) => (f.index.clone(), Expr::Lt(f, t)),
-//         Expr::Gte(f, t) => (f.index.clone(), Expr::Gte(f, t)),
-//         Expr::Lte(f, t) => (f.index.clone(), Expr::Lte(f, t)),
-//         Expr::Ne(f, t) => (f.index.clone(), Expr::Ne(f, t)),
-//         Expr::DoesNotContain(f, t) => (f.index.clone(), Expr::DoesNotContain(f, t)),
-//         Expr::Regex(f, t) => (f.index.clone(), Expr::Regex(f, t)),
-//         Expr::MoreLikeThis(f, t) => (f.index.clone(), Expr::MoreLikeThis(f, t)),
-//         Expr::FuzzyLikeThis(f, t) => (f.index.clone(), Expr::FuzzyLikeThis(f, t)),
-//     }
-// }
-//
-// fn maybe_link<'input>(
-//     mut l: Expr<'input>,
-//     mut r: Expr<'input>,
-//     current_index: QualifiedIndex,
-// ) -> (QualifiedIndex, Expr<'input>, Expr<'input>) {
-//     let (left_index, left) = group_links(l, current_index.clone());
-//     let (right_index, right) = group_links(r, current_index.clone());
-//     let mut new_index = current_index;
-//
-//     if left_index == right_index {
-//         // indexes are the same, so we'll just bubble one of them up with the Expr
-//         new_index = left_index;
-//     } else {
-//         // they're not the same, so we must wrap l & r in individual Nested expressions
-//         l = Expr::Linked(find_index_link(left_index), vec![left]);
-//         r = Expr::Linked(find_index_link(right_index), vec![right]);
-//     }
-//
-//     ((), (), ())
-// }
-//
-// fn find_index_link<'input>(index: QualifiedIndex) -> IndexLink<'input> {
-//     // TODO:  actually implement this
-//     IndexLink {
-//         name: None,
-//         left_field: "",
-//         qualified_index: index,
-//         right_field: "",
-//     }
-// }
