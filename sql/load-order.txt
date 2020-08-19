@@ -68,6 +68,5 @@ _cat-api.sql
 _support-views.sql
 _join-support.sql
 highlighting_es_highlighting.generated.sql
-query_parser_mod.generated.sql
 highlighting_query_highlighter.generated.sql
 query_parser_dsl.generated.sql

@@ -11,7 +11,8 @@ pub struct ProximityDistance {
 }
 
 use crate::access_method::options::ZDBIndexOptions;
-use crate::query_parser::optimizer::assign_indexes;
+use crate::query_parser::transformations::field_finder::find_fields;
+use crate::query_parser::transformations::index_links::assign_links;
 pub use pg_catalog::ProximityPart;
 use pgx::PgRelation;
 
@@ -37,16 +38,16 @@ pub struct QualifiedIndex {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct QualifiedField<'input> {
-    pub index: Option<QualifiedIndex>,
+    pub index: Option<IndexLink>,
     pub field: &'input str,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct IndexLink<'input> {
-    pub name: Option<&'input str>,
-    pub left_field: &'input str,
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct IndexLink {
+    pub name: Option<String>,
+    pub left_field: Option<String>,
     pub qualified_index: QualifiedIndex,
-    pub right_field: &'input str,
+    pub right_field: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -89,8 +90,8 @@ pub enum Term<'input> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'input> {
-    Subselect(IndexLink<'input>, Box<Expr<'input>>),
-    Expand(IndexLink<'input>, Box<Expr<'input>>),
+    Subselect(IndexLink, Box<Expr<'input>>),
+    Expand(IndexLink, Box<Expr<'input>>),
 
     // types of connectors
     Not(Box<Expr<'input>>),
@@ -98,7 +99,7 @@ pub enum Expr<'input> {
     And(Box<Expr<'input>>, Box<Expr<'input>>),
     Or(Box<Expr<'input>>, Box<Expr<'input>>),
 
-    Linked(IndexLink<'input>, Vec<Expr<'input>>),
+    Linked(IndexLink, Box<Expr<'input>>),
 
     // types of comparisons
     Json(String),
@@ -144,7 +145,7 @@ pub type ParserError<'input> = ParseError<usize, Token<'input>, &'static str>;
 
 impl<'input> Expr<'input> {
     pub fn from_str(
-        all_indexes: Vec<QualifiedIndex>,
+        index: &PgRelation,
         default_fieldname: &'input str,
         input: &'input str,
         used_fields: &mut HashSet<&'input str>,
@@ -161,8 +162,15 @@ impl<'input> Expr<'input> {
             input,
         )?;
 
-        let original_index = all_indexes.first().unwrap();
-        assign_indexes(expr.as_mut(), original_index, original_index, &all_indexes);
+        let linked_indexes = IndexLink::from_zdb(index);
+        let root_index = IndexLink {
+            name: None,
+            left_field: None,
+            qualified_index: QualifiedIndex::from_relation(index),
+            right_field: None,
+        };
+        find_fields(expr.as_mut(), &root_index, &linked_indexes);
+        assign_links(&root_index, expr.as_mut(), &linked_indexes);
         Ok(*expr)
     }
 
@@ -258,8 +266,20 @@ impl QualifiedIndex {
         }
     }
 
+    pub fn table_name(&self) -> String {
+        let mut relation_name = String::new();
+        if let Some(schema) = &self.schema {
+            relation_name.push_str(&schema);
+            relation_name.push('.');
+        }
+        relation_name.push_str(&self.table);
+        relation_name
+    }
+}
+
+impl IndexLink {
     pub fn from_zdb(index: &PgRelation) -> Vec<Self> {
-        let mut indexes = vec![QualifiedIndex::from_relation(index)];
+        let mut index_links = Vec::new();
 
         if let Some(links) = ZDBIndexOptions::from(index).links() {
             for link in links {
@@ -275,25 +295,21 @@ impl QualifiedIndex {
                         link.as_str(),
                     )
                     .expect("failed to parse index link");
-                indexes.push(link.qualified_index);
+                index_links.push(link);
             }
         }
 
-        indexes
-    }
-
-    pub fn table_name(&self) -> String {
-        let mut relation_name = String::new();
-        if let Some(schema) = &self.schema {
-            relation_name.push_str(&schema);
-            relation_name.push('.');
-        }
-        relation_name.push_str(&self.table);
-        relation_name
+        index_links
     }
 
     pub fn is_this_index(&self) -> bool {
-        self.schema.is_none() && self.table == "this" && self.index == "index"
+        self.qualified_index.schema.is_none()
+            && self.qualified_index.table == "this"
+            && self.qualified_index.index == "index"
+    }
+
+    pub fn open(&self) -> std::result::Result<PgRelation, &str> {
+        PgRelation::open_with_name_and_share_lock(&self.qualified_index.table_name())
     }
 }
 
@@ -322,19 +338,30 @@ impl<'input> Display for QualifiedField<'input> {
     }
 }
 
-impl<'input> Display for IndexLink<'input> {
+impl Display for IndexLink {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        if let Some(name) = self.name {
+        if let Some(name) = &self.name {
             write!(fmt, "{}:(", name)?;
         }
+
+        let left_field = self
+            .left_field
+            .as_ref()
+            .cloned()
+            .unwrap_or(String::from("NONE"));
+        let right_field = self
+            .right_field
+            .as_ref()
+            .cloned()
+            .unwrap_or(String::from("NONE"));
 
         write!(
             fmt,
             "{}=<{}>{}",
-            self.left_field, self.qualified_index, self.right_field
+            left_field, self.qualified_index, right_field
         )?;
 
-        if let Some(_) = self.name {
+        if let Some(_) = &self.name {
             write!(fmt, ")")?;
         }
 
@@ -446,13 +473,7 @@ impl<'input> Display for Expr<'input> {
             Expr::And(l, r) => write!(fmt, "({} AND {})", l, r),
             Expr::Or(l, r) => write!(fmt, "({} OR {})", l, r),
 
-            Expr::Linked(_, v) => {
-                write!(fmt, "(")?;
-                for e in v {
-                    write!(fmt, "{}", e)?;
-                }
-                write!(fmt, ")")
-            }
+            Expr::Linked(_, e) => write!(fmt, "({})", e),
 
             Expr::Json(s) => write!(fmt, "({})", s),
 

@@ -1,30 +1,10 @@
 #![allow(unused_macros)]
-use crate::query_parser::ast::QualifiedIndex;
-use pgx::*;
-use std::collections::HashSet;
 
 pub mod ast;
 pub mod dsl;
 pub mod parser;
 
-pub(crate) mod optimizer;
-
-#[pg_extern]
-fn test_parser(input: &str) -> String {
-    let mut used_fields = HashSet::new();
-    let expr = ast::Expr::from_str(
-        vec![QualifiedIndex {
-            schema: None,
-            table: "table".to_string(),
-            index: "index".to_string(),
-        }],
-        "_zdb_all",
-        input,
-        &mut used_fields,
-    )
-    .expect("failed to parse");
-    format!("{}\n{:#?}", expr, expr)
-}
+pub(crate) mod transformations;
 
 #[cfg(test)]
 #[macro_use]

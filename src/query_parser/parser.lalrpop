@@ -328,11 +328,11 @@ TableIndexName: QualifiedIndex = {
     }
 };
 
-pub IndexLink: IndexLink<'input> = {
+pub IndexLink: IndexLink = {
     <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName>
-        => IndexLink { name: None, left_field, qualified_index, right_field },
+        => IndexLink { name: None, left_field: Some(left_field.to_string()), qualified_index, right_field: Some(right_field.to_string()) },
     <name:IDENTIFIER> COLON O_PAREN <left_field:UntrackedFieldName> EQ LT <qualified_index:TableIndexName> GT <right_field:UntrackedFieldName> C_PAREN
-        => IndexLink { name: Some(name), left_field, qualified_index, right_field },
+        => IndexLink { name: Some(name.to_string()), left_field: Some(left_field.to_string()), qualified_index, right_field: Some(right_field.to_string()) },
 };
 
 Subselect: Expr<'input> = {

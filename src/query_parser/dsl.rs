@@ -1,4 +1,4 @@
-use crate::query_parser::ast::{ComparisonOpcode, Expr, QualifiedField, QualifiedIndex, Term};
+use crate::query_parser::ast::{ComparisonOpcode, Expr, QualifiedField, Term};
 use pgx::*;
 use serde_json::json;
 use std::collections::HashSet;
@@ -6,13 +6,8 @@ use std::collections::HashSet;
 #[pg_extern]
 fn dump_query(index: PgRelation, query: &str) -> JsonB {
     let mut used_fields = HashSet::new();
-    let query = Expr::from_str(
-        QualifiedIndex::from_zdb(&index),
-        "_zdb_all",
-        query,
-        &mut used_fields,
-    )
-    .expect("failed to parse query");
+    let query =
+        Expr::from_str(&index, "_zdb_all", query, &mut used_fields).expect("failed to parse query");
 
     JsonB(expr_to_dsl(&query))
 }
@@ -20,13 +15,8 @@ fn dump_query(index: PgRelation, query: &str) -> JsonB {
 #[pg_extern]
 fn debug_query(index: PgRelation, query: &str) -> String {
     let mut used_fields = HashSet::new();
-    let query = Expr::from_str(
-        QualifiedIndex::from_zdb(&index),
-        "_zdb_all",
-        query,
-        &mut used_fields,
-    )
-    .expect("failed to parse query");
+    let query =
+        Expr::from_str(&index, "_zdb_all", query, &mut used_fields).expect("failed to parse query");
 
     let mut tree = format!("{:#?}", query);
     tree = tree.replace("\n", "\n   ");
