@@ -6,7 +6,7 @@ pub mod parser;
 
 pub(crate) mod transformations;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "pg_test"))]
 #[macro_use]
 mod macros {
     #[allow(non_snake_case)]
@@ -19,43 +19,31 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! String {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::String($val.into(), Some($boost))
-            ))
+                crate::query_parser::ast::Term::String($val.into(), Some($boost)),
+            )
         };
         ($operator:tt, $table:literal, $index:literal, $field:literal, $val:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: $table.to_string(),
-                        index: $index.to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::String($val.into(), None)
-            ))
+                crate::query_parser::ast::Term::String($val.into(), None),
+            )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::String($val.into(), None)
-            ))
+                crate::query_parser::ast::Term::String($val.into(), None),
+            )
         };
         ($val:expr) => {
             crate::query_parser::ast::Term::String($val.into(), None)
@@ -65,30 +53,22 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! Wildcard {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::Wildcard($val.into(), Some($boost))
-            ))
+                crate::query_parser::ast::Term::Wildcard($val.into(), Some($boost)),
+            )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::Wildcard($val.into(), None)
-            ))
+                crate::query_parser::ast::Term::Wildcard($val.into(), None),
+            )
         };
         ($val:expr) => {
             crate::query_parser::ast::Term::Wildcard($val.into(), None)
@@ -98,30 +78,22 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! Regex {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::Regex($val.into(), Some($boost))
-            ))
+                crate::query_parser::ast::Term::Regex($val.into(), Some($boost)),
+            )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::Regex($val.into(), None)
-            ))
+                crate::query_parser::ast::Term::Regex($val.into(), None),
+            )
         };
         ($val:expr) => {
             crate::query_parser::ast::Term::Regex($val.into(), None)
@@ -131,30 +103,22 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! Fuzzy {
         ($operator:tt, $field:literal, $val:expr, $slop:expr, $boost:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::Fuzzy($val, $slop, Some($boost))
-            ))
+                crate::query_parser::ast::Term::Fuzzy($val, $slop, Some($boost)),
+            )
         };
         ($operator:tt, $field:literal, $val:expr, $slop:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
-            ))
+                crate::query_parser::ast::Term::Fuzzy($val, $slop, None),
+            )
         };
         ($val:expr, $slop:expr) => {
             crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
@@ -164,30 +128,22 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! UnparsedArray {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::UnparsedArray($val, Some($boost))
-            ))
+                crate::query_parser::ast::Term::UnparsedArray($val, Some($boost)),
+            )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            Box!(crate::query_parser::ast::Expr::$operator(
+            crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
-                    index: crate::query_parser::ast::QualifiedIndex {
-                        schema: None,
-                        table: "table".to_string(),
-                        index: "index".to_string()
-                    },
-                    field: $field.to_string()
+                    index: Some(IndexLink::default()),
+                    field: $field,
                 },
-                crate::query_parser::ast::Term::UnparsedArray($val, None)
-            ))
+                crate::query_parser::ast::Term::UnparsedArray($val, None),
+            )
         };
         ($val:expr) => {
             crate::query_parser::ast::Term::UnparsedArray($val, None)
@@ -196,60 +152,48 @@ mod macros {
 
     #[allow(non_snake_case)]
     macro_rules! ParsedArray {
-    ($operator:tt, $field:literal, $($elements:expr),*) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            crate::query_parser::ast::QualifiedField{
-                index: crate::query_parser::ast::QualifiedIndex {
-                    schema: None,
-                    table: "table".to_string(),
-                    index: "index".to_string()
+        ($operator:tt, $field:literal, $($elements:expr),*) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField{
+                    index: Some(IndexLink::default()),
+                    field: $field
                 },
-                field: $field.to_string()
-            },
-            crate::query_parser::ast::Term::ParsedArray(
-                vec![$($elements),*],
-                None
+                crate::query_parser::ast::Term::ParsedArray(
+                    vec![$($elements),*],
+                    None
+                )
             )
-        ))
-    };
-}
+        };
+    }
 
     #[allow(non_snake_case)]
     macro_rules! ParsedArrayWithBoost {
-    ($operator:tt, $field:literal, $boost:expr, $($elements:expr),*) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            crate::query_parser::ast::QualifiedField{
-                index: crate::query_parser::ast::QualifiedIndex {
-                    schema: None,
-                    table: "table".to_string(),
-                    index: "index".to_string()
+        ($operator:tt, $field:literal, $boost:expr, $($elements:expr),*) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField{
+                    index: Some(IndexLink::default()),
+                    field: $field
                 },
-                field: $field.to_string()
-            },
-            crate::query_parser::ast::Term::ParsedArray(
-                vec![$($elements),*],
-                Some($boost)
+                crate::query_parser::ast::Term::ParsedArray(
+                    vec![$($elements),*],
+                    Some($boost)
+                )
             )
-        ))
-    };
-}
+        };
+    }
 
     #[allow(non_snake_case)]
     macro_rules! ProximityChain {
-    ($operator:tt, $field:literal, $($parts:expr),*) => {
-        Box!(crate::query_parser::ast::Expr::$operator(
-            crate::query_parser::ast::QualifiedField{
-                index: crate::query_parser::ast::QualifiedIndex {
-                    schema: None,
-                    table: "table".to_string(),
-                    index: "index".to_string()
+        ($operator:tt, $field:literal, $($parts:expr),*) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField{
+                    index: Some(IndexLink::default()),
+                    field: $field
                 },
-                field: $field.to_string()
-            },
-            crate::query_parser::ast::Term::ProximityChain(vec![$($parts),*])
-        ))
-    };
-}
+                crate::query_parser::ast::Term::ProximityChain(vec![$($parts),*])
+            )
+        };
+    }
 
     #[allow(non_snake_case)]
     macro_rules! Within {
@@ -273,41 +217,39 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! Not {
         ($e:expr) => {
-            Box!(crate::query_parser::ast::Expr::Not($e))
+            crate::query_parser::ast::Expr::Not(Box!($e))
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! With {
         ($left:expr, $right:expr) => {
-            Box!(crate::query_parser::ast::Expr::WithList(vec![
-                *$left, *$right
-            ]))
+            crate::query_parser::ast::Expr::WithList(vec![$left, $right])
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! And {
         ($left:expr, $right:expr) => {
-            Box!(crate::query_parser::ast::Expr::AndList(vec![
-                *$left, *$right
-            ]))
+            crate::query_parser::ast::Expr::AndList(vec![$left, $right])
+        };
+        ($one:expr, $two:expr, $three:expr) => {
+            crate::query_parser::ast::Expr::AndList(vec![$one, $two, $three])
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! Or {
         ($left:expr, $right:expr) => {
-            Box!(crate::query_parser::ast::Expr::OrList(vec![
-                *$left, *$right
-            ]))
+            crate::query_parser::ast::Expr::OrList(vec![$left, $right])
         };
     }
 }
 
-#[cfg(test)]
-mod string_tests {
+#[cfg(any(test, feature = "pg_test"))]
+mod tests {
     use crate::query_parser::ast::{Expr, IndexLink, ParserError, QualifiedIndex};
+    use pgx::*;
     use std::collections::HashSet;
 
     pub(super) fn parse(input: &str) -> Result<Expr, ParserError> {
@@ -337,117 +279,111 @@ mod string_tests {
         )
     }
 
-    #[test]
-    fn string() {
+    #[pg_test]
+    fn test_string_string() {
         assert_str("foo", r#"_:"foo""#)
     }
 
-    #[test]
-    fn number() {
+    #[pg_test]
+    fn test_string_number() {
         assert_str("42", r#"_:"42""#)
     }
 
-    #[test]
-    fn float() {
+    #[pg_test]
+    fn test_string_float() {
         assert_str("42.42424242", r#"_:"42.42424242""#)
     }
 
-    #[test]
-    fn bool_true() {
+    #[pg_test]
+    fn test_string_bool_true() {
         assert_str("true", r#"_:"true""#)
     }
 
-    #[test]
-    fn bool_false() {
+    #[pg_test]
+    fn test_string_bool_false() {
         assert_str("false", r#"_:"false""#)
     }
 
-    #[test]
-    fn null() {
+    #[pg_test]
+    fn test_string_null() {
         assert_str("null", r#"_:NULL"#)
     }
 
-    #[test]
-    fn wildcard_star() {
+    #[pg_test]
+    fn test_string_wildcard_star() {
         assert_str("foo*", r#"_:"foo*""#)
     }
 
-    #[test]
-    fn wildcard_question() {
+    #[pg_test]
+    fn test_string_wildcard_question() {
         assert_str("foo?", r#"_:"foo?""#)
     }
 
-    #[test]
-    fn fuzzy() {
+    #[pg_test]
+    fn test_string_fuzzy() {
         assert_str("foo~2", r#"_:"foo"~2"#)
     }
 
-    #[test]
-    fn regex() {
+    #[pg_test]
+    fn test_string_regex() {
         assert_str("field:~'^m.*$'", r#"field:~"^m.*$""#)
     }
 
-    #[test]
-    fn boost() {
+    #[pg_test]
+    fn test_string_boost() {
         assert_str("foo^2.0", r#"_:"foo"^2"#)
     }
 
-    #[test]
-    fn boost_float() {
+    #[pg_test]
+    fn test_string_boost_float() {
         assert_str("foo^.42", r#"_:"foo"^0.42"#)
     }
 
-    #[test]
-    fn single_quoted() {
+    #[pg_test]
+    fn test_string_single_quoted() {
         assert_str("'foo'", r#"_:"foo""#)
     }
 
-    #[test]
-    fn double_quoted() {
+    #[pg_test]
+    fn test_string_double_quoted() {
         assert_str(r#""foo""#, r#"_:"foo""#)
     }
 
-    #[test]
-    fn escape() {
+    #[pg_test]
+    fn test_string_escape() {
         assert_str(r#"f\%o"#, r#"_:"f\%o""#)
     }
 
-    #[test]
-    fn parens() {
+    #[pg_test]
+    fn test_string_parens() {
         assert_str(r#"(foo)"#, r#"_:"foo""#);
         assert_str(r#"((foo))"#, r#"_:"foo""#);
         assert_str(r#"(((foo)))"#, r#"_:"foo""#);
     }
 
-    #[test]
-    fn field() {
+    #[pg_test]
+    fn test_string_field() {
         assert_str("field:value", r#"field:"value""#)
     }
 
-    #[test]
-    fn field_group() {
+    #[pg_test]
+    fn test_string_field_group() {
         assert_str(
             "field:(a, b, c)",
-            r#"((field:"a" OR field:"b") OR field:"c")"#,
+            r#"(field:"a" OR field:"b" OR field:"c")"#,
         )
     }
 
-    #[test]
-    fn parsed_array() {
+    #[pg_test]
+    fn test_string_parsed_array() {
         assert_str("[a,b,c]", r#"_:["a","b","c"]"#)
     }
-    #[test]
-    fn unparsed_array() {
+    #[pg_test]
+    fn test_string_unparsed_array() {
         assert_str("[[1,2,3]]", "_:[[1,2,3]]")
     }
-}
 
-#[cfg(test)]
-mod expr_tests {
-    use crate::query_parser::ast::{Expr, IndexLink, QualifiedIndex};
-    use crate::query_parser::string_tests::parse;
-
-    fn assert_expr<'input>(input: &'input str, expected: Box<Expr<'input>>) {
+    fn assert_expr<'input>(input: &'input str, expected: Expr<'input>) {
         assert_eq!(
             parse(input).expect("failed to parse"),
             expected,
@@ -456,13 +392,13 @@ mod expr_tests {
         );
     }
 
-    #[test]
-    fn regex() {
+    #[pg_test]
+    fn test_expr_regex() {
         assert_expr("field:~'^m.*$'", Regex!(Regex, "field", "^m.*$"))
     }
 
-    #[test]
-    fn wildcard_star() {
+    #[pg_test]
+    fn test_expr_wildcard_star() {
         assert_expr("foo*", Wildcard!(Contains, "_", "foo*"));
         assert_expr("*foo", Wildcard!(Contains, "_", "*foo"));
         assert_expr("*foo*", Wildcard!(Contains, "_", "*foo*"));
@@ -470,87 +406,85 @@ mod expr_tests {
         assert_expr("*", Wildcard!(Contains, "_", "*"));
     }
 
-    #[test]
-    fn wildcard_question() {
+    #[pg_test]
+    fn test_expr_wildcard_question() {
         assert_expr("foo?", Wildcard!(Contains, "_", "foo?"));
         assert_expr("?foo", Wildcard!(Contains, "_", "?foo"));
         assert_expr("?foo?", Wildcard!(Contains, "_", "?foo?"));
         assert_expr("?", Wildcard!(Contains, "_", "?"));
     }
 
-    #[test]
-    fn fuzzy() {
+    #[pg_test]
+    fn test_expr_fuzzy() {
         assert_expr("foo~2", Fuzzy!(Contains, "_", "foo", 2))
     }
 
-    #[test]
-    fn boost() {
+    #[pg_test]
+    fn test_expr_boost() {
         assert_expr("foo^2.0", String!(Contains, "_", "foo", 2.0))
     }
 
-    #[test]
-    fn not() {
+    #[pg_test]
+    fn test_expr_not() {
         assert_expr("not foo", Not!(String!(Contains, "_", "foo")))
     }
 
-    #[test]
-    fn bang() {
+    #[pg_test]
+    fn test_expr_bang() {
         assert_expr("!foo", Not!(String!(Contains, "_", "foo")))
     }
 
-    #[test]
-    fn field() {
+    #[pg_test]
+    fn test_expr_field() {
         assert_expr("field:value", String!(Contains, "field", "value"))
     }
 
-    #[test]
-    fn field_group() {
+    #[pg_test]
+    fn test_expr_field_group() {
         assert_expr(
             "field:(a, b, c)",
-            Or!(
-                Or!(
-                    String!(Contains, "field", "a"),
-                    String!(Contains, "field", "b")
-                ),
-                String!(Contains, "field", "c")
-            ),
+            Expr::OrList(vec![
+                String!(Contains, "field", "a"),
+                String!(Contains, "field", "b"),
+                String!(Contains, "field", "c"),
+            ]),
         )
     }
 
-    #[test]
-    fn with() {
+    #[pg_test]
+    fn test_expr_with() {
         assert_expr(
             "foo with bar",
             With!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
         )
     }
 
-    #[test]
-    fn percent() {
+    #[pg_test]
+    fn test_expr_percent() {
         assert_expr(
             "foo%bar",
             With!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
         )
     }
 
-    #[test]
-    fn and() {
+    #[pg_test]
+    fn test_expr_and() {
         assert_expr(
             "foo and bar",
             And!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
         )
     }
 
-    #[test]
-    fn ampersand() {
+    #[pg_test]
+    fn test_expr_ampersand() {
         assert_expr(
             "foo&bar",
             And!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
         )
     }
 
-    #[test]
-    fn and_not() {
+    #[pg_test]
+    fn test_expr_and_not() {
         assert_expr(
             "foo and not bar",
             And!(
@@ -560,8 +494,8 @@ mod expr_tests {
         )
     }
 
-    #[test]
-    fn and_bang() {
+    #[pg_test]
+    fn test_expr_and_bang() {
         assert_expr(
             "foo&!bar",
             And!(
@@ -571,33 +505,31 @@ mod expr_tests {
         )
     }
 
-    #[test]
-    fn or() {
+    #[pg_test]
+    fn test_expr_or() {
         assert_expr(
             "foo or bar",
             Or!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
         )
     }
 
-    #[test]
-    fn comma() {
+    #[pg_test]
+    fn test_expr_comma() {
         assert_expr(
             "foo,bar",
             Or!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
         )
     }
 
-    #[test]
-    fn precedence() {
+    #[pg_test]
+    fn test_expr_precedence() {
         assert_expr(
             "a or b with c and d and not not (e or f)",
             Or!(
                 String!(Contains, "_", "a"),
                 And!(
-                    And!(
-                        With!(String!(Contains, "_", "b"), String!(Contains, "_", "c")),
-                        String!(Contains, "_", "d")
-                    ),
+                    With!(String!(Contains, "_", "b"), String!(Contains, "_", "c")),
+                    String!(Contains, "_", "d"),
                     Not!(Not!(Or!(
                         String!(Contains, "_", "e"),
                         String!(Contains, "_", "f")
@@ -607,8 +539,8 @@ mod expr_tests {
         )
     }
 
-    #[test]
-    fn operators() {
+    #[pg_test]
+    fn test_expr_operators() {
         assert_expr("a:b", String!(Contains, "a", "b"));
         assert_expr("a=b", String!(Eq, "a", "b"));
         assert_expr("a!=b", String!(Ne, "a", "b"));
@@ -623,8 +555,8 @@ mod expr_tests {
         assert_expr("a:@~b", String!(FuzzyLikeThis, "a", "b"));
     }
 
-    #[test]
-    fn prox() {
+    #[pg_test]
+    fn test_expr_prox() {
         assert_expr(
             "a w/2 b",
             ProximityChain!(
@@ -636,8 +568,8 @@ mod expr_tests {
         )
     }
 
-    #[test]
-    fn prox_groups() {
+    #[pg_test]
+    fn test_expr_prox_groups() {
         assert_expr(
             "(a, b, c) wo/2 (x, y, z)",
             ProximityChain!(
@@ -649,8 +581,8 @@ mod expr_tests {
         )
     }
 
-    #[test]
-    fn prox_mixed_groups() {
+    #[pg_test]
+    fn test_expr_prox_mixed_groups() {
         assert_expr(
             "(a, b, c) w/8 foo wo/2 (x, y, z)",
             ProximityChain!(
@@ -663,8 +595,8 @@ mod expr_tests {
         )
     }
 
-    #[test]
-    fn prox_groups_field() {
+    #[pg_test]
+    fn test_expr_prox_groups_field() {
         assert_expr(
             "field:((a, b, c) wo/2 (x, y, z))",
             ProximityChain!(
@@ -676,24 +608,24 @@ mod expr_tests {
         )
     }
 
-    #[test]
-    fn paresd_array() {
+    #[pg_test]
+    fn test_expr_paresd_array() {
         assert_expr(
             "[a,b,c]",
             ParsedArray!(Contains, "_", String!("a"), String!("b"), String!("c")),
         )
     }
 
-    #[test]
-    fn paresd_with_wildcard() {
+    #[pg_test]
+    fn test_expr_paresd_with_wildcard() {
         assert_expr(
             "[a,b,c*]",
             ParsedArray!(Contains, "_", String!("a"), String!("b"), Wildcard!("c*")),
         )
     }
 
-    #[test]
-    fn paresd_array_with_boost() {
+    #[pg_test]
+    fn test_expr_paresd_array_with_boost() {
         assert_expr(
             "[a,b,c]^42",
             ParsedArrayWithBoost!(
@@ -707,39 +639,16 @@ mod expr_tests {
         )
     }
 
-    #[test]
-    fn unparsed_array() {
+    #[pg_test]
+    fn test_expr_unparsed_array() {
         assert_expr("[[a, b,   c]]", UnparsedArray!(Contains, "_", "a, b,   c"))
     }
 
-    #[test]
-    fn json() {
+    #[pg_test]
+    fn test_expr_json() {
         assert_expr(
             r#"({"field":    "value"})"#,
-            Box::new(Expr::Json(r#"{"field":"value"}"#.to_string())),
-        )
-    }
-
-    #[test]
-    fn subselect() {
-        assert_expr(
-            "#subselect<id=<other.index>o_id>(value), outer",
-            Or!(
-                Box::new(Expr::Subselect(
-                    IndexLink {
-                        name: None,
-                        left_field: "id",
-                        qualified_index: QualifiedIndex {
-                            schema: None,
-                            table: "other".to_string(),
-                            index: "index".to_string()
-                        },
-                        right_field: "o_id",
-                    },
-                    String!(Contains, "other", "index", "_", "value"),
-                )),
-                String!(Contains, "_", "outer")
-            ),
+            Expr::Json(r#"{"field":"value"}"#.to_string()),
         )
     }
 }

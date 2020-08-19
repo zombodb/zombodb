@@ -79,15 +79,16 @@ impl<'a> QueryHighligther<'a> {
             Expr::WithList(v) | Expr::AndList(v) => {
                 let mut did_highlight = false;
 
+                let mut tmp_highlights = HashMap::new();
                 for e in v {
-                    let mut tmp_highlights = HashMap::new();
-
                     did_highlight = self.walk_expression(e, &mut tmp_highlights);
-                    if did_highlight {
-                        highlights.extend(tmp_highlights);
-                    } else {
+                    if !did_highlight {
                         break;
                     }
+                }
+
+                if did_highlight {
+                    highlights.extend(tmp_highlights);
                 }
 
                 did_highlight
@@ -111,10 +112,6 @@ impl<'a> QueryHighligther<'a> {
                 }
                 did_highlight
             }
-
-            Expr::WithList(_) => unimplemented!(),
-            Expr::AndList(_) => unimplemented!(),
-            Expr::OrList(_) => unimplemented!(),
 
             Expr::Linked(_, _) => panic!("nested not supported yet"),
 
@@ -336,7 +333,7 @@ fn highlight_document(
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::highlighting::query_highlighter::QueryHighligther;
-    use crate::query_parser::ast::{Expr, QualifiedIndex};
+    use crate::query_parser::ast::Expr;
     use pgx::*;
     use serde_json::*;
     use std::collections::HashSet;
@@ -671,7 +668,7 @@ mod tests {
         QueryHighligther::new(&relation, document, &used_fields, query)
     }
 
-    fn make_query(relation: &PgRelation, input: &str) -> (Expr, HashSet<&str>) {
+    fn make_query<'a>(relation: &PgRelation, input: &'a str) -> (Expr<'a>, HashSet<&'a str>) {
         let mut used_fields = HashSet::new();
         let query = Expr::from_str(relation, "_zdb_all", input, &mut used_fields)
             .expect("failed to parse ZDB Query");

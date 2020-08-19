@@ -1,4 +1,4 @@
-use crate::query_parser::ast::{Expr, IndexLink, QualifiedIndex};
+use crate::query_parser::ast::{Expr, IndexLink};
 
 pub fn assign_links(
     root_index: &IndexLink,
@@ -9,7 +9,7 @@ pub fn assign_links(
         Expr::Subselect(i, e) => assign_links(&i, e, links),
         Expr::Expand(i, e) => assign_links(&i, e, links),
 
-        Expr::Not(_) => unimplemented!(),
+        Expr::Not(_) => Some(root_index.clone()),
         // Expr::With(l, r) | Expr::And(l, r) | Expr::Or(l, r) => {
         //     let li = assign_links(root_index, l.as_mut(), links);
         //     let ri = assign_links(root_index, r.as_mut(), links);
@@ -33,9 +33,9 @@ pub fn assign_links(
         //         Some(root_index.clone())
         //     }
         // }
-        Expr::WithList(v) => Some(root_index.clone()),
-        Expr::AndList(v) => Some(root_index.clone()),
-        Expr::OrList(v) => Some(root_index.clone()),
+        Expr::WithList(_v) => Some(root_index.clone()),
+        Expr::AndList(_v) => Some(root_index.clone()),
+        Expr::OrList(_v) => Some(root_index.clone()),
 
         Expr::Linked(_, _) => unreachable!(),
 

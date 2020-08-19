@@ -1,11 +1,6 @@
 use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
 
-// pub(crate) fn assign_indexes<'input>(
-//     expr: &'input mut Expr<'input>,
-//     root_index: &'input IndexLink<'input>,
-//     indexes: &'input Vec<IndexLink<'input>>,
-// ) {
-pub(crate) fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexLink>) {
+pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexLink>) {
     match expr {
         Expr::Subselect(i, e) | Expr::Expand(i, e) => {
             if i.is_this_index() {
@@ -36,11 +31,6 @@ pub(crate) fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec
     }
 }
 
-// fn find_field<'input>(
-//     field_name: &QualifiedField,
-//     root_index: &'input IndexLink,
-//     indexes: &Vec<IndexLink<'input>>,
-// ) -> Option<IndexLink<'input>> {
 fn find_link_for_field(
     field_name: &QualifiedField,
     root_index: &IndexLink,
@@ -57,17 +47,12 @@ fn find_link_for_field(
             return Some(index.clone());
         }
 
-        let relation = index.open().unwrap_or_else(|_| {
-            panic!(
-                "no such relation from index options for qualified index: {}",
-                index
-            )
-        });
-
-        for att in relation.tuple_desc().iter() {
-            if att.name() == field_name.base_field() {
-                // the table behind this index link contains this field
-                return Some(index.clone());
+        if let Ok(relation) = index.open() {
+            for att in relation.tuple_desc().iter() {
+                if att.name() == field_name.base_field() {
+                    // the table behind this index link contains this field
+                    return Some(index.clone());
+                }
             }
         }
     }

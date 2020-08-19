@@ -664,12 +664,12 @@ mod tests {
         validate_translog_durability(CString::new("foo").unwrap().as_ptr());
     }
 
-    #[test]
+    #[pg_test]
     fn test_valid_translog_durability_request() {
         validate_translog_durability(CString::new("request").unwrap().as_ptr());
     }
 
-    #[test]
+    #[pg_test]
     fn test_valid_translog_durability_async() {
         validate_translog_durability(CString::new("async").unwrap().as_ptr());
     }

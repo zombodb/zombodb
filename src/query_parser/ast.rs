@@ -50,6 +50,21 @@ pub struct IndexLink {
     pub right_field: Option<String>,
 }
 
+impl Default for IndexLink {
+    fn default() -> Self {
+        IndexLink {
+            name: None,
+            left_field: None,
+            qualified_index: QualifiedIndex {
+                schema: None,
+                table: "table".to_string(),
+                index: "index".to_string(),
+            },
+            right_field: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Opcode {
     Not,
