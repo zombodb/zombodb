@@ -29,7 +29,7 @@ pub mod pg_catalog {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct QualifiedIndex {
     pub schema: Option<String>,
     pub table: String,
@@ -42,7 +42,7 @@ pub struct QualifiedField<'input> {
     pub field: &'input str,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct IndexLink {
     pub name: Option<String>,
     pub left_field: Option<String>,
@@ -202,7 +202,13 @@ impl<'input> Expr<'input> {
         )?;
 
         find_fields(expr.as_mut(), &root_index, &linked_indexes);
-        assign_links(&root_index, expr.as_mut(), &linked_indexes);
+        if let Some(final_link) = assign_links(&root_index, expr.as_mut(), &linked_indexes) {
+            if final_link != root_index {
+                // the final link isn't the same as the root_index, so it needs to be wrapped
+                // in an Expr::Linked
+                return Ok(Expr::Linked(final_link, expr));
+            }
+        }
         Ok(*expr)
     }
 
@@ -535,7 +541,7 @@ impl<'input> Display for Expr<'input> {
                 write!(fmt, ")")
             }
 
-            Expr::Linked(_, e) => write!(fmt, "<{}>", e),
+            Expr::Linked(_, e) => write!(fmt, "{{{}}}", e),
 
             Expr::Json(s) => write!(fmt, "({})", s),
 

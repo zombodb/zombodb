@@ -92,18 +92,12 @@ AndExpression: Box<Expr<'input>> = {
         v.push(r);
         Box::new(Expr::AndList(v.into_iter().map(|b| *b).collect()))
     },
-    <l:AndExpression> <op:AndNotOp> <r:WithExpression> => Box::new(Expr::AndList(vec![*l, Expr::Not(r)])),
     WithExpression,
 };
 
 AndOp: Opcode = {
     AND => Opcode::And,
     AMPERSAND => Opcode::And,
-};
-
-AndNotOp: Opcode = {
-    NOT => Opcode::AndNot,
-    EXCLAMATION => Opcode::AndNot,
 };
 
 WithExpression: Box<Expr<'input>> = {
@@ -201,7 +195,8 @@ Comparison: Box<Expr<'input>> = {
 };
 
 ParentheticalGroup: Box<Expr<'input>> = {
-    O_PAREN <Expr> C_PAREN
+    O_PAREN <Expr> C_PAREN,
+    O_BRACE <Expr> C_BRACE,
 }
 
 FieldName: &'input str = {
