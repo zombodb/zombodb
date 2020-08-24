@@ -2,7 +2,7 @@ use crate::query_parser::ast::{IndexLink, QualifiedIndex};
 use pathfinding::prelude::*;
 use std::collections::{HashMap, HashSet};
 
-struct PathFinder {
+pub struct PathFinder {
     links: HashSet<IndexLink>,
     relationships: HashMap<QualifiedIndex, Vec<(IndexLink, usize)>>,
     root: IndexLink,
@@ -81,17 +81,13 @@ impl PathFinder {
             .push((reverse, cost));
     }
 
-    fn find_path(
-        &mut self,
-        start: &IndexLink,
-        end: &QualifiedIndex,
-    ) -> Option<(Vec<IndexLink>, usize)> {
+    pub fn find_path(&mut self, start: &IndexLink, end: &QualifiedIndex) -> Option<Vec<IndexLink>> {
         self.relationships.clear();
         self.define_relationships();
 
         let empty = Vec::new();
-        dijkstra(
-            &start,
+        match dijkstra(
+            start,
             |link| {
                 self.relationships
                     .get(&link.qualified_index)
@@ -100,7 +96,17 @@ impl PathFinder {
                     .map(|(l, c)| (l.clone(), *c))
             },
             |p| &p.qualified_index == end,
-        )
+        ) {
+            Some((paths, _)) => {
+                if self.root.eq(paths.get(0).as_ref().unwrap()) {
+                    // if the top node is our root node, we don't want to return it
+                    Some(paths[1..].to_vec())
+                } else {
+                    Some(paths)
+                }
+            }
+            None => None,
+        }
     }
 }
 
@@ -128,27 +134,23 @@ mod tests {
 
         assert_eq!(
             pf.find_path(&main, &main.qualified_index)
-                .expect("no path found")
-                .0,
+                .expect("no path found"),
             vec![main.clone()]
         );
         assert_eq!(
             pf.find_path(&main, &ft.qualified_index)
-                .expect("no path found")
-                .0,
+                .expect("no path found"),
             vec![main.clone(), ft.clone()]
         );
         assert_eq!(
             pf.find_path(&main, &junk.qualified_index)
-                .expect("no path found")
-                .0,
+                .expect("no path found"),
             vec![main.clone(), other.clone(), junk.clone()]
         );
 
         assert_eq!(
             pf.find_path(&ft, &vol.qualified_index)
-                .expect("no path found")
-                .0,
+                .expect("no path found"),
             vec![
                 ft.clone(),
                 IndexLink {

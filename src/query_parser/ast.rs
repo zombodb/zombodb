@@ -166,12 +166,7 @@ impl<'input> Expr<'input> {
         input: &'input str,
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
-        let root_index = IndexLink {
-            name: None,
-            left_field: None,
-            qualified_index: QualifiedIndex::from_relation(index),
-            right_field: None,
-        };
+        let root_index = IndexLink::from_relation(index);
 
         Expr::from_str_disconnected(
             default_fieldname,
@@ -313,6 +308,16 @@ impl QualifiedIndex {
         relation_name.push_str(&self.table);
         relation_name
     }
+
+    pub fn index_name(&self) -> String {
+        let mut relation_name = String::new();
+        if let Some(schema) = &self.schema {
+            relation_name.push_str(&schema);
+            relation_name.push('.');
+        }
+        relation_name.push_str(&self.index);
+        relation_name
+    }
 }
 
 impl IndexLink {
@@ -322,6 +327,15 @@ impl IndexLink {
         parser
             .parse(&mut HashSet::new(), &mut Vec::new(), &mut Vec::new(), input)
             .expect("failed to parse IndexLink")
+    }
+
+    pub fn from_relation(index: &PgRelation) -> Self {
+        IndexLink {
+            name: None,
+            left_field: None,
+            qualified_index: QualifiedIndex::from_relation(index),
+            right_field: None,
+        }
     }
 
     pub fn from_zdb(index: &PgRelation) -> Vec<Self> {
@@ -354,8 +368,12 @@ impl IndexLink {
             && self.qualified_index.index == "index"
     }
 
-    pub fn open(&self) -> std::result::Result<PgRelation, &str> {
+    pub fn open_table(&self) -> std::result::Result<PgRelation, &str> {
         PgRelation::open_with_name_and_share_lock(&self.qualified_index.table_name())
+    }
+
+    pub fn open_index(&self) -> std::result::Result<PgRelation, &str> {
+        PgRelation::open_with_name_and_share_lock(&self.qualified_index.index_name())
     }
 }
 
@@ -365,6 +383,18 @@ impl<'input> QualifiedField<'input> {
             Some(base) => base,
             None => self.field,
         }
+    }
+
+    pub fn field_name(&self) -> &str {
+        if let Some(index) = self.index.as_ref() {
+            if index.name == Some(self.base_field().to_string())
+                || &index.qualified_index.table == self.base_field()
+            {
+                return self.field.splitn(2, '.').last().unwrap();
+            }
+        }
+
+        return self.field;
     }
 }
 
