@@ -3,6 +3,8 @@ use pgx::*;
 use serde_json::json;
 use std::collections::HashSet;
 
+pub mod path_finder;
+
 #[pg_extern]
 fn dump_query(index: PgRelation, query: &str) -> JsonB {
     let mut used_fields = HashSet::new();

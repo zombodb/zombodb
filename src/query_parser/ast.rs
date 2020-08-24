@@ -316,6 +316,14 @@ impl QualifiedIndex {
 }
 
 impl IndexLink {
+    #[cfg(any(test, feature = "pg_test"))]
+    pub fn parse(input: &str) -> Self {
+        let parser = IndexLinkParser::new();
+        parser
+            .parse(&mut HashSet::new(), &mut Vec::new(), &mut Vec::new(), input)
+            .expect("failed to parse IndexLink")
+    }
+
     pub fn from_zdb(index: &PgRelation) -> Vec<Self> {
         let mut index_links = Vec::new();
 
