@@ -93,6 +93,8 @@ pub enum ComparisonOpcode {
 pub enum Term<'input> {
     Null,
     String(&'input str, Option<f32>),
+    Phrase(&'input str, Option<f32>),
+    PhraseWithWildcard(&'input str, Option<f32>),
     Wildcard(&'input str, Option<f32>),
     Regex(&'input str, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
@@ -137,19 +139,35 @@ impl<'input> Term<'input> {
         opcode: Option<&ComparisonOpcode>,
         expr: Term<'input>,
     ) -> Term<'input> {
-        match &expr {
+        match expr {
             Term::String(s, b) => {
                 if let Some(&ComparisonOpcode::Regex) = opcode {
-                    Term::Regex(s.clone(), *b)
+                    Term::Regex(s, b)
                 } else {
+                    let mut has_whitespace = false;
+                    let mut is_wildcard = false;
                     let mut prev = 0 as char;
                     for c in s.chars() {
-                        if (c == '*' || c == '?') && prev != '\\' {
-                            return Term::Wildcard(s.clone(), *b);
+                        if prev != '\\' {
+                            if c == '*' || c == '?' {
+                                is_wildcard = true;
+                            } else if c.is_whitespace() {
+                                has_whitespace = true;
+                            }
                         }
+
                         prev = c;
                     }
-                    expr
+
+                    if has_whitespace && is_wildcard {
+                        return Term::PhraseWithWildcard(s, b);
+                    } else if is_wildcard {
+                        return Term::Wildcard(s, b);
+                    } else if has_whitespace {
+                        return Term::Phrase(s, b);
+                    } else {
+                        expr
+                    }
                 }
             }
             _ => expr,
@@ -450,7 +468,11 @@ impl<'input> Display for Term<'input> {
         match self {
             Term::Null => write!(fmt, "NULL"),
 
-            Term::String(s, b) | Term::Wildcard(s, b) | Term::Regex(s, b) => {
+            Term::String(s, b)
+            | Term::Phrase(s, b)
+            | Term::PhraseWithWildcard(s, b)
+            | Term::Wildcard(s, b)
+            | Term::Regex(s, b) => {
                 write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;

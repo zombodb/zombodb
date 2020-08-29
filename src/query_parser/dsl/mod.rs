@@ -149,6 +149,21 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
         Term::String(s, b) => {
             json! { { "term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } }
         }
+        Term::Phrase(s, b) => {
+            json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+        }
+        Term::PhraseWithWildcard(s, b) => {
+            if s.chars().last() == Some('*')
+                && s.chars().filter(|c| *c == '*' || *c == '?').count() == 1
+            {
+                // phrase ends with an '*' and only has that wildcard character
+                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+            } else {
+                // TODO:  need to convert to a proximity chain
+                //        this will necessitate analyzing the phrase with ES
+                unimplemented!("phrases with non-right-truncated wildcards not supported yet")
+            }
+        }
         Term::Wildcard(w, b) => {
             json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0) } } } }
         }

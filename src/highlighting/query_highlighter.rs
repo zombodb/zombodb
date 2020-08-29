@@ -7,11 +7,12 @@ use std::collections::{HashMap, HashSet};
 struct QueryHighligther<'a> {
     query: Expr<'a>,
     highlighters: HashMap<&'a str, DocumentHighlighter<'a>>,
+    index: &'a PgRelation,
 }
 
 impl<'a> QueryHighligther<'a> {
     pub fn new(
-        index: &PgRelation,
+        index: &'a PgRelation,
         document: serde_json::Value,
         fields: &HashSet<&'a str>,
         query: Expr<'a>,
@@ -28,9 +29,7 @@ impl<'a> QueryHighligther<'a> {
                 let value =
                     serde_json::to_string(value).expect("unable to convert value to a string");
 
-                let mut dh = DocumentHighlighter::new();
-                dh.analyze_document(index, field, &value);
-
+                let dh = DocumentHighlighter::new(index, field, &value);
                 highlighters.insert(*field, dh);
             }
         });
@@ -38,6 +37,7 @@ impl<'a> QueryHighligther<'a> {
         QueryHighligther {
             highlighters,
             query,
+            index,
         }
     }
 
@@ -226,6 +226,23 @@ impl<'a> QueryHighligther<'a> {
         match term {
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token(s) {
+                    cnt = entries.len();
+                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                }
+            }
+            Term::Phrase(s, _) => {
+                if let Some(entries) =
+                    highlighter.highlight_phrase(self.index, field.field_name(), s)
+                {
+                    cnt = entries.len();
+                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                }
+            }
+            Term::PhraseWithWildcard(s, _) => {
+                // TODO:  need to convert this kind of phrase into a proximity chain
+                if let Some(entries) =
+                    highlighter.highlight_phrase(self.index, field.field_name(), s)
+                {
                     cnt = entries.len();
                     QueryHighligther::process_entries(expr, field, entries, highlights);
                 }

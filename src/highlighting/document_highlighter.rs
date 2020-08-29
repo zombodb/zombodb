@@ -28,6 +28,8 @@ enum DataType {
 pub struct DocumentHighlighter<'a> {
     lookup: HashMap<String, Vec<TokenEntry>>,
     data_type: Option<DataType>,
+    index: &'a PgRelation,
+    field: &'a str,
     __marker: PhantomData<&'a TokenEntry>,
 }
 
@@ -65,16 +67,21 @@ macro_rules! compare_integer {
 }
 
 impl<'a> DocumentHighlighter<'a> {
-    pub fn new() -> Self {
-        DocumentHighlighter {
+    pub fn new(index: &'a PgRelation, field: &'a str, text: &str) -> Self {
+        let mut result = DocumentHighlighter {
             lookup: HashMap::with_capacity(150),
             data_type: None,
+            index,
+            field,
             __marker: PhantomData,
-        }
+        };
+
+        result.analyze_document(text);
+        result
     }
 
-    pub fn analyze_document(&mut self, index: &PgRelation, field: &str, text: &str) {
-        let data_type = DocumentHighlighter::categorize_data_type(index, field);
+    fn analyze_document(&mut self, text: &str) {
+        let data_type = DocumentHighlighter::categorize_data_type(self.index, self.field);
 
         match &data_type {
             DataType::Float => {
@@ -100,9 +107,9 @@ impl<'a> DocumentHighlighter<'a> {
             }
 
             DataType::String => {
-                let es = Elasticsearch::new(index);
+                let es = Elasticsearch::new(self.index);
                 let results = es
-                    .analyze_with_field(field, text)
+                    .analyze_with_field(self.field, text)
                     .execute()
                     .expect("failed to analyze text for highlighting");
 
@@ -179,6 +186,11 @@ impl<'a> DocumentHighlighter<'a> {
     pub fn highlight_term(&'a self, term: &Term) -> Option<Vec<(String, &'a TokenEntry)>> {
         match term {
             Term::String(s, _) => self.highlight_token(s),
+            Term::Phrase(s, _) => self.highlight_phrase(self.index, self.field, s),
+            Term::PhraseWithWildcard(s, _) => {
+                // TODO:  need advanced way to convert this kind of phrase into a proximity chain
+                self.highlight_phrase(self.index, self.field, s)
+            }
             Term::Wildcard(w, _) => self.highlight_wildcard(w),
             Term::Regex(r, _) => self.highlight_regex(r),
             Term::Fuzzy(f, p, _) => self.highlight_fuzzy(f, *p),
@@ -304,7 +316,7 @@ impl<'a> DocumentHighlighter<'a> {
 
     pub fn highlight_phrase(
         &'a self,
-        index: PgRelation,
+        index: &PgRelation,
         field: &str,
         phrase_str: &str,
     ) -> Option<Vec<(String, &'a TokenEntry)>> {
@@ -312,7 +324,7 @@ impl<'a> DocumentHighlighter<'a> {
             return None;
         }
 
-        let elasticsearch = Elasticsearch::new(&index);
+        let elasticsearch = Elasticsearch::new(index);
         let result = elasticsearch
             .analyze_with_field(field, phrase_str)
             .execute()
@@ -472,8 +484,7 @@ fn highlight_term(
         name!(end_offset, i64),
     ),
 > {
-    let mut highlighter = DocumentHighlighter::new();
-    highlighter.analyze_document(&index, field_name, text);
+    let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_token(&token_to_highlight);
 
     match highlights {
@@ -511,9 +522,8 @@ fn highlight_phrase(
         name!(end_offset, i64),
     ),
 > {
-    let mut highlighter = DocumentHighlighter::new();
-    highlighter.analyze_document(&index, field_name, text);
-    let highlights = highlighter.highlight_phrase(index, field_name, tokens_to_highlight);
+    let highlighter = DocumentHighlighter::new(&index, field_name, text);
+    let highlights = highlighter.highlight_phrase(&index, field_name, tokens_to_highlight);
 
     match highlights {
         Some(vec) => vec
@@ -550,8 +560,7 @@ fn highlight_wildcard(
         name!(end_offset, i64),
     ),
 > {
-    let mut highlighter = DocumentHighlighter::new();
-    highlighter.analyze_document(&index, field_name, text);
+    let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_wildcard(token_to_highlight);
 
     match highlights {
@@ -589,8 +598,7 @@ fn highlight_regex(
         name!(end_offset, i64),
     ),
 > {
-    let mut highlighter = DocumentHighlighter::new();
-    highlighter.analyze_document(&index, field_name, text);
+    let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_regex(token_to_highlight);
 
     match highlights {
@@ -632,8 +640,7 @@ fn highlight_fuzzy(
     if prefix < 0 {
         panic!("negative prefixes not allowed");
     }
-    let mut highlighter = DocumentHighlighter::new();
-    highlighter.analyze_document(&index, field_name, text);
+    let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix as u8);
 
     match highlights {
@@ -676,8 +683,7 @@ fn highlight_proximity<'a>(
         .into_iter()
         .map(|e| e.unwrap())
         .collect::<Vec<ProximityPart>>();
-    let mut highlighter = DocumentHighlighter::new();
-    highlighter.analyze_document(&index, field_name, text);
+    let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_proximity(&prox_clause);
 
     match highlights {
@@ -713,12 +719,11 @@ mod tests {
     fn test_look_for_match_none() {
         let title = "look_for_match_none";
         start_table_and_index(title);
-        let mut dh = DocumentHighlighter::new();
 
         let index = unsafe {
             PgRelation::open_with_name("idxtest_highlighting_look_for_match_none").unwrap()
         };
-        dh.analyze_document(&index, "test_field", "this is a test");
+        let dh = DocumentHighlighter::new(&index, "test_field", "this is a test");
 
         let matches = dh
             .look_for_match(&vec![Term::String("test".into(), None)], 1, true, vec![0])
@@ -731,12 +736,11 @@ mod tests {
     fn test_look_for_match_in_order_one() {
         let title = "look_for_match_in_order";
         start_table_and_index(title);
-        let mut dh = DocumentHighlighter::new();
 
         let index = unsafe {
             PgRelation::open_with_name("idxtest_highlighting_look_for_match_in_order").unwrap()
         };
-        dh.analyze_document(&index, "test_field", "this is a test");
+        let dh = DocumentHighlighter::new(&index, "test_field", "this is a test");
 
         let matches = dh
             .look_for_match(&vec![Term::String("is".into(), None)], 0, true, vec![0])
@@ -760,11 +764,10 @@ mod tests {
     fn test_look_for_match_out_of_order_one() {
         let title = "look_for_match_out_of_order";
         start_table_and_index(title);
-        let mut dh = DocumentHighlighter::new();
         let index = unsafe {
             PgRelation::open_with_name("idxtest_highlighting_look_for_match_out_of_order").unwrap()
         };
-        dh.analyze_document(&index, "test_field", "this is a test");
+        let dh = DocumentHighlighter::new(&index, "test_field", "this is a test");
 
         let matches = dh
             .look_for_match(&vec![Term::String("this".into(), None)], 0, false, vec![1])
@@ -788,12 +791,11 @@ mod tests {
     fn test_look_for_match_in_order_two() {
         let title = "look_for_match_out_of_order_two";
         start_table_and_index(title);
-        let mut dh = DocumentHighlighter::new();
         let index = unsafe {
             PgRelation::open_with_name("idxtest_highlighting_look_for_match_out_of_order_two")
                 .unwrap()
         };
-        dh.analyze_document(
+        let dh = DocumentHighlighter::new(
             &index,
             "test_field",
             "this is a test and this is also a test",
@@ -831,12 +833,11 @@ mod tests {
     fn test_look_for_match_out_of_order_two() {
         let title = "look_for_match_out_of_order_two";
         start_table_and_index(title);
-        let mut dh = DocumentHighlighter::new();
         let index = unsafe {
             PgRelation::open_with_name("idxtest_highlighting_look_for_match_out_of_order_two")
                 .unwrap()
         };
-        dh.analyze_document(
+        let dh = DocumentHighlighter::new(
             &index,
             "test_field",
             "this is a test and this is also a test",
@@ -879,12 +880,11 @@ mod tests {
     fn test_look_for_match_in_order_two_different_dist() {
         let title = "look_for_match_in_order_two_diff_dist";
         start_table_and_index(title);
-        let mut dh = DocumentHighlighter::new();
         let index = unsafe {
             PgRelation::open_with_name("idxtest_highlighting_look_for_match_in_order_two_diff_dist")
                 .unwrap()
         };
-        dh.analyze_document(
+        let dh = DocumentHighlighter::new(
             &index,
             "test_field",
             "this is a test and this is also a test",
@@ -927,14 +927,13 @@ mod tests {
     fn test_look_for_match_out_of_order_two_diff_dist() {
         let title = "look_for_match_out_of_order_two_diff_dist";
         start_table_and_index(title);
-        let mut dh = DocumentHighlighter::new();
         let index = unsafe {
             PgRelation::open_with_name(
                 "idxtest_highlighting_look_for_match_out_of_order_two_diff_dist",
             )
             .unwrap()
         };
-        dh.analyze_document(
+        let dh = DocumentHighlighter::new(
             &index,
             "test_field",
             "this is a test and this is also a test",
