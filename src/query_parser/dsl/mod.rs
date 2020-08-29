@@ -180,9 +180,11 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
             for t in v {
                 match t {
                     Term::String(s, _) => strings.push(s),
-                    Term::Wildcard(_, _) | Term::Regex(_, _) | Term::Fuzzy(_, _, _) => {
-                        clauses.push(eq(field, t))
-                    }
+                    Term::Phrase(_, _)
+                    | Term::PhraseWithWildcard(_, _)
+                    | Term::Wildcard(_, _)
+                    | Term::Regex(_, _)
+                    | Term::Fuzzy(_, _, _) => clauses.push(eq(field, t)),
                     _ => panic!("unsupported term in an array: {:?}", t),
                 }
             }
