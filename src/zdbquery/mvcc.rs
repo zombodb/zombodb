@@ -34,25 +34,7 @@ pub fn apply_visibility_clause(
             .clone();
     }
 
-    let snapshot: PgBox<pg_sys::SnapshotData> =
-        PgBox::from_pg(unsafe { pg_sys::GetTransactionSnapshot() });
-    let command_id = unsafe { pg_sys::GetCurrentCommandId(false) };
-    let xmax = xid_to_64bit(snapshot.xmax);
-    let used_xids = get_executor_manager().used_xids();
-    let active_xids = {
-        let xips = unsafe { std::slice::from_raw_parts(snapshot.xip, snapshot.xcnt as usize) };
-        xips.iter()
-            .map(|xid| xid_to_64bit(*xid))
-            .collect::<Vec<u64>>()
-    };
-
-    let clause = build_visibility_clause(
-        elasticsearch.index_name(),
-        command_id,
-        xmax,
-        used_xids,
-        active_xids,
-    );
+    let clause = build_visibility_clause(elasticsearch.index_name());
 
     match query.query_dsl() {
         // wrap it with a filter for the visibility clause
@@ -70,13 +52,20 @@ pub fn apply_visibility_clause(
     }
 }
 
-fn build_visibility_clause(
-    index_name: &str,
-    command_id: pg_sys::CommandId,
-    xmax: u64,
-    used_xids: Vec<u64>,
-    active_xids: Vec<u64>,
-) -> serde_json::Value {
+pub fn build_visibility_clause(index_name: &str) -> serde_json::Value {
+    let snapshot: PgBox<pg_sys::SnapshotData> =
+        PgBox::from_pg(unsafe { pg_sys::GetTransactionSnapshot() });
+
+    let command_id = unsafe { pg_sys::GetCurrentCommandId(false) };
+    let xmax = xid_to_64bit(snapshot.xmax);
+    let used_xids = get_executor_manager().used_xids();
+    let active_xids = {
+        let xips = unsafe { std::slice::from_raw_parts(snapshot.xip, snapshot.xcnt as usize) };
+        xips.iter()
+            .map(|xid| xid_to_64bit(*xid))
+            .collect::<Vec<u64>>()
+    };
+
     json! {
 
         {

@@ -1,6 +1,7 @@
 use crate::access_method::options::ZDBIndexOptions;
 use crate::query_parser::ast::{ComparisonOpcode, Expr, IndexLink, QualifiedField, Term};
 use crate::query_parser::dsl::path_finder::PathFinder;
+use crate::zdbquery::mvcc::build_visibility_clause;
 use pgx::*;
 use serde_json::json;
 use std::collections::HashSet;
@@ -71,14 +72,23 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
                 let target_index = path.open_index().expect("failed to open index");
                 let index_options = ZDBIndexOptions::from(&target_index);
 
-                // TODO:  each level of 'current' needs to be wrapped in a visibility clause
+                let visibility_clause = build_visibility_clause(&index_options.index_name());
+                // let query = current;
+                let query = json! {
+                    {
+                        "bool": {
+                            "must": [current],
+                            "filter": [visibility_clause]
+                        }
+                    }
+                };
                 current = json! { {
                     "subselect": {
                         "index": index_options.index_name(),
                         "type": "_doc",
                         "left_fieldname": path.left_field,
                         "right_fieldname": path.right_field,
-                        "query": current
+                        "query": query
                     }
                 }}
             }
