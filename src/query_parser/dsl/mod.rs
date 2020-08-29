@@ -53,6 +53,11 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
         Expr::Contains(f, t) => term_to_dsl(f, t, ComparisonOpcode::Contains),
         Expr::Regex(f, t) => term_to_dsl(f, t, ComparisonOpcode::Regex),
 
+        Expr::Gt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Gt),
+        Expr::Gte(f, t) => term_to_dsl(f, t, ComparisonOpcode::Gte),
+        Expr::Lt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lt),
+        Expr::Lte(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lte),
+
         Expr::Linked(i, e) => {
             let mut pf = PathFinder::new(&root);
             IndexLink::from_zdb(&root.open_index().expect("failed to open index"))
@@ -149,6 +154,9 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
         }
         Term::Fuzzy(f, d, b) => {
             json! { { "fuzzy": { field.field_name(): { "value": f, "prefix_length": d, "boost": b.unwrap_or(1.0) } } } }
+        }
+        Term::Range(s, e, b) => {
+            json! { { "range": { field.field_name(): { "gte": s, "lte": e, "boost": b.unwrap_or(1.0) }} } }
         }
         Term::ParsedArray(v, _b) => {
             let mut strings = Vec::new();
