@@ -92,6 +92,7 @@ pub enum ComparisonOpcode {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Term<'input> {
     Null,
+    MatchAll,
     String(&'input str, Option<f32>),
     Phrase(&'input str, Option<f32>),
     PhraseWithWildcard(&'input str, Option<f32>),
@@ -143,6 +144,8 @@ impl<'input> Term<'input> {
             Term::String(s, b) => {
                 if let Some(&ComparisonOpcode::Regex) = opcode {
                     Term::Regex(s, b)
+                } else if s.len() == 1 && s.chars().nth(0) == Some('*') {
+                    Term::MatchAll
                 } else {
                     let mut has_whitespace = false;
                     let mut is_wildcard = false;
@@ -467,6 +470,8 @@ impl<'input> Display for Term<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
             Term::Null => write!(fmt, "NULL"),
+
+            Term::MatchAll => write!(fmt, "*"),
 
             Term::String(s, b)
             | Term::Phrase(s, b)

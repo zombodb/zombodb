@@ -185,6 +185,7 @@ impl<'a> DocumentHighlighter<'a> {
 
     pub fn highlight_term(&'a self, term: &Term) -> Option<Vec<(String, &'a TokenEntry)>> {
         match term {
+            Term::MatchAll => None,
             Term::String(s, _) => self.highlight_token(s),
             Term::Phrase(s, _) => self.highlight_phrase(self.index, self.field, s),
             Term::PhraseWithWildcard(s, _) => {

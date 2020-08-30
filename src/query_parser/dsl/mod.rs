@@ -50,7 +50,10 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
             let r = expr_to_dsl(root, r.as_ref());
             json! { { "bool": { "must_not": [r] } } }
         }
-        Expr::Contains(f, t) => term_to_dsl(f, t, ComparisonOpcode::Contains),
+        Expr::Contains(f, t) | Expr::Eq(f, t) => term_to_dsl(f, t, ComparisonOpcode::Contains),
+        Expr::DoesNotContain(f, t) | Expr::Ne(f, t) => {
+            term_to_dsl(f, t, ComparisonOpcode::DoesNotContain)
+        }
         Expr::Regex(f, t) => term_to_dsl(f, t, ComparisonOpcode::Regex),
 
         Expr::Gt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Gt),
@@ -112,11 +115,12 @@ pub fn term_to_dsl(
 ) -> serde_json::Value {
     match opcode {
         ComparisonOpcode::Contains | ComparisonOpcode::Eq => eq(field, term),
-        ComparisonOpcode::Regex => regex(field, term),
 
-        ComparisonOpcode::DoesNotContain => {
+        ComparisonOpcode::DoesNotContain | ComparisonOpcode::Ne => {
             json! { { "bool": { "must_not": [ eq(field, term) ] } } }
         }
+
+        ComparisonOpcode::Regex => regex(field, term),
 
         ComparisonOpcode::Gt => {
             let (v, b) = range(term);
@@ -134,7 +138,6 @@ pub fn term_to_dsl(
             let (v, b) = range(term);
             json! { { "range": { field.field_name(): { "lte": v, "boost": b.unwrap_or(1.0) }} } }
         }
-        ComparisonOpcode::Ne => json! { { "bool": { "must_not": [ eq(field, term) ] } } },
         // ComparisonOpcode::MoreLikeThis => {}
         // ComparisonOpcode::FuzzyLikeThis => {}
         _ => panic!("unsupported opcode {:?}", opcode),
@@ -145,6 +148,9 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
     match term {
         Term::Null => {
             json! { { "bool": { "must_not": [ { "exists": { "field": field.field_name() } } ] } } }
+        }
+        Term::MatchAll => {
+            json! { { "exists": { "field": field.field_name() } } }
         }
         Term::String(s, b) => {
             json! { { "term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } }

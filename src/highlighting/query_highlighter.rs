@@ -1,5 +1,5 @@
 use crate::highlighting::document_highlighter::*;
-use crate::query_parser::ast::*;
+use crate::query_parser::ast::{Expr, QualifiedField};
 use pgx::*;
 use pgx::{JsonB, PgRelation};
 use std::collections::{HashMap, HashSet};
@@ -224,6 +224,9 @@ impl<'a> QueryHighligther<'a> {
     ) -> bool {
         let mut cnt = 0;
         match term {
+            Term::MatchAll => {
+                // do nothing
+            }
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token(s) {
                     cnt = entries.len();
