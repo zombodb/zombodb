@@ -17,6 +17,19 @@ mod macros {
     }
 
     #[allow(non_snake_case)]
+    macro_rules! MatchAll {
+        ($operator:tt, $field:literal) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: Some(IndexLink::default()),
+                    field: $field,
+                },
+                crate::query_parser::ast::Term::MatchAll,
+            )
+        };
+    }
+
+    #[allow(non_snake_case)]
     macro_rules! String {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
             crate::query_parser::ast::Expr::$operator(
@@ -403,7 +416,7 @@ mod tests {
         assert_expr("*foo", Wildcard!(Contains, "_", "*foo"));
         assert_expr("*foo*", Wildcard!(Contains, "_", "*foo*"));
         assert_expr("f*o", Wildcard!(Contains, "_", "f*o"));
-        assert_expr("*", Wildcard!(Contains, "_", "*"));
+        assert_expr("*", MatchAll!(Contains, "_"));
     }
 
     #[pg_test]

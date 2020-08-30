@@ -135,17 +135,17 @@ mod tests {
         assert_eq!(
             pf.find_path(&main, &main.qualified_index)
                 .expect("no path found"),
-            vec![main.clone()]
+            vec![]
         );
         assert_eq!(
             pf.find_path(&main, &ft.qualified_index)
                 .expect("no path found"),
-            vec![main.clone(), ft.clone()]
+            vec![ft.clone()]
         );
         assert_eq!(
             pf.find_path(&main, &junk.qualified_index)
                 .expect("no path found"),
-            vec![main.clone(), other.clone(), junk.clone()]
+            vec![other.clone(), junk.clone()]
         );
 
         assert_eq!(

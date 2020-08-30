@@ -1,5 +1,5 @@
 use crate::highlighting::document_highlighter::*;
-use crate::query_parser::ast::{Expr, QualifiedField};
+use crate::query_parser::ast::{Expr, QualifiedField, Term};
 use pgx::*;
 use pgx::{JsonB, PgRelation};
 use std::collections::{HashMap, HashSet};
@@ -379,14 +379,13 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn text() {
-        let highlights = make_query_highlighter(
+        let highlights = highlight_document_with_query(
             "text",
             json! {{
                 "text": "beer"
             }},
             "text:beer",
-        )
-        .highlight();
+        );
 
         assert_vec(
             highlights,
@@ -397,14 +396,13 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn regex() {
-        let highlights = make_query_highlighter(
+        let highlights = highlight_document_with_query(
             "text",
             json! {{
                 "regex": "man"
             }},
             "regex:~'^m.*$'",
-        )
-        .highlight();
+        );
 
         assert_vec(
             highlights,
@@ -415,14 +413,13 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn parsed_array_without_quotes() {
-        let highlights = make_query_highlighter(
+        let highlights = highlight_document_with_query(
             "text",
             json! {{
                 "p_array": "a b c d e f g h i j"
             }},
             "p_array:[a,c,e,g,i]",
-        )
-        .highlight();
+        );
 
         assert_vec(
             highlights,
@@ -479,14 +476,13 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn parsed_array_with_quotes() {
-        let highlights = make_query_highlighter(
+        let highlights = highlight_document_with_query(
             "text",
             json! {{
                 "p_array": "a b c d e f g h i j"
             }},
             "p_array:['a','c','e','g','i']",
-        )
-        .highlight();
+        );
 
         assert_vec(
             highlights,
@@ -543,14 +539,13 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn unparsed_array() {
-        let highlights = make_query_highlighter(
+        let highlights = highlight_document_with_query(
             "text",
             json! {{
                 "unpar_array": "a, 1, \"bob\" ,b , 2, \"larry\",    c, 3, david selph"
             }},
             "unpar_array:[[a, b, c]]",
-        )
-        .highlight();
+        );
 
         assert_vec(
             highlights,
@@ -589,14 +584,13 @@ mod tests {
     #[pg_test]
     #[initialize(es = true)]
     fn unparsed_array_more_complex() {
-        let highlights = make_query_highlighter(
+        let highlights = highlight_document_with_query(
             "text",
             json! {{
                 "unpar_array": "a, 1, \"bob\" ,b _ 2, \"larry\",    c~ 3, david selph"
             }},
             "unpar_array:[[a, b, c]]",
-        )
-        .highlight();
+        );
 
         assert_vec(
             highlights,
@@ -676,16 +670,16 @@ mod tests {
         }
     }
 
-    fn make_query_highlighter<'a>(
+    fn highlight_document_with_query<'a>(
         table: &'a str,
         document: serde_json::Value,
         query_string: &'a str,
-    ) -> QueryHighligther<'a> {
+    ) -> Vec<(String, String, String, i32, i64, i64, String)> {
         let relation = start_table_and_index(table);
         let (query, used_fields) = make_query(&relation, query_string);
         pgx::info!("used_fields={:?}", used_fields);
         pgx::info!("query={:?}", query);
-        QueryHighligther::new(&relation, document, &used_fields, query)
+        QueryHighligther::new(&relation, document, &used_fields, query).highlight()
     }
 
     fn make_query<'a>(relation: &PgRelation, input: &'a str) -> (Expr<'a>, HashSet<&'a str>) {
