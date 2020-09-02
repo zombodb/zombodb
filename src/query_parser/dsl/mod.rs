@@ -12,7 +12,7 @@ pub mod path_finder;
 fn dump_query(index: PgRelation, query: &str) -> String {
     let mut used_fields = HashSet::new();
     let query =
-        Expr::from_str(&index, "_zdb_all", query, &mut used_fields).expect("failed to parse query");
+        Expr::from_str(&index, "zdb_all", query, &mut used_fields).expect("failed to parse query");
 
     serde_json::to_string_pretty(&expr_to_dsl(&IndexLink::from_relation(&index), &query))
         .expect("failed to convert DSL to text")
@@ -22,7 +22,7 @@ fn dump_query(index: PgRelation, query: &str) -> String {
 fn debug_query(index: PgRelation, query: &str) -> String {
     let mut used_fields = HashSet::new();
     let query =
-        Expr::from_str(&index, "_zdb_all", query, &mut used_fields).expect("failed to parse query");
+        Expr::from_str(&index, "zdb_all", query, &mut used_fields).expect("failed to parse query");
 
     let mut tree = format!("{:#?}", query);
     tree = tree.replace("\n", "\n   ");

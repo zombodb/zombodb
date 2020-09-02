@@ -1,9 +1,10 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
+use crate::query_parser::parse_field_lists;
 use lazy_static::*;
 use memoffset::*;
 use pgx::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::{CStr, CString};
 use std::fmt::Debug;
 
@@ -50,6 +51,7 @@ struct ZDBIndexOptionsInternal {
     uuid_offset: i32,
     translog_durability_offset: i32,
     options_offset: i32,
+    field_lists_offset: i32,
 
     optimize_after: i32,
     compression_level: i32,
@@ -167,6 +169,15 @@ impl ZDBIndexOptionsInternal {
         }
     }
 
+    fn field_lists(&self) -> Option<HashMap<String, Vec<String>>> {
+        let value = self.get_str(self.field_lists_offset, || "".to_owned());
+        if value.is_empty() {
+            None
+        } else {
+            Some(parse_field_lists(&value))
+        }
+    }
+
     fn get_str<F: FnOnce() -> String>(&self, offset: i32, default: F) -> String {
         if offset == 0 {
             default()
@@ -190,6 +201,7 @@ pub struct ZDBIndexOptions {
     uuid: String,
     translog_durability: String,
     links: Option<Vec<String>>,
+    field_lists: Option<HashMap<String, Vec<String>>>,
 
     optimize_after: i32,
     compression_level: i32,
@@ -213,6 +225,7 @@ impl ZDBIndexOptions {
             alias: internal.alias(&heap_relation, relation),
             uuid: internal.uuid(&heap_relation, relation),
             links: internal.links(),
+            field_lists: internal.field_lists(),
             compression_level: internal.compression_level,
             shards: internal.shards,
             replicas: internal.replicas,
@@ -286,6 +299,10 @@ impl ZDBIndexOptions {
 
     pub fn links(&self) -> &Option<Vec<String>> {
         &self.links
+    }
+
+    pub fn field_lists(&self) -> &Option<HashMap<String, Vec<String>>> {
+        &self.field_lists
     }
 }
 
@@ -396,6 +413,18 @@ extern "C" fn validate_options(value: *const std::os::raw::c_char) {
     return;
 }
 
+#[pg_guard]
+extern "C" fn validate_field_lists(value: *const std::os::raw::c_char) {
+    if value.is_null() {
+        // null is fine
+        return;
+    }
+
+    let input = unsafe { CStr::from_ptr(value) };
+    let input = input.to_str().expect("options is not valid UTF8");
+    parse_field_lists(input);
+}
+
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -403,7 +432,7 @@ pub unsafe extern "C" fn amoptions(
     validate: bool,
 ) -> *mut pg_sys::bytea {
     // TODO:  how to make this const?  we can't use offset_of!() macro in const definitions, apparently
-    let tab: [pg_sys::relopt_parse_elt; 14] = [
+    let tab: [pg_sys::relopt_parse_elt; 15] = [
         pg_sys::relopt_parse_elt {
             optname: CStr::from_bytes_with_nul_unchecked(b"url\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
@@ -473,6 +502,11 @@ pub unsafe extern "C" fn amoptions(
             optname: CStr::from_bytes_with_nul_unchecked(b"options\0").as_ptr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, options_offset) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: CStr::from_bytes_with_nul_unchecked(b"field_lists\0").as_ptr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            offset: offset_of!(ZDBIndexOptionsInternal, field_lists_offset) as i32,
         },
     ];
 
@@ -628,6 +662,14 @@ pub unsafe fn init() {
         CStr::from_bytes_with_nul_unchecked(b"ZomboDB Index Linking options").as_ptr(),
         std::ptr::null(),
         Some(validate_options),
+    );
+    pg_sys::add_string_reloption(
+        RELOPT_KIND_ZDB,
+        CStr::from_bytes_with_nul_unchecked(b"field_lists\0").as_ptr(),
+        CStr::from_bytes_with_nul_unchecked(b"Combine fields into named lists during search")
+            .as_ptr(),
+        std::ptr::null(),
+        Some(validate_field_lists),
     );
 }
 

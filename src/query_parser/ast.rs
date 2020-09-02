@@ -1,7 +1,7 @@
 use crate::query_parser::parser::{IndexLinkParser, Token};
 use lalrpop_util::ParseError;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -12,6 +12,7 @@ pub struct ProximityDistance {
 
 use crate::access_method::options::ZDBIndexOptions;
 use crate::query_parser::transformations::field_finder::find_fields;
+use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
 pub use pg_catalog::ProximityPart;
 use pgx::PgRelation;
@@ -37,9 +38,9 @@ pub struct QualifiedIndex {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct QualifiedField<'input> {
+pub struct QualifiedField {
     pub index: Option<IndexLink>,
-    pub field: &'input str,
+    pub field: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -122,17 +123,17 @@ pub enum Expr<'input> {
 
     // types of comparisons
     Json(String),
-    Contains(QualifiedField<'input>, Term<'input>),
-    Eq(QualifiedField<'input>, Term<'input>),
-    Gt(QualifiedField<'input>, Term<'input>),
-    Lt(QualifiedField<'input>, Term<'input>),
-    Gte(QualifiedField<'input>, Term<'input>),
-    Lte(QualifiedField<'input>, Term<'input>),
-    Ne(QualifiedField<'input>, Term<'input>),
-    DoesNotContain(QualifiedField<'input>, Term<'input>),
-    Regex(QualifiedField<'input>, Term<'input>),
-    MoreLikeThis(QualifiedField<'input>, Term<'input>),
-    FuzzyLikeThis(QualifiedField<'input>, Term<'input>),
+    Contains(QualifiedField, Term<'input>),
+    Eq(QualifiedField, Term<'input>),
+    Gt(QualifiedField, Term<'input>),
+    Lt(QualifiedField, Term<'input>),
+    Gte(QualifiedField, Term<'input>),
+    Lte(QualifiedField, Term<'input>),
+    Ne(QualifiedField, Term<'input>),
+    DoesNotContain(QualifiedField, Term<'input>),
+    Regex(QualifiedField, Term<'input>),
+    MoreLikeThis(QualifiedField, Term<'input>),
+    FuzzyLikeThis(QualifiedField, Term<'input>),
 }
 
 impl<'input> Term<'input> {
@@ -188,6 +189,7 @@ impl<'input> Expr<'input> {
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         let root_index = IndexLink::from_relation(index);
+        let zdboptions = ZDBIndexOptions::from(index);
 
         Expr::from_str_disconnected(
             default_fieldname,
@@ -195,6 +197,7 @@ impl<'input> Expr<'input> {
             used_fields,
             root_index,
             IndexLink::from_zdb(index),
+            zdboptions.field_lists(),
         )
     }
 
@@ -204,6 +207,7 @@ impl<'input> Expr<'input> {
         used_fields: &mut HashSet<&'input str>,
         root_index: IndexLink,
         linked_indexes: Vec<IndexLink>,
+        field_lists: &Option<HashMap<String, Vec<String>>>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         let input = input.clone();
         let parser = crate::query_parser::parser::ExprParser::new();
@@ -216,6 +220,10 @@ impl<'input> Expr<'input> {
             &mut operator_stack,
             input,
         )?;
+
+        if field_lists.is_some() {
+            expand_field_lists(expr.as_mut(), field_lists.as_ref().unwrap());
+        }
 
         find_fields(expr.as_mut(), &root_index, &linked_indexes);
         if let Some(final_link) = assign_links(&root_index, expr.as_mut(), &linked_indexes) {
@@ -233,7 +241,10 @@ impl<'input> Expr<'input> {
         opcode: ComparisonOpcode,
         right: Term<'input>,
     ) -> Expr<'input> {
-        let field_name = QualifiedField { index: None, field };
+        let field_name = QualifiedField {
+            index: None,
+            field: field.to_string(),
+        };
 
         match opcode {
             ComparisonOpcode::Contains => Expr::Contains(field_name, right),
@@ -257,7 +268,10 @@ impl<'input> Expr<'input> {
         end: &'input str,
         boost: Option<f32>,
     ) -> Expr<'input> {
-        let field_name = QualifiedField { index: None, field };
+        let field_name = QualifiedField {
+            index: None,
+            field: field.to_string(),
+        };
 
         let range = Term::Range(start, end, boost);
         match opcode {
@@ -398,24 +412,24 @@ impl IndexLink {
     }
 }
 
-impl<'input> QualifiedField<'input> {
-    pub fn base_field(&self) -> &str {
+impl<'input> QualifiedField {
+    pub fn base_field(&self) -> String {
         match self.field.split('.').next() {
-            Some(base) => base,
-            None => self.field,
+            Some(base) => base.to_string(),
+            None => self.field.to_string(),
         }
     }
 
-    pub fn field_name(&self) -> &str {
+    pub fn field_name(&self) -> String {
         if let Some(index) = self.index.as_ref() {
             if index.name == Some(self.base_field().to_string())
-                || &index.qualified_index.table == self.base_field()
+                || &index.qualified_index.table == &self.base_field()
             {
-                return self.field.splitn(2, '.').last().unwrap();
+                return self.field.splitn(2, '.').last().unwrap().to_string();
             }
         }
 
-        return self.field;
+        return self.field.clone();
     }
 }
 
@@ -429,7 +443,7 @@ impl Display for QualifiedIndex {
     }
 }
 
-impl<'input> Display for QualifiedField<'input> {
+impl Display for QualifiedField {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{}", self.field)
     }

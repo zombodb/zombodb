@@ -1,10 +1,27 @@
 #![allow(unused_macros)]
 
+use std::collections::{HashMap, HashSet};
+
 pub mod ast;
 pub mod dsl;
 pub mod parser;
 
 pub(crate) mod transformations;
+
+pub(crate) fn parse_field_lists(input: &str) -> HashMap<String, Vec<String>> {
+    let parser = crate::query_parser::parser::FieldListParser::new();
+    let mut used_fields = HashSet::new();
+    let mut fieldname_stack = Vec::new();
+    let mut operator_stack = Vec::new();
+    parser
+        .parse(
+            &mut used_fields,
+            &mut fieldname_stack,
+            &mut operator_stack,
+            input,
+        )
+        .expect("failed to parse field lists")
+}
 
 #[cfg(any(test, feature = "pg_test"))]
 #[macro_use]

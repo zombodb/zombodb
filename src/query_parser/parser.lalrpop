@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::collections::HashSet;
 use crate::query_parser::ast::*;
+use std::collections::HashMap;
 
 grammar(used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>);
 
@@ -410,3 +411,31 @@ JsonLiteral: &'input str = {
     FLOAT,
     DOUBLE_QUOTED_VALUE,
 };
+
+
+pub FieldList: HashMap<String, Vec<String>> = {
+    <mut field_lists:(<NamedFieldList> COMMA)*> <e:NamedFieldList> => {
+        field_lists.push(e);
+        let mut map = HashMap::new();
+        for field in field_lists {
+            if map.contains_key(&field.0) {
+                panic!("duplicate named field lists: {}", field.0);
+            }
+            map.insert(field.0.into(), field.1);
+        }
+        map
+    }
+};
+
+NamedFieldList: (String, Vec<String>) = {
+    <name:FieldName> COLON O_BRACKET <list:FieldNameList> C_BRACKET => {
+        (name.into(), list)
+    }
+};
+
+FieldNameList: Vec<String> = {
+    <mut v:(<FieldName> COMMA)*> <e:FieldName> => {
+        v.push(e);
+        v.into_iter().map(|e| e.into()).collect()
+    }
+}
