@@ -39,7 +39,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::MatchAll,
             )
@@ -52,7 +52,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::String($val.into(), Some($boost)),
             )
@@ -61,7 +61,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::String($val.into(), None),
             )
@@ -70,7 +70,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::String($val.into(), None),
             )
@@ -86,7 +86,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::Wildcard($val.into(), Some($boost)),
             )
@@ -95,7 +95,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::Wildcard($val.into(), None),
             )
@@ -111,7 +111,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::Regex($val.into(), Some($boost)),
             )
@@ -120,7 +120,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::Regex($val.into(), None),
             )
@@ -136,7 +136,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::Fuzzy($val, $slop, Some($boost)),
             )
@@ -145,7 +145,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::Fuzzy($val, $slop, None),
             )
@@ -161,7 +161,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::UnparsedArray($val, Some($boost)),
             )
@@ -170,7 +170,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField {
                     index: Some(IndexLink::default()),
-                    field: $field,
+                    field: $field.into(),
                 },
                 crate::query_parser::ast::Term::UnparsedArray($val, None),
             )
@@ -186,7 +186,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField{
                     index: Some(IndexLink::default()),
-                    field: $field
+                    field: $field.into()
                 },
                 crate::query_parser::ast::Term::ParsedArray(
                     vec![$($elements),*],
@@ -202,7 +202,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField{
                     index: Some(IndexLink::default()),
-                    field: $field
+                    field: $field.into()
                 },
                 crate::query_parser::ast::Term::ParsedArray(
                     vec![$($elements),*],
@@ -218,7 +218,7 @@ mod macros {
             crate::query_parser::ast::Expr::$operator(
                 crate::query_parser::ast::QualifiedField{
                     index: Some(IndexLink::default()),
-                    field: $field
+                    field: $field.into()
                 },
                 crate::query_parser::ast::Term::ProximityChain(vec![$($parts),*])
             )
@@ -299,6 +299,7 @@ mod tests {
                 right_field: None,
             },
             Vec::new(),
+            &None,
         )
     }
 
