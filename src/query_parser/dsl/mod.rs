@@ -1,4 +1,5 @@
 use crate::access_method::options::ZDBIndexOptions;
+use crate::gucs::ZDB_IGNORE_VISIBILITY;
 use crate::query_parser::ast::{ComparisonOpcode, Expr, IndexLink, QualifiedField, Term};
 use crate::query_parser::dsl::path_finder::PathFinder;
 use crate::zdbquery::mvcc::build_visibility_clause;
@@ -80,13 +81,17 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
                 let target_index = path.open_index().expect("failed to open index");
                 let index_options = ZDBIndexOptions::from(&target_index);
 
-                let visibility_clause = build_visibility_clause(&index_options.index_name());
-                // let query = current;
-                let query = json! {
-                    {
-                        "bool": {
-                            "must": [current],
-                            "filter": [visibility_clause]
+                let query = if ZDB_IGNORE_VISIBILITY.get() {
+                    current
+                } else {
+                    let visibility_clause = build_visibility_clause(&index_options.index_name());
+                    // let query = current;
+                    json! {
+                        {
+                            "bool": {
+                                "must": [current],
+                                "filter": [visibility_clause]
+                            }
                         }
                     }
                 };
