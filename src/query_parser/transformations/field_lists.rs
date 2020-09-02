@@ -81,7 +81,6 @@ fn make_or_list<'a, F: Fn(QualifiedField, Term) -> Expr>(
     if let Some(fields) = lists.get(&source_field.field_name()) {
         let mut or_list = Vec::new();
         for field in fields {
-            pgx::info!("{}={}", source_field, field);
             or_list.push(make_expr(field, term, &f))
         }
         Some(Expr::OrList(or_list))
