@@ -71,7 +71,7 @@ impl ElasticsearchAnalyzerRequest {
                 "text":analyze_text
                 }
             ),
-            url: format!("{}_analyze", elasticsearch.url()),
+            url: format!("{}/_analyze", elasticsearch.base_url()),
         }
     }
 

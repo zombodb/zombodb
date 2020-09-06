@@ -395,9 +395,13 @@ impl Scroller {
                             continue;
                         }
 
-                        sender
-                            .send((hit.score.unwrap_or_default(), ctid, fields, highlight))
-                            .expect("failed to send hit over sender");
+                        if let Err(_) =
+                            sender.send((hit.score.unwrap_or_default(), ctid, fields, highlight))
+                        {
+                            // couldn't send the result, and that's okay, the receiving end has probably been closed
+                            // or otherwise cancelled by Postgres
+                            break;
+                        }
                     }
                 }
             })
