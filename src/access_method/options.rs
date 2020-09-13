@@ -777,7 +777,7 @@ mod tests {
         assert_eq!(options.type_name(), DEFAULT_TYPE_NAME);
         assert_eq!(
             &options.alias(),
-            &format!("pgx_tests.public.test.idxtest-{}", indexrel.oid())
+            &format!("pgx_tests.tests.test.idxtest-{}", indexrel.oid())
         );
         assert_eq!(
             &options.uuid(),
