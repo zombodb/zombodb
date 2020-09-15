@@ -126,10 +126,10 @@ pub fn term_to_dsl(
     opcode: ComparisonOpcode,
 ) -> serde_json::Value {
     match opcode {
-        ComparisonOpcode::Contains | ComparisonOpcode::Eq => eq(field, term),
+        ComparisonOpcode::Contains | ComparisonOpcode::Eq => eq(field, term, false),
 
         ComparisonOpcode::DoesNotContain | ComparisonOpcode::Ne => {
-            json! { { "bool": { "must_not": [ eq(field, term) ] } } }
+            json! { { "bool": { "must_not": [ eq(field, term, false) ] } } }
         }
 
         ComparisonOpcode::Regex => regex(field, term),
@@ -156,8 +156,8 @@ pub fn term_to_dsl(
     }
 }
 
-fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
-    match term {
+fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
+    let clause = match term {
         Term::Null => {
             json! { { "bool": { "must_not": [ { "exists": { "field": field.field_name() } } ] } } }
         }
@@ -165,9 +165,14 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
             json! { { "exists": { "field": field.field_name() } } }
         }
         Term::String(s, b) => {
-            json! { { "term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } }
+            if is_span {
+                return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
+            } else {
+                json! { { "term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } }
+            }
         }
         Term::Phrase(s, b) => {
+            // TODO:  convert to proximity if 'is_span'
             json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
         }
         Term::PhraseWithWildcard(s, b) => {
@@ -205,7 +210,7 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
                     | Term::PhraseWithWildcard(_, _)
                     | Term::Wildcard(_, _)
                     | Term::Regex(_, _)
-                    | Term::Fuzzy(_, _, _) => clauses.push(eq(field, t)),
+                    | Term::Fuzzy(_, _, _) => clauses.push(eq(field, t, false)),
                     _ => panic!("unsupported term in an array: {:?}", t),
                 }
             }
@@ -228,8 +233,57 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
 
             json! { { "terms": { field.field_name(): tokens } } }
         }
-        Term::ProximityChain(parts) => panic!("proximity chain not implemented yet"),
+        Term::ProximityChain(parts) => {
+            let mut clauses = Vec::new();
+
+            for part in parts {
+                if part.words.len() == 1 {
+                    clauses.push((eq(field, part.words.get(0).unwrap(), true), &part.distance));
+                } else {
+                    let mut spans = Vec::new();
+                    for word in &part.words {
+                        spans.push(eq(field, word, true));
+                    }
+
+                    clauses.push((
+                        json! {
+                            { "span_or": { "clauses": spans } }
+                        },
+                        &part.distance,
+                    ));
+                }
+            }
+
+            let mut span_near = None;
+            let mut clauses = clauses.into_iter();
+            while let Some((clause, distance)) = clauses.next() {
+                let distance = distance.as_ref().unwrap();
+                let span = if let Some((next_clause, _)) = clauses.next() {
+                    json! {
+                        { "span_near": { "clauses": [ clause, next_clause ], "slop": distance.distance, "in_order": distance.in_order } }
+                    }
+                } else {
+                    clause
+                };
+
+                span_near = Some(if span_near.is_none() {
+                    span
+                } else {
+                    json! {
+                        { "span_near": { "clauses": [ span_near, span ], "slop": distance.distance, "in_order": distance.in_order } }
+                    }
+                });
+            }
+
+            span_near.expect("did not generate a span_near clause")
+        }
         _ => panic!("unsupported Term: {:?}", term),
+    };
+
+    if is_span {
+        json! { { "span_multi": { "match": clause } } }
+    } else {
+        clause
     }
 }
 
