@@ -308,6 +308,46 @@ impl<'input> Expr<'input> {
         }
         flat
     }
+
+    pub fn nested_path(exprs: &Vec<Expr<'input>>) -> Option<String> {
+        let mut path = None;
+
+        for e in exprs {
+            let local_path = e.get_nested_path();
+
+            if path.is_none() {
+                path = local_path;
+            } else if path != local_path {
+                return None;
+            }
+        }
+
+        path
+    }
+
+    pub fn get_nested_path(&self) -> Option<String> {
+        match self {
+            Expr::Subselect(_, _) => panic!("#subselect not supported in WITH clauses"),
+            Expr::Expand(_, _) => panic!("#expand not supported in WITH clauses"),
+            Expr::Not(e) => e.get_nested_path(),
+            Expr::WithList(v) => Expr::nested_path(v),
+            Expr::AndList(v) => Expr::nested_path(v),
+            Expr::OrList(v) => Expr::nested_path(v),
+            Expr::Linked(_, e) => e.get_nested_path(),
+            Expr::Json(_) => panic!("json not supported in WITH clauses"),
+            Expr::Contains(f, _) => f.nested_path(),
+            Expr::Eq(f, _) => f.nested_path(),
+            Expr::Gt(f, _) => f.nested_path(),
+            Expr::Lt(f, _) => f.nested_path(),
+            Expr::Gte(f, _) => f.nested_path(),
+            Expr::Lte(f, _) => f.nested_path(),
+            Expr::Ne(f, _) => f.nested_path(),
+            Expr::DoesNotContain(f, _) => f.nested_path(),
+            Expr::Regex(f, _) => f.nested_path(),
+            Expr::MoreLikeThis(f, _) => f.nested_path(),
+            Expr::FuzzyLikeThis(f, _) => f.nested_path(),
+        }
+    }
 }
 
 impl Display for ProximityDistance {
@@ -412,12 +452,17 @@ impl IndexLink {
     }
 }
 
-impl<'input> QualifiedField {
-    pub fn base_field(&self) -> String {
-        match self.field.split('.').next() {
-            Some(base) => base.to_string(),
-            None => self.field.to_string(),
+impl QualifiedField {
+    pub fn nested_path(&self) -> Option<String> {
+        if self.field.contains('.') {
+            self.field.split('.').next().map(|v| v.to_string())
+        } else {
+            None
         }
+    }
+
+    pub fn base_field(&self) -> String {
+        self.field.split('.').next().map(|v| v.to_string()).unwrap()
     }
 
     pub fn field_name(&self) -> String {

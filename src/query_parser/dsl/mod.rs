@@ -35,10 +35,15 @@ fn debug_query(index: PgRelation, query: &str) -> String {
 
 pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
     match expr {
-        Expr::WithList(v) => {
-            let _dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
-            panic!("WITH clauses not supported yet")
-        }
+        Expr::WithList(v) => match Expr::nested_path(v) {
+            Some(path) => {
+                let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
+                json! {
+                    { "nested": { "path": path, "query": { "bool": { "must": dsl } } } }
+                }
+            }
+            None => panic!("could not determine nested path"),
+        },
         Expr::AndList(v) => {
             let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
             json! { { "bool": { "must": dsl } } }
