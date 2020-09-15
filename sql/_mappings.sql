@@ -297,6 +297,7 @@ VALUES ('text', '{
   "type": "text",
   "copy_to": "zdb_all",
   "fielddata": true,
+  "index_prefixes": { },
   "analyzer": "zdb_standard"
 }', true);
 
