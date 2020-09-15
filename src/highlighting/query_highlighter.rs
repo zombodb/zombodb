@@ -291,7 +291,8 @@ impl<'a> QueryHighligther<'a> {
             Term::UnparsedArray(s, _) => {
                 let mut term_vec = Vec::new();
                 for t in s
-                    .split_terminator(|c: char| !(c.is_alphanumeric() || c == '_'))
+                    .split(|c: char| c.is_whitespace() || ",\"'[]".contains(c))
+                    .filter(|v| !v.is_empty())
                     .into_iter()
                 {
                     term_vec.push(Term::String(t, None))

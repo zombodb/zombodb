@@ -216,6 +216,14 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
                 json! { { "bool": { "should": clauses } } }
             }
         }
+        Term::UnparsedArray(s, _b) => {
+            let tokens: Vec<&str> = s
+                .split(|c: char| c.is_whitespace() || ",\"'[]".contains(c))
+                .filter(|v| !v.is_empty())
+                .collect();
+
+            json! { { "terms": { field.field_name(): tokens } } }
+        }
         _ => panic!("unsupported Term: {:?}", term),
     }
 }
