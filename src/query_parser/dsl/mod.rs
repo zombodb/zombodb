@@ -67,6 +67,8 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
         Expr::Lt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lt),
         Expr::Lte(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lte),
 
+        Expr::Json(json) => serde_json::from_str(&json).expect("failed to parse json expression"),
+
         Expr::Linked(i, e) => {
             let mut pf = PathFinder::new(&root);
             IndexLink::from_zdb(&root.open_index().expect("failed to open index"))
@@ -169,10 +171,7 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
             json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
         }
         Term::PhraseWithWildcard(s, b) => {
-            if s.chars().last() == Some('*')
-                && s.chars().filter(|c| *c == '*').count() == 1
-                && s.chars().filter(|c| *c == '?').count() == 0
-            {
+            if term.is_prefix_wildcard() {
                 // phrase ends with an '*' and only has that wildcard character
                 json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
             } else {
@@ -182,7 +181,12 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
             }
         }
         Term::Wildcard(w, b) => {
-            json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0) } } } }
+            if term.is_prefix_wildcard() {
+                // only has 1 '*' at the end, so we can write a prefix query
+                json! { { "prefix": { field.field_name(): { "value": w[..w.len()-1], "boost": b.unwrap_or(1.0) } } } }
+            } else {
+                json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0) } } } }
+            }
         }
         Term::Fuzzy(f, d, b) => {
             json! { { "fuzzy": { field.field_name(): { "value": f, "prefix_length": d, "boost": b.unwrap_or(1.0) } } } }
@@ -224,6 +228,7 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
 
             json! { { "terms": { field.field_name(): tokens } } }
         }
+        Term::ProximityChain(parts) => panic!("proximity chain not implemented yet"),
         _ => panic!("unsupported Term: {:?}", term),
     }
 }

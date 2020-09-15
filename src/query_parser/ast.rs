@@ -177,6 +177,17 @@ impl<'input> Term<'input> {
             _ => expr,
         }
     }
+
+    pub fn is_prefix_wildcard(&self) -> bool {
+        match self {
+            Term::Wildcard(s, _) | Term::PhraseWithWildcard(s, _) => {
+                s.chars().last() == Some('*')
+                    && s.chars().filter(|c| *c == '*').count() == 1
+                    && s.chars().filter(|c| *c == '?').count() == 0
+            }
+            _ => false,
+        }
+    }
 }
 
 pub type ParserError<'input> = ParseError<usize, Token<'input>, &'static str>;
