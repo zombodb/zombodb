@@ -170,7 +170,8 @@ fn eq(field: &QualifiedField, term: &Term) -> serde_json::Value {
         }
         Term::PhraseWithWildcard(s, b) => {
             if s.chars().last() == Some('*')
-                && s.chars().filter(|c| *c == '*' || *c == '?').count() == 1
+                && s.chars().filter(|c| *c == '*').count() == 1
+                && s.chars().filter(|c| *c == '?').count() == 0
             {
                 // phrase ends with an '*' and only has that wildcard character
                 json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
