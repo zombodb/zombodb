@@ -635,6 +635,7 @@ mod tests {
                 "analyzer": "zdb_standard",
                 "copy_to": "zdb_all",
                 "fielddata": true,
+                "index_prefixes": {},
                 "type": "text"
               },
               "zdb_aborted_xids": {
