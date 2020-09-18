@@ -1,7 +1,7 @@
 use crate::query_parser::parser::{IndexLinkParser, Token};
 use lalrpop_util::ParseError;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -11,21 +11,33 @@ pub struct ProximityDistance {
 }
 
 use crate::access_method::options::ZDBIndexOptions;
+use crate::elasticsearch::Elasticsearch;
 use crate::query_parser::transformations::field_finder::find_fields;
 use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
 pub use pg_catalog::ProximityPart;
+pub use pg_catalog::ProximityTerm;
 use pgx::PgRelation;
 
 pub mod pg_catalog {
-    use crate::query_parser::ast::{ProximityDistance, Term};
+    use crate::query_parser::ast::ProximityDistance;
     use pgx::*;
     use serde::{Deserialize, Serialize};
 
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub enum ProximityTerm {
+        String(String),
+        Phrase(String),
+        Wildcard(String),
+        PhraseWithWildcard(String),
+        Fuzzy(String, u8),
+        Regex(String),
+        ProximityChain(Vec<ProximityPart>),
+    }
+
     #[derive(Debug, Clone, PartialEq, PostgresType, Serialize, Deserialize)]
-    pub struct ProximityPart<'input> {
-        #[serde(borrow)]
-        pub words: Vec<Term<'input>>,
+    pub struct ProximityPart {
+        pub words: Vec<ProximityTerm>,
         pub distance: Option<ProximityDistance>,
     }
 }
@@ -104,7 +116,7 @@ pub enum Term<'input> {
     ParsedArray(Vec<Term<'input>>, Option<f32>),
     UnparsedArray(&'input str, Option<f32>),
 
-    ProximityChain(Vec<ProximityPart<'input>>),
+    ProximityChain(Vec<ProximityPart>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -139,42 +151,41 @@ pub enum Expr<'input> {
 impl<'input> Term<'input> {
     pub(in crate::query_parser) fn maybe_make_wildcard_or_regex(
         opcode: Option<&ComparisonOpcode>,
-        expr: Term<'input>,
+        s: &'input str,
+        b: Option<f32>,
     ) -> Term<'input> {
-        match expr {
-            Term::String(s, b) => {
-                if let Some(&ComparisonOpcode::Regex) = opcode {
-                    Term::Regex(s, b)
-                } else if s.len() == 1 && s.chars().nth(0) == Some('*') {
-                    Term::MatchAll
-                } else {
-                    let mut has_whitespace = false;
-                    let mut is_wildcard = false;
-                    let mut prev = 0 as char;
-                    for c in s.chars() {
-                        if prev != '\\' {
-                            if c == '*' || c == '?' {
-                                is_wildcard = true;
-                            } else if c.is_whitespace() {
-                                has_whitespace = true;
-                            }
-                        }
-
-                        prev = c;
-                    }
-
-                    if has_whitespace && is_wildcard {
-                        return Term::PhraseWithWildcard(s, b);
-                    } else if is_wildcard {
-                        return Term::Wildcard(s, b);
-                    } else if has_whitespace {
-                        return Term::Phrase(s, b);
-                    } else {
-                        expr
+        if let Some(&ComparisonOpcode::Regex) = opcode {
+            Term::Regex(s, b)
+        } else if s.len() == 1 && s.chars().nth(0) == Some('*') {
+            Term::MatchAll
+        } else {
+            let mut has_whitespace = false;
+            let mut is_wildcard = false;
+            let mut is_fuzzy = false;
+            let mut prev = 0 as char;
+            for c in s.chars() {
+                if prev != '\\' {
+                    if c == '*' || c == '?' {
+                        is_wildcard = true;
+                    } else if c == '~' {
+                        is_fuzzy = true;
+                    } else if c.is_whitespace() {
+                        has_whitespace = true;
                     }
                 }
+
+                prev = c;
             }
-            _ => expr,
+
+            if has_whitespace && (is_wildcard || is_fuzzy) {
+                Term::PhraseWithWildcard(s, b)
+            } else if is_wildcard {
+                Term::Wildcard(s, b)
+            } else if has_whitespace {
+                Term::Phrase(s, b)
+            } else {
+                Term::String(s, b)
+            }
         }
     }
 
@@ -186,6 +197,138 @@ impl<'input> Term<'input> {
                     && s.chars().filter(|c| *c == '?').count() == 0
             }
             _ => false,
+        }
+    }
+}
+
+impl ProximityTerm {
+    pub fn from_term(term: &Term) -> Self {
+        match term {
+            Term::String(s, _) => ProximityTerm::String(s.to_string()),
+            Term::PhraseWithWildcard(s, _) => ProximityTerm::PhraseWithWildcard(s.to_string()),
+            Term::Wildcard(s, _) => ProximityTerm::Wildcard(s.to_string()),
+            Term::Regex(s, _) => ProximityTerm::Regex(s.to_string()),
+            Term::Fuzzy(s, d, _) => ProximityTerm::Fuzzy(s.to_string(), *d),
+            _ => panic!("Cannot convert {:?} into a ProximityTerm", term),
+        }
+    }
+
+    pub fn to_term(&self) -> Term {
+        match self {
+            ProximityTerm::String(s) => Term::String(&s, None),
+            ProximityTerm::Phrase(s) => Term::Phrase(&s, None),
+            ProximityTerm::Wildcard(w) => Term::Wildcard(&w, None),
+            ProximityTerm::PhraseWithWildcard(w) => Term::PhraseWithWildcard(&w, None),
+            ProximityTerm::Fuzzy(s, d) => Term::Fuzzy(&s, *d, None),
+            ProximityTerm::Regex(r) => Term::Regex(&r, None),
+            ProximityTerm::ProximityChain(p) => Term::ProximityChain(p.clone()),
+        }
+    }
+
+    pub fn to_terms(terms: &Vec<ProximityTerm>) -> Vec<Term> {
+        terms.iter().map(|v| v.to_term()).collect()
+    }
+
+    pub fn make_proximity_term(
+        index: Option<&PgRelation>,
+        field: &str,
+        opcode: Option<&ComparisonOpcode>,
+        s: &str,
+    ) -> ProximityTerm {
+        let term = Term::maybe_make_wildcard_or_regex(opcode, s, None);
+        ProximityTerm::make_proximity_term_from_term(index, field, &term)
+    }
+
+    pub fn make_proximity_term_from_term(
+        index: Option<&PgRelation>,
+        field: &str,
+        term: &Term,
+    ) -> ProximityTerm {
+        match term {
+            Term::String(s, _) => ProximityTerm::make_proximity_chain(&index, field, s),
+            Term::Phrase(s, _) => ProximityTerm::make_proximity_chain(&index, field, s),
+            Term::PhraseWithWildcard(s, _) => ProximityTerm::make_proximity_chain(&index, field, s),
+            Term::Wildcard(s, _) => ProximityTerm::make_proximity_chain(&index, field, s),
+            Term::Regex(s, _) => ProximityTerm::Regex(s.to_string()),
+            Term::ProximityChain(p) => ProximityTerm::ProximityChain(p.clone()),
+            _ => panic!("unexpected term"),
+        }
+    }
+
+    fn make_proximity_chain(
+        index: &Option<&PgRelation>,
+        field: &str,
+        input: &str,
+    ) -> ProximityTerm {
+        let replaced_input = input.replace("*", "ZDBSTAR");
+        let replaced_input = replaced_input.replace("?", "ZDBQUESTION");
+
+        let analyzed_tokens = match index {
+            // if we have an index we'll ask Elasticsearch to tokenize the input for us
+            Some(index) => {
+                // TODO:  we need to get the "search_analyzer" for the field
+                Elasticsearch::new(index)
+                    .analyze_with_field(field, &replaced_input)
+                    .execute()
+                    .expect("failed to analyze phrase")
+                    .tokens
+            }
+
+            // if we don't then we'll just tokenize on whitespace.  This is only going to happen
+            // during disconnected tests
+            None => input
+                .split_whitespace()
+                .into_iter()
+                .enumerate()
+                .map(|(idx, word)| crate::elasticsearch::analyze::Token {
+                    type_: "".to_string(),
+                    token: word.to_string(),
+                    position: idx as i32,
+                    start_offset: 0,
+                    end_offset: 0,
+                })
+                .collect(),
+        };
+
+        // first, group tokens by start_offset
+        let mut groups = BTreeMap::<i64, Vec<crate::elasticsearch::analyze::Token>>::new();
+        for token in analyzed_tokens {
+            groups.entry(token.start_offset).or_default().push(token);
+        }
+
+        if groups.len() < 2 {
+            // input did not analyze into enough tokens, so we convert it to lowercase and
+            // make it into the type of ProximityTerm it might be (string, wildcard, regex, fuzzy)
+            let lowercase_input = input.to_lowercase();
+            let term = Term::maybe_make_wildcard_or_regex(None, &lowercase_input, None);
+            ProximityTerm::from_term(&term)
+        } else {
+            // next, build ProximityParts for each group
+            let proximity_parts = groups
+                .into_iter()
+                .map(|(_, tokens)| {
+                    let mut terms = Vec::new();
+
+                    for token in tokens {
+                        let token = token.token.replace("ZDBSTAR", "*");
+                        let token = token.replace("ZDBQUESTION", "?");
+                        let token = token.replace("zdbstar", "*");
+                        let token = token.replace("zdbquestion", "?");
+
+                        let term = Term::maybe_make_wildcard_or_regex(None, &token, None);
+                        terms.push(ProximityTerm::from_term(&term));
+                    }
+
+                    ProximityPart {
+                        words: terms,
+                        distance: Some(ProximityDistance {
+                            distance: 0,
+                            in_order: true,
+                        }),
+                    }
+                })
+                .collect();
+            ProximityTerm::ProximityChain(proximity_parts)
         }
     }
 }
@@ -203,6 +346,7 @@ impl<'input> Expr<'input> {
         let zdboptions = ZDBIndexOptions::from(index);
 
         Expr::from_str_disconnected(
+            Some(index),
             default_fieldname,
             input,
             used_fields,
@@ -213,6 +357,7 @@ impl<'input> Expr<'input> {
     }
 
     pub fn from_str_disconnected(
+        index: Option<&PgRelation>,
         default_fieldname: &'input str,
         input: &'input str,
         used_fields: &mut HashSet<&'input str>,
@@ -226,6 +371,7 @@ impl<'input> Expr<'input> {
         let mut fieldname_stack = vec![default_fieldname];
 
         let mut expr = parser.parse(
+            index,
             used_fields,
             &mut fieldname_stack,
             &mut operator_stack,
@@ -294,28 +440,22 @@ impl<'input> Expr<'input> {
         }
     }
 
-    pub(in crate::query_parser) fn extract_prox_terms(&self) -> Vec<Term<'input>> {
+    pub(in crate::query_parser) fn extract_prox_terms(
+        &self,
+        index: Option<&PgRelation>,
+    ) -> Vec<ProximityTerm> {
         let mut flat = Vec::new();
         match self {
             Expr::OrList(v) => {
                 v.iter()
-                    .for_each(|e| flat.append(&mut e.extract_prox_terms()));
+                    .for_each(|e| flat.append(&mut e.extract_prox_terms(index)));
             }
-            Expr::Contains(_, v) | Expr::Eq(_, v) | Expr::DoesNotContain(_, v) | Expr::Ne(_, v) => {
-                match v {
-                    Term::String(s, b) => {
-                        flat.push(Term::String(s.clone(), *b));
-                    }
-                    Term::Wildcard(s, b) => {
-                        flat.push(Term::Wildcard(s.clone(), *b));
-                    }
-                    Term::Fuzzy(s, d, b) => {
-                        flat.push(Term::Fuzzy(s, *d, *b));
-                    }
-                    _ => panic!("Unsupported proximity group value: {}", self),
-                }
+            Expr::Contains(f, v) | Expr::Eq(f, v) | Expr::DoesNotContain(f, v) | Expr::Ne(f, v) => {
+                flat.push(ProximityTerm::make_proximity_term_from_term(
+                    index, &f.field, v,
+                ));
             }
-            _ => panic!("Unsupported proximity group value: {}", self),
+            _ => panic!("Unsupported proximity group expression: {}", self),
         }
         flat
     }
@@ -411,7 +551,13 @@ impl IndexLink {
     pub fn parse(input: &str) -> Self {
         let parser = IndexLinkParser::new();
         parser
-            .parse(&mut HashSet::new(), &mut Vec::new(), &mut Vec::new(), input)
+            .parse(
+                None,
+                &mut HashSet::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                input,
+            )
             .expect("failed to parse IndexLink")
     }
 
@@ -435,6 +581,7 @@ impl IndexLink {
                 let mut operator_stack = Vec::new();
                 let link = parser
                     .parse(
+                        Some(index),
                         &mut used_fields,
                         &mut fieldname_stack,
                         &mut operator_stack,
@@ -533,6 +680,12 @@ impl Display for IndexLink {
         }
 
         Ok(())
+    }
+}
+
+impl Display for ProximityTerm {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(fmt, "{}", self.to_term())
     }
 }
 

@@ -2,8 +2,9 @@ use std::str::FromStr;
 use std::collections::HashSet;
 use crate::query_parser::ast::*;
 use std::collections::HashMap;
+use pgx::*;
 
-grammar(used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>);
+grammar(source_index: Option<&PgRelation>, used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>);
 
 match {
     // top precedence tokens
@@ -131,7 +132,7 @@ ProximityExpression: Box<Expr<'input>> = {
     UnaryExpression
 };
 
-ProximityPart: ProximityPart<'input> = {
+ProximityPart: ProximityPart = {
     <words:ProximityGroup> <in_order:WithinOperator> <distance:NUMBER> => {
         ProximityPart {
             words,
@@ -143,9 +144,9 @@ ProximityPart: ProximityPart<'input> = {
     }
 };
 
-ProximityGroup: Vec<Term<'input>> = {
-    ParentheticalGroup => <>.extract_prox_terms(),
-    StringExpr => vec![<>]
+ProximityGroup: Vec<ProximityTerm> = {
+    ParentheticalGroup => <>.extract_prox_terms(source_index),
+    ExpandedPhraseStringExpr => vec![<>]
 };
 
 WithinOperator: bool = {
@@ -253,8 +254,13 @@ UnparsedArray: &'input str = {
 
 StringExpr: Term<'input> = {
     NULL => Term::Null,
-    <s:String> <b:Boost?> => Term::maybe_make_wildcard_or_regex(operator_stack.last(), Term::String(s.into(), b)),
+    <s:String> <b:Boost?> => Term::maybe_make_wildcard_or_regex(operator_stack.last(), s, b),
     <s:String> <f:Fuzzy> <b:Boost?> => Term::Fuzzy(s, f, b)
+};
+
+ExpandedPhraseStringExpr: ProximityTerm = {
+    <s:String> <b:Boost?> => ProximityTerm::make_proximity_term(source_index, fieldname_stack.last().unwrap(), operator_stack.last(), s),
+    <s:String> <f:Fuzzy> <_b:Boost?> => ProximityTerm::Fuzzy(s.into(), f)
 };
 
 Boost: f32 = {

@@ -168,7 +168,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             if is_span {
                 return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
             } else {
-                json! { { "term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } }
+                json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
             }
         }
         Term::Phrase(s, b) => {
@@ -200,23 +200,18 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             json! { { "range": { field.field_name(): { "gte": s, "lte": e, "boost": b.unwrap_or(1.0) }} } }
         }
         Term::ParsedArray(v, _b) => {
-            let mut strings = Vec::new();
             let mut clauses = Vec::new();
 
             for t in v {
                 match t {
-                    Term::String(s, _) => strings.push(s),
-                    Term::Phrase(_, _)
+                    Term::String(_, _)
+                    | Term::Phrase(_, _)
                     | Term::PhraseWithWildcard(_, _)
                     | Term::Wildcard(_, _)
                     | Term::Regex(_, _)
                     | Term::Fuzzy(_, _, _) => clauses.push(eq(field, t, false)),
                     _ => panic!("unsupported term in an array: {:?}", t),
                 }
-            }
-
-            if !strings.is_empty() {
-                clauses.push(json! { { "terms": { field.field_name(): strings } } })
             }
 
             if clauses.len() == 1 {
@@ -238,11 +233,14 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
 
             for part in parts {
                 if part.words.len() == 1 {
-                    clauses.push((eq(field, part.words.get(0).unwrap(), true), &part.distance));
+                    clauses.push((
+                        eq(field, &part.words.get(0).unwrap().to_term(), true),
+                        &part.distance,
+                    ));
                 } else {
                     let mut spans = Vec::new();
                     for word in &part.words {
-                        spans.push(eq(field, word, true));
+                        spans.push(eq(field, &word.to_term(), true));
                     }
 
                     clauses.push((
@@ -280,7 +278,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
         _ => panic!("unsupported Term: {:?}", term),
     };
 
-    if is_span {
+    if is_span && !matches!(term,Term::ProximityChain { .. }) {
         json! { { "span_multi": { "match": clause } } }
     } else {
         clause

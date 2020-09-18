@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
-use crate::query_parser::ast::Term;
 use crate::query_parser::ast::{ProximityDistance, ProximityPart};
+use crate::query_parser::ast::{ProximityTerm, Term};
 use levenshtein::*;
 use pgx::PgRelation;
 use pgx::*;
@@ -336,9 +336,9 @@ impl<'a> DocumentHighlighter<'a> {
         } else {
             let proximity_parts = result
                 .tokens
-                .iter()
+                .into_iter()
                 .map(|parts| {
-                    let term = Term::String(&parts.token, None);
+                    let term = ProximityTerm::String(parts.token);
 
                     ProximityPart {
                         words: vec![term],
@@ -361,7 +361,7 @@ impl<'a> DocumentHighlighter<'a> {
     // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
     pub fn highlight_proximity<'b>(
         &'a self,
-        phrase: &Vec<ProximityPart<'b>>,
+        phrase: &Vec<ProximityPart>,
     ) -> Option<Vec<(String, &'a TokenEntry)>> {
         if phrase.len() == 0 {
             return None;
@@ -371,7 +371,7 @@ impl<'a> DocumentHighlighter<'a> {
         let mut final_matches = HashSet::new();
 
         for word in &first_words.words {
-            let first_word_entries = self.highlight_term(word);
+            let first_word_entries = self.highlight_term(&word.to_term());
 
             if phrase.len() == 1 || first_word_entries.is_none() {
                 return first_word_entries;
@@ -395,9 +395,9 @@ impl<'a> DocumentHighlighter<'a> {
 
                     let distance = current.distance.as_ref().map_or(0, |v| v.distance);
                     let order = current.distance.as_ref().map_or(false, |v| v.in_order);
-                    let word = &next.words;
+                    let words = ProximityTerm::to_terms(&next.words);
 
-                    match self.look_for_match(word, distance, order, start) {
+                    match self.look_for_match(&words, distance, order, start) {
                         None => {
                             is_valid = false;
                             break;
@@ -665,11 +665,11 @@ fn highlight_fuzzy(
 
 //  select zdb.highlight_proximity('idx_test','test','this is a test', ARRAY['{"word": "this", distance:2, in_order: false}'::proximitypart, '{"word": "test", distance: 0, in_order: false}'::proximitypart]);
 #[pg_extern(immutable, parallel_safe)]
-fn highlight_proximity<'a>(
+fn highlight_proximity(
     index: PgRelation,
     field_name: &str,
-    text: &'a str,
-    prox_clause: Vec<Option<ProximityPart<'a>>>,
+    text: &str,
+    prox_clause: Vec<Option<ProximityPart>>,
 ) -> impl std::iter::Iterator<
     Item = (
         name!(field_name, String),

@@ -15,6 +15,7 @@ pub(crate) fn parse_field_lists(input: &str) -> HashMap<String, Vec<String>> {
     let mut operator_stack = Vec::new();
     parser
         .parse(
+            None,
             &mut used_fields,
             &mut fieldname_stack,
             &mut operator_stack,

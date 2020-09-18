@@ -402,6 +402,7 @@ extern "C" fn validate_options(value: *const std::os::raw::c_char) {
     for option in input.split(',') {
         parser
             .parse(
+                None,
                 &mut used_fields,
                 &mut fieldname_stack,
                 &mut operator_stack,
