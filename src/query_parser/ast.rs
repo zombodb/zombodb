@@ -40,7 +40,6 @@ pub mod pg_catalog {
         Phrase(String, Option<f32>),
         Prefix(String, Option<f32>),
         Wildcard(String, Option<f32>),
-        PhraseWithWildcard(String, Vec<ProximityPart>, Option<f32>),
         Fuzzy(String, u8, Option<f32>),
         Regex(String, Option<f32>),
         ProximityChain(Vec<ProximityPart>),
@@ -121,7 +120,7 @@ pub enum Term<'input> {
     Phrase(&'input str, Option<f32>),
     Prefix(&'input str, Option<f32>),
     PhrasePrefix(&'input str, Option<f32>),
-    PhraseWithWildcard(String, Vec<ProximityPart>, Option<f32>),
+    PhraseWithWildcard(&'input str, Option<f32>),
     Wildcard(&'input str, Option<f32>),
     Regex(&'input str, Option<f32>),
     Fuzzy(&'input str, u8, Option<f32>),
@@ -194,7 +193,7 @@ impl<'input> Term<'input> {
                 if Term::is_prefix_wildcard(s) {
                     Term::PhrasePrefix(s, b)
                 } else {
-                    Term::PhraseWithWildcard(s.to_string(), Vec::new(), b)
+                    Term::Phrase(s, b)
                 }
             } else if is_wildcard {
                 if Term::is_prefix_wildcard(s) {
@@ -223,12 +222,7 @@ impl ProximityTerm {
             Term::String(s, b) => ProximityTerm::String(s.to_string(), *b),
             Term::Phrase(s, b) => ProximityTerm::Phrase(s.to_string(), *b),
             Term::Prefix(s, b) => ProximityTerm::Prefix(s.to_string(), *b),
-            Term::PhrasePrefix(s, b) => {
-                ProximityTerm::PhraseWithWildcard(s.to_string(), vec![], *b)
-            }
-            Term::PhraseWithWildcard(s, v, b) => {
-                ProximityTerm::PhraseWithWildcard(s.to_string(), v.clone(), *b)
-            }
+            Term::PhrasePrefix(s, b) => ProximityTerm::Phrase(s.to_string(), *b),
             Term::ProximityChain(v) => ProximityTerm::ProximityChain(v.clone()),
             Term::Wildcard(s, b) => ProximityTerm::Wildcard(s.to_string(), *b),
             Term::Regex(s, b) => ProximityTerm::Regex(s.to_string(), *b),
@@ -252,9 +246,6 @@ impl ProximityTerm {
                 } else {
                     Term::Wildcard(&w, None)
                 }
-            }
-            ProximityTerm::PhraseWithWildcard(s, v, _b) => {
-                Term::PhraseWithWildcard(s.clone(), v.clone(), None)
             }
             ProximityTerm::Fuzzy(f, d, _b) => Term::Fuzzy(&f, *d, None),
             ProximityTerm::Regex(r, _b) => Term::Regex(&r, None),
@@ -742,18 +733,11 @@ impl<'input> Display for Term<'input> {
 
             Term::String(s, b)
             | Term::Phrase(s, b)
+            | Term::PhraseWithWildcard(s, b)
             | Term::Prefix(s, b)
             | Term::PhrasePrefix(s, b)
             | Term::Wildcard(s, b)
             | Term::Regex(s, b) => {
-                write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
-                if let Some(boost) = b {
-                    write!(fmt, "^{}", boost)?;
-                }
-                Ok(())
-            }
-
-            Term::PhraseWithWildcard(s, _, b) => {
                 write!(fmt, "\"{}\"", s.replace('"', "\\\""))?;
                 if let Some(boost) = b {
                     write!(fmt, "^{}", boost)?;

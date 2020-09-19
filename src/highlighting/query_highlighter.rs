@@ -231,19 +231,10 @@ impl<'a> QueryHighligther<'a> {
                     QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
-            Term::Phrase(s, _) => {
+            Term::Phrase(s, _) | Term::PhraseWithWildcard(s, _) | Term::PhrasePrefix(s, _) => {
                 if let Some(entries) =
                     highlighter.highlight_phrase(self.index, &field.field_name(), s)
                 {
-                    cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
-                }
-            }
-            Term::PhrasePrefix(_, _) => {
-                // TODO:  how to handle this?  we really need a ProximityChain here
-            }
-            Term::PhraseWithWildcard(_, v, _) => {
-                if let Some(entries) = highlighter.highlight_proximity(v) {
                     cnt = entries.len();
                     QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }

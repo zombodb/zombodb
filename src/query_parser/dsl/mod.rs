@@ -1,7 +1,7 @@
 use crate::access_method::options::ZDBIndexOptions;
 use crate::gucs::ZDB_IGNORE_VISIBILITY;
 use crate::query_parser::ast::{
-    ComparisonOpcode, Expr, IndexLink, ProximityPart, QualifiedField, Term,
+    ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
 };
 use crate::query_parser::dsl::path_finder::PathFinder;
 use crate::zdbquery::mvcc::build_visibility_clause;
@@ -177,9 +177,15 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
             }
         }
-        Term::Phrase(s, b) => {
-            // TODO:  convert to proximity if 'is_span'
-            json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+        Term::Phrase(s, b) | Term::PhraseWithWildcard(s, b) => {
+            if is_span {
+                match ProximityTerm::make_proximity_chain(field, s, *b) {
+                    ProximityTerm::ProximityChain(v) => proximity_chain(field, &v),
+                    other => eq(field, &other.to_term(), true),
+                }
+            } else {
+                json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+            }
         }
         Term::Prefix(s, b) => {
             json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
@@ -187,7 +193,6 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
         Term::PhrasePrefix(s, b) => {
             json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
         }
-        Term::PhraseWithWildcard(_, parts, _) => proximity_chain(field, parts),
         Term::Wildcard(w, b) => {
             json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0) } } } }
         }
@@ -210,7 +215,6 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                     | Term::Phrase(_, _)
                     | Term::Prefix(_, _)
                     | Term::PhrasePrefix(_, _)
-                    | Term::PhraseWithWildcard(_, _, _)
                     | Term::Wildcard(_, _)
                     | Term::Regex(_, _)
                     | Term::Fuzzy(_, _, _) => clauses.push(eq(field, t, false)),

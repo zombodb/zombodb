@@ -1,4 +1,4 @@
-use crate::query_parser::ast::{Expr, ProximityPart, ProximityTerm, QualifiedField, Term};
+use crate::query_parser::ast::{Expr, ProximityTerm, QualifiedField, Term};
 
 pub fn rewrite_proximity_chains(expr: &mut Expr) {
     match expr {
@@ -28,16 +28,6 @@ pub fn rewrite_proximity_chains(expr: &mut Expr) {
 
 fn rewrite_term(field: &QualifiedField, term: &mut Term) {
     match term {
-        Term::PhraseWithWildcard(ref s, parts, b) => {
-            // it's a complex phrase with a wildcard, so it needs to be a proximity chain
-            match ProximityTerm::make_proximity_chain(field, s, *b) {
-                ProximityTerm::ProximityChain(mut v) => parts.append(&mut v),
-                other => parts.push(ProximityPart {
-                    words: vec![other],
-                    distance: None,
-                }),
-            }
-        }
         Term::ProximityChain(v) => {
             for part in v.iter_mut() {
                 part.words
@@ -55,9 +45,6 @@ fn rewrite_prox_term(field: &QualifiedField, prox_term: &mut ProximityTerm) {
             *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
         }
         ProximityTerm::Prefix(s, b) => {
-            *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
-        }
-        ProximityTerm::PhraseWithWildcard(s, _, b) => {
             *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
         }
         _ => {}

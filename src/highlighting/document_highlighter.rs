@@ -189,8 +189,9 @@ impl<'a> DocumentHighlighter<'a> {
             Term::String(s, _) => self.highlight_token(s),
             Term::Prefix(s, _) => self.highlight_wildcard(s),
             Term::PhrasePrefix(_, _) => unimplemented!("prefix phrases cannot be highlighted"),
-            Term::Phrase(s, _) => self.highlight_phrase(self.index, self.field, s),
-            Term::PhraseWithWildcard(_, v, _) => self.highlight_proximity(v),
+            Term::Phrase(s, _) | Term::PhraseWithWildcard(s, _) => {
+                self.highlight_phrase(self.index, self.field, s)
+            }
             Term::Wildcard(w, _) => self.highlight_wildcard(w),
             Term::Regex(r, _) => self.highlight_regex(r),
             Term::Fuzzy(f, p, _) => self.highlight_fuzzy(f, *p),
