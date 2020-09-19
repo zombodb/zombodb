@@ -187,11 +187,10 @@ impl<'a> DocumentHighlighter<'a> {
         match term {
             Term::MatchAll => None,
             Term::String(s, _) => self.highlight_token(s),
+            Term::Prefix(s, _) => self.highlight_wildcard(s),
+            Term::PhrasePrefix(_, _) => unimplemented!("prefix phrases cannot be highlighted"),
             Term::Phrase(s, _) => self.highlight_phrase(self.index, self.field, s),
-            Term::PhraseWithWildcard(s, _) => {
-                // TODO:  need advanced way to convert this kind of phrase into a proximity chain
-                self.highlight_phrase(self.index, self.field, s)
-            }
+            Term::PhraseWithWildcard(_, v, _) => self.highlight_proximity(v),
             Term::Wildcard(w, _) => self.highlight_wildcard(w),
             Term::Regex(r, _) => self.highlight_regex(r),
             Term::Fuzzy(f, p, _) => self.highlight_fuzzy(f, *p),
@@ -199,7 +198,7 @@ impl<'a> DocumentHighlighter<'a> {
             Term::Null => unimplemented!(),
             Term::ParsedArray(_, _) => unimplemented!(),
             Term::UnparsedArray(_, _) => unimplemented!(),
-            Term::ProximityChain(_) => unimplemented!(),
+            Term::ProximityChain(v) => self.highlight_proximity(v),
         }
     }
 

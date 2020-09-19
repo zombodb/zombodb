@@ -82,6 +82,40 @@ mod macros {
     }
 
     #[allow(non_snake_case)]
+    macro_rules! ProximityString {
+        ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: Some(IndexLink::default()),
+                    field: $field.into(),
+                },
+                crate::query_parser::ast::ProximityTerm::String($val.into()),
+            )
+        };
+        ($operator:tt, $table:literal, $index:literal, $field:literal, $val:expr) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: Some(IndexLink::default()),
+                    field: $field.into(),
+                },
+                crate::query_parser::ast::ProximityTerm::String($val.into()),
+            )
+        };
+        ($operator:tt, $field:literal, $val:expr) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: Some(IndexLink::default()),
+                    field: $field.into(),
+                },
+                crate::query_parser::ast::ProximityTerm::String($val.into()),
+            )
+        };
+        ($val:expr) => {
+            crate::query_parser::ast::ProximityTerm::String($val.into())
+        };
+    }
+
+    #[allow(non_snake_case)]
     macro_rules! Wildcard {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
             crate::query_parser::ast::Expr::$operator(
@@ -286,6 +320,7 @@ mod tests {
     pub(super) fn parse(input: &str) -> Result<Expr, ParserError> {
         let mut used_fields = HashSet::new();
         Expr::from_str_disconnected(
+            None,
             "_",
             input,
             &mut used_fields,
@@ -594,8 +629,8 @@ mod tests {
             ProximityChain!(
                 Contains,
                 "_",
-                Within!(vec![String!("a")], 2, false),
-                Within!(vec![String!("b")])
+                Within!(vec![ProximityString!("a")], 2, false),
+                Within!(vec![ProximityString!("b")])
             ),
         )
     }
@@ -607,8 +642,20 @@ mod tests {
             ProximityChain!(
                 Contains,
                 "_",
-                Within!(vec![String!("a"), String!("b"), String!("c")], 2, true),
-                Within!(vec![String!("x"), String!("y"), String!("z")])
+                Within!(
+                    vec![
+                        ProximityString!("a"),
+                        ProximityString!("b"),
+                        ProximityString!("c")
+                    ],
+                    2,
+                    true
+                ),
+                Within!(vec![
+                    ProximityString!("x"),
+                    ProximityString!("y"),
+                    ProximityString!("z")
+                ])
             ),
         )
     }
@@ -620,9 +667,21 @@ mod tests {
             ProximityChain!(
                 Contains,
                 "_",
-                Within!(vec![String!("a"), String!("b"), String!("c")], 8, false),
-                Within!(vec![String!("foo")], 2, true),
-                Within!(vec![String!("x"), String!("y"), String!("z")])
+                Within!(
+                    vec![
+                        ProximityString!("a"),
+                        ProximityString!("b"),
+                        ProximityString!("c")
+                    ],
+                    8,
+                    false
+                ),
+                Within!(vec![ProximityString!("foo")], 2, true),
+                Within!(vec![
+                    ProximityString!("x"),
+                    ProximityString!("y"),
+                    ProximityString!("z")
+                ])
             ),
         )
     }
@@ -634,8 +693,20 @@ mod tests {
             ProximityChain!(
                 Contains,
                 "field",
-                Within!(vec![String!("a"), String!("b"), String!("c")], 2, true),
-                Within!(vec![String!("x"), String!("y"), String!("z")])
+                Within!(
+                    vec![
+                        ProximityString!("a"),
+                        ProximityString!("b"),
+                        ProximityString!("c")
+                    ],
+                    2,
+                    true
+                ),
+                Within!(vec![
+                    ProximityString!("x"),
+                    ProximityString!("y"),
+                    ProximityString!("z")
+                ])
             ),
         )
     }

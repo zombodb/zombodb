@@ -259,7 +259,7 @@ StringExpr: Term<'input> = {
 };
 
 ExpandedPhraseStringExpr: ProximityTerm = {
-    <s:String> <b:Boost?> => ProximityTerm::make_proximity_term(source_index, fieldname_stack.last().unwrap(), operator_stack.last(), s),
+    <s:String> <b:Boost?> => ProximityTerm::make_proximity_term(operator_stack.last(), s),
     <s:String> <f:Fuzzy> <_b:Boost?> => ProximityTerm::Fuzzy(s.into(), f)
 };
 

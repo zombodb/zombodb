@@ -8,7 +8,7 @@ pub struct AnalyzedData {
     pub tokens: Vec<Token>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Token {
     #[serde(rename = "type")]
     pub type_: String,

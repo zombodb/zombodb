@@ -88,6 +88,17 @@ pub fn lookup_function(
     }
 }
 
+pub fn get_search_analyzer(index: &PgRelation, field: &str) -> String {
+    Spi::get_one_with_args(
+        "select zdb.get_search_analyzer($1, $2);",
+        vec![
+            (PgBuiltInOids::OIDOID.oid(), index.oid().into_datum()),
+            (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
+        ],
+    )
+    .expect("search analyzer was null")
+}
+
 pub fn json_to_string(key: serde_json::Value) -> Option<String> {
     match key {
         Value::Null => None,

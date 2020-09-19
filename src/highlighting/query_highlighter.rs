@@ -205,7 +205,7 @@ impl<'a> QueryHighligther<'a> {
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token_scan(s, eval) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
             _ => panic!("cannot highlight using scans for {}", expr),
@@ -230,7 +230,7 @@ impl<'a> QueryHighligther<'a> {
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token(s) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Phrase(s, _) => {
@@ -238,34 +238,34 @@ impl<'a> QueryHighligther<'a> {
                     highlighter.highlight_phrase(self.index, &field.field_name(), s)
                 {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
-            Term::PhraseWithWildcard(s, _) => {
-                // TODO:  need to convert this kind of phrase into a proximity chain
-                if let Some(entries) =
-                    highlighter.highlight_phrase(self.index, &field.field_name(), s)
-                {
+            Term::PhrasePrefix(_, _) => {
+                // TODO:  how to handle this?  we really need a ProximityChain here
+            }
+            Term::PhraseWithWildcard(_, v, _) => {
+                if let Some(entries) = highlighter.highlight_proximity(v) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
-            Term::Wildcard(s, _) => {
+            Term::Wildcard(s, _) | Term::Prefix(s, _) => {
                 if let Some(entries) = highlighter.highlight_wildcard(s) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Regex(r, _) => {
                 if let Some(entries) = highlighter.highlight_regex(r) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Fuzzy(s, d, _) => {
                 if let Some(entries) = highlighter.highlight_fuzzy(s, *d) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Range(_, _, _) => {
@@ -275,16 +275,15 @@ impl<'a> QueryHighligther<'a> {
             Term::ProximityChain(v) => {
                 if let Some(entries) = highlighter.highlight_proximity(v) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, field, entries, highlights);
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }
             }
 
             Term::ParsedArray(v, _) => {
                 for t in v {
                     if let Some(entries) = highlighter.highlight_term(t) {
-                        let qf = field.clone();
-                        cnt = entries.len() + cnt;
-                        QueryHighligther::process_entries(expr, qf, entries, highlights);
+                        cnt += entries.len();
+                        QueryHighligther::process_entries(expr, &field, entries, highlights);
                     }
                 }
             }
@@ -299,9 +298,8 @@ impl<'a> QueryHighligther<'a> {
                 }
                 for t in term_vec {
                     if let Some(entries) = highlighter.highlight_term(&t) {
-                        let qf = field.clone();
                         cnt = entries.len() + cnt;
-                        QueryHighligther::process_entries(expr, qf, entries, highlights);
+                        QueryHighligther::process_entries(expr, &field, entries, highlights);
                     }
                 }
             }
@@ -312,13 +310,13 @@ impl<'a> QueryHighligther<'a> {
 
     fn process_entries(
         expr: &'a Expr<'a>,
-        field: QualifiedField,
+        field: &QualifiedField,
         mut entries: Vec<(String, &'a TokenEntry)>,
         highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
     ) {
         highlights
             // fir this field in our map of highlights
-            .entry((field, format!("{}", expr)))
+            .entry((field.clone(), format!("{}", expr)))
             // add to existing entries
             .and_modify(|v| v.append(&mut entries))
             // or insert brand new entries

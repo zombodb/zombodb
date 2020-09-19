@@ -1,6 +1,8 @@
 use crate::access_method::options::ZDBIndexOptions;
 use crate::gucs::ZDB_IGNORE_VISIBILITY;
-use crate::query_parser::ast::{ComparisonOpcode, Expr, IndexLink, QualifiedField, Term};
+use crate::query_parser::ast::{
+    ComparisonOpcode, Expr, IndexLink, ProximityPart, QualifiedField, Term,
+};
 use crate::query_parser::dsl::path_finder::PathFinder;
 use crate::zdbquery::mvcc::build_visibility_clause;
 use pgx::*;
@@ -162,7 +164,11 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             json! { { "bool": { "must_not": [ { "exists": { "field": field.field_name() } } ] } } }
         }
         Term::MatchAll => {
-            json! { { "exists": { "field": field.field_name() } } }
+            if is_span {
+                json! { { "wildcard": { field.field_name(): { "value": "*" } } } }
+            } else {
+                json! { { "exists": { "field": field.field_name() } } }
+            }
         }
         Term::String(s, b) => {
             if is_span {
@@ -175,27 +181,23 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             // TODO:  convert to proximity if 'is_span'
             json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
         }
-        Term::PhraseWithWildcard(s, b) => {
-            if term.is_prefix_wildcard() {
-                // phrase ends with an '*' and only has that wildcard character
-                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
-            } else {
-                // TODO:  need to convert to a proximity chain
-                //        this will necessitate analyzing the phrase with ES
-                unimplemented!("phrases with non-right-truncated wildcards not supported yet")
-            }
+        Term::Prefix(s, b) => {
+            json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
         }
+        Term::PhrasePrefix(s, b) => {
+            json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+        }
+        Term::PhraseWithWildcard(_, parts, _) => proximity_chain(field, parts),
         Term::Wildcard(w, b) => {
-            if term.is_prefix_wildcard() {
-                // only has 1 '*' at the end, so we can write a prefix query
-                json! { { "prefix": { field.field_name(): { "value": w[..w.len()-1], "boost": b.unwrap_or(1.0) } } } }
-            } else {
-                json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0) } } } }
-            }
+            json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0) } } } }
         }
         Term::Fuzzy(f, d, b) => {
             json! { { "fuzzy": { field.field_name(): { "value": f, "prefix_length": d, "boost": b.unwrap_or(1.0) } } } }
         }
+        Term::Regex(r, b) => {
+            json! { { "regexp": { field.field_name(): { "value": r, "boost": b.unwrap_or(1.0) } } } }
+        }
+
         Term::Range(s, e, b) => {
             json! { { "range": { field.field_name(): { "gte": s, "lte": e, "boost": b.unwrap_or(1.0) }} } }
         }
@@ -206,7 +208,9 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 match t {
                     Term::String(_, _)
                     | Term::Phrase(_, _)
-                    | Term::PhraseWithWildcard(_, _)
+                    | Term::Prefix(_, _)
+                    | Term::PhrasePrefix(_, _)
+                    | Term::PhraseWithWildcard(_, _, _)
                     | Term::Wildcard(_, _)
                     | Term::Regex(_, _)
                     | Term::Fuzzy(_, _, _) => clauses.push(eq(field, t, false)),
@@ -228,54 +232,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
 
             json! { { "terms": { field.field_name(): tokens } } }
         }
-        Term::ProximityChain(parts) => {
-            let mut clauses = Vec::new();
-
-            for part in parts {
-                if part.words.len() == 1 {
-                    clauses.push((
-                        eq(field, &part.words.get(0).unwrap().to_term(), true),
-                        &part.distance,
-                    ));
-                } else {
-                    let mut spans = Vec::new();
-                    for word in &part.words {
-                        spans.push(eq(field, &word.to_term(), true));
-                    }
-
-                    clauses.push((
-                        json! {
-                            { "span_or": { "clauses": spans } }
-                        },
-                        &part.distance,
-                    ));
-                }
-            }
-
-            let mut span_near = None;
-            let mut clauses = clauses.into_iter();
-            while let Some((clause, distance)) = clauses.next() {
-                let distance = distance.as_ref().unwrap();
-                let span = if let Some((next_clause, _)) = clauses.next() {
-                    json! {
-                        { "span_near": { "clauses": [ clause, next_clause ], "slop": distance.distance, "in_order": distance.in_order } }
-                    }
-                } else {
-                    clause
-                };
-
-                span_near = Some(if span_near.is_none() {
-                    span
-                } else {
-                    json! {
-                        { "span_near": { "clauses": [ span_near, span ], "slop": distance.distance, "in_order": distance.in_order } }
-                    }
-                });
-            }
-
-            span_near.expect("did not generate a span_near clause")
-        }
-        _ => panic!("unsupported Term: {:?}", term),
+        Term::ProximityChain(parts) => proximity_chain(field, parts),
     };
 
     if is_span && !matches!(term,Term::ProximityChain { .. }) {
@@ -283,6 +240,54 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
     } else {
         clause
     }
+}
+
+fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_json::Value {
+    let mut clauses = Vec::new();
+
+    for part in parts {
+        if part.words.len() == 1 {
+            clauses.push((
+                eq(field, &part.words.get(0).unwrap().to_term(), true),
+                &part.distance,
+            ));
+        } else {
+            let mut spans = Vec::new();
+            for word in &part.words {
+                spans.push(eq(field, &word.to_term(), true));
+            }
+
+            clauses.push((
+                json! {
+                    { "span_or": { "clauses": spans } }
+                },
+                &part.distance,
+            ));
+        }
+    }
+
+    let mut span_near = None;
+    let mut clauses = clauses.into_iter();
+    while let Some((clause, distance)) = clauses.next() {
+        let distance = distance.unwrap_or_default();
+        let span = if let Some((next_clause, _)) = clauses.next() {
+            json! {
+                { "span_near": { "clauses": [ clause, next_clause ], "slop": distance.distance, "in_order": distance.in_order } }
+            }
+        } else {
+            clause
+        };
+
+        span_near = Some(if span_near.is_none() {
+            span
+        } else {
+            json! {
+                { "span_near": { "clauses": [ span_near, span ], "slop": distance.distance, "in_order": distance.in_order } }
+            }
+        });
+    }
+
+    span_near.expect("did not generate a span_near clause")
 }
 
 fn range<'a>(term: &'a Term) -> (&'a str, &'a Option<f32>) {
