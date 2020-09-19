@@ -44,7 +44,6 @@ impl<'a> QueryHighligther<'a> {
     pub fn highlight(&'a self) -> Vec<(String, String, String, i32, i64, i64, String)> {
         let mut highlights = HashMap::new();
         if self.walk_expression(&self.query, &mut highlights) {
-            pgx::info!("{:?}", highlights);
             highlights
                 .into_iter()
                 .map(|((field, expr), entries)| {
@@ -63,7 +62,6 @@ impl<'a> QueryHighligther<'a> {
                 .flatten()
                 .collect::<Vec<_>>()
         } else {
-            pgx::info!("walk_exprssion returned false");
             vec![]
         }
     }

@@ -1,5 +1,5 @@
 use crate::elasticsearch::Elasticsearch;
-use crate::query_parser::ast::{ProximityDistance, ProximityPart};
+use crate::query_parser::ast::{IndexLink, ProximityPart, QualifiedField};
 use crate::query_parser::ast::{ProximityTerm, Term};
 use levenshtein::*;
 use pgx::PgRelation;
@@ -324,32 +324,16 @@ impl<'a> DocumentHighlighter<'a> {
             return None;
         }
 
-        let elasticsearch = Elasticsearch::new(index);
-        let result = elasticsearch
-            .analyze_with_field(field, phrase_str)
-            .execute()
-            .expect("failed to analyze phrase");
-
-        if result.tokens.is_empty() {
-            None
-        } else {
-            let proximity_parts = result
-                .tokens
-                .into_iter()
-                .map(|parts| {
-                    let term = ProximityTerm::String(parts.token);
-
-                    ProximityPart {
-                        words: vec![term],
-                        distance: Some(ProximityDistance {
-                            distance: 0,
-                            in_order: true,
-                        }),
-                    }
-                })
-                .collect::<Vec<_>>();
-            self.highlight_proximity(&proximity_parts)
-        }
+        let prox_term = ProximityTerm::make_proximity_chain(
+            &QualifiedField {
+                index: Some(IndexLink::from_relation(index)),
+                field: field.to_string(),
+            },
+            phrase_str,
+            None,
+        );
+        let term = prox_term.to_term();
+        self.highlight_term(&term)
     }
 
     // 'drinking green beer is better than drinking yellow beer which wine is worse than drinking yellow wine'

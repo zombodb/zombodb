@@ -36,13 +36,13 @@ pub mod pg_catalog {
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub enum ProximityTerm {
-        String(String),
-        Phrase(String),
-        Prefix(String),
-        Wildcard(String),
-        PhraseWithWildcard(String, Vec<ProximityPart>),
-        Fuzzy(String, u8),
-        Regex(String),
+        String(String, Option<f32>),
+        Phrase(String, Option<f32>),
+        Prefix(String, Option<f32>),
+        Wildcard(String, Option<f32>),
+        PhraseWithWildcard(String, Vec<ProximityPart>, Option<f32>),
+        Fuzzy(String, u8, Option<f32>),
+        Regex(String, Option<f32>),
         ProximityChain(Vec<ProximityPart>),
     }
 
@@ -220,38 +220,44 @@ impl<'input> Term<'input> {
 impl ProximityTerm {
     pub fn from_term(term: &Term) -> Self {
         match term {
-            Term::String(s, _) => ProximityTerm::String(s.to_string()),
-            Term::Phrase(s, _) => ProximityTerm::Phrase(s.to_string()),
-            Term::Prefix(s, _) => ProximityTerm::Prefix(s.to_string()),
-            Term::PhrasePrefix(s, _) => ProximityTerm::PhraseWithWildcard(s.to_string(), vec![]),
-            Term::PhraseWithWildcard(s, v, _) => {
-                ProximityTerm::PhraseWithWildcard(s.to_string(), v.clone())
+            Term::String(s, b) => ProximityTerm::String(s.to_string(), *b),
+            Term::Phrase(s, b) => ProximityTerm::Phrase(s.to_string(), *b),
+            Term::Prefix(s, b) => ProximityTerm::Prefix(s.to_string(), *b),
+            Term::PhrasePrefix(s, b) => {
+                ProximityTerm::PhraseWithWildcard(s.to_string(), vec![], *b)
             }
-            Term::Wildcard(s, _) => ProximityTerm::Wildcard(s.to_string()),
-            Term::Regex(s, _) => ProximityTerm::Regex(s.to_string()),
-            Term::Fuzzy(s, d, _) => ProximityTerm::Fuzzy(s.to_string(), *d),
-            Term::MatchAll => ProximityTerm::Wildcard("*".to_string()),
+            Term::PhraseWithWildcard(s, v, b) => {
+                ProximityTerm::PhraseWithWildcard(s.to_string(), v.clone(), *b)
+            }
+            Term::ProximityChain(v) => ProximityTerm::ProximityChain(v.clone()),
+            Term::Wildcard(s, b) => ProximityTerm::Wildcard(s.to_string(), *b),
+            Term::Regex(s, b) => ProximityTerm::Regex(s.to_string(), *b),
+            Term::Fuzzy(s, d, b) => ProximityTerm::Fuzzy(s.to_string(), *d, *b),
+            Term::MatchAll => ProximityTerm::Wildcard("*".to_string(), None),
             _ => panic!("Cannot convert {:?} into a ProximityTerm", term),
         }
     }
 
     pub fn to_term(&self) -> Term {
+        // NB:  we don't use the boosts here when we convert to a Term::xxx b/c ES doesn't support
+        // them in span_near clauses.  But ProximityTerm holds onto the boost anyways for potential
+        // future proofing
         match self {
-            ProximityTerm::String(s) => Term::String(&s, None),
-            ProximityTerm::Phrase(s) => Term::Phrase(&s, None),
-            ProximityTerm::Prefix(s) => Term::Prefix(&s, None),
-            ProximityTerm::Wildcard(w) => {
+            ProximityTerm::String(s, _b) => Term::String(&s, None),
+            ProximityTerm::Phrase(s, _b) => Term::Phrase(&s, None),
+            ProximityTerm::Prefix(s, _b) => Term::Prefix(&s, None),
+            ProximityTerm::Wildcard(w, _b) => {
                 if w == "*" {
                     Term::MatchAll
                 } else {
                     Term::Wildcard(&w, None)
                 }
             }
-            ProximityTerm::PhraseWithWildcard(s, v) => {
+            ProximityTerm::PhraseWithWildcard(s, v, _b) => {
                 Term::PhraseWithWildcard(s.clone(), v.clone(), None)
             }
-            ProximityTerm::Fuzzy(f, d) => Term::Fuzzy(&f, *d, None),
-            ProximityTerm::Regex(r) => Term::Regex(&r, None),
+            ProximityTerm::Fuzzy(f, d, _b) => Term::Fuzzy(&f, *d, None),
+            ProximityTerm::Regex(r, _b) => Term::Regex(&r, None),
             ProximityTerm::ProximityChain(p) => Term::ProximityChain(p.clone()),
         }
     }
@@ -260,12 +266,20 @@ impl ProximityTerm {
         terms.iter().map(|v| v.to_term()).collect()
     }
 
-    pub fn make_proximity_term(opcode: Option<&ComparisonOpcode>, s: &str) -> ProximityTerm {
-        let term = Term::maybe_make_wildcard_or_regex(opcode, s, None);
+    pub fn make_proximity_term(
+        opcode: Option<&ComparisonOpcode>,
+        s: &str,
+        b: Option<f32>,
+    ) -> ProximityTerm {
+        let term = Term::maybe_make_wildcard_or_regex(opcode, s, b);
         ProximityTerm::from_term(&term)
     }
 
-    pub fn make_proximity_chain(field: &QualifiedField, input: &str) -> ProximityTerm {
+    pub fn make_proximity_chain(
+        field: &QualifiedField,
+        input: &str,
+        b: Option<f32>,
+    ) -> ProximityTerm {
         let replaced_input = input.replace("*", "ZDBSTAR");
         let replaced_input = replaced_input.replace("?", "ZDBQUESTION");
 
@@ -311,14 +325,14 @@ impl ProximityTerm {
             // input did not analyze into any tokens, so we convert it to lowercase and
             // make it into the type of ProximityTerm it might be (string, wildcard, regex, fuzzy)
             let lowercase_input = input.to_lowercase();
-            let term = Term::maybe_make_wildcard_or_regex(None, &lowercase_input, None);
+            let term = Term::maybe_make_wildcard_or_regex(None, &lowercase_input, b);
             ProximityTerm::from_term(&term)
         } else if groups.len() == 1 {
             // input analyzed into 1 token, so we make it into the type of ProximityTerm it
             // might be (string, wildcard, regex, fuzzy)
             let token = groups.values().into_iter().next().unwrap().get(0).unwrap();
             let token = ProximityTerm::replace_substitutions(token);
-            let term = Term::maybe_make_wildcard_or_regex(None, &token, None);
+            let term = Term::maybe_make_wildcard_or_regex(None, &token, b);
             ProximityTerm::from_term(&term)
         } else {
             // next, build ProximityParts for each group
@@ -329,7 +343,7 @@ impl ProximityTerm {
 
                     for token in tokens {
                         let token = ProximityTerm::replace_substitutions(&token);
-                        let term = Term::maybe_make_wildcard_or_regex(None, &token, None);
+                        let term = Term::maybe_make_wildcard_or_regex(None, &token, b);
                         terms.push(ProximityTerm::from_term(&term));
                     }
 

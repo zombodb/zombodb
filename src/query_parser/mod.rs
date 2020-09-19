@@ -89,7 +89,7 @@ mod macros {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::ProximityTerm::String($val.into()),
+                crate::query_parser::ast::ProximityTerm::String($val.into(), None),
             )
         };
         ($operator:tt, $table:literal, $index:literal, $field:literal, $val:expr) => {
@@ -98,7 +98,7 @@ mod macros {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::ProximityTerm::String($val.into()),
+                crate::query_parser::ast::ProximityTerm::String($val.into(), None),
             )
         };
         ($operator:tt, $field:literal, $val:expr) => {
@@ -107,11 +107,11 @@ mod macros {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::ProximityTerm::String($val.into()),
+                crate::query_parser::ast::ProximityTerm::String($val.into(), None),
             )
         };
         ($val:expr) => {
-            crate::query_parser::ast::ProximityTerm::String($val.into())
+            crate::query_parser::ast::ProximityTerm::String($val.into(), None)
         };
     }
 
@@ -137,6 +137,56 @@ mod macros {
         };
         ($val:expr) => {
             crate::query_parser::ast::Term::Wildcard($val.into(), None)
+        };
+    }
+
+    #[allow(non_snake_case)]
+    macro_rules! Prefix {
+        ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: Some(IndexLink::default()),
+                    field: $field.into(),
+                },
+                crate::query_parser::ast::Term::Prefix($val.into(), Some($boost)),
+            )
+        };
+        ($operator:tt, $field:literal, $val:expr) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: Some(IndexLink::default()),
+                    field: $field.into(),
+                },
+                crate::query_parser::ast::Term::Prefix($val.into(), None),
+            )
+        };
+        ($val:expr) => {
+            crate::query_parser::ast::Term::Prefix($val.into(), None)
+        };
+    }
+
+    #[allow(non_snake_case)]
+    macro_rules! PhrasePrefix {
+        ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: Some(IndexLink::default()),
+                    field: $field.into(),
+                },
+                crate::query_parser::ast::Term::PhrasePrefix($val.into(), Some($boost)),
+            )
+        };
+        ($operator:tt, $field:literal, $val:expr) => {
+            crate::query_parser::ast::Expr::$operator(
+                crate::query_parser::ast::QualifiedField {
+                    index: Some(IndexLink::default()),
+                    field: $field.into(),
+                },
+                crate::query_parser::ast::Term::PhrasePrefix($val.into(), None),
+            )
+        };
+        ($val:expr) => {
+            crate::query_parser::ast::Term::PhrasePrefix($val.into(), None)
         };
     }
 
@@ -466,7 +516,8 @@ mod tests {
 
     #[pg_test]
     fn test_expr_wildcard_star() {
-        assert_expr("foo*", Wildcard!(Contains, "_", "foo*"));
+        assert_expr("'foo bar*'", PhrasePrefix!(Contains, "_", "foo bar*"));
+        assert_expr("foo*", Prefix!(Contains, "_", "foo*"));
         assert_expr("*foo", Wildcard!(Contains, "_", "*foo"));
         assert_expr("*foo*", Wildcard!(Contains, "_", "*foo*"));
         assert_expr("f*o", Wildcard!(Contains, "_", "f*o"));
@@ -723,7 +774,7 @@ mod tests {
     fn test_expr_paresd_with_wildcard() {
         assert_expr(
             "[a,b,c*]",
-            ParsedArray!(Contains, "_", String!("a"), String!("b"), Wildcard!("c*")),
+            ParsedArray!(Contains, "_", String!("a"), String!("b"), Prefix!("c*")),
         )
     }
 

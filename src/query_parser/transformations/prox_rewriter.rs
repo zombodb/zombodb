@@ -28,9 +28,9 @@ pub fn rewrite_proximity_chains(expr: &mut Expr) {
 
 fn rewrite_term(field: &QualifiedField, term: &mut Term) {
     match term {
-        Term::PhraseWithWildcard(ref s, parts, _) => {
+        Term::PhraseWithWildcard(ref s, parts, b) => {
             // it's a complex phrase with a wildcard, so it needs to be a proximity chain
-            match ProximityTerm::make_proximity_chain(field, s) {
+            match ProximityTerm::make_proximity_chain(field, s, *b) {
                 ProximityTerm::ProximityChain(mut v) => parts.append(&mut v),
                 other => parts.push(ProximityPart {
                     words: vec![other],
@@ -51,10 +51,14 @@ fn rewrite_term(field: &QualifiedField, term: &mut Term) {
 
 fn rewrite_prox_term(field: &QualifiedField, prox_term: &mut ProximityTerm) {
     match prox_term {
-        ProximityTerm::Phrase(s) => *prox_term = ProximityTerm::make_proximity_chain(field, &s),
-        ProximityTerm::Prefix(s) => *prox_term = ProximityTerm::make_proximity_chain(field, &s),
-        ProximityTerm::PhraseWithWildcard(s, _) => {
-            *prox_term = ProximityTerm::make_proximity_chain(field, &s)
+        ProximityTerm::Phrase(s, b) => {
+            *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
+        }
+        ProximityTerm::Prefix(s, b) => {
+            *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
+        }
+        ProximityTerm::PhraseWithWildcard(s, _, b) => {
+            *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
         }
         _ => {}
     }
