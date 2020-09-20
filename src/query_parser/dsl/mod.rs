@@ -37,6 +37,8 @@ fn debug_query(index: PgRelation, query: &str) -> String {
 
 pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
     match expr {
+        Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
+        Expr::Expand(_, _) => unimplemented!("#expand is not implemented yet"),
         Expr::WithList(v) => match Expr::nested_path(v) {
             Some(path) => {
                 let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
@@ -63,6 +65,8 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
             term_to_dsl(f, t, ComparisonOpcode::DoesNotContain)
         }
         Expr::Regex(f, t) => term_to_dsl(f, t, ComparisonOpcode::Regex),
+        Expr::MoreLikeThis(_, _) => unimplemented!("more like this is not implemented yet"),
+        Expr::FuzzyLikeThis(_, _) => unimplemented!("fuzzy like this is not implemented yet"),
 
         Expr::Gt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Gt),
         Expr::Gte(f, t) => term_to_dsl(f, t, ComparisonOpcode::Gte),
@@ -117,8 +121,6 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
 
             current
         }
-
-        _ => panic!("unsupported Expression: {:?}", expr),
     }
 }
 
