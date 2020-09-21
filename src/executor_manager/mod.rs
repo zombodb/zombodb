@@ -270,7 +270,7 @@ impl ExecutorManager {
                 }
 
                 if let Err(e) = bulk.bulk.finish() {
-                    panic!(e);
+                    panic!("{:?}", e);
                 }
             }
         }
