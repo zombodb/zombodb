@@ -1,5 +1,4 @@
 use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
-use pgx::PgRelation;
 
 pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexLink>) {
     match expr {
