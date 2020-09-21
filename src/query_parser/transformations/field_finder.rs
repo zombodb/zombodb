@@ -1,4 +1,5 @@
 use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
+use pgx::PgRelation;
 
 pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexLink>) {
     match expr {
@@ -47,11 +48,28 @@ fn find_link_for_field(
             return Some(index.clone());
         }
 
-        let relation = index.open_table().expect("failed to open table");
-        for att in relation.tuple_desc().iter() {
-            if att.name() == field_name.base_field() {
-                // the table behind this index link contains this field
-                return Some(index.clone());
+        let relation = if index == root_index {
+            // if we can't open the root_index, that's okay, we'll just not do anything about that
+            // this should only happen during our unit tests where we don't specify a valid table/index
+            match index.open_index() {
+                Ok(relation) => Some(relation),
+                Err(_) => None,
+            }
+        } else {
+            // but we definitely want to ensure we can open a linked index, and we'll panic!() if we can't
+            Some(
+                index
+                    .open_table()
+                    .expect("failed to open linked index's table table"),
+            )
+        };
+
+        if let Some(relation) = relation {
+            for att in relation.tuple_desc().iter() {
+                if att.name() == field_name.base_field() {
+                    // the table behind this index link contains this field
+                    return Some(index.clone());
+                }
             }
         }
     }
