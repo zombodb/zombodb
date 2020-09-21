@@ -293,49 +293,23 @@ String: &'input str = {
 };
 
 TableIndexName: QualifiedIndex = {
-    <schema:(<IDENTIFIER> DOT)?> <table:IDENTIFIER> DOT <index:IDENTIFIER> => {
-        let index = match schema {
-            Some(schema) => QualifiedIndex {
-                schema: Some(schema.to_string()),
-                table: table.to_string(),
-                index: index.to_string(),
-            },
-            None => QualifiedIndex {
-                schema: None,
-                table: table.to_string(),
-                index: index.to_string(),
-            },
-        };
-
-        index
-    },
-
     <DOTTED_IDENTIFIER> => {
         let mut parts = <>.split_terminator('.');
         let schema = parts.next();
         let table = parts.next();
         let index = parts.next();
 
-        let index = if index.is_some() {
-            if parts.next().is_some() {
-                panic!("index link schema.table.index is too long: {}", <>);
-            }
-            QualifiedIndex {
-                schema: Some(schema.unwrap().to_string()),
-                table: table.unwrap().to_string(),
-                index: index.unwrap().to_string(),
-            }
-        } else {
-            let index = table;
-            let table = schema;
-            QualifiedIndex {
-                schema: None,
-                table: table.unwrap().to_string(),
-                index: index.unwrap().to_string(),
-            }
-        };
+        if schema.is_none() || table.is_none() || index.is_none() {
+            panic!("qualified index ({}) must be schema qualified.  ie, schema.table.index", <>);
+        } else if parts.next().is_some() {
+            panic!("index link schema.table.index is too long: {}", <>);
+        }
 
-        index
+        QualifiedIndex {
+            schema: Some(schema.unwrap().to_string()),
+            table: table.unwrap().to_string(),
+            index: index.unwrap().to_string(),
+        }
     }
 };
 

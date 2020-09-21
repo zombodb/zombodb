@@ -856,7 +856,7 @@ mod tests {
             "CREATE TABLE test_link_options();  
         CREATE INDEX idxtest_link_options
                   ON test_link_options
-               USING zombodb ((test_link_options.*)) WITH (options='id=<table.index>other_id');",
+               USING zombodb ((test_link_options.*)) WITH (options='id=<schema.table.index>other_id');",
         );
 
         let index_relation =
@@ -865,7 +865,7 @@ mod tests {
 
         assert_eq!(
             options.links(),
-            &Some(vec!["id=<table.index>other_id".to_string()])
+            &Some(vec!["id=<schema.table.index>other_id".to_string()])
         );
     }
 }

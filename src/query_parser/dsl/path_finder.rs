@@ -117,12 +117,12 @@ mod tests {
 
     #[test]
     fn test_find_path() {
-        let main = IndexLink::parse("id=<main.idxmain>id");
-        let ft = IndexLink::parse("id=<main_ft.idxmain_ft>ft_id");
-        let other = IndexLink::parse("other:(id=<other.idxother>other_id)");
-        let vol = IndexLink::parse("id=<vol.idxvol>vol_id");
-        let junk = IndexLink::parse("junk:(other.other_id=<foo.idxfoo>foo_id)");
-        let bar = IndexLink::parse("junk.junk_id=<bar.idxbar>bar_id");
+        let main = IndexLink::parse("id=<public.main.idxmain>id");
+        let ft = IndexLink::parse("id=<public.main_ft.idxmain_ft>ft_id");
+        let other = IndexLink::parse("other:(id=<public.other.idxother>other_id)");
+        let vol = IndexLink::parse("id=<public.vol.idxvol>vol_id");
+        let junk = IndexLink::parse("junk:(other.other_id=<public.foo.idxfoo>foo_id)");
+        let bar = IndexLink::parse("junk.junk_id=<public.bar.idxbar>bar_id");
 
         let mut pf = PathFinder::new(&main);
         pf.push(main.clone());
