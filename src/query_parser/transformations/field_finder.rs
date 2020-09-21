@@ -47,12 +47,11 @@ fn find_link_for_field(
             return Some(index.clone());
         }
 
-        if let Ok(relation) = index.open_table() {
-            for att in relation.tuple_desc().iter() {
-                if att.name() == field_name.base_field() {
-                    // the table behind this index link contains this field
-                    return Some(index.clone());
-                }
+        let relation = index.open_table().expect("failed to open table");
+        for att in relation.tuple_desc().iter() {
+            if att.name() == field_name.base_field() {
+                // the table behind this index link contains this field
+                return Some(index.clone());
             }
         }
     }
