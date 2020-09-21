@@ -259,10 +259,7 @@ impl ElasticsearchSearchRequest {
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         Elasticsearch::execute_request(
-            reqwest::Client::builder()
-                .gzip(true)
-                .build()
-                .expect("failed to build client")
+            Elasticsearch::client()
                 .post(&url)
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&body).unwrap()),
@@ -368,7 +365,7 @@ impl Scroller {
 
             if let Some(scroll_id) = orig_scroll_id {
                 Elasticsearch::execute_request(
-                    reqwest::Client::new().delete(&format!(
+                    Elasticsearch::client().delete(&format!(
                         "{}_search/scroll/{}",
                         elasticsearch.url(),
                         scroll_id

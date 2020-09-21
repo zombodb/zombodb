@@ -50,7 +50,7 @@ impl ElasticsearchAliasRequest {
         };
 
         Elasticsearch::execute_request(
-            reqwest::Client::new()
+            Elasticsearch::client()
                 .post(&format!("{}_aliases", self.elasticsearch.url()))
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&json_body).unwrap()),

@@ -24,7 +24,7 @@ impl ElasticsearchPutMappingRequest {
         let mut url = self.elasticsearch.base_url();
         url.push_str("/_mapping");
         Elasticsearch::execute_request(
-            reqwest::Client::new()
+            Elasticsearch::client()
                 .post(&url)
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&body).expect("failed to generate body")),

@@ -10,7 +10,7 @@ impl ElasticsearchUpdateSettingsRequest {
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
         Elasticsearch::execute_request(
-            reqwest::Client::new()
+            Elasticsearch::client()
                 .put(&format!("{}/_settings", self.0.base_url()))
                 .header("content-type", "application/json")
                 .body(

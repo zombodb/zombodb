@@ -50,7 +50,7 @@ struct Custom<'a> {
 impl ElasticsearchAnalyzerRequest {
     pub fn execute(&self) -> std::result::Result<AnalyzedData, ElasticsearchError> {
         let body = serde_json::to_string(&self.analyze_json).unwrap();
-        let client = reqwest::Client::new()
+        let client = Elasticsearch::client()
             .post(&self.url)
             .header("content-type", "application/json")
             .body(body);

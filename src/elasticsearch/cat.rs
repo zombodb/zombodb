@@ -20,6 +20,6 @@ impl ElasticsearchCatRequest {
         url.push_str(&self.endpoint);
         url.push_str("?h=*&format=json&time=ms&bytes=b&size=k");
 
-        Elasticsearch::execute_request(reqwest::Client::new().get(&url), |_, body| Ok(body))
+        Elasticsearch::execute_request(Elasticsearch::client().get(&url), |_, body| Ok(body))
     }
 }

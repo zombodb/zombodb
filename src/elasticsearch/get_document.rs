@@ -24,7 +24,7 @@ impl<'a, T: serde::de::DeserializeOwned> ElasticsearchGetDocumentRequest<'a, T> 
 
     pub fn execute(&self) -> Result<Option<T>, ElasticsearchError> {
         let result = Elasticsearch::execute_request(
-            reqwest::Client::new().get(&format!(
+            Elasticsearch::client().get(&format!(
                 "{}/_doc/{}?realtime={}",
                 self.elasticsearch.base_url(),
                 self.id,

@@ -93,6 +93,14 @@ impl Elasticsearch {
         Elasticsearch { options }
     }
 
+    pub fn client() -> reqwest::Client {
+        reqwest::ClientBuilder::new()
+            .gzip(true)
+            .timeout(std::time::Duration::from_secs(3600))
+            .build()
+            .expect("failed to build reqwest Client")
+    }
+
     pub fn arbitrary_request(
         &self,
         method: ArbitraryRequestType,
@@ -114,10 +122,10 @@ impl Elasticsearch {
         url.push_str(endpoint);
 
         let mut builder = match method {
-            ArbitraryRequestType::GET => reqwest::Client::new().get(&url),
-            ArbitraryRequestType::POST => reqwest::Client::new().post(&url),
-            ArbitraryRequestType::PUT => reqwest::Client::new().put(&url),
-            ArbitraryRequestType::DELETE => reqwest::Client::new().delete(&url),
+            ArbitraryRequestType::GET => Elasticsearch::client().get(&url),
+            ArbitraryRequestType::POST => Elasticsearch::client().post(&url),
+            ArbitraryRequestType::PUT => Elasticsearch::client().put(&url),
+            ArbitraryRequestType::DELETE => Elasticsearch::client().delete(&url),
         };
 
         if let Some(post_data) = post_data {

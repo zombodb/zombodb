@@ -9,7 +9,7 @@ impl ElasticsearchRefreshIndexRequest {
 
     pub fn execute(&self) -> Result<(), ElasticsearchError> {
         Elasticsearch::execute_request(
-            reqwest::Client::new().post(&format!("{}/_refresh", self.0.base_url())),
+            Elasticsearch::client().post(&format!("{}/_refresh", self.0.base_url())),
             |_, _| Ok(()),
         )
     }

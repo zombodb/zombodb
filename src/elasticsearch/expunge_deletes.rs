@@ -9,7 +9,7 @@ impl ElasticsearchExpungeDeletesRequest {
 
     pub fn execute(&self) -> Result<(), ElasticsearchError> {
         Elasticsearch::execute_request(
-            reqwest::Client::new().post(&format!(
+            Elasticsearch::client().post(&format!(
                 "{}/_forcemerge?only_expunge_deletes=true&flush=false",
                 self.0.base_url()
             )),

@@ -30,7 +30,7 @@ impl ElasticsearchProfileQueryRequest {
         url.push_str("?size=0");
         url.push_str("&filter_path=profile");
         Elasticsearch::execute_request(
-            reqwest::Client::new()
+            Elasticsearch::client()
                 .post(&url)
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&body).expect("failed to generate body")),

@@ -60,7 +60,7 @@ where
         let mut url = self.elasticsearch.alias_url();
         url.push_str("/_search");
         url.push_str("?size=0");
-        let client = reqwest::Client::new()
+        let client = Elasticsearch::client()
             .get(&url)
             .header("content-type", "application/json")
             .body(serde_json::to_string(&self.json_query).unwrap());

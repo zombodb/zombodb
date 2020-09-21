@@ -684,11 +684,7 @@ impl Handler {
 
                 let url = format!("{}/_bulk?filter_path={}", base_url, BULK_FILTER_PATH);
                 if let Err(e) = Elasticsearch::execute_request(
-                    reqwest::Client::builder()
-                        .timeout(Duration::from_secs(60 * 60))
-                        .gzip(true)
-                        .build()
-                        .expect("failed to build client")
+                    Elasticsearch::client()
                         .post(&url)
                         .header("content-type", "application/json")
                         .body(reader),

@@ -9,7 +9,7 @@ impl ElasticsearchDeleteIndexRequest {
 
     pub fn execute(&self) -> Result<(), ElasticsearchError> {
         if let Err(e) = Elasticsearch::execute_request(
-            reqwest::Client::new().delete(&self.0.base_url()),
+            Elasticsearch::client().delete(&self.0.base_url()),
             |_, _| Ok(()),
         ) {
             if let Some(status) = e.status() {
