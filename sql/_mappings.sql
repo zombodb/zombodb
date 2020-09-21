@@ -197,6 +197,7 @@ VALUES ('shingle_filter_search', '{
   "min_shingle_size": 2,
   "max_shingle_size": 2,
   "output_unigrams": false,
+  "output_unigrams_if_no_shingles": true,
   "token_separator": "$"
 }', true);
 
@@ -241,6 +242,23 @@ VALUES ('fulltext_with_shingles_search', '{
   "filter": [
     "lowercase",
     "shingle_filter_search"
+  ]
+}', true);
+INSERT INTO zdb.analyzers(name, definition, is_default)
+VALUES ('fulltext', '{
+  "type": "standard",
+  "filter": [
+    "zdb_truncate_to_fit",
+    "lowercase"
+  ]
+}', true);
+INSERT INTO zdb.analyzers(name, definition, is_default)
+VALUES ('phrase', '{
+  "type": "standard",
+  "copy_to": "zdb_all",
+  "filter": [
+    "zdb_truncate_to_fit",
+    "lowercase"
   ]
 }', true);
 
