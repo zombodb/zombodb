@@ -22,19 +22,29 @@ fn dump_query(index: PgRelation, query: &str) -> String {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn debug_query(index: PgRelation, query: &str) -> String {
+fn debug_query(
+    index: PgRelation,
+    query: &str,
+) -> (
+    name!(normalized_query, String),
+    name!(used_fields, Vec<String>),
+    name!(ast, String),
+) {
     let mut used_fields = HashSet::new();
     let query =
         Expr::from_str(&index, "zdb_all", query, &mut used_fields).expect("failed to parse query");
 
-    let mut tree = format!("{:#?}", query);
-    tree = tree.replace("\n", "\n   ");
-    let query_string = format!("{}", query);
-    let query_string = textwrap::fill(&query_string, 80);
+    let tree = format!("{:#?}", query);
 
-    format!(
-        "Normalized Query:\n   {}\nUsed Fields:\n   {:?}\nSyntaxTree:\n   {}",
-        query_string, used_fields, tree
+    (
+        sqlformat::format(
+            &format!("{}", query),
+            &sqlformat::QueryParams::default(),
+            sqlformat::FormatOptions::default(),
+        )
+        .replace(" :\"", ":\""),
+        used_fields.into_iter().map(|v| v.into()).collect(),
+        format!("{}", tree),
     )
 }
 
