@@ -1,5 +1,6 @@
 #![allow(unused_macros)]
 
+use crate::query_parser::ast::QualifiedField;
 use std::collections::{HashMap, HashSet};
 
 pub mod ast;
@@ -8,12 +9,12 @@ pub mod parser;
 
 pub(crate) mod transformations;
 
-pub(crate) fn parse_field_lists(input: &str) -> HashMap<String, Vec<String>> {
+pub(crate) fn parse_field_lists(input: &str) -> HashMap<String, Vec<QualifiedField>> {
     let parser = crate::query_parser::parser::FieldListParser::new();
     let mut used_fields = HashSet::new();
     let mut fieldname_stack = Vec::new();
     let mut operator_stack = Vec::new();
-    parser
+    let field_list = parser
         .parse(
             None,
             &mut used_fields,
@@ -21,7 +22,19 @@ pub(crate) fn parse_field_lists(input: &str) -> HashMap<String, Vec<String>> {
             &mut operator_stack,
             input,
         )
-        .expect("failed to parse field lists")
+        .expect("failed to parse field lists");
+
+    let mut qualified_field_list = HashMap::new();
+    qualified_field_list.extend(field_list.into_iter().map(|(k, v)| {
+        (
+            k,
+            v.into_iter()
+                .map(|field| QualifiedField { index: None, field })
+                .collect(),
+        )
+    }));
+
+    qualified_field_list
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -365,7 +378,7 @@ mod macros {
 mod tests {
     use crate::query_parser::ast::{Expr, IndexLink, ParserError, QualifiedIndex};
     use pgx::*;
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
 
     pub(super) fn parse(input: &str) -> Result<Expr, ParserError> {
         let mut used_fields = HashSet::new();
@@ -385,7 +398,7 @@ mod tests {
                 right_field: None,
             },
             Vec::new(),
-            &None,
+            HashMap::new(),
         )
     }
 

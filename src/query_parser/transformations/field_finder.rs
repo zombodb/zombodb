@@ -36,6 +36,11 @@ fn find_link_for_field(
     root_index: &IndexLink,
     indexes: &Vec<IndexLink>,
 ) -> Option<IndexLink> {
+    if field_name.index.is_some() {
+        // we already know where the field lives
+        return field_name.index.clone();
+    }
+
     for mut index in Some(root_index).into_iter().chain(indexes.into_iter()) {
         if index.is_this_index() {
             // 'this.index', typically from an #expand or #subselect, means the original index

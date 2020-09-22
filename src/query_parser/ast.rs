@@ -5,7 +5,7 @@ use crate::query_parser::transformations::field_finder::find_fields;
 use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
 use crate::query_parser::transformations::prox_rewriter::rewrite_proximity_chains;
-use crate::utils::get_search_analyzer;
+use crate::utils::{get_null_copy_to_fields, get_search_analyzer};
 use lalrpop_util::ParseError;
 pub use pg_catalog::ProximityPart;
 pub use pg_catalog::ProximityTerm;
@@ -390,7 +390,7 @@ impl<'input> Expr<'input> {
         used_fields: &mut HashSet<&'input str>,
         root_index: IndexLink,
         linked_indexes: Vec<IndexLink>,
-        field_lists: &Option<HashMap<String, Vec<String>>>,
+        mut field_lists: HashMap<String, Vec<QualifiedField>>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         let input = input.clone();
         let parser = crate::query_parser::parser::ExprParser::new();
@@ -405,8 +405,33 @@ impl<'input> Expr<'input> {
             input,
         )?;
 
-        if field_lists.is_some() {
-            expand_field_lists(expr.as_mut(), field_lists.as_ref().unwrap());
+        let used_zdb_all = used_fields.contains("zdb_all");
+        if used_zdb_all || !field_lists.is_empty() {
+            if used_zdb_all && index.is_some() {
+                // create a field list for "zdb_all"
+                for (link, relation) in index
+                    .into_iter()
+                    .map(|index| (&root_index, index.clone()))
+                    .chain(
+                        linked_indexes
+                            .iter()
+                            .map(|link| (link, link.open_index().expect("failed to open index"))),
+                    )
+                {
+                    let fields = get_null_copy_to_fields(&relation);
+                    field_lists.entry("zdb_all".into()).or_default().append(
+                        &mut fields
+                            .into_iter()
+                            .map(|field| QualifiedField {
+                                index: Some(link.clone()),
+                                field,
+                            })
+                            .collect(),
+                    );
+                }
+            }
+
+            expand_field_lists(expr.as_mut(), &field_lists);
         }
 
         find_fields(expr.as_mut(), &root_index, &linked_indexes);

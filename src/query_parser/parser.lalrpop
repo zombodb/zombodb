@@ -203,9 +203,16 @@ ParentheticalGroup: Box<Expr<'input>> = {
 
 FieldName: &'input str = {
     IDENTIFIER => {
-        fieldname_stack.push(<>);
-        used_fields.insert(<>);
-        <>
+        let mut fieldname = <>;
+
+        // rewrite a field named "_all" for backwards compatibility w/ old versions of ZDB/ES
+        if fieldname == "_all" {
+            fieldname = "zdb_all";
+        }
+
+        fieldname_stack.push(fieldname);
+        used_fields.insert(fieldname);
+        fieldname
     },
     DOTTED_IDENTIFIER => {
         fieldname_stack.push(<>);

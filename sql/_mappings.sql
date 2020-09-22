@@ -263,6 +263,7 @@ VALUES ('phrase', '{
 }', true);
 
 
+CREATE DOMAIN zdb.phrase AS text;
 CREATE DOMAIN zdb.fulltext AS text;
 CREATE DOMAIN zdb.fulltext_with_shingles AS text;
 CREATE DOMAIN zdb.zdb_standard AS text;
@@ -378,16 +379,21 @@ VALUES ('inet', '{
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
-VALUES ('zdb.fulltext', '{
+VALUES ('zdb.phrase', '{
   "type": "text",
   "copy_to": "zdb_all",
   "analyzer": "zdb_standard"
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
+VALUES ('zdb.fulltext', '{
+  "type": "text",
+  "analyzer": "zdb_standard"
+}', true);
+
+INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.fulltext_with_shingles', '{
   "type": "text",
-  "copy_to": "zdb_all",
   "analyzer": "fulltext_with_shingles",
   "search_analyzer": "fulltext_with_shingles_search"
 }', true);

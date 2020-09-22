@@ -29,9 +29,12 @@ fn debug_query(index: PgRelation, query: &str) -> String {
 
     let mut tree = format!("{:#?}", query);
     tree = tree.replace("\n", "\n   ");
+    let query_string = format!("{}", query);
+    let query_string = textwrap::fill(&query_string, 80);
+
     format!(
         "Normalized Query:\n   {}\nUsed Fields:\n   {:?}\nSyntaxTree:\n   {}",
-        query, used_fields, tree
+        query_string, used_fields, tree
     )
 }
 

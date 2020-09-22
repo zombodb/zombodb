@@ -11,6 +11,7 @@ mod delete_index;
 mod expunge_deletes;
 mod get_document;
 mod get_mapping;
+mod get_settings;
 mod profile_query;
 mod put_mapping;
 mod refresh_index;
@@ -29,6 +30,7 @@ use crate::elasticsearch::delete_index::ElasticsearchDeleteIndexRequest;
 use crate::elasticsearch::expunge_deletes::ElasticsearchExpungeDeletesRequest;
 use crate::elasticsearch::get_document::ElasticsearchGetDocumentRequest;
 use crate::elasticsearch::get_mapping::ElasticsearchGetMappingRequest;
+use crate::elasticsearch::get_settings::ElasticsearchGetSettingsRequest;
 use crate::elasticsearch::pg_catalog::ArbitraryRequestType;
 use crate::elasticsearch::profile_query::ElasticsearchProfileQueryRequest;
 use crate::elasticsearch::put_mapping::ElasticsearchPutMappingRequest;
@@ -258,6 +260,10 @@ impl Elasticsearch {
 
     pub fn get_mapping(&self) -> ElasticsearchGetMappingRequest {
         ElasticsearchGetMappingRequest::new(self)
+    }
+
+    pub fn get_settings(&self) -> ElasticsearchGetSettingsRequest {
+        ElasticsearchGetSettingsRequest::new(self)
     }
 
     pub fn url(&self) -> &str {

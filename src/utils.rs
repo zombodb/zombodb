@@ -99,6 +99,40 @@ pub fn get_search_analyzer(index: &PgRelation, field: &str) -> String {
     .expect("search analyzer was null")
 }
 
+pub fn get_index_analyzer(index: &PgRelation, field: &str) -> String {
+    Spi::get_one_with_args(
+        "select zdb.get_index_analyzer($1, $2);",
+        vec![
+            (PgBuiltInOids::OIDOID.oid(), index.oid().into_datum()),
+            (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
+        ],
+    )
+    .expect("search analyzer was null")
+}
+
+pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
+    let mut fields = Vec::new();
+
+    Spi::connect(|client| {
+        let mut results = client.select(
+            "select * from zdb.get_null_copy_to_fields($1);",
+            None,
+            Some(vec![(
+                PgBuiltInOids::OIDOID.oid(),
+                index.oid().into_datum(),
+            )]),
+        );
+
+        while results.next().is_some() {
+            fields.push(results.get_one().expect("field name was null"))
+        }
+
+        Ok(Some(()))
+    });
+
+    fields
+}
+
 pub fn json_to_string(key: serde_json::Value) -> Option<String> {
     match key {
         Value::Null => None,

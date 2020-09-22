@@ -26,6 +26,7 @@ pgx = { git = "https://github.com/zombodb/pgx" }
 pgx-macros = { git = "https://github.com/zombodb/pgx" }
 regex = "1.3.9"
 reqwest = "0.9.24"
+textwrap = "0.12"
 serde = { version = "1.0.104", features = [ "derive" ] }
 serde_json = "1.0.46"
 url = "2.1.1"

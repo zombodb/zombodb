@@ -1,5 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
+use crate::query_parser::ast::QualifiedField;
 use crate::query_parser::parse_field_lists;
 use lazy_static::*;
 use memoffset::*;
@@ -169,7 +170,7 @@ impl ZDBIndexOptionsInternal {
         }
     }
 
-    fn field_lists(&self) -> Option<HashMap<String, Vec<String>>> {
+    fn field_lists(&self) -> Option<HashMap<String, Vec<QualifiedField>>> {
         let value = self.get_str(self.field_lists_offset, || "".to_owned());
         if value.is_empty() {
             None
@@ -201,7 +202,7 @@ pub struct ZDBIndexOptions {
     uuid: String,
     translog_durability: String,
     links: Option<Vec<String>>,
-    field_lists: Option<HashMap<String, Vec<String>>>,
+    field_lists: Option<HashMap<String, Vec<QualifiedField>>>,
 
     optimize_after: i32,
     compression_level: i32,
@@ -301,8 +302,11 @@ impl ZDBIndexOptions {
         &self.links
     }
 
-    pub fn field_lists(&self) -> &Option<HashMap<String, Vec<String>>> {
-        &self.field_lists
+    pub fn field_lists(&self) -> HashMap<String, Vec<QualifiedField>> {
+        match &self.field_lists {
+            Some(field_lists) => field_lists.clone(),
+            None => HashMap::new(),
+        }
     }
 }
 
@@ -337,6 +341,16 @@ fn index_mapping(index_relation: PgRelation) -> JsonB {
             .get_mapping()
             .execute()
             .expect("failed to get index mapping"),
+    )
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn index_settings(index_relation: PgRelation) -> JsonB {
+    JsonB(
+        Elasticsearch::new(&index_relation)
+            .get_settings()
+            .execute()
+            .expect("failed to get index settings"),
     )
 }
 
