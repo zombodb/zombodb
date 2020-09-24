@@ -121,23 +121,23 @@ fn remove_aborted_xids(
                 && !unsafe { pg_sys::TransactionIdIsInProgress(xid) }
             {
                 let xmin_cnt = elasticsearch
-                    .count(ZDBQuery::new_with_query_dsl(
-                        serde_json::from_str(&format!(
-                            "{{ \"term\": {{ \"zdb_xmin\": {} }} }}",
-                            xid64
-                        ))
-                        .unwrap(),
-                    ))
+                    .count(ZDBQuery::new_with_query_dsl(serde_json::json! {
+                        {
+                            "term": {
+                                "zdb_xmin": xid64
+                            }
+                        }
+                    }))
                     .execute()
                     .expect("failed to count xmin values");
                 let xmax_cnt = elasticsearch
-                    .count(ZDBQuery::new_with_query_dsl(
-                        serde_json::from_str(&format!(
-                            "{{ \"term\": {{ \"zdb_xmax\": {} }} }}",
-                            xid64
-                        ))
-                        .unwrap(),
-                    ))
+                    .count(ZDBQuery::new_with_query_dsl(serde_json::json! {
+                        {
+                            "term": {
+                                "zdb_xmax": xid64
+                            }
+                        }
+                    }))
                     .execute()
                     .expect("failed to count xmax values");
 
