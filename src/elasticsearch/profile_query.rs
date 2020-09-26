@@ -1,15 +1,15 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
-use crate::zdbquery::ZDBQuery;
+use crate::zdbquery::{ZDBPreparedQuery, ZDBQuery};
 use pgx::*;
 use serde_json::*;
 
 pub struct ElasticsearchProfileQueryRequest {
     elasticsearch: Elasticsearch,
-    query: ZDBQuery,
+    query: ZDBPreparedQuery,
 }
 
 impl ElasticsearchProfileQueryRequest {
-    pub fn new(elasticsearch: &Elasticsearch, query: ZDBQuery) -> Self {
+    pub fn new(elasticsearch: &Elasticsearch, query: ZDBPreparedQuery) -> Self {
         ElasticsearchProfileQueryRequest {
             elasticsearch: elasticsearch.clone(),
             query,
@@ -20,7 +20,7 @@ impl ElasticsearchProfileQueryRequest {
         let body = json! {
             {
                 "profile": true,
-                "query": self.query.query_dsl().expect("no query dsl")
+                "query": self.query.query_dsl()
             }
         };
 
@@ -46,7 +46,7 @@ impl ElasticsearchProfileQueryRequest {
 fn profile_query(index: PgRelation, query: ZDBQuery) -> JsonB {
     JsonB(
         Elasticsearch::new(&index)
-            .profile_query(query)
+            .profile_query(query.prepare())
             .execute()
             .expect("failed to execute profile query request"),
     )

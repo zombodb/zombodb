@@ -90,12 +90,11 @@ mod tests {
             "SELECT dsl.terms('fieldname', 'one'::text, 'two', 'three', 'four');",
         )
         .expect("didn't get SPI result");
-        let dsl = result.query_dsl();
+        let dsl = result.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms" : {
                         "fieldname" : ["one", "two", "three", "four"],
@@ -111,12 +110,11 @@ mod tests {
         let result =
             Spi::get_one::<ZDBQuery>("SELECT dsl.terms('fieldname', true::bool,false,true,true);")
                 .expect("didn't get SPI result");
-        let dsl = result.query_dsl();
+        let dsl = result.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms" : {
                         "fieldname" : [true, false, true, true],
@@ -138,12 +136,11 @@ mod tests {
             min, zero, max
         ))
         .expect("didn't get SPI result");
-        let dsl = result.query_dsl();
+        let dsl = result.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms" : {
                         "fieldname" : [min,zero,max],
@@ -165,12 +162,11 @@ mod tests {
             min, zero, max
         ))
         .expect("didn't get SPI result");
-        let dsl = result.query_dsl();
+        let dsl = result.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms" : {
                         "fieldname" : [min,zero,max],
@@ -192,12 +188,11 @@ mod tests {
             min, zero, max
         ))
         .expect("didn't get SPI result");
-        let dsl = result.query_dsl();
+        let dsl = result.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms" : {
                         "fieldname" : [min,zero,max],
@@ -221,12 +216,11 @@ mod tests {
             ninf, min, zero, max, inf
         ))
         .expect("didn't get SPI result");
-        let dsl = result.query_dsl();
+        let dsl = result.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms" : {
                         "fieldname" : [ninf,min,zero,max,inf],
@@ -250,12 +244,11 @@ mod tests {
             ninf, min, zero, max, inf
         ))
         .expect("didn't get SPI result");
-        let dsl = result.query_dsl();
+        let dsl = result.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms" : {
                         "fieldname" : [ninf,min,zero,max,inf],

@@ -14,8 +14,8 @@ mod dsl {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "span_containing" : {
-                    "little" :  little.query_dsl(),
-                    "big" : big.query_dsl()
+                    "little" :  little.into_value(),
+                    "big" : big.into_value()
                 }
             }
         })
@@ -25,7 +25,7 @@ mod dsl {
     pub(crate) fn span_first(query: ZDBQuery, end: i64) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
-                "span_first" :query.query_dsl(),
+                "span_first" :query.into_value(),
                 "end" : end
             }
         })
@@ -36,7 +36,7 @@ mod dsl {
         ZDBQuery::new_with_query_dsl(json! {
               {
           "field_masking_span" :
-                  query.query_dsl(),
+                  query.into_value(),
                   "field": field
               }
         })
@@ -46,7 +46,7 @@ mod dsl {
     pub(crate) fn span_multi(query: ZDBQuery) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
-                "span_multi": query.query_dsl()
+                "span_multi": query.into_value()
             }
         })
     }
@@ -62,9 +62,7 @@ mod dsl {
             .map(|zdbquery| {
                 zdbquery
                     .expect("found NULL zdbquery in clauses")
-                    .query_dsl()
-                    .expect("zdbquery doesn't contain query dsl")
-                    .clone()
+                    .into_value()
             })
             .collect();
 
@@ -99,13 +97,11 @@ mod dsl {
         post_integer: Option<default!(i64, NULL)>,
         dis_integer: Option<default!(i64, NULL)>,
     ) -> ZDBQuery {
+        let include = include.into_value();
+        let exclude = exclude.into_value();
         let span_not = SpanNot {
-            include: include
-                .query_dsl()
-                .expect("'include' zdbquery doesn't contain query dsl"),
-            exclude: exclude
-                .query_dsl()
-                .expect("'exclude' zdbquery doesn't contain query dsl"),
+            include: &include,
+            exclude: &exclude,
             pre_integer,
             post_integer,
             dis_integer,
@@ -125,9 +121,7 @@ mod dsl {
             .map(|zdbquery| {
                 zdbquery
                     .expect("found NULL zdbquery in clauses")
-                    .query_dsl()
-                    .expect("zdbquery doesn't contain query dsl")
-                    .clone()
+                    .into_value()
             })
             .collect();
         ZDBQuery::new_with_query_dsl(json! {
@@ -168,8 +162,8 @@ mod dsl {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "span_within" : {
-                    "little" :  little.query_dsl(),
-                    "big" : big.query_dsl()
+                    "little" :  little.into_value(),
+                    "big" : big.into_value()
                 }
             }
         })
@@ -186,11 +180,11 @@ mod tests {
     #[pg_test]
     fn test_span_term_without_boost() {
         let zdbquery = span_term("term_field", "term_value", None);
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "span_term" :{
                         "term_field" : {
@@ -206,11 +200,11 @@ mod tests {
     fn test_span_term_with_boost() {
         let term_boost = 2.9 as f32;
         let zdbquery = span_term("term_field", "term_value", Some(term_boost));
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "span_term" :{
                         "term_field" : {
@@ -230,11 +224,11 @@ mod tests {
             span_term("little_field", "little_value", Some(little_boost)),
             span_term("big_field", "big_value", None),
         );
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                    "span_containing" : {
                         "little" :{
@@ -261,11 +255,11 @@ mod tests {
     #[pg_test()]
     fn test_span_first() {
         let zdbquery = span_first(span_term("span_term_field", "span_term_value", None), 50);
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "span_first" :{
                            "span_term" :{
@@ -286,11 +280,11 @@ mod tests {
             "span_masking_field",
             span_term("span_term_field", "span_term_value", None),
         );
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "field_masking_span" :{
                            "span_term" :{
@@ -308,11 +302,11 @@ mod tests {
     #[pg_test()]
     fn test_span_multi() {
         let zdbquery = span_multi(span_term("span_term_field", "span_term_value", None));
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "span_multi" :{
                            "span_term" :{
@@ -366,11 +360,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "span_near" : {
                         "clauses" : [
@@ -404,11 +398,11 @@ mod tests {
             span_term("little_field", "little_value", Some(little_boost)),
             span_term("big_field", "big_value", None),
         );
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                    "span_within" : {
                         "little" :{
@@ -442,11 +436,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "span_or" : {
                         "clauses" : [
@@ -487,11 +481,11 @@ mod tests {
             None,
             None,
         );
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "span_not" : {
                         "include" : {
@@ -524,11 +518,11 @@ mod tests {
             None,
             None,
         );
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "span_not" : {
                         "include" : {

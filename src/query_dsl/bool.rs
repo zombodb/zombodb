@@ -1,245 +1,200 @@
 mod pg_catalog {
+    use crate::zdbquery::ZDBQueryClause;
     use pgx::*;
     use serde::*;
-    use serde_json::Value;
 
-    #[derive(PostgresType, Serialize, Deserialize)]
-    pub struct BoolQueryPart(pub Value);
+    #[derive(Debug, PostgresType, Serialize, Deserialize)]
+    pub struct BoolQueryPart(pub ZDBQueryClause);
 }
 
 pub mod dsl {
     use super::pg_catalog::*;
-    use crate::zdbquery::ZDBQuery;
+    use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
     use pgx::*;
-    use serde::*;
-    use serde_json::*;
-    use std::collections::HashMap;
-
-    #[derive(Serialize, Deserialize)]
-    #[serde(rename = "bool")]
-    struct Bool {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        must: Option<Vec<Value>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        must_not: Option<Vec<Value>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        should: Option<Vec<Value>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        filter: Option<Vec<Value>>,
-    }
 
     #[pg_extern(immutable, parallel_safe)]
     fn bool(parts: VariadicArray<BoolQueryPart>) -> ZDBQuery {
-        let mut must = Vec::new();
-        let mut must_not = Vec::new();
-        let mut should = Vec::new();
-        let mut filter = Vec::new();
+        let mut m = Vec::new();
+        let mut s = Vec::new();
+        let mut n = Vec::new();
+        let mut f = Vec::new();
 
         for part in parts.iter() {
-            if part.is_none() {
-                continue;
-            }
-
-            let part = part.unwrap();
-            let mut map: HashMap<String, Vec<Value>> = serde_json::from_value(part.0).unwrap();
-
-            must.append(map.get_mut("must").unwrap_or(&mut Vec::<Value>::new()));
-            must_not.append(map.get_mut("must_not").unwrap_or(&mut Vec::<Value>::new()));
-            should.append(map.get_mut("should").unwrap_or(&mut Vec::<Value>::new()));
-            filter.append(map.get_mut("filter").unwrap_or(&mut Vec::<Value>::new()));
-
-            if !map.contains_key("must")
-                && !map.contains_key("must_not")
-                && !map.contains_key("should")
-                && !map.contains_key("filter")
-            {
-                panic!("invalid dsl.bool() argument: {:?}", map);
+            if let Some(part) = part {
+                if let Some(bool) = part.0.into_bool() {
+                    m.append(&mut bool.must.unwrap_or_default());
+                    s.append(&mut bool.should.unwrap_or_default());
+                    n.append(&mut bool.must_not.unwrap_or_default());
+                    f.append(&mut bool.filter.unwrap_or_default());
+                } else {
+                    panic!("invalid dsl.bool() argument");
+                }
             }
         }
 
-        let mut bool_query = Bool {
-            must: None,
-            must_not: None,
-            should: None,
-            filter: None,
-        };
-
-        if !must.is_empty() {
-            bool_query.must = Some(must);
-        }
-        if !must_not.is_empty() {
-            bool_query.must_not = Some(must_not);
-        }
-        if !should.is_empty() {
-            bool_query.should = Some(should);
-        }
-        if !filter.is_empty() {
-            bool_query.filter = Some(filter);
-        }
-
-        ZDBQuery::new_with_query_dsl(json!({ "bool": bool_query }))
+        ZDBQuery::new_with_query_clause(ZDBQueryClause::bool(
+            if m.is_empty() { None } else { Some(m) },
+            if s.is_empty() { None } else { Some(s) },
+            if n.is_empty() { None } else { Some(n) },
+            if f.is_empty() { None } else { Some(f) },
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     fn should(queries: VariadicArray<ZDBQuery>) -> BoolQueryPart {
-        BoolQueryPart(json!({"should":
-            serde_json::to_value(
+        BoolQueryPart(ZDBQueryClause::bool(
+            None,
+            Some(
                 queries
                     .iter()
                     .map(|zdbquery| {
                         zdbquery
                             .expect("found NULL zdbquery in queries")
                             .query_dsl()
-                            .expect("zdbquery doesn't contain query dsl")
-                            .clone()
                     })
-                    .collect::<Vec<Value>>(),
-            )
-            .unwrap(),
-        }))
+                    .collect(),
+            ),
+            None,
+            None,
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     fn must(queries: VariadicArray<ZDBQuery>) -> BoolQueryPart {
-        BoolQueryPart(json!({"must":
-            serde_json::to_value(
+        BoolQueryPart(ZDBQueryClause::bool(
+            Some(
                 queries
                     .iter()
                     .map(|zdbquery| {
                         zdbquery
                             .expect("found NULL zdbquery in queries")
                             .query_dsl()
-                            .expect("zdbquery doesn't contain query dsl")
-                            .clone()
                     })
-                    .collect::<Vec<Value>>(),
-            )
-            .unwrap(),
-        }))
+                    .collect(),
+            ),
+            None,
+            None,
+            None,
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     fn must_not(queries: VariadicArray<ZDBQuery>) -> BoolQueryPart {
-        BoolQueryPart(json!({"must_not":
-            serde_json::to_value(
+        BoolQueryPart(ZDBQueryClause::bool(
+            None,
+            None,
+            Some(
                 queries
                     .iter()
                     .map(|zdbquery| {
                         zdbquery
                             .expect("found NULL zdbquery in queries")
                             .query_dsl()
-                            .expect("zdbquery doesn't contain query dsl")
-                            .clone()
                     })
-                    .collect::<Vec<Value>>(),
-            )
-            .unwrap(),
-        }))
+                    .collect(),
+            ),
+            None,
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     fn filter(queries: VariadicArray<ZDBQuery>) -> BoolQueryPart {
-        BoolQueryPart(json!({"filter":
-            serde_json::to_value(
+        BoolQueryPart(ZDBQueryClause::bool(
+            None,
+            None,
+            None,
+            Some(
                 queries
                     .iter()
                     .map(|zdbquery| {
                         zdbquery
                             .expect("found NULL zdbquery in queries")
                             .query_dsl()
-                            .expect("zdbquery doesn't contain query dsl")
-                            .clone()
                     })
-                    .collect::<Vec<Value>>(),
-            )
-            .unwrap(),
-        }))
+                    .collect(),
+            ),
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     pub fn binary_and(a: ZDBQuery, b: ZDBQuery) -> ZDBQuery {
-        let a_dsl = a.query_dsl().unwrap().clone();
-        a.set_query_dsl(Some(json! {
-            {
-                "bool": {
-                    "must": [a_dsl, b.query_dsl()]
-                }
-            }
-        }))
+        let a_dsl = a.query_dsl();
+        let b_dsl = b.query_dsl();
+        a.set_query_dsl(Some(ZDBQueryClause::bool(
+            Some(vec![a_dsl, b_dsl]),
+            None,
+            None,
+            None,
+        )))
     }
 
+    // NB: we use the `variadic!()` macro here so that we can call this function
+    // from other rust code with a Vec<Option<ZDBQuery>>
     #[pg_extern(immutable, parallel_safe)]
     pub fn and(queries: variadic!(Vec<Option<ZDBQuery>>)) -> ZDBQuery {
-        let clauses: Vec<serde_json::Value> = queries
-            .into_iter()
-            .map(|zdbquery| {
-                zdbquery
-                    .expect("found NULL zdbquery in clauses")
-                    .query_dsl()
-                    .expect("zdbquery doesn't contain query dsl")
-                    .clone()
-            })
-            .collect();
-        ZDBQuery::new_with_query_dsl(json! {
-            {
-                "bool": {
-                    "must": clauses
-                }
-            }
-        })
+        ZDBQuery::new_with_query_clause(ZDBQueryClause::bool(
+            Some(
+                queries
+                    .into_iter()
+                    .map(|zdbquery| {
+                        zdbquery
+                            .expect("found NULL zdbquery in clauses")
+                            .query_dsl()
+                    })
+                    .collect(),
+            ),
+            None,
+            None,
+            None,
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     fn or(queries: VariadicArray<ZDBQuery>) -> ZDBQuery {
-        let clauses: Vec<serde_json::Value> = queries
-            .iter()
-            .map(|zdbquery| {
-                zdbquery
-                    .expect("found NULL zdbquery in clauses")
-                    .query_dsl()
-                    .expect("zdbquery doesn't contain query dsl")
-                    .clone()
-            })
-            .collect();
-        ZDBQuery::new_with_query_dsl(json! {
-            {
-                "bool": {
-                    "should": clauses
-                }
-            }
-        })
+        ZDBQuery::new_with_query_clause(ZDBQueryClause::bool(
+            None,
+            Some(
+                queries
+                    .iter()
+                    .map(|zdbquery| {
+                        zdbquery
+                            .expect("found NULL zdbquery in clauses")
+                            .query_dsl()
+                    })
+                    .collect(),
+            ),
+            None,
+            None,
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     fn not(queries: VariadicArray<ZDBQuery>) -> ZDBQuery {
-        let clauses: Vec<serde_json::Value> = queries
-            .iter()
-            .map(|zdbquery| {
-                zdbquery
-                    .expect("found NULL zdbquery in clauses")
-                    .query_dsl()
-                    .expect("zdbquery doesn't contain query dsl")
-                    .clone()
-            })
-            .collect();
-        ZDBQuery::new_with_query_dsl(json! {
-            {
-                "bool": {
-                    "must_not": clauses
-                }
-            }
-        })
+        ZDBQuery::new_with_query_clause(ZDBQueryClause::bool(
+            None,
+            None,
+            Some(
+                queries
+                    .iter()
+                    .map(|zdbquery| {
+                        zdbquery
+                            .expect("found NULL zdbquery in clauses")
+                            .query_dsl()
+                    })
+                    .collect(),
+            ),
+            None,
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     pub(crate) fn noteq(query: ZDBQuery) -> ZDBQuery {
-        ZDBQuery::new_with_query_dsl(json! {
-            {
-                "bool": {
-                    "must_not": query.query_dsl()
-                }
-            }
-        })
+        ZDBQuery::new_with_query_clause(ZDBQueryClause::bool(
+            None,
+            None,
+            Some(vec![query.query_dsl()]),
+            None,
+        ))
     }
 }
 
@@ -255,11 +210,11 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.bool(dsl.must('q1', 'q2', 'q3'),dsl.must_not('q4','q5'),dsl.should('q6','q7'),dsl.filter('q8','q9'))")
             .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "bool" : {
                         "must" :[
@@ -326,11 +281,11 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.bool(dsl.must('q1', 'q2', 'q3'),dsl.must_not('q4','q5'),dsl.should('q6','q7'))")
             .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "bool" : {
                         "must" :[
@@ -385,11 +340,11 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.bool(dsl.must('q1', 'q2'),dsl.must_not('q4','q5'),dsl.should('q6','q7'),dsl.must('q3'))")
             .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "bool" : {
                         "must" :[
@@ -443,11 +398,11 @@ mod tests {
     fn test_and() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.and('q1', 'q2')")
             .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "bool" : {
                         "must" :[
@@ -472,11 +427,11 @@ mod tests {
     fn test_or() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.or('q1', 'q2')")
             .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "bool" : {
                         "should" :[
@@ -501,11 +456,11 @@ mod tests {
     fn test_not() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.not('q1', 'q2')")
             .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "bool" : {
                         "must_not" :[
@@ -530,18 +485,20 @@ mod tests {
     fn test_binary_and() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.binary_and(dsl.limit(10, 'a'), 'b');")
             .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert_eq!(zdbquery.limit().unwrap(), 10);
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
-                    "bool": {
-                        "must": [
-                            {"query_string":{"query":"a"}},
-                            {"query_string":{"query":"b"}}
-                        ]
+                    "limit": 10,
+                    "query_dsl": {
+                        "bool": {
+                            "must": [
+                                {"query_string":{"query":"a"}},
+                                {"query_string":{"query":"b"}}
+                            ]
+                        }
                     }
                 }
             }
@@ -551,18 +508,20 @@ mod tests {
     #[pg_test]
     fn test_noteq() {
         let zdbquery = noteq(ZDBQuery::new_with_query_string("test_notEq"));
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "bool": {
-                        "must_not": {
-                            "query_string": {
-                                "query": "test_notEq"
+                        "must_not": [
+                            {
+                                "query_string": {
+                                    "query": "test_notEq"
+                                }
                             }
-                        }
+                        ]
                     }
                 }
             }

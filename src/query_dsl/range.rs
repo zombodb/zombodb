@@ -98,11 +98,11 @@ mod tests {
     #[pg_test]
     fn test_range_str_with_defaults() {
         let zdbquery = range_str("field", None, None, None, None, None);
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "field": {
@@ -124,11 +124,11 @@ mod tests {
             Some("gte_value"),
             Some(boost),
         );
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "field": {
@@ -147,11 +147,11 @@ mod tests {
     #[pg_test]
     fn test_range_number_with_defaults() {
         let zdbquery = range_numeric("field", None, None, None, None, None);
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "field": {
@@ -166,11 +166,11 @@ mod tests {
     fn test_range_number_without_defaults() {
         let boost = 2.9 as f32;
         let zdbquery = range_numeric("field", Some(56), Some(67), Some(78), Some(89), Some(boost));
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "field": {

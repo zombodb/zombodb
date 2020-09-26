@@ -35,7 +35,7 @@ mod dsl {
         mode: Option<default!(SortMode, NULL)>,
     ) -> SortDescriptor {
         let nested_filter = match nested_filter {
-            Some(query) => query.query_dsl().cloned(),
+            Some(query) => Some(query.query_dsl()),
             None => None,
         };
         SortDescriptor {

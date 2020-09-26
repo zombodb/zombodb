@@ -191,11 +191,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "more_like_this": {
                         "like": "like_string",
@@ -227,11 +227,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "more_like_this": {
                         "like": "like_string",
@@ -264,11 +264,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "more_like_this": {
                         "like": ["like_string uno", "string like dos", "like string three"],
@@ -300,11 +300,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "more_like_this": {
                         "like": ["like_string uno", "string like dos", "like string three"],

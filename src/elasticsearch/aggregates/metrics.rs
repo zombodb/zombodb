@@ -14,7 +14,7 @@ fn sum(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<SumAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "sum": {
@@ -41,7 +41,7 @@ fn avg(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<AvgAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "avg": {
@@ -68,7 +68,7 @@ fn cardinality(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<CardinalityAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "cardinality": {
@@ -95,7 +95,7 @@ fn max(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<MaxAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "max": {
@@ -122,7 +122,7 @@ fn min(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<MinAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "min": {
@@ -149,7 +149,7 @@ fn missing(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<MissingAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "missing": {
@@ -176,7 +176,7 @@ fn value_count(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<ValueCountAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "value_count": {

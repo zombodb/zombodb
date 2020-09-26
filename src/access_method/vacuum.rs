@@ -121,23 +121,29 @@ fn remove_aborted_xids(
                 && !unsafe { pg_sys::TransactionIdIsInProgress(xid) }
             {
                 let xmin_cnt = elasticsearch
-                    .count(ZDBQuery::new_with_query_dsl(serde_json::json! {
-                        {
-                            "term": {
-                                "zdb_xmin": xid64
+                    .count(
+                        ZDBQuery::new_with_query_dsl(serde_json::json! {
+                            {
+                                "term": {
+                                    "zdb_xmin": xid64
+                                }
                             }
-                        }
-                    }))
+                        })
+                        .prepare(),
+                    )
                     .execute()
                     .expect("failed to count xmin values");
                 let xmax_cnt = elasticsearch
-                    .count(ZDBQuery::new_with_query_dsl(serde_json::json! {
-                        {
-                            "term": {
-                                "zdb_xmax": xid64
+                    .count(
+                        ZDBQuery::new_with_query_dsl(serde_json::json! {
+                            {
+                                "term": {
+                                    "zdb_xmax": xid64
+                                }
                             }
-                        }
-                    }))
+                        })
+                        .prepare(),
+                    )
                     .execute()
                     .expect("failed to count xmax values");
 
@@ -164,10 +170,9 @@ fn vacuum_xmax(
 ) -> usize {
     let mut cnt = 0;
     let vacuum_xmax_docs = elasticsearch
-        .open_search(vac_by_aborted_xmax(
-            &es_index_name,
-            xid_to_64bit(oldest_xmin) as i64,
-        ))
+        .open_search(
+            vac_by_aborted_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare(),
+        )
         .execute_with_fields(vec!["zdb_xmax"])
         .expect("failed to search by xmax");
     for (_, ctid, fields, _) in vacuum_xmax_docs.into_iter() {
@@ -200,10 +205,7 @@ fn delete_by_xmax(
 ) -> usize {
     let mut cnt = 0;
     let delete_by_xmax_docs = elasticsearch
-        .open_search(vac_by_xmax(
-            &es_index_name,
-            xid_to_64bit(oldest_xmin) as i64,
-        ))
+        .open_search(vac_by_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare())
         .execute_with_fields(vec!["zdb_xmax"])
         .expect("failed to search by xmax");
     for (_, ctid, fields, _) in delete_by_xmax_docs.into_iter() {
@@ -236,10 +238,7 @@ fn delete_by_xmin(
 ) -> usize {
     let mut cnt = 0;
     let delete_by_xmin_docs = elasticsearch
-        .open_search(vac_by_xmin(
-            &es_index_name,
-            xid_to_64bit(oldest_xmin) as i64,
-        ))
+        .open_search(vac_by_xmin(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare())
         .execute_with_fields(vec!["zdb_xmin"])
         .expect("failed to search by xmin");
     for (_, ctid, fields, _) in delete_by_xmin_docs.into_iter() {

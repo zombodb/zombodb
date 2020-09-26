@@ -42,7 +42,7 @@ fn matrix_stats(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<MatrixStatsAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "matrix_stats": {

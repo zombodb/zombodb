@@ -1,17 +1,17 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::zdbquery::mvcc::apply_visibility_clause;
-use crate::zdbquery::ZDBQuery;
+use crate::zdbquery::ZDBPreparedQuery;
 use serde::*;
 use serde_json::*;
 
 pub struct ElasticsearchCountRequest {
     elasticsearch: Elasticsearch,
-    query: ZDBQuery,
+    query: ZDBPreparedQuery,
     raw: bool,
 }
 
 impl ElasticsearchCountRequest {
-    pub fn new(elasticsearch: &Elasticsearch, query: ZDBQuery, raw: bool) -> Self {
+    pub fn new(elasticsearch: &Elasticsearch, query: ZDBPreparedQuery, raw: bool) -> Self {
         ElasticsearchCountRequest {
             elasticsearch: elasticsearch.clone(),
             query,
@@ -19,7 +19,7 @@ impl ElasticsearchCountRequest {
         }
     }
 
-    pub fn execute(&self) -> std::result::Result<u64, ElasticsearchError> {
+    pub fn execute(self) -> std::result::Result<u64, ElasticsearchError> {
         let body = if self.raw {
             json! {
                 {
@@ -29,7 +29,7 @@ impl ElasticsearchCountRequest {
         } else {
             json! {
                 {
-                    "query": apply_visibility_clause(&self.elasticsearch, &self.query, false)
+                    "query": apply_visibility_clause(&self.elasticsearch, self.query, false)
                 }
             }
         };

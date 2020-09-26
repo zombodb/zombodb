@@ -29,12 +29,11 @@ mod tests {
     #[pg_test]
     fn test_field_exists() {
         let zdbquery = field_exists("fieldname");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                         {
                     "exists": {"field":  "fieldname"}
                          }

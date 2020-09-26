@@ -304,11 +304,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match": {
                         "match_field": {
@@ -341,11 +341,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match": {
                         "match_field": {
@@ -370,11 +370,11 @@ mod tests {
                 )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "multi_match": {
                             "fields":["one", "two", "three"],
@@ -413,11 +413,11 @@ mod tests {
                 )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "multi_match": {
                             "fields":["one", "two", "three"],
@@ -450,11 +450,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_phrase_prefix": {
                         "match_phrase_prefix_field": {
@@ -481,11 +481,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_phrase_prefix": {
                         "match_phrase_prefix_field": {
@@ -511,11 +511,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_phrase": {
                         "match_phrase_field": {
@@ -541,11 +541,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_phrase": {
                         "match_phrase_field": {
@@ -570,11 +570,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_phrase": {
                         "phrase_field": {
@@ -600,11 +600,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_phrase": {
                         "phrase_field": {

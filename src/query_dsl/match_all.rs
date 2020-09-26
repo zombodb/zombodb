@@ -45,12 +45,11 @@ mod tests {
     #[pg_test]
     fn test_matchall_with_boost() {
         let zdbquery = match_all(42.0);
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dls.is_some());
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_all": { "boost": 42.0}
                 }
@@ -62,12 +61,11 @@ mod tests {
     fn test_match_all_with_default() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.match_all();")
             .expect("didn't get SPI return value");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dls.is_some());
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_all": { }
                 }
@@ -78,12 +76,11 @@ mod tests {
     #[pg_test]
     fn test_match_none() {
         let zdbquery = match_none();
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dls.is_some());
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "match_none": { }
                 }

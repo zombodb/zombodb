@@ -39,7 +39,7 @@ fn anyelement_cmpfunc(
                 let index = find_zdb_index(&heap_relation);
                 let es = Elasticsearch::new(&index);
                 let search = es
-                    .open_search(query)
+                    .open_search(query.prepare())
                     .execute()
                     .expect("failed to execute search");
 
@@ -139,7 +139,7 @@ fn restrict(
 
                         let elasticsearch = Elasticsearch::new(&index_relation);
                         count_estimate = elasticsearch
-                            .raw_count(zdbquery)
+                            .raw_count(zdbquery.prepare())
                             .execute()
                             .expect("failed to estimate selectivity");
                     }

@@ -99,6 +99,7 @@ pub fn get_search_analyzer(index: &PgRelation, field: &str) -> String {
     .expect("search analyzer was null")
 }
 
+#[allow(dead_code)]
 pub fn get_index_analyzer(index: &PgRelation, field: &str) -> String {
     Spi::get_one_with_args(
         "select zdb.get_index_analyzer($1, $2);",

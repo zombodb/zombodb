@@ -31,7 +31,7 @@ fn filters(
 
         filters_map.insert(
             label,
-            apply_visibility_clause(&elasticsearch, &filter, false),
+            apply_visibility_clause(&elasticsearch, filter.prepare(), false),
         );
     }
 

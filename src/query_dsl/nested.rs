@@ -1,9 +1,9 @@
-mod pg_catalog {
+pub mod pg_catalog {
     use pgx::*;
     use serde::*;
 
     #[allow(non_camel_case_types)]
-    #[derive(PostgresEnum, Serialize)]
+    #[derive(Clone, Copy, Debug, PostgresEnum, Serialize, Deserialize)]
     pub enum ScoreMode {
         avg,
         sum,
@@ -15,39 +15,22 @@ mod pg_catalog {
 
 mod dsl {
     use crate::query_dsl::nested::pg_catalog::ScoreMode;
-    use crate::zdbquery::ZDBQuery;
+    use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
     use pgx::*;
-    use serde::*;
-    use serde_json::*;
-
-    #[derive(Serialize)]
-    struct Nested<'a> {
-        path: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        query: Option<serde_json::Value>,
-        score_mode: ScoreMode,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        ignore_unmapped: Option<bool>,
-    }
 
     #[pg_extern(immutable, parallel_safe)]
     fn nested(
-        path: &str,
+        path: String,
         query: ZDBQuery,
         score_mode: default!(ScoreMode, "avg"),
         ignore_unmapped: Option<default!(bool, NULL)>,
     ) -> ZDBQuery {
-        let nest = Nested {
+        ZDBQuery::new_with_query_clause(ZDBQueryClause::nested(
             path,
-            query: query.query_dsl().cloned(),
+            query.query_dsl(),
             score_mode,
             ignore_unmapped,
-        };
-        ZDBQuery::new_with_query_dsl(json! {
-        {
-            "nested": nest,
-        }
-        })
+        ))
     }
 }
 
@@ -66,12 +49,11 @@ mod tests {
                     )",
         )
         .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "nested":
                         {
@@ -95,12 +77,11 @@ mod tests {
                     )",
         )
         .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "nested":
                         {

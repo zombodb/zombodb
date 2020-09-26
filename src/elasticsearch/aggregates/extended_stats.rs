@@ -46,7 +46,7 @@ fn extended_stats(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<ExtendedStatsAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "extended_stats": {

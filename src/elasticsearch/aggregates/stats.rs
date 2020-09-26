@@ -30,7 +30,7 @@ fn stats(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<StatsAggData>(
-        query,
+        query.prepare(),
         json! {
             {
                 "stats": {

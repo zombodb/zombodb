@@ -369,6 +369,11 @@ impl<'input> Expr<'input> {
         input: &'input str,
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
+        if input.trim().is_empty() {
+            // empty strings just match everything
+            return Ok(Expr::Json("{ match_all: {} }".into()));
+        }
+
         let root_index = IndexLink::from_relation(index);
         let zdboptions = ZDBIndexOptions::from(index);
 

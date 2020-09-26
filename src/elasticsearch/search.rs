@@ -1,6 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::zdbquery::mvcc::apply_visibility_clause;
-use crate::zdbquery::ZDBQuery;
+use crate::zdbquery::ZDBPreparedQuery;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ const SEARCH_FILTER_PATH:&str = "_scroll_id,_shards.*,hits.total,hits.max_score,
 
 pub struct ElasticsearchSearchRequest {
     elasticsearch: Elasticsearch,
-    query: ZDBQuery,
+    query: ZDBPreparedQuery,
 }
 
 #[derive(Deserialize)]
@@ -94,7 +94,7 @@ pub struct ElasticsearchSearchResponse {
 }
 
 impl ElasticsearchSearchRequest {
-    pub fn new(elasticsearch: &Elasticsearch, query: ZDBQuery) -> Self {
+    pub fn new(elasticsearch: &Elasticsearch, query: ZDBPreparedQuery) -> Self {
         ElasticsearchSearchRequest {
             elasticsearch: elasticsearch.clone(),
             query,
@@ -118,7 +118,7 @@ impl ElasticsearchSearchRequest {
 
     fn initial_search(
         elasticsearch: &Elasticsearch,
-        mut query: ZDBQuery,
+        query: ZDBPreparedQuery,
         extra_fields: Option<Vec<&str>>,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
@@ -180,7 +180,7 @@ impl ElasticsearchSearchRequest {
         }
 
         #[derive(Serialize)]
-        struct Body<'a> {
+        struct Body {
             track_scores: bool,
 
             #[serde(skip_serializing_if = "Option::is_none")]
@@ -192,28 +192,28 @@ impl ElasticsearchSearchRequest {
             query: Value,
 
             #[serde(skip_serializing_if = "Option::is_none")]
-            highlight: Option<HashMap<&'a str, &'a mut HashMap<String, Value>>>,
+            highlight: Option<HashMap<&'static str, HashMap<String, Value>>>,
         }
-
-        // we only need to apply the visibility clause for searching if the query has a limit
-        // in the future, maybe we can look at some table dead tuple stats and decide
-        // to apply the clause if the table has a high percentage of them
-        let query_dsl = if query.limit().is_some() {
-            apply_visibility_clause(&elasticsearch, &query, false)
-        } else {
-            query.query_dsl().expect("zdbquery has no QueryDSL").clone()
-        };
 
         let limit = query.limit();
         let offset = query.offset();
         let min_score = query.min_score();
 
-        let highlight = if query.highlights().is_empty() {
-            None
-        } else {
+        let highlight = if query.has_highlights() {
             let mut map = HashMap::new();
-            map.insert("fields", query.highlights());
+            map.insert("fields", query.highlights().clone());
             Some(map)
+        } else {
+            None
+        };
+
+        // we only need to apply the visibility clause for searching if the query has a limit
+        // in the future, maybe we can look at some table dead tuple stats and decide
+        // to apply the clause if the table has a high percentage of them
+        let query_dsl = if limit.is_some() {
+            apply_visibility_clause(&elasticsearch, query, false)
+        } else {
+            query.take_query_dsl()
         };
 
         let body = Body {

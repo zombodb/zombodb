@@ -39,8 +39,8 @@ mod tests {
                 .expect("SPI result failed");
 
         assert_eq!(
-            zdbquery.query_dsl().unwrap(),
-            &json! {
+            zdbquery.into_value(),
+            json! {
                 {
                     "terms": { "some_field": [1,2,3] }
                 }
@@ -55,8 +55,8 @@ mod tests {
                 .expect("SPI result failed");
 
         assert_eq!(
-            zdbquery.query_dsl().unwrap(),
-            &json! {
+            zdbquery.into_value(),
+            json! {
                 {
                     "terms": { "some_field": ["a", "b", "c"] }
                 }
@@ -72,8 +72,8 @@ mod tests {
         .expect("SPI result failed");
 
         assert_eq!(
-            zdbquery.query_dsl().unwrap(),
-            &json! {
+            zdbquery.into_value(),
+            json! {
                 {
                     "terms": { "some_field": ["true", "true", "false"] }
                 }
@@ -89,8 +89,8 @@ mod tests {
         .expect("SPI result failed");
 
         assert_eq!(
-            zdbquery.query_dsl().unwrap(),
-            &json! {
+            zdbquery.into_value(),
+            json! {
                 {
                     "terms": { "some_field": ["4.2", "5.6", "6.9"] }
                 }

@@ -46,6 +46,8 @@ pub extern "C" fn amrescan(
         panic!("No ScanKeys provided");
     }
     let scan: PgBox<pg_sys::IndexScanDescData> = PgBox::from_pg(scan);
+    let indexrel = unsafe { PgRelation::from_pg(scan.indexRelation) };
+
     let mut state =
         unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
     let nkeys = nkeys as usize;
@@ -60,11 +62,10 @@ pub extern "C" fn amrescan(
         });
     }
 
-    let indexrel = unsafe { PgRelation::from_pg(scan.indexRelation) };
     let elasticsearch = Elasticsearch::new(&indexrel);
 
     let response = elasticsearch
-        .open_search(query)
+        .open_search(query.prepare())
         .execute()
         .expect("failed to execute ES query");
 

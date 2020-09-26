@@ -152,11 +152,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "query_string": {
                         "query": "query input string",
@@ -194,11 +194,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "query_string": {
                         "query": "query default string"

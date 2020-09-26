@@ -65,12 +65,11 @@ mod tests {
             Some(50),
             Some(true),
         );
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dls.is_some());
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "fuzzy": {
                   "field": {
@@ -90,12 +89,11 @@ mod tests {
     #[pg_test]
     fn test_fuzzy_with_default() {
         let zdbquery = fuzzy("field", "value", None, None, None, None, None);
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dls.is_some());
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "fuzzy": {
                   "field": {

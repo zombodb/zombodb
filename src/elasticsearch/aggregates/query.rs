@@ -6,7 +6,7 @@ use pgx::*;
 fn query(index: PgRelation, query: ZDBQuery) -> impl Iterator<Item = pg_sys::ItemPointerData> {
     let es = Elasticsearch::new(&index);
     let result = es
-        .open_search(query)
+        .open_search(query.prepare())
         .execute()
         .expect("failed to execute search");
 

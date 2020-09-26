@@ -188,12 +188,11 @@ mod tests {
               );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "fieldname": {
@@ -224,12 +223,11 @@ mod tests {
               );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "fieldname": {
@@ -260,12 +258,11 @@ mod tests {
               );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "fieldname": {
@@ -296,12 +293,11 @@ mod tests {
               );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "fieldname": {
@@ -332,12 +328,11 @@ mod tests {
               );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "range": {
                         "fieldname": {

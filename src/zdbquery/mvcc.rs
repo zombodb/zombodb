@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_IGNORE_VISIBILITY;
-use crate::zdbquery::ZDBQuery;
+use crate::zdbquery::{ZDBPreparedQuery, ZDBQuery, ZDBQueryClause};
 use pgx::*;
 use serde_json::json;
 
@@ -9,46 +9,38 @@ use serde_json::json;
 fn internal_visibility_clause(index_relation: PgRelation) -> Json {
     Json(apply_visibility_clause(
         &Elasticsearch::new(&index_relation),
-        &ZDBQuery::default(),
+        ZDBQuery::default().prepare(),
         true,
     ))
 }
 
 #[pg_extern]
 fn wrap_with_visibility_clause(index_relation: PgRelation, query: ZDBQuery) -> ZDBQuery {
-    let clause = apply_visibility_clause(&Elasticsearch::new(&index_relation), &query, true);
-    query.set_query_dsl(Some(clause))
+    let prepared = query.clone().prepare();
+    let clause = apply_visibility_clause(&Elasticsearch::new(&index_relation), prepared, true);
+    query.set_query_dsl(Some(ZDBQueryClause::opaque(clause)))
 }
 
 pub fn apply_visibility_clause(
     elasticsearch: &Elasticsearch,
-    query: &ZDBQuery,
+    query: ZDBPreparedQuery,
     force: bool,
 ) -> serde_json::Value {
     if ZDB_IGNORE_VISIBILITY.get() && !force {
         // if we're configured to ignore visibility, then we simply return the
         // query_dsl of the provided query
-        return query
-            .query_dsl()
-            .expect("ZDBQuery QueryDSL is None")
-            .clone();
+        return query.take_query_dsl();
     }
 
+    let dsl = query.query_dsl();
     let clause = build_visibility_clause(elasticsearch.index_name());
-
-    match query.query_dsl() {
-        // wrap it with a filter for the visibility clause
-        Some(dsl) => json! {
-            {
-                "bool": {
-                    "must": [dsl],
-                    "filter": [clause]
-                }
+    json! {
+        {
+            "bool": {
+                "must": [dsl],
+                "filter": [clause]
             }
-        },
-
-        // the visibility clause becomes the query
-        None => clause,
+        }
     }
 }
 

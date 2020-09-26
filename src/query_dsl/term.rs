@@ -197,12 +197,11 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'test value','42.0');")
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "test value", "boost": boost}}
                 }
@@ -214,12 +213,11 @@ mod tests {
     fn test_term_str_with_default_boost() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'test value');")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "test value"}}
                 }
@@ -231,12 +229,11 @@ mod tests {
     fn test_term_bool_true() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', true,'42.0');")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname": {"value": true,"boost":42.0}}
                 }
@@ -248,12 +245,11 @@ mod tests {
     fn test_term_bool_false() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', false,'42.0');")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname": {"value": false,"boost":42.0}}
                 }
@@ -265,12 +261,11 @@ mod tests {
     fn test_term_bool_true_with_default_boost() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', true);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname": {"value": true}}
                 }
@@ -282,12 +277,11 @@ mod tests {
     fn test_term_bool_false_with_default_boost() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', false);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname": {"value": false}}
                 }
@@ -299,12 +293,11 @@ mod tests {
     fn test_term_positive_i16() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 32767, 42.0);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": 32767,"boost":42.0}}
                 }
@@ -316,12 +309,11 @@ mod tests {
     fn test_term_negative_i16() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', -32700, 42.0);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": -32700,"boost":42.0}}
                 }
@@ -333,12 +325,11 @@ mod tests {
     fn test_term_i16_with_default_boost() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 32767);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": 32767}}
                 }
@@ -351,12 +342,11 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 2147483647, 42.0);")
             .expect("didn't get SPI return value");
         // let zdbquery = term_i32("fieldname", 2147483647, 42.0);
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": 2147483647,"boost":42.0}}
                 }
@@ -369,12 +359,11 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', -2147483648, 42.0);")
             .expect("didn't get SPI return value");
         // let zdbquery = term_i32("fieldname", -2147483648, 42.0);
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": -2147483648,"boost":42.0}}
                 }
@@ -386,12 +375,11 @@ mod tests {
     fn test_term_i32_with_default_boost() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 2147483647);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": 2147483647}}
                 }
@@ -404,13 +392,12 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 214740083647,'42.0');")
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
         let value = 214740083647 as i64;
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value,"boost":42.0}}
                 }
@@ -423,13 +410,12 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', -214740083647,'42.0');")
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
         let value = -214740083647 as i64;
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value, "boost": 42.0}}
                 }
@@ -443,12 +429,11 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 9223372036854775000);")
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -462,12 +447,11 @@ mod tests {
             .expect("didn't get SPI return value");
         let value = 4.6;
         // let zdbquery = term_f32("fieldname", value, 42.0);
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value,"boost": 42.0}}
                 }
@@ -480,12 +464,11 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', -4.8, 42.0);")
             .expect("didn't get SPI return value");
         let value = -4.8;
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value,"boost":42.0}}
                 }
@@ -499,12 +482,11 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>(&format!("SELECT dsl.term('fieldname', {});", value))
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -517,12 +499,11 @@ mod tests {
         let value = INFINITY;
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'infinity'::real);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -535,12 +516,11 @@ mod tests {
         let value = NEG_INFINITY;
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', '-infinity'::real);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -553,12 +533,11 @@ mod tests {
         let value = NAN;
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'nan'::real);")
             .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -571,12 +550,11 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 5.6, 42.0);")
             .expect("didn't get SPI return value");
         let value = 5.6;
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value,"boost":42.0}}
                 }
@@ -589,12 +567,11 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', -5.6, 42.0);")
             .expect("didn't get SPI return value");
         let value = -5.6;
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value,"boost":42.0}}
                 }
@@ -610,12 +587,11 @@ mod tests {
             value
         ))
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -629,12 +605,11 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'infinity'::double precision);")
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -649,12 +624,11 @@ mod tests {
             "SELECT dsl.term('fieldname', '-infinity'::double precision);",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -668,12 +642,11 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'nan'::double precision);")
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term":{"fieldname":{"value": value}}
                 }
@@ -686,12 +659,11 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', CAST('2020-01-01' AS date) );")
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "2020-01-01"}}
                 }
@@ -705,12 +677,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('2020-01-01' AS date), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "2020-01-01" , "boost": 42.0 as f32 }}
                 }
@@ -723,12 +694,11 @@ mod tests {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', CAST('13:15:35' AS time) );")
                 .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "13:15:35"}}
                 }
@@ -742,12 +712,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('12:59:35' AS time), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "12:59:35" , "boost": 42.0 as f32 }}
                 }
@@ -761,12 +730,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('12:59:35.567' AS time), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "12:59:35.567" , "boost": 42.0 as f32 }}
                 }
@@ -780,12 +748,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('13:15:35 +0900' AS time) );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "13:15:35"}}
                 }
@@ -799,12 +766,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('12:59:35 +0830' AS time), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "12:59:35" , "boost": 42.0 as f32 }}
                 }
@@ -818,12 +784,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('12:59:35.567 -1200' AS time), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "12:59:35.567" , "boost": 42.0 as f32 }}
                 }
@@ -837,12 +802,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('12-12-12 13:15:35' AS timestamp) );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "2012-12-12T13:15:35-00"}}
                 }
@@ -856,12 +820,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('2013-04-10 12:59:35' AS timestamp), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "2013-04-10T12:59:35-00" , "boost": 42.0 as f32 }}
                 }
@@ -875,12 +838,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('2019-09-15 12:59:35.567' AS timestamp), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "2019-09-15T12:59:35.567-00" , "boost": 42.0 as f32 }}
                 }
@@ -894,12 +856,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('12-12-12 13:15:35 -0700' AS timestamp) );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "2012-12-12T13:15:35-00"}}
                 }
@@ -913,12 +874,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('2013-04-10 12:59:35 -0700' AS timestamp), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "2013-04-10T12:59:35-00" , "boost": 42.0 as f32 }}
                 }
@@ -932,12 +892,11 @@ mod tests {
             "SELECT dsl.term('fieldname', CAST('2019-09-15 12:59:35.567 -0700' AS timestamp), 42.0 );",
         )
         .expect("didn't get SPI return value");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "term": {"fieldname": { "value": "2019-09-15T12:59:35.567-00" , "boost": 42.0 as f32 }}
                 }

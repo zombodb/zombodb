@@ -112,12 +112,11 @@ mod tests {
     #[pg_test]
     fn test_wildcard_with_boost() {
         let zdbquery = wildcard("fieldname", "t*t", 42.0);
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dls.is_some());
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "wildcard": {"fieldname": {"value": "t*t", "boost": 42.0}}
                 }
@@ -129,12 +128,11 @@ mod tests {
     fn test_wildcard_with_default() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.wildcard('fieldname', 't*t');")
             .expect("didn't get SPI return value");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dls.is_some());
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "wildcard": {"fieldname": {"value": "t*t", "boost": 1.0}}
                 }
@@ -145,11 +143,11 @@ mod tests {
     #[pg_test]
     fn test_regexp_with_default() {
         let zdbquery = regexp("this_is_the_fieldname", "regexp", None, None, None);
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "regexp": {
                          "this_is_the_fieldname": {
@@ -178,11 +176,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "regexp": {
                         "regexp_field": {
@@ -200,11 +198,11 @@ mod tests {
     #[pg_test]
     fn test_script_with_default() {
         let zdbquery = script("script_source", None, "painless");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "script" : {
                         "script" : {
@@ -222,11 +220,11 @@ mod tests {
         let json_example =
             Spi::get_one::<Json>(r#"  SELECT '{"json": "json_value"}'::json;  "#).unwrap();
         let zdbquery = script("script_source", Some(json_example), "totally_a_lang");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "script" : {
                         "script" : {

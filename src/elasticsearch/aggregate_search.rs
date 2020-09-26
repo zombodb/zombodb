@@ -1,6 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::zdbquery::mvcc::apply_visibility_clause;
-use crate::zdbquery::ZDBQuery;
+use crate::zdbquery::ZDBPreparedQuery;
 use serde::de::DeserializeOwned;
 use serde::export::PhantomData;
 use serde::*;
@@ -21,10 +21,10 @@ where
 {
     pub fn new(
         elasticsearch: &Elasticsearch,
-        query: ZDBQuery,
+        query: ZDBPreparedQuery,
         agg_json: serde_json::Value,
     ) -> ElasticsearchAggregateSearchRequest<ReturnType> {
-        let query_dsl = apply_visibility_clause(&elasticsearch, &query, false);
+        let query_dsl = apply_visibility_clause(&elasticsearch, query, false);
         ElasticsearchAggregateSearchRequest::<ReturnType> {
             elasticsearch: elasticsearch.clone(),
             json_query: json! {

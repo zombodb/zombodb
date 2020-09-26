@@ -60,12 +60,11 @@ mod tests {
             "path.test.example.foo",
             Some("routing.info"),
         );
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms": {"fieldname": { "index": "test value", "id": "42.0", "path": "path.test.example.foo", "routing": "routing.info"  }}
                 }
@@ -82,12 +81,11 @@ mod tests {
             "path.test.example.foo",
             None,
         );
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms": {"fieldname": { "index": "test value", "id": "42.0", "path": "path.test.example.foo" }}
                 }
@@ -101,12 +99,11 @@ mod tests {
             Spi::get_one::<ZDBQuery>("SELECT dsl.terms_lookup('field', 'index', 'id', 'path')")
                 .expect("failed to get SPI result");
 
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dsl.is_some());
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "terms": {"field": { "index": "index", "id": "id", "path": "path" }}
                 }

@@ -38,7 +38,7 @@ use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
 use crate::executor_manager::get_executor_manager;
-use crate::zdbquery::ZDBQuery;
+use crate::zdbquery::ZDBPreparedQuery;
 pub use bulk::*;
 pub use create_index::*;
 use lazy_static::*;
@@ -203,7 +203,7 @@ impl Elasticsearch {
         ElasticsearchCatRequest::new(self, endpoint)
     }
 
-    pub fn profile_query(&self, query: ZDBQuery) -> ElasticsearchProfileQueryRequest {
+    pub fn profile_query(&self, query: ZDBPreparedQuery) -> ElasticsearchProfileQueryRequest {
         ElasticsearchProfileQueryRequest::new(self, query)
     }
 
@@ -218,14 +218,14 @@ impl Elasticsearch {
         )
     }
 
-    pub fn open_search(&self, query: ZDBQuery) -> ElasticsearchSearchRequest {
+    pub fn open_search(&self, query: ZDBPreparedQuery) -> ElasticsearchSearchRequest {
         get_executor_manager().wait_for_completion();
         ElasticsearchSearchRequest::new(self, query)
     }
 
     pub fn aggregate<T: DeserializeOwned>(
         &self,
-        query: ZDBQuery,
+        query: ZDBPreparedQuery,
         agg_request: serde_json::Value,
     ) -> ElasticsearchAggregateSearchRequest<T> {
         get_executor_manager().wait_for_completion();
@@ -240,12 +240,12 @@ impl Elasticsearch {
         ElasticsearchAggregateSearchRequest::from_raw(self, agg_request)
     }
 
-    pub fn count(&self, query: ZDBQuery) -> ElasticsearchCountRequest {
+    pub fn count(&self, query: ZDBPreparedQuery) -> ElasticsearchCountRequest {
         get_executor_manager().wait_for_completion();
         ElasticsearchCountRequest::new(self, query, false)
     }
 
-    pub fn raw_count(&self, query: ZDBQuery) -> ElasticsearchCountRequest {
+    pub fn raw_count(&self, query: ZDBPreparedQuery) -> ElasticsearchCountRequest {
         get_executor_manager().wait_for_completion();
         ElasticsearchCountRequest::new(self, query, true)
     }

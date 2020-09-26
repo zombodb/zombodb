@@ -31,12 +31,11 @@ mod tests {
     #[pg_test]
     fn test_prefix() {
         let zdbquery = prefix("fieldname", "te");
-        let dls = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
-        assert!(dls.is_some());
         assert_eq!(
-            dls.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "prefix": {"fieldname": {"value": "te"}}
                 }

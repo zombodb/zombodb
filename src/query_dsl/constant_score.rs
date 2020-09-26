@@ -1,46 +1,24 @@
 mod dsl {
-    use crate::zdbquery::ZDBQuery;
+    use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
     use pgx::*;
-    use serde::*;
-    use serde_json::*;
-
-    #[derive(Serialize)]
-    struct DisMax {
-        queries: Vec<Value>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        boost: Option<f32>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        tie_breaker: Option<f32>,
-    }
 
     #[pg_extern(immutable, parallel_safe)]
     pub fn constant_score(query: ZDBQuery, boost: default!(f32, NULL)) -> ZDBQuery {
-        ZDBQuery::new_with_query_dsl(json! {
-            {
-                "constant_score": {
-                    "filter":
-                        query.query_dsl().expect("'constanst score' zdbquery doesn't contain query dsl"),
-                    "boost": boost,
-                }
-            }
-        })
+        let clause = query.query_dsl();
+        query.set_query_dsl(Some(ZDBQueryClause::constant_score(clause, boost)))
     }
 
     #[pg_extern(immutable, parallel_safe)]
     pub fn boosting(
         positive_query: ZDBQuery,
         negative_query: ZDBQuery,
-        negative_boost: default!(f32, NULL),
+        negative_boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
-        ZDBQuery::new_with_query_dsl(json! {
-            {
-                "boosting" : {
-                    "positive" : positive_query.query_dsl().expect("'positive' zdbquery doesn't contain query dsl"),
-                    "negative" : negative_query.query_dsl().expect("'negative' zdbquery doesn't contain query dsl"),
-                    "negative_boost" : negative_boost,
-                },
-            }
-        })
+        ZDBQuery::new_with_query_clause(ZDBQueryClause::boosting(
+            positive_query.query_dsl(),
+            negative_query.query_dsl(),
+            negative_boost,
+        ))
     }
 
     #[pg_extern(immutable, parallel_safe)]
@@ -49,26 +27,15 @@ mod dsl {
         boost: Option<default!(f32, NULL)>,
         tie_breaker: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
-        let queries: Vec<serde_json::Value> = queries
+        let queries = queries
             .iter()
             .map(|zdbquery| {
                 zdbquery
                     .expect("found NULL zdbquery in clauses")
                     .query_dsl()
-                    .expect("zdbquery doesn't contain query dsl")
-                    .clone()
             })
             .collect();
-        let dismax = DisMax {
-            queries,
-            boost,
-            tie_breaker,
-        };
-        ZDBQuery::new_with_query_dsl(json! {
-            {
-                "dis_max": dismax,
-            }
-        })
+        ZDBQuery::new_with_query_clause(ZDBQueryClause::dis_max(queries, boost, tie_breaker))
     }
 }
 
@@ -88,12 +55,10 @@ mod tests {
             zdbquery.into_value(),
             json! {
                 {
-                    "query_dsl" : {
                         "constant_score" : {
                             "filter": { "query_string": {"query": "test"}},
                             "boost" : boost,
                         }
-                    }
                 }
             }
         )
@@ -105,20 +70,18 @@ mod tests {
         let zdbquery = boosting(
             ZDBQuery::new_with_query_string("test_pos"),
             ZDBQuery::new_with_query_string("test_neg"),
-            boost,
+            Some(boost),
         );
 
         assert_eq!(
             zdbquery.into_value(),
             json! {
                 {
-                    "query_dsl" : {
                         "boosting" : {
                             "positive": { "query_string": {"query": "test_pos"}},
                             "negative": { "query_string": {"query": "test_neg"}},
                             "negative_boost" : boost,
                         }
-                    }
                 }
             }
         )
@@ -140,11 +103,11 @@ mod tests {
             )",
         )
         .expect("failed to get SPI result");
-        let dsl = zdbquery.query_dsl();
+        let dsl = zdbquery.into_value();
 
         assert_eq!(
-            dsl.unwrap(),
-            &json! {
+            dsl,
+            json! {
                 {
                     "dis_max" : {
                         "queries": [
