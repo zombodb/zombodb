@@ -150,6 +150,12 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         // do nothing as we don't want to rewrite foreign scans
     } else if is_a(node, pg_sys::NodeTag_T_SampleScan) {
         // do nothing as we don't want to rewrite sample scans
+    } else if is_a(node, pg_sys::NodeTag_T_AlternativeSubPlan) {
+        let alternativeplan = PgBox::from_pg(node as *mut pg_sys::AlternativeSubPlan);
+        walk_node(alternativeplan.subplans as NodePtr, context);
+    } else if is_a(node, pg_sys::NodeTag_T_DistinctExpr) {
+        let distinctexpr = PgBox::from_pg(node as *mut pg_sys::DistinctExpr);
+        walk_node(distinctexpr.args as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_FunctionScan) {
         let mut functionscan = PgBox::from_pg(node as *mut pg_sys::FunctionScan);
         walk_plan(&mut functionscan.scan.plan, context);
