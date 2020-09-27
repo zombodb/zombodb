@@ -55,7 +55,7 @@ fn terms(
     };
 
     let request = elasticsearch.aggregate::<TermsAggData>(
-        query.prepare(),
+        query.prepare(&index),
         json! {
             {
                 "terms": {

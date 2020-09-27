@@ -7,9 +7,11 @@ mod opclass;
 
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 use crate::query_dsl::nested::pg_catalog::ScoreMode;
+use crate::query_parser::ast::{Expr, IndexLink};
+use crate::query_parser::dsl::expr_to_dsl;
 pub use pg_catalog::*;
 use serde::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -397,11 +399,76 @@ impl ZDBQuery {
         }
     }
 
-    pub fn prepare(self) -> ZDBPreparedQuery {
-        // TODO:  implement this
+    pub fn prepare(mut self, index: &PgRelation) -> ZDBPreparedQuery {
+        self.rewrite(index);
         let json = serde_json::to_value(&self.query_dsl)
             .expect("failed to convert ZDBQuery to a json Value");
         ZDBPreparedQuery(self, json)
+    }
+
+    fn rewrite(&mut self, index: &PgRelation) {
+        ZDBQuery::rewrite_zdb_query_clause(
+            self.query_dsl
+                .as_mut()
+                .expect("ZDBQuery does not contain query dsl"),
+            index,
+            &IndexLink::from_relation(&index),
+        )
+    }
+
+    fn rewrite_zdb_query_clause(
+        clause: &mut ZDBQueryClause,
+        index: &PgRelation,
+        root_link: &IndexLink,
+    ) {
+        if clause.zdb.is_some() {
+            // parse zdb into json and *zdb = <json> it
+
+            let mut used_fields = HashSet::new();
+            let query = &clause.zdb.as_ref().unwrap().query;
+            let expr = Expr::from_str(&index, "zdb_all", query, &mut used_fields)
+                .expect("failed to parse query");
+
+            let parsed = expr_to_dsl(root_link, &expr);
+
+            clause.zdb = None;
+            clause.opaque = Some(parsed);
+        } else if let Some(bool) = &mut clause.bool {
+            if bool.must.is_some() {
+                bool.must.as_mut().unwrap().iter_mut().for_each(|c| {
+                    ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                });
+            }
+
+            if bool.should.is_some() {
+                bool.should.as_mut().unwrap().iter_mut().for_each(|c| {
+                    ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                });
+            }
+
+            if bool.must_not.is_some() {
+                bool.must_not.as_mut().unwrap().iter_mut().for_each(|c| {
+                    ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                });
+            }
+
+            if bool.filter.is_some() {
+                bool.filter.as_mut().unwrap().iter_mut().for_each(|c| {
+                    ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                });
+            }
+        } else if let Some(nested) = &mut clause.nested {
+            ZDBQuery::rewrite_zdb_query_clause(nested.query.as_mut(), index, root_link);
+        } else if let Some(boosting) = &mut clause.boosting {
+            ZDBQuery::rewrite_zdb_query_clause(boosting.positive.as_mut(), index, root_link);
+            ZDBQuery::rewrite_zdb_query_clause(boosting.negative.as_mut(), index, root_link);
+        } else if let Some(dis_max) = &mut clause.dis_max {
+            dis_max.queries.iter_mut().for_each(|c| {
+                ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+            });
+        } else if let Some(constant_score) = &mut clause.constant_score {
+            ZDBQuery::rewrite_zdb_query_clause(constant_score.filter.as_mut(), index, root_link);
+        }
     }
 }
 

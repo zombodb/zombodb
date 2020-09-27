@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
 use crate::query_parser::ast::QualifiedField;
-use crate::query_parser::parse_field_lists;
+use crate::query_parser::{parse_field_lists, INDEX_LINK_PARSER};
 use lazy_static::*;
 use memoffset::*;
 use pgx::*;
@@ -406,7 +406,6 @@ extern "C" fn validate_options(value: *const std::os::raw::c_char) {
         return;
     }
 
-    let parser = crate::query_parser::parser::IndexLinkParser::new();
     let mut used_fields = HashSet::new();
     let mut fieldname_stack = Vec::new();
     let mut operator_stack = Vec::new();
@@ -414,15 +413,17 @@ extern "C" fn validate_options(value: *const std::os::raw::c_char) {
     let input = input.to_str().expect("options is not valid UTF8");
 
     for option in input.split(',') {
-        parser
-            .parse(
-                None,
-                &mut used_fields,
-                &mut fieldname_stack,
-                &mut operator_stack,
-                option,
-            )
-            .expect(&format!("failed to parse index option: /{}/", option));
+        INDEX_LINK_PARSER.with(|parser| {
+            parser
+                .parse(
+                    None,
+                    &mut used_fields,
+                    &mut fieldname_stack,
+                    &mut operator_stack,
+                    option,
+                )
+                .expect(&format!("failed to parse index option: /{}/", option))
+        });
     }
 
     return;

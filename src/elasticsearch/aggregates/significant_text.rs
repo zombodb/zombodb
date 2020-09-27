@@ -41,7 +41,7 @@ fn significant_text(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<SignificantKeywords>(
-        query.prepare(),
+        query.prepare(&index),
         json! {
             {
                 "sampler" : {

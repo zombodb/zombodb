@@ -1,10 +1,11 @@
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
-use crate::query_parser::parser::{IndexLinkParser, Token};
+use crate::query_parser::parser::Token;
 use crate::query_parser::transformations::field_finder::find_fields;
 use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
 use crate::query_parser::transformations::prox_rewriter::rewrite_proximity_chains;
+use crate::query_parser::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 use crate::utils::{get_null_copy_to_fields, get_search_analyzer};
 use lalrpop_util::ParseError;
 pub use pg_catalog::ProximityPart;
@@ -398,17 +399,18 @@ impl<'input> Expr<'input> {
         mut field_lists: HashMap<String, Vec<QualifiedField>>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         let input = input.clone();
-        let parser = crate::query_parser::parser::ExprParser::new();
         let mut operator_stack = vec![ComparisonOpcode::Contains];
         let mut fieldname_stack = vec![default_fieldname];
 
-        let mut expr = parser.parse(
-            index,
-            used_fields,
-            &mut fieldname_stack,
-            &mut operator_stack,
-            input,
-        )?;
+        let mut expr = ZDB_QUERY_PARSER.with(|parser| {
+            parser.parse(
+                index,
+                used_fields,
+                &mut fieldname_stack,
+                &mut operator_stack,
+                input,
+            )
+        })?;
 
         let used_zdb_all = used_fields.contains("zdb_all");
         if used_zdb_all || !field_lists.is_empty() {
@@ -614,16 +616,17 @@ impl QualifiedIndex {
 impl IndexLink {
     #[cfg(any(test, feature = "pg_test"))]
     pub fn parse(input: &str) -> Self {
-        let parser = IndexLinkParser::new();
-        parser
-            .parse(
-                None,
-                &mut HashSet::new(),
-                &mut Vec::new(),
-                &mut Vec::new(),
-                input,
-            )
-            .expect("failed to parse IndexLink")
+        INDEX_LINK_PARSER.with(|parser| {
+            parser
+                .parse(
+                    None,
+                    &mut HashSet::new(),
+                    &mut Vec::new(),
+                    &mut Vec::new(),
+                    input,
+                )
+                .expect("failed to parse IndexLink")
+        })
     }
 
     pub fn from_relation(index: &PgRelation) -> Self {
@@ -640,19 +643,20 @@ impl IndexLink {
 
         if let Some(links) = ZDBIndexOptions::from(index).links() {
             for link in links {
-                let parser = IndexLinkParser::new();
                 let mut used_fields = HashSet::new();
                 let mut fieldname_stack = Vec::new();
                 let mut operator_stack = Vec::new();
-                let link = parser
-                    .parse(
-                        Some(index),
-                        &mut used_fields,
-                        &mut fieldname_stack,
-                        &mut operator_stack,
-                        link.as_str(),
-                    )
-                    .expect("failed to parse index link");
+                let link = INDEX_LINK_PARSER.with(|parser| {
+                    parser
+                        .parse(
+                            Some(index),
+                            &mut used_fields,
+                            &mut fieldname_stack,
+                            &mut operator_stack,
+                            link.as_str(),
+                        )
+                        .expect("failed to parse index link")
+                });
                 index_links.push(link);
             }
         }

@@ -65,7 +65,7 @@ pub extern "C" fn amrescan(
     let elasticsearch = Elasticsearch::new(&indexrel);
 
     let response = elasticsearch
-        .open_search(query.prepare())
+        .open_search(query.prepare(&indexrel))
         .execute()
         .expect("failed to execute ES query");
 

@@ -6,7 +6,7 @@ use pgx::*;
 fn arbitrary_agg(index: PgRelation, query: ZDBQuery, json: Json) -> Json {
     let elasticsearch = Elasticsearch::new(&index);
 
-    let request = elasticsearch.aggregate::<serde_json::Value>(query.prepare(), json.0);
+    let request = elasticsearch.aggregate::<serde_json::Value>(query.prepare(&index), json.0);
 
     Json(
         request

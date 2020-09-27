@@ -5,6 +5,7 @@ use crate::query_parser::ast::{
 };
 use crate::query_parser::dsl::path_finder::PathFinder;
 use crate::zdbquery::mvcc::build_visibility_clause;
+use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde_json::json;
 use std::collections::HashSet;
@@ -12,13 +13,9 @@ use std::collections::HashSet;
 pub mod path_finder;
 
 #[pg_extern(immutable, parallel_safe)]
-fn dump_query(index: PgRelation, query: &str) -> String {
-    let mut used_fields = HashSet::new();
-    let query =
-        Expr::from_str(&index, "zdb_all", query, &mut used_fields).expect("failed to parse query");
-
-    serde_json::to_string_pretty(&expr_to_dsl(&IndexLink::from_relation(&index), &query))
-        .expect("failed to convert DSL to text")
+fn dump_query(index: PgRelation, query: ZDBQuery) -> String {
+    let query = query.prepare(&index);
+    serde_json::to_string_pretty(query.query_dsl()).expect("failed to convert DSL to text")
 }
 
 #[pg_extern(immutable, parallel_safe)]

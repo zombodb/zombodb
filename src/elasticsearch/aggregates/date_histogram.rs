@@ -76,7 +76,7 @@ fn date_histogram(
     };
 
     let request = elasticsearch.aggregate::<DateHistogramAggData>(
-        query.prepare(),
+        query.prepare(&index),
         json! {
             {
                 "date_histogram":

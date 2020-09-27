@@ -35,7 +35,7 @@ fn ip_range(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<IPRangesAggData>(
-        query.prepare(),
+        query.prepare(&index),
         json! {
             {
                 "ip_range": {

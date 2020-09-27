@@ -70,7 +70,7 @@ fn terms_two_level(
     };
 
     let request = elasticsearch.aggregate::<TermsTwoLevel>(
-        query.prepare(),
+        query.prepare(&index),
         json! {
             {
                 "terms": {

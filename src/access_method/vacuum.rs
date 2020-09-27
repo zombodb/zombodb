@@ -39,21 +39,39 @@ pub extern "C" fn ambulkdelete(
     // Find all rows with what we think is an *aborted* xmin
     //
     // These rows can be deleted
-    let by_xmin = delete_by_xmin(&elasticsearch, &es_index_name, oldest_xmin, &mut bulk);
+    let by_xmin = delete_by_xmin(
+        &index_relation,
+        &elasticsearch,
+        &es_index_name,
+        oldest_xmin,
+        &mut bulk,
+    );
 
     // Find all rows with what we think is a *committed* xmax
     //
     // These rows can be deleted
-    let by_xmax = delete_by_xmax(&elasticsearch, &es_index_name, oldest_xmin, &mut bulk);
+    let by_xmax = delete_by_xmax(
+        &index_relation,
+        &elasticsearch,
+        &es_index_name,
+        oldest_xmin,
+        &mut bulk,
+    );
 
     // Find all rows with what we think is an *aborted* xmax
     //
     // These rows can have their xmax reset to null because they're still live
-    let vacuumed = vacuum_xmax(&elasticsearch, &es_index_name, oldest_xmin, &mut bulk);
+    let vacuumed = vacuum_xmax(
+        &index_relation,
+        &elasticsearch,
+        &es_index_name,
+        oldest_xmin,
+        &mut bulk,
+    );
 
     // Finally, any "zdb_aborted_xid" value we have can be removed if it's
     // known to be aborted and no longer referenced anywhere in the index
-    let aborted = remove_aborted_xids(&elasticsearch, oldest_xmin, &mut bulk);
+    let aborted = remove_aborted_xids(&index_relation, &elasticsearch, oldest_xmin, &mut bulk);
 
     bulk.finish().expect("failed to finish vacuum");
 
@@ -92,6 +110,7 @@ pub extern "C" fn amvacuumcleanup(
 }
 
 fn remove_aborted_xids(
+    index: &PgRelation,
     elasticsearch: &Elasticsearch,
     oldest_xmin: u32,
     bulk: &mut ElasticsearchBulkRequest,
@@ -129,7 +148,7 @@ fn remove_aborted_xids(
                                 }
                             }
                         })
-                        .prepare(),
+                        .prepare(index),
                     )
                     .execute()
                     .expect("failed to count xmin values");
@@ -142,7 +161,7 @@ fn remove_aborted_xids(
                                 }
                             }
                         })
-                        .prepare(),
+                        .prepare(index),
                     )
                     .execute()
                     .expect("failed to count xmax values");
@@ -163,6 +182,7 @@ fn remove_aborted_xids(
 }
 
 fn vacuum_xmax(
+    index: &PgRelation,
     elasticsearch: &Elasticsearch,
     es_index_name: &str,
     oldest_xmin: u32,
@@ -171,7 +191,7 @@ fn vacuum_xmax(
     let mut cnt = 0;
     let vacuum_xmax_docs = elasticsearch
         .open_search(
-            vac_by_aborted_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare(),
+            vac_by_aborted_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare(index),
         )
         .execute_with_fields(vec!["zdb_xmax"])
         .expect("failed to search by xmax");
@@ -198,6 +218,7 @@ fn vacuum_xmax(
 }
 
 fn delete_by_xmax(
+    index: &PgRelation,
     elasticsearch: &Elasticsearch,
     es_index_name: &str,
     oldest_xmin: u32,
@@ -205,7 +226,7 @@ fn delete_by_xmax(
 ) -> usize {
     let mut cnt = 0;
     let delete_by_xmax_docs = elasticsearch
-        .open_search(vac_by_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare())
+        .open_search(vac_by_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare(index))
         .execute_with_fields(vec!["zdb_xmax"])
         .expect("failed to search by xmax");
     for (_, ctid, fields, _) in delete_by_xmax_docs.into_iter() {
@@ -231,6 +252,7 @@ fn delete_by_xmax(
 }
 
 fn delete_by_xmin(
+    index: &PgRelation,
     elasticsearch: &Elasticsearch,
     es_index_name: &str,
     oldest_xmin: u32,
@@ -238,7 +260,7 @@ fn delete_by_xmin(
 ) -> usize {
     let mut cnt = 0;
     let delete_by_xmin_docs = elasticsearch
-        .open_search(vac_by_xmin(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare())
+        .open_search(vac_by_xmin(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare(index))
         .execute_with_fields(vec!["zdb_xmin"])
         .expect("failed to search by xmin");
     for (_, ctid, fields, _) in delete_by_xmin_docs.into_iter() {

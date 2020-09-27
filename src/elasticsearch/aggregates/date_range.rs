@@ -39,7 +39,7 @@ fn date_range(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<DateRangesAggData>(
-        query.prepare(),
+        query.prepare(&index),
         json! {
             {
                 "date_range": {

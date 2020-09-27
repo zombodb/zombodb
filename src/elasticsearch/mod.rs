@@ -245,7 +245,7 @@ impl Elasticsearch {
         ElasticsearchCountRequest::new(self, query, false)
     }
 
-    pub fn raw_count(&self, query: ZDBPreparedQuery) -> ElasticsearchCountRequest {
+    pub fn raw_count<'a>(&self, query: ZDBPreparedQuery) -> ElasticsearchCountRequest {
         get_executor_manager().wait_for_completion();
         ElasticsearchCountRequest::new(self, query, true)
     }

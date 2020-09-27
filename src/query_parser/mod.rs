@@ -9,20 +9,34 @@ pub mod parser;
 
 pub(crate) mod transformations;
 
+// global parsers to avoid recurring regex compilation
+thread_local! {
+    pub static ZDB_QUERY_PARSER: crate::query_parser::parser::ExprParser = crate::query_parser::parser::ExprParser::new();
+    pub static FIELD_LIST_PARSER: crate::query_parser::parser::FieldListParser = crate::query_parser::parser::FieldListParser::new();
+    pub static INDEX_LINK_PARSER: crate::query_parser::parser::IndexLinkParser = crate::query_parser::parser::IndexLinkParser::new();
+}
+
+pub(crate) fn init() {
+    ZDB_QUERY_PARSER.with(|_parser| ());
+    FIELD_LIST_PARSER.with(|_parser| ());
+    INDEX_LINK_PARSER.with(|_parser| ());
+}
+
 pub(crate) fn parse_field_lists(input: &str) -> HashMap<String, Vec<QualifiedField>> {
-    let parser = crate::query_parser::parser::FieldListParser::new();
     let mut used_fields = HashSet::new();
     let mut fieldname_stack = Vec::new();
     let mut operator_stack = Vec::new();
-    let field_list = parser
-        .parse(
-            None,
-            &mut used_fields,
-            &mut fieldname_stack,
-            &mut operator_stack,
-            input,
-        )
-        .expect("failed to parse field lists");
+    let field_list = FIELD_LIST_PARSER.with(|parser| {
+        parser
+            .parse(
+                None,
+                &mut used_fields,
+                &mut fieldname_stack,
+                &mut operator_stack,
+                input,
+            )
+            .expect("failed to parse field lists")
+    });
 
     let mut qualified_field_list = HashMap::new();
     qualified_field_list.extend(field_list.into_iter().map(|(k, v)| {

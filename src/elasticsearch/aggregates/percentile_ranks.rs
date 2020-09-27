@@ -38,7 +38,7 @@ fn percentile_ranks(
     };
 
     let request = elasticsearch.aggregate::<PercentileRankAggData>(
-        query.prepare(),
+        query.prepare(&index),
         json! {
             {
                 "percentile_ranks": percentile_ranks,
