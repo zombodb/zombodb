@@ -63,8 +63,12 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
             json! { { "bool": { "must": dsl } } }
         }
         Expr::OrList(v) => {
-            let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
-            json! { { "bool": { "should": dsl } } }
+            if v.len() == 1 {
+                expr_to_dsl(root, v.get(0).unwrap())
+            } else {
+                let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
+                json! { { "bool": { "should": dsl } } }
+            }
         }
         Expr::Not(r) => {
             let r = expr_to_dsl(root, r.as_ref());
