@@ -77,7 +77,7 @@ pub Expr: Box<Expr<'input>> = {
 };
 
 OrExpression: Box<Expr<'input>> = {
-    <mut v:(<AndExpression> OrOp+)+> <r:AndExpression> => {
+    <mut v:(<AndExpression> OrOp*)+> <r:AndExpression> => {
         v.push(r);
         Box::new(Expr::OrList(v.into_iter().map(|b| *b).collect()))
     },
