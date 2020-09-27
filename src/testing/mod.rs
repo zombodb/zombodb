@@ -29,9 +29,18 @@ pub(crate) fn initialize_tests(options: Vec<&str>) {
 }
 
 fn start_es() {
-    let mut dir = std::env::current_dir().unwrap();
-    dir.push("elasticsearch-7.6.0");
-    dir.push("bin");
+    let mut data_dir = std::env::current_dir().unwrap();
+    data_dir.push("elasticsearch-7.6.0");
+    data_dir.push("data");
+
+    if data_dir.exists() {
+        eprintln!("removing previous Elasticsearch data directory");
+        std::fs::remove_dir_all(data_dir).ok();
+    }
+
+    let mut bin_dir = std::env::current_dir().unwrap();
+    bin_dir.push("elasticsearch-7.6.0");
+    bin_dir.push("bin");
 
     let mut es = Command::new("elasticsearch");
     es.arg("-Ehttp.port=19200")
@@ -41,9 +50,9 @@ fn start_es() {
         .stderr(Stdio::piped())
         .env(
             "PATH",
-            format!("{}:{}", dir.display(), std::env::var("PATH").unwrap()),
+            format!("{}:{}", bin_dir.display(), std::env::var("PATH").unwrap()),
         )
-        .current_dir(dir);
+        .current_dir(bin_dir);
 
     monitor_es(es)
 }
