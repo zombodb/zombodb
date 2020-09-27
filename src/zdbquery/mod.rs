@@ -61,6 +61,9 @@ struct Nested {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZdbQueryString {
     query: String,
+
+    #[serde(flatten)]
+    other: HashMap<String, Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -422,17 +425,20 @@ impl ZDBQuery {
         root_link: &IndexLink,
     ) {
         if clause.zdb.is_some() {
-            // parse zdb into json and *zdb = <json> it
+            if let Some(zdb) = clause.zdb.as_ref() {
+                if !zdb.other.is_empty() {
+                    // the ZdbQueryString also has other properties, so it's really an ES query_string
+                    // as such, there's nothing for us to do
+                    return;
+                }
+                let mut used_fields = HashSet::new();
+                let expr = Expr::from_str(&index, "zdb_all", &zdb.query, &mut used_fields)
+                    .expect("failed to parse query");
+                let parsed = expr_to_dsl(root_link, &expr);
 
-            let mut used_fields = HashSet::new();
-            let query = &clause.zdb.as_ref().unwrap().query;
-            let expr = Expr::from_str(&index, "zdb_all", query, &mut used_fields)
-                .expect("failed to parse query");
-
-            let parsed = expr_to_dsl(root_link, &expr);
-
-            clause.zdb = None;
-            clause.opaque = Some(parsed);
+                clause.zdb = None;
+                clause.opaque = Some(parsed);
+            }
         } else if let Some(bool) = &mut clause.bool {
             if bool.must.is_some() {
                 bool.must.as_mut().unwrap().iter_mut().for_each(|c| {
@@ -494,6 +500,7 @@ impl ZDBQueryClause {
             nested: None,
             zdb: Some(ZdbQueryString {
                 query: query.into(),
+                other: HashMap::new(),
             }),
             opaque: None,
         }

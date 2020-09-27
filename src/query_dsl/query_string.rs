@@ -87,7 +87,7 @@ mod dsl {
     ) -> ZDBQuery {
         let querystring = QueryString {
             query,
-            default_field,
+            default_field: default_field.or(Some("zdb_all")),
             allow_leading_wildcard,
             boost,
             default_operator,
@@ -201,7 +201,8 @@ mod tests {
             json! {
                 {
                     "query_string": {
-                        "query": "query default string"
+                        "query": "query default string",
+                        "default_field": "zdb_all"
                     }
                 }
             }
