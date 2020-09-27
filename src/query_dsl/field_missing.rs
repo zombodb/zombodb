@@ -37,9 +37,9 @@ mod tests {
             json! {
                 {
                  "bool": {
-                      "must_not": {
-                          "exists": {"field":  "fieldname"}
-                      }
+                      "must_not": [
+                          { "exists": {"field":  "fieldname"} }
+                      ]
                  }
               }
             }
