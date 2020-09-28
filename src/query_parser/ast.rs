@@ -135,7 +135,7 @@ pub enum Term<'input> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'input> {
     Subselect(IndexLink, Box<Expr<'input>>),
-    Expand(IndexLink, Box<Expr<'input>>),
+    Expand(IndexLink, Box<Expr<'input>>, Option<Box<Expr<'input>>>),
 
     // types of connectors
     Not(Box<Expr<'input>>),
@@ -546,7 +546,7 @@ impl<'input> Expr<'input> {
     pub fn get_nested_path(&self) -> Option<String> {
         match self {
             Expr::Subselect(_, _) => panic!("#subselect not supported in WITH clauses"),
-            Expr::Expand(_, _) => panic!("#expand not supported in WITH clauses"),
+            Expr::Expand(_, _, _) => panic!("#expand not supported in WITH clauses"),
             Expr::Not(e) => e.get_nested_path(),
             Expr::WithList(v) => Expr::nested_path(v),
             Expr::AndList(v) => Expr::nested_path(v),
@@ -864,7 +864,13 @@ impl<'input> Display for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
             Expr::Subselect(link, q) => write!(fmt, "#subselect<{}>({})", link, q),
-            Expr::Expand(link, q) => write!(fmt, "#expand<{}>({})", link, q),
+            Expr::Expand(link, q, f) => {
+                write!(fmt, "#expand<{}>({}", link, q)?;
+                if let Some(filter) = f {
+                    write!(fmt, " #filter({})", filter)?;
+                }
+                write!(fmt, ")")
+            }
 
             Expr::Not(r) => write!(fmt, "NOT ({})", r),
 

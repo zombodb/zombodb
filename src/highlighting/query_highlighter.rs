@@ -114,7 +114,7 @@ impl<'a> QueryHighligther<'a> {
             Expr::Linked(_, _) => panic!("nested not supported yet"),
 
             Expr::Subselect(_, _) => panic!("subselect not supported yet"),
-            Expr::Expand(_, _) => panic!("expand not supported yet"),
+            Expr::Expand(_, _, _) => panic!("expand not supported yet"),
             Expr::Json(_) => panic!("json not supported yet"),
 
             Expr::Contains(f, t) | Expr::Eq(f, t) | Expr::Regex(f, t) => {

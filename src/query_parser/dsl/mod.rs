@@ -48,7 +48,29 @@ fn debug_query(
 pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
     match expr {
         Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
-        Expr::Expand(link, e) => expr_to_dsl(link, e),
+        Expr::Expand(link, e, f) => {
+            if let Some(filter) = f {
+                let expand_dsl = expr_to_dsl(link, e);
+                let filter_dsl = expr_to_dsl(link, filter);
+
+                json! {
+                    {
+                        "bool": {
+                            "should": [
+                                expand_dsl,
+                                {
+                                    "bool": {
+                                        "must": [ expand_dsl, filter_dsl ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            } else {
+                expr_to_dsl(link, e)
+            }
+        }
         Expr::WithList(v) => match Expr::nested_path(v) {
             Some(path) => {
                 let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();

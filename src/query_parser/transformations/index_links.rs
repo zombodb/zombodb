@@ -8,7 +8,13 @@ pub fn assign_links(
 ) -> Option<IndexLink> {
     match expr {
         Expr::Subselect(i, e) => assign_links(&i, e, links),
-        Expr::Expand(i, e) => assign_links(&i, e, links),
+        Expr::Expand(i, e, f) => {
+            if let Some(filter) = f {
+                assign_links(&i, filter, links);
+            }
+
+            assign_links(&i, e, links)
+        }
 
         Expr::Not(e) => assign_links(root_index, e, links),
 

@@ -3,7 +3,12 @@ use crate::query_parser::ast::{Expr, ProximityTerm, QualifiedField, Term};
 pub fn rewrite_proximity_chains(expr: &mut Expr) {
     match expr {
         Expr::Subselect(_, e) => rewrite_proximity_chains(e.as_mut()),
-        Expr::Expand(_, e) => rewrite_proximity_chains(e.as_mut()),
+        Expr::Expand(_, e, f) => {
+            if let Some(filter) = f {
+                rewrite_proximity_chains(filter.as_mut());
+            }
+            rewrite_proximity_chains(e.as_mut())
+        }
         Expr::Not(e) => rewrite_proximity_chains(e.as_mut()),
         Expr::WithList(v) => v.iter_mut().for_each(|e| rewrite_proximity_chains(e)),
         Expr::AndList(v) => v.iter_mut().for_each(|e| rewrite_proximity_chains(e)),

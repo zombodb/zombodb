@@ -34,6 +34,7 @@ match {
 
     r#"(?i)#subselect"# => SUBSELECT,
     r#"(?i)#expand"# => EXPAND,
+    r#"(?i)#filter"# => FILTER,
 
     r#"[-+]?[0-9]+"# => NUMBER,
     r#"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?"# => FLOAT,
@@ -337,7 +338,11 @@ Subselect: Expr<'input> = {
 };
 
 Expand: Expr<'input> = {
-    EXPAND LT <link:IndexLink> GT <q:ParentheticalGroup> =>  Expr::Expand(<>)
+    EXPAND LT <link:IndexLink> GT O_PAREN <e:Expr> <f:Filter?> C_PAREN => Expr::Expand(<>)
+};
+
+Filter: Box<Expr<'input>> = {
+    FILTER O_PAREN <e:Expr> C_PAREN => e
 };
 
 JsonObject: String = {
