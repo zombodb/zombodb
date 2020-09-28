@@ -48,7 +48,7 @@ fn debug_query(
 pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
     match expr {
         Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
-        Expr::Expand(_, _) => unimplemented!("#expand is not implemented yet"),
+        Expr::Expand(link, e) => expr_to_dsl(link, e),
         Expr::WithList(v) => match Expr::nested_path(v) {
             Some(path) => {
                 let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
@@ -100,11 +100,22 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
                 .find_path(&root, &i.qualified_index)
                 .expect(&format!("no index link path to {}", i.qualified_index));
 
+            if paths.is_empty() && root != i {
+                // the target index 'i' we want to go to isn't where
+                // we are, but we didn't get any paths, so it's just a
+                // direct path and we'll use 'i' for that
+                paths.push(i.clone())
+            }
+
             // bottom-up build a set of potentially nested "subselect" QueryDSL clauses
             // TODO:  need some kind of setting to indicate if the user has 'zdbjoin' installed
             //        on their ES cluster.  If they don't we could do something more manual here
             let mut current = expr_to_dsl(root, e.as_ref());
             while let Some(path) = paths.pop() {
+                if path.left_field.is_none() && path.right_field.is_none() {
+                    continue;
+                }
+
                 let target_index = path.open_index().expect("failed to open index");
                 let index_options = ZDBIndexOptions::from(&target_index);
 
@@ -112,7 +123,6 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
                     current
                 } else {
                     let visibility_clause = build_visibility_clause(&index_options.index_name());
-                    // let query = current;
                     json! {
                         {
                             "bool": {

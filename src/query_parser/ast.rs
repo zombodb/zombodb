@@ -665,7 +665,8 @@ impl IndexLink {
     }
 
     pub fn is_this_index(&self) -> bool {
-        self.qualified_index.schema.is_none()
+        (self.qualified_index.schema.is_none()
+            || self.qualified_index.schema == Some("public".into()))
             && self.qualified_index.table == "this"
             && self.qualified_index.index == "index"
     }
