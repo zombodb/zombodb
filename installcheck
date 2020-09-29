@@ -18,6 +18,11 @@ elif [ "$TEST" = "all-syntax-tests" ]; then
     cut -f3 -d/ | \
     cut -f1 -d . | \
     sort)
+elif [ "$TEST" = "all-legacy-tests" ]; then
+  TESTS=$(ls ${TESTDIR}/sql/legacy/*.sql | \
+    cut -f3 -d/ | \
+    cut -f1 -d . | \
+    sort)
 else
   TESTS=${TEST}
 fi
@@ -26,6 +31,7 @@ cat ${TESTDIR}/sql/load-data.tmpl | sed -e "s:@PWD:`pwd`:g" > ${TESTDIR}/sql/loa
 cat ${TESTDIR}/sql/load-data.tmpl | sed -e "s:@PWD:`pwd`:g" > ${TESTDIR}/expected/load-data.out
 
 
+mkdir -p results/legacy > /dev/null
 psql -l | grep ${DBNAME} > /dev/null
 if [ $? == 1 ]; then
   # load data if we don't have the regression database

@@ -1,0 +1,17 @@
+SELECT *
+FROM zdb_tally('so_posts', 'title', '^a.*', '', 5000, 'term')
+LIMIT 10;
+   term   | count  
+----------+--------
+          | 129680
+ a        |   9898
+ a.append |      1
+ a.i      |      3
+ a7       |      1
+ aa       |      1
+ aac      |      1
+ aardvark |      1
+ ab       |      1
+ abalone  |      1
+(10 rows)
+
