@@ -1,2 +1,7 @@
 COPY events FROM PROGRAM 'gunzip --stdout @PWD/test/data/events.csv.gz' CSV;
 COPY users FROM PROGRAM 'gunzip --stdout @PWD/test/data/users.csv.gz' CSV;
+COPY products FROM PROGRAM 'gunzip --stdout @PWD/test/data/products.sql.gz';
+COPY so_comments FROM PROGRAM 'gunzip --stdout @PWD/test/data/so_comments.sql.gz';
+COPY so_users FROM PROGRAM 'gunzip --stdout @PWD/test/data/so_users.sql.gz';
+COPY so_posts FROM PROGRAM 'gunzip --stdout @PWD/test/data/so_posts.sql.gz';
+COPY words FROM PROGRAM 'gunzip --stdout @PWD/test/data/words.sql.gz';
