@@ -3,7 +3,7 @@ CREATE TABLE issue_192 (
   tag varchar(80)
 );
 
-CREATE INDEX idxissue_192 ON issue_192 USING zombodb (zdb('issue_192', ctid), zdb(issue_192)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxissue_192 ON issue_192 USING zombodb ( (issue_192.*) );
 
 INSERT INTO issue_192 (tag) VALUES ('test tag');
 UPDATE issue_192 SET id = id WHERE id = 1;
