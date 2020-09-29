@@ -2,17 +2,22 @@
 
 PGXS=$(dirname `pg_config --pgxs`)
 REGRESS="${PGXS}/../test/regress/pg_regress"
-TESTDIR=test
+TESTDIR="test"
 DBNAME=contrib_regression
 PRETESTS="setup create-tables load-data index-data"
 if [ "x$TEST" = "x" ] ; then
-  TESTS=$(ls ${TESTDIR}/sql/test-*.sql ${TESTDIR}/sql/issue-*.sql | \
+  TESTS=$(ls ${TESTDIR}/sql/test-*.sql ${TESTDIR}/sql/issue-*.sql ${TESTDIR}/sql/syntax-*.sql | \
     cut -f3 -d/ | \
     cut -f1 -d . | \
     sort | \
     grep -v test-llapi | \
     grep -v test-operators | \
     grep -v test-tablesamplers)
+elif [ "$TEST" = "all-syntax-tests" ]; then
+  TESTS=$(ls ${TESTDIR}/sql/syntax-*.sql | \
+    cut -f3 -d/ | \
+    cut -f1 -d . | \
+    sort)
 else
   TESTS=${TEST}
 fi
