@@ -626,6 +626,14 @@ mod tests {
     }
 
     #[pg_test]
+    fn test_expr_and_is_default_operator() {
+        assert_expr(
+            "foo bar",
+            And!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
+        )
+    }
+
+    #[pg_test]
     fn test_expr_ampersand() {
         assert_expr(
             "foo&bar",
