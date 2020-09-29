@@ -49,8 +49,10 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
     match expr {
         Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
         Expr::Expand(link, e, f) => {
+            let linked_expand_dsl = expr_to_dsl(link, &Expr::Linked(link.clone(), e.clone()));
+            let expand_dsl = expr_to_dsl(link, e);
+
             if let Some(filter) = f {
-                let expand_dsl = expr_to_dsl(link, e);
                 let filter_dsl = expr_to_dsl(link, filter);
 
                 json! {
@@ -60,7 +62,7 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
                                 expand_dsl,
                                 {
                                     "bool": {
-                                        "must": [ expand_dsl, filter_dsl ]
+                                        "must": [ linked_expand_dsl, filter_dsl ]
                                     }
                                 }
                             ]
@@ -68,7 +70,16 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
                     }
                 }
             } else {
-                expr_to_dsl(link, e)
+                json! {
+                    {
+                        "bool": {
+                            "should": [
+                                expand_dsl,
+                                linked_expand_dsl
+                            ]
+                        }
+                    }
+                }
             }
         }
         Expr::WithList(v) => match Expr::nested_path(v) {
@@ -122,7 +133,7 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
                 .find_path(&root, &i.qualified_index)
                 .expect(&format!("no index link path to {}", i.qualified_index));
 
-            if paths.is_empty() && root != i {
+            if paths.is_empty() {
                 // the target index 'i' we want to go to isn't where
                 // we are, but we didn't get any paths, so it's just a
                 // direct path and we'll use 'i' for that

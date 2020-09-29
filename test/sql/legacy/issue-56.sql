@@ -1,1 +1,1 @@
-select parent_id, count(*) from so_posts where zdb('so_posts', ctid) ==> '#expand<parent_id=<this.index>parent_id>(beer)' group by 1 order by 1 desc;
+select parent_id, count(*) from so_posts where so_posts ==> '#expand<parent_id=<this.index>parent_id>(beer)' group by 1 order by 1 desc;
