@@ -304,12 +304,14 @@ TableIndexName: QualifiedIndex = {
     <DOTTED_IDENTIFIER> => {
         let mut parts = <>.split_terminator('.');
         let mut schema = parts.next();
-        let table = parts.next();
-        let index = parts.next();
+        let mut table = parts.next();
+        let mut index = parts.next();
 
-        if schema.is_none() && (table == Some("this") && index == Some("index")) {
+        if schema == Some("this") && table == Some("index") && index.is_none() {
             // for backwards compatibility, if the user simply writes <this.index>, we'll
             // force the schema to "public"
+            index = table;      // "index"
+            table = schema;     // "this"
             schema = Some("public");
         } else if schema.is_none() || table.is_none() || index.is_none() {
             panic!("qualified index ({}) must be schema qualified.  ie, schema.table.index", <>);
