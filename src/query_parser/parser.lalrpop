@@ -52,7 +52,7 @@ match {
     "," => COMMA,
 
     "^" => CARET,
-    "~" => TILDE,
+    r"~\d*" => TILDE,
     "." => DOT,
 
     r#"(?i)null"# => NULL,
@@ -277,7 +277,14 @@ Boost: f32 = {
 };
 
 Fuzzy: u8 = {
-    TILDE <NUMBER> => u8::from_str(<>).unwrap(),
+    TILDE => {
+        let fuzz = &<>[1..];
+        if fuzz.is_empty() {
+            3 // default
+        } else {
+            u8::from_str(fuzz).unwrap()
+        }
+    }
 };
 
 String: &'input str = {

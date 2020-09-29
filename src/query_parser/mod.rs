@@ -565,6 +565,11 @@ mod tests {
     }
 
     #[pg_test]
+    fn test_expr_fuzzy_default() {
+        assert_expr("foo~", Fuzzy!(Contains, "_", "foo", 3))
+    }
+
+    #[pg_test]
     fn test_expr_boost() {
         assert_expr("foo^2.0", String!(Contains, "_", "foo", 2.0))
     }
