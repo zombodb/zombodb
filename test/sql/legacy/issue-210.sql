@@ -24,21 +24,19 @@ INSERT INTO a (b1, b2) VALUES (1, 5);      -- a.id = 6
 
 CREATE INDEX idx_zdb_b
   ON b
-  USING zombodb(zdb('b', ctid), zdb(b))
-WITH (url = 'http://localhost:9200/');
+  USING zombodb((b.*));
 
 CREATE INDEX idx_zdb_a
   ON a
-  USING zombodb(zdb('a', ctid), zdb(a))
-WITH (url = 'http://localhost:9200/',
-  options='b1_:(b1=<b.idx_zdb_b>id),
-b2_:(b2=<b.idx_zdb_b>id)');
+  USING zombodb((a.*))
+WITH ( options='b1_:(b1=<public.b.idx_zdb_b>id),
+b2_:(b2=<public.b.idx_zdb_b>id)');
 
-select * from a where zdb('a', ctid) ==> 'b1_.name:one' order by 1;
-select * from a where zdb('a', ctid) ==> 'b1_.name:five' order by 1;
+select * from a where a ==> 'b1_.name:one' order by 1;
+select * from a where a ==> 'b1_.name:five' order by 1;
 
-select * from a where zdb('a', ctid) ==> 'b2_.name:one' order by 1;
-select * from a where zdb('a', ctid) ==> 'b2_.name:five' order by 1;
+select * from a where a ==> 'b2_.name:one' order by 1;
+select * from a where a ==> 'b2_.name:five' order by 1;
 
 DROP TABLE a;
 DROP TABLE b;
