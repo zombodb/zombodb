@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::export::PhantomData;
 use serde::*;
 use serde_json::*;
+use std::collections::HashMap;
 
 pub struct ElasticsearchAggregateSearchRequest<ReturnType>
 where
@@ -22,7 +23,7 @@ where
     pub fn new(
         elasticsearch: &Elasticsearch,
         query: ZDBPreparedQuery,
-        agg_json: serde_json::Value,
+        agg_json: HashMap<String, serde_json::Value>,
     ) -> ElasticsearchAggregateSearchRequest<ReturnType> {
         let query_dsl = apply_visibility_clause(&elasticsearch, query, false);
         ElasticsearchAggregateSearchRequest::<ReturnType> {
@@ -30,9 +31,7 @@ where
             json_query: json! {
                 {
                     "query": query_dsl,
-                    "aggs": {
-                        "the_agg": agg_json
-                    }
+                    "aggs": agg_json
                 }
             },
             _marker: PhantomData::<ReturnType>,
@@ -57,9 +56,18 @@ where
     }
 
     pub fn execute(self) -> std::result::Result<ReturnType, ElasticsearchError> {
+        let result = self.execute_set()?;
+        Ok(result.0)
+    }
+
+    pub fn execute_set(
+        self,
+    ) -> std::result::Result<(ReturnType, HashMap<String, serde_json::Value>), ElasticsearchError>
+    {
         let mut url = self.elasticsearch.alias_url();
         url.push_str("/_search");
         url.push_str("?size=0");
+
         let client = Elasticsearch::client()
             .get(&url)
             .header("content-type", "application/json")
@@ -75,21 +83,21 @@ where
             }
 
             #[derive(Deserialize)]
-            struct TheAgg {
-                the_agg: serde_json::Value,
-            }
-
-            #[derive(Deserialize)]
             struct AggregateResponse {
                 #[serde(rename = "_shards")]
                 shards: Shards,
-                aggregations: TheAgg,
+                aggregations: HashMap<String, serde_json::Value>,
             }
 
             let agg_resp: AggregateResponse =
                 serde_json::from_str(&body).expect("received invalid aggregate json response");
-            let the_agg = agg_resp.aggregations.the_agg;
-            Ok(serde_json::from_value::<ReturnType>(the_agg).unwrap())
+            let mut aggregations = agg_resp.aggregations;
+            let the_agg = aggregations
+                .remove("the_agg")
+                .expect("no 'the_agg' in response");
+            let data = serde_json::from_value::<ReturnType>(the_agg)
+                .expect("failed to deserialize 'the_agg' response");
+            Ok((data, aggregations))
         })
     }
 }
