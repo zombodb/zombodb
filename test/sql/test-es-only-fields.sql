@@ -11,6 +11,6 @@ CREATE INDEX idxes_only ON es_only USING zombodb ((es_only.*));
 INSERT INTO es_only (first_name, last_name) VALUES ('Bob', 'Dole');
 INSERT INTO es_only (first_name, last_name) VALUES ('Johnny', 'Carson');
 
-SELECT * FROM es_only WHERE es_only ==> 'combined_names:Bob combined_names:Carson' ORDER BY id;
+SELECT * FROM es_only WHERE es_only ==> 'combined_names:Bob OR combined_names:Carson' ORDER BY id;
 SELECT * FROM zdb.terms('idxes_only', 'combined_names', match_all()) ORDER BY term DESC;
 DROP TABLE es_only;

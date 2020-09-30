@@ -1,4 +1,4 @@
-CREATE TABLE xform_test AS SELECT * FROM events WHERE events ==> 'beer wine cheese';
+CREATE TABLE xform_test AS SELECT * FROM events WHERE events ==> 'beer OR wine OR cheese';
 
 CREATE VIEW xform_test_view AS
     SELECT xform_test.*,
