@@ -46,6 +46,7 @@ use pgx::*;
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::io::Read;
 
 lazy_static! {
@@ -228,8 +229,18 @@ impl Elasticsearch {
         query: ZDBPreparedQuery,
         agg_request: serde_json::Value,
     ) -> ElasticsearchAggregateSearchRequest<T> {
+        let mut aggs = HashMap::new();
+        aggs.insert("the_agg".to_string(), agg_request);
+        self.aggregate_set(query, aggs)
+    }
+
+    pub fn aggregate_set<T: DeserializeOwned>(
+        &self,
+        query: ZDBPreparedQuery,
+        aggs: HashMap<String, serde_json::Value>,
+    ) -> ElasticsearchAggregateSearchRequest<T> {
         get_executor_manager().wait_for_completion();
-        ElasticsearchAggregateSearchRequest::new(self, query, agg_request)
+        ElasticsearchAggregateSearchRequest::new(self, query, aggs)
     }
 
     pub fn raw_json_aggregate<T: DeserializeOwned>(
