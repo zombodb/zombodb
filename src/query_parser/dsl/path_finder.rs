@@ -81,7 +81,7 @@ impl PathFinder {
             .push((reverse, cost));
     }
 
-    pub fn find_path(&mut self, start: &IndexLink, end: &QualifiedIndex) -> Option<Vec<IndexLink>> {
+    pub fn find_path(&mut self, start: &IndexLink, end: &IndexLink) -> Option<Vec<IndexLink>> {
         self.relationships.clear();
         self.define_relationships();
 
@@ -95,7 +95,10 @@ impl PathFinder {
                     .into_iter()
                     .map(|(l, c)| (l.clone(), *c))
             },
-            |p| &p.qualified_index == end,
+            |p| {
+                (p.name.is_some() && p.name == end.name)
+                    || (end.name.is_none() && p.qualified_index == end.qualified_index)
+            },
         ) {
             Some((paths, _)) => {
                 if self.root.eq(paths.get(0).as_ref().unwrap()) {
@@ -132,25 +135,18 @@ mod tests {
         pf.push(junk.clone());
         pf.push(bar.clone());
 
+        assert_eq!(pf.find_path(&main, &main).expect("no path found"), vec![]);
         assert_eq!(
-            pf.find_path(&main, &main.qualified_index)
-                .expect("no path found"),
-            vec![]
-        );
-        assert_eq!(
-            pf.find_path(&main, &ft.qualified_index)
-                .expect("no path found"),
+            pf.find_path(&main, &ft).expect("no path found"),
             vec![ft.clone()]
         );
         assert_eq!(
-            pf.find_path(&main, &junk.qualified_index)
-                .expect("no path found"),
+            pf.find_path(&main, &junk).expect("no path found"),
             vec![other.clone(), junk.clone()]
         );
 
         assert_eq!(
-            pf.find_path(&ft, &vol.qualified_index)
-                .expect("no path found"),
+            pf.find_path(&ft, &vol).expect("no path found"),
             vec![
                 ft.clone(),
                 IndexLink {

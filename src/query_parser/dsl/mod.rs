@@ -130,7 +130,7 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
 
             // calculate the path from our root IndexLink
             let mut paths = pf
-                .find_path(&root, &i.qualified_index)
+                .find_path(&root, &i)
                 .expect(&format!("no index link path to {}", i.qualified_index));
 
             if paths.is_empty() {
