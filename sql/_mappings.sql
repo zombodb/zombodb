@@ -403,6 +403,14 @@ VALUES ('point', '{
   "type": "geo_point"
 }', true);
 
+INSERT INTO zdb.type_mappings(type_name, definition, is_default)
+VALUES ('uuid', '{
+  "type": "keyword",
+  "copy_to": "zdb_all",
+  "ignore_above": 10922,
+  "normalizer": "lowercase"
+}', true);
+
 CREATE DOMAIN zdb.arabic AS text;
 CREATE DOMAIN zdb.armenian AS text;
 CREATE DOMAIN zdb.basque AS text;

@@ -352,10 +352,10 @@ pub fn categorize_tupdesc<'a>(
                         }
                     }
 
-                    _ => handle_unsupported_type(attribute),
+                    unknown => handle_unsupported_type(is_array, unknown.value()),
                 },
 
-                PgOid::Custom(_) => handle_unsupported_type(attribute),
+                PgOid::Custom(custom) => handle_unsupported_type(is_array, *custom),
 
                 PgOid::InvalidOid => panic!("{} has a type oid of InvalidOid", attribute.name()),
             }
@@ -432,32 +432,64 @@ pub fn categorize_tupdesc<'a>(
 }
 
 fn handle_unsupported_type<'a>(
-    attribute: &pg_sys::FormData_pg_attribute,
+    is_array: bool,
+    base_type_oid: pg_sys::Oid,
 ) -> Box<ConversionFunc<'a>> {
     let mut output_func = pg_sys::InvalidOid;
     let mut is_varlena = false;
 
     unsafe {
-        pg_sys::getTypeOutputInfo(
-            attribute.type_oid().value(),
-            &mut output_func,
-            &mut is_varlena,
-        );
+        pg_sys::getTypeOutputInfo(base_type_oid, &mut output_func, &mut is_varlena);
     }
 
-    Box::new(move |builder, name, datum, _oid| {
-        let result =
-            unsafe { std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(output_func, datum)) };
-        let result_str = result
-            .to_str()
-            .expect("failed to convert unsupported type to a string");
-        let json = json!(result_str);
-        builder.add_json_value(name, json);
+    if is_array {
+        Box::new(move |builder, name, datum, _oid| {
+            let array: Array<pg_sys::Datum> =
+                unsafe { Array::from_datum(datum, false, base_type_oid).unwrap() };
 
-        unsafe {
-            pg_sys::pfree(result.as_ptr() as void_mut_ptr);
-        }
-    })
+            // build up a vec of each element as a string
+            let mut values = Vec::new();
+            for e in array.iter() {
+                // only serialize to json non-null array values
+                if let Some(element_datum) = e {
+                    let result = unsafe {
+                        std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(
+                            output_func,
+                            element_datum,
+                        ))
+                    };
+                    let result_str = result
+                        .to_str()
+                        .expect("failed to convert unsupported type to a string");
+                    values.push(result_str.to_string());
+
+                    unsafe {
+                        pg_sys::pfree(result.as_ptr() as void_mut_ptr);
+                    }
+                }
+            }
+
+            // then add that vec to our builder as a json blob
+            builder.add_json_value(name, json!(values))
+        })
+    } else {
+        Box::new(move |builder, name, datum, _oid| {
+            // call the output function to convert the datum into a string
+            let result = unsafe {
+                std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(output_func, datum))
+            };
+            let result_str = result
+                .to_str()
+                .expect("failed to convert unsupported type to a string");
+
+            // then we add it to our builder as a json value
+            builder.add_json_value(name, json!(result_str));
+
+            unsafe {
+                pg_sys::pfree(result.as_ptr() as void_mut_ptr);
+            }
+        })
+    }
 }
 
 pub fn generate_default_mapping(heap_relation: &PgRelation) -> HashMap<String, serde_json::Value> {
