@@ -433,7 +433,7 @@ pub FieldList: HashMap<String, Vec<String>> = {
 };
 
 NamedFieldList: (String, Vec<String>) = {
-    <name:FieldName> COLON O_BRACKET <list:FieldNameList> C_BRACKET => {
+    <name:FieldName> EQ O_BRACKET <list:FieldNameList> C_BRACKET => {
         (name.into(), list)
     }
 };
