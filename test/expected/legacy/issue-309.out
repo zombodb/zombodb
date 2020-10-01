@@ -1,4 +1,4 @@
-select zdb_score('so_posts', ctid) <> 1 from so_posts where zdb('so_posts', ctid) ==> '#limit(_score desc, 0, 10) beer';
+select zdb.score(ctid) <> 1 from so_posts where so_posts ==> dsl.limit(10, 'beer');
  ?column? 
 ----------
  t
