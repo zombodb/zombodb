@@ -4,7 +4,7 @@ CREATE TABLE test_data_join_var.test_data
 (
   pk_id     bigserial NOT NULL,
   custodian text,
-  fulltext  fulltext_with_shingles,
+  fulltext  zdb.fulltext_with_shingles,
   CONSTRAINT test_data_pkey PRIMARY KEY (pk_id)
 )
   WITH (OIDS= FALSE);
@@ -26,14 +26,12 @@ SELECT test_data.pk_id,
        test_data.custodian,
        test_data.fulltext,
        test_var.var_field,
-       zdb('test_data_join_var.test_data' ::regclass, test_data.ctid) AS zdb
+       test_data.ctid AS zdb
 FROM test_data_join_var.test_data
        JOIN test_data_join_var.test_var ON test_data.pk_id = test_var.pk_var_id;
 
-CREATE INDEX es_test_data_join_var_test_data ON test_data_join_var.test_data USING zombodb (zdb('test_data_join_var.test_data'::regclass, ctid),
-                                                                                            zdb(test_data.*)) WITH (url='http://localhost:9200/', shards='1', replicas='1', options ='pk_id = <test_var.es_test_data_join_var_test_var>pk_var_id');
-CREATE INDEX es_test_data_join_var_test_var ON test_data_join_var.test_var USING zombodb (zdb('test_data_join_var.test_var'::regclass, ctid),
-                                                                                          zdb(test_var.*)) WITH (url='http://localhost:9200/', shards='1', replicas='1');
+CREATE INDEX es_test_data_join_var_test_data ON test_data_join_var.test_data USING zombodb ( (test_data.*) ) WITH (shards='1', replicas='1', options ='pk_id = <test_data_join_var.test_var.es_test_data_join_var_test_var>pk_var_id');
+CREATE INDEX es_test_data_join_var_test_var ON test_data_join_var.test_var USING zombodb ( (test_var.*) ) WITH (shards='1', replicas='1');
 
 
 -- test_var->test_data
@@ -42,7 +40,7 @@ CREATE TABLE test_var_join_data.test_data
 (
   pk_id     bigserial NOT NULL,
   custodian text,
-  fulltext  fulltext_with_shingles,
+  fulltext  zdb.fulltext_with_shingles,
   CONSTRAINT test_data_pkey PRIMARY KEY (pk_id)
 )
   WITH (OIDS= FALSE);
@@ -64,14 +62,12 @@ SELECT test_var.pk_var_id,
        test_var.var_field,
        test_data.custodian,
        test_data.fulltext,
-       zdb('test_var_join_data.test_var'::regclass, test_var.ctid) AS zdb
+       test_var.ctid AS zdb
 FROM test_var_join_data.test_var
        JOIN test_var_join_data.test_data ON test_var.pk_var_id = test_data.pk_id;
 
-CREATE INDEX es_test_var_join_data_test_var ON test_var_join_data.test_var USING zombodb (zdb('test_var_join_data.test_var'::regclass, ctid),
-                                                                                          zdb(test_var.*)) WITH (url='http://localhost:9200/', shards='1', replicas='1', options ='pk_var_id = <test_data.es_test_var_join_data_test_data>pk_id');
-CREATE INDEX es_test_var_join_data_test_data ON test_var_join_data.test_data USING zombodb (zdb('test_var_join_data.test_data'::regclass, ctid),
-                                                                                            zdb(test_data.*)) WITH (url='http://localhost:9200/', shards='1', replicas='1');
+CREATE INDEX es_test_var_join_data_test_var ON test_var_join_data.test_var USING zombodb ( (test_var.*) ) WITH (shards='1', replicas='1', options ='pk_var_id = <test_var_join_data.test_data.es_test_var_join_data_test_data>pk_id');
+CREATE INDEX es_test_var_join_data_test_data ON test_var_join_data.test_data USING zombodb ( (test_data.*) ) WITH (shards='1', replicas='1');
 
 
 -- data
@@ -96,10 +92,15 @@ VALUES (1, 'dog'),
        (3, 'squirrel');
 
 
-SELECT *
-FROM zdb_highlight('test_var_join_data.test_view'::REGCLASS, '( ( fulltext : giraffe ) )'::TEXT,
-                   'pk_var_id IN (''1'')'::TEXT, '{"fulltext"}'::TEXT[])
-ORDER BY "primaryKey", "fieldName", "arrayIndex", "position";
+SELECT pk_var_id, highlights.*
+FROM test_var_join_data.test_view as data
+         LEFT JOIN LATERAL
+    zdb.highlight_document(
+            'test_var_join_data.es_test_var_join_data_test_var',
+            to_jsonb(data),
+            '( ( fulltext : giraffe ) )'
+        ) as highlights ON true
+WHERE field_name IS NOT NULL and pk_var_id = 1;
 
 DROP SCHEMA test_data_join_var cascade;
 DROP SCHEMA test_var_join_data cascade;

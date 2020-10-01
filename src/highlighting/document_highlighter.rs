@@ -121,9 +121,9 @@ impl<'a> DocumentHighlighter<'a> {
 
                     entry.push(TokenEntry {
                         type_: token.type_,
-                        position: token.position as u32,
-                        start_offset: token.start_offset as u64,
-                        end_offset: token.end_offset as u64,
+                        position: (token.position + 1) as u32,
+                        start_offset: (token.start_offset - 1) as u64,
+                        end_offset: (token.end_offset - 1) as u64,
                     });
                 }
             }

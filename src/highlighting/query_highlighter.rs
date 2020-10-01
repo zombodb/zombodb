@@ -111,7 +111,7 @@ impl<'a> QueryHighligther<'a> {
                 did_highlight
             }
 
-            Expr::Linked(_, _) => panic!("nested not supported yet"),
+            Expr::Linked(_i, e) => self.walk_expression(e.as_ref(), highlights),
 
             Expr::Subselect(_, _) => panic!("subselect not supported yet"),
             Expr::Expand(_, _, _) => panic!("expand not supported yet"),
