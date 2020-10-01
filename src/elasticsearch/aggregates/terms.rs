@@ -133,7 +133,11 @@ fn tally(
         let nulls = if let Some(count_nulls) = others.remove("count_nulls") {
             let count_nulls = serde_json::from_value::<CountNullsAggData>(count_nulls)
                 .expect("failed to deserialize count_nulls");
-            Some((None, count_nulls.doc_count))
+            if count_nulls.doc_count > 0 {
+                Some((None, count_nulls.doc_count))
+            } else {
+                None
+            }
         } else {
             None
         };
