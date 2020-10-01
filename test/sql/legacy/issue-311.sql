@@ -3,9 +3,8 @@ CREATE TABLE issue311 (
   data json
 );
 
-SELECT zdb_define_mapping('issue311', 'data', '{
+SELECT zdb.define_field_mapping('issue311', 'data', '{
             "type" : "nested",
-            "include_in_all" : false,
             "properties" : {
               "offset" : {
                 "type" : "long"
@@ -24,8 +23,7 @@ SELECT zdb_define_mapping('issue311', 'data', '{
               },
               "text" : {
                 "type" : "text",
-                "analyzer" : "fulltext",
-                "include_in_all" : false
+                "analyzer" : "fulltext"
               },
               "zdb_always_exists" : {
                 "type" : "boolean",
@@ -33,9 +31,9 @@ SELECT zdb_define_mapping('issue311', 'data', '{
               }
             }
           }');
-CREATE INDEX idxissue311 ON issue311 USING zombodb (zdb('issue311', ctid), zdb(issue311)) WITH (url='localhost:9200/');
+CREATE INDEX idxissue311 ON issue311 USING zombodb ( (issue311.*) );
 INSERT INTO issue311 (data) VALUES ('[{"tags":["a", "b"], "text":"this is a test"}]');
 
-SELECT id FROM issue311 WHERE zdb('issue311', ctid) ==> 'data.text:a WITH data.text:"a test"';
+SELECT id FROM issue311 WHERE issue311 ==> 'data.text:a WITH data.text:"a test"';
 
 DROP TABLE issue311 CASCADE ;
