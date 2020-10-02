@@ -2,6 +2,7 @@ use crate::highlighting::document_highlighter::*;
 use crate::query_parser::ast::{Expr, QualifiedField, Term};
 use pgx::*;
 use pgx::{JsonB, PgRelation};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
 struct QueryHighligther<'a> {
@@ -13,22 +14,22 @@ struct QueryHighligther<'a> {
 impl<'a> QueryHighligther<'a> {
     pub fn new(
         index: &'a PgRelation,
-        document: serde_json::Value,
+        mut document: serde_json::Value,
         fields: &HashSet<&'a str>,
         query: Expr<'a>,
     ) -> Self {
         let mut highlighters = HashMap::new();
+        let document = document.as_object_mut().expect("document not an object");
 
         fields.iter().for_each(|field| {
-            if let Some(value) = document
-                .as_object()
-                .expect("document not an object")
-                .get(*field)
-            {
+            if let Some(value) = document.remove(*field) {
                 // for now, assume field value is a string and that it exists
-                let value =
-                    serde_json::to_string(value).expect("unable to convert value to a string");
-
+                let value = match value {
+                    Value::String(s) => s,
+                    _ => {
+                        serde_json::to_string(&value).expect("unable to convert value to a string")
+                    }
+                };
                 let dh = DocumentHighlighter::new(index, field, &value);
                 highlighters.insert(*field, dh);
             }
@@ -96,12 +97,6 @@ impl<'a> QueryHighligther<'a> {
                 let mut did_highlight = false;
 
                 for e in v {
-                    let mut tmp_highlights = HashMap::new();
-                    if self.walk_expression(e, &mut tmp_highlights) {
-                        highlights.extend(tmp_highlights);
-                        did_highlight = true;
-                    }
-
                     let mut tmp_highlights = HashMap::new();
                     if self.walk_expression(e, &mut tmp_highlights) {
                         highlights.extend(tmp_highlights);
@@ -235,6 +230,11 @@ impl<'a> QueryHighligther<'a> {
                 if let Some(entries) =
                     highlighter.highlight_phrase(self.index, &field.field_name(), s)
                 {
+                    // try to highlight the phrase
+                    cnt = entries.len();
+                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                } else if let Some(entries) = highlighter.highlight_token(s) {
+                    // that didn't work, so try to highlight the phrase as if it were a single token
                     cnt = entries.len();
                     QueryHighligther::process_entries(expr, &field, entries, highlights);
                 }

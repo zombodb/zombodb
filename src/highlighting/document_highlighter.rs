@@ -88,10 +88,10 @@ impl<'a> DocumentHighlighter<'a> {
                 self.lookup
                     .entry(text.to_string())
                     .or_insert(vec![TokenEntry {
-                        type_: "FLOAT".to_string(),
-                        position: 0,
+                        type_: "<FLOAT>".to_string(),
+                        position: 1,
                         start_offset: 0,
-                        end_offset: 0,
+                        end_offset: text.len() as u64,
                     }]);
             }
 
@@ -99,10 +99,10 @@ impl<'a> DocumentHighlighter<'a> {
                 self.lookup
                     .entry(text.to_string())
                     .or_insert(vec![TokenEntry {
-                        type_: "INTEGER".to_string(),
-                        position: 0,
+                        type_: "<NUM>".to_string(),
+                        position: 1,
                         start_offset: 0,
-                        end_offset: 0,
+                        end_offset: text.len() as u64,
                     }]);
             }
 
@@ -122,8 +122,8 @@ impl<'a> DocumentHighlighter<'a> {
                     entry.push(TokenEntry {
                         type_: token.type_,
                         position: (token.position + 1) as u32,
-                        start_offset: (token.start_offset - 1) as u64,
-                        end_offset: (token.end_offset - 1) as u64,
+                        start_offset: token.start_offset as u64,
+                        end_offset: token.end_offset as u64,
                     });
                 }
             }
@@ -204,12 +204,13 @@ impl<'a> DocumentHighlighter<'a> {
     }
 
     pub fn highlight_token(&'a self, token: &str) -> Option<Vec<(String, &'a TokenEntry)>> {
+        let token = token.to_lowercase();
         let mut result = Vec::new();
-        let token_entries_vec = self.lookup.get(token);
+        let token_entries_vec = self.lookup.get(&token);
         match token_entries_vec {
             Some(vec) => {
                 for token_entry in vec {
-                    result.push((String::from(token), token_entry))
+                    result.push((token.clone(), token_entry))
                 }
                 Some(result)
             }
@@ -222,9 +223,10 @@ impl<'a> DocumentHighlighter<'a> {
         term: &str,
         eval: F,
     ) -> Option<Vec<(String, &'a TokenEntry)>> {
+        let term = term.to_lowercase();
         let mut result = Vec::new();
         for (token, entries) in &self.lookup {
-            if eval(token, term) {
+            if eval(token, &term) {
                 for entry in entries {
                     result.push((token.clone(), entry))
                 }
@@ -239,6 +241,7 @@ impl<'a> DocumentHighlighter<'a> {
     }
 
     pub fn highlight_wildcard(&'a self, token: &str) -> Option<Vec<(String, &'a TokenEntry)>> {
+        let token = token.to_lowercase();
         let _char_looking_for_asterisk = '*';
         let _char_looking_for_question = '?';
         let mut new_regex = String::from("^");
@@ -278,29 +281,30 @@ impl<'a> DocumentHighlighter<'a> {
         fuzzy_key: &str,
         prefix: u8,
     ) -> Option<Vec<(String, &'a TokenEntry)>> {
+        let fuzzy_key = fuzzy_key.to_lowercase();
         let mut result = Vec::new();
         let fuzzy_low = 3;
         let fuzzy_high = 6;
         if prefix >= fuzzy_key.len() as u8 {
-            return self.highlight_token(fuzzy_key);
+            return self.highlight_token(&fuzzy_key);
         }
         let prefix_string = &fuzzy_key[0..prefix as usize];
         for (token, token_entries) in self.lookup.iter() {
             if token.starts_with(prefix_string.deref()) {
                 if fuzzy_key.len() < fuzzy_low {
-                    if levenshtein(token, fuzzy_key) as i32 == 0 {
+                    if levenshtein(token, &fuzzy_key) as i32 == 0 {
                         for token_entry in token_entries {
                             result.push((String::from(token), token_entry));
                         }
                     }
                 } else if fuzzy_key.len() >= fuzzy_low && fuzzy_key.len() < fuzzy_high {
-                    if levenshtein(token, fuzzy_key) as i32 <= 1 {
+                    if levenshtein(token, &fuzzy_key) as i32 <= 1 {
                         for token_entry in token_entries {
                             result.push((String::from(token), token_entry));
                         }
                     }
                 } else {
-                    if levenshtein(token, fuzzy_key) as i32 <= 2 {
+                    if levenshtein(token, &fuzzy_key) as i32 <= 2 {
                         for token_entry in token_entries {
                             result.push((String::from(token), token_entry));
                         }
@@ -325,12 +329,13 @@ impl<'a> DocumentHighlighter<'a> {
             return None;
         }
 
+        let phrase_str = phrase_str.to_lowercase();
         let prox_term = ProximityTerm::make_proximity_chain(
             &QualifiedField {
                 index: Some(IndexLink::from_relation(index)),
                 field: field.to_string(),
             },
-            phrase_str,
+            &phrase_str,
             None,
         );
         let term = prox_term.to_term();
