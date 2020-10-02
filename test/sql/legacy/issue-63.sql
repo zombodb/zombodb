@@ -1,8 +1,8 @@
 CREATE TABLE tas_update_fail (
   pk_id           SERIAL8 NOT NULL,
-  start_date_text TEXT,
-  end_date_text   TEXT,
-  duration        TEXT,
+  start_date_text VARCHAR ,
+  end_date_text   VARCHAR ,
+  duration        VARCHAR ,
   CONSTRAINT tas_update_fail_pkey PRIMARY KEY (pk_id)
 );
 
@@ -28,10 +28,10 @@ SELECT
   isdate(end_date_text)
 FROM tas_update_fail ORDER BY pk_id;
 
-CREATE INDEX es_idx_tas_update_fail ON tas_update_fail USING zombodb (zdb('tas_update_fail', ctid), zdb(tas_update_fail.*)) WITH (url='http://localhost:9200/', shards=2, replicas=1);
+CREATE INDEX es_idx_tas_update_fail ON tas_update_fail USING zombodb((tas_update_fail.*)) WITH (shards=2, replicas=1);
 
 SELECT *
-FROM zdb_tally('tas_update_fail', 'end_date_text', '0', '^.*', '', 5000, 'term' :: zdb_tally_order);
+FROM zdb.tally('es_idx_tas_update_fail', 'end_date_text',  '^.*', '', 5000, 'term');
 
 UPDATE tas_update_fail
 SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) = 1
@@ -39,7 +39,7 @@ SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) =
                ELSE NULL END;
 
 SELECT *
-FROM zdb_tally('tas_update_fail', 'end_date_text', '0', '^.*', '', 5000, 'term' :: zdb_tally_order);
+FROM zdb.tally('es_idx_tas_update_fail', 'end_date_text',  '^.*', '', 5000, 'term');
 
 --
 -- followup to original report against issue-63
@@ -54,7 +54,7 @@ UPDATE tas_update_fail SET duration = CASE WHEN isdate(end_date_text) = 1 AND is
 COMMIT;
 
 SELECT *
-FROM zdb_tally('tas_update_fail', 'end_date_text', '0', '^.*', '', 5000, 'term' :: zdb_tally_order);
+FROM zdb.tally('es_idx_tas_update_fail', 'end_date_text',  '^.*', '', 5000, 'term');
 
 DROP TABLE tas_update_fail CASCADE;
 DROP FUNCTION isdate(TEXT);
