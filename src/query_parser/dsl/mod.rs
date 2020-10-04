@@ -228,10 +228,19 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             }
         }
         Term::String(s, b) => {
-            if is_span {
-                return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
+            if s.contains('\\') {
+                let s = unescape::unescape(s);
+                if is_span {
+                    return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
+                } else {
+                    json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+                }
             } else {
-                json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+                if is_span {
+                    return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
+                } else {
+                    json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+                }
             }
         }
         Term::Phrase(s, b) | Term::PhraseWithWildcard(s, b) => {
@@ -241,7 +250,12 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                     other => eq(field, &other.to_term(), true),
                 }
             } else {
-                json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+                if s.contains('\\') {
+                    let s = unescape::unescape(s);
+                    json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+                } else {
+                    json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+                }
             }
         }
         Term::Prefix(s, b) => {
