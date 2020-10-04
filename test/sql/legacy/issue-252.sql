@@ -4,7 +4,7 @@ create table issue252 (
 );
 
 insert into issue252 (data) values ('123456');
-create index idxissue252 on issue252 using zombodb (zdb('issue252', ctid), zdb(issue252)) with (url='localhost:9200/');
+create index idxissue252 on issue252 using zombodb ( (issue252.*) );
 
-select zdb_get_index_mapping('issue252')->'mappings'->'data'->'properties'->'data'->>'type' as es_type;
+select zdb.index_mapping('idxissue252')->zdb.index_name('idxissue252')->'mappings'->'properties'->'data'->'type' as es_type;
 drop table issue252 cascade;
