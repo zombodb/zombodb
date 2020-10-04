@@ -135,11 +135,6 @@ pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
 }
 
 pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
-    if !field.contains('.') {
-        // can't be nested if it isn't a dotted.path.field
-        return false;
-    }
-
     let mut sql = String::new();
 
     sql.push_str(&format!(

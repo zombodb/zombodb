@@ -65,10 +65,10 @@ pub fn group_nested(index: &Option<&PgRelation>, expr: &mut Expr) {
 }
 
 fn maybe_nest(index: &Option<&PgRelation>, expr: &mut Expr) {
-    if let Some(path) = expr.get_nested_path() {
-        // we can only do this if we have an index, which will maybe
-        // only be None during standalone Rust #[test]s
-        if let Some(index) = index {
+    // we can only do this if we have an index, which will maybe
+    // only be None during standalone Rust #[test]s
+    if let Some(index) = index {
+        if let Some(path) = expr.get_nested_path() {
             if is_nested_field(index, &path) {
                 // the nested query begins with the longest path if we have an index and it's a nested field
                 *expr = Expr::Nested(path.clone(), Box::new(expr.clone()));

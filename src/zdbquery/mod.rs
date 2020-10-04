@@ -649,13 +649,20 @@ impl ZDBPreparedQuery {
         &self.0.highlights
     }
 
-    pub fn extract_nested_filter(
-        query: Option<&mut serde_json::Value>,
-    ) -> Option<&mut serde_json::Value> {
+    pub fn extract_nested_filter<'a>(
+        field: &str,
+        query: Option<&'a mut serde_json::Value>,
+    ) -> Option<&'a mut serde_json::Value> {
         if query.is_none() {
             return None;
         }
         let query = query.unwrap();
+        let clause_string = serde_json::to_string(query).unwrap();
+        if !clause_string.contains(field) {
+            // no query against the field from this level down
+            return None;
+        }
+
         match query {
             Value::Object(obj) => {
                 let mut to_remove = HashSet::new();
@@ -671,7 +678,7 @@ impl ZDBPreparedQuery {
                         || k == "dis_max"
                     {
                         // inspect this value to see if we should remove it or not
-                        if ZDBPreparedQuery::extract_nested_filter(Some(v)).is_none() {
+                        if ZDBPreparedQuery::extract_nested_filter(field, Some(v)).is_none() {
                             to_remove.insert(k.clone());
                         }
                     } else if k == "nested" {
@@ -698,7 +705,17 @@ impl ZDBPreparedQuery {
 
                 // if we have a replacement for a "nested" node, go ahead and do that
                 if let Some((k, v)) = nested_replacement {
-                    obj.insert(k, v);
+                    if k == "nested" {
+                        let mut value = json! { { k : v } };
+                        if ZDBPreparedQuery::extract_nested_filter(field, Some(&mut value))
+                            .is_some()
+                        {
+                            let (k, v) = value.as_object().unwrap().iter().next().unwrap();
+                            obj.insert(k.clone(), v.clone());
+                        }
+                    } else {
+                        obj.insert(k, v);
+                    }
                 }
 
                 if obj.is_empty() {
@@ -711,7 +728,8 @@ impl ZDBPreparedQuery {
                 while i < v.len() {
                     match v.get_mut(i) {
                         Some(value) => {
-                            if ZDBPreparedQuery::extract_nested_filter(Some(value)).is_none() {
+                            if ZDBPreparedQuery::extract_nested_filter(field, Some(value)).is_none()
+                            {
                                 // we can remove this element b/c it's empty
                                 v.remove(i);
                             } else {

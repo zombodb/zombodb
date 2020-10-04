@@ -27,22 +27,20 @@ INSERT INTO testlcase VALUES
   ]' :: JSON);
 CREATE INDEX idx_zdb_testlcase
   ON testlcase
-  USING zombodb(zdb('testlcase', testlcase.ctid), zdb(testlcase))
-WITH (url = 'http://localhost:9200/');
-SELECT zdb_define_mapping('testlcase', 'terms', '{
+  USING zombodb( (testlcase.*) );
+SELECT zdb.define_field_mapping('testlcase', 'terms', '{
           "store": false,
           "type": "keyword",
-          "index_options": "docs",
-          "include_in_all": "false"
+          "index_options": "docs"
         }');
- zdb_define_mapping 
---------------------
+ define_field_mapping 
+----------------------
  
 (1 row)
 
-SELECT zdb_define_mapping('testlcase', 'subjs', '{
+SELECT zdb.define_field_mapping('testlcase', 'subjs', '{
             "type" : "nested",
-            "include_in_all" : true,
+            "include_in_parent": true,
             "properties" : {
               "sid" : {
                 "type" : "keyword",
@@ -59,15 +57,15 @@ SELECT zdb_define_mapping('testlcase', 'subjs', '{
               }
             }
         }');
- zdb_define_mapping 
---------------------
+ define_field_mapping 
+----------------------
  
 (1 row)
 
 REINDEX INDEX idx_zdb_testlcase;
 SELECT *
 FROM testlcase
-WHERE zdb('testlcase', testlcase.ctid) ==> 'terms:("T1")';
+WHERE testlcase ==> 'terms:("T1")';
  uri |  terms  |       subjs        
 -----+---------+--------------------
  U2  | {T1,T2} | [                 +
@@ -82,22 +80,22 @@ WHERE zdb('testlcase', testlcase.ctid) ==> 'terms:("T1")';
      |         |   ]
 (1 row)
 
-SELECT zdb_dump_query('testlcase', 'terms:("T1")');
-    zdb_dump_query     
------------------------
- {                    +
-   "term" : {         +
-     "terms" : {      +
-       "value" : "T1",+
-       "boost" : 1.0  +
-     }                +
-   }                  +
+SELECT zdb.dump_query('idx_zdb_testlcase', 'terms:("T1")');
+     dump_query      
+---------------------
+ {                  +
+   "match": {       +
+     "terms": {     +
+       "boost": 1.0,+
+       "query": "T1"+
+     }              +
+   }                +
  }
 (1 row)
 
 SELECT *
 FROM testlcase
-WHERE zdb('testlcase', testlcase.ctid) ==> 'subjs.sid:("S1")';
+WHERE testlcase ==> 'subjs.sid:("S1")';
  uri |  terms  |       subjs        
 -----+---------+--------------------
  U2  | {T1,T2} | [                 +
@@ -112,24 +110,23 @@ WHERE zdb('testlcase', testlcase.ctid) ==> 'subjs.sid:("S1")';
      |         |   ]
 (1 row)
 
-SELECT zdb_dump_query('testlcase', 'subjs.sid:("S1")');
-         zdb_dump_query         
---------------------------------
- {                             +
-   "nested" : {                +
-     "query" : {               +
-       "term" : {              +
-         "subjs.sid" : {       +
-           "value" : "S1",     +
-           "boost" : 1.0       +
-         }                     +
-       }                       +
-     },                        +
-     "path" : "subjs",         +
-     "ignore_unmapped" : false,+
-     "score_mode" : "avg",     +
-     "boost" : 1.0             +
-   }                           +
+SELECT zdb.dump_query('idx_zdb_testlcase', 'subjs.sid:("S1")');
+          dump_query           
+-------------------------------
+ {                            +
+   "nested": {                +
+     "ignore_unmapped": false,+
+     "path": "subjs",         +
+     "query": {               +
+       "match": {             +
+         "subjs.sid": {       +
+           "boost": 1.0,      +
+           "query": "S1"      +
+         }                    +
+       }                      +
+     },                       +
+     "score_mode": "avg"      +
+   }                          +
  }
 (1 row)
 

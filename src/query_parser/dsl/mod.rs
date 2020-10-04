@@ -117,7 +117,7 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
 
         Expr::Nested(p, e) => {
             let dsl = expr_to_dsl(root, e.as_ref());
-            json! { { "nested": { "path": p, "query": dsl } } }
+            json! { { "nested": { "path": p, "query": dsl, "score_mode": "avg", "ignore_unmapped": false } } }
         }
 
         Expr::Linked(i, e) => {

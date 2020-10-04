@@ -29,19 +29,17 @@ INSERT INTO testlcase VALUES
 
 CREATE INDEX idx_zdb_testlcase
   ON testlcase
-  USING zombodb(zdb('testlcase', testlcase.ctid), zdb(testlcase))
-WITH (url = 'http://localhost:9200/');
+  USING zombodb( (testlcase.*) );
 
-SELECT zdb_define_mapping('testlcase', 'terms', '{
+SELECT zdb.define_field_mapping('testlcase', 'terms', '{
           "store": false,
           "type": "keyword",
-          "index_options": "docs",
-          "include_in_all": "false"
+          "index_options": "docs"
         }');
 
-SELECT zdb_define_mapping('testlcase', 'subjs', '{
+SELECT zdb.define_field_mapping('testlcase', 'subjs', '{
             "type" : "nested",
-            "include_in_all" : true,
+            "include_in_parent": true,
             "properties" : {
               "sid" : {
                 "type" : "keyword",
@@ -63,15 +61,15 @@ REINDEX INDEX idx_zdb_testlcase;
 
 SELECT *
 FROM testlcase
-WHERE zdb('testlcase', testlcase.ctid) ==> 'terms:("T1")';
+WHERE testlcase ==> 'terms:("T1")';
 
-SELECT zdb_dump_query('testlcase', 'terms:("T1")');
+SELECT zdb.dump_query('idx_zdb_testlcase', 'terms:("T1")');
 
 
 SELECT *
 FROM testlcase
-WHERE zdb('testlcase', testlcase.ctid) ==> 'subjs.sid:("S1")';
+WHERE testlcase ==> 'subjs.sid:("S1")';
 
-SELECT zdb_dump_query('testlcase', 'subjs.sid:("S1")');
+SELECT zdb.dump_query('idx_zdb_testlcase', 'subjs.sid:("S1")');
 
 DROP TABLE testlcase CASCADE;

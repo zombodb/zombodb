@@ -253,33 +253,28 @@ impl Elasticsearch {
                 (false, None, None)
             } else {
                 let field = field.as_ref().unwrap();
-                if !field.contains('.') {
-                    // can't be nested if it's not a dotted.path
-                    (false, None, None)
-                } else {
-                    // maybe it is nested, so lets go look
-                    let index = PgRelation::with_lock(
-                        self.options.oid(),
-                        pg_sys::AccessShareLock as pg_sys::LOCKMODE,
-                    );
+                // maybe it is nested, so lets go look
+                let index = PgRelation::with_lock(
+                    self.options.oid(),
+                    pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                );
 
-                    // get the full path, which is the full field name minus the last dotted part
-                    let mut path = field.rsplitn(2, '.').collect::<Vec<&str>>();
-                    let path = path.pop().unwrap();
+                // get the full path, which is the full field name minus the last dotted part
+                let mut path = field.rsplitn(2, '.').collect::<Vec<&str>>();
+                let path = path.pop().unwrap();
 
-                    if is_nested_field(&index, &path) {
-                        // is nested, so we also need to generate a filter query for it
-                        if need_filter {
-                            let mut value = query.query_dsl().clone();
-                            let filter_query =
-                                ZDBPreparedQuery::extract_nested_filter(Some(&mut value));
-                            (true, Some(path), filter_query.cloned())
-                        } else {
-                            (true, Some(path), None)
-                        }
+                if is_nested_field(&index, &path) {
+                    // is nested, so we also need to generate a filter query for it
+                    if need_filter {
+                        let mut value = query.query_dsl().clone();
+                        let filter_query =
+                            ZDBPreparedQuery::extract_nested_filter(field, Some(&mut value));
+                        (true, Some(path), filter_query.cloned())
                     } else {
-                        (false, None, None)
+                        (true, Some(path), None)
                     }
+                } else {
+                    (false, None, None)
                 }
             }
         };
