@@ -15,6 +15,7 @@ pg12 = [ "pgx/pg12" ]
 pg_test = [ ]
 
 [dependencies]
+chrono = "0.4.19"
 crossbeam-channel = "0.4.2"
 lalrpop-util = "0.19.0"
 lazy_static = "1.4.0"

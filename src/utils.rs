@@ -134,7 +134,15 @@ pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
     fields
 }
 
+pub fn is_date_field(index: &PgRelation, field: &str) -> bool {
+    lookup_es_field_type(index, field) == "date"
+}
+
 pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
+    lookup_es_field_type(index, field) == "nested"
+}
+
+pub fn lookup_es_field_type(index: &PgRelation, field: &str) -> String {
     let mut sql = String::new();
 
     sql.push_str(&format!(
@@ -145,8 +153,6 @@ pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
     ));
 
     for (idx, part) in field.split('.').enumerate() {
-        // 'data'->'properties'->'not_nested_obj');
-
         if idx > 0 {
             sql.push_str("->'properties'");
         }
@@ -157,7 +163,7 @@ pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
         sql.push('\'');
     }
 
-    sql.push_str("->>'type' is not distinct from 'nested';");
+    sql.push_str("->>'type';");
     Spi::get_one(&sql).unwrap_or_default()
 }
 
