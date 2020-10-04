@@ -1,3 +1,3 @@
 -- should display an ERROR and not also crash the connected ES node
-select * from so_posts where zdb('so_posts', ctid) ==> '"';
-ERROR:  rc=500; {"error":{"root_cause":[{"type":"runtime_exception","reason":"#field_lists(title_and_tags=[title,tags], field2=[a,b,c,d], field3=[a,d,q,z], field4=[one,two,three]) (\")"}],"type":"runtime_exception","reason":"#field_lists(title_and_tags=[title,tags], field2=[a,b,c,d], field3=[a,d,q,z], field4=[one,two,three]) (\")","caused_by":{"type":"token_mgr_error","reason":"Lexical error at line 1, column 106.  Encountered: <EOF> after : \"\\\")\""}},"status":500}
+select * from so_posts where so_posts ==> '"';
+ERROR:  failed to parse query: InvalidToken { location: 0 }
