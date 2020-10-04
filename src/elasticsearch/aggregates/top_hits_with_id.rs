@@ -31,6 +31,8 @@ fn top_hits_with_id(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<TopHitsWithIdAggData>(
+        None,
+        false,
         query.prepare(&index),
         json! {
             {

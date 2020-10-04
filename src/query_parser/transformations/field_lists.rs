@@ -16,7 +16,8 @@ pub fn expand_field_lists(e: &mut Expr, lists: &HashMap<String, Vec<QualifiedFie
         Expr::AndList(v) => v.iter_mut().for_each(|e| expand_field_lists(e, lists)),
         Expr::OrList(v) => v.iter_mut().for_each(|e| expand_field_lists(e, lists)),
 
-        Expr::Linked(_, _) => {}
+        Expr::Linked(_, _) => unreachable!(),
+        Expr::Nested(_, _) => unreachable!(),
 
         Expr::Json(_) => {}
 

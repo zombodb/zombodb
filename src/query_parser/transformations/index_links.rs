@@ -23,6 +23,7 @@ pub fn assign_links(
         Expr::OrList(v) => link_by_group(root_index, links, v, |exprs| Expr::OrList(exprs)),
 
         Expr::Linked(_, _) => unreachable!(),
+        Expr::Nested(_, e) => assign_links(root_index, e, links),
 
         Expr::Json(_) => None,
         Expr::Contains(f, _) => f.index.clone(),

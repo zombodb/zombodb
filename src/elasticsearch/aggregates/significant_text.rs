@@ -41,6 +41,8 @@ fn significant_text(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<SignificantKeywords>(
+        Some(field_name.into()),
+        true,
         query.prepare(&index),
         json! {
             {

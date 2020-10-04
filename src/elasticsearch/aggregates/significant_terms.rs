@@ -37,6 +37,8 @@ fn significant_terms(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<SignificantTermsAggData>(
+        Some(field_name.into()),
+        true,
         query.prepare(&index),
         json! {
             {

@@ -13,7 +13,9 @@ pub fn rewrite_proximity_chains(expr: &mut Expr) {
         Expr::WithList(v) => v.iter_mut().for_each(|e| rewrite_proximity_chains(e)),
         Expr::AndList(v) => v.iter_mut().for_each(|e| rewrite_proximity_chains(e)),
         Expr::OrList(v) => v.iter_mut().for_each(|e| rewrite_proximity_chains(e)),
+
         Expr::Linked(_, e) => rewrite_proximity_chains(e.as_mut()),
+        Expr::Nested(_, e) => rewrite_proximity_chains(e.as_mut()),
 
         Expr::Contains(f, t) => rewrite_term(f, t),
         Expr::Eq(f, t) => rewrite_term(f, t),

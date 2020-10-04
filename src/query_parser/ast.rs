@@ -4,6 +4,7 @@ use crate::query_parser::parser::Token;
 use crate::query_parser::transformations::field_finder::find_fields;
 use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
+use crate::query_parser::transformations::nested_groups::group_nested;
 use crate::query_parser::transformations::prox_rewriter::rewrite_proximity_chains;
 use crate::query_parser::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 use crate::utils::{get_null_copy_to_fields, get_search_analyzer};
@@ -145,6 +146,7 @@ pub enum Expr<'input> {
     OrList(Vec<Expr<'input>>),
 
     Linked(IndexLink, Box<Expr<'input>>),
+    Nested(String, Box<Expr<'input>>),
 
     // types of comparisons
     Json(String),
@@ -442,6 +444,8 @@ impl<'input> Expr<'input> {
         }
 
         find_fields(expr.as_mut(), &root_index, &linked_indexes);
+        group_nested(&index, expr.as_mut());
+
         let mut expr =
             if let Some(final_link) = assign_links(&root_index, expr.as_mut(), &linked_indexes) {
                 if final_link != root_index {
@@ -552,6 +556,7 @@ impl<'input> Expr<'input> {
             Expr::AndList(v) => Expr::nested_path(v),
             Expr::OrList(v) => Expr::nested_path(v),
             Expr::Linked(_, e) => e.get_nested_path(),
+            Expr::Nested(p, _) => Some(p.to_string()),
             Expr::Json(_) => panic!("json not supported in WITH clauses"),
             Expr::Contains(f, _) => f.nested_path(),
             Expr::Eq(f, _) => f.nested_path(),
@@ -683,7 +688,11 @@ impl IndexLink {
 impl QualifiedField {
     pub fn nested_path(&self) -> Option<String> {
         if self.field.contains('.') {
-            self.field.split('.').next().map(|v| v.to_string())
+            let mut parts = self.field.rsplitn(2, '.');
+            let _ = parts.next();
+            let second = parts.next();
+
+            second.map(|v| v.to_string())
         } else {
             None
         }
@@ -908,6 +917,8 @@ impl<'input> Display for Expr<'input> {
             }
 
             Expr::Linked(_, e) => write!(fmt, "{{{}}}", e),
+
+            Expr::Nested(_, e) => write!(fmt, "{}", e),
 
             Expr::Json(s) => write!(fmt, "({})", s),
 

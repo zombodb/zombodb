@@ -47,6 +47,8 @@ fn significant_terms_two_level(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<SignificantTermsTwoLevel>(
+        Some(field_first.into()),
+        true,
         query.prepare(&index),
         json! {
             {

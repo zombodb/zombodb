@@ -14,6 +14,8 @@ fn sum(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<SumAggData>(
+        Some(field.into()),
+        true,
         query.prepare(&index),
         json! {
             {
@@ -41,6 +43,8 @@ fn avg(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<AvgAggData>(
+        Some(field.into()),
+        true,
         query.prepare(&index),
         json! {
             {
@@ -68,6 +72,8 @@ fn cardinality(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<CardinalityAggData>(
+        Some(field.into()),
+        true,
         query.prepare(&index),
         json! {
             {
@@ -95,6 +101,8 @@ fn max(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<MaxAggData>(
+        Some(field.into()),
+        true,
         query.prepare(&index),
         json! {
             {
@@ -122,6 +130,8 @@ fn min(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<MinAggData>(
+        Some(field.into()),
+        true,
         query.prepare(&index),
         json! {
             {
@@ -149,6 +159,8 @@ fn missing(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<MissingAggData>(
+        Some(field.into()),
+        true,
         query.prepare(&index),
         json! {
             {
@@ -176,6 +188,8 @@ fn value_count(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<ValueCountAggData>(
+        Some(field.into()),
+        true,
         query.prepare(&index),
         json! {
             {

@@ -108,6 +108,8 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::Linked(_i, e) => self.walk_expression(e.as_ref(), highlights),
 
+            Expr::Nested(_, e) => self.walk_expression(e.as_ref(), highlights),
+
             Expr::Subselect(_, _) => panic!("subselect not supported yet"),
             Expr::Expand(_, _, _) => panic!("expand not supported yet"),
             Expr::Json(_) => panic!("json not supported yet"),

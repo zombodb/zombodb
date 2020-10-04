@@ -38,6 +38,7 @@ use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
 use crate::executor_manager::get_executor_manager;
+use crate::utils::is_nested_field;
 use crate::zdbquery::ZDBPreparedQuery;
 pub use bulk::*;
 pub use create_index::*;
@@ -45,6 +46,7 @@ use lazy_static::*;
 use pgx::*;
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
+use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::Read;
@@ -226,20 +228,74 @@ impl Elasticsearch {
 
     pub fn aggregate<T: DeserializeOwned>(
         &self,
+        field_name: Option<String>,
+        need_filter: bool,
         query: ZDBPreparedQuery,
         agg_request: serde_json::Value,
     ) -> ElasticsearchAggregateSearchRequest<T> {
         let mut aggs = HashMap::new();
         aggs.insert("the_agg".to_string(), agg_request);
-        self.aggregate_set(query, aggs)
+        self.aggregate_set(field_name, need_filter, query, aggs)
     }
 
     pub fn aggregate_set<T: DeserializeOwned>(
         &self,
+        field: Option<String>,
+        need_filter: bool,
         query: ZDBPreparedQuery,
         aggs: HashMap<String, serde_json::Value>,
     ) -> ElasticsearchAggregateSearchRequest<T> {
         get_executor_manager().wait_for_completion();
+
+        let (is_nested_field, nested_path, filter_query) = {
+            if field.is_none() {
+                // we don't have a field
+                (false, None, None)
+            } else {
+                let field = field.as_ref().unwrap();
+                if !field.contains('.') {
+                    // can't be nested if it's not a dotted.path
+                    (false, None, None)
+                } else {
+                    // maybe it is nested, so lets go look
+                    let index = PgRelation::with_lock(
+                        self.options.oid(),
+                        pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                    );
+
+                    // get the full path, which is the full field name minus the last dotted part
+                    let mut path = field.rsplitn(2, '.').collect::<Vec<&str>>();
+                    let path = path.pop().unwrap();
+
+                    if is_nested_field(&index, &path) {
+                        // is nested, so we also need to generate a filter query for it
+                        if need_filter {
+                            let mut value = query.query_dsl().clone();
+                            let filter_query =
+                                ZDBPreparedQuery::extract_nested_filter(Some(&mut value));
+                            (true, Some(path), filter_query.cloned())
+                        } else {
+                            (true, Some(path), None)
+                        }
+                    } else {
+                        (false, None, None)
+                    }
+                }
+            }
+        };
+
+        let aggs = aggs
+            .into_iter()
+            .map(|(k, v)| {
+                if is_nested_field {
+                    let nested_agg = self.make_nested_agg(&k, v, &nested_path, &filter_query);
+                    (k, nested_agg)
+                } else {
+                    (k, v)
+                }
+            })
+            .collect::<HashMap<String, Value>>();
+
         ElasticsearchAggregateSearchRequest::new(self, query, aggs)
     }
 
@@ -327,6 +383,43 @@ impl Elasticsearch {
 
             // the request didn't reach ES
             Err(e) => Err(ElasticsearchError(e.status(), e.to_string())),
+        }
+    }
+
+    pub fn make_nested_agg(
+        &self,
+        agg_name: &str,
+        agg: serde_json::Value,
+        path: &Option<&str>,
+        filter_query: &Option<serde_json::Value>,
+    ) -> serde_json::Value {
+        match filter_query {
+            Some(filtered_query) => json! {
+                {
+                    "nested": {
+                        "path": path
+                    },
+                    "aggs": {
+                        agg_name: {
+                            "filter": filtered_query,
+                            "aggs": {
+                                agg_name: agg
+                            }
+                        }
+                    }
+                }
+            },
+
+            None => json! {
+                {
+                    "nested": {
+                        "path": path
+                    },
+                    "aggs": {
+                        agg_name: agg
+                    }
+                }
+            },
         }
     }
 }

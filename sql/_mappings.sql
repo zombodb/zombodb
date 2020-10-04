@@ -210,6 +210,16 @@ VALUES ('lowercase', '{
   ]
 }', true);
 
+-- same as 'lowercase' for backwards compatibility
+INSERT INTO zdb.normalizers(name, definition, is_default)
+VALUES ('exact', '{
+  "type": "custom",
+  "char_filter": [],
+  "filter": [
+    "lowercase"
+  ]
+}', true);
+
 INSERT INTO zdb.analyzers(name, definition, is_default)
 VALUES ('zdb_standard', '{
   "type": "standard",

@@ -92,12 +92,42 @@ where
             let agg_resp: AggregateResponse =
                 serde_json::from_str(&body).expect("received invalid aggregate json response");
             let mut aggregations = agg_resp.aggregations;
-            let the_agg = aggregations
-                .remove("the_agg")
-                .expect("no 'the_agg' in response");
+            let mut unrolled = HashMap::new();
+            let mut unrolled_cnt = 0;
+
+            // look for and pull out any nested aggregates to the top-level
+            // and move everything into the "unrolled" Map
+            loop {
+                for (k, mut v) in aggregations {
+                    if let Some(nested_agg) = v
+                        .as_object_mut()
+                        .unwrap_or_else(|| panic!("'{}' is not an object", k))
+                        .remove(&k)
+                    {
+                        // we have a nested agg so that becomes the top-level
+                        unrolled.insert(k, nested_agg);
+                        unrolled_cnt += 1;
+                    } else {
+                        // nothing nested under this value, so use as-is
+                        unrolled.insert(k, v);
+                    }
+                }
+
+                if unrolled_cnt > 0 {
+                    // keep unrolling
+                    unrolled_cnt = 0;
+                    aggregations = unrolled;
+                    unrolled = HashMap::new();
+                } else {
+                    // we're done
+                    break;
+                }
+            }
+
+            let the_agg = unrolled.remove("the_agg").expect("didn't find 'the_agg'");
             let data = serde_json::from_value::<ReturnType>(the_agg)
                 .expect("failed to deserialize 'the_agg' response");
-            Ok((data, aggregations))
+            Ok((data, unrolled))
         })
     }
 }

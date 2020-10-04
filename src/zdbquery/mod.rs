@@ -648,6 +648,93 @@ impl ZDBPreparedQuery {
     pub fn highlights(&self) -> &HashMap<String, serde_json::Value> {
         &self.0.highlights
     }
+
+    pub fn extract_nested_filter(
+        query: Option<&mut serde_json::Value>,
+    ) -> Option<&mut serde_json::Value> {
+        if query.is_none() {
+            return None;
+        }
+        let query = query.unwrap();
+        match query {
+            Value::Object(obj) => {
+                let mut to_remove = HashSet::new();
+                let mut nested_replacement = None;
+                for (k, v) in obj.iter_mut() {
+                    if k == "bool"
+                        || k == "must"
+                        || k == "must_not"
+                        || k == "should"
+                        || k == "filter"
+                        || k == "constant_score"
+                        || k == "boosting"
+                        || k == "dis_max"
+                    {
+                        // inspect this value to see if we should remove it or not
+                        if ZDBPreparedQuery::extract_nested_filter(Some(v)).is_none() {
+                            to_remove.insert(k.clone());
+                        }
+                    } else if k == "nested" {
+                        // first we don't want to keep the "nested" node
+                        to_remove.insert(k.clone());
+
+                        // instead, we want to pull up the top-level object in the "nested" node's "query" property
+                        let nested_query = v.as_object_mut().unwrap().remove("query").unwrap();
+                        let as_map = nested_query.as_object().unwrap();
+
+                        // and whatever that is, its kEY and vALUE become the thing we'll add back into the map
+                        let (k, v) = as_map.iter().next().unwrap();
+                        nested_replacement = Some((k.clone(), v.clone()));
+                    } else {
+                        // not a thing we care to keep for the filter
+                        to_remove.insert(k.clone());
+                    }
+                }
+
+                // now remove all the keys we decided
+                for k in to_remove.into_iter() {
+                    obj.remove(&k);
+                }
+
+                // if we have a replacement for a "nested" node, go ahead and do that
+                if let Some((k, v)) = nested_replacement {
+                    obj.insert(k, v);
+                }
+
+                if obj.is_empty() {
+                    return None;
+                }
+            }
+
+            Value::Array(v) => {
+                let mut i = 0;
+                while i < v.len() {
+                    match v.get_mut(i) {
+                        Some(value) => {
+                            if ZDBPreparedQuery::extract_nested_filter(Some(value)).is_none() {
+                                // we can remove this element b/c it's empty
+                                v.remove(i);
+                            } else {
+                                // move on to the next node
+                                i += 1;
+                            }
+                        }
+                        None => break,
+                    }
+                }
+
+                if v.is_empty() {
+                    return None;
+                }
+            }
+
+            _ => {
+                return None;
+            }
+        }
+
+        Some(query)
+    }
 }
 
 #[pg_extern(immutable, parallel_safe)]

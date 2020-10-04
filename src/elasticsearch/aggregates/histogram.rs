@@ -26,6 +26,8 @@ fn histogram(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<HistogramAggData>(
+        Some(field.into()),
+        true,
         query.prepare(&index),
         json! {
             {

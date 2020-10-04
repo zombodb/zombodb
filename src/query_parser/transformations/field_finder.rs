@@ -23,6 +23,7 @@ pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexL
             }
             find_fields(e.as_mut(), i, indexes)
         }
+        Expr::Nested(_, e) => find_fields(e.as_mut(), root_index, indexes),
 
         Expr::Not(r) => find_fields(r.as_mut(), root_index, indexes),
         Expr::WithList(v) | Expr::AndList(v) | Expr::OrList(v) => v

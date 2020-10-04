@@ -26,7 +26,7 @@ mod pg_catalog {
 #[pg_extern(immutable, parallel_safe)]
 fn terms(
     index: PgRelation,
-    field_name: String,
+    field_name: &str,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
     order_by: Option<default!(TermsOrderBy, NULL)>,
@@ -34,6 +34,7 @@ fn terms(
     tally(
         index,
         field_name,
+        true,
         None,
         query,
         size_limit,
@@ -43,10 +44,38 @@ fn terms(
     )
 }
 
+/// ```funcname
+/// tally
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn tally_not_nested(
+    index: PgRelation,
+    field_name: &str,
+    stem: Option<String>,
+    query: ZDBQuery,
+    size_limit: Option<default!(i32, 2147483647)>,
+    order_by: Option<default!(TermsOrderBy, NULL)>,
+    shard_size: Option<default!(i32, 2147483647)>,
+    count_nulls: Option<default!(bool, true)>,
+) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(count, i64))> {
+    tally(
+        index,
+        field_name,
+        false,
+        stem,
+        query,
+        size_limit,
+        order_by,
+        shard_size,
+        count_nulls,
+    )
+}
+
 #[pg_extern(immutable, parallel_safe)]
 fn tally(
     index: PgRelation,
-    field_name: String,
+    field_name: &str,
+    is_nested: bool,
     stem: Option<String>,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
@@ -71,12 +100,14 @@ fn tally(
     }
 
     #[derive(Serialize)]
-    struct Terms {
-        field: String,
+    struct Terms<'a> {
+        field: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
         include: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         size: Option<i32>,
+        min_doc_count: u64,
+        shard_min_doc_count: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
         shard_size: Option<i32>,
         order: Value,
@@ -97,7 +128,7 @@ fn tally(
     };
 
     let body = Terms {
-        field: field_name.clone(),
+        field: field_name,
         include: match stem {
             // for backwards compatibility, we strip off a leading ^ as the stem/include
             // isn't a PRCE but a Lucene regex
@@ -106,6 +137,8 @@ fn tally(
             None => None,
         },
         size: size_limit,
+        min_doc_count: 1,
+        shard_min_doc_count: 0,
         shard_size,
         order,
     };
@@ -123,8 +156,12 @@ fn tally(
                 }
             },
         );
-        let request =
-            elasticsearch.aggregate_set::<TermsAggData>(query.prepare(&index), aggregates);
+        let request = elasticsearch.aggregate_set::<TermsAggData>(
+            Some(field_name.into()),
+            is_nested,
+            query.prepare(&index),
+            aggregates,
+        );
 
         let (terms, mut others) = request
             .execute_set()
@@ -154,8 +191,12 @@ fn tally(
             .collect::<Vec<_>>()
             .into_iter()
     } else {
-        let request =
-            elasticsearch.aggregate::<TermsAggData>(query.prepare(&index), terms_agg_json);
+        let request = elasticsearch.aggregate::<TermsAggData>(
+            Some(field_name.into()),
+            is_nested,
+            query.prepare(&index),
+            terms_agg_json,
+        );
 
         let result = request
             .execute()
@@ -186,7 +227,7 @@ fn tally(
 #[pg_extern(imutable, parallel_safe)]
 fn terms_array_agg(
     index: PgRelation,
-    field: String,
+    field: &str,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
     order_by: Option<default!(TermsOrderBy, NULL)>,

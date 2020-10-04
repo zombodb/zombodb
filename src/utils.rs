@@ -134,6 +134,38 @@ pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
     fields
 }
 
+pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
+    if !field.contains('.') {
+        // can't be nested if it isn't a dotted.path.field
+        return false;
+    }
+
+    let mut sql = String::new();
+
+    sql.push_str(&format!(
+        "select
+        zdb.index_mapping({}::regclass)->zdb.index_name({}::regclass)->'mappings'->'properties'",
+        index.oid(),
+        index.oid()
+    ));
+
+    for (idx, part) in field.split('.').enumerate() {
+        // 'data'->'properties'->'not_nested_obj');
+
+        if idx > 0 {
+            sql.push_str("->'properties'");
+        }
+
+        sql.push_str("->");
+        sql.push('\'');
+        sql.push_str(part);
+        sql.push('\'');
+    }
+
+    sql.push_str("->>'type' is not distinct from 'nested';");
+    Spi::get_one(&sql).unwrap_or_default()
+}
+
 pub fn json_to_string(key: serde_json::Value) -> Option<String> {
     match key {
         Value::Null => None,

@@ -35,6 +35,8 @@ fn range(
     let elasticsearch = Elasticsearch::new(&index);
 
     let request = elasticsearch.aggregate::<RangesAggData>(
+        Some(field_name.into()),
+        true,
         query.prepare(&index),
         json! {
             {

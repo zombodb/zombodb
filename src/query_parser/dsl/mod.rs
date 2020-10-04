@@ -82,15 +82,8 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
                 }
             }
         }
-        Expr::WithList(v) => match Expr::nested_path(v) {
-            Some(path) => {
-                let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
-                json! {
-                    { "nested": { "path": path, "query": { "bool": { "must": dsl } } } }
-                }
-            }
-            None => panic!("could not determine nested path"),
-        },
+
+        Expr::WithList(_) => unreachable!("dsl conversion of Expr::WithList shouldn't happen"),
         Expr::AndList(v) => {
             let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
             json! { { "bool": { "must": dsl } } }
@@ -121,6 +114,11 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
         Expr::Lte(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lte),
 
         Expr::Json(json) => serde_json::from_str(&json).expect("failed to parse json expression"),
+
+        Expr::Nested(p, e) => {
+            let dsl = expr_to_dsl(root, e.as_ref());
+            json! { { "nested": { "path": p, "query": dsl } } }
+        }
 
         Expr::Linked(i, e) => {
             let mut pf = PathFinder::new(&root);

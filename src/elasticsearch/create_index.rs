@@ -34,6 +34,7 @@ impl ElasticsearchCreateIndexRequest {
                   "index.refresh_interval": "-1",
                   "index.query.default_field": "zdb_all",
                   "index.translog.durability": self.elasticsearch.options.translog_durability(),
+                  "index.mapping.nested_fields.limit": 1000,
                   "analysis": {
                      "filter": lookup_analysis_thing("filters"),
                      "char_filter" : lookup_analysis_thing("char_filters"),
@@ -65,6 +66,15 @@ impl ElasticsearchCreateIndexRequest {
                                    "copy_to": "zdb_all"
                                  }
                               }
+                          },
+                          {
+                            "objects": {
+                                "match_mapping_type": "object",
+                                "mapping": {
+                                    "type": "nested",
+                                    "include_in_parent": true
+                                }
+                            }
                           }
                      ],
                      "properties": self.mapping
