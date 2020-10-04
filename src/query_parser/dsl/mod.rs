@@ -361,7 +361,7 @@ fn range<'a>(term: &'a Term) -> (&'a str, &'a Option<f32>) {
 fn regex(field: &QualifiedField, term: &Term) -> serde_json::Value {
     match term {
         Term::Regex(r, b) => {
-            json! { { "regex": { field.field_name(): { "value": r, "boost": b.unwrap_or(1.0) }}}}
+            json! { { "regexp": { field.field_name(): { "value": r, "boost": b.unwrap_or(1.0) }}}}
         }
         _ => panic!("unsupported term for a regex query: {}", term),
     }
