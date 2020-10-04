@@ -134,6 +134,11 @@ pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
     fields
 }
 
+pub fn is_string_field(index: &PgRelation, field: &str) -> bool {
+    let field_type = lookup_es_field_type(index, field);
+    field_type == "text" || field_type == "keyword"
+}
+
 pub fn is_date_field(index: &PgRelation, field: &str) -> bool {
     lookup_es_field_type(index, field) == "date"
 }

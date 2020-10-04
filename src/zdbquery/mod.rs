@@ -650,7 +650,7 @@ impl ZDBPreparedQuery {
     }
 
     pub fn extract_nested_filter<'a>(
-        field: &str,
+        path: &str,
         query: Option<&'a mut serde_json::Value>,
     ) -> Option<&'a mut serde_json::Value> {
         if query.is_none() {
@@ -658,7 +658,7 @@ impl ZDBPreparedQuery {
         }
         let query = query.unwrap();
         let clause_string = serde_json::to_string(query).unwrap();
-        if !clause_string.contains(field) {
+        if !clause_string.contains(&format!("\"{}.", path)) {
             // no query against the field from this level down
             return None;
         }
@@ -678,7 +678,7 @@ impl ZDBPreparedQuery {
                         || k == "dis_max"
                     {
                         // inspect this value to see if we should remove it or not
-                        if ZDBPreparedQuery::extract_nested_filter(field, Some(v)).is_none() {
+                        if ZDBPreparedQuery::extract_nested_filter(path, Some(v)).is_none() {
                             to_remove.insert(k.clone());
                         }
                     } else if k == "nested" {
@@ -707,9 +707,9 @@ impl ZDBPreparedQuery {
                 if let Some((k, v)) = nested_replacement {
                     if k == "nested" {
                         let mut value = json! { { k : v } };
-                        if ZDBPreparedQuery::extract_nested_filter(field, Some(&mut value))
-                            .is_some()
-                        {
+                        let nested_filter =
+                            ZDBPreparedQuery::extract_nested_filter(path, Some(&mut value));
+                        if nested_filter.is_some() {
                             let (k, v) = value.as_object().unwrap().iter().next().unwrap();
                             obj.insert(k.clone(), v.clone());
                         }
@@ -728,7 +728,7 @@ impl ZDBPreparedQuery {
                 while i < v.len() {
                     match v.get_mut(i) {
                         Some(value) => {
-                            if ZDBPreparedQuery::extract_nested_filter(field, Some(value)).is_none()
+                            if ZDBPreparedQuery::extract_nested_filter(path, Some(value)).is_none()
                             {
                                 // we can remove this element b/c it's empty
                                 v.remove(i);

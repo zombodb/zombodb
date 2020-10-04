@@ -268,7 +268,7 @@ impl Elasticsearch {
                     if need_filter {
                         let mut value = query.query_dsl().clone();
                         let filter_query =
-                            ZDBPreparedQuery::extract_nested_filter(field, Some(&mut value));
+                            ZDBPreparedQuery::extract_nested_filter(path, Some(&mut value));
                         (true, Some(path), filter_query.cloned())
                     } else {
                         (true, Some(path), None)

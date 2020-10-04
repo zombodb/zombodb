@@ -1,6 +1,6 @@
 use crate::elasticsearch::aggregates::terms::pg_catalog::TermsOrderBy;
 use crate::elasticsearch::Elasticsearch;
-use crate::utils::{is_date_field, json_to_string};
+use crate::utils::{is_date_field, is_string_field, json_to_string};
 use crate::zdbquery::ZDBQuery;
 use chrono::{TimeZone, Utc};
 use pgx::*;
@@ -121,6 +121,7 @@ fn tally(
         order: Value,
     }
 
+    let is_string_field = is_string_field(&index, field_name);
     let is_raw_date_field = is_date_field(&index, field_name);
     let is_date_field = (stem == Some("year")
         || stem == Some("month")
@@ -146,7 +147,7 @@ fn tally(
 
     let body = Terms {
         field: field_name,
-        include: if is_raw_date_field {
+        include: if is_raw_date_field || !is_string_field {
             None
         } else {
             match stem {
