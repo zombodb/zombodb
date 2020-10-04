@@ -10,11 +10,11 @@ CREATE TABLE gc.cv_vol (
 );
 
 CREATE INDEX idxcv_data
-  ON gc.cv_data USING zombodb (zdb('gc.cv_data', ctid), zdb(cv_data)) WITH (url='http://localhost:9200/', shards=40, replicas=1);
+  ON gc.cv_data USING zombodb ( (cv_data.*) ) WITH (shards=40, replicas=1);
 CREATE INDEX idxcv_var
-  ON gc.cv_var USING zombodb (zdb('gc.cv_var', ctid), zdb(cv_var)) WITH (url='http://localhost:9200/', shards=40, replicas=1);
+  ON gc.cv_var USING zombodb ( (cv_var.*) ) WITH (shards=40, replicas=1);
 CREATE INDEX idxcv_vol
-  ON gc.cv_vol USING zombodb (zdb('gc.cv_vol', ctid), zdb(cv_vol)) WITH (url='http://localhost:9200/', shards=40, replicas=1);
+  ON gc.cv_vol USING zombodb ( (cv_vol.*) ) WITH (shards=40, replicas=1);
 
 -- get all the pkey/fkey contraints configured
 ALTER TABLE gc.cv_data
