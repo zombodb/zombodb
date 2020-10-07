@@ -1,6 +1,6 @@
-SELECT zdb_estimate_count('so_posts', '({"term": {"body": "java"}})');
- zdb_estimate_count 
---------------------
-              13310
+SELECT zdb. count('idxso_posts', '({"term": {"body": "java"}})');
+ count 
+-------
+ 13310
 (1 row)
 

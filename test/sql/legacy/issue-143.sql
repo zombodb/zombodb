@@ -1,1 +1,1 @@
-SELECT zdb_estimate_count('so_posts', '({"term": {"body": "java"}})');
+SELECT zdb. count('idxso_posts', '({"term": {"body": "java"}})');
