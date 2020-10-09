@@ -1,6 +1,9 @@
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
 use crate::query_parser::parser::Token;
+use crate::query_parser::transformations::expand_index_links::{
+    expand_index_links, merge_adjacent_links,
+};
 use crate::query_parser::transformations::field_finder::find_fields;
 use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
@@ -54,7 +57,7 @@ pub mod pg_catalog {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct QualifiedIndex {
     pub schema: Option<String>,
     pub table: String,
@@ -67,7 +70,7 @@ pub struct QualifiedField {
     pub field: String,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct IndexLink {
     pub name: Option<String>,
     pub left_field: Option<String>,
@@ -370,6 +373,7 @@ impl<'input> Expr<'input> {
         index: &PgRelation,
         default_fieldname: &'input str,
         input: &'input str,
+        index_links: &Option<Vec<IndexLink>>,
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         if input.trim().is_empty() {
@@ -386,7 +390,9 @@ impl<'input> Expr<'input> {
             input,
             used_fields,
             root_index,
-            IndexLink::from_zdb(index),
+            index_links
+                .clone()
+                .unwrap_or_else(|| IndexLink::from_zdb(index)),
             zdboptions.field_lists(),
         )
     }
@@ -458,6 +464,8 @@ impl<'input> Expr<'input> {
             } else {
                 *expr
             };
+        expand_index_links(&mut expr, &root_index, &linked_indexes);
+        merge_adjacent_links(&mut expr);
 
         rewrite_proximity_chains(&mut expr);
         Ok(expr)
@@ -613,6 +621,13 @@ impl QualifiedIndex {
             relation_name.push_str(&schema);
             relation_name.push('.');
         }
+        relation_name.push_str(&self.index);
+        relation_name
+    }
+
+    pub fn qualified_name(&self) -> String {
+        let mut relation_name = self.table_name();
+        relation_name.push('.');
         relation_name.push_str(&self.index);
         relation_name
     }

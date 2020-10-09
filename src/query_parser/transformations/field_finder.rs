@@ -45,7 +45,7 @@ pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexL
     }
 }
 
-fn find_link_for_field(
+pub fn find_link_for_field(
     field_name: &QualifiedField,
     root_index: &IndexLink,
     indexes: &Vec<IndexLink>,

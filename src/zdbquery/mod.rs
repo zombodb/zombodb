@@ -106,6 +106,7 @@ impl PartialEq<Value> for ZDBQueryClause {
 
 mod pg_catalog {
     #![allow(non_camel_case_types)]
+    use crate::query_parser::ast::IndexLink;
     use crate::zdbquery::ZDBQueryClause;
     use pgx::*;
     use serde::*;
@@ -132,6 +133,8 @@ mod pg_catalog {
         #[serde(skip_serializing_if = "HashMap::is_empty")]
         #[serde(default = "HashMap::new")]
         pub(super) highlights: HashMap<String, Value>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub(super) link_options: Option<Vec<IndexLink>>,
     }
 
     #[derive(PostgresEnum, Serialize, Deserialize)]
@@ -193,6 +196,7 @@ impl Default for ZDBQuery {
             sort_json: None,
             query_dsl: None,
             highlights: HashMap::new(),
+            link_options: None,
         }
     }
 }
@@ -209,6 +213,7 @@ impl ZDBQuery {
             sort_json: None,
             query_dsl: Some(ZDBQueryClause::opaque(query_dsl)),
             highlights: HashMap::new(),
+            link_options: None,
         }
     }
 
@@ -222,6 +227,7 @@ impl ZDBQuery {
             sort_json: None,
             query_dsl: Some(clause),
             highlights: HashMap::new(),
+            link_options: None,
         }
     }
 
@@ -240,6 +246,7 @@ impl ZDBQuery {
             sort_json: None,
             query_dsl: Some(ZDBQueryClause::zdb(query)),
             highlights: HashMap::new(),
+            link_options: None,
         }
     }
 
@@ -276,6 +283,7 @@ impl ZDBQuery {
             && self.sort_json.is_none()
             && self.query_dsl.is_none()
             && self.highlights.is_empty()
+            && self.link_options.is_none()
     }
 
     pub fn only_query_dsl(&self) -> bool {
@@ -287,6 +295,7 @@ impl ZDBQuery {
             && self.min_score.is_none()
             && self.sort_json.is_none()
             && self.highlights.is_empty()
+            && self.link_options.is_none()
     }
 
     pub fn want_score(&self) -> bool {
@@ -381,6 +390,15 @@ impl ZDBQuery {
         self
     }
 
+    pub fn link_options(&self) -> &Option<Vec<IndexLink>> {
+        &self.link_options
+    }
+
+    pub fn set_link_options(mut self, links: Vec<IndexLink>) -> Self {
+        self.link_options = if links.is_empty() { None } else { Some(links) };
+        self
+    }
+
     pub fn query_dsl(&self) -> ZDBQueryClause {
         self.query_dsl
             .as_ref()
@@ -410,10 +428,12 @@ impl ZDBQuery {
     }
 
     fn rewrite(&mut self, index: &PgRelation) {
+        let link_options = self.link_options().clone();
         ZDBQuery::rewrite_zdb_query_clause(
             self.query_dsl
                 .as_mut()
                 .expect("ZDBQuery does not contain query dsl"),
+            &link_options,
             index,
             &IndexLink::from_relation(&index),
         )
@@ -421,6 +441,7 @@ impl ZDBQuery {
 
     fn rewrite_zdb_query_clause(
         clause: &mut ZDBQueryClause,
+        index_links: &Option<Vec<IndexLink>>,
         index: &PgRelation,
         root_link: &IndexLink,
     ) {
@@ -432,9 +453,10 @@ impl ZDBQuery {
                     return;
                 }
                 let mut used_fields = HashSet::new();
-                let expr = Expr::from_str(&index, "zdb_all", &zdb.query, &mut used_fields)
-                    .expect("failed to parse query");
-                let parsed = expr_to_dsl(root_link, &expr);
+                let expr =
+                    Expr::from_str(&index, "zdb_all", &zdb.query, index_links, &mut used_fields)
+                        .expect("failed to parse query");
+                let parsed = expr_to_dsl(root_link, index_links, &expr);
 
                 clause.zdb = None;
                 clause.opaque = Some(parsed);
@@ -442,38 +464,58 @@ impl ZDBQuery {
         } else if let Some(bool) = &mut clause.bool {
             if bool.must.is_some() {
                 bool.must.as_mut().unwrap().iter_mut().for_each(|c| {
-                    ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                    ZDBQuery::rewrite_zdb_query_clause(c, index_links, index, root_link);
                 });
             }
 
             if bool.should.is_some() {
                 bool.should.as_mut().unwrap().iter_mut().for_each(|c| {
-                    ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                    ZDBQuery::rewrite_zdb_query_clause(c, index_links, index, root_link);
                 });
             }
 
             if bool.must_not.is_some() {
                 bool.must_not.as_mut().unwrap().iter_mut().for_each(|c| {
-                    ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                    ZDBQuery::rewrite_zdb_query_clause(c, index_links, index, root_link);
                 });
             }
 
             if bool.filter.is_some() {
                 bool.filter.as_mut().unwrap().iter_mut().for_each(|c| {
-                    ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                    ZDBQuery::rewrite_zdb_query_clause(c, index_links, index, root_link);
                 });
             }
         } else if let Some(nested) = &mut clause.nested {
-            ZDBQuery::rewrite_zdb_query_clause(nested.query.as_mut(), index, root_link);
+            ZDBQuery::rewrite_zdb_query_clause(
+                nested.query.as_mut(),
+                index_links,
+                index,
+                root_link,
+            );
         } else if let Some(boosting) = &mut clause.boosting {
-            ZDBQuery::rewrite_zdb_query_clause(boosting.positive.as_mut(), index, root_link);
-            ZDBQuery::rewrite_zdb_query_clause(boosting.negative.as_mut(), index, root_link);
+            ZDBQuery::rewrite_zdb_query_clause(
+                boosting.positive.as_mut(),
+                index_links,
+                index,
+                root_link,
+            );
+            ZDBQuery::rewrite_zdb_query_clause(
+                boosting.negative.as_mut(),
+                index_links,
+                index,
+                root_link,
+            );
         } else if let Some(dis_max) = &mut clause.dis_max {
             dis_max.queries.iter_mut().for_each(|c| {
-                ZDBQuery::rewrite_zdb_query_clause(c, index, root_link);
+                ZDBQuery::rewrite_zdb_query_clause(c, index_links, index, root_link);
             });
         } else if let Some(constant_score) = &mut clause.constant_score {
-            ZDBQuery::rewrite_zdb_query_clause(constant_score.filter.as_mut(), index, root_link);
+            ZDBQuery::rewrite_zdb_query_clause(
+                constant_score.filter.as_mut(),
+                index_links,
+                index,
+                root_link,
+            );
         }
     }
 }

@@ -3,14 +3,11 @@ use crate::gucs::ZDB_IGNORE_VISIBILITY;
 use crate::query_parser::ast::{
     ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
 };
-use crate::query_parser::dsl::path_finder::PathFinder;
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use serde_json::json;
 use std::collections::HashSet;
-
-pub mod path_finder;
 
 #[pg_extern(immutable, parallel_safe)]
 fn dump_query(index: PgRelation, query: ZDBQuery) -> String {
@@ -28,8 +25,8 @@ fn debug_query(
     name!(ast, String),
 ) {
     let mut used_fields = HashSet::new();
-    let query =
-        Expr::from_str(&index, "zdb_all", query, &mut used_fields).expect("failed to parse query");
+    let query = Expr::from_str(&index, "zdb_all", query, &None, &mut used_fields)
+        .expect("failed to parse query");
 
     let tree = format!("{:#?}", query);
 
@@ -45,15 +42,20 @@ fn debug_query(
     )
 }
 
-pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
+pub fn expr_to_dsl(
+    root: &IndexLink,
+    index_links: &Option<Vec<IndexLink>>,
+    expr: &Expr,
+) -> serde_json::Value {
     match expr {
         Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
         Expr::Expand(link, e, f) => {
-            let linked_expand_dsl = expr_to_dsl(link, &Expr::Linked(link.clone(), e.clone()));
-            let expand_dsl = expr_to_dsl(link, e);
+            let linked_expand_dsl =
+                expr_to_dsl(link, index_links, &Expr::Linked(link.clone(), e.clone()));
+            let expand_dsl = expr_to_dsl(link, index_links, e);
 
             if let Some(filter) = f {
-                let filter_dsl = expr_to_dsl(link, filter);
+                let filter_dsl = expr_to_dsl(link, index_links, filter);
 
                 json! {
                     {
@@ -85,19 +87,25 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
 
         Expr::WithList(_) => unreachable!("dsl conversion of Expr::WithList shouldn't happen"),
         Expr::AndList(v) => {
-            let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
+            let dsl: Vec<serde_json::Value> = v
+                .iter()
+                .map(|v| expr_to_dsl(root, index_links, v))
+                .collect();
             json! { { "bool": { "must": dsl } } }
         }
         Expr::OrList(v) => {
             if v.len() == 1 {
-                expr_to_dsl(root, v.get(0).unwrap())
+                expr_to_dsl(root, index_links, v.get(0).unwrap())
             } else {
-                let dsl: Vec<serde_json::Value> = v.iter().map(|v| expr_to_dsl(root, v)).collect();
+                let dsl: Vec<serde_json::Value> = v
+                    .iter()
+                    .map(|v| expr_to_dsl(root, index_links, v))
+                    .collect();
                 json! { { "bool": { "should": dsl } } }
             }
         }
         Expr::Not(r) => {
-            let r = expr_to_dsl(root, r.as_ref());
+            let r = expr_to_dsl(root, index_links, r.as_ref());
             json! { { "bool": { "must_not": [r] } } }
         }
         Expr::Contains(f, t) | Expr::Eq(f, t) => term_to_dsl(f, t, ComparisonOpcode::Contains),
@@ -116,65 +124,48 @@ pub fn expr_to_dsl(root: &IndexLink, expr: &Expr) -> serde_json::Value {
         Expr::Json(json) => serde_json::from_str(&json).expect("failed to parse json expression"),
 
         Expr::Nested(p, e) => {
-            let dsl = expr_to_dsl(root, e.as_ref());
+            let dsl = expr_to_dsl(root, index_links, e.as_ref());
             json! { { "nested": { "path": p, "query": dsl, "score_mode": "avg", "ignore_unmapped": false } } }
         }
 
         Expr::Linked(i, e) => {
-            let mut pf = PathFinder::new(&root);
-            IndexLink::from_zdb(&root.open_index().expect("failed to open index"))
-                .into_iter()
-                .for_each(|link| pf.push(link));
+            let target_relation = i.open_index().expect("failed to open index");
+            let index_options = ZDBIndexOptions::from(&target_relation);
+            let es_index_name = index_options.index_name();
 
-            // calculate the path from our root IndexLink
-            let mut paths = pf
-                .find_path(&root, &i)
-                .expect(&format!("no index link path to {}", i.qualified_index));
+            let left_field = i.left_field.as_ref().unwrap();
+            let left_field = if left_field.contains('.') {
+                left_field.splitn(2, '.').nth(1).unwrap()
+            } else {
+                &left_field
+            };
 
-            if paths.is_empty() {
-                // the target index 'i' we want to go to isn't where
-                // we are, but we didn't get any paths, so it's just a
-                // direct path and we'll use 'i' for that
-                paths.push(i.clone())
-            }
-
-            // bottom-up build a set of potentially nested "subselect" QueryDSL clauses
-            // TODO:  need some kind of setting to indicate if the user has 'zdbjoin' installed
-            //        on their ES cluster.  If they don't we could do something more manual here
-            let mut current = expr_to_dsl(root, e.as_ref());
-            while let Some(path) = paths.pop() {
-                if path.left_field.is_none() && path.right_field.is_none() {
-                    continue;
-                }
-
-                let target_index = path.open_index().expect("failed to open index");
-                let index_options = ZDBIndexOptions::from(&target_index);
-
-                let query = if ZDB_IGNORE_VISIBILITY.get() {
-                    current
-                } else {
-                    let visibility_clause = build_visibility_clause(&index_options.index_name());
-                    json! {
-                        {
-                            "bool": {
-                                "must": [current],
-                                "filter": [visibility_clause]
-                            }
+            let query = expr_to_dsl(root, index_links, e.as_ref());
+            let query = if ZDB_IGNORE_VISIBILITY.get() {
+                query
+            } else {
+                let visibility_clause = build_visibility_clause(es_index_name);
+                json! {
+                    {
+                        "bool": {
+                            "must": [query],
+                            "filter": [visibility_clause]
                         }
                     }
-                };
-                current = json! { {
+                }
+            };
+
+            json! {
+                {
                     "subselect": {
-                        "index": index_options.index_name(),
+                        "index": es_index_name,
                         "type": "_doc",
-                        "left_fieldname": path.left_field,
-                        "right_fieldname": path.right_field,
+                        "left_fieldname": left_field,
+                        "right_fieldname": i.right_field,
                         "query": query
                     }
-                }}
+                }
             }
-
-            current
         }
     }
 }
