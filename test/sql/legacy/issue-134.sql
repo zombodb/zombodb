@@ -1,17 +1,17 @@
 SET datestyle TO 'iso, mdy';
 CREATE TABLE multifield AS SELECT * FROM so_users ORDER BY id LIMIT 10;
 ALTER TABLE multifield ADD PRIMARY KEY (id);
-SELECT zdb_define_mapping('multifield', 'display_name', '{
-    "type": "string", "analyzer": "phrase",
+SELECT zdb.define_field_mapping('multifield', 'display_name', '{
+    "type": "text", "analyzer": "phrase",
     "fields": {
-        "raw":   { "type": "string", "index": "not_analyzed" }
+        "raw": { "type": "keyword"}
     }
 }');
-CREATE INDEX idxmultifield ON multifield USING zombodb (zdb('multifield', ctid), zdb(multifield)) WITH (url='http://localhost:9200/');
+CREATE INDEX idxmultifield ON multifield USING zombodb((multifield.*));
 
-SELECT display_name FROM multifield WHERE zdb('multifield', ctid) ==> 'display_name:robert';
+SELECT display_name FROM multifield WHERE multifield ==> 'display_name:robert';
 
-SELECT display_name FROM multifield WHERE zdb('multifield', ctid) ==> 'display_name.raw:robert';
-SELECT display_name FROM multifield WHERE zdb('multifield', ctid) ==> 'display_name.raw:"Robert Cartaino"';
+SELECT display_name FROM multifield WHERE multifield ==> 'display_name.raw:robert';
+SELECT display_name FROM multifield WHERE multifield ==> 'display_name.raw:"Robert Cartaino"';
 
 DROP TABLE multifield;
