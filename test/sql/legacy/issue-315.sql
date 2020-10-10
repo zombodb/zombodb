@@ -10,15 +10,14 @@ CREATE TABLE mapping (
 
 CREATE TABLE b (
   pk_b_id    BIGINT NOT NULL,
-  b_group_id TEXT
+  b_group_id varchar
 );
 
-create index idxb on b using zombodb (zdb('b', ctid), zdb(b)) with (url='localhost:9200/');
-create index idxmapping on mapping using zombodb (zdb('mapping', ctid), zdb(mapping)) with (url='localhost:9200/');
-create index idxa on a using zombodb (zdb('a', ctid), zdb(a)) with (url='localhost:9200/',
-      options='fk_a_to_map=<mapping.idxmapping>pk_map,
-               fk_map_to_b=<b.idxb>pk_b_id',
-      always_resolve_joins=true);
+create index idxb on b using zombodb ( (b.*) );
+create index idxmapping on mapping using zombodb ( (mapping.*) );
+create index idxa on a using zombodb ( (a.*) ) with (
+      options='fk_a_to_map=<public.mapping.idxmapping>pk_map,
+               fk_map_to_b=<public.b.idxb>pk_b_id');
 
 
 insert into b(pk_b_id, b_group_id) values(100, 42);
@@ -33,10 +32,10 @@ insert into a (pk_a, fk_a_to_map) values(10, 1);
 insert into a (pk_a, fk_a_to_map) values(20, 2);
 insert into a (pk_a, fk_a_to_map) values(30, 3);
 
-select * from a where zdb('a', ctid) ==> '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)' order by pk_a;
+select * from a where a ==> '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)' order by pk_a;
 
-set zombodb.ignore_visibility to on; /* to avoid transient xact data in query output */
-select (zdb_dump_query('a', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)')::json)->'cross_join'->'query';
+set zdb.ignore_visibility to on; /* to avoid transient xact data in query output */
+select (zdb.dump_query('idxa', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)')::json)->'subselect'->'query'->'subselect'->'query'->'subselect'->'query';
 
 drop table a cascade;
 drop table b cascade;

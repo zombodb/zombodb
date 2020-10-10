@@ -1,4 +1,5 @@
-use crate::query_parser::ast::{Expr, IndexLink};
+use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
+use crate::query_parser::transformations::field_finder::find_link_for_field;
 use std::collections::BTreeMap;
 
 pub fn assign_links(
@@ -10,10 +11,29 @@ pub fn assign_links(
         Expr::Subselect(i, e) => assign_links(&i, e, links),
         Expr::Expand(i, e, f) => {
             if let Some(filter) = f {
-                assign_links(&i, filter, links);
+                assign_links(root_index, filter, links);
             }
 
-            assign_links(&i, e, links)
+            assign_links(root_index, e, links);
+
+            let link = find_link_for_field(
+                &QualifiedField {
+                    index: None,
+                    field: i.left_field.clone().unwrap(),
+                },
+                root_index,
+                links,
+            )
+            .unwrap_or_else(|| panic!("failed to find linked field '{:?}'", i.left_field));
+
+            let new_link = IndexLink {
+                name: None,
+                left_field: i.left_field.clone(),
+                qualified_index: link.qualified_index.clone(),
+                right_field: i.right_field.clone(),
+            };
+            *expr = Expr::Linked(new_link, e.clone());
+            Some(link)
         }
 
         Expr::Not(e) => assign_links(root_index, e, links),

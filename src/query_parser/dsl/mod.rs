@@ -50,38 +50,13 @@ pub fn expr_to_dsl(
     match expr {
         Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
         Expr::Expand(link, e, f) => {
-            let linked_expand_dsl =
-                expr_to_dsl(link, index_links, &Expr::Linked(link.clone(), e.clone()));
             let expand_dsl = expr_to_dsl(link, index_links, e);
 
             if let Some(filter) = f {
                 let filter_dsl = expr_to_dsl(link, index_links, filter);
-
-                json! {
-                    {
-                        "bool": {
-                            "should": [
-                                expand_dsl,
-                                {
-                                    "bool": {
-                                        "must": [ linked_expand_dsl, filter_dsl ]
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
+                json! { { "bool": { "must": [ expand_dsl, filter_dsl ] } } }
             } else {
-                json! {
-                    {
-                        "bool": {
-                            "should": [
-                                expand_dsl,
-                                linked_expand_dsl
-                            ]
-                        }
-                    }
-                }
+                expand_dsl
             }
         }
 
@@ -159,6 +134,7 @@ pub fn expr_to_dsl(
                 {
                     "subselect": {
                         "index": es_index_name,
+                        "alias": index_options.alias(),
                         "type": "_doc",
                         "left_fieldname": left_field,
                         "right_fieldname": i.right_field,
