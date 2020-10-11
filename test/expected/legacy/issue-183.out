@@ -1,7 +1,7 @@
 --
 -- should return just id=2,3,4
 --
-SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>1';
+SELECT id FROM products WHERE products ==> 'id<>1' order by id;
  id 
 ----
   2
@@ -9,7 +9,7 @@ SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>1';
   4
 (3 rows)
 
-SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>[1]';
+SELECT id FROM products WHERE products ==> 'id<>[1]' order by id;
  id 
 ----
   2
@@ -17,7 +17,7 @@ SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>[1]';
   4
 (3 rows)
 
-SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>[[1]]';
+SELECT id FROM products WHERE products ==> 'id<>[[1]]' order by id;
  id 
 ----
   2
@@ -37,7 +37,7 @@ SELECT id FROM products WHERE id <> 1 OR id <> 2 OR id <> 3 ORDER BY id;
   4
 (4 rows)
 
-SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>1 OR id<>2 OR id <> 3' ORDER BY id;
+SELECT id FROM products WHERE products ==> 'id<>1 OR id<>2 OR id <> 3' ORDER BY id;
  id 
 ----
   1
@@ -55,19 +55,19 @@ SELECT id FROM products WHERE id <> 1 AND id <> 2 AND id <> 3;
   4
 (1 row)
 
-SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>1 AND id<>2 AND id <>3';
+SELECT id FROM products WHERE products ==> 'id<>1 AND id<>2 AND id <>3';
  id 
 ----
   4
 (1 row)
 
-SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>[1,2,3]';
+SELECT id FROM products WHERE products ==> 'id<>[1,2,3]';
  id 
 ----
   4
 (1 row)
 
-SELECT id FROM products WHERE zdb('products', ctid) ==> 'id<>[[1,2,3]]';
+SELECT id FROM products WHERE products ==> 'id<>[[1,2,3]]';
  id 
 ----
   4
