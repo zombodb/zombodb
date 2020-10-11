@@ -17,16 +17,16 @@ VALUES ('John', 'Doe', 1);
 INSERT INTO client (first_name, last_name, city_id)
 VALUES ('John', 'Wick', 2);
 CREATE INDEX idxcity
-  ON city USING zombodb(zdb('city', city.ctid), zdb(city)) WITH (url='http://localhost:9200/');
+  ON city USING zombodb( (city.*) );
 CREATE INDEX idxclient
-  ON client USING zombodb(zdb('client', client.ctid), zdb(client)) WITH (url='http://localhost:9200/');
-ALTER INDEX idxcity SET ( OPTIONS = 'id=<client.idxclient>city_id');
-ALTER INDEX idxclient SET ( OPTIONS = 'city_id=<city.idxcity>id');
+  ON client USING zombodb( (client.*) );
+ALTER INDEX idxcity SET ( OPTIONS = 'id=<cpublic.lient.idxclient>city_id');
+ALTER INDEX idxclient SET ( OPTIONS = 'city_id=<public.city.idxcity>id');
 CREATE VIEW find_me AS
   SELECT
     client.*,
     city.city_name,
-    zdb('client', client.ctid) AS zdb
+    client.ctid AS zdb
   FROM client
     JOIN city ON client.city_id = city.id;
 select * from find_me where zdb ==> 'john' order by id;
@@ -57,7 +57,4 @@ select * from find_me where zdb ==> 'smith seattle' order by id;
 (1 row)
 
 DROP TABLE city CASCADE;
-NOTICE:  drop cascades to 2 other objects
-DETAIL:  drop cascades to constraint client_city_id_fkey on table client
-drop cascades to view find_me
 DROP TABLE client CASCADE;
