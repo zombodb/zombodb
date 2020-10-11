@@ -10,6 +10,7 @@ pub fn assign_links(
     match expr {
         Expr::Subselect(i, e) => assign_links(&i, e, links),
         Expr::Expand(i, e, f) => {
+            let mut other = e.clone();
             if let Some(filter) = f {
                 assign_links(root_index, filter, links);
             }
@@ -32,7 +33,18 @@ pub fn assign_links(
                 qualified_index: link.qualified_index.clone(),
                 right_field: i.right_field.clone(),
             };
-            *expr = Expr::Linked(new_link, e.clone());
+
+            assign_links(&new_link, other.as_mut(), links);
+
+            *expr = Expr::OrList(vec![
+                Expr::Expand(
+                    i.clone(),
+                    Box::new(Expr::Linked(new_link, e.clone())),
+                    f.clone(),
+                ),
+                *other,
+            ]);
+
             Some(link)
         }
 
