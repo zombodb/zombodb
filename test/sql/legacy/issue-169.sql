@@ -4,7 +4,7 @@ CREATE TABLE public.issue_169(
   ,CONSTRAINT idx_data_pkey PRIMARY KEY (pk_data)
 );
 
-CREATE INDEX es_public_issue_169 ON public.issue_169 USING zombodb (zdb('public.issue_169', ctid), zdb(issue_169.*)) WITH (url='http://127.0.0.1:9200/', shards='3', replicas='1');
+CREATE INDEX es_public_issue_169 ON public.issue_169 USING zombodb ( (issue_169.*) ) WITH (shards='3', replicas='1');
 
 INSERT INTO public.issue_169(pk_data) VALUES (1);
 INSERT INTO public.issue_169(pk_data) VALUES (2);
@@ -19,7 +19,7 @@ COPY public.issue_169(pk_data) FROM STDIN;
 6
 \.
 
-SELECT pk_data FROM public.issue_169 WHERE zdb('public.issue_169', ctid) ==> 'pk_data:"*"' ORDER BY pk_data;
+SELECT pk_data FROM public.issue_169 WHERE issue_169 ==> 'pk_data:"*"' ORDER BY pk_data;
 
 /*
  test it with batch mode off (the default) in a transaction
@@ -27,14 +27,14 @@ SELECT pk_data FROM public.issue_169 WHERE zdb('public.issue_169', ctid) ==> 'pk
  */
 TRUNCATE TABLE issue_169;
 BEGIN;
-SET zombodb.batch_mode TO off;
+-- SET zombodb.batch_mode TO off; -- batch_mode isn't a thing anymore
 COPY public.issue_169(pk_data) FROM STDIN;
 4
 5
 6
 \.
 
-SELECT pk_data FROM public.issue_169 WHERE zdb('public.issue_169', ctid) ==> 'pk_data:"*"' ORDER BY pk_data;
+SELECT pk_data FROM public.issue_169 WHERE issue_169 ==> 'pk_data:"*"' ORDER BY pk_data;
 COMMIT;
 
 
@@ -44,16 +44,17 @@ COMMIT;
  */
 TRUNCATE TABLE issue_169;
 BEGIN;
-SET zombodb.batch_mode TO on;
+-- SET zombodb.batch_mode TO on; -- batch_mode isn't a thing anymore
 COPY public.issue_169(pk_data) FROM STDIN;
 4
 5
 6
 \.
 
-SELECT pk_data FROM public.issue_169 WHERE zdb('public.issue_169', ctid) ==> 'pk_data:"*"' ORDER BY pk_data;
+-- will return all rows (4, 5, 6) whereas old ZDB ES5.6 wouldn't return anything
+SELECT pk_data FROM public.issue_169 WHERE issue_169 ==> 'pk_data:"*"' ORDER BY pk_data;
 COMMIT;
-SELECT pk_data FROM public.issue_169 WHERE zdb('public.issue_169', ctid) ==> 'pk_data:"*"' ORDER BY pk_data;
+SELECT pk_data FROM public.issue_169 WHERE issue_169 ==> 'pk_data:"*"' ORDER BY pk_data;
 
 DROP TABLE issue_169;
 
