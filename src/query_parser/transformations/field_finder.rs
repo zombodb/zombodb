@@ -75,11 +75,13 @@ pub fn find_link_for_field(
             }
         } else {
             // but we definitely want to ensure we can open a linked index, and we'll panic!() if we can't
-            Some(
-                index
-                    .open_table()
-                    .expect("failed to open linked index's table table"),
-            )
+            Some(index.open_table().unwrap_or_else(|e| {
+                panic!(
+                    "failed to open linked index's table '{}': {}",
+                    index.qualified_index.table_name(),
+                    e
+                )
+            }))
         };
 
         if let Some(relation) = relation {
