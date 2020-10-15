@@ -138,6 +138,8 @@ pub enum Term<'input> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'input> {
+    Null,
+
     Subselect(IndexLink, Box<Expr<'input>>),
     Expand(IndexLink, Box<Expr<'input>>, Option<Box<Expr<'input>>>),
 
@@ -373,7 +375,7 @@ impl<'input> Expr<'input> {
         index: &PgRelation,
         default_fieldname: &'input str,
         input: &'input str,
-        index_links: &Option<Vec<IndexLink>>,
+        index_links: &Vec<IndexLink>,
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         if input.trim().is_empty() {
@@ -390,9 +392,7 @@ impl<'input> Expr<'input> {
             input,
             used_fields,
             root_index,
-            index_links
-                .clone()
-                .unwrap_or_else(|| IndexLink::from_zdb(index)),
+            index_links,
             zdboptions.field_lists(),
         )
     }
@@ -403,14 +403,14 @@ impl<'input> Expr<'input> {
         input: &'input str,
         used_fields: &mut HashSet<&'input str>,
         root_index: IndexLink,
-        linked_indexes: Vec<IndexLink>,
+        index_links: &Vec<IndexLink>,
         mut field_lists: HashMap<String, Vec<QualifiedField>>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         let input = input.clone();
         let mut operator_stack = vec![ComparisonOpcode::Contains];
         let mut fieldname_stack = vec![default_fieldname];
 
-        let mut expr = ZDB_QUERY_PARSER.with(|parser| {
+        let mut expr = *ZDB_QUERY_PARSER.with(|parser| {
             parser.parse(
                 index,
                 used_fields,
@@ -428,7 +428,7 @@ impl<'input> Expr<'input> {
                     .into_iter()
                     .map(|index| (&root_index, index.clone()))
                     .chain(
-                        linked_indexes
+                        index_links
                             .iter()
                             .map(|link| (link, link.open_index().expect("failed to open index"))),
                     )
@@ -446,25 +446,14 @@ impl<'input> Expr<'input> {
                 }
             }
 
-            expand_field_lists(expr.as_mut(), &field_lists);
+            expand_field_lists(&mut expr, &field_lists);
         }
 
-        find_fields(expr.as_mut(), &root_index, &linked_indexes);
-        group_nested(&index, expr.as_mut());
+        find_fields(&mut expr, &root_index, &index_links);
+        group_nested(&index, &mut expr);
 
-        let mut expr =
-            if let Some(final_link) = assign_links(&root_index, expr.as_mut(), &linked_indexes) {
-                if final_link != root_index {
-                    // the final link isn't the same as the root_index, so it needs to be wrapped
-                    // in an Expr::Linked
-                    Expr::Linked(final_link, expr)
-                } else {
-                    *expr
-                }
-            } else {
-                *expr
-            };
-        expand_index_links(&mut expr, &root_index, &linked_indexes);
+        assign_links(&root_index, &mut expr, &index_links);
+        // expand_index_links(&mut expr, &root_index, &index_links);
         merge_adjacent_links(&mut expr);
 
         rewrite_proximity_chains(&mut expr);
@@ -557,6 +546,7 @@ impl<'input> Expr<'input> {
 
     pub fn get_nested_path(&self) -> Option<String> {
         match self {
+            Expr::Null => unreachable!(),
             Expr::Subselect(_, _) => panic!("#subselect not supported in WITH clauses"),
             Expr::Expand(_, _, _) => panic!("#expand not supported in WITH clauses"),
             Expr::Not(e) => e.get_nested_path(),
@@ -887,6 +877,8 @@ impl<'input> Display for Term<'input> {
 impl<'input> Display for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
+            Expr::Null => unreachable!(),
+
             Expr::Subselect(link, q) => write!(fmt, "#subselect<{}>({})", link, q),
             Expr::Expand(link, q, f) => {
                 write!(fmt, "#expand<{}>({}", link, q)?;

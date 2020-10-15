@@ -9,17 +9,18 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe)]
     fn zdb(index: PgRelation, input: &str) -> ZDBQuery {
         let mut used_fields = HashSet::new();
+        let index_links = IndexLink::from_zdb(&index);
         let query = crate::query_parser::ast::Expr::from_str(
             &index,
             "zdb_all",
             input,
-            &None,
+            &index_links,
             &mut used_fields,
         )
         .expect("failed to parse query");
         ZDBQuery::new_with_query_dsl(expr_to_dsl(
             &IndexLink::from_relation(&index),
-            &None,
+            &index_links,
             &query,
         ))
     }

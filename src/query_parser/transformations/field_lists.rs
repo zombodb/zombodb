@@ -3,6 +3,8 @@ use std::collections::HashMap;
 
 pub fn expand_field_lists(e: &mut Expr, lists: &HashMap<String, Vec<QualifiedField>>) {
     match e {
+        Expr::Null => unreachable!(),
+
         Expr::Subselect(_, e) => expand_field_lists(e.as_mut(), lists),
         Expr::Expand(_, e, f) => {
             if let Some(filter) = f {

@@ -78,9 +78,14 @@ pub Expr: Box<Expr<'input>> = {
 };
 
 OrExpression: Box<Expr<'input>> = {
-    <mut v:(<AndExpression> OrOp+)+> <r:AndExpression> => {
-        v.push(r);
-        Box::new(Expr::OrList(v.into_iter().map(|b| *b).collect()))
+    <v:(<AndExpression> OrOp+)+> <r:AndExpression> => {
+        let mut final_children:Vec<Expr> = v.into_iter().map(|b| *b).collect();
+        match *r {
+            Expr::OrList(mut children) => { final_children.append(&mut children); }
+            other => { final_children.push(other); }
+        }
+
+        Box::new(Expr::OrList(final_children))
     },
     AndExpression,
 };
@@ -91,9 +96,14 @@ OrOp: Opcode = {
 };
 
 AndExpression: Box<Expr<'input>> = {
-    <mut v:(<WithExpression> AndOp*)+> <r:WithExpression> => {
-        v.push(r);
-        Box::new(Expr::AndList(v.into_iter().map(|b| *b).collect()))
+    <v:(<WithExpression> AndOp*)+> <r:WithExpression> => {
+        let mut final_children:Vec<Expr> = v.into_iter().map(|b| *b).collect();
+        match *r {
+            Expr::AndList(mut children) => { final_children.append(&mut children); }
+            other => { final_children.push(other); }
+        }
+
+        Box::new(Expr::AndList(final_children))
     },
     WithExpression,
 };
@@ -104,9 +114,14 @@ AndOp: Opcode = {
 };
 
 WithExpression: Box<Expr<'input>> = {
-    <mut v:(<ProximityExpression> WithOp+)+> <r:ProximityExpression> => {
-        v.push(r);
-        Box::new(Expr::WithList(v.into_iter().map(|b| *b).collect()))
+    <v:(<ProximityExpression> WithOp+)+> <r:ProximityExpression> => {
+        let mut final_children:Vec<Expr> = v.into_iter().map(|b| *b).collect();
+        match *r {
+            Expr::WithList(mut children) => { final_children.append(&mut children); }
+            other => { final_children.push(other); }
+        }
+
+        Box::new(Expr::WithList(final_children))
     },
     ProximityExpression
 };

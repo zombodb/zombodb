@@ -3,6 +3,7 @@ use crate::gucs::ZDB_IGNORE_VISIBILITY;
 use crate::query_parser::ast::{
     ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
 };
+use crate::query_parser::transformations::path_finder::PathFinder;
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
@@ -25,8 +26,14 @@ fn debug_query(
     name!(ast, String),
 ) {
     let mut used_fields = HashSet::new();
-    let query = Expr::from_str(&index, "zdb_all", query, &None, &mut used_fields)
-        .expect("failed to parse query");
+    let query = Expr::from_str(
+        &index,
+        "zdb_all",
+        query,
+        &IndexLink::from_zdb(&index),
+        &mut used_fields,
+    )
+    .expect("failed to parse query");
 
     let tree = format!("{:#?}", query);
 
@@ -44,12 +51,25 @@ fn debug_query(
 
 pub fn expr_to_dsl(
     root: &IndexLink,
-    index_links: &Option<Vec<IndexLink>>,
+    index_links: &Vec<IndexLink>,
     expr: &Expr,
 ) -> serde_json::Value {
     match expr {
+        Expr::Null => unreachable!(),
+
         Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
         Expr::Expand(link, e, f) => {
+            // pgx::info!("{:?}", index_links);
+            // let mut pf = PathFinder::new();
+            // for link in index_links {
+            //     pf.push(index_links, root.clone(), link.clone());
+            // }
+            //
+            // pgx::info!("{:#?}", pf);
+            //
+            // let expand_dsl = expr_to_dsl(link, index_links, &Expr::Linked(link.clone(), e.clone()));
+            // pgx::info!("link={}", link);
+            // pgx::info!("root={}", root);
             let expand_dsl = expr_to_dsl(link, index_links, e);
 
             if let Some(filter) = f {
@@ -103,20 +123,16 @@ pub fn expr_to_dsl(
             json! { { "nested": { "path": p, "query": dsl, "score_mode": "avg", "ignore_unmapped": false } } }
         }
 
-        Expr::Linked(i, e) => {
-            let target_relation = i.open_index().expect("failed to open index");
+        Expr::Linked(link, e) => {
+            pgx::info!("link={}", link);
+            let mut query = expr_to_dsl(root, index_links, e.as_ref());
+            let target_relation = link.open_index().unwrap_or_else(|e| {
+                panic!("failed to open index '{}': {}", link.qualified_index, e)
+            });
             let index_options = ZDBIndexOptions::from(&target_relation);
             let es_index_name = index_options.index_name();
 
-            let left_field = i.left_field.as_ref().unwrap();
-            let left_field = if left_field.contains('.') {
-                left_field.splitn(2, '.').nth(1).unwrap()
-            } else {
-                &left_field
-            };
-
-            let query = expr_to_dsl(root, index_links, e.as_ref());
-            let query = if ZDB_IGNORE_VISIBILITY.get() {
+            query = if ZDB_IGNORE_VISIBILITY.get() {
                 query
             } else {
                 let visibility_clause = build_visibility_clause(es_index_name);
@@ -136,8 +152,8 @@ pub fn expr_to_dsl(
                         "index": es_index_name,
                         "alias": index_options.alias(),
                         "type": "_doc",
-                        "left_fieldname": left_field,
-                        "right_fieldname": i.right_field,
+                        "left_fieldname": link.left_field,
+                        "right_fieldname": link.right_field,
                         "query": query
                     }
                 }

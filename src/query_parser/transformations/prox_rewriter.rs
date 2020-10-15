@@ -2,6 +2,8 @@ use crate::query_parser::ast::{Expr, ProximityTerm, QualifiedField, Term};
 
 pub fn rewrite_proximity_chains(expr: &mut Expr) {
     match expr {
+        Expr::Null => unreachable!(),
+
         Expr::Subselect(_, e) => rewrite_proximity_chains(e.as_mut()),
         Expr::Expand(_, e, f) => {
             if let Some(filter) = f {
